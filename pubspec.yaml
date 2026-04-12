@@ -1,0 +1,67 @@
+name: flutter_education_app
+description: Complete educational platform with VOD and live streaming
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+#  webview_flutter_android: ^3.16.4
+  flutter_inappwebview: ^6.1.5
+  flutter_screen_recording: ^2.0.25
+  record: ^6.2.0
+  permission_handler: ^11.3.0
+  path_provider: ^2.1.0
+  http: ^1.2.0
+  http_parser: ^4.0.2
+  provider: ^6.1.1
+  dio: ^5.4.0
+  shared_preferences: ^2.2.2
+  video_player: ^2.8.1
+  chewie: ^1.7.4
+  webview_flutter: ^4.4.2
+  cupertino_icons: ^1.0.6
+  flutter_spinkit: ^5.2.0
+  cached_network_image: ^3.3.0
+  file_picker: ^11.0.2
+  image_picker: ^1.0.5
+  intl: ^0.20.2
+  fluttertoast: ^9.0.0
+  url_launcher: ^6.2.2
+  daily_flutter: ^0.37.0
+  flutter_localizations:
+    sdk: flutter
+  flutter_native_splash:
+  record_platform_interface: ^1.5.0
+  livekit_client: ^2.7.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/translation.json
+  fonts:
+    - family: bahji
+      fonts:
+        - asset: fonts/Bahij_TheSansArabic-Bold.ttf
+          style: italic
+flutter_native_splash:
+  # General color for all platforms except Android 12+
+  color: "#FFFFFF"
+  # General image for all platforms except Android 12+
+  image: assets/images/splash.png
+
+  # Android 12+ specific configuration (required for newer Android versions)
+  android_12:
+    image: assets/images/splash.png
+    color: "#FFFFFF"
+    # Optional: background color for the icon
+    # icon_background_color: "#111111"

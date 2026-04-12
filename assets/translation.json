@@ -1,0 +1,266 @@
+{
+  "email": {
+    "en": "E-mail",
+    "ar": "البريد الاكتروني"
+  },
+  "en": {
+    "en": "English",
+    "ar": "الانجليزية"
+  },
+  "ar": {
+    "en": "Arabic",
+    "ar": "العربية"
+  },
+  "full_name": {
+    "en": "Full Name",
+    "ar": "الاسم بالكامل"
+  },
+  "phone": {
+    "en": "Mobile Number",
+    "ar": "رقم الهاتف"
+  },
+  "password": {
+    "en": "Password",
+    "ar": "كلمة المرور"
+  },
+  "confirmed_password": {
+    "en": "Confirmed Password",
+    "ar": "تأكيد كلمة المرور"
+  },
+  "login": {
+    "en": "Login",
+    "ar": "تسجيل الدخول"
+  },
+  "register": {
+    "en": "Register",
+    "ar": "إنشاء حساب"
+  },
+  "doesn't_have_account": {
+    "en": "Doesn't have account?",
+    "ar": "ليس لديك حساب؟"
+  },
+  "have_account": {
+    "en": "Already have an account?",
+    "ar": "هل لديك حساب بالفعل؟"
+  },
+  "create_account": {
+    "en": "Create account",
+    "ar": "إنشاء حساب"
+  },
+  "forget_password": {
+    "en": "Forget Your password",
+    "ar": "نسيت كلمة المرور ؟"
+  },
+  "login_welcome": {
+    "en": "Log in to continue your learning journey\n",
+    "ar": " سجّل الدخول  \n لمتابعة رحلتك التعليمية"
+  },
+  "registration_welcome": {
+    "en": "Create your own account",
+    "ar": "إنشأ حسابك الخاص بك"
+  },
+  "role": {
+    "en": "Role",
+    "ar": "الكادر"
+  },
+  "teacher": {
+    "en": "Teacher",
+    "ar": "معلم"
+  },
+  "student": {
+    "en": "Student",
+    "ar": "طالب"
+  },
+  "dob": {
+    "en": "Date of birth",
+    "ar": "تاريخ الميلاد"
+  },
+  "confirm": {
+    "en": "Confirm",
+    "ar": "تأكيد"
+  },
+  "verification_code": {
+    "en": "Verification Code",
+    "ar": "رمز التحقق"
+  },
+  "enter_verification_code": {
+    "en": "Enter Verification Code",
+    "ar": "ادخل رمز  التحقق"
+  },
+  "verification_code_sent": {
+    "en": "The verification code has been sent to",
+    "ar": "لقد تم ارسال رمز التحقق الي"
+  },
+  "resend_in": {
+    "en": "Resend Code in",
+    "ar": "أعد إرسال الرمز خلال"
+  },
+  "resend": {
+    "en": "Resend Code",
+    "ar": "أعد إرسال الرمز"
+  },
+  "experience": {
+    "en": "Years of experience",
+    "ar": "سنوات الخبرة"
+  },
+  "Specialization": {
+    "en": "Specialization",
+    "ar": "التخصص"
+  },
+  "geometry": {
+    "en": "Geometry",
+    "ar": "هندسه"
+  },
+  "psychology": {
+    "en": "psychology",
+    "ar": "علم النفس"
+  },
+  "payment_method": {
+    "en": "payment method",
+    "ar": "طريقه الدفع"
+  },
+  "forget_welcome": {
+    "en": "Continue with your email.",
+    "ar": "تابع كتابة بريدك الإلكتروني."
+  },
+  "free": {
+    "en": "Free",
+    "ar": "مجاني"
+  },
+  "payed": {
+    "en": "Payed",
+    "ar": "مدفوع"
+  },
+  "teaching_style": {
+    "en": "Teaching style",
+    "ar": "أسلوب التدريس"
+  },
+  "record": {
+    "en": "Record",
+    "ar": "مسجل"
+  },
+  "live": {
+    "en": "Live",
+    "ar": "بث مباشر"
+  },
+  "both": {
+    "en": "Both",
+    "ar": "معا"
+  },
+  "additional_registration_welcome": {
+    "en": "To enable you to publish educational content",
+    "ar": " لتمكينك من نشر المحتوى التعليمي"
+  },
+  "complete_profile": {
+    "en": "Complete profile",
+    "ar": "إكمال الملف الشخصي"
+  },
+  "complete_profile_please": {
+    "en": "Please complete the professional information",
+    "ar": "برجاء استكمال البيانات المهنية"
+  },
+  "reset_password_welcome": {
+    "en": "Reset password to a new one",
+    "ar": "اعاده تعيين كلمه سر جديده"
+  },
+  "reset_password": {
+    "en": "Reset password",
+    "ar": "تعيين كلمة المرور"
+  },
+  "forget": {
+    "en": "Forget password",
+    "ar": "نسيت كلمة المرور"
+  },
+  "courses": {
+    "en": "Courses",
+    "ar": "الكورسات"
+  },
+  "categories": {
+    "en": "Categories",
+    "ar": "الأقسام"
+  },
+  "show_more": {
+    "en": "Show more",
+    "ar": "مشاهدة الكل"
+  },
+  "best_teachers": {
+    "en": "Best Teacher",
+    "ar": "أفضل المعلمين"
+  },
+  "search": {
+    "en": "Search",
+    "ar": "بحث"
+  },
+  "notifications": {
+    "en": "Notifications",
+    "ar": "الاشعارات"
+  },
+  "today": {
+    "en": "Today",
+    "ar": "اليوم"
+  },
+  "yesterday": {
+    "en": "Yesterday",
+    "ar": "أمس"
+  },
+  "course_title": {
+    "en": "Course Title",
+    "ar": "عنوان الدورة"
+  },
+  "enter_course_title": {
+    "en": "Enter Course Title",
+    "ar": "أدخل عنوان الدورة"
+  },
+  "course_description": {
+    "en": "Course Description",
+    "ar": "وصف الدورة"
+  },
+  "course_hours": {
+    "en": "Course Expected Hours",
+    "ar": "الساعات المتوقعة الدورة"
+  },
+  "welcome": {
+    "en": "Welcome",
+    "ar": "مرحبا"
+  },
+  "sir": {
+    "en": "Sir",
+    "ar": "عزيزي"
+  },
+  "exit": {
+    "en": "Exit",
+    "ar": "خروج"
+  },
+  "sessions": {
+    "en": "Sessions",
+    "ar": "الحصص"
+  },
+  "logout": {
+    "en": "Logout",
+    "ar": "تسجيل خروج"
+  },
+  "save_changes": {
+    "en": "Save Changes",
+    "ar": "حفظ التغيرات"
+  },
+  "add_session": {
+    "en": "Add Session",
+    "ar": "اضافة حصة"
+  },
+  "account": {
+    "en": "Account",
+    "ar": "الحساب"
+  },
+  "change_password": {
+    "en": "Change Password",
+    "ar": "تغير كلمة المرور"
+  },
+  "cancel": {
+    "en": "Cancel",
+    "ar": "الغاء"
+  },
+  "course_fees": {
+    "en": "Course Fees",
+    "ar": "التكلفة"
+  }
+}

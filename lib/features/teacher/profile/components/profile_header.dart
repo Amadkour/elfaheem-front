@@ -1,0 +1,57 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart' show Icons, Colors;
+
+import '../../../../config/app_theme.dart';
+import '../../../../utils/widget/app_network_image.dart';
+import '../../../student/profile/profile_provider.dart';
+
+class ProfileHeader extends StatelessWidget {
+  final ProfileProvider provider;
+  final VoidCallback onImageTap;
+
+  const ProfileHeader({
+    required this.provider,
+    required this.onImageTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Stack(
+          alignment: Alignment.bottomLeft,
+          children: [
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppTheme.primary.withValues(alpha: 0.1),
+                border: Border.all(color: AppTheme.primary, width: 2.5),
+              ),
+              child: provider.avatarUrl != null
+                  ? ClipOval(child: AppNetworkImage(url: provider.avatarUrl!))
+                  : const Icon(Icons.person_rounded,
+                  size: 52, color: AppTheme.primary),
+            ),
+            GestureDetector(
+              onTap: onImageTap,
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: const BoxDecoration(
+                    color: AppTheme.primary, shape: BoxShape.circle),
+                child: const Icon(Icons.camera_alt_rounded,
+                    size: 16, color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Text(provider.name, style: AppTheme.h2.copyWith(fontSize: 20)),
+        const SizedBox(height: 4),
+        Text(provider.email, style: AppTheme.caption),
+      ],
+    );
+  }
+}
