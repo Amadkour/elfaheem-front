@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../config/app_theme.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../models.dart';
+import 'components/recording_button.dart';
 import 'sessions_provider.dart';
 
 class StudentSessionsScreen extends StatefulWidget {
@@ -293,6 +294,7 @@ class _SessionCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 _AttendanceRow(session: session),
               ],
+              RecordingButton(recordingUrl: session.recordingUrl)
             ]),
           )),
         ]),

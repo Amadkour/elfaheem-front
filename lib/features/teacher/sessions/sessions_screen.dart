@@ -334,17 +334,17 @@ class _SessionList extends StatelessWidget {
                           Navigator.push(
                             ctx,
                             MaterialPageRoute(
-                              builder: (_) => TeacherLiveScreen(
-                                wsUrl: liveResponseModel.url,
+                              builder: (_) => TeacherLiveSessionScreen(
+                                // wsUrl: liveResponseModel.url,
                                 sessionId: s.id,
                                 courseId: s.courseId,
-                                sessionTitle: s.name,
+                                sessionName: s.name,
                                 // onEndLive: () => Future.value(true),
-                                onEndLive: () async {
-                                  await ctx.read<TeacherSessionsProvider>().endLive(s.id,saveRecording: true);
-                                  return true;
-                                },
-                                token: liveResponseModel.token,
+                                // onEndLive: () async {
+                                //   await ctx.read<TeacherSessionsProvider>().endLive(s.id,saveRecording: true);
+                                //   return true;
+                                // },
+                                authToken: liveResponseModel.token,
                               ),
                             ),
                           );

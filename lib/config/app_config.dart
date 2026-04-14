@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 /// Application configuration and AppTheme.
 class AppConfig {
 // For Android Emulator
-  static const String baseUrl = 'https://names-system-conclude-complicated.trycloudflare.com';
+  static const String baseUrl = 'https://asks-empire-privacy-universe.trycloudflare.com';
 
   // static const String baseUrl = 'http://10.0.2.2:8000';
 
@@ -18,7 +18,7 @@ class AppConfig {
 //
 // // For Production
 //   static const String baseUrl = 'https://your-api.com';
-
+// hamdymadkour@ci.menofia.edu.eg
   static const String apiV1 = '$baseUrl/api/v1';
   static const String loginEndpoint = '\$apiV1/auth/login';
   static const String registerEndpoint = '\$apiV1/auth/register';

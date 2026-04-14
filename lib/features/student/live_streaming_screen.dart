@@ -1,1281 +1,901 @@
-//
-// import 'dart:async';
-// import 'dart:convert';
-//
-// import 'package:flutter/material.dart';
-// import 'package:permission_handler/permission_handler.dart';
-// import 'package:provider/provider.dart';
-// import 'package:webview_flutter/webview_flutter.dart';
-// import 'package:webview_flutter_android/webview_flutter_android.dart'; // Android-specific
-//
-// import '../teacher/shared/attendance_provider.dart';
-// import '../teacher/shared/exams_provider.dart';
-// import '../teacher/shared/live_models.dart';
-//
-// class StudentLiveScreen extends StatefulWidget {
-//   final String sessionTitle;
-//   final String meetingUrl;
-//   final int sessionId;
-//   final int courseId;
-//
-//   const StudentLiveScreen({
-//     super.key,
-//     required this.sessionTitle,
-//     required this.meetingUrl,
-//     required this.sessionId,
-//     required this.courseId,
-//   });
-//
-//   @override
-//   State<StudentLiveScreen> createState() => _StudentLiveScreenState();
-// }
-//
-// class _StudentLiveScreenState extends State<StudentLiveScreen> {
-//   late final WebViewController _wvc;
-//
-//   bool _loading = true;
-//   bool _permissionsGranted = false;
-//   String? _error;
-//   DateTime? _joinTime;
-//
-//   Timer? _pollTimer;
-//   final Set<int> _shownExams = {};
-//   bool _examOpen = false;
-//   Timer? _cdTimer;
-//   int _cdSeconds = 0;
-//   final StreamController<int> _cdCtrl = StreamController<int>.broadcast();
-//
-//   // ── Lifecycle ──────────────────────────────────────────────────────────────
-//
-//   @override
-//   void initState() {
-//     super.initState();
-//     // Request permissions FIRST, then init WebView
-//     WidgetsBinding.instance.addPostFrameCallback((_) async {
-//       final granted = await _requestPermissions();
-//       if (mounted) {
-//         setState(() => _permissionsGranted = granted);
-//         if (granted) {
-//           _initWebView();
-//           _checkIn();
-//           _startPoll();
-//         }
-//       }
-//     });
-//   }
-//
-//   @override
-//   void dispose() {
-//     _pollTimer?.cancel();
-//     _cdTimer?.cancel();
-//     _cdCtrl.close();
-//     super.dispose();
-//   }
-//
-//   // ── Step 1: Request runtime permissions ────────────────────────────────────
-//
-//   Future<bool> _requestPermissions() async {
-//     // Request camera and microphone together
-//     final statuses = await [
-//       Permission.camera,
-//       Permission.microphone,
-//     ].request();
-//
-//     final camOk = statuses[Permission.camera]?.isGranted ?? false;
-//     final micOk = statuses[Permission.microphone]?.isGranted ?? false;
-//
-//     if (!camOk || !micOk) {
-//       if (mounted) {
-//         _showPermissionDeniedDialog(camOk: camOk, micOk: micOk);
-//       }
-//     }
-//     // Even if camera is denied but mic is granted (or vice versa),
-//     // let the WebView load — Daily.co will handle partial access gracefully.
-//     return camOk || micOk;
-//   }
-//
-//   void _showPermissionDeniedDialog({required bool camOk, required bool micOk}) {
-//     showDialog(
-//       context: context,
-//       builder: (_) => Directionality(
-//         textDirection: TextDirection.rtl,
-//         child: AlertDialog(
-//           shape:
-//               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-//           title: const Text('إذن الوصول مطلوب',
-//               style:
-//                   TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
-//           content: Column(
-//               mainAxisSize: MainAxisSize.min,
-//               crossAxisAlignment: CrossAxisAlignment.start,
-//               children: [
-//                 const Text('للانضمام إلى الحصة المباشرة، يرجى السماح بما يلي:',
-//                     style: TextStyle(fontFamily: 'Cairo')),
-//                 const SizedBox(height: 12),
-//                 _PermRow(
-//                     icon: Icons.videocam_rounded,
-//                     label: 'الكاميرا',
-//                     granted: camOk),
-//                 const SizedBox(height: 6),
-//                 _PermRow(
-//                     icon: Icons.mic_rounded,
-//                     label: 'الميكروفون',
-//                     granted: micOk),
-//               ]),
-//           actions: [
-//             TextButton(
-//               onPressed: () => Navigator.pop(context),
-//               child: const Text('لاحقاً',
-//                   style: TextStyle(fontFamily: 'Cairo', color: Colors.grey)),
-//             ),
-//             ElevatedButton(
-//               style: ElevatedButton.styleFrom(
-//                   backgroundColor: const Color(0xFF185FA5),
-//                   shape: RoundedRectangleBorder(
-//                       borderRadius: BorderRadius.circular(10))),
-//               onPressed: () {
-//                 Navigator.pop(context);
-//                 openAppSettings(); // Opens Android app settings
-//               },
-//               child: const Text('فتح الإعدادات',
-//                   style: TextStyle(
-//                       fontFamily: 'Cairo',
-//                       color: Colors.white,
-//                       fontWeight: FontWeight.w700)),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-//
-//   // ── Step 2: Init WebView with permission handling ─────────────────────────
-//
-//   void _initWebView() {
-//     _wvc = WebViewController()
-//       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-//       // Allow media playback without requiring a user gesture
-//       ..setBackgroundColor(Colors.black)
-//       ..setNavigationDelegate(NavigationDelegate(
-//         onPageStarted: (_) => setState(() => _loading = true),
-//         onPageFinished: (_) => setState(() {
-//           _loading = false;
-//           _joinTime = DateTime.now();
-//         }),
-//         onWebResourceError: (e) => setState(() {
-//           _error = e.description;
-//           _loading = false;
-//         }),
-//         onNavigationRequest: (_) => NavigationDecision.navigate,
-//       ))
-//       ..addJavaScriptChannel('DailyBridge', onMessageReceived: _onDailyMsg)
-//       ..loadRequest(Uri.parse(widget.meetingUrl));
-//
-//     // ── Android-specific: handle WebRTC permission requests ────────────────
-//     // This is the KEY FIX — without this, WebView blocks camera/mic even
-//     // if Android permissions are granted.
-//     final androidController = _wvc.platform;
-//     if (androidController is AndroidWebViewController) {
-//       AndroidWebViewController.enableDebugging(false);
-//
-//       androidController.setOnShowFileSelector((_) async => []);
-//
-//       // Grant WebRTC permissions when the WebView requests them
-//       androidController.setGeolocationPermissionsPromptCallbacks();
-//
-//       // THIS IS THE CRITICAL HANDLER for camera/microphone in WebRTC
-//       androidController.setOnPlatformPermissionRequest((request) {
-//         // Grant all requested resources (camera, microphone, etc.)
-//         request.grant();
-//       });
-//
-//       // Enable hardware acceleration for smooth video
-//       androidController.setMediaPlaybackRequiresUserGesture(false);
-//     }
-//
-//     // Inject JS to forward Daily.co events to Flutter
-//     _wvc.runJavaScript('''
-//       window.addEventListener('message', function(e) {
-//         if (e.data && e.data.action === 'left-meeting') {
-//           DailyBridge.postMessage(JSON.stringify({event: 'left-meeting'}));
-//         }
-//       });
-//     ''');
-//   }
-//
-//   void _onDailyMsg(JavaScriptMessage msg) {
-//     try {
-//       final d = jsonDecode(msg.message) as Map<String, dynamic>;
-//       if (d['event'] == 'left-meeting') _leave();
-//     } catch (_) {}
-//   }
-//
-//   // ── Attendance ─────────────────────────────────────────────────────────────
-//
-//   Future<void> _checkIn() =>
-//       context.read<AttendanceProvider>().checkIn(widget.sessionId);
-//
-//   Future<void> _leave() async {
-//     _pollTimer?.cancel();
-//     _cdTimer?.cancel();
-//     await context.read<AttendanceProvider>().checkOut(widget.sessionId);
-//     if (mounted) Navigator.pop(context);
-//   }
-//
-//   // ── Exam polling ───────────────────────────────────────────────────────────
-//
-//   void _startPoll() {
-//     _poll();
-//     _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) => _poll());
-//   }
-//
-//   Future<void> _poll() async {
-//     if (_examOpen || !mounted) return;
-//     final exams = await context
-//         .read<ExamsProvider>()
-//         .fetchActiveExams(widget.courseId, alreadyShownIds: _shownExams);
-//     if (exams.isNotEmpty && mounted) {
-//       _shownExams.add(exams.first.id);
-//       _showExam(exams.first);
-//     }
-//   }
-//
-//   void _showExam(ExamModel exam) {
-//     _cdSeconds = (exam.duration ?? 10) * 60;
-//     _cdTimer?.cancel();
-//     setState(() => _examOpen = true);
-//
-//     _cdTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-//       _cdSeconds--;
-//       if (!_cdCtrl.isClosed) _cdCtrl.add(_cdSeconds);
-//       if (_cdSeconds <= 0) {
-//         t.cancel();
-//         if (_examOpen && mounted) {
-//           Navigator.of(context, rootNavigator: true).pop();
-//           _submitExam(exam, {});
-//         }
-//       }
-//     });
-//
-//     // showDialog<Map<int, String>?>(
-//     //   context: context,
-//     //   barrierDismissible: false,
-//     //   builder: (_) => ExamDialog(
-//     //     exam: exam,
-//     //     countdownStream: _cdCtrl.stream,
-//     //     initialSeconds: _cdSeconds,
-//     //     onSubmit: (answers) {
-//     //       Navigator.of(context, rootNavigator: true).pop(answers);
-//     //     },
-//     //   ),
-//     // ).then((answers) {
-//     //   _cdTimer?.cancel();
-//     //   setState(() => _examOpen = false);
-//     //   if (answers != null) _submitExam(exam, answers);
-//     // });
-//   }
-//
-//   Future<void> _submitExam(ExamModel exam, Map<int, String> answers) async {
-//     final ok =
-//         await context.read<ExamsProvider>().submitAllAnswers(exam.id, answers);
-//     if (!mounted) return;
-//     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-//       content: Text(ok ? 'تم إرسال الاختبار ✓' : 'حدث خطأ في إرسال الاختبار',
-//           style: const TextStyle(fontFamily: 'Cairo', color: Colors.white)),
-//       backgroundColor: ok ? const Color(0xFF1D9E75) : Colors.red,
-//       behavior: SnackBarBehavior.floating,
-//       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-//     ));
-//   }
-//
-//   // ── Build ──────────────────────────────────────────────────────────────────
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return WillPopScope(
-//       onWillPop: () async {
-//         await _leave();
-//         return false;
-//       },
-//       child: Scaffold(
-//         backgroundColor: Colors.black,
-//         body: SafeArea(
-//             child: _permissionsGranted
-//                 ? _buildWebView()
-//                 : _buildPermissionWaiting()),
-//       ),
-//     );
-//   }
-//
-//   Widget _buildPermissionWaiting() => Center(
-//           child: Column(
-//         mainAxisSize: MainAxisSize.min,
-//         children: [
-//           const CircularProgressIndicator(color: Colors.white),
-//           const SizedBox(height: 16),
-//           const Text('جاري طلب الأذونات…',
-//               style: TextStyle(color: Colors.white70, fontFamily: 'Cairo')),
-//           const SizedBox(height: 24),
-//           ElevatedButton(
-//             onPressed: () async {
-//               final ok = await _requestPermissions();
-//               if (ok && mounted) {
-//                 setState(() => _permissionsGranted = true);
-//                 _initWebView();
-//                 _checkIn();
-//                 _startPoll();
-//               }
-//             },
-//             style: ElevatedButton.styleFrom(
-//                 backgroundColor: const Color(0xFF185FA5)),
-//             child: const Text('إعادة طلب الإذن',
-//                 style: TextStyle(fontFamily: 'Cairo', color: Colors.white)),
-//           ),
-//         ],
-//       ));
-//
-//   Widget _buildWebView() => Stack(children: [
-//         // WebView (only rendered after permissions granted + _initWebView called)
-//         if (_error == null && _permissionsGranted)
-//           WebViewWidget(controller: _wvc),
-//
-//         // Error screen
-//         if (_error != null)
-//           _ErrorView(
-//               error: _error!,
-//               onRetry: () {
-//                 setState(() {
-//                   _error = null;
-//                   _loading = true;
-//                 });
-//                 _wvc.loadRequest(Uri.parse(widget.meetingUrl));
-//               }),
-//
-//         // Loading overlay
-//         if (_loading && _error == null)
-//           Container(
-//             color: Colors.black,
-//             child: const Center(
-//                 child: Column(
-//               mainAxisSize: MainAxisSize.min,
-//               children: [
-//                 CircularProgressIndicator(color: Colors.white),
-//                 SizedBox(height: 16),
-//                 Text('جاري الاتصال بالحصة المباشرة…',
-//                     style:
-//                         TextStyle(color: Colors.white70, fontFamily: 'Cairo')),
-//               ],
-//             )),
-//           ),
-//
-//         // Top bar
-//         if (_error == null)
-//           Positioned(
-//             top: 0,
-//             left: 0,
-//             right: 0,
-//             child: _TopBar(title: widget.sessionTitle, onLeave: _leave),
-//           ),
-//
-//         // Attendance strip
-//         if (!_loading && _error == null)
-//           Positioned(
-//             bottom: 16,
-//             left: 16,
-//             right: 16,
-//             child: _AttendanceStrip(
-//                 sessionId: widget.sessionId, joinTime: _joinTime),
-//           ),
-//       ]);
-// }
-//
-// // ── Permission row widget ─────────────────────────────────────────────────────
-//
-// class _PermRow extends StatelessWidget {
-//   final IconData icon;
-//   final String label;
-//   final bool granted;
-//
-//   const _PermRow(
-//       {required this.icon, required this.label, required this.granted});
-//
-//   @override
-//   Widget build(BuildContext context) => Row(children: [
-//         Icon(icon,
-//             size: 18, color: granted ? const Color(0xFF1D9E75) : Colors.orange),
-//         const SizedBox(width: 8),
-//         Text(label, style: const TextStyle(fontFamily: 'Cairo', fontSize: 14)),
-//         const Spacer(),
-//         Container(
-//           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-//           decoration: BoxDecoration(
-//               color: (granted ? const Color(0xFF1D9E75) : Colors.orange)
-//                   .withValues(alpha: 0.1),
-//               borderRadius: BorderRadius.circular(6)),
-//           child: Text(granted ? 'مسموح' : 'مرفوض',
-//               style: TextStyle(
-//                   fontFamily: 'Cairo',
-//                   fontSize: 11,
-//                   fontWeight: FontWeight.w700,
-//                   color: granted ? const Color(0xFF1D9E75) : Colors.orange)),
-//         ),
-//       ]);
-// }
-//
-// // ── Reuse TopBar, AttendanceStrip, ErrorView, ExamDialog from previous file ───
-// // (Copy them here or import from shared barrel file)
-//
-// class _TopBar extends StatelessWidget {
-//   final String title;
-//   final VoidCallback onLeave;
-//
-//   const _TopBar({required this.title, required this.onLeave});
-//
-//   @override
-//   Widget build(BuildContext context) => Container(
-//         height: 56,
-//         decoration: BoxDecoration(
-//             gradient: LinearGradient(
-//                 begin: Alignment.topCenter,
-//                 end: Alignment.bottomCenter,
-//                 colors: [
-//               Colors.black.withValues(alpha: 0.85),
-//               Colors.transparent
-//             ])),
-//         child: Row(children: [
-//           IconButton(
-//               icon: const Icon(Icons.arrow_back_ios_new,
-//                   color: Colors.white, size: 20),
-//               onPressed: onLeave),
-//           Expanded(
-//               child: Text(title,
-//                   style: const TextStyle(
-//                       color: Colors.white,
-//                       fontFamily: 'Cairo',
-//                       fontSize: 15,
-//                       fontWeight: FontWeight.w600),
-//                   maxLines: 1,
-//                   overflow: TextOverflow.ellipsis)),
-//           Container(
-//             margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-//             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-//             decoration: BoxDecoration(
-//                 color: Colors.red, borderRadius: BorderRadius.circular(12)),
-//             child: const Row(mainAxisSize: MainAxisSize.min, children: [
-//               Icon(Icons.circle, color: Colors.white, size: 7),
-//               SizedBox(width: 5),
-//               Text('LIVE',
-//                   style: TextStyle(
-//                       color: Colors.white,
-//                       fontSize: 11,
-//                       fontWeight: FontWeight.w800,
-//                       letterSpacing: 1)),
-//             ]),
-//           ),
-//         ]),
-//       );
-// }
-//
-// class _AttendanceStrip extends StatelessWidget {
-//   final int sessionId;
-//   final DateTime? joinTime;
-//
-//   const _AttendanceStrip({required this.sessionId, this.joinTime});
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     final prov = context.watch<AttendanceProvider>();
-//     final checkedIn = prov.isCheckedIn(sessionId);
-//     final record = prov.myRecord(sessionId);
-//     return Container(
-//       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-//       decoration: BoxDecoration(
-//           color: Colors.black.withValues(alpha: 0.72),
-//           borderRadius: BorderRadius.circular(14),
-//           border: Border.all(
-//               color: checkedIn ? const Color(0xFF1D9E75) : Colors.white24)),
-//       child: Row(children: [
-//         Icon(checkedIn ? Icons.wifi_rounded : Icons.wifi_off_rounded,
-//             color: checkedIn ? const Color(0xFF1D9E75) : Colors.white54,
-//             size: 18),
-//         const SizedBox(width: 8),
-//         Expanded(
-//             child: Text(
-//                 checkedIn
-//                     ? 'متصل${record?.checkInLabel != null ? " • دخلت ${record!.checkInLabel}" : ""}'
-//                     : 'جاري تسجيل الحضور…',
-//                 style: const TextStyle(
-//                     color: Colors.white, fontFamily: 'Cairo', fontSize: 12))),
-//         if (checkedIn)
-//           GestureDetector(
-//             onTap: () => context.read<AttendanceProvider>().checkOut(sessionId),
-//             child: Container(
-//               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-//               decoration: BoxDecoration(
-//                   color: Colors.red.withValues(alpha: 0.8),
-//                   borderRadius: BorderRadius.circular(8)),
-//               child: const Text('مغادرة',
-//                   style: TextStyle(
-//                       color: Colors.white,
-//                       fontFamily: 'Cairo',
-//                       fontSize: 11,
-//                       fontWeight: FontWeight.w700)),
-//             ),
-//           ),
-//       ]),
-//     );
-//   }
-// }
-//
-// class _ErrorView extends StatelessWidget {
-//   final String error;
-//   final VoidCallback onRetry;
-//
-//   const _ErrorView({required this.error, required this.onRetry});
-//
-//   @override
-//   Widget build(BuildContext context) => Center(
-//           child: Padding(
-//         padding: const EdgeInsets.all(32),
-//         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-//           const Icon(Icons.signal_wifi_off_rounded,
-//               size: 72, color: Colors.white54),
-//           const SizedBox(height: 16),
-//           const Text('تعذّر الاتصال بالحصة',
-//               style: TextStyle(
-//                   color: Colors.white,
-//                   fontFamily: 'Cairo',
-//                   fontSize: 18,
-//                   fontWeight: FontWeight.w700)),
-//           const SizedBox(height: 8),
-//           Text(error,
-//               textAlign: TextAlign.center,
-//               style: const TextStyle(
-//                   color: Colors.white54, fontFamily: 'Cairo', fontSize: 13)),
-//           const SizedBox(height: 24),
-//           ElevatedButton.icon(
-//             onPressed: onRetry,
-//             icon: const Icon(Icons.refresh_rounded),
-//             label: const Text('إعادة المحاولة',
-//                 style: TextStyle(fontFamily: 'Cairo')),
-//             style: ElevatedButton.styleFrom(
-//                 backgroundColor: const Color(0xFF185FA5),
-//                 foregroundColor: Colors.white,
-//                 padding:
-//                     const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-//                 shape: RoundedRectangleBorder(
-//                     borderRadius: BorderRadius.circular(12))),
-//           ),
-//         ]),
-//       ));
-// }
-
-// ── ExamDialog  (same as before — kept here for completeness) ─────────────────
-// Import from live_models or copy the full ExamDialog class here.
-// See student/live_streaming_screen.dart from the previous delivery.
-
-
-/// student_live_screen.dart
-///
-/// LiveKit live session screen for students.
-/// Call GET /live-sessions/{id}/join → get {ws_url, token} → open this screen.
-///
-/// Features:
-///   • Video grid of all participants
-///   • Mute/unmute own mic and camera
-///   • Screen share (view teacher's share)
-///   • Raise hand (sends data message to teacher)
-///   • In-session chat via LiveKit data channel
-
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:livekit_client/livekit_client.dart';
-import 'package:permission_handler/permission_handler.dart';
-import '../../../config/app_theme.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_webrtc/flutter_webrtc.dart' as webrtc;
+
+import '../../config/app_config.dart';
+
+/// ─────────────────────────────────────────────────────────────────────────────
+///  StudentLiveSessionScreen
+///
+///  APIs:
+///    GET /api/v1/live-sessions/{session_id}/join  → { ws_url, token }
+///    GET /api/v1/courses/{course_id}/students     → List<EnrolledStudent>
+///
+///  Screen-share fix (Android):
+///    Call Helper.requestCapturePermission() FIRST while the app is in the
+///    foreground. This fires the system picker without backgrounding the app.
+///    Then createScreenShareTrack() runs with permission already granted —
+///    no second picker, app stays alive.
+/// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Model ─────────────────────────────────────────────────────────────────────
+
+class _EnrolledStudent {
+  final int id;
+  final String name;
+  final String? imageUrl;
+
+  _EnrolledStudent({required this.id, required this.name, this.imageUrl});
+
+  factory _EnrolledStudent.fromJson(Map<String, dynamic> j) => _EnrolledStudent(
+    id: j['id'] as int,
+    name: j['name'] as String? ?? '',
+    imageUrl: j['image_url'] as String?,
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-class StudentLiveScreen extends StatefulWidget {
-  final String sessionTitle;
-  final String wsUrl;       // LIVEKIT_PUBLIC_URL from API
-  final String token;       // student JWT from /live-sessions/{id}/join
-  final int    sessionId;
+class StudentLiveSessionScreen extends StatefulWidget {
+  final int sessionId;
+  final int courseId;       // needed to fetch enrolled students
+  final String sessionName;
+  final String authToken;
 
-  const StudentLiveScreen({
+  const StudentLiveSessionScreen({
     super.key,
-    required this.sessionTitle,
-    required this.wsUrl,
-    required this.token,
     required this.sessionId,
+    required this.courseId,
+    required this.sessionName,
+    required this.authToken,
   });
 
   @override
-  State<StudentLiveScreen> createState() => _StudentLiveScreenState();
+  State<StudentLiveSessionScreen> createState() =>
+      _StudentLiveSessionScreenState();
 }
 
-class _StudentLiveScreenState extends State<StudentLiveScreen> {
-
+class _StudentLiveSessionScreenState extends State<StudentLiveSessionScreen>
+    with WidgetsBindingObserver {
   // ── LiveKit ───────────────────────────────────────────────────────────────
-  late final Room _room;
-  late final EventsListener<RoomEvent> _listener;
-
-  bool _cameraOn   = true;
-  bool _micOn      = true;
-  bool _handRaised = false;
-  bool _connecting = true;
-  bool _chatOpen   = false;
-  String? _error;
-
+  Room? _room;
+  LocalParticipant? _localParticipant;
   final List<RemoteParticipant> _remoteParticipants = [];
 
-  // ── Chat ──────────────────────────────────────────────────────────────────
-  final List<_ChatMsg>         _messages    = [];
-  final TextEditingController  _chatCtrl    = TextEditingController();
-  final ScrollController       _chatScroll  = ScrollController();
+  // ── Local tracks ──────────────────────────────────────────────────────────
+  LocalVideoTrack? _localVideoTrack;
+  LocalVideoTrack? _screenShareTrack;
 
-  // ─────────────────────────────────────────────────────────────────────────
-  //  Lifecycle
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── UI state ──────────────────────────────────────────────────────────────
+  bool _isConnecting = true;
+  bool _isMicMuted = false;
+  bool _isCameraOff = false;
+  bool _isFrontCamera = true;
+  bool _isScreenSharing = false;
+  bool _showParticipantsList = false;
+  String? _errorMessage;
+
+  // ── Enrolled students (participants panel) ────────────────────────────────
+  List<_EnrolledStudent> _enrolledStudents = [];
+  final Set<String> _liveIdentities = {};
 
   @override
   void initState() {
     super.initState();
-    _room     = Room();
-    _listener = _room.createListener();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _connect());
+    WidgetsBinding.instance.addObserver(this);
+    _fetchJoinUrlAndConnect();
+    _fetchEnrolledStudents();
   }
 
   @override
   void dispose() {
-    _listener.dispose();
-    _room.disconnect();
-    _room.dispose();
-    _chatCtrl.dispose();
-    _chatScroll.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    _disconnect();
     super.dispose();
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  //  Connect
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── API ───────────────────────────────────────────────────────────────────
 
-  Future<void> _connect() async {
-    await [Permission.microphone, Permission.camera].request();
-    _setupListeners();
-
+  Future<void> _fetchJoinUrlAndConnect() async {
     try {
-      await _room.connect(
-        widget.wsUrl,
-        widget.token,
-        roomOptions: const RoomOptions(
-          adaptiveStream: true,
-          dynacast:       true,
-          defaultVideoPublishOptions: VideoPublishOptions(simulcast: true),
-          defaultAudioPublishOptions: AudioPublishOptions(dtx: true),
-        ),
+      final res = await http.get(
+        Uri.parse(
+            '${AppConfig.baseUrl}/api/v1/live-sessions/${widget.sessionId}/join'),
+        headers: {'Authorization': 'Bearer ${widget.authToken}'},
       );
-      await _room.localParticipant?.setCameraEnabled(true);
-      await _room.localParticipant?.setMicrophoneEnabled(true);
-
-      if (mounted) setState(() => _connecting = false);
+      if (res.statusCode != 200) {
+        setState(() {
+          _isConnecting = false;
+          _errorMessage =
+          'Failed to join (${res.statusCode}). Session may not be live yet.';
+        });
+        return;
+      }
+      final data = json.decode(res.body);
+      await _connectToRoom(
+          data['ws_url'] as String, data['token'] as String);
     } catch (e) {
-      if (mounted) setState(() { _error = e.toString(); _connecting = false; });
+      setState(() {
+        _isConnecting = false;
+        _errorMessage = 'Network error: $e';
+      });
     }
   }
 
-  void _setupListeners() {
-    _listener
-      ..on<RoomConnectedEvent>((_) {
-        if (mounted) setState(() {
-          _remoteParticipants
-            ..clear()
-            ..addAll(_room.remoteParticipants.values);
-        });
-      })
-      ..on<ParticipantConnectedEvent>((e) {
-        if (mounted) setState(() => _remoteParticipants.add(e.participant));
-      })
-      ..on<ParticipantDisconnectedEvent>((e) {
-        if (mounted) setState(() => _remoteParticipants.remove(e.participant));
-      })
-      ..on<TrackSubscribedEvent>((_) { if (mounted) setState(() {}); })
-      ..on<TrackUnsubscribedEvent>((_) { if (mounted) setState(() {}); })
-      ..on<TrackMutedEvent>((_) { if (mounted) setState(() {}); })
-      ..on<TrackUnmutedEvent>((_) { if (mounted) setState(() {}); })
-      ..on<DataReceivedEvent>((e) => _onDataReceived(e))
-      ..on<RoomDisconnectedEvent>((e) {
-        if (!mounted) return;
-        if (e.reason == DisconnectReason.roomDeleted) {
-          // Teacher ended the session
-          _showSessionEndedDialog();
-        } else if (e.reason != DisconnectReason.clientInitiated) {
-          _snack('انقطع الاتصال', AppTheme.danger);
-        }
-      });
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  //  Controls
-  // ─────────────────────────────────────────────────────────────────────────
-
-  Future<void> _toggleCamera() async {
-    await _room.localParticipant?.setCameraEnabled(!_cameraOn);
-    if (mounted) setState(() => _cameraOn = !_cameraOn);
-  }
-
-  Future<void> _toggleMic() async {
-    await _room.localParticipant?.setMicrophoneEnabled(!_micOn);
-    if (mounted) setState(() => _micOn = !_micOn);
-  }
-
-  Future<void> _toggleHand() async {
-    final raised = !_handRaised;
-    if (mounted) setState(() => _handRaised = raised);
-    // Broadcast to all participants via data channel
-    await _room.localParticipant?.publishData(
-      utf8.encode(jsonEncode({
-        'type':    'raise_hand',
-        'raised':  raised,
-        'sender':  _room.localParticipant?.name ?? 'طالب',
-      })),
-      reliable: true,
-    );
-    if (raised) _snack('تم رفع يدك ✋', AppTheme.primary);
-  }
-
-  Future<void> _sendChat() async {
-    final text = _chatCtrl.text.trim();
-    if (text.isEmpty) return;
-    _chatCtrl.clear();
-
-    final msg = _ChatMsg(
-      sender:    _room.localParticipant?.name ?? 'أنت',
-      text:      text,
-      isMe:      true,
-      timestamp: DateTime.now(),
-    );
-    if (mounted) setState(() => _messages.add(msg));
-    _scrollChatToBottom();
-
-    await _room.localParticipant?.publishData(
-      utf8.encode(jsonEncode({
-        'type':   'chat',
-        'text':   text,
-        'sender': _room.localParticipant?.name ?? 'طالب',
-      })),
-      reliable: true,
-    );
-  }
-
-  void _onDataReceived(DataReceivedEvent e) {
+  Future<void> _fetchEnrolledStudents() async {
     try {
-      final d = jsonDecode(utf8.decode(e.data)) as Map<String, dynamic>;
-      final type = d['type'] as String?;
-
-      if (type == 'chat' && mounted) {
-        setState(() => _messages.add(_ChatMsg(
-          sender:    d['sender'] as String? ?? 'مشارك',
-          text:      d['text']   as String? ?? '',
-          isMe:      false,
-          timestamp: DateTime.now(),
-        )));
-        _scrollChatToBottom();
+      // GET /api/v1/courses/{course_id}/students
+      // → List<{ id, name, image_url, enrolled_at, status, ... }>
+      final res = await http.get(
+        Uri.parse(
+            '${AppConfig.baseUrl}/api/v1/courses/${widget.courseId}/students'),
+        headers: {'Authorization': 'Bearer ${widget.authToken}'},
+      );
+      if (res.statusCode == 200) {
+        final list = json.decode(res.body) as List<dynamic>;
+        setState(() {
+          _enrolledStudents =
+              list.map((j) => _EnrolledStudent.fromJson(j)).toList();
+        });
       }
-
-      if (type == 'raise_hand' && mounted) {
-        final name   = d['sender'] as String? ?? 'طالب';
-        final raised = d['raised'] as bool? ?? false;
-        if (raised) _snack('✋ $name رفع يده', AppTheme.primary);
-      }
-    } catch (_) {}
+    } catch (_) {
+      // non-fatal — panel still shows live participants
+    }
   }
 
-  void _scrollChatToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_chatScroll.hasClients) {
-        _chatScroll.animateTo(
-          _chatScroll.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 200),
-          curve:    Curves.easeOut,
-        );
-      }
+  Future<void> _connectToRoom(String wsUrl, String token) async {
+    final room = Room(
+      roomOptions: const RoomOptions(
+        adaptiveStream: true,
+        dynacast: true,
+        defaultVideoPublishOptions: VideoPublishOptions(simulcast: true),
+      ),
+    );
+    room.addListener(_onRoomUpdate);
+
+    try {
+      await room.connect(wsUrl, token,
+          connectOptions: const ConnectOptions(autoSubscribe: true));
+
+      _localParticipant = room.localParticipant;
+      await _localParticipant?.setCameraEnabled(true);
+      await _localParticipant?.setMicrophoneEnabled(true);
+
+      _localVideoTrack = _localParticipant?.videoTrackPublications
+          .firstWhereOrNull((p) => p.source == TrackSource.camera)
+          ?.track as LocalVideoTrack?;
+
+      setState(() {
+        _room = room;
+        _isConnecting = false;
+        _remoteParticipants.addAll(room.remoteParticipants.values);
+        _syncIdentities();
+      });
+    } catch (e) {
+      setState(() {
+        _isConnecting = false;
+        _errorMessage = 'Could not connect: $e';
+      });
+    }
+  }
+
+  void _onRoomUpdate() {
+    if (!mounted) return;
+    setState(() {
+      _remoteParticipants
+        ..clear()
+        ..addAll(_room?.remoteParticipants.values ?? []);
+      _syncIdentities();
     });
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  //  Leave
-  // ─────────────────────────────────────────────────────────────────────────
-
-  Future<void> _confirmLeave() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          backgroundColor: const Color(0xFF1A1A2E),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('مغادرة الحصة', style: TextStyle(color: Colors.white, fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
-          content: const Text('هل تريد مغادرة الحصة المباشرة؟', style: TextStyle(color: Colors.white70, fontFamily: 'Cairo')),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('إلغاء', style: TextStyle(color: Colors.white54, fontFamily: 'Cairo'))),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('مغادرة', style: TextStyle(color: Colors.white, fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (confirmed == true) {
-      await _room.disconnect();
-      if (mounted) Navigator.pop(context);
+  void _syncIdentities() {
+    _liveIdentities
+      ..clear()
+      ..addAll(_remoteParticipants.map((p) => p.identity));
+    if (_localParticipant != null) {
+      _liveIdentities.add(_localParticipant!.identity);
     }
   }
 
-  void _showSessionEndedDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          backgroundColor: const Color(0xFF1A1A2E),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('انتهت الحصة', style: TextStyle(color: Colors.white, fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
-          content: const Text('أنهى المعلم الحصة المباشرة.\nسيتوفر التسجيل قريباً.',
-              style: TextStyle(color: Colors.white70, fontFamily: 'Cairo', height: 1.6)),
-          actions: [
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-              onPressed: () { Navigator.pop(ctx); Navigator.pop(context); },
-              child: const Text('حسناً', style: TextStyle(color: Colors.white, fontFamily: 'Cairo')),
-            ),
-          ],
-        ),
-      ),
-    );
+  Future<void> _disconnect() async {
+    _room?.removeListener(_onRoomUpdate);
+    await _room?.disconnect();
+    _room = null;
   }
 
-  void _snack(String msg, Color color) {
+  // ── Controls ──────────────────────────────────────────────────────────────
+
+  Future<void> _toggleMic() async {
+    await _localParticipant?.setMicrophoneEnabled(_isMicMuted);
+    setState(() => _isMicMuted = !_isMicMuted);
+  }
+
+  Future<void> _toggleCamera() async {
+    await _localParticipant?.setCameraEnabled(_isCameraOff);
+    setState(() => _isCameraOff = !_isCameraOff);
+  }
+
+  Future<void> _switchCamera() async {
+    if (_localVideoTrack == null) return;
+    try {
+      final devices =
+      await webrtc.navigator.mediaDevices.enumerateDevices();
+      final cameras = devices.where((d) => d.kind == 'videoinput').toList();
+      if (cameras.length < 2) return;
+
+      final currentId = _localVideoTrack!.mediaStreamTrack.id;
+      final next = cameras.firstWhere(
+            (d) => d.deviceId != currentId,
+        orElse: () => cameras.first,
+      );
+      await _localVideoTrack!.switchCamera(next.deviceId);
+      setState(() => _isFrontCamera = !_isFrontCamera);
+    } catch (e) {
+      debugPrint('Switch camera error: $e');
+    }
+  }
+
+  // ── Screen share ──────────────────────────────────────────────────────────
+  //
+  //  WHY THE APP WAS CLOSING:
+  //  createScreenShareTrack() on Android fires MediaProjection intent which
+  //  moves the app to background while the picker shows → Android kills it.
+  //
+  //  FIX:
+  //  Call Helper.requestCapturePermission() first — this fires the picker
+  //  synchronously while the app is still in the FOREGROUND and returns
+  //  true/false. Then createScreenShareTrack() finds permission already
+  //  granted and creates the track immediately without any picker/background.
+
+  Future<void> _toggleScreenShare() async {
+    _isScreenSharing ? await _stopScreenShare() : await _startScreenShare();
+  }
+
+  Future<void> _startScreenShare() async {
+    try {
+      if (Platform.isAndroid) {
+        // Step 1: request permission NOW, while in foreground
+        final granted = await webrtc.Helper.requestCapturePermission();
+        if (!granted) {
+          _showSnack('Screen share permission denied.', Colors.redAccent);
+          return;
+        }
+        // Step 2: create track — permission already held, no picker shown
+        _screenShareTrack = await LocalVideoTrack.createScreenShareTrack(
+          const ScreenShareCaptureOptions(
+            useiOSBroadcastExtension: false,
+            maxFrameRate: 15,
+          ),
+        );
+      } else if (Platform.isIOS) {
+        _showSnack(
+          'iOS screen share requires a Broadcast Extension. '
+              'Contact your developer to add one.',
+          Colors.orange,
+        );
+        return;
+      } else {
+        _screenShareTrack = await LocalVideoTrack.createScreenShareTrack(
+          const ScreenShareCaptureOptions(maxFrameRate: 15),
+        );
+      }
+
+      await _localParticipant?.publishVideoTrack(_screenShareTrack!);
+      setState(() => _isScreenSharing = true);
+    } on PlatformException catch (e) {
+      debugPrint('Screen share PlatformException: $e');
+      _showSnack('Screen share permission was denied.', Colors.redAccent);
+    } catch (e) {
+      debugPrint('Screen share error: $e');
+      _showSnack('Could not start screen share.', Colors.redAccent);
+    }
+  }
+
+  Future<void> _stopScreenShare() async {
+    try {
+      if (_screenShareTrack != null) {
+        await _localParticipant?.unpublishAllTracks();
+        await _screenShareTrack!.stop();
+        _screenShareTrack = null;
+      }
+    } catch (e) {
+      debugPrint('Stop screen share error: $e');
+    } finally {
+      setState(() => _isScreenSharing = false);
+    }
+  }
+
+  void _showSnack(String msg, Color color) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content:         Text(msg, style: const TextStyle(fontFamily: 'Cairo', color: Colors.white)),
-      backgroundColor: color, behavior: SnackBarBehavior.floating,
-      shape:           RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      content: Text(msg),
+      backgroundColor: color,
+      duration: const Duration(seconds: 4),
     ));
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  //  Build
-  // ─────────────────────────────────────────────────────────────────────────
+  Future<void> _confirmLeave() async {
+    final leave = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E2235),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Leave Session',
+            style:
+            TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: const Text('Are you sure you want to leave?',
+            style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child:
+              const Text('Stay', style: TextStyle(color: Colors.blue))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Leave'),
+          ),
+        ],
+      ),
+    );
+    if (leave == true && mounted) {
+      await _disconnect();
+      if (mounted) Navigator.of(context).pop();
+    }
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  int get _participantCount =>
+      (_room != null ? 1 : 0) + _remoteParticipants.length;
+
+  bool _isInRoom(_EnrolledStudent s) => _liveIdentities.any((id) =>
+  id.toLowerCase().contains(s.name.toLowerCase()) ||
+      id == s.id.toString());
+
+  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    if (_connecting) {
-      return const Scaffold(backgroundColor: Colors.black,
-          body: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            CircularProgressIndicator(color: Colors.white), SizedBox(height: 16),
-            Text('جاري الانضمام للحصة…', style: TextStyle(color: Colors.white, fontFamily: 'Cairo')),
-          ])));
-    }
-
-    if (_error != null) {
-      return Scaffold(backgroundColor: Colors.black,
-          body: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            const Icon(Icons.signal_wifi_off_rounded, size: 72, color: Colors.white54), const SizedBox(height: 16),
-            const Text('تعذّر الاتصال', style: TextStyle(color: Colors.white, fontFamily: 'Cairo', fontSize: 18, fontWeight: FontWeight.w700)),
-            Padding(padding: const EdgeInsets.all(16),
-                child: Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white54, fontFamily: 'Cairo', fontSize: 12))),
-            ElevatedButton.icon(
-              onPressed: () { setState(() { _error = null; _connecting = true; }); _connect(); },
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('إعادة المحاولة', style: TextStyle(fontFamily: 'Cairo')),
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.white),
-            ),
-          ])));
-    }
-
-    return PopScope(
-      canPop: false, onPopInvoked: (_) => _confirmLeave(),
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    return WillPopScope(
+      onWillPop: () async {
+        await _confirmLeave();
+        return false;
+      },
       child: Scaffold(
-        backgroundColor: Colors.black,
-        body: SafeArea(child: Stack(children: [
-
-          // ── Video + optional chat panel ─────────────────────────────────
-          Row(children: [
-            // Video grid
-            Expanded(child: _VideoGrid(
-              local:   _room.localParticipant,
-              remotes: _remoteParticipants,
-            )),
-            // Chat slide-in panel
-            if (_chatOpen)
-              _ChatPanel(
-                messages:   _messages,
-                controller: _chatCtrl,
-                scroll:     _chatScroll,
-                onSend:     _sendChat,
-              ),
-          ]),
-
-          // ── Top bar ─────────────────────────────────────────────────────
-          Positioned(top: 0, left: 0, right: 0,
-            child: _TopBar(
-              title:       widget.sessionTitle,
-              chatOpen:    _chatOpen,
-              unreadCount: _chatOpen ? 0 : _messages.where((m) => !m.isMe).length,
-              onChat:      () { if (mounted) setState(() => _chatOpen = !_chatOpen); },
-              onLeave:     _confirmLeave,
-            ),
-          ),
-
-          // ── Control bar ─────────────────────────────────────────────────
-          Positioned(bottom: 0, left: 0, right: 0,
-            child: _ControlBar(
-              cameraOn:    _cameraOn,
-              micOn:       _micOn,
-              handRaised:  _handRaised,
-              onCamera:    _toggleCamera,
-              onMic:       _toggleMic,
-              onHand:      _toggleHand,
-              onLeave:     _confirmLeave,
-            ),
-          ),
-        ])),
+        backgroundColor: const Color(0xFF0D0F1A),
+        body: _isConnecting
+            ? _buildConnecting()
+            : _errorMessage != null
+            ? _buildError()
+            : _buildLiveUI(),
       ),
     );
   }
-}
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Video Grid
-// ─────────────────────────────────────────────────────────────────────────────
+  Widget _buildConnecting() => Center(
+    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      const CircularProgressIndicator(color: Color(0xFF4F8EF7)),
+      const SizedBox(height: 20),
+      Text('Joining "${widget.sessionName}"…',
+          style: const TextStyle(color: Colors.white70, fontSize: 16)),
+    ]),
+  );
 
-class _VideoGrid extends StatelessWidget {
-  final LocalParticipant?       local;
-  final List<RemoteParticipant> remotes;
-  const _VideoGrid({required this.local, required this.remotes});
-
-  @override
-  Widget build(BuildContext context) {
-    final all = <Participant>[if (local != null) local!, ...remotes];
-
-    if (all.isEmpty) {
-      return const Center(child: Text('في انتظار المشاركين…',
-          style: TextStyle(color: Colors.white54, fontFamily: 'Cairo', fontSize: 16)));
-    }
-
-    // If teacher is sharing screen, show it full-width on top
-    final screenTrack = _findScreenShare(remotes);
-    if (screenTrack != null) {
-      return Column(children: [
-        Expanded(flex: 3, child: Container(
-          color: Colors.black,
-          child: VideoTrackRenderer(screenTrack),
-        )),
-        SizedBox(height: 100,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal, padding: const EdgeInsets.all(4),
-            itemCount: all.length,
-            itemBuilder: (_, i) => SizedBox(
-              width: 80,
-              child: _ParticipantTile(participant: all[i], isLocal: all[i] is LocalParticipant),
-            ),
-          ),
+  Widget _buildError() => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(32),
+      child:
+      Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        const Icon(Icons.error_outline, color: Colors.redAccent, size: 64),
+        const SizedBox(height: 16),
+        Text(_errorMessage!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white70, fontSize: 15)),
+        const SizedBox(height: 24),
+        ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4F8EF7)),
+          icon: const Icon(Icons.refresh),
+          label: const Text('Retry'),
+          onPressed: () {
+            setState(() {
+              _isConnecting = true;
+              _errorMessage = null;
+            });
+            _fetchJoinUrlAndConnect();
+          },
         ),
-      ]);
-    }
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Go Back',
+              style: TextStyle(color: Colors.white54)),
+        ),
+      ]),
+    ),
+  );
 
-    return GridView.builder(
-      padding:      const EdgeInsets.only(bottom: 90, top: 64),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount:   all.length == 1 ? 1 : 2,
-        childAspectRatio: all.length == 1 ? 16 / 9 : 1,
-        crossAxisSpacing: 4, mainAxisSpacing: 4,
+  Widget _buildLiveUI() => Stack(children: [
+    _buildVideoGrid(),
+    _buildTopBar(),
+    Positioned(bottom: 0, left: 0, right: 0, child: _buildControls()),
+    if (_showParticipantsList)
+      Positioned(top: 80, right: 12, child: _buildParticipantsPanel()),
+  ]);
+
+  // ── Top bar ───────────────────────────────────────────────────────────────
+
+  Widget _buildTopBar() => Positioned(
+    top: 0,
+    left: 0,
+    right: 0,
+    child: Container(
+      padding: const EdgeInsets.fromLTRB(16, 48, 16, 12),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xCC000000), Colors.transparent],
+        ),
       ),
-      itemCount:   all.length,
-      itemBuilder: (_, i) => _ParticipantTile(
-        participant: all[i], isLocal: all[i] is LocalParticipant,
-      ),
-    );
-  }
-
-  VideoTrack? _findScreenShare(List<RemoteParticipant> remotes) {
-    for (final p in remotes) {
-      for (final pub in p.videoTrackPublications) {
-        if (pub.source == TrackSource.screenShareVideo && pub.track != null) {
-          return pub.track as VideoTrack;
-        }
-      }
-    }
-    return null;
-  }
-}
-
-class _ParticipantTile extends StatelessWidget {
-  final Participant participant; final bool isLocal;
-  const _ParticipantTile({required this.participant, required this.isLocal});
-
-  @override
-  Widget build(BuildContext context) {
-    VideoTrack? video;
-    for (final pub in participant.videoTrackPublications) {
-      if (pub.subscribed && pub.track != null &&
-          pub.source != TrackSource.screenShareVideo) {
-        video = pub.track as VideoTrack;
-        break;
-      }
-    }
-
-    return Container(
-      color: const Color(0xFF1A1A2E),
-      child: Stack(fit: StackFit.expand, children: [
-        video != null
-            ? VideoTrackRenderer(video)
-            : Center(child: Container(
-            width: 56, height: 56,
-            decoration: BoxDecoration(shape: BoxShape.circle,
-                color: isLocal ? AppTheme.primary.withValues(alpha: 0.3) : Colors.white12),
-            child: const Icon(Icons.person_rounded, color: Colors.white60, size: 32))),
-        Positioned(bottom: 6, left: 6,
+      child: Row(children: [
+        Expanded(
+          child: Text(widget.sessionName,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600),
+              overflow: TextOverflow.ellipsis),
+        ),
+        _LiveBadge(),
+        const SizedBox(width: 10),
+        GestureDetector(
+          onTap: () => setState(
+                  () => _showParticipantsList = !_showParticipantsList),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-            decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(6)),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(
-                participant.isMicrophoneEnabled()
-                    ? Icons.mic_rounded : Icons.mic_off_rounded,
-                color: participant.isMicrophoneEnabled() ? Colors.white : Colors.redAccent,
-                size: 10,
-              ),
-              const SizedBox(width: 3),
-              Text(
-                participant.name.isNotEmpty ? participant.name : (isLocal ? 'أنت' : 'طالب'),
-                style: const TextStyle(color: Colors.white, fontFamily: 'Cairo', fontSize: 10),
-              ),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+                color: const Color(0x884F8EF7),
+                borderRadius: BorderRadius.circular(20)),
+            child: Row(children: [
+              const Icon(Icons.people, color: Colors.white, size: 16),
+              const SizedBox(width: 4),
+              Text('$_participantCount',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold)),
+              if (_enrolledStudents.isNotEmpty) ...[
+                const SizedBox(width: 5),
+                Container(width: 1, height: 12, color: Colors.white30),
+                const SizedBox(width: 5),
+                Text('${_enrolledStudents.length} enrolled',
+                    style: const TextStyle(
+                        color: Colors.white60, fontSize: 11)),
+              ],
             ]),
           ),
         ),
       ]),
+    ),
+  );
+
+  // ── Video grid ────────────────────────────────────────────────────────────
+
+  Widget _buildVideoGrid() {
+    final tiles = <Widget>[
+      for (final rp in _remoteParticipants)
+        _RemoteParticipantTile(participant: rp),
+      _buildLocalPreview(),
+    ];
+    if (tiles.length == 1) return tiles.first;
+    return GridView.count(
+      crossAxisCount: tiles.length <= 2 ? 1 : 2,
+      childAspectRatio: 3 / 4,
+      children: tiles,
     );
   }
-}
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Top bar
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _TopBar extends StatelessWidget {
-  final String title; final bool chatOpen; final int unreadCount;
-  final VoidCallback onChat, onLeave;
-  const _TopBar({required this.title, required this.chatOpen,
-    required this.unreadCount, required this.onChat, required this.onLeave});
-
-  @override
-  Widget build(BuildContext context) => Container(
-    height: 60,
-    decoration: BoxDecoration(gradient: LinearGradient(
-      begin: Alignment.topCenter, end: Alignment.bottomCenter,
-      colors: [Colors.black.withValues(alpha: 0.90), Colors.transparent],
-    )),
-    child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-      const SizedBox(width: 8),
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(12)),
-        child: const Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.circle, color: Colors.white, size: 7), SizedBox(width: 5),
-          Text('LIVE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 1.2)),
-        ]),
-      ),
-      const SizedBox(width: 8),
-      Expanded(child: Text(title,
-          style: const TextStyle(color: Colors.white, fontFamily: 'Cairo', fontSize: 14, fontWeight: FontWeight.w600),
-          maxLines: 1, overflow: TextOverflow.ellipsis)),
-      // Chat button with unread badge
-      GestureDetector(onTap: onChat,
-        child: Stack(children: [
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 6),
-            width: 36, height: 36,
-            decoration: BoxDecoration(
-              color: chatOpen ? AppTheme.primary.withValues(alpha: 0.4) : Colors.white12,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 18),
-          ),
-          if (unreadCount > 0 && !chatOpen)
-            Positioned(top: 0, right: 2,
-              child: Container(
-                width: 16, height: 16,
-                decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                child: Center(child: Text('$unreadCount',
-                    style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700))),
-              ),
-            ),
-        ]),
-      ),
-      // Leave button
-      GestureDetector(onTap: onLeave,
-        child: Container(
-          margin: const EdgeInsets.only(left: 4, right: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-          decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(10)),
-          child: const Text('مغادرة', style: TextStyle(color: Colors.white, fontFamily: 'Cairo', fontWeight: FontWeight.w700, fontSize: 13)),
-        ),
-      ),
-    ]),
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  Bottom control bar
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ControlBar extends StatelessWidget {
-  final bool cameraOn, micOn, handRaised;
-  final VoidCallback onCamera, onMic, onHand, onLeave;
-  const _ControlBar({required this.cameraOn, required this.micOn, required this.handRaised,
-    required this.onCamera, required this.onMic, required this.onHand, required this.onLeave});
-
-  @override
-  Widget build(BuildContext context) => Container(
-    height: 90,
-    decoration: BoxDecoration(gradient: LinearGradient(
-      begin: Alignment.bottomCenter, end: Alignment.topCenter,
-      colors: [Colors.black.withValues(alpha: 0.90), Colors.transparent],
-    )),
-    child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-      _Btn(icon: micOn ? Icons.mic_rounded : Icons.mic_off_rounded, label: micOn ? 'كتم' : 'فتح', active: micOn, onTap: onMic),
-      _Btn(icon: cameraOn ? Icons.videocam_rounded : Icons.videocam_off_rounded, label: 'كاميرا', active: cameraOn, onTap: onCamera),
-      _Btn(icon: Icons.back_hand_rounded, label: handRaised ? 'خفض' : 'يدي', active: handRaised, onTap: onHand),
-      _Btn(icon: Icons.call_end_rounded, label: 'مغادرة', danger: true, onTap: onLeave),
-    ]),
-  );
-}
-
-class _Btn extends StatelessWidget {
-  final IconData icon; final String label; final bool active, danger; final VoidCallback onTap;
-  const _Btn({required this.icon, required this.label, required this.onTap, this.active = true, this.danger = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final c  = danger ? Colors.red : (active ? Colors.white : Colors.white38);
-    final bg = danger
-        ? Colors.red.withValues(alpha: 0.2)
-        : (active ? Colors.white12 : Colors.transparent);
-    return GestureDetector(onTap: onTap, child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Container(width: 52, height: 52,
-          decoration: BoxDecoration(shape: BoxShape.circle, color: bg),
-          child: Icon(icon, color: c, size: 24)),
-      const SizedBox(height: 4),
-      Text(label, style: TextStyle(color: c, fontFamily: 'Cairo', fontSize: 10)),
-    ]));
+  Widget _buildLocalPreview() {
+    if (_isCameraOff || _localParticipant == null) {
+      return _AvatarTile(name: 'You', isMuted: _isMicMuted);
+    }
+    return _LocalParticipantTile(
+        participant: _localParticipant!, isMuted: _isMicMuted);
   }
-}
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Chat panel
-// ─────────────────────────────────────────────────────────────────────────────
+  // ── Participants panel ────────────────────────────────────────────────────
+  //
+  //  Shows ALL enrolled students of the course (from API).
+  //  Each row shows live "in room" status matched against LiveKit identities.
+  //  Extra live participants not in the enrolled list (e.g. teacher) appear
+  //  at the bottom.
 
-class _ChatPanel extends StatelessWidget {
-  final List<_ChatMsg>        messages;
-  final TextEditingController controller;
-  final ScrollController      scroll;
-  final VoidCallback          onSend;
-  const _ChatPanel({required this.messages, required this.controller, required this.scroll, required this.onSend});
+  Widget _buildParticipantsPanel() {
+    final enrolledIds =
+    _enrolledStudents.map((s) => s.id.toString()).toSet();
+    final extraLive = _remoteParticipants
+        .where((rp) => !enrolledIds.contains(rp.identity))
+        .toList();
 
-  @override
-  Widget build(BuildContext context) => Container(
-    width: 240,
-    color: const Color(0xFF111122),
-    child: Column(children: [
-      const SizedBox(height: 64),
-      const Padding(padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Text('الدردشة', style: TextStyle(color: Colors.white, fontFamily: 'Cairo', fontSize: 14, fontWeight: FontWeight.w700))),
-      Expanded(child: messages.isEmpty
-          ? const Center(child: Text('ابدأ المحادثة!', style: TextStyle(color: Colors.white38, fontFamily: 'Cairo', fontSize: 12)))
-          : ListView.builder(
-        controller: scroll,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        itemCount: messages.length,
-        itemBuilder: (_, i) => _ChatBubble(msg: messages[i]),
-      )),
-      Padding(
-        padding: const EdgeInsets.all(8),
-        child: Row(children: [
-          Expanded(child: TextField(
-            controller: controller,
-            textDirection: TextDirection.rtl,
-            style: const TextStyle(color: Colors.white, fontFamily: 'Cairo', fontSize: 13),
-            decoration: InputDecoration(
-              hintText:      'اكتب رسالة…',
-              hintStyle:     const TextStyle(color: Colors.white38, fontFamily: 'Cairo', fontSize: 12),
-              filled:        true,
-              fillColor:     Colors.white10,
-              border:        OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            ),
-            onSubmitted: (_) => onSend(),
-          )),
-          const SizedBox(width: 6),
-          GestureDetector(onTap: onSend,
-            child: Container(
-              width: 36, height: 36,
-              decoration: BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
-              child: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
-            ),
-          ),
-        ]),
-      ),
-    ]),
-  );
-}
-
-class _ChatBubble extends StatelessWidget {
-  final _ChatMsg msg;
-  const _ChatBubble({required this.msg});
-
-  @override
-  Widget build(BuildContext context) => Align(
-    alignment: msg.isMe ? Alignment.centerRight : Alignment.centerLeft,
-    child: Container(
-      margin: const EdgeInsets.symmetric(vertical: 3),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      constraints: const BoxConstraints(maxWidth: 180),
+    return Container(
+      width: 240,
+      constraints: const BoxConstraints(maxHeight: 400),
       decoration: BoxDecoration(
-        color: msg.isMe
-            ? AppTheme.primary.withValues(alpha: 0.7)
-            : Colors.white12,
-        borderRadius: BorderRadius.only(
-          topLeft:     const Radius.circular(12),
-          topRight:    const Radius.circular(12),
-          bottomLeft:  Radius.circular(msg.isMe ? 12 : 0),
-          bottomRight: Radius.circular(msg.isMe ? 0 : 12),
-        ),
+        color: const Color(0xEE1E2235),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white12),
       ),
-      child: Column(crossAxisAlignment: msg.isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start, children: [
-        if (!msg.isMe)
-          Text(msg.sender, style: const TextStyle(color: Colors.white54, fontFamily: 'Cairo', fontSize: 10)),
-        Text(msg.text, style: const TextStyle(color: Colors.white, fontFamily: 'Cairo', fontSize: 12)),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        // Header
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(children: [
+            const Icon(Icons.people, color: Colors.white70, size: 16),
+            const SizedBox(width: 6),
+            Text(
+              'Students (${_enrolledStudents.length})',
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600),
+            ),
+            const Spacer(),
+            GestureDetector(
+              onTap: () =>
+                  setState(() => _showParticipantsList = false),
+              child: const Icon(Icons.close,
+                  color: Colors.white54, size: 18),
+            ),
+          ]),
+        ),
+        const Divider(color: Colors.white12, height: 1),
+        Flexible(
+          child: ListView(shrinkWrap: true, children: [
+            // Self
+            _ParticipantRow(
+              name: 'You',
+              imageUrl: null,
+              isInRoom: true,
+              isTeacher: false,
+              isSelf: true,
+              isMuted: _isMicMuted,
+            ),
+            // All enrolled students from the course
+            ..._enrolledStudents.map((s) {
+              final inRoom = _isInRoom(s);
+              final liveRp = _remoteParticipants.firstWhereOrNull((rp) =>
+              rp.identity
+                  .toLowerCase()
+                  .contains(s.name.toLowerCase()) ||
+                  rp.identity == s.id.toString());
+              return _ParticipantRow(
+                name: s.name,
+                imageUrl: s.imageUrl,
+                isInRoom: inRoom,
+                isTeacher: false,
+                isSelf: false,
+                isMuted:
+                liveRp != null ? !liveRp.isMicrophoneEnabled() : null,
+              );
+            }),
+            // Extra live participants not in the enrolled list (teacher, etc.)
+            ...extraLive.map((rp) => _ParticipantRow(
+              name: rp.name ?? rp.identity,
+              imageUrl: null,
+              isInRoom: true,
+              isTeacher:
+              rp.metadata?.contains('"role":"teacher"') ?? false,
+              isSelf: false,
+              isMuted: !rp.isMicrophoneEnabled(),
+            )),
+          ]),
+        ),
       ]),
+    );
+  }
+
+  // ── Controls ──────────────────────────────────────────────────────────────
+
+  Widget _buildControls() => Container(
+    padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.bottomCenter,
+        end: Alignment.topCenter,
+        colors: [Color(0xDD000000), Colors.transparent],
+      ),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        _ControlButton(
+          icon: _isMicMuted ? Icons.mic_off : Icons.mic,
+          label: _isMicMuted ? 'Unmute' : 'Mute',
+          active: _isMicMuted,
+          onTap: _toggleMic,
+        ),
+        _ControlButton(
+          icon: _isCameraOff ? Icons.videocam_off : Icons.videocam,
+          label: _isCameraOff ? 'Cam On' : 'Cam Off',
+          active: _isCameraOff,
+          onTap: _toggleCamera,
+        ),
+        _ControlButton(
+          icon: Icons.flip_camera_ios,
+          label: _isFrontCamera ? 'Rear' : 'Front',
+          onTap: _switchCamera,
+        ),
+        _ControlButton(
+          icon: _isScreenSharing
+              ? Icons.stop_screen_share
+              : Icons.screen_share,
+          label: _isScreenSharing ? 'Stop' : 'Share',
+          active: _isScreenSharing,
+          activeColor: Colors.orangeAccent,
+          onTap: _toggleScreenShare,
+        ),
+        _ControlButton(
+          icon: Icons.call_end,
+          label: 'Leave',
+          backgroundColor: Colors.redAccent,
+          onTap: _confirmLeave,
+        ),
+      ],
     ),
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Chat message model
+//  Shared widgets
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _ChatMsg {
-  final String   sender;
-  final String   text;
-  final bool     isMe;
-  final DateTime timestamp;
-  const _ChatMsg({required this.sender, required this.text, required this.isMe, required this.timestamp});
+class _LiveBadge extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    decoration: BoxDecoration(
+        color: Colors.redAccent,
+        borderRadius: BorderRadius.circular(6)),
+    child: const Text('LIVE',
+        style: TextStyle(
+            color: Colors.white,
+            fontSize: 11,
+            fontWeight: FontWeight.bold)),
+  );
+}
+
+class _ParticipantRow extends StatelessWidget {
+  final String name;
+  final String? imageUrl;
+  final bool isInRoom;
+  final bool isTeacher;
+  final bool isSelf;
+  final bool? isMuted; // null = not in room
+
+  const _ParticipantRow({
+    required this.name,
+    required this.imageUrl,
+    required this.isInRoom,
+    required this.isTeacher,
+    required this.isSelf,
+    required this.isMuted,
+  });
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    child: Row(children: [
+      CircleAvatar(
+        radius: 16,
+        backgroundColor: isTeacher
+            ? const Color(0xFF4F8EF7)
+            : const Color(0xFF2C3154),
+        backgroundImage:
+        imageUrl != null ? NetworkImage(imageUrl!) : null,
+        child: imageUrl == null
+            ? Text(
+          name.isNotEmpty ? name[0].toUpperCase() : '?',
+          style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.bold),
+        )
+            : null,
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(isSelf ? 'You' : name,
+                  style:
+                  const TextStyle(color: Colors.white, fontSize: 13),
+                  overflow: TextOverflow.ellipsis),
+              Row(children: [
+                if (isTeacher)
+                  const Text('Teacher · ',
+                      style: TextStyle(
+                          color: Color(0xFF4F8EF7), fontSize: 10)),
+                Text(
+                  isInRoom ? '● In room' : '○ Not joined',
+                  style: TextStyle(
+                      color: isInRoom
+                          ? Colors.greenAccent
+                          : Colors.white38,
+                      fontSize: 10),
+                ),
+              ]),
+            ]),
+      ),
+      if (isMuted != null)
+        Icon(
+          isMuted! ? Icons.mic_off : Icons.mic,
+          size: 15,
+          color: isMuted! ? Colors.redAccent : Colors.green,
+        ),
+    ]),
+  );
+}
+
+class _ControlButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool active;
+  final Color activeColor;
+  final Color? backgroundColor;
+  final VoidCallback onTap;
+
+  const _ControlButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.active = false,
+    this.activeColor = Colors.redAccent,
+    this.backgroundColor,
+  });
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          color: backgroundColor ?? const Color(0x554F8EF7),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon,
+            color: active ? activeColor : Colors.white, size: 24),
+      ),
+      const SizedBox(height: 4),
+      Text(label,
+          style: const TextStyle(color: Colors.white70, fontSize: 10)),
+    ]),
+  );
+}
+
+class _AvatarTile extends StatelessWidget {
+  final String name;
+  final bool isMuted;
+  const _AvatarTile({required this.name, required this.isMuted});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    color: const Color(0xFF1A1D2E),
+    child: Center(
+      child:
+      Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        CircleAvatar(
+          radius: 36,
+          backgroundColor: const Color(0xFF2C3154),
+          child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?',
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold)),
+        ),
+        const SizedBox(height: 8),
+        Text(name,
+            style: const TextStyle(color: Colors.white70, fontSize: 13)),
+        const SizedBox(height: 4),
+        Icon(isMuted ? Icons.mic_off : Icons.mic,
+            color: isMuted ? Colors.redAccent : Colors.green, size: 18),
+      ]),
+    ),
+  );
+}
+
+class _RemoteParticipantTile extends StatelessWidget {
+  final RemoteParticipant participant;
+  const _RemoteParticipantTile({required this.participant});
+
+  @override
+  Widget build(BuildContext context) {
+    final track = participant.videoTrackPublications
+        .firstWhereOrNull((p) => p.source == TrackSource.camera)
+        ?.track as VideoTrack?;
+    return Stack(children: [
+      track != null
+          ? VideoTrackRenderer(track)
+          : _AvatarTile(
+          name: participant.name ?? participant.identity,
+          isMuted: !participant.isMicrophoneEnabled()),
+      Positioned(
+        bottom: 8,
+        left: 8,
+        child: _NameBadge(
+          name: participant.name ?? participant.identity,
+          isMuted: !participant.isMicrophoneEnabled(),
+        ),
+      ),
+    ]);
+  }
+}
+
+class _LocalParticipantTile extends StatelessWidget {
+  final LocalParticipant participant;
+  final bool isMuted;
+  const _LocalParticipantTile(
+      {required this.participant, required this.isMuted});
+
+  @override
+  Widget build(BuildContext context) {
+    final track = participant.videoTrackPublications
+        .firstWhereOrNull((p) => p.source == TrackSource.camera)
+        ?.track as VideoTrack?;
+    return Stack(children: [
+      track != null
+          ? VideoTrackRenderer(track)
+          : _AvatarTile(name: 'You', isMuted: isMuted),
+      Positioned(
+          bottom: 8,
+          left: 8,
+          child: _NameBadge(name: 'You', isMuted: isMuted)),
+    ]);
+  }
+}
+
+class _NameBadge extends StatelessWidget {
+  final String name;
+  final bool isMuted;
+  const _NameBadge({required this.name, required this.isMuted});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    decoration: BoxDecoration(
+        color: const Color(0xAA000000),
+        borderRadius: BorderRadius.circular(8)),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(isMuted ? Icons.mic_off : Icons.mic,
+          color: isMuted ? Colors.redAccent : Colors.green, size: 13),
+      const SizedBox(width: 4),
+      Text(name,
+          style: const TextStyle(color: Colors.white, fontSize: 12)),
+    ]),
+  );
+}
+
+extension _FirstWhereOrNull<T> on Iterable<T> {
+  T? firstWhereOrNull(bool Function(T) test) {
+    for (final e in this) {
+      if (test(e)) return e;
+    }
+    return null;
+  }
 }

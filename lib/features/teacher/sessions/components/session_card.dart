@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../config/app_theme.dart';
 import '../../../student/models.dart';
+import '../../../student/sessions/components/recording_button.dart';
 
 class SessionCard extends StatelessWidget {
   final TeacherSessionItem session;
@@ -138,16 +139,17 @@ class SessionCard extends StatelessWidget {
                     onTap: onStartLive), // re-uses roomUrl from provider
               ],
               if (hasRec)
-                _ActionBtn(
-                    label: session.hasRecording
-                        ? 'مشاهدة التسجيل'
-                        : 'جاري التسجيل...',
-                    icon: session.hasRecording
-                        ? Icons.play_circle_filled_rounded
-                        : Icons.hourglass_top_rounded,
-                    gradient: const LinearGradient(
-                        colors: [Color(0xFF8B6FFF), Color(0xFF5B8FFF)]),
-                    onTap: onRecording),
+                RecordingButton(recordingUrl: session.recordingUrl, compact: true)
+                // _ActionBtn(
+                //     label: session.hasRecording
+                //         ? 'مشاهدة التسجيل'
+                //         : 'جاري التسجيل...',
+                //     icon: session.hasRecording
+                //         ? Icons.play_circle_filled_rounded
+                //         : Icons.hourglass_top_rounded,
+                //     gradient: const LinearGradient(
+                //         colors: [Color(0xFF8B6FFF), Color(0xFF5B8FFF)]),
+                //     onTap: onRecording),
             ]),
           ),
       ]),

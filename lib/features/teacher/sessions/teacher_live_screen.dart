@@ -1,941 +1,1305 @@
-/// teacher_live_screen.dart
-///
-/// Full LiveKit-native live session screen for the teacher.
-/// No WebView — everything is Flutter widgets via livekit_client SDK.
-///
-/// pubspec.yaml additions:
-///   livekit_client:    ^2.4.0
-///   permission_handler: ^11.3.0
-///
-/// AndroidManifest.xml:
-///   <uses-permission android:name="android.permission.CAMERA"/>
-///   <uses-permission android:name="android.permission.RECORD_AUDIO"/>
-///   <uses-permission android:name="android.permission.INTERNET"/>
-///   <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-///   <uses-feature android:name="android.hardware.camera"/>
-///
-/// ios/Runner/Info.plist:
-///   NSCameraUsageDescription
-///   NSMicrophoneUsageDescription
-
 import 'dart:async';
-
+import 'dart:convert';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/teacher/sessions/sessions_provider.dart';
+import 'package:flutter/services.dart';
 import 'package:livekit_client/livekit_client.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:provider/provider.dart';
-import 'package:flutter_education_app/features/teacher/shared/attendance_provider.dart';
-import 'package:flutter_education_app/features/teacher/shared/live_models.dart';
-import '../../../config/app_theme.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_webrtc/flutter_webrtc.dart' as webrtc;
+
+import '../../../config/app_config.dart';
+
+/// ─────────────────────────────────────────────────────────────────────────────
+///  TeacherLiveSessionScreen
+///
+///  APIs:
+///    POST /api/v1/live-sessions/start?session_id=…  → { ws_url, token }
+///    GET  /api/v1/live-sessions/{id}/join           → { ws_url, token }
+///    POST /api/v1/live-sessions/{id}/end
+///    GET  /api/v1/courses/{course_id}/students      → List<EnrolledStudent>
+///
+///  AndroidManifest.xml required additions:
+///    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+///    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"/>
+///    <service
+///      android:name="io.livekit.android.screencapture.ScreenCaptureService"
+///      android:foregroundServiceType="mediaProjection"
+///      android:exported="false"/>
+/// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Model ─────────────────────────────────────────────────────────────────────
+
+class EnrolledStudent {
+  final int id;
+  final String name;
+  final String? imageUrl;
+
+  EnrolledStudent({required this.id, required this.name, this.imageUrl});
+
+  factory EnrolledStudent.fromJson(Map<String, dynamic> j) => EnrolledStudent(
+    id: j['id'] as int,
+    name: j['name'] as String? ?? '',
+    imageUrl: j['image_url'] as String?,
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-class TeacherLiveScreen extends StatefulWidget {
-  final String sessionTitle;
-  final String wsUrl; // from API: settings.LIVEKIT_PUBLIC_URL
-  final String token; // LiveKit JWT for the teacher
+class TeacherLiveSessionScreen extends StatefulWidget {
   final int sessionId;
   final int courseId;
-  final Future<bool> Function() onEndLive; // POST /live-sessions/{id}/end
+  final String sessionName;
+  final String authToken;
+  final bool enableRecording;
+  final int? maxParticipants;
 
-  const TeacherLiveScreen({
+  const TeacherLiveSessionScreen({
     super.key,
-    required this.sessionTitle,
-    required this.wsUrl,
-    required this.token,
     required this.sessionId,
     required this.courseId,
-    required this.onEndLive,
+    required this.sessionName,
+    required this.authToken,
+    this.enableRecording = true,
+    this.maxParticipants,
   });
 
   @override
-  State<TeacherLiveScreen> createState() => _TeacherLiveScreenState();
+  State<TeacherLiveSessionScreen> createState() =>
+      _TeacherLiveSessionScreenState();
 }
 
-class _TeacherLiveScreenState extends State<TeacherLiveScreen> {
+class _TeacherLiveSessionScreenState extends State<TeacherLiveSessionScreen>
+    with WidgetsBindingObserver {
   // ── LiveKit ───────────────────────────────────────────────────────────────
-  late final Room _room;
-  late final EventsListener<RoomEvent> _listener;
-
-  bool _cameraOn = true;
-  bool _micOn = true;
-  bool _screenShareOn = false;
-  bool _connecting = true;
-  String? _error;
-
+  Room? _room;
+  LocalParticipant? _localParticipant;
   final List<RemoteParticipant> _remoteParticipants = [];
 
-  // ── Attendance ────────────────────────────────────────────────────────────
-  Timer? _attendanceTimer;
+  // ── Local tracks ──────────────────────────────────────────────────────────
+  LocalVideoTrack? _localVideoTrack;
+  LocalVideoTrack? _screenShareTrack;
 
-  // ── Lifecycle ─────────────────────────────────────────────────────────────
+  // ── UI state ──────────────────────────────────────────────────────────────
+  bool _isStarting = true;
+  bool _isMicMuted = false;
+  bool _isCameraOff = false;
+  bool _isFrontCamera = true;
+  bool _isScreenSharing = false;
+  bool _isPipCameraMain = false;  // false = screen share is main, camera is PiP
+  bool _showAttendancePanel = false;
+  bool _isEndingSession = false;
+  String? _errorMessage;
+
+  // ── Enrolled students & attendance ────────────────────────────────────────
+  List<EnrolledStudent> _enrolledStudents = [];
+  final Map<int, bool> _attendanceMap = {};   // studentId → isPresent
+  final Set<String> _liveIdentities = {};
+
+  // ── Timer ─────────────────────────────────────────────────────────────────
+  Duration _elapsed = Duration.zero;
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    _room = Room();
-    _listener = _room.createListener();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _connect());
+    WidgetsBinding.instance.addObserver(this);
+    _startSessionAndConnect();
+    _fetchEnrolledStudents();
   }
 
   @override
   void dispose() {
-    _attendanceTimer?.cancel();
-    _listener.dispose();
-    _room.disconnect();
-    _room.dispose();
+    _timer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    _room?.removeListener(_onRoomUpdate);
+    _room?.disconnect();
     super.dispose();
   }
 
-  // ── Connect ───────────────────────────────────────────────────────────────
+  // ── API ───────────────────────────────────────────────────────────────────
 
-  // Future<void> _connect() async {
-  //   await [Permission.microphone, Permission.camera].request();
-  //   _setupListeners();
-  //
-  //   try {
-  //     await _room.connect(
-  //       widget.wsUrl,
-  //       widget.token,
-  //       connectOptions: ConnectOptions(
-  //         timeouts: Timeouts(
-  //           connection: Duration(seconds: 30),
-  //           iceRestart: Duration(seconds: 30),
-  //           peerConnection: Duration(seconds: 30), debounce: Duration(seconds: 30), publish: Duration(seconds: 30), subscribe: Duration(seconds: 30),
-  //         ),
-  //         rtcConfiguration: RTCConfiguration(
-  //           iceTransportPolicy: RTCIceTransportPolicy.relay,
-  //           iceServers: [
-  //             RTCIceServer(
-  //               urls: [
-  //                 'stun:openrelay.metered.ca:80',
-  //               ],
-  //             ),
-  //             RTCIceServer(
-  //               urls: [
-  //                 'turn:openrelay.metered.ca:80',
-  //                 'turn:openrelay.metered.ca:443',
-  //                 'turn:openrelay.metered.ca:443?transport=tcp',
-  //                 'turns:openrelay.metered.ca:443',
-  //               ],
-  //               username:   'openrelayproject',
-  //               credential: 'openrelayproject',
-  //             ),
-  //           ],
-  //         ),
-  //       ),
-  //       roomOptions: const RoomOptions(
-  //         adaptiveStream: true,
-  //         dynacast: true,
-  //       ),
-  //     );
-  //     await _room.localParticipant?.setCameraEnabled(true);
-  //     await _room.localParticipant?.setMicrophoneEnabled(true);
-  //
-  //     if (mounted) setState(() => _connecting = false);
-  //
-  //     _loadAttendance();
-  //     _attendanceTimer =
-  //         Timer.periodic(const Duration(seconds: 60), (_) => _loadAttendance());
-  //   } catch (e) {
-  //     if (mounted) {
-  //       setState(() {
-  //         _error = e.toString();
-  //         _connecting = false;
-  //       });
-  //     }
-  //   }
-  // }
-  Future<void> _connect() async {
-    await [Permission.microphone, Permission.camera].request();
-    _setupListeners();
-
+  Future<void> _startSessionAndConnect() async {
     try {
-      await _room.connect(
-        widget.wsUrl,
-        widget.token,
-        connectOptions: ConnectOptions(
-          timeouts: Timeouts(
-            connection: Duration(seconds: 30),
-            iceRestart: Duration(seconds: 30),
-            peerConnection: Duration(seconds: 30), debounce: Duration(seconds: 30), publish: Duration(seconds: 30), subscribe: Duration(seconds: 30),
-          ),
-          rtcConfiguration: RTCConfiguration(
-            // ← DO NOT use relay-only — let it try all candidates
-            // iceTransportPolicy: RTCIceTransportPolicy.relay,  // REMOVE THIS
-            iceServers: [
-              // Google STUN
-              RTCIceServer(
-                urls: ['stun:stun.l.google.com:19302'],
-              ),
-              // OpenRelay STUN
-              RTCIceServer(
-                urls: ['stun:openrelay.metered.ca:80'],
-              ),
-              // OpenRelay TURN — multiple ports for best chance
-              RTCIceServer(
-                urls: [
-                  'turn:openrelay.metered.ca:80',
-                  'turn:openrelay.metered.ca:443',
-                  'turn:openrelay.metered.ca:443?transport=tcp',
-                  'turns:openrelay.metered.ca:443',
-                ],
-                username: 'openrelayproject',
-                credential: 'openrelayproject',
-              ),
-            ],
-          ),
+      final startRes = await http.post(
+        Uri.parse(
+          '${AppConfig.baseUrl}/api/v1/live-sessions/start'
+              '?session_id=${widget.sessionId}'
+              '&enable_recording=${widget.enableRecording}'
+              '&duration_hours=24'
+              '${widget.maxParticipants != null ? "&max_participants=${widget.maxParticipants}" : ""}',
         ),
-        roomOptions: const RoomOptions(
-          adaptiveStream: true,
-          dynacast: true,
-          defaultVideoPublishOptions: VideoPublishOptions(simulcast: true),
-          defaultAudioPublishOptions: AudioPublishOptions(dtx: true),
-        ),
+        headers: {'Authorization': 'Bearer ${widget.authToken}'},
       );
 
-      await _room.localParticipant?.setCameraEnabled(true);
-      await _room.localParticipant?.setMicrophoneEnabled(true);
-
-      if (mounted) setState(() => _connecting = false);
-      _loadAttendance();
-      _attendanceTimer =
-          Timer.periodic(const Duration(seconds: 60), (_) => _loadAttendance());
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString();
-          _connecting = false;
-        });
+      if (startRes.statusCode != 200) {
+        await _joinExistingRoom();
+        return;
       }
+
+      final data = json.decode(startRes.body);
+      await _connectToRoom(
+          data['ws_url'] as String, data['token'] as String);
+    } catch (e) {
+      setState(() {
+        _isStarting = false;
+        _errorMessage = 'Failed to start session: $e';
+      });
     }
   }
-  void _setupListeners() {
-    _listener
-      ..on<RoomConnectedEvent>((_) {
-        if (mounted) {
-          setState(() {
-            _remoteParticipants
-              ..clear()
-              ..addAll(_room.remoteParticipants.values);
-          });
-        }
-      })
-      ..on<ParticipantConnectedEvent>((e) {
-        if (mounted) setState(() => _remoteParticipants.add(e.participant));
-      })
-      ..on<ParticipantDisconnectedEvent>((e) {
-        if (mounted) setState(() => _remoteParticipants.remove(e.participant));
-      })
-      ..on<TrackSubscribedEvent>((_) {
-        if (mounted) setState(() {});
-      })
-      ..on<TrackUnsubscribedEvent>((_) {
-        if (mounted) setState(() {});
-      })
-      ..on<TrackMutedEvent>((_) {
-        if (mounted) setState(() {});
-      })
-      ..on<TrackUnmutedEvent>((_) {
-        if (mounted) setState(() {});
-      })
-      ..on<RoomDisconnectedEvent>((e) {
-        if (mounted && e.reason != DisconnectReason.clientInitiated) {
-          print("------------------------------");
-          print(e.reason?.name ?? '');
-          print(e.reason?.toString() ?? '');
 
-          _snack('انقطع الاتصال', AppTheme.danger);
-        }
+  Future<void> _joinExistingRoom() async {
+    final res = await http.get(
+      Uri.parse(
+          '${AppConfig.baseUrl}/api/v1/live-sessions/${widget.sessionId}/join'),
+      headers: {'Authorization': 'Bearer ${widget.authToken}'},
+    );
+    if (res.statusCode != 200) {
+      setState(() {
+        _isStarting = false;
+        _errorMessage = 'Could not join room (${res.statusCode})';
       });
+      return;
+    }
+    final data = json.decode(res.body);
+    await _connectToRoom(data['ws_url'] as String, data['token'] as String);
+  }
+
+  Future<void> _fetchEnrolledStudents() async {
+    try {
+      // GET /api/v1/courses/{course_id}/students
+      // → List<{ id, name, image_url, enrolled_at, status, ... }>
+      final res = await http.get(
+        Uri.parse(
+            '${AppConfig.baseUrl}/api/v1/courses/${widget.courseId}/students'),
+        headers: {'Authorization': 'Bearer ${widget.authToken}'},
+      );
+      if (res.statusCode == 200) {
+        final list = json.decode(res.body) as List<dynamic>;
+        setState(() {
+          _enrolledStudents =
+              list.map((j) => EnrolledStudent.fromJson(j)).toList();
+          for (final s in _enrolledStudents) {
+            _attendanceMap[s.id] = false; // default absent
+          }
+        });
+      }
+    } catch (_) {
+      // non-fatal
+    }
+  }
+
+  Future<void> _connectToRoom(String wsUrl, String token) async {
+    final room = Room(
+      roomOptions: const RoomOptions(
+        adaptiveStream: true,
+        dynacast: true,
+        defaultVideoPublishOptions: VideoPublishOptions(simulcast: true),
+      ),
+    );
+    room.addListener(_onRoomUpdate);
+
+    await room.connect(wsUrl, token,
+        connectOptions: const ConnectOptions(autoSubscribe: true));
+
+    _localParticipant = room.localParticipant;
+    await _localParticipant?.setCameraEnabled(true);
+    await _localParticipant?.setMicrophoneEnabled(true);
+
+    _localVideoTrack = _localParticipant?.videoTrackPublications
+        .where((p) => p.source == TrackSource.camera)
+        .map((p) => p.track)
+        .whereType<LocalVideoTrack>()
+        .firstOrNull;
+
+    _timer = Timer.periodic(
+        const Duration(seconds: 1),
+            (_) => setState(() => _elapsed += const Duration(seconds: 1)));
+
+    setState(() {
+      _room = room;
+      _isStarting = false;
+      _remoteParticipants.addAll(room.remoteParticipants.values);
+      _syncIdentities();
+    });
+  }
+
+  void _onRoomUpdate() {
+    if (!mounted) return;
+    setState(() {
+      _remoteParticipants
+        ..clear()
+        ..addAll(_room?.remoteParticipants.values ?? []);
+      _syncIdentities();
+    });
+  }
+
+  void _syncIdentities() {
+    _liveIdentities
+      ..clear()
+      ..addAll(_remoteParticipants.map((p) => p.identity));
+
+    // Auto-mark present when a matching student joins the room
+    for (final s in _enrolledStudents) {
+      final inRoom = _liveIdentities.any((id) =>
+      id.toLowerCase().contains(s.name.toLowerCase()) ||
+          id == s.id.toString());
+      if (inRoom && _attendanceMap[s.id] == false) {
+        _attendanceMap[s.id] = true;
+      }
+    }
   }
 
   // ── Controls ──────────────────────────────────────────────────────────────
 
-  Future<void> _toggleCamera() async {
-    await _room.localParticipant?.setCameraEnabled(!_cameraOn);
-    if (mounted) setState(() => _cameraOn = !_cameraOn);
+  Future<void> _toggleMic() async {
+    await _localParticipant?.setMicrophoneEnabled(_isMicMuted);
+    setState(() => _isMicMuted = !_isMicMuted);
   }
 
-  Future<void> _toggleMic() async {
-    await _room.localParticipant?.setMicrophoneEnabled(!_micOn);
-    if (mounted) setState(() => _micOn = !_micOn);
+  Future<void> _toggleCamera() async {
+    await _localParticipant?.setCameraEnabled(_isCameraOff);
+    setState(() => _isCameraOff = !_isCameraOff);
   }
+
+  Future<void> _switchCamera() async {
+    if (_localVideoTrack == null) return;
+    try {
+      final devices =
+      await webrtc.navigator.mediaDevices.enumerateDevices();
+      final cameras = devices.where((d) => d.kind == 'videoinput').toList();
+      if (cameras.length < 2) return;
+
+      final currentId = _localVideoTrack!.mediaStreamTrack.id;
+      final next = cameras.firstWhere(
+            (d) => d.deviceId != currentId,
+        orElse: () => cameras.first,
+      );
+      await _localVideoTrack!.switchCamera(next.deviceId);
+      setState(() => _isFrontCamera = !_isFrontCamera);
+    } catch (e) {
+      debugPrint('Switch camera error: $e');
+    }
+  }
+
+  // ── Screen share ──────────────────────────────────────────────────────────
+  //
+  //  livekit_client ^2.7.0 verified API (from official pub.dev docs):
+  //
+  //  START:  Helper.requestCapturePermission() → bool   (flutter_webrtc)
+  //          LocalVideoTrack.createScreenShareTrack(options) → LocalVideoTrack
+  //          localParticipant.publishVideoTrack(track)
+  //
+  //  STOP:   localParticipant.setScreenShareEnabled(false)
+  //          — this is the simplest, officially documented stop method.
+  //          — it internally finds and unpublishes the screen share track.
+  //          — we then call stop() on our track reference to release hardware.
+  //
+  //  The SID-based unpublishTrack(sid) also exists but requires finding the
+  //  publication object first, which adds complexity with no benefit here.
 
   Future<void> _toggleScreenShare() async {
+    _isScreenSharing ? await _stopScreenShare() : await _startScreenShare();
+  }
+
+  Future<void> _startScreenShare() async {
     try {
-      await _room.localParticipant?.setScreenShareEnabled(!_screenShareOn);
-      if (mounted) setState(() => _screenShareOn = !_screenShareOn);
+      if (Platform.isAndroid) {
+        // Must call requestCapturePermission() FIRST while in foreground.
+        // If skipped, createScreenShareTrack() fires the MediaProjection dialog
+        // internally which moves the app to background → Android kills it.
+        final granted = await webrtc.Helper.requestCapturePermission();
+        if (!granted) {
+          _showSnack('Screen share permission denied.', Colors.redAccent);
+          return;
+        }
+        _screenShareTrack = await LocalVideoTrack.createScreenShareTrack(
+          const ScreenShareCaptureOptions(
+            useiOSBroadcastExtension: false,
+            captureScreenAudio: true,
+            maxFrameRate: 30,
+            preferCurrentTab: true
+          ),
+        );
+      } else if (Platform.isIOS) {
+        _showSnack(
+          'iOS screen share requires a Broadcast Extension. '
+              'Contact your developer to add one.',
+          Colors.orange,
+        );
+        return;
+      } else {
+        _screenShareTrack = await LocalVideoTrack.createScreenShareTrack(
+          const ScreenShareCaptureOptions(
+            captureScreenAudio: true,
+            maxFrameRate: 15,
+          ),
+        );
+      }
+
+      // Publish the screen share track.
+      // Camera stays ENABLED — both tracks are published simultaneously.
+      // The recording (RoomCompositeEgress / speaker-dark layout) will show
+      // the screen share as the dominant track with camera as a small overlay.
+      await _localParticipant?.publishVideoTrack(_screenShareTrack!);
+
+      // Ensure camera is on (it should be, but confirm)
+      if (_isCameraOff) {
+        await _localParticipant?.setCameraEnabled(true);
+        setState(() => _isCameraOff = false);
+      }
+
+      setState(() {
+        _isScreenSharing = true;
+        _isPipCameraMain = false; // screen share fills main frame by default
+      });
+    } on PlatformException catch (e) {
+      debugPrint('Screen share PlatformException: $e');
+      _screenShareTrack = null;
+      _showSnack('Screen share permission was denied.', Colors.redAccent);
     } catch (e) {
-      _snack('تعذّر مشاركة الشاشة', AppTheme.danger);
+      debugPrint('Screen share error: $e');
+      _screenShareTrack = null;
+      _showSnack('Could not start screen share: $e', Colors.redAccent);
     }
   }
 
-  // ── End session ───────────────────────────────────────────────────────────
-
-  Future<void> _confirmEnd() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          backgroundColor: const Color(0xFF1A1A2E),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('إنهاء الحصة',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontFamily: 'Cairo',
-                  fontWeight: FontWeight.w700)),
-          content: const Text(
-              'هل تريد إنهاء الحصة الآن؟\nسيتم حفظ التسجيل تلقائياً في MinIO.',
-              style: TextStyle(
-                  color: Colors.white70, fontFamily: 'Cairo', height: 1.6)),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('إلغاء',
-                  style: TextStyle(color: Colors.white54, fontFamily: 'Cairo')),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10))),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('إنهاء الحصة',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontFamily: 'Cairo',
-                      fontWeight: FontWeight.w700)),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (confirmed != true || !mounted) return;
-
-    await _room.disconnect();
-    final ok=  await context
-        .read<TeacherSessionsProvider>()
-        .endLive(widget.sessionId, saveRecording: true);
-    // final ok = await widget.onEndLive();
-    if (mounted) {
-      _snack(
-        ok
-            ? 'تم إنهاء الحصة ✓\nسيتوفر التسجيل قريباً'
-            : 'حدث خطأ أثناء الإنهاء',
-        ok ? AppTheme.success : AppTheme.danger,
-      );
-      Navigator.pop(context);
+  Future<void> _stopScreenShare() async {
+    try {
+      await _localParticipant?.setScreenShareEnabled(false);
+      await _screenShareTrack?.stop();
+    } catch (e) {
+      debugPrint('Stop screen share error: $e');
+    } finally {
+      _screenShareTrack = null;
+      setState(() {
+        _isScreenSharing = false;
+        _isPipCameraMain = false;
+      });
     }
+  }
+
+  void _showSnack(String msg, Color color) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg),
+      backgroundColor: color,
+      duration: const Duration(seconds: 4),
+    ));
   }
 
   // ── Attendance ────────────────────────────────────────────────────────────
 
-  Future<void> _loadAttendance() async {
-    if (!mounted) return;
-    await context.read<AttendanceProvider>().fetchList(widget.sessionId);
+  void _toggleAttendance(int studentId) {
+    setState(() {
+      _attendanceMap[studentId] = !(_attendanceMap[studentId] ?? false);
+    });
   }
 
-  void _showAttendanceSheet() => showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => ChangeNotifierProvider.value(
-          value: context.read<AttendanceProvider>(),
-          child: _AttendanceSheet(
-              sessionId: widget.sessionId, onRefresh: _loadAttendance),
-        ),
+  Future<void> _submitAttendance() async {
+    final body = _attendanceMap.entries
+        .map((e) => {'student_id': e.key, 'is_present': e.value})
+        .toList();
+    try {
+      await http.post(
+        Uri.parse(
+            '${AppConfig.baseUrl}/api/v1/sessions/${widget.sessionId}/attendance'),
+        headers: {
+          'Authorization': 'Bearer ${widget.authToken}',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode(body),
       );
-
-  void _snack(String msg, Color color) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg,
-          style: const TextStyle(fontFamily: 'Cairo', color: Colors.white)),
-      backgroundColor: color,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    ));
+    } catch (_) {}
   }
+
+  Future<void> _confirmEndSession() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E2235),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('End Session',
+            style:
+            TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: const Text(
+          'This will end the session for all participants and save the recording.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel',
+                  style: TextStyle(color: Colors.blue))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('End Now'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    setState(() => _isEndingSession = true);
+    await _submitAttendance();
+
+    try {
+      await http.post(
+        Uri.parse(
+            '${AppConfig.baseUrl}/api/v1/live-sessions/${widget.sessionId}/end'),
+        headers: {'Authorization': 'Bearer ${widget.authToken}'},
+      );
+    } catch (_) {}
+
+    _timer?.cancel();
+    _room?.removeListener(_onRoomUpdate);
+    await _room?.disconnect();
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  int get _participantCount =>
+      (_room != null ? 1 : 0) + _remoteParticipants.length;
+  int get _presentCount => _attendanceMap.values.where((v) => v).length;
+
+  String _formatDuration(Duration d) {
+    final h = d.inHours.toString().padLeft(2, '0');
+    final m = (d.inMinutes % 60).toString().padLeft(2, '0');
+    final s = (d.inSeconds % 60).toString().padLeft(2, '0');
+    return d.inHours > 0 ? '$h:$m:$s' : '$m:$s';
+  }
+
+  bool _isInRoom(EnrolledStudent s) => _liveIdentities.any((id) =>
+  id.toLowerCase().contains(s.name.toLowerCase()) ||
+      id == s.id.toString());
 
   // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    final attend = context.watch<AttendanceProvider>();
-
-    if (_connecting) {
-      return const Scaffold(
-          backgroundColor: Colors.black,
-          body: Center(
-              child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                CircularProgressIndicator(color: Colors.white),
-                SizedBox(height: 16),
-                Text('جاري الاتصال بالغرفة…',
-                    style: TextStyle(color: Colors.white, fontFamily: 'Cairo')),
-              ])));
-    }
-
-    if (_error != null) {
-      return Scaffold(
-          backgroundColor: Colors.black,
-          body: Center(
-              child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                const Icon(Icons.signal_wifi_off_rounded,
-                    size: 72, color: Colors.white54),
-                const SizedBox(height: 16),
-                const Text('تعذّر الاتصال',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontFamily: 'Cairo',
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700)),
-                Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(_error!,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                            color: Colors.white54,
-                            fontFamily: 'Cairo',
-                            fontSize: 12))),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _error = null;
-                      _connecting = true;
-                    });
-                    _connect();
-                  },
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('إعادة المحاولة',
-                      style: TextStyle(fontFamily: 'Cairo')),
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primary,
-                      foregroundColor: Colors.white),
-                ),
-              ])));
-    }
-
-    return PopScope(
-      canPop: false,
-      onPopInvoked: (_) => _confirmEnd(),
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    return WillPopScope(
+      onWillPop: () async {
+        await _confirmEndSession();
+        return false;
+      },
       child: Scaffold(
-        backgroundColor: Colors.black,
-        body: SafeArea(
-            child: Stack(children: [
-          // ── Video grid ───────────────────────────────────────────────────
-          _VideoGrid(
-            local: _room.localParticipant,
-            remotes: _remoteParticipants,
-          ),
-
-          // ── Top bar ──────────────────────────────────────────────────────
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: _TopBar(
-              title: widget.sessionTitle,
-              presentCount: attend.presentCount,
-              onEnd: _confirmEnd,
-              onAttendance: _showAttendanceSheet,
-            ),
-          ),
-
-          // ── Control bar ──────────────────────────────────────────────────
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: _ControlBar(
-              cameraOn: _cameraOn,
-              micOn: _micOn,
-              screenShareOn: _screenShareOn,
-              onCamera: _toggleCamera,
-              onMic: _toggleMic,
-              onScreenShare: _toggleScreenShare,
-              onEnd: _confirmEnd,
-            ),
-          ),
-        ])),
+        backgroundColor: const Color(0xFF0D0F1A),
+        body: _isStarting
+            ? _buildLoading('Starting live session…')
+            : _errorMessage != null
+            ? _buildError()
+            : _isEndingSession
+            ? _buildLoading('Ending session & saving recording…',
+            color: Colors.redAccent)
+            : _buildLiveUI(),
       ),
     );
   }
-}
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Video grid — shows local + all remote participants
-// ─────────────────────────────────────────────────────────────────────────────
+  Widget _buildLoading(String msg, {Color color = const Color(0xFF4F8EF7)}) =>
+      Center(
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          CircularProgressIndicator(color: color),
+          const SizedBox(height: 20),
+          Text(msg,
+              style: const TextStyle(color: Colors.white70, fontSize: 16)),
+        ]),
+      );
 
-class _VideoGrid extends StatelessWidget {
-  final LocalParticipant? local;
-  final List<RemoteParticipant> remotes;
+  Widget _buildError() => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(32),
+      child:
+      Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        const Icon(Icons.error_outline, color: Colors.redAccent, size: 64),
+        const SizedBox(height: 16),
+        Text(_errorMessage!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white70, fontSize: 15)),
+        const SizedBox(height: 24),
+        ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4F8EF7)),
+          icon: const Icon(Icons.refresh),
+          label: const Text('Retry'),
+          onPressed: () {
+            setState(() {
+              _isStarting = true;
+              _errorMessage = null;
+            });
+            _startSessionAndConnect();
+          },
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Go Back',
+              style: TextStyle(color: Colors.white54)),
+        ),
+      ]),
+    ),
+  );
 
-  const _VideoGrid({required this.local, required this.remotes});
+  Widget _buildLiveUI() => Stack(children: [
+    _buildVideoGrid(),
+    _buildTopBar(),
+    Positioned(bottom: 0, left: 0, right: 0, child: _buildControls()),
+    if (_showAttendancePanel)
+      Positioned(top: 80, right: 12, child: _buildAttendancePanel()),
+  ]);
 
-  @override
-  Widget build(BuildContext context) {
-    final all = <Participant>[if (local != null) local!, ...remotes];
+  // ── Top bar ───────────────────────────────────────────────────────────────
 
-    if (all.isEmpty) {
-      return const Center(
-          child: Text('في انتظار المشاركين…',
+  Widget _buildTopBar() => Positioned(
+    top: 0,
+    left: 0,
+    right: 0,
+    child: Container(
+      padding: const EdgeInsets.fromLTRB(16, 48, 16, 12),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xCC000000), Colors.transparent],
+        ),
+      ),
+      child: Row(children: [
+        Expanded(
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(widget.sessionName,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600),
+                    overflow: TextOverflow.ellipsis),
+                Text('Duration: ${_formatDuration(_elapsed)}',
+                    style: const TextStyle(
+                        color: Colors.white60, fontSize: 12)),
+              ]),
+        ),
+        // LIVE badge
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+              color: Colors.redAccent,
+              borderRadius: BorderRadius.circular(6)),
+          child: const Text('LIVE',
               style: TextStyle(
-                  color: Colors.white54, fontFamily: 'Cairo', fontSize: 16)));
-    }
-
-    return GridView.builder(
-      padding: EdgeInsets.only(bottom: 90, top: 64),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: all.length == 1 ? 1 : 2,
-        childAspectRatio: all.length == 1 ? 16 / 9 : 1,
-        crossAxisSpacing: 4,
-        mainAxisSpacing: 4,
-      ),
-      itemCount: all.length,
-      itemBuilder: (_, i) => _ParticipantTile(
-        participant: all[i],
-        isLocal: all[i] is LocalParticipant,
-      ),
-    );
-  }
-}
-
-class _ParticipantTile extends StatelessWidget {
-  final Participant participant;
-  final bool isLocal;
-
-  const _ParticipantTile({required this.participant, required this.isLocal});
-
-  @override
-  Widget build(BuildContext context) {
-    VideoTrack? video;
-    for (final pub in participant.videoTrackPublications) {
-      if (pub.subscribed && pub.track != null) {
-        video = pub.track as VideoTrack;
-        break;
-      }
-    }
-
-    return Container(
-      color: const Color(0xFF1A1A2E),
-      child: Stack(fit: StackFit.expand, children: [
-        video != null
-            ? VideoTrackRenderer(video)
-            : Center(
-                child: Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isLocal
-                            ? AppTheme.primary.withValues(alpha: 0.3)
-                            : Colors.white12),
-                    child: const Icon(Icons.person_rounded,
-                        color: Colors.white60, size: 40))),
-        // Name + mic label
-        Positioned(
-          bottom: 8,
-          left: 8,
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold)),
+        ),
+        const SizedBox(width: 10),
+        // Participants + attendance badge
+        GestureDetector(
+          onTap: () => setState(
+                  () => _showAttendancePanel = !_showAttendancePanel),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-                color: Colors.black54, borderRadius: BorderRadius.circular(8)),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(
-                participant.isMicrophoneEnabled()
-                    ? Icons.mic_rounded
-                    : Icons.mic_off_rounded,
-                color: participant.isMicrophoneEnabled()
-                    ? Colors.white
-                    : Colors.redAccent,
-                size: 12,
-              ),
+                color: const Color(0x884F8EF7),
+                borderRadius: BorderRadius.circular(20)),
+            child: Row(children: [
+              const Icon(Icons.people, color: Colors.white, size: 16),
               const SizedBox(width: 4),
-              Text(
-                participant.name.isNotEmpty
-                    ? participant.name
-                    : (isLocal ? 'أنت' : 'طالب'),
-                style: const TextStyle(
-                    color: Colors.white, fontFamily: 'Cairo', fontSize: 11),
-              ),
+              Text('$_participantCount',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold)),
+              if (_enrolledStudents.isNotEmpty) ...[
+                const SizedBox(width: 6),
+                Container(width: 1, height: 14, color: Colors.white30),
+                const SizedBox(width: 6),
+                const Icon(Icons.checklist,
+                    color: Colors.greenAccent, size: 14),
+                const SizedBox(width: 2),
+                Text('$_presentCount/${_enrolledStudents.length}',
+                    style: const TextStyle(
+                        color: Colors.greenAccent,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold)),
+              ],
             ]),
           ),
         ),
       ]),
-    );
-  }
-}
+    ),
+  );
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Top bar
-// ─────────────────────────────────────────────────────────────────────────────
+  // ── Video grid ────────────────────────────────────────────────────────────
 
-class _TopBar extends StatelessWidget {
-  final String title;
-  final int presentCount;
-  final VoidCallback onEnd, onAttendance;
+  Widget _buildVideoGrid() {
+    // ── Screen share active → PiP layout ─────────────────────────────────
+    if (_isScreenSharing && _screenShareTrack != null) {
+      // Get the live camera track (camera stays ON during screen share)
+      final VideoTrack? cameraTrack = _localParticipant?.videoTrackPublications
+          .where((p) => p.source == TrackSource.camera)
+          .map((p) => p.track)
+          .whereType<VideoTrack>()
+          .firstOrNull;
 
-  const _TopBar(
-      {required this.title,
-      required this.presentCount,
-      required this.onEnd,
-      required this.onAttendance});
+      // Decide which goes in the main frame and which is the PiP corner
+      final Widget mainWidget = _isPipCameraMain
+          ? _buildCameraMainWidget(cameraTrack)   // camera is main
+          : _buildScreenShareMainWidget();          // screen share is main
 
-  @override
-  Widget build(BuildContext ctx) => Container(
-        height: 60,
-        decoration: BoxDecoration(
-            gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Colors.black.withValues(alpha: 0.90), Colors.transparent],
-        )),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-                color: Colors.red, borderRadius: BorderRadius.circular(12)),
-            child: const Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.circle, color: Colors.white, size: 7),
-              SizedBox(width: 5),
-              Text('LIVE',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 11,
-                      letterSpacing: 1.2)),
-            ]),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-              child: Text(title,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontFamily: 'Cairo',
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis)),
-          GestureDetector(
-            onTap: onAttendance,
+      final Widget pipWidget = _isPipCameraMain
+          ? _buildScreenSharePip()                 // screen share in corner
+          : _buildCameraPip(cameraTrack);          // camera in corner
+
+      return Stack(children: [
+        // Main frame fills the entire area
+        Positioned.fill(child: mainWidget),
+
+        // PiP corner — draggable, tappable to swap
+        Positioned(
+          right: 12,
+          bottom: 120, // above the controls bar
+          child: GestureDetector(
+            onTap: () => setState(() => _isPipCameraMain = !_isPipCameraMain),
             child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 6),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              width: 110,
+              height: 160,
               decoration: BoxDecoration(
-                  color: const Color(0xFF1D9E75).withValues(alpha: 0.85),
-                  borderRadius: BorderRadius.circular(12)),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.people_rounded, color: Colors.white, size: 14),
-                const SizedBox(width: 4),
-                Text('$presentCount',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontFamily: 'Cairo',
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13)),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white38, width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.4),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(11),
+                child: Stack(fit: StackFit.expand, children: [
+                  pipWidget,
+                  // Tap hint overlay
+                  Positioned(
+                    bottom: 4, left: 0, right: 0,
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text('Tap to swap',
+                            style: TextStyle(
+                                color: Colors.white70, fontSize: 8)),
+                      ),
+                    ),
+                  ),
+                ]),
+              ),
+            ),
+          ),
+        ),
+
+        // Screen share badge (top-left of main frame)
+        if (!_isPipCameraMain)
+          Positioned(
+            top: 8, left: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.orangeAccent.withOpacity(0.85),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.screen_share, color: Colors.white, size: 12),
+                SizedBox(width: 4),
+                Text('Screen Share',
+                    style: TextStyle(color: Colors.white, fontSize: 11)),
               ]),
             ),
           ),
-          GestureDetector(
-            onTap: onEnd,
-            child: Container(
-              margin: const EdgeInsets.only(left: 4, right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-              decoration: BoxDecoration(
-                  color: Colors.red, borderRadius: BorderRadius.circular(10)),
-              child: const Text('إنهاء',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontFamily: 'Cairo',
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13)),
-            ),
-          ),
-        ]),
-      );
-}
+      ]);
+    }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Bottom control bar
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ControlBar extends StatelessWidget {
-  final bool cameraOn, micOn, screenShareOn;
-  final VoidCallback onCamera, onMic, onScreenShare, onEnd;
-
-  const _ControlBar(
-      {required this.cameraOn,
-      required this.micOn,
-      required this.screenShareOn,
-      required this.onCamera,
-      required this.onMic,
-      required this.onScreenShare,
-      required this.onEnd});
-
-  @override
-  Widget build(BuildContext context) => Container(
-        height: 90,
-        decoration: BoxDecoration(
-            gradient: LinearGradient(
-          begin: Alignment.bottomCenter,
-          end: Alignment.topCenter,
-          colors: [Colors.black.withValues(alpha: 0.90), Colors.transparent],
-        )),
-        child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-          _Btn(
-              icon: micOn ? Icons.mic_rounded : Icons.mic_off_rounded,
-              label: micOn ? 'كتم' : 'فتح',
-              active: micOn,
-              onTap: onMic),
-          _Btn(
-              icon: cameraOn
-                  ? Icons.videocam_rounded
-                  : Icons.videocam_off_rounded,
-              label: 'كاميرا',
-              active: cameraOn,
-              onTap: onCamera),
-          _Btn(
-              icon: Icons.screen_share_rounded,
-              label: 'مشاركة',
-              active: screenShareOn,
-              onTap: onScreenShare),
-          _Btn(
-              icon: Icons.call_end_rounded,
-              label: 'إنهاء',
-              active: false,
-              danger: true,
-              onTap: onEnd),
-        ]),
-      );
-}
-
-class _Btn extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool active, danger;
-  final VoidCallback onTap;
-
-  const _Btn(
-      {required this.icon,
-      required this.label,
-      required this.onTap,
-      this.active = true,
-      this.danger = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = danger ? Colors.red : (active ? Colors.white : Colors.white38);
-    final bg = danger ? Colors.red.withValues(alpha: 0.2) : Colors.white12;
-    return GestureDetector(
-        onTap: onTap,
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(shape: BoxShape.circle, color: bg),
-              child: Icon(icon, color: c, size: 24)),
-          const SizedBox(height: 4),
-          Text(label,
-              style: TextStyle(color: c, fontFamily: 'Cairo', fontSize: 10)),
-        ]));
+    // ── Normal camera grid (no screen share) ─────────────────────────────
+    final tiles = <Widget>[
+      _buildLocalTile(),
+      for (final rp in _remoteParticipants)
+        _RemoteParticipantTile(participant: rp),
+    ];
+    if (tiles.length == 1) return tiles.first;
+    return GridView.count(
+      crossAxisCount: tiles.length <= 2 ? 1 : 2,
+      childAspectRatio: 3 / 4,
+      children: tiles,
+    );
   }
-}
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Attendance sheet
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _AttendanceSheet extends StatelessWidget {
-  final int sessionId;
-  final VoidCallback onRefresh;
-
-  const _AttendanceSheet({required this.sessionId, required this.onRefresh});
-
-  @override
-  Widget build(BuildContext context) {
-    final prov = context.watch<AttendanceProvider>();
+  // Screen share fills full frame
+  Widget _buildScreenShareMainWidget() {
     return Container(
-      constraints:
-          BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
-      decoration: const BoxDecoration(
-          color: Color(0xFF1A1A2E),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      child: Column(children: [
-        const SizedBox(height: 10),
-        Center(
-            child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(2)))),
-        const SizedBox(height: 12),
+      color: Colors.black,
+      child: VideoTrackRenderer(_screenShareTrack!),
+    );
+  }
+
+  // Screen share as tiny PiP
+  Widget _buildScreenSharePip() {
+    return Container(
+      color: Colors.black,
+      child: VideoTrackRenderer(_screenShareTrack!),
+    );
+  }
+
+  // Camera fills full frame (when user swapped)
+  Widget _buildCameraMainWidget(VideoTrack? cameraTrack) {
+    if (cameraTrack == null || _isCameraOff) {
+      return _AvatarTile(name: 'Camera Off', isMuted: _isMicMuted);
+    }
+    return Stack(children: [
+      Positioned.fill(child: VideoTrackRenderer(cameraTrack)),
+      Positioned(
+        top: 8, left: 8,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.blue.withOpacity(0.8),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.videocam, color: Colors.white, size: 12),
+            SizedBox(width: 4),
+            Text('Camera', style: TextStyle(color: Colors.white, fontSize: 11)),
+          ]),
+        ),
+      ),
+    ]);
+  }
+
+  // Camera as tiny PiP corner widget
+  Widget _buildCameraPip(VideoTrack? cameraTrack) {
+    if (cameraTrack == null || _isCameraOff) {
+      return Container(
+        color: const Color(0xFF1A1D2E),
+        child: const Center(
+          child: Icon(Icons.videocam_off, color: Colors.white54, size: 28),
+        ),
+      );
+    }
+    return VideoTrackRenderer(cameraTrack);
+  }
+
+  Widget _buildLocalTile() {
+    if (_isCameraOff || _localParticipant == null) {
+      return _AvatarTile(name: 'You (Teacher)', isMuted: _isMicMuted);
+    }
+    return _LocalParticipantTile(
+      participant: _localParticipant!,
+      isMuted: _isMicMuted,
+      label: 'You (Teacher)',
+    );
+  }
+
+  // Small thumbnail for teacher's camera — shown in screen-share strip
+  Widget _buildCameraThumbnail() {
+    final VideoTrack? track = _localParticipant?.videoTrackPublications
+        .where((p) => p.source == TrackSource.camera)
+        .map((p) => p.track)
+        .whereType<VideoTrack>()
+        .firstOrNull;
+
+    return _ThumbnailBox(
+      track: track,
+      label: 'You',
+    );
+  }
+
+  // Small thumbnail for a remote participant's camera
+  Widget _buildRemoteThumbnail(RemoteParticipant rp) {
+    final VideoTrack? track = rp.videoTrackPublications
+        .where((p) => p.source == TrackSource.camera)
+        .map((p) => p.track)
+        .whereType<VideoTrack>()
+        .firstOrNull;
+
+    return _ThumbnailBox(
+      track: track,
+      label: rp.name ?? rp.identity,
+    );
+  }
+
+  // ── Attendance panel ──────────────────────────────────────────────────────
+  //
+  //  Shows ALL enrolled students of the course (from API).
+  //  Real-time "In room / Not joined" matched from LiveKit identities.
+  //  Teacher can manually toggle Present / Absent per student.
+
+  Widget _buildAttendancePanel() {
+    return Container(
+      width: 260,
+      constraints: const BoxConstraints(maxHeight: 460),
+      decoration: BoxDecoration(
+        color: const Color(0xEE1A1D2E),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        // Header
         Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.all(12),
+          child: Row(children: [
+            const Icon(Icons.checklist, color: Colors.greenAccent, size: 18),
+            const SizedBox(width: 6),
+            Text(
+              'Attendance  ($_presentCount / ${_enrolledStudents.length})',
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600),
+            ),
+            const Spacer(),
+            GestureDetector(
+              onTap: () =>
+                  setState(() => _showAttendancePanel = false),
+              child:
+              const Icon(Icons.close, color: Colors.white54, size: 18),
+            ),
+          ]),
+        ),
+        const Divider(color: Colors.white12, height: 1),
+
+        // Student list — ALL enrolled students of this course
+        Flexible(
+          child: _enrolledStudents.isEmpty
+              ? const Padding(
+            padding: EdgeInsets.all(16),
+            child: Text('No enrolled students found.',
+                style: TextStyle(color: Colors.white54, fontSize: 13)),
+          )
+              : ListView.builder(
+            shrinkWrap: true,
+            itemCount: _enrolledStudents.length,
+            itemBuilder: (_, i) {
+              final s = _enrolledStudents[i];
+              final inRoom = _isInRoom(s);
+              final isPresent = _attendanceMap[s.id] ?? false;
+              return _AttendanceTile(
+                student: s,
+                isPresent: isPresent,
+                isInRoom: inRoom,
+                onToggle: () => _toggleAttendance(s.id),
+              );
+            },
+          ),
+        ),
+
+        // Bulk actions
+        if (_enrolledStudents.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.all(10),
             child: Row(children: [
-              const Text('الحضور',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontFamily: 'Cairo',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700)),
-              const Spacer(),
-              _Chip('${prov.presentCount} حضر', const Color(0xFF1D9E75)),
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.greenAccent,
+                    side: const BorderSide(color: Colors.greenAccent),
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: () => setState(() {
+                    for (final s in _enrolledStudents) {
+                      _attendanceMap[s.id] = true;
+                    }
+                  }),
+                  child: const Text('All Present',
+                      style: TextStyle(fontSize: 12)),
+                ),
+              ),
               const SizedBox(width: 8),
-              _Chip('${prov.absentCount} غاب', Colors.red),
-              const SizedBox(width: 8),
-              GestureDetector(
-                  onTap: onRefresh,
-                  child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                          color: Colors.white12,
-                          borderRadius: BorderRadius.circular(8)),
-                      child: const Icon(Icons.refresh_rounded,
-                          color: Colors.white70, size: 18))),
-            ])),
-        const SizedBox(height: 8),
-        prov.listLoading
-            ? const Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(
-                    child: CircularProgressIndicator(color: Colors.white)))
-            : prov.list.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.all(32),
-                    child: Text('لا يوجد سجل بعد',
-                        style: TextStyle(
-                            color: Colors.white54, fontFamily: 'Cairo')))
-                : Expanded(
-                    child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-                    physics: const BouncingScrollPhysics(),
-                    itemCount: prov.list.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (_, i) =>
-                        _StudentRow(record: prov.list[i], sessionId: sessionId),
-                  )),
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.redAccent,
+                    side: const BorderSide(color: Colors.redAccent),
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: () => setState(() {
+                    for (final s in _enrolledStudents) {
+                      _attendanceMap[s.id] = false;
+                    }
+                  }),
+                  child: const Text('All Absent',
+                      style: TextStyle(fontSize: 12)),
+                ),
+              ),
+            ]),
+          ),
       ]),
     );
   }
+
+  // ── Controls ──────────────────────────────────────────────────────────────
+
+  Widget _buildControls() => Container(
+    padding: const EdgeInsets.fromLTRB(8, 12, 8, 32),
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.bottomCenter,
+        end: Alignment.topCenter,
+        colors: [Color(0xDD000000), Colors.transparent],
+      ),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        _ControlButton(
+          icon: _isMicMuted ? Icons.mic_off : Icons.mic,
+          label: _isMicMuted ? 'Unmute' : 'Mute',
+          active: _isMicMuted,
+          onTap: _toggleMic,
+        ),
+        _ControlButton(
+          icon: _isCameraOff ? Icons.videocam_off : Icons.videocam,
+          label: _isCameraOff ? 'Cam On' : 'Cam Off',
+          active: _isCameraOff,
+          onTap: _toggleCamera,
+        ),
+        _ControlButton(
+          icon: Icons.flip_camera_ios,
+          label: _isFrontCamera ? 'Rear' : 'Front',
+          onTap: _switchCamera,
+        ),
+        _ControlButton(
+          icon: _isScreenSharing
+              ? Icons.stop_screen_share
+              : Icons.screen_share,
+          label: _isScreenSharing ? 'Stop' : 'Share',
+          active: _isScreenSharing,
+          activeColor: Colors.orangeAccent,
+          onTap: _toggleScreenShare,
+        ),
+        _ControlButton(
+          icon: Icons.checklist,
+          label: 'Attendance',
+          activeColor: Colors.greenAccent,
+          active: _showAttendancePanel,
+          onTap: () => setState(
+                  () => _showAttendancePanel = !_showAttendancePanel),
+        ),
+        _ControlButton(
+          icon: Icons.call_end,
+          label: 'End',
+          backgroundColor: Colors.redAccent,
+          onTap: _confirmEndSession,
+        ),
+      ],
+    ),
+  );
 }
 
-class _StudentRow extends StatelessWidget {
-  final AttendanceDetail record;
-  final int sessionId;
+// ─────────────────────────────────────────────────────────────────────────────
+//  Attendance tile
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const _StudentRow({required this.record, required this.sessionId});
+class _AttendanceTile extends StatelessWidget {
+  final EnrolledStudent student;
+  final bool isPresent;
+  final bool isInRoom;
+  final VoidCallback onToggle;
+
+  const _AttendanceTile({
+    required this.student,
+    required this.isPresent,
+    required this.isInRoom,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+    child: Row(children: [
+      CircleAvatar(
+        radius: 18,
+        backgroundColor: const Color(0xFF2C3154),
+        backgroundImage: student.imageUrl != null
+            ? NetworkImage(student.imageUrl!)
+            : null,
+        child: student.imageUrl == null
+            ? Text(
+          student.name.isNotEmpty
+              ? student.name[0].toUpperCase()
+              : '?',
+          style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.bold),
+        )
+            : null,
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(student.name,
+                  style:
+                  const TextStyle(color: Colors.white, fontSize: 13),
+                  overflow: TextOverflow.ellipsis),
+              Text(
+                isInRoom ? '● In room' : '○ Not joined',
+                style: TextStyle(
+                    color:
+                    isInRoom ? Colors.greenAccent : Colors.white38,
+                    fontSize: 10),
+              ),
+            ]),
+      ),
+      // Present / Absent toggle
+      GestureDetector(
+        onTap: onToggle,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: 76,
+          height: 28,
+          decoration: BoxDecoration(
+            color: isPresent
+                ? Colors.green.withOpacity(0.25)
+                : Colors.red.withOpacity(0.20),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isPresent ? Colors.greenAccent : Colors.redAccent,
+            ),
+          ),
+          child: Center(
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(isPresent ? Icons.check : Icons.close,
+                  size: 12,
+                  color: isPresent
+                      ? Colors.greenAccent
+                      : Colors.redAccent),
+              const SizedBox(width: 3),
+              Text(
+                isPresent ? 'Present' : 'Absent',
+                style: TextStyle(
+                  color: isPresent
+                      ? Colors.greenAccent
+                      : Colors.redAccent,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    ]),
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Shared widgets
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ControlButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool active;
+  final Color activeColor;
+  final Color? backgroundColor;
+  final VoidCallback onTap;
+
+  const _ControlButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.active = false,
+    this.activeColor = Colors.redAccent,
+    this.backgroundColor,
+  });
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: backgroundColor ?? const Color(0x554F8EF7),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon,
+            color: active ? activeColor : Colors.white, size: 22),
+      ),
+      const SizedBox(height: 4),
+      Text(label,
+          style: const TextStyle(color: Colors.white70, fontSize: 10)),
+    ]),
+  );
+}
+
+class _AvatarTile extends StatelessWidget {
+  final String name;
+  final bool isMuted;
+  const _AvatarTile({required this.name, required this.isMuted});
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(12)),
-        child: Row(children: [
-          Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: record.isPresent
-                      ? const Color(0xFF1D9E75)
-                      : Colors.grey.shade700),
-              child: const Icon(Icons.person_rounded,
-                  color: Colors.white, size: 20)),
-          const SizedBox(width: 10),
-          Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                Text(record.studentName,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontFamily: 'Cairo',
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600)),
-                if (record.checkInDate != null)
-                  Text('دخل: ${record.checkInLabel}',
-                      style: const TextStyle(
-                          color: Colors.white54,
-                          fontFamily: 'Cairo',
-                          fontSize: 11)),
-              ])),
-          if (!record.isPresent)
-            GestureDetector(
-                onTap: () => _manualCheckIn(context),
-                child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                        color: const Color(0xFF1D9E75).withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                            color: const Color(0xFF1D9E75)
-                                .withValues(alpha: 0.5))),
-                    child: const Text('تحضير',
-                        style: TextStyle(
-                            color: Color(0xFF1D9E75),
-                            fontFamily: 'Cairo',
-                            fontWeight: FontWeight.w700,
-                            fontSize: 11))))
-          else
-            Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                    color: const Color(0xFF1D9E75).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(6)),
-                child: const Text('حضر',
-                    style: TextStyle(
-                        color: Color(0xFF1D9E75),
-                        fontFamily: 'Cairo',
-                        fontWeight: FontWeight.w700,
-                        fontSize: 11))),
-        ]),
-      );
-
-  Future<void> _manualCheckIn(BuildContext ctx) async {
-    await ctx
-        .read<AttendanceProvider>()
-        .manualCheckIn(sessionId, record.studentId);
-    if (ctx.mounted)
-      ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
-          content:
-              Text('تم تحضير الطالب ✓', style: TextStyle(fontFamily: 'Cairo')),
-          backgroundColor: Color(0xFF1D9E75),
-          behavior: SnackBarBehavior.floating));
-  }
+    color: const Color(0xFF1A1D2E),
+    child: Center(
+      child:
+      Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        CircleAvatar(
+          radius: 36,
+          backgroundColor: const Color(0xFF2C3154),
+          child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?',
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold)),
+        ),
+        const SizedBox(height: 8),
+        Text(name,
+            style: const TextStyle(color: Colors.white70, fontSize: 13)),
+        const SizedBox(height: 4),
+        Icon(isMuted ? Icons.mic_off : Icons.mic,
+            color: isMuted ? Colors.redAccent : Colors.green, size: 18),
+      ]),
+    ),
+  );
 }
 
-class _Chip extends StatelessWidget {
-  final String t;
-  final Color c;
+class _RemoteParticipantTile extends StatelessWidget {
+  final RemoteParticipant participant;
 
-  const _Chip(this.t, this.c);
+  const _RemoteParticipantTile({required this.participant});
 
   @override
-  Widget build(BuildContext ctx) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-          color: c.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: c.withValues(alpha: 0.4))),
-      child: Text(t,
-          style: TextStyle(
-              color: c,
-              fontFamily: 'Cairo',
-              fontSize: 11,
-              fontWeight: FontWeight.w700)));
+  Widget build(BuildContext context) {
+    final track = participant.videoTrackPublications
+        .where((p) => p.source == TrackSource.camera)
+        .map((p) => p.track)
+        .whereType<VideoTrack>()
+        .firstOrNull;
+    return Stack(children: [
+      track != null
+          ? VideoTrackRenderer(track)
+          : _AvatarTile(
+          name: participant.name ?? participant.identity,
+          isMuted: !participant.isMicrophoneEnabled()),
+      Positioned(
+        bottom: 8,
+        left: 8,
+        child: _NameBadge(
+          name: participant.name ?? participant.identity,
+          isMuted: !participant.isMicrophoneEnabled(),
+        ),
+      ),
+    ]);
+  }
 }
+  class _LocalParticipantTile extends StatelessWidget {
+  final LocalParticipant participant;
+  final bool isMuted;
+  final String label;
+  const _LocalParticipantTile(
+  {required this.participant,
+  required this.isMuted,
+  this.label = 'You'});
+
+  @override
+  Widget build(BuildContext context) {
+  final track = participant.videoTrackPublications
+      .where((p) => p.source == TrackSource.camera)
+      .map((p) => p.track)
+      .whereType<VideoTrack>()
+      .firstOrNull;
+  return Stack(children: [
+  track != null
+  ? VideoTrackRenderer(track)
+      : _AvatarTile(name: label, isMuted: isMuted),
+  Positioned(
+  bottom: 8,
+  left: 8,
+  child: _NameBadge(name: label, isMuted: isMuted)),
+  ]);
+  }
+  }
+
+  class _NameBadge extends StatelessWidget {
+  final String name;
+  final bool isMuted;
+  const _NameBadge({required this.name, required this.isMuted});
+
+  @override
+  Widget build(BuildContext context) => Container(
+  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+  decoration: BoxDecoration(
+  color: const Color(0xAA000000),
+  borderRadius: BorderRadius.circular(8)),
+  child: Row(mainAxisSize: MainAxisSize.min, children: [
+  Icon(isMuted ? Icons.mic_off : Icons.mic,
+  color: isMuted ? Colors.redAccent : Colors.green, size: 13),
+  const SizedBox(width: 4),
+  Text(name,
+  style: const TextStyle(color: Colors.white, fontSize: 12)),
+  ]),
+  );
+  }
+
+// Reusable small camera thumbnail for the screen-share strip
+  class _ThumbnailBox extends StatelessWidget {
+  final VideoTrack? track;
+  final String label;
+
+  const _ThumbnailBox({required this.track, required this.label});
+
+  @override
+  Widget build(BuildContext context) => Container(
+  width: 72,
+  margin: const EdgeInsets.only(right: 6),
+  decoration: BoxDecoration(
+  color: const Color(0xFF1A1D2E),
+  borderRadius: BorderRadius.circular(8),
+  border: Border.all(color: Colors.white24),
+  ),
+  child: ClipRRect(
+  borderRadius: BorderRadius.circular(8),
+  child: Stack(fit: StackFit.expand, children: [
+  track != null
+  ? VideoTrackRenderer(track!)
+      : const Center(
+  child: Icon(Icons.videocam_off,
+  color: Colors.white54, size: 20)),
+  Positioned(
+  bottom: 2, left: 0, right: 0,
+  child: Center(
+  child: Text(label,
+  style: const TextStyle(color: Colors.white, fontSize: 9),
+  overflow: TextOverflow.ellipsis),
+  ),
+  ),
+  ]),
+  ),
+  );
+  }
+
+  extension _FirstWhereOrNull<T> on Iterable<T> {
+  T? firstWhereOrNull(bool Function(T) test) {
+  for (final e in this) {
+  if (test(e)) return e;
+  }
+  return null;
+  }
+  }

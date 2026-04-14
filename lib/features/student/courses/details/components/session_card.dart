@@ -120,18 +120,20 @@ class StudentSessionCard extends StatelessWidget {
     final provider = context.read<StudentSessionsProvider>();
 
     if (session.isLive) {
-      final LiveResponseModel? liveResponseModel = await provider.joinLive(session.id);
+      final LiveResponseModel? liveResponseModel =
+          await provider.joinLive(session.id);
       if (liveResponseModel == null || !context.mounted) return;
       _snack(context, 'جاري فتح الحصة المباشرة…', const Color(0xFF185FA5));
       print(liveResponseModel.url);
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => StudentLiveScreen(
-            wsUrl: liveResponseModel.url,
+          builder: (_) => StudentLiveSessionScreen(
+            // wsUrl: liveResponseModel.url,
             sessionId: session.id,
-            sessionTitle: session.name,
-            token: liveResponseModel.token,
+            authToken: liveResponseModel.token,
+            sessionName: session.name,
+            courseId: session.courseId,
           ),
         ),
       );

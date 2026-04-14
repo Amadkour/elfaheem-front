@@ -780,19 +780,19 @@ class _StartButtonState extends State<_StartButton> {
       print(liveResponseModel.url);
 
       Navigator.of(ctx).push(MaterialPageRoute(
-        builder: (_) => TeacherLiveScreen(
-          wsUrl: liveResponseModel.url,
+        builder: (_) => TeacherLiveSessionScreen(
+          // wsUrl: liveResponseModel.url,
           sessionId: 0,
           // actual id from create is inside TeacherLiveScreen
           courseId: widget.session.courseId,
-          sessionTitle: widget.session.courseName,
-          onEndLive: () async {
-            await ctx
-                .read<TeacherSessionsProvider>()
-                .endLive(sessionId, saveRecording: true);
-            return true;
-          },
-          token: liveResponseModel.token,
+          sessionName: widget.session.courseName,
+          // onEndLive: () async {
+          //   await ctx
+          //       .read<TeacherSessionsProvider>()
+          //       .endLive(sessionId, saveRecording: true);
+          //   return true;
+          // },
+          authToken: liveResponseModel.token,
         ),
       ));
     }
@@ -870,19 +870,19 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
 
     // Navigator.pop(context, url);
     Navigator.of(context).pushReplacement(MaterialPageRoute(
-      builder: (_) => TeacherLiveScreen(
-        wsUrl: liveResponseModel.url,
+      builder: (_) => TeacherLiveSessionScreen(
+        // wsUrl: liveResponseModel.url,
         sessionId: liveResponseModel.sessionId,
         // actual id from create is inside TeacherLiveScreen
         courseId: widget.session.courseId,
-        sessionTitle: widget.session.courseName,
-        onEndLive: () async {
-          await context
-              .read<TeacherSessionsProvider>()
-              .endLive(sessionId, saveRecording: true);
-          return true;
-        },
-        token: liveResponseModel.token,
+        sessionName: widget.session.courseName,
+        // onEndLive: () async {
+        //   await context
+        //       .read<TeacherSessionsProvider>()
+        //       .endLive(sessionId, saveRecording: true);
+        //   return true;
+        // },
+        authToken: liveResponseModel.token,
       ),
     ));
   }
