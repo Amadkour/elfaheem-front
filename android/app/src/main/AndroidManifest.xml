@@ -1,81 +1,212 @@
+<!--<manifest xmlns:tools="http://schemas.android.com/tools"-->
+<!--    xmlns:android="http://schemas.android.com/apk/res/android">-->
+<!--&lt;!&ndash;    &lt;!&ndash; ── Camera & Microphone (required for Daily.co WebRTC) ── &ndash;&gt;&ndash;&gt;-->
+<!--&lt;!&ndash;    <uses-permission android:name="android.permission.CAMERA" />&ndash;&gt;-->
+<!--&lt;!&ndash;    <uses-permission android:name="android.permission.RECORD_AUDIO" />&ndash;&gt;-->
+<!--&lt;!&ndash;    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />&ndash;&gt;-->
+
+<!--&lt;!&ndash;    &lt;!&ndash; ── Network (required for WebView & Daily.co) ── &ndash;&gt;&ndash;&gt;-->
+<!--&lt;!&ndash;    <uses-permission android:name="android.permission.INTERNET" />&ndash;&gt;-->
+<!--&lt;!&ndash;    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />&ndash;&gt;-->
+<!--&lt;!&ndash;&lt;!&ndash;    <uses-feature android:name="android.hardware.camera" android:required="false"&ndash;&gt;&ndash;&gt;-->
+<!--&lt;!&ndash;&lt;!&ndash;        tools:targetApi="eclair" />&ndash;&gt;&ndash;&gt;-->
+
+<!--&lt;!&ndash;    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>&ndash;&gt;-->
+<!--&lt;!&ndash;    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>&ndash;&gt;-->
+<!--&lt;!&ndash;    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>&ndash;&gt;-->
+<!--&lt;!&ndash;    <uses-permission android:name="ndroid.webkit.resource.AUDIO_CAPTURE"/>&ndash;&gt;-->
+<!--&lt;!&ndash;    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>&ndash;&gt;-->
+<!--&lt;!&ndash;    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"/>&ndash;&gt;-->
+<!--&lt;!&ndash;    <uses-feature android:name="android.hardware.camera.autofocus" />&ndash;&gt;-->
+<!--&lt;!&ndash;    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />&ndash;&gt;-->
+<!--&lt;!&ndash;    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />&ndash;&gt;-->
+<!--&lt;!&ndash;    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />&ndash;&gt;-->
+<!--&lt;!&ndash;    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />&ndash;&gt;-->
+
+<!--&lt;!&ndash;    <application&ndash;&gt;-->
+<!--&lt;!&ndash;        android:usesCleartextTraffic="true"&ndash;&gt;-->
+<!--&lt;!&ndash;        android:label="flutter_education_app"&ndash;&gt;-->
+<!--&lt;!&ndash;        android:name="${applicationName}"&ndash;&gt;-->
+<!--&lt;!&ndash;        android:icon="@mipmap/ic_launcher">&ndash;&gt;-->
+<!--&lt;!&ndash;        &lt;!&ndash; inside <application> &ndash;&gt;&ndash;&gt;-->
+<!--&lt;!&ndash;        <service&ndash;&gt;-->
+<!--&lt;!&ndash;            android:name="de.julianassmann.flutter_background.IsolateHolderService"&ndash;&gt;-->
+<!--&lt;!&ndash;            android:enabled="true"&ndash;&gt;-->
+<!--&lt;!&ndash;            android:exported="false"&ndash;&gt;-->
+<!--&lt;!&ndash;            android:foregroundServiceType="mediaProjection" />&ndash;&gt;-->
+<!--&lt;!&ndash;        <service&ndash;&gt;-->
+<!--&lt;!&ndash;            android:name="io.livekit.android.screencapture.ScreenCaptureService"&ndash;&gt;-->
+<!--&lt;!&ndash;            android:foregroundServiceType="mediaProjection"&ndash;&gt;-->
+<!--&lt;!&ndash;            android:exported="false"&ndash;&gt;-->
+<!--&lt;!&ndash;            tools:ignore="MissingClass" />&ndash;&gt;-->
+<!--&lt;!&ndash;        <activity&ndash;&gt;-->
+<!--&lt;!&ndash;            android:name=".MainActivity"&ndash;&gt;-->
+<!--&lt;!&ndash;            android:exported="true"&ndash;&gt;-->
+<!--&lt;!&ndash;            android:launchMode="singleTop"&ndash;&gt;-->
+<!--&lt;!&ndash;            android:taskAffinity=""&ndash;&gt;-->
+<!--&lt;!&ndash;            android:theme="@style/LaunchTheme"&ndash;&gt;-->
+<!--&lt;!&ndash;            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"&ndash;&gt;-->
+<!--&lt;!&ndash;            android:hardwareAccelerated="true"&ndash;&gt;-->
+<!--&lt;!&ndash;            android:windowSoftInputMode="adjustResize">&ndash;&gt;-->
+<!--&lt;!&ndash;            &lt;!&ndash; Specifies an Android theme to apply to this Activity as soon as&ndash;&gt;-->
+<!--&lt;!&ndash;                 the Android process has started. This theme is visible to the user&ndash;&gt;-->
+<!--&lt;!&ndash;                 while the Flutter UI initializes. After that, this theme continues&ndash;&gt;-->
+<!--&lt;!&ndash;                 to determine the Window background behind the Flutter UI. &ndash;&gt;&ndash;&gt;-->
+<!--&lt;!&ndash;            <meta-data&ndash;&gt;-->
+<!--&lt;!&ndash;              android:name="io.flutter.embedding.android.NormalTheme"&ndash;&gt;-->
+<!--&lt;!&ndash;              android:resource="@style/NormalTheme"&ndash;&gt;-->
+<!--&lt;!&ndash;              />&ndash;&gt;-->
+<!--&lt;!&ndash;            <intent-filter>&ndash;&gt;-->
+<!--&lt;!&ndash;                <action android:name="android.intent.action.MAIN"/>&ndash;&gt;-->
+<!--&lt;!&ndash;                <category android:name="android.intent.category.LAUNCHER"/>&ndash;&gt;-->
+<!--&lt;!&ndash;            </intent-filter>&ndash;&gt;-->
+<!--&lt;!&ndash;        </activity>&ndash;&gt;-->
+<!--&lt;!&ndash;        &lt;!&ndash; Don't delete the meta-data below.&ndash;&gt;-->
+<!--&lt;!&ndash;             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java &ndash;&gt;&ndash;&gt;-->
+<!--&lt;!&ndash;        <meta-data&ndash;&gt;-->
+<!--&lt;!&ndash;            android:name="flutterEmbedding"&ndash;&gt;-->
+<!--&lt;!&ndash;            android:value="2" />&ndash;&gt;-->
+<!--&lt;!&ndash;    </application>&ndash;&gt;-->
+<!--&lt;!&ndash;    &lt;!&ndash; Required to query activities that can process text, see:&ndash;&gt;-->
+<!--&lt;!&ndash;         https://developer.android.com/training/package-visibility and&ndash;&gt;-->
+<!--&lt;!&ndash;         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.&ndash;&gt;-->
+
+<!--&lt;!&ndash;         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. &ndash;&gt;&ndash;&gt;-->
+<!--&lt;!&ndash;    <queries>&ndash;&gt;-->
+<!--&lt;!&ndash;        <intent>&ndash;&gt;-->
+<!--&lt;!&ndash;            <action android:name="android.intent.action.PROCESS_TEXT"/>&ndash;&gt;-->
+<!--&lt;!&ndash;            <data android:mimeType="text/plain"/>&ndash;&gt;-->
+<!--&lt;!&ndash;        </intent>&ndash;&gt;-->
+<!--&lt;!&ndash;    </queries>&ndash;&gt;-->
+<!--    <uses-feature android:name="android.hardware.camera" />-->
+<!--    <uses-feature android:name="android.hardware.camera.autofocus" />-->
+<!--    <uses-permission android:name="android.permission.CAMERA" />-->
+<!--    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />-->
+<!--    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />-->
+<!--    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />-->
+<!--    <uses-permission android:name="android.permission.RECORD_AUDIO" />-->
+<!--    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />-->
+<!--    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />-->
+<!--    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />-->
+<!--    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />-->
+<!--    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />-->
+<!--    <uses-permission android:name="android.permission.WAKE_LOCK" />-->
+<!--    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />-->
+<!--    <uses-permission android:name="android.permission.INTERNET" />-->
+<!--    <application-->
+<!--        android:usesCleartextTraffic="true"-->
+<!--        android:label="flutter_education_app"-->
+<!--        android:name="${applicationName}">-->
+<!--    <activity-->
+<!--        android:exported="true"-->
+<!--        android:name=".MainActivity"-->
+<!--        android:launchMode="singleTop"-->
+<!--        android:theme="@style/LaunchTheme"-->
+<!--        android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"-->
+<!--        android:hardwareAccelerated="true"-->
+<!--        android:windowSoftInputMode="adjustResize">-->
+<!--        &lt;!&ndash; Specifies an Android theme to apply to this Activity as soon as-->
+<!--        the Android process has started. This theme is visible to the user-->
+<!--        while the Flutter UI initializes. After that, this theme continues-->
+<!--        to determine the Window background behind the Flutter UI. &ndash;&gt;-->
+<!--        <meta-data-->
+<!--            android:name="io.flutter.embedding.android.NormalTheme"-->
+<!--            android:resource="@style/NormalTheme" />-->
+<!--        <intent-filter>-->
+<!--            <action android:name="android.intent.action.MAIN" />-->
+<!--            <category android:name="android.intent.category.LAUNCHER" />-->
+<!--        </intent-filter>-->
+<!--    </activity>-->
+<!--    <service-->
+<!--        android:name="de.julianassmann.flutter_background.IsolateHolderService"-->
+<!--        android:enabled="true"-->
+<!--        android:exported="false"-->
+<!--        android:foregroundServiceType="mediaProjection" />-->
+<!--    &lt;!&ndash; Don't delete the meta-data below.-->
+<!--    This is used by the Flutter tool to generate GeneratedPluginRegistrant.java &ndash;&gt;-->
+<!--    <meta-data-->
+<!--        android:name="flutterEmbedding"-->
+<!--        android:value="2" />-->
+<!--    </application>-->
+<!--</manifest>-->
+
 <manifest xmlns:tools="http://schemas.android.com/tools"
     xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- ── Camera & Microphone (required for Daily.co WebRTC) ── -->
+
+    <!-- ── Camera & Microphone ── -->
+    <uses-feature android:name="android.hardware.camera" />
+    <uses-feature android:name="android.hardware.camera.autofocus" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
-    <!-- ── Network (required for WebView & Daily.co) ── -->
+    <!-- ── Network ── -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-<!--    <uses-feature android:name="android.hardware.camera" android:required="false"-->
-<!--        tools:targetApi="eclair" />-->
-
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="ndroid.webkit.resource.AUDIO_CAPTURE"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"/>
-    <uses-feature android:name="android.hardware.camera.autofocus" />
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+
+    <!-- ── Bluetooth ── -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+
+    <!-- ── Foreground Service (screen share) ── -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <!-- ── Notifications (Android 13+ REQUIRED for foreground service) ── -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:usesCleartextTraffic="true"
         android:label="flutter_education_app"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
-        <!-- inside <application> -->
+
+        <activity
+            android:exported="true"
+            android:name=".MainActivity"
+            android:launchMode="singleTop"
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- flutter_background foreground service -->
         <service
             android:name="de.julianassmann.flutter_background.IsolateHolderService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="mediaProjection" />
+
+        <!-- LiveKit screen capture service — THIS WAS MISSING, causes the crash -->
         <service
             android:name="io.livekit.android.screencapture.ScreenCaptureService"
             android:foregroundServiceType="mediaProjection"
             android:exported="false"
             tools:ignore="MissingClass" />
-        <activity
-            android:name=".MainActivity"
-            android:exported="true"
-            android:launchMode="singleTop"
-            android:taskAffinity=""
-            android:theme="@style/LaunchTheme"
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
-            android:hardwareAccelerated="true"
-            android:windowSoftInputMode="adjustResize">
-            <!-- Specifies an Android theme to apply to this Activity as soon as
-                 the Android process has started. This theme is visible to the user
-                 while the Flutter UI initializes. After that, this theme continues
-                 to determine the Window background behind the Flutter UI. -->
-            <meta-data
-              android:name="io.flutter.embedding.android.NormalTheme"
-              android:resource="@style/NormalTheme"
-              />
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
-            </intent-filter>
-        </activity>
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
-    <!-- Required to query activities that can process text, see:
-         https://developer.android.com/training/package-visibility and
-         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
 
-         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
         <intent>
-            <action android:name="android.intent.action.PROCESS_TEXT"/>
-            <data android:mimeType="text/plain"/>
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+            <data android:mimeType="text/plain" />
         </intent>
     </queries>
 </manifest>

@@ -64,6 +64,8 @@ class UserModel {
     this.registrationStep,
   });
 
+  bool get isTeacher => role == 'teacher';
+
   factory UserModel.fromJson(Map<String, dynamic> j) => UserModel(
         id: j['id'] as int,
         name: j['name'] as String,

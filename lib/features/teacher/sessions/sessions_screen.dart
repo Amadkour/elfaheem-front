@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/attendance/teacher_attendance_screen.dart';
-import 'package:flutter_education_app/features/teacher/sessions/teacher_live_screen.dart';
-import 'package:http/http.dart' as apiClient;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -248,9 +246,10 @@ class _SessionList extends StatelessWidget {
     if (ok == true && ctx.mounted) {
       final deleted =
           await ctx.read<TeacherSessionsProvider>().deleteSession(s.id);
-      if (ctx.mounted)
+      if (ctx.mounted) {
         _snack(ctx, deleted ? 'تم الحذف' : 'فشل الحذف',
             deleted ? AppTheme.success : AppTheme.danger);
+      }
     }
   }
 
@@ -291,75 +290,8 @@ class _SessionList extends StatelessWidget {
     );
     if (confirmed != true || !ctx.mounted) return;
 
-    final LiveResponseModel? liveResponseModel = await ctx.read<TeacherSessionsProvider>().startLive(s.id);
     if (!ctx.mounted) return;
-
-    if (liveResponseModel != null) {
-      await showDialog(
-          context: ctx,
-          builder: (_) => Directionality(
-                textDirection: TextDirection.rtl,
-                child: AlertDialog(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16)),
-                  title: const Text('تم بدء الحصة ✓',
-                      style: TextStyle(
-                          fontFamily: 'Cairo',
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.success)),
-                  content: Column(mainAxisSize: MainAxisSize.min, children: [
-                    const Text('الرابط جاهز. افتحه لدخول الغرفة:',
-                        style: TextStyle(fontFamily: 'Cairo')),
-                    const SizedBox(height: 12),
-                    Text(liveResponseModel.url,
-                        style: const TextStyle(
-                            fontFamily: 'Cairo',
-                            fontSize: 12,
-                            color: AppTheme.primary),
-                        textAlign: TextAlign.center),
-                  ]),
-                  actions: [
-                    TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text('إغلاق',
-                            style: TextStyle(
-                                fontFamily: 'Cairo',
-                                color: AppTheme.textMedium))),
-                    ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primary,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10))),
-                        onPressed: () async {
-                          Navigator.push(
-                            ctx,
-                            MaterialPageRoute(
-                              builder: (_) => TeacherLiveSessionScreen(
-                                // wsUrl: liveResponseModel.url,
-                                sessionId: s.id,
-                                courseId: s.courseId,
-                                sessionName: s.name,
-                                // onEndLive: () => Future.value(true),
-                                // onEndLive: () async {
-                                //   await ctx.read<TeacherSessionsProvider>().endLive(s.id,saveRecording: true);
-                                //   return true;
-                                // },
-                                authToken: liveResponseModel.token,
-                              ),
-                            ),
-                          );
-                        },
-                        child: const Text('افتح الغرفة',
-                            style: TextStyle(
-                                fontFamily: 'Cairo',
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700))),
-                  ],
-                ),
-              ));
-    } else {
-      _snack(ctx, 'فشل بدء الحصة', AppTheme.danger);
-    }
+    ctx.read<TeacherSessionsProvider>().joinLive(ctx, s.id, s.courseId, 5);
   }
 
   Future<void> _handleEnd(BuildContext ctx, TeacherSessionItem s) async {
@@ -414,16 +346,18 @@ class _SessionList extends StatelessWidget {
     final ok = await ctx
         .read<TeacherSessionsProvider>()
         .endLive(s.id, saveRecording: saveRecording);
-    if (ctx.mounted)
+    if (ctx.mounted) {
       _snack(ctx, ok ? 'تم إنهاء الحصة' : 'حدث خطأ',
           ok ? AppTheme.primary : AppTheme.danger);
+    }
   }
 
   Future<void> _handleRecording(BuildContext ctx, TeacherSessionItem s) async {
     if (s.hasRecording) {
       final uri = Uri.parse(s.recordingUrl!);
-      if (await canLaunchUrl(uri))
+      if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
       return;
     }
     _snack(ctx, 'جاري البحث عن التسجيل...', AppTheme.primary);
@@ -432,8 +366,9 @@ class _SessionList extends StatelessWidget {
     if (!ctx.mounted) return;
     if (url != null) {
       final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri))
+      if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
     } else {
       _snack(ctx, 'التسجيل لم يكتمل بعد، حاول لاحقاً', AppTheme.accent);
     }

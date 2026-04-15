@@ -9,11 +9,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-#  webview_flutter_android: ^3.16.4
   flutter_inappwebview: ^6.1.5
   flutter_screen_recording: ^2.0.25
   record: ^6.2.0
-  permission_handler: ^11.3.0
   path_provider: ^2.1.0
   http: ^1.2.0
   http_parser: ^4.0.2
@@ -36,11 +34,19 @@ dependencies:
     sdk: flutter
   flutter_native_splash:
   record_platform_interface: ^1.5.0
+  flutter_background: ^1.1.0
+  permission_handler: ^11.3.1
+  logging: ^1.0.1
+  google_fonts: ^6.2.1
+  flutter_svg: ^2.0.5
+  dropdown_button2: ^2.3.6
+  collection: '>=1.16.0'
   livekit_client: ^2.7.0
 
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
+dependency_overrides:
+  # Pin packages that use Apple APIs unavailable on CI runner's Xcode version.
+  connectivity_plus: '>=7.0.0 <7.1.0' # NWPath.isUltraConstrained
+  device_info_plus: '>=12.3.0 <12.4.0' # NSProcessInfo.isiOSAppOnVision
   flutter_lints: ^6.0.0
 
 flutter:

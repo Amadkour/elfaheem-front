@@ -1,16 +1,3 @@
-/// teacher/dashboard/home_screen.dart
-///
-/// Teacher home screen.
-///
-/// Changes vs previous version:
-///  1. Professional shimmer loading while TeacherProvider.init() is running.
-///  2. ScheduleSession cards now use CourseSchedule-based fields
-///     (schedule_id, start_time, end_time, is_today, is_ongoing, etc.)
-///  3. "بدأ الحصة" button opens a bottom sheet to CREATE a session first
-///     (pre-filled from the schedule slot), then immediately starts the
-///     Daily.co room and navigates to TeacherLiveScreen.
-
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart'
     show TeacherStats, TeacherCourse, ScheduleSession;
@@ -27,7 +14,6 @@ import '../courses/add_course_screen.dart';
 import '../courses/courses_screen.dart';
 import '../sessions/sessions_provider.dart';
 import '../sessions/sessions_screen.dart';
-import '../sessions/teacher_live_screen.dart';
 
 class TeacherHomeScreen extends StatefulWidget {
   const TeacherHomeScreen({super.key});
@@ -733,7 +719,7 @@ class _StartButtonState extends State<_StartButton> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
       child: GestureDetector(
-        onTap: _busy ? null : () => _openSheet(widget.pageContext, 0),
+        onTap: _busy ? null : () => _openSheet(widget.pageContext),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           height: 44,
@@ -767,35 +753,13 @@ class _StartButtonState extends State<_StartButton> {
     );
   }
 
-  Future<void> _openSheet(BuildContext ctx, int sessionId) async {
-    final LiveResponseModel? liveResponseModel =
-        await showModalBottomSheet<LiveResponseModel>(
+  Future<void> _openSheet(BuildContext ctx) async {
+    await showModalBottomSheet<LiveResponseModel>(
       context: ctx,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _CreateSessionSheet(session: widget.session),
     );
-    // result is the meeting URL if the teacher confirmed & session was created
-    if (liveResponseModel != null) {
-      print(liveResponseModel.url);
-
-      Navigator.of(ctx).push(MaterialPageRoute(
-        builder: (_) => TeacherLiveSessionScreen(
-          // wsUrl: liveResponseModel.url,
-          sessionId: 0,
-          // actual id from create is inside TeacherLiveScreen
-          courseId: widget.session.courseId,
-          sessionName: widget.session.courseName,
-          // onEndLive: () async {
-          //   await ctx
-          //       .read<TeacherSessionsProvider>()
-          //       .endLive(sessionId, saveRecording: true);
-          //   return true;
-          // },
-          authToken: liveResponseModel.token,
-        ),
-      ));
-    }
   }
 }
 
@@ -839,7 +803,7 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
     super.dispose();
   }
 
-  Future<void> _submit(int sessionId) async {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() {
       _submitting = true;
@@ -849,42 +813,16 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
     final duration =
         int.tryParse(_durCtrl.text.trim()) ?? widget.session.durationMinutes;
 
-    final LiveResponseModel? liveResponseModel =
-        await context.read<TeacherProvider>().createAndStartLiveSession(
-              courseId: widget.session.courseId,
-              name: _nameCtrl.text.trim(),
-              durationMinutes: duration,
-              description:
-                  _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
-            );
-
-    if (!mounted) return;
-
-    if (liveResponseModel == null) {
-      setState(() {
-        _submitting = false;
-        _error = 'حدث خطأ أثناء إنشاء الحصة. حاول مجدداً.';
-      });
-      return;
-    }
-
-    // Navigator.pop(context, url);
-    Navigator.of(context).pushReplacement(MaterialPageRoute(
-      builder: (_) => TeacherLiveSessionScreen(
-        // wsUrl: liveResponseModel.url,
-        sessionId: liveResponseModel.sessionId,
-        // actual id from create is inside TeacherLiveScreen
-        courseId: widget.session.courseId,
-        sessionName: widget.session.courseName,
-        // onEndLive: () async {
-        //   await context
-        //       .read<TeacherSessionsProvider>()
-        //       .endLive(sessionId, saveRecording: true);
-        //   return true;
-        // },
-        authToken: liveResponseModel.token,
-      ),
-    ));
+    int sessionId = await context.read<TeacherProvider>().createSession(
+          courseId: widget.session.courseId,
+          name: _nameCtrl.text.trim(),
+          durationMinutes: duration,
+          description:
+              _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+        );
+    context
+        .read<TeacherSessionsProvider>()
+        .joinLive(context, sessionId, widget.session.courseId, 100);
   }
 
   @override
@@ -1004,7 +942,7 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
               MyPrimaryButton(
                 label: 'إنشاء الحصة وبدء البث 🚀',
                 isLoading: _submitting,
-                onPressed: _submitting ? null : () async => await _submit(0),
+                onPressed: _submitting ? null : () async => await _submit(),
               ),
 
               const SizedBox(height: 8),

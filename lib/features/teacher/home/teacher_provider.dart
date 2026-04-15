@@ -20,7 +20,11 @@ class LiveResponseModel {
   final String url;
   final String token;
 
-  LiveResponseModel({required this.sessionId, required this.url, required this.token});
+  LiveResponseModel(
+      {required this.sessionId, required this.url, required this.token});
+
+  Map<String, dynamic> get toJson =>
+      {'session_id': sessionId, 'url': url, 'token': token};
 }
 
 class TeacherProvider extends BaseProvider {
@@ -80,7 +84,7 @@ class TeacherProvider extends BaseProvider {
   /// Returns the teacher's personal meeting URL (with owner token) on success,
   /// or null if either step fails.
 
-  Future<LiveResponseModel?> createAndStartLiveSession({
+  Future<int> createSession({
     required int courseId,
     required String name,
     required int durationMinutes,
@@ -98,36 +102,10 @@ class TeacherProvider extends BaseProvider {
               'description': description,
           },
         ));
-
-    if (sessionResult == null) return null;
-
-    final sessionId = (sessionResult as Map<String, dynamic>)['id'] as int?;
-    if (sessionId == null) return null;
-
-    // ── Step 2: Start the Daily.co room ────────────────────────────────────
-    final liveResult = await run(() => _api.post(
-          '/api/v1/live-sessions/start',
-          body: {},
-          queryParams: {'session_id': sessionId},
-        ));
-
-    if (liveResult == null) return null;
-
-    final String url = (liveResult as Map<String, dynamic>)['ws_url'] as String? ??'';
-    final String token = (liveResult)['token'] as String? ??'';
-    return  LiveResponseModel(sessionId: sessionId, url: url,token:token);
+    return sessionResult['id'];
   }
 
   // ── Legacy: start an already-existing session (kept for backward compat) ──
-
-  Future<String?> startLiveSession(int sessionId) async {
-    final result = await run(() => _api.post(
-          '/api/v1/live-sessions/start',
-          body: {},
-          queryParams: {'session_id': sessionId},
-        ));
-    return (result as Map<String, dynamic>?)?['meeting_url'] as String?;
-  }
 
   // ── GET /api/v1/my-courses ────────────────────────────────────────────────────
 
@@ -606,7 +584,8 @@ class TeacherProvider extends BaseProvider {
       _allCourses.where((c) => c.id == id).firstOrNull;
 
   Future<void> initAddCourse(BuildContext context) async {
-    specializations=await context.read<CategoriesProvider>().getSpecialization();
+    specializations =
+        await context.read<CategoriesProvider>().getSpecialization();
     notifyListeners();
   }
 }

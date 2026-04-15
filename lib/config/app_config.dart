@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 /// Application configuration and AppTheme.
 class AppConfig {
 // For Android Emulator
-  static const String baseUrl = 'https://asks-empire-privacy-universe.trycloudflare.com';
+  static const String baseUrl = 'https://teddy-sink-permanent-paintings.trycloudflare.com';
 
   // static const String baseUrl = 'http://10.0.2.2:8000';
 
