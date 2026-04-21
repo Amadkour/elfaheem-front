@@ -6,6 +6,7 @@
 /// static leaderboard stub; replace the stubs with real API calls when
 /// the backend exposes a rewards endpoint.
 /// ─────────────────────────────────────────────────────────────────────────────
+library;
 
 import 'package:flutter/material.dart';
 
@@ -52,8 +53,9 @@ class RewardsProvider extends ChangeNotifier {
   int get totalPoints {
     int pts = 0;
     for (final c in _enrolledCourses) {
-      if (c.progress >= 1.0) pts += 100;
-      else if (c.progress > 0) pts += 50;
+      if (c.progress >= 1.0) {
+        pts += 100;
+      } else if (c.progress > 0) pts += 50;
     }
     return pts;
   }

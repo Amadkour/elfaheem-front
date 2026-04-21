@@ -8,7 +8,6 @@ import '../../../config/app_theme.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../student/models.dart';
 import '../home/teacher_models.dart';
-import '../home/teacher_provider.dart';
 import 'sessions_provider.dart';
 import 'components/session_card.dart';
 import 'components/session_form_sheet.dart';

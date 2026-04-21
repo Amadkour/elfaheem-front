@@ -6,6 +6,7 @@
 ///   • Real data comes from CategoriesProvider + CoursesProvider
 ///   • Keeps only: user info, nav index, upcoming banner
 /// ─────────────────────────────────────────────────────────────────────────────
+library;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';

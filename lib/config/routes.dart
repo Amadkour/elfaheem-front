@@ -3,7 +3,6 @@ import 'package:flutter_education_app/features/student/models.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/register_screen.dart';
 import '../features/student/dashboard/dashboard_screen.dart';
-import '../features/live/create_live_session_screen.dart';
 import '../features/student/courses/details/course_detail_screen.dart';
 import '../features/student/courses/list/courses_list_screen.dart';
 import '../features/teacher/courses/add_course_screen.dart';
@@ -48,26 +47,6 @@ class AppRoutes {
 
       case createCourse:
         return MaterialPageRoute(builder: (_) => const AddCourseScreen());
-
-      // case lessonDetail:
-      //   final lessonId = settings.arguments as int;
-      //   return MaterialPageRoute(
-      //     builder: (_) => StudentSess(lessonId: lessonId),
-      //   );
-      //
-      // case uploadVideo:
-      //   final courseId = settings.arguments as int;
-      //   return MaterialPageRoute(
-      //     builder: (_) => CreateLessonScreen(
-      //       preSelectedModule: -1,
-      //       courseId: courseId,
-      //     ),
-      //   );
-      case createLiveSession:
-        final courseId = settings.arguments as int;
-        return MaterialPageRoute(
-          builder: (_) => CreateLiveSessionScreen(courseId: courseId),
-        );
 
       default:
         return MaterialPageRoute(

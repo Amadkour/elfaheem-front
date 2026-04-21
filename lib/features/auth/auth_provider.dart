@@ -29,9 +29,9 @@
 ///   resetPassword()          → POST /api/v1/auth/reset-password
 ///   resendOtp()              → POST /api/v1/auth/resend-otp
 /// ─────────────────────────────────────────────────────────────────────────────
+library;
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_education_app/services/storage_service.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/storage_service.dart';
@@ -106,7 +106,7 @@ class AuthProvider extends BaseProvider {
     _loadCachedUser();
   }
 
-  loadSpecialization(BuildContext context) async {
+  Future<void> loadSpecialization(BuildContext context) async {
     specializations =
         await context.read<CategoriesProvider>().getSpecialization();
   }

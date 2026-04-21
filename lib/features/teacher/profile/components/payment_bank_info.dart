@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../config/app_config.dart' as Helpers;
@@ -7,7 +6,7 @@ import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/primary_button.dart';
 
 class PaymentMethodsScreen extends StatelessWidget {
-  const PaymentMethodsScreen();
+  const PaymentMethodsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

@@ -3,6 +3,7 @@
 /// Data models used across the teacher feature.
 /// ScheduleSession now matches the dashboard_service.py output which is
 /// derived from CourseSchedule (not SessionModel.scheduled_at).
+library;
 
 class CourseSchedule {
   final int id;
@@ -196,7 +197,7 @@ class ScheduleSession {
     if (isOngoing) {
       final left = minutesUntilEnd ?? 0;
       if (left <= 0) return 'انتهت للتو';
-      return 'جارية — تنتهي بعد ${left}د';
+      return 'جارية — تنتهي بعد $leftد';
     }
     if (!isToday) {
       return scheduledDate != null
@@ -205,7 +206,7 @@ class ScheduleSession {
     }
     final mu = minutesUntilStart ?? 0;
     if (mu <= 0) return 'بدأت للتو';
-    if (mu < 60) return 'اليوم — بعد ${mu}د';
+    if (mu < 60) return 'اليوم — بعد $muد';
     return 'اليوم — بعد ${mu ~/ 60}س${mu % 60 > 0 ? " ${mu % 60}د" : ""}';
   }
 

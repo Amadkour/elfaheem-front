@@ -7,6 +7,7 @@
 ///   GET  /api/v1/exams/{id}/questions     list questions
 ///   POST /api/v1/exam-answers             submit answer (student)
 ///   GET  /api/v1/exams/{id}/results       results (student own / teacher all)
+library;
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
 import 'live_models.dart';

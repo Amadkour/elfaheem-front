@@ -168,7 +168,7 @@ class _StudentLiveSessionScreenState extends State<StudentLiveSessionScreen>
 
       _localVideoTrack = _localParticipant?.videoTrackPublications
           .firstWhereOrNull((p) => p.source == TrackSource.camera)
-          ?.track as LocalVideoTrack?;
+          ?.track;
 
       setState(() {
         _room = room;

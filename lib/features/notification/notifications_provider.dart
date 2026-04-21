@@ -15,6 +15,7 @@
 /// NotificationModel fields the screen reads:
 ///   id, title, body, iconAsset, isRead
 /// ─────────────────────────────────────────────────────────────────────────────
+library;
 
 import '../../core/api_client.dart';
 import '../../core/base_provider.dart';
@@ -98,10 +99,14 @@ class NotificationModel {
     if (type.contains('payment') || type.contains('pay')) return 'payment';
     if (type.contains('badge')   ||
         type.contains('certificate') ||
-        type.contains('premium'))    return 'badge';
+        type.contains('premium')) {
+      return 'badge';
+    }
     if (type.contains('new')     ||
         type.contains('enroll')  ||
-        type.contains('join'))       return 'new';
+        type.contains('join')) {
+      return 'new';
+    }
     return ''; // default → bell icon
   }
 

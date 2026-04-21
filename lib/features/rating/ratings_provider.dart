@@ -4,6 +4,7 @@
 /// GET  /api/v1/courses/{course_id}/ratings          — course ratings list
 /// GET  /api/v1/sessions/{session_id}/ratings        — session ratings list
 /// ─────────────────────────────────────────────────────────────────────────────
+library;
 
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';

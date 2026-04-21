@@ -4,6 +4,7 @@
 ///   GET  /api/v1/teacher/dashboard   — stats + courses + schedule
 ///   POST /api/v1/sessions            — create a new session
 ///   POST /api/v1/live-sessions/start — start a Daily.co room
+library;
 
 import 'dart:io';
 

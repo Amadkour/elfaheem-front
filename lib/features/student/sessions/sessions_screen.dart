@@ -318,8 +318,9 @@ class _SessionCard extends StatelessWidget {
       await provider.trackView(session.id);
       if (session.hasRecording && context.mounted) {
         final uri = Uri.parse(session.recordingUrl!);
-        if (await canLaunchUrl(uri))
+        if (await canLaunchUrl(uri)) {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
       } else if (!session.isCompleted && context.mounted) {
         // Offer to mark complete
         final ok = await showDialog<bool>(
@@ -353,19 +354,20 @@ class _SessionCard extends StatelessWidget {
                                   color: Colors.white,
                                   fontWeight: FontWeight.w700))),
                     ])));
-        if (ok == true && context.mounted)
+        if (ok == true && context.mounted) {
           await context
               .read<StudentSessionsProvider>()
               .markComplete(session.id);
+        }
       }
     }
   }
 
   Future<void> _launchUrl(BuildContext ctx, String url) async {
     final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri))
+    if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
-    else if (ctx.mounted) _snack(ctx, 'تعذر فتح الرابط', AppTheme.danger);
+    } else if (ctx.mounted) _snack(ctx, 'تعذر فتح الرابط', AppTheme.danger);
   }
 
   void _snack(BuildContext ctx, String msg, Color c) =>
@@ -395,15 +397,17 @@ class _AttendanceRow extends StatelessWidget {
         _SmallBtn('تسجيل الحضور', Icons.login_rounded, AppTheme.success,
             () async {
           await provider.checkIn(session.id);
-          if (context.mounted)
+          if (context.mounted) {
             _snack(context, 'تم تسجيل حضورك ✓', AppTheme.success);
+          }
         })
       else
         _SmallBtn('تسجيل المغادرة', Icons.logout_rounded, AppTheme.danger,
             () async {
           await provider.checkOut(session.id);
-          if (context.mounted)
+          if (context.mounted) {
             _snack(context, 'تم تسجيل مغادرتك', AppTheme.primary);
+          }
         }),
     ]);
   }

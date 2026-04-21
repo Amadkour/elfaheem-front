@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter_education_app/services/storage_service.dart';
 import '../config/storage_service.dart';
 import '../models/course.dart';
 import '../services/api_service.dart';
@@ -17,7 +16,7 @@ class CourseProvider with ChangeNotifier {
       getApiService();
     }
   }
- getApiService() async {
+ Future<void> getApiService() async {
    StorageService storageService=await StorageService.getInstance();
    _apiService=ApiService(storageService );
  }

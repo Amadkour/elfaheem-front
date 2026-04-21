@@ -1,6 +1,6 @@
-﻿import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart';
+import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/utils/widget/password_text_field.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
@@ -9,6 +9,7 @@ import '../teacher/dashboard/teacher_dashboard_screen.dart';
 import 'auth_provider.dart';
 import '../../utils/widget/primary_button.dart';
 import '../../utils/widget/text_field.dart';
+import 'auth_widgets.dart';
 import 'forget_screen.dart';
 import 'register_screen.dart';
 
@@ -28,7 +29,6 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    // _emailController.text = 'hamdymadkour@ci.menofia.edu.eg';
     _emailController.text = 'Ahmed.Madkour@it-ranks.com';
     _passwordController.text = 'Aa@@aA2291996';
   }
@@ -42,22 +42,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
-
     final authProvider = context.read<AuthProvider>();
-
     final success = await authProvider.login(
       gmail: _emailController.text.trim(),
       password: _passwordController.text,
     );
-
     if (!mounted) return;
-
     if (success) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-            builder: (_) => authProvider.isTeacher
-                ? const TeacherDashboardScreen()
-                : const DashboardScreen()),
+          builder: (_) => authProvider.isTeacher
+              ? const TeacherDashboardScreen()
+              : const DashboardScreen(),
+        ),
       );
     } else {
       Helpers.showMessage(
@@ -70,170 +67,140 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: pageDirection,
-      child: Scaffold(
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 50, 24, 24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Logo/Title
+    final isWide = MediaQuery.of(context).size.width > 800;
 
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Image.asset(
-                        'assets/images/logo.png',
-                        width: 150,
-                        height: 130,
-                      ),
-                      const Spacer(),
-                      // Inside your build method:
-                      Row(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.all(4.0),
-                            child: Image.asset(
-                              'assets/images/lang.png',
-                              width: 20,
-                              height: 20,
-                              fit: BoxFit.fitWidth,
-                            ),
-                          ),
-                          DropdownMenu(
-                            initialSelection: lang,
-                            textStyle: const TextStyle(
-                                fontSize: 14, fontFamily: 'bahji'),
-                            width: context.width / 3,
-                            trailingIcon: const Icon(
-                              Icons.keyboard_arrow_down,
-                              weight: 10,
-                            ),
-                            onSelected: (String? item) {
-                              context.read<LangProvider>().changeLang(item);
-                              setState(() {});
-                            },
-                            inputDecorationTheme:
-                                const InputDecorationThemeData(
-                                    border: InputBorder.none),
-                            dropdownMenuEntries: context
-                                .read<LangProvider>()
-                                .languages
-                                .map<DropdownMenuEntry<String>>((String item) {
-                              return DropdownMenuEntry<String>(
-                                value: item,
-                                label: item.tr,
-                                labelWidget: Text(
-                                  item.tr,
-                                  style: const TextStyle(
-                                      fontSize: 14,
-                                      fontFamily: 'bahji'), // Custom text style
-                                ),
-                                leadingIcon: Image.asset(
-                                  'assets/images/lang.png',
-                                  width: 20,
-                                  height: 20,
-                                ), // Built-in icon support
-                              );
-                            }).toList(),
-                          )
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'login_welcome'.tr,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.normal,
-                        fontFamily: 'bahji',
-                        height: 1.6),
-                  ),
-                  const SizedBox(height: 35),
+    return Consumer<LangProvider>(
+      builder: (context,l,_) {
+        return Directionality(
+          textDirection: pageDirection,
+          child: Scaffold(
+            body: isWide ? _buildWideLayout() : _buildNarrowLayout(),
+          ),
+        );
+      }
+    );
+  }
 
-                  // Username field
-                  MyTextField(
-                    controller: _emailController,
-                    label: 'email'.tr,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Password field
-                  MyPasswordTextField(
-                    controller: _passwordController,
-                    label: 'password'.tr,
-                    obscurePassword: _obscurePassword,
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Login button
-                  MyPrimaryButton(
-                      isLoading: context.read<AuthProvider>().isLoadingLogin,
-                      label: 'login'.tr,
-                      onPressed: _login),
-                  const SizedBox(height: 25),
-                  Align(
-                    alignment: Alignment.bottomLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.all(4.0),
-                      child: InkWell(
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const ForgetScreen(),
-                            ),
-                          );
-                        },
-                        child: Text(
-                          'forget_password'.tr,
-                          style: const TextStyle(
-                              color: Color.fromRGBO(21, 140, 234, 1),
-                              fontFamily: 'bahji'),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 25),
-
-                  // Register link
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        "doesn't_have_account".tr,
-                        style: const TextStyle(fontFamily: 'bahji'),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(4.0),
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const RegisterScreen(),
-                              ),
-                            );
-                          },
-                          child: Text(
-                            'register'.tr,
-                            style: const TextStyle(
-                                color: Color.fromRGBO(21, 140, 234, 1),
-                                fontFamily: 'bahji'),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+  // ── Wide (web) layout: sidebar + form panel ──────────────────────────────
+  Widget _buildWideLayout() {
+    return Row(
+      children: [
+        // Left sidebar
+        AuthSidebar(),
+        // Right form panel
+        Expanded(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 440),
+                child: _buildFormCard(),
               ),
             ),
           ),
         ),
+      ],
+    );
+  }
+
+  // ── Narrow (mobile) layout ────────────────────────────────────────────────
+  Widget _buildNarrowLayout() {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+        child: _buildFormCard(),
+      ),
+    );
+  }
+
+  Widget _buildFormCard() {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Lang row
+          LangRow(),
+          const SizedBox(height: 28),
+
+          // Screen icon + title
+          AppNetworkImage(url: '',width: 100,height: 100,),
+          const SizedBox(height: 16),
+          Text(
+            'login_welcome'.tr,
+            style: const TextStyle(
+              fontFamily: 'Bahji',
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF16181D),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'sign_in_subtitle'.tr,
+            style: const TextStyle(
+              fontFamily: 'Bahji',
+              fontSize: 14,
+              color: Color(0xFF6B7280),
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 32),
+
+          // Email
+          IconTextField(
+            controller: _emailController,
+            label: 'email'.tr,
+            icon: Icons.email_outlined,
+            keyboard: TextInputType.emailAddress,
+          ),
+          const SizedBox(height: 20),
+
+          // Password
+          IconPasswordField(
+            controller: _passwordController,
+            label: 'password'.tr,
+          ),
+          const SizedBox(height: 8),
+
+          // Forgot
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ForgetScreen()),
+              ),
+              child: Text(
+                'forget_password'.tr,
+                style: const TextStyle(
+                  fontFamily: 'Bahji',
+                  fontSize: 13,
+                  color: Color(0xFF1A56C4),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 28),
+
+          // Login button
+          PrimaryButton(
+            isLoading: context.watch<AuthProvider>().isLoadingLogin,
+            label: 'login'.tr,
+            icon: Icons.arrow_forward_rounded,
+            onPressed: _login,
+          ),
+          const SizedBox(height: 24),
+
+          // Register link
+          LinkRow(
+            message: "doesn't_have_account".tr,
+            linkText: 'register'.tr,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const RegisterScreen()),
+            ),
+          ),
+        ],
       ),
     );
   }

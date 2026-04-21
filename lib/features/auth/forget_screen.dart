@@ -1,31 +1,21 @@
-﻿import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import 'auth_provider.dart';
-import 'package:flutter_education_app/config/app_theme.dart';
 import '../../utils/helpers.dart';
-import '../../utils/widget/primary_button.dart';
-import '../../utils/widget/text_field.dart';
 import 'register_screen.dart';
-
+import 'auth_widgets.dart';
 class ForgetScreen extends StatefulWidget {
   const ForgetScreen({super.key});
 
   @override
-  State<ForgetScreen> createState() => _LoginScreenState();
+  State<ForgetScreen> createState() => _ForgetScreenState();
 }
 
-class _LoginScreenState extends State<ForgetScreen> {
+class _ForgetScreenState extends State<ForgetScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    super.dispose();
-  }
 
   @override
   void initState() {
@@ -33,17 +23,19 @@ class _LoginScreenState extends State<ForgetScreen> {
     _emailController.text = 'ahmed@gmail.com';
   }
 
-  Future<void> _login() async {
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-
     final authProvider = context.read<AuthProvider>();
-
     final success = await authProvider.forgotPassword(
       _emailController.text.trim(),
     );
-
     if (!mounted) return;
-
     if (success) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const DashboardScreen()),
@@ -51,7 +43,7 @@ class _LoginScreenState extends State<ForgetScreen> {
     } else {
       Helpers.showMessage(
         context,
-        authProvider.errorMessage ?? 'Login failed',
+        authProvider.errorMessage ?? 'Request failed',
         isError: true,
       );
     }
@@ -59,106 +51,137 @@ class _LoginScreenState extends State<ForgetScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width > 800;
+
     return Directionality(
       textDirection: pageDirection,
       child: Scaffold(
-        appBar: AppBar(
-          centerTitle: false,
-          shadowColor: AppTheme.background,
-          title: Text(
-            'forget'.tr,
-            style: const TextStyle(
-                fontFamily: 'bahji', fontWeight: FontWeight.w100, fontSize: 17),
+        backgroundColor: const Color(0xFFF8F9FB),
+        body: isWide ? _buildWideLayout() : _buildNarrowLayout(),
+      ),
+    );
+  }
+
+  Widget _buildWideLayout() {
+    return Row(
+      children: [
+        AuthSidebar(),
+        Expanded(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 440),
+                child: _buildForm(),
+              ),
+            ),
           ),
         ),
-        body: SafeArea(
-          child: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(24, 50, 24, 24),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Logo/Title
-                        SizedBox(
-                          width: context.width / 4,
-                        ),
-                        Image.asset(
-                          'assets/images/logo.png',
-                          width: 150,
-                          height: 130,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'forget_welcome'.tr,
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineMedium
-                              ?.copyWith(
-                                  fontWeight: FontWeight.normal,
-                                  fontFamily: 'bahji',
-                                  height: 1.6),
-                        ),
-                        const SizedBox(height: 35),
+      ],
+    );
+  }
 
-                        // Username field
-                        MyTextField(
-                          controller: _emailController,
-                          label: 'email'.tr,
-                        ),
-                      ],
-                    ),
+  Widget _buildNarrowLayout() {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+        child: _buildForm(),
+      ),
+    );
+  }
+
+  Widget _buildForm() {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Back button
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.arrow_back_ios_rounded, size: 14, color: Color(0xFF6B7280)),
+                const SizedBox(width: 4),
+                Text(
+                  'back'.tr,
+                  style: const TextStyle(
+                    fontFamily: 'Bahji',
+                    fontSize: 13,
+                    color: Color(0xFF6B7280),
                   ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
-                  children: [
-                    // Login button
-                    MyPrimaryButton(
-                        isLoading: context.read<AuthProvider>().isLoadingLogin,
-                        label: 'login'.tr,
-                        onPressed: _login),
-                    const SizedBox(height: 16),
-                    // Register link
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          "doesn't_have_account".tr,
-                          style: TextStyle(fontFamily: 'bahji'),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(4.0),
-                          child: InkWell(
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const RegisterScreen(),
-                                ),
-                              );
-                            },
-                            child: Text(
-                              'register'.tr,
-                              style: const TextStyle(
-                                  color: Color.fromRGBO(21, 140, 234, 1),
-                                  fontFamily: 'bahji'),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 28),
+
+          ScreenIcon(icon: Icons.lock_reset_rounded),
+          const SizedBox(height: 16),
+
+          Text(
+            'forget'.tr,
+            style: const TextStyle(
+              fontFamily: 'Bahji',
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF16181D),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'forget_welcome'.tr,
+            style: const TextStyle(
+              fontFamily: 'Bahji',
+              fontSize: 14,
+              color: Color(0xFF6B7280),
+              height: 1.6,
+            ),
+          ),
+          const SizedBox(height: 32),
+
+          IconTextField(
+            controller: _emailController,
+            label: 'email'.tr,
+            icon: Icons.email_outlined,
+            keyboard: TextInputType.emailAddress,
+          ),
+          const SizedBox(height: 12),
+
+          // Hint
+          Row(
+            children: [
+              const Icon(Icons.info_outline_rounded, size: 13, color: Color(0xFF9CA3AF)),
+              const SizedBox(width: 6),
+              Text(
+                'reset_link_hint'.tr,
+                style: const TextStyle(
+                  fontFamily: 'Bahji',
+                  fontSize: 12,
+                  color: Color(0xFF9CA3AF),
                 ),
-              )
+              ),
             ],
           ),
-        ),
+          const SizedBox(height: 28),
+
+          PrimaryButton(
+            isLoading: context.watch<AuthProvider>().isLoadingLogin,
+            label: 'send_reset_link'.tr,
+            icon: Icons.send_rounded,
+            onPressed: _submit,
+          ),
+          const SizedBox(height: 24),
+
+          LinkRow(
+            message: "doesn't_have_account".tr,
+            linkText: 'register'.tr,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const RegisterScreen()),
+            ),
+          ),
+        ],
       ),
     );
   }

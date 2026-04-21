@@ -1,5 +1,6 @@
 /// teacher/dashboard/analytics_hub_screen.dart
 /// Tab 3 in TeacherDashboardScreen — courses hub for attendance + exams.
+library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/shared/exams_provider.dart';
 import 'package:provider/provider.dart';

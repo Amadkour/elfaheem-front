@@ -1,4 +1,5 @@
 /// courses/my_courses/my_courses_provider.dart
+library;
 import '../../../../core/api_client.dart';
 import '../../../../core/base_provider.dart';
 import '../../models.dart';

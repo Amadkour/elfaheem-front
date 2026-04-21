@@ -1,5 +1,5 @@
 /// schedules/schedules_provider.dart
-import 'package:flutter/cupertino.dart';
+library;
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show TeacherCourse;
 
 import '../../../core/api_client.dart';
@@ -102,9 +102,9 @@ class ScheduleSlot {
     if (!isToday) return dayLabelStr;
     final mu = minutesUntilStart ?? 0;
     if (mu <= 0) return 'بدأت للتو';
-    if (mu < 60) return 'بعد ${mu}د';
+    if (mu < 60) return 'بعد $muد';
     final h = mu ~/ 60; final m = mu % 60;
-    return 'بعد ${h}س${m > 0 ? ' ${m}د' : ''}';
+    return 'بعد $hس${m > 0 ? ' $mد' : ''}';
   }
 }
 
@@ -163,13 +163,17 @@ class ScheduleResponse {
 
   List<String> get activeDays {
     final s = <String>{};
-    for (final g in allCourses) for (final sl in g.schedules) s.add(sl.day);
+    for (final g in allCourses) for (final sl in g.schedules) {
+      s.add(sl.day);
+    }
     return s.toList()..sort((a,b) => slotDayOrder(a).compareTo(slotDayOrder(b)));
   }
 
   List<ScheduleSlot> slotsForDay(String day) {
     final r = <ScheduleSlot>[];
-    for (final g in allCourses) r.addAll(g.schedules.where((s) => s.day == day));
+    for (final g in allCourses) {
+      r.addAll(g.schedules.where((s) => s.day == day));
+    }
     r.sort((a, b) => a.startMin.compareTo(b.startMin));
     return r;
   }

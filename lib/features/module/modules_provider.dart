@@ -5,6 +5,7 @@
 /// PUT    /api/v1/modules/{module_id}            — update module
 /// DELETE /api/v1/modules/{module_id}            — delete module
 /// ─────────────────────────────────────────────────────────────────────────────
+library;
 
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';

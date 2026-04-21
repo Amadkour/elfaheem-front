@@ -1,4 +1,5 @@
 /// Reusable lesson card widget.
+library;
 
 import 'package:flutter/material.dart';
 import '../../models/lesson.dart';
@@ -9,11 +10,11 @@ class LessonCard extends StatelessWidget {
   final bool isLocked;
 
   const LessonCard({
-    Key? key,
+    super.key,
     required this.lesson,
     this.onTap,
     this.isLocked = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -242,8 +242,8 @@
 //               height: 28,
 //               decoration: BoxDecoration(
 //                 color: isPresent
-//                     ? Colors.green.withOpacity(0.25)
-//                     : Colors.red.withOpacity(0.20),
+//                     ? Colors.green.withValues(alpha:0.25)
+//                     : Colors.red.withValues(alpha:0.20),
 //                 borderRadius: BorderRadius.circular(8),
 //                 border: Border.all(
 //                   color: isPresent ? Colors.greenAccent : Colors.redAccent,

@@ -42,12 +42,20 @@ dependencies:
   dropdown_button2: ^2.3.6
   collection: '>=1.16.0'
   livekit_client: ^2.7.0
+  nested: any
+  flutter_webrtc: any
+  mime: any
+  responsive_framework: ^1.5.1
+  flutter_displaymode: ^0.6.0
 
 dependency_overrides:
   # Pin packages that use Apple APIs unavailable on CI runner's Xcode version.
   connectivity_plus: '>=7.0.0 <7.1.0' # NWPath.isUltraConstrained
   device_info_plus: '>=12.3.0 <12.4.0' # NSProcessInfo.isiOSAppOnVision
   flutter_lints: ^6.0.0
+
+  flutter_test:
+    sdk: flutter
 
 flutter:
   uses-material-design: true
@@ -71,3 +79,5 @@ flutter_native_splash:
     color: "#FFFFFF"
     # Optional: background color for the icon
     # icon_background_color: "#111111"
+dev_dependencies:
+  flutter_test: any

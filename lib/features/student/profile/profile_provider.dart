@@ -13,8 +13,8 @@
 ///   POST /api/v1/auth/forgot-password — send OTP for password reset
 ///   POST /api/v1/auth/resend-otp      — resend OTP
 /// ─────────────────────────────────────────────────────────────────────────────
+library;
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/login_screen.dart';
 import '../../../../core/api_client.dart';

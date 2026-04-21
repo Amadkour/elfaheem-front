@@ -5,6 +5,7 @@
 /// POST /api/v1/payments/{id}/verify              — verify a payment by tx ID
 /// GET  /api/v1/my-payments                       — paginated payment history
 /// ─────────────────────────────────────────────────────────────────────────────
+library;
 
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';

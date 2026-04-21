@@ -1,5 +1,3 @@
-
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -8,54 +6,114 @@ import '../../../../config/app_theme.dart';
 import '../../../auth/auth_provider.dart';
 
 class TopBar extends StatelessWidget {
+  const TopBar({super.key});
+
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().currentUser;
     final name = user?.name ?? 'sir'.tr;
+    final initial = name.isNotEmpty ? name[0] : '؟';
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
       child: Row(
         children: [
-          // Avatar
+          // Gradient avatar with glow
           Container(
-            width:  52,
-            height: 52,
+            width: 50,
+            height: 50,
             decoration: BoxDecoration(
-              shape:     BoxShape.circle,
-              border:    Border.all(color: AppTheme.primary, width: 2.5),
-              boxShadow: AppTheme.primaryShadow,
+              shape: BoxShape.circle,
+              gradient: AppTheme.primaryGradient,
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primary.withValues(alpha:0.40),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            child:  const ClipOval(
-              child: Icon(Icons.person_rounded,
-                  size: 30, color: AppTheme.primary),
+            alignment: Alignment.center,
+            child: Text(
+              initial,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                fontFamily: 'Cairo',
+              ),
             ),
           ),
           const SizedBox(width: 12),
+
+          // Greeting + name
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('welcome'.tr,
-                    style: AppTheme.caption.copyWith(fontSize: 12)),
-                Text(name, style: AppTheme.h2.copyWith(fontSize: 18)),
+                Text(
+                  '${'welcome'.tr} 👋',
+                  style: AppTheme.caption.copyWith(
+                    fontSize: 12,
+                    color: AppTheme.textLight,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  name,
+                  style: AppTheme.h2.copyWith(
+                    fontSize: 17,
+                    letterSpacing: -0.3,
+                  ),
+                ),
               ],
             ),
           ),
-          // Emoji chip
-          InkWell(
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color:        AppTheme.cardBg,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow:    AppTheme.cardShadow,
-              ),
-              child: const Text('🐣', style: TextStyle(fontSize: 22)),
+
+          // Notification bell — elevated card style
+          GestureDetector(
+            onTap: () =>
+                Navigator.of(context).popAndPushNamed('/notifications'),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppTheme.cardBg,
+                    borderRadius:
+                    BorderRadius.circular(AppTheme.radiusMedium),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha:0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.notifications_rounded,
+                    color: AppTheme.primary,
+                    size: 22,
+                  ),
+                ),
+                Positioned(
+                  top: 9,
+                  right: 9,
+                  child: Container(
+                    width: 9,
+                    height: 9,
+                    decoration: BoxDecoration(
+                      color: AppTheme.danger,
+                      shape: BoxShape.circle,
+                      border:
+                      Border.all(color: AppTheme.cardBg, width: 1.5),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            onTap: (){
-              Navigator.of(context).popAndPushNamed('/notifications');
-            },
           ),
         ],
       ),

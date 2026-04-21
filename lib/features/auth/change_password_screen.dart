@@ -10,30 +10,28 @@ import '../../utils/helpers.dart';
 import 'login_screen.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
-  const ChangePasswordScreen(
-      {super.key, this.phoneNumber, required this.email});
+  const ChangePasswordScreen({super.key, this.phoneNumber, required this.email});
 
   final String? phoneNumber;
   final String email;
 
   @override
-  State<ChangePasswordScreen> createState() => _RegisterScreenState();
+  State<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
 }
 
-class _RegisterScreenState extends State<ChangePasswordScreen> {
+class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _passwordController = TextEditingController();
   final _confirmedPasswordController = TextEditingController();
-
   bool _obscurePassword = true;
-  DateTime selectedDate =
-      DateTime.now().subtract(const Duration(days: 360 * 20));
-@override
+
+  @override
   void initState() {
     super.initState();
-    _passwordController.text='Aa@@aA2291996';
-    _confirmedPasswordController.text='Aa@@aA2291996';
+    _passwordController.text = 'Aa@@aA2291996';
+    _confirmedPasswordController.text = 'Aa@@aA2291996';
   }
+
   @override
   void dispose() {
     _passwordController.dispose();
@@ -41,18 +39,17 @@ class _RegisterScreenState extends State<ChangePasswordScreen> {
     super.dispose();
   }
 
-  Future<void> _register() async {
+  Future<void> _resetPassword() async {
     if (!_formKey.currentState!.validate()) return;
     if (_passwordController.text != _confirmedPasswordController.text) {
-      Fluttertoast.showToast(msg: 'password must be identical');
+      Fluttertoast.showToast(msg: 'password_mismatch'.tr);
       return;
     }
     final authProvider = context.read<AuthProvider>();
-
     final success = await authProvider.changePassword(
       email: widget.email,
       newPassword: _passwordController.text,
-      oldPassword: _passwordController.text,
+      oldPassword: _passwordController.text, // adjust if backend expects old password
     );
 
     if (!mounted) return;
@@ -60,7 +57,7 @@ class _RegisterScreenState extends State<ChangePasswordScreen> {
     if (success) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (route) => false,
+            (route) => false,
       );
     } else {
       Helpers.showMessage(
@@ -73,75 +70,68 @@ class _RegisterScreenState extends State<ChangePasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    AuthProvider provider = context.read<AuthProvider>();
     return Directionality(
       textDirection: pageDirection,
       child: Scaffold(
         backgroundColor: AppTheme.background,
         appBar: AppBar(
-          centerTitle: false,
-          shadowColor: AppTheme.background,
-          title: Text(
-            'reset_password'.tr,
-            style: const TextStyle(
-                fontFamily: 'bahji', fontWeight: FontWeight.w100, fontSize: 17),
-          ),
+          title: Text('reset_password'.tr),
         ),
         body: SafeArea(
-          child: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Header
-
-                        const SizedBox(height: 16),
-                        Text(
-                          'reset_password_welcome'.tr,
-                          style: const TextStyle(
-                              fontFamily: 'Bahji',
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 30),
-                        // Password
-                        MyPasswordTextField(
-                          controller: _passwordController,
-                          label: 'password'.tr,
-                          obscurePassword: _obscurePassword,
-                          onPressed: () {
-                            setState(
-                                () => _obscurePassword = !_obscurePassword);
-                          },
-                        ),
-                        const SizedBox(height: 30),
-
-                        MyPasswordTextField(
-                          controller: _confirmedPasswordController,
-                          label: 'confirmed_password'.tr,
-                          obscurePassword: _obscurePassword,
-                          onPressed: () {
-                            setState(
-                                () => _obscurePassword = !_obscurePassword);
-                          },
-                        ),
-                      ],
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: Card(
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusXL),
+                  ),
+                  color: AppTheme.cardBg,
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            'reset_password_welcome'.tr,
+                            style: AppTheme.h1,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'choose_new_password'.tr,
+                            style: AppTheme.body,
+                          ),
+                          const SizedBox(height: 32),
+                          MyPasswordTextField(
+                            controller: _passwordController,
+                            label: 'new_password'.tr,
+                            obscurePassword: _obscurePassword,
+                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                          ),
+                          const SizedBox(height: 20),
+                          MyPasswordTextField(
+                            controller: _confirmedPasswordController,
+                            label: 'confirm_new_password'.tr,
+                            obscurePassword: _obscurePassword,
+                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                          ),
+                          const SizedBox(height: 32),
+                          MyPrimaryButton(
+                            isLoading: context.watch<AuthProvider>().isLoadingRegistration,
+                            label: 'confirm'.tr,
+                            onPressed: _resetPassword,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-              // Register Button
-              MyPrimaryButton(
-                  isLoading: provider.isLoadingRegistration,
-                  label: 'confirm'.tr,
-                  onPressed: _register),
-            ],
+            ),
           ),
         ),
       ),

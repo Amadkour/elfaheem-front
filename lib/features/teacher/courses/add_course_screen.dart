@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_education_app/features/category/categories_provider.dart';
 import 'package:flutter_education_app/utils/widget/primary_menue.dart';
 import 'package:flutter_education_app/utils/widget/text_field.dart';
@@ -16,7 +15,6 @@ import '../../../config/app_config.dart' as Helpers;
 import '../../../config/app_theme.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../home/teacher_provider.dart';
-import '../shared/teacher_provider.dart';
 
 class AddCourseScreen extends StatefulWidget {
   const AddCourseScreen({super.key});

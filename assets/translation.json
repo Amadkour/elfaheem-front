@@ -262,5 +262,65 @@
   "course_fees": {
     "en": "Course Fees",
     "ar": "التكلفة"
+  },
+  "login_subtitle": {
+    "en": "Welcome back! Please enter your details.",
+    "ar": "مرحباً بعودتك! الرجاء إدخال بياناتك."
+  },
+  "register_subtitle": {
+    "en": "Join us to start learning.",
+    "ar": "انضم إلينا لتبدأ رحلة التعلم."
+  },
+  "teacher_profile_subtitle": {
+    "en": "Tell us about your professional background.",
+    "ar": "أخبرنا عن خلفيتك المهنية."
+  },
+  "send_reset_link": {
+    "en": "Send Reset Link",
+    "ar": "إرسال رابط إعادة التعيين"
+  },
+  "back_to_login": {
+    "en": "Back to Login",
+    "ar": "العودة إلى تسجيل الدخول"
+  },
+  "new_password": {
+    "en": "New Password",
+    "ar": "كلمة المرور الجديدة"
+  },
+  "confirm_new_password": {
+    "en": "Confirm New Password",
+    "ar": "تأكيد كلمة المرور الجديدة"
+  },
+  "password_mismatch": {
+    "en": "Passwords do not match",
+    "ar": "كلمات المرور غير متطابقة"
+  },
+  "invalid_otp": {
+    "en": "Invalid verification code",
+    "ar": "رمز التحقق غير صحيح"
+  },
+  "otp_resent": {
+    "en": "Verification code resent",
+    "ar": "تم إعادة إرسال رمز التحقق"
+  },
+  "verification": {
+    "en": "Verification",
+    "ar": "التحقق"
+  },
+  "session": {
+    "en": "Session",
+    "ar": "محاضرة"
+  },
+  "about": {
+    "en": "About",
+    "ar": "نبذة عن"
+  },
+  "choose_new_password": {
+    "en": "Choose a strong new password",
+    "ar": "اختر كلمة مرور جديدة قوية"
+  },
+  "forget_subtitle": {
+    "en": "Enter your email to receive a reset link.",
+    "ar": "أدخل بريدك الإلكتروني لتتلقى رابط إعادة التعيين."
   }
 }

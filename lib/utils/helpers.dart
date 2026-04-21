@@ -1,4 +1,5 @@
 /// Helper utility functions.
+library;
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' show DateFormat;

@@ -220,48 +220,43 @@ class TeacherSessionsProvider extends BaseProvider {
 
   Future<void> _confirmEndSession(
       UserModel user, int sessionId, BuildContext context) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E2235),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('End Session',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        content: const Text(
-          'This will end the session for all participants and save the recording.',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child:
-                  const Text('Cancel', style: TextStyle(color: Colors.blue))),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('End Now'),
-          ),
-        ],
-      ),
-    );
-    if (confirm != true) return;
-
-    try {
-      if (user.isTeacher) {
-        await context.read<TeacherSessionsProvider>().endLive(sessionId);
-      } else {
-        await context.read<StudentSessionsProvider>().checkOut(sessionId);
-      }
-    } catch (_) {}
+    // final confirm = await showDialog<bool>(
+    //   context: context,
+    //   builder: (ctx) => AlertDialog(
+    //     backgroundColor: const Color(0xFF1E2235),
+    //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    //     title: const Text('End Session',
+    //         style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+    //     content: const Text(
+    //       'This will end the session for all participants and save the recording.',
+    //       style: TextStyle(color: Colors.white70),
+    //     ),
+    //     actions: [
+    //       TextButton(
+    //           onPressed: () => Navigator.pop(ctx, false),
+    //           child:
+    //               const Text('Cancel', style: TextStyle(color: Colors.blue))),
+    //       ElevatedButton(
+    //         style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+    //         onPressed: () => Navigator.pop(ctx, true),
+    //         child: const Text('End Now'),
+    //       ),
+    //     ],
+    //   ),
+    // );
+    // if (confirm != true) return;
+    //
+    // try {
+    //   if (user.isTeacher) {
+    await context.read<TeacherSessionsProvider>().endLive(sessionId);
+    // } else {
+    // }
+    // } catch (_) {}
   }
 
   Future<LiveResponseModel?> _onStartLive(
       UserModel? user, int sessionId, BuildContext context) async {
-    if (user!.isTeacher) {
-      return await startLive(sessionId);
-    } else {
-      return await context.read<StudentSessionsProvider>().joinLive(sessionId);
-    }
+    return await startLive(sessionId);
   }
 
   void clearAttendance() {

@@ -1,8 +1,6 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 
-import '../../config/app_theme.dart';
 import '../../config/app_theme.dart';
 
 class MyTextField extends StatelessWidget {
@@ -35,7 +33,7 @@ class MyTextField extends StatelessWidget {
         keyboardType: keyboard,
         textInputAction: TextInputAction.next,
         controller: controller,
-        style: const TextStyle(
+        style:  TextStyle(
             fontFamily: 'bahji',
             fontWeight: FontWeight.w500,
             fontSize: 15,

@@ -10,6 +10,7 @@
 ///     StorageService) rather than a Future, so there is no frame where
 ///     the user is treated as logged-out while the Future resolves.
 /// ─────────────────────────────────────────────────────────────────────────────
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
@@ -19,7 +20,9 @@ import 'package:flutter_education_app/features/enrollment/enrollment_screen.dart
 import 'package:flutter_education_app/features/student/home/home_screen.dart';
 import 'package:flutter_education_app/features/student/models.dart';
 import 'package:provider/provider.dart';
+import 'package:responsive_framework/responsive_framework.dart';
 import 'config/app_config.dart';
+import 'config/app_theme.dart';
 import 'config/storage_service.dart';
 import 'core/providers.dart';
 import 'features/auth/login_screen.dart';
@@ -77,23 +80,7 @@ class ElFaheemApp extends StatelessWidget {
     return MaterialApp(
       title: 'ElFaheem',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        fontFamily: 'bahji',
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5B8FFF)),
-        scaffoldBackgroundColor: const Color(0xFFE8F0FB),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFFE8F0FB),
-          elevation: 0,
-          centerTitle: false,
-          titleTextStyle: TextStyle(
-            fontFamily: 'bahji',
-            fontWeight: FontWeight.w800,
-            fontSize: 20,
-            color: Color(0xFF1A1A2E),
-          ),
-        ),
-      ),
+      theme:AppTheme.themeData,
       initialRoute: initialRoute,
       onGenerateRoute: _router,
       localizationsDelegates: const [
@@ -101,6 +88,16 @@ class ElFaheemApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
+      builder: (a, child) => ResponsiveBreakpoints.builder(
+        breakpoints: [
+          const Breakpoint(start: 0, end: 450, name: MOBILE),
+          const Breakpoint(start: 451, end: 800, name: TABLET),
+          const Breakpoint(start: 801, end: 1920, name: DESKTOP),
+          const Breakpoint(start: 1921, end: double.infinity, name: '4K'),
+        ],
+        useShortestSide: true,
+        child: child!,
+      ),
       supportedLocales: context
           .read<LangProvider>()
           .languages

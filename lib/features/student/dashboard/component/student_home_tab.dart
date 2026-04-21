@@ -2,8 +2,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
 import 'package:flutter_education_app/features/student/home/home_screen.dart';
 
-import '../../../teacher/schedules/schedules_provider.dart';
-import '../../../teacher/schedules/schedules_screen.dart';
 
 class StudentHomeTab extends StatefulWidget {
   const StudentHomeTab({super.key});

@@ -21,6 +21,7 @@
 ///   • All other errors on the final try are re-thrown so BaseProvider can
 ///     still apply its own outer retry / error-state logic as a safety net.
 /// ─────────────────────────────────────────────────────────────────────────────
+library;
 
 import 'dart:convert';
 import 'dart:io';

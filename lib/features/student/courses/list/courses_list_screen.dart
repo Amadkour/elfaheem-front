@@ -1,19 +1,20 @@
-/// courses_list_screen.dart  —  v3.2.0
-/// Shows averageRating, sessionsCount on cards.
+/// courses_list_screen.dart
+library;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../../../config/app_config.dart' as Helpers;
 import '../../../../config/app_theme.dart';
 import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/app_network_image.dart';
 import '../../models.dart';
-import '../details/course_detail_provider.dart';
+import '../details/components/app_responsive.dart';
 import '../details/course_detail_screen.dart';
 import 'courses_provider.dart';
 
 class CoursesListScreen extends StatefulWidget {
   const CoursesListScreen({super.key, this.openSearch = false});
-
   final bool openSearch;
 
   @override
@@ -22,7 +23,16 @@ class CoursesListScreen extends StatefulWidget {
 
 class _CoursesListScreenState extends State<CoursesListScreen> {
   final _searchCtrl = TextEditingController();
-  final _focusNode = FocusNode();
+  final _focusNode  = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.openSearch) {
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => _focusNode.requestFocus());
+    }
+  }
 
   @override
   void dispose() {
@@ -31,9 +41,9 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
     super.dispose();
   }
 
-  void _onSearch(String q) => context
-      .read<CoursesProvider>()
-      .fetchCourses(search: q.trim().isEmpty ? null : q.trim());
+  void _onSearch(String q) => context.read<CoursesProvider>().fetchCourses(
+    search: q.trim().isEmpty ? null : q.trim(),
+  );
 
   void _clearSearch() {
     _searchCtrl.clear();
@@ -47,22 +57,60 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
       child: Scaffold(
         backgroundColor: AppTheme.background,
         body: SafeArea(
-          child: Column(children: [
-            ScreenAppBar(title: 'استكشف الكورسات'),
-            const SizedBox(height: 4),
-            _SearchBar(
-                controller: _searchCtrl,
-                focusNode: _focusNode,
-                onChanged: _onSearch,
-                onClear: _clearSearch),
-            const SizedBox(height: 12),
-            const Expanded(child: _CourseList()),
-          ]),
+          child: Column(
+            children: [
+              // Only show app-bar on mobile (web uses sidebar topbar)
+              if (!context.showSidebar) ...[
+                ScreenAppBar(title: 'استكشف الكورسات'),
+                const SizedBox(height: 6),
+              ] else ...[
+                _WebHeader(),
+              ],
+              ContentBox(
+                child: _SearchBar(
+                  controller: _searchCtrl,
+                  focusNode: _focusNode,
+                  onChanged: _onSearch,
+                  onClear: _clearSearch,
+                ),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 20, vertical: 0),
+              ),
+              const SizedBox(height: 14),
+              const Expanded(child: _CourseList()),
+            ],
+          ),
         ),
       ),
     );
   }
 }
+
+class _WebHeader extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 56,
+    padding: const EdgeInsets.symmetric(horizontal: 24),
+    decoration: BoxDecoration(
+      color: AppTheme.cardBg,
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.05),
+          blurRadius: 8,
+          offset: const Offset(0, 2),
+        ),
+      ],
+    ),
+    child: Row(
+      children: [
+        Text('استكشف الكورسات',
+            style: AppTheme.h2.copyWith(fontSize: 16)),
+      ],
+    ),
+  );
+}
+
+// ── Search bar ────────────────────────────────────────────────────────────────
 
 class _SearchBar extends StatelessWidget {
   final TextEditingController controller;
@@ -70,51 +118,69 @@ class _SearchBar extends StatelessWidget {
   final ValueChanged<String> onChanged;
   final VoidCallback onClear;
 
-  const _SearchBar(
-      {required this.controller,
-      required this.focusNode,
-      required this.onChanged,
-      required this.onClear});
+  const _SearchBar({
+    required this.controller,
+    required this.focusNode,
+    required this.onChanged,
+    required this.onClear,
+  });
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Container(
-          height: 52,
-          decoration: BoxDecoration(
-            color: AppTheme.cardBg,
-            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-            boxShadow: AppTheme.cardShadow,
-          ),
-          child: TextField(
-            controller: controller,
-            focusNode: focusNode,
-            textDirection: TextDirection.rtl,
-            onChanged: onChanged,
-            style: const TextStyle(fontFamily: 'bahji', fontSize: 14),
-            decoration: InputDecoration(
-              hintText: 'بحث عن كورس...',
-              hintStyle: AppTheme.caption.copyWith(fontSize: 14),
-              hintTextDirection: TextDirection.rtl,
-              prefixIcon:
-                  const Icon(Icons.search_rounded, color: AppTheme.textLight),
-              suffixIcon: ListenableBuilder(
-                listenable: controller,
-                builder: (_, __) => controller.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.close_rounded,
-                            color: AppTheme.textLight, size: 20),
-                        onPressed: onClear)
-                    : const SizedBox.shrink(),
-              ),
-              border: InputBorder.none,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            ),
-          ),
+  Widget build(BuildContext context) => Container(
+    height: 52,
+    decoration: BoxDecoration(
+      color: AppTheme.cardBg,
+      borderRadius: BorderRadius.circular(14),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.06),
+          blurRadius: 12,
+          offset: const Offset(0, 2),
         ),
-      );
+      ],
+    ),
+    child: TextField(
+      controller: controller,
+      focusNode: focusNode,
+      textDirection: TextDirection.rtl,
+      onChanged: onChanged,
+      style: const TextStyle(
+          fontFamily: 'Cairo',
+          fontSize: 14,
+          color: AppTheme.textDark),
+      decoration: InputDecoration(
+        hintText: 'بحث عن كورس...',
+        hintStyle: AppTheme.caption.copyWith(fontSize: 14),
+        hintTextDirection: TextDirection.rtl,
+        prefixIcon: Container(
+          margin: const EdgeInsets.all(10),
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: AppTheme.primaryLight.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: const Icon(Icons.search_rounded,
+              color: AppTheme.primary, size: 18),
+        ),
+        suffixIcon: ListenableBuilder(
+          listenable: controller,
+          builder: (_, __) => controller.text.isNotEmpty
+              ? IconButton(
+              icon: const Icon(Icons.close_rounded,
+                  color: AppTheme.textLight, size: 18),
+              onPressed: onClear)
+              : const SizedBox.shrink(),
+        ),
+        border: InputBorder.none,
+        contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16, vertical: 14),
+      ),
+    ),
+  );
 }
+
+// ── Course list ───────────────────────────────────────────────────────────────
 
 class _CourseList extends StatelessWidget {
   const _CourseList();
@@ -122,19 +188,24 @@ class _CourseList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<CoursesProvider>();
+    final w        = context.screenW;
+    final cols     = w >= 1100 ? 3 : (w >= 700 ? 2 : 1);
+    final isGrid   = cols > 1;
 
     if (provider.isLoading && provider.courses.isEmpty) {
       return const Center(
-          child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation(AppTheme.primary)));
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation(AppTheme.primary),
+          strokeWidth: 2.5,
+        ),
+      );
     }
+
     if (!provider.isLoading && provider.courses.isEmpty) {
-      return const Center(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.search_off_rounded, size: 64, color: AppTheme.textLight),
-        SizedBox(height: 12),
-        Text('لا توجد كورسات', style: AppTheme.body),
-      ]));
+      return _EmptyState(
+        icon: Icons.search_off_rounded,
+        message: 'لا توجد كورسات',
+      );
     }
 
     return NotificationListener<ScrollNotification>(
@@ -146,154 +217,369 @@ class _CourseList extends StatelessWidget {
       },
       child: RefreshIndicator(
         color: AppTheme.primary,
-        onRefresh: () => provider.fetchCourses(),
-        child: ListView.separated(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-          physics: const BouncingScrollPhysics(),
-          itemCount: provider.courses.length + (provider.hasMore ? 1 : 0),
-          separatorBuilder: (_, __) => const SizedBox(height: 14),
-          itemBuilder: (_, i) {
-            if (i == provider.courses.length) {
-              return const Center(
-                  child: Padding(
-                      padding: EdgeInsets.all(16),
+        onRefresh: provider.fetchCourses,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints:
+            const BoxConstraints(maxWidth: Breakpoints.contentMax),
+            child: isGrid
+                ? GridView.builder(
+              padding:
+              const EdgeInsets.fromLTRB(20, 0, 20, 28),
+              physics: const BouncingScrollPhysics(),
+              gridDelegate:
+              SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: cols,
+                crossAxisSpacing: 14,
+                mainAxisSpacing: 14,
+                childAspectRatio: 2.3,
+              ),
+              itemCount: provider.courses.length +
+                  (provider.hasMore ? 1 : 0),
+              itemBuilder: (_, i) {
+                if (i >= provider.courses.length) {
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation(
+                          AppTheme.primary),
+                      strokeWidth: 2,
+                    ),
+                  );
+                }
+                return _CourseCard(course: provider.courses[i]);
+              },
+            )
+                : ListView.separated(
+              padding:
+              const EdgeInsets.fromLTRB(20, 0, 20, 28),
+              physics: const BouncingScrollPhysics(),
+              itemCount: provider.courses.length +
+                  (provider.hasMore ? 1 : 0),
+              separatorBuilder: (_, __) =>
+              const SizedBox(height: 12),
+              itemBuilder: (_, i) {
+                if (i == provider.courses.length) {
+                  return const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Center(
                       child: CircularProgressIndicator(
-                          valueColor:
-                              AlwaysStoppedAnimation(AppTheme.primary))));
-            }
-            return _CourseCard(course: provider.courses[i]);
-          },
+                        valueColor: AlwaysStoppedAnimation(
+                            AppTheme.primary),
+                        strokeWidth: 2,
+                      ),
+                    ),
+                  );
+                }
+                return _CourseCard(course: provider.courses[i]);
+              },
+            ),
+          ),
         ),
       ),
     );
   }
 }
+
+// ── Course card ───────────────────────────────────────────────────────────────
 
 class _CourseCard extends StatelessWidget {
   final CourseModel course;
-
   const _CourseCard({required this.course});
 
-  void _openDetail(BuildContext context) => Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => CourseDetailScreen(
-            course: course,
-          ),
-        ),
-      );
+  void _open(BuildContext ctx) => Navigator.of(ctx).push(
+    MaterialPageRoute(builder: (_) => CourseDetailScreen(course: course)),
+  );
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => _openDetail(context),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppTheme.cardBg,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-          boxShadow: AppTheme.cardShadow,
-        ),
-        child: Row(children: [
-          AppNetworkImage(
-              url: course.imageUrl,
-              width: 100,
-              height: 110,
-              borderRadius: const BorderRadius.only(
-                topRight: Radius.circular(AppTheme.radiusMedium),
-                bottomRight: Radius.circular(AppTheme.radiusMedium),
-              )),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(course.title,
-                      style: AppTheme.h3,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 4),
-                  Text(course.instructorName, style: AppTheme.caption),
-                  const SizedBox(height: 6),
-                  // Stats row
-                  Wrap(spacing: 10, runSpacing: 4, children: [
-                    _MetaChip(Icons.star_rounded,
-                        course.rate?.toStringAsFixed(1) ?? '',
-                        color: AppTheme.accent),
-                    _MetaChip(
-                        Icons.people_rounded, '${course.studentsCount} طالب'),
-                    if (course.sessions.isNotEmpty)
-                      _MetaChip(Icons.video_library_rounded,
-                          '${course.sessions.length} محاضرة'),
-                    _MetaChip(Icons.access_time_rounded,
-                        '${course.hoursCount.toStringAsFixed(0)} ساعه'),
-                  ]),
-                  const SizedBox(height: 6),
-                  Row(children: [
-                    _TypeBadge(type: course.type),
-                    const Spacer(),
-                    Text(
-                      course.price == 0
-                          ? 'مجاني'
-                          : '\$ ${course.price.toStringAsFixed(2)}',
-                      style: AppTheme.h3.copyWith(
-                        color: course.price == 0
-                            ? AppTheme.success
-                            : AppTheme.accent,
-                        fontSize: 14,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => _open(context),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppTheme.cardBg,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 14,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Row(
+            children: [
+              // Thumbnail column
+              SizedBox(
+                width: 104,
+                child: Stack(
+                  fit: StackFit.passthrough,
+                  children: [
+                    AppNetworkImage(
+                      url: course.imageUrl,
+                      width: 104,
+                      height: double.infinity,
+                    ),
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withOpacity(0.32),
+                            ],
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                          ),
+                        ),
                       ),
                     ),
-                  ]),
-                ],
+                    Positioned(
+                      bottom: 8,
+                      right: 0,
+                      left: 0,
+                      child: Center(
+                        child: _PricePill(price: course.price),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+
+              // Info
+              Expanded(
+                child: Padding(
+                  padding:
+                  const EdgeInsets.fromLTRB(14, 12, 10, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Row(children: [
+                        _TypeTag(type: course.type),
+                        if (course.categoryName != null) ...[
+                          const SizedBox(width: 6),
+                          _CatTag(label: course.categoryName!),
+                        ],
+                      ]),
+                      const SizedBox(height: 6),
+                      Text(
+                        course.title,
+                        style: AppTheme.h3.copyWith(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.2,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (course.instructorName.isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Row(
+                          children: [
+                            Container(
+                              width: 18,
+                              height: 18,
+                              decoration: BoxDecoration(
+                                color: AppTheme.primary
+                                    .withOpacity(0.12),
+                                shape: BoxShape.circle,
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                course.instructorName[0],
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.primary,
+                                  fontFamily: 'Cairo',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              'أ. ${course.instructorName}',
+                              style: AppTheme.caption
+                                  .copyWith(fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 4,
+                        children: [
+                          _MetaItem(
+                            Icons.star_rounded,
+                            course.rate?.toStringAsFixed(1) ?? '–',
+                            color: AppTheme.accent,
+                          ),
+                          _MetaItem(Icons.people_rounded,
+                              '${course.studentsCount} طالب'),
+                          if (course.sessions.isNotEmpty)
+                            _MetaItem(
+                                Icons.video_library_rounded,
+                                '${course.sessions.length} محاضرة'),
+                          if (course.hoursCount > 0)
+                            _MetaItem(Icons.access_time_rounded,
+                                '${course.hoursCount} ساعة'),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: Icon(Icons.chevron_left_rounded,
+                    color: AppTheme.textLight, size: 20),
+              ),
+            ],
           ),
-          const Padding(
-            padding: EdgeInsets.only(left: 12),
-            child: Icon(Icons.chevron_left_rounded, color: AppTheme.textLight),
-          ),
-        ]),
+        ),
       ),
     );
   }
 }
 
-class _MetaChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _MetaChip(this.icon, this.label, {this.color = AppTheme.textLight});
+class _PricePill extends StatelessWidget {
+  final num price;
+  const _PricePill({required this.price});
 
   @override
-  Widget build(BuildContext context) =>
-      Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 12, color: color),
-        const SizedBox(width: 3),
-        Text(label, style: AppTheme.caption),
-      ]);
+  Widget build(BuildContext context) {
+    final isFree = price == 0;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: isFree ? const Color(0xFF0F6E56) : AppTheme.primary,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: (isFree ? const Color(0xFF0F6E56) : AppTheme.primary)
+                .withOpacity(0.4),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Text(
+        isFree ? 'مجاني' : '\$${price.toStringAsFixed(0)}',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          fontFamily: 'Cairo',
+        ),
+      ),
+    );
+  }
 }
 
-class _TypeBadge extends StatelessWidget {
+class _TypeTag extends StatelessWidget {
   final String type;
-
-  const _TypeBadge({required this.type});
+  const _TypeTag({required this.type});
 
   @override
   Widget build(BuildContext context) {
     final isLive = type == 'live';
-    final color = isLive ? AppTheme.danger : AppTheme.primary;
+    final c = isLive ? AppTheme.danger : AppTheme.primary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
+        color: c.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(7),
       ),
-      child: Text(
-        isLive ? '🔴 مباشر' : '▶ مسجّل',
-        style: AppTheme.caption
-            .copyWith(color: color, fontWeight: FontWeight.w700),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isLive ? Icons.sensors_rounded : Icons.play_arrow_rounded,
+            size: 10,
+            color: c,
+          ),
+          const SizedBox(width: 3),
+          Text(
+            isLive ? 'مباشر' : 'مسجّل',
+            style: AppTheme.caption.copyWith(
+                color: c, fontWeight: FontWeight.w700, fontSize: 10),
+          ),
+        ],
       ),
     );
   }
+}
+
+class _CatTag extends StatelessWidget {
+  final String label;
+  const _CatTag({required this.label});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding:
+    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(
+      color: AppTheme.primaryLight.withOpacity(0.2),
+      borderRadius: BorderRadius.circular(7),
+    ),
+    child: Text(
+      label,
+      style: AppTheme.caption.copyWith(
+          color: AppTheme.primary,
+          fontWeight: FontWeight.w700,
+          fontSize: 10),
+    ),
+  );
+}
+
+class _MetaItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  const _MetaItem(this.icon, this.label,
+      {this.color = AppTheme.textLight});
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(icon, size: 12, color: color),
+      const SizedBox(width: 3),
+      Text(label,
+          style: AppTheme.caption.copyWith(fontSize: 11)),
+    ],
+  );
+}
+
+class _EmptyState extends StatelessWidget {
+  final IconData icon;
+  final String message;
+  const _EmptyState({required this.icon, required this.message});
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            color: AppTheme.primaryLight.withOpacity(0.3),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 38, color: AppTheme.primary),
+        ),
+        const SizedBox(height: 16),
+        Text(message,
+            style: AppTheme.body
+                .copyWith(fontWeight: FontWeight.w600)),
+      ],
+    ),
+  );
 }

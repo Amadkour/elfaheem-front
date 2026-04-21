@@ -275,7 +275,7 @@ class _AttendanceCard extends StatelessWidget {
     final ok = await ctx
         .read<AttendanceProvider>()
         .manualCheckIn(sessionId, record.studentId);
-    if (ctx.mounted)
+    if (ctx.mounted) {
       ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
         content: Text(ok ? 'تم تحضير ${record.studentName} ✓' : 'حدث خطأ',
             style: const TextStyle(fontFamily: 'Cairo', color: Colors.white)),
@@ -283,6 +283,7 @@ class _AttendanceCard extends StatelessWidget {
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ));
+    }
   }
 }
 

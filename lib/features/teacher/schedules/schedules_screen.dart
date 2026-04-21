@@ -10,6 +10,7 @@
 ///  • Animated refresh button with spinning icon while loading.
 ///  • Pull-to-refresh still works as a fallback gesture.
 ///  • Improved card, banner and empty-state visuals.
+library;
 
 import 'dart:async';
 import 'dart:math' as math;
@@ -544,7 +545,7 @@ class _RingPainter extends CustomPainter {
           ..color       = Colors.white.withValues(alpha: 0.2)
           ..strokeWidth = 5
           ..style       = PaintingStyle.stroke);
-    if (progress > 0)
+    if (progress > 0) {
       canvas.drawArc(
           Rect.fromCircle(center: c, radius: r),
           -math.pi / 2,
@@ -555,6 +556,7 @@ class _RingPainter extends CustomPainter {
             ..strokeWidth = 5
             ..style       = PaintingStyle.stroke
             ..strokeCap   = StrokeCap.round);
+    }
   }
 
   @override
@@ -1246,8 +1248,9 @@ class _ManageCard extends StatelessWidget {
             ],
           )),
     );
-    if (ok == true && ctx.mounted)
+    if (ok == true && ctx.mounted) {
       ctx.read<TeacherSchedulesProvider>().removeSchedule(s.id);
+    }
   }
 }
 

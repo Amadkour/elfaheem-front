@@ -15,8 +15,8 @@
 ///   selectCategory(id)  → toggle + fetch courses
 ///   clearFilter()       → deselect + clear list
 /// ─────────────────────────────────────────────────────────────────────────────
+library;
 
-import 'package:flutter/src/widgets/framework.dart';
 
 import '../../core/api_client.dart';
 import '../../core/base_provider.dart';

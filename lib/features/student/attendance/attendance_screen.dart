@@ -1,6 +1,7 @@
 /// attendance/attendance_screen.dart
 /// Student attendance widget — shown inside session detail.
 /// Shows check-in / check-out buttons and the student's own attendance record.
+library;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_theme.dart';

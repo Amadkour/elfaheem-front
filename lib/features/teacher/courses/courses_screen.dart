@@ -6,6 +6,7 @@
 ///   • Course card shows average_rating (from API) instead of hardcoded 5.0
 ///   • Schedule / Certificates / Tools / Prerequisites shown in expand panel
 /// ─────────────────────────────────────────────────────────────────────────────
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show TeacherCourseStatus, TeacherCourse;

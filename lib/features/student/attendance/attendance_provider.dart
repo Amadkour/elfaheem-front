@@ -1,6 +1,7 @@
 /// attendance/attendance_provider.dart
 /// Student self-attendance state. Wraps SessionsProvider attendance calls
 /// and persists check-in state per session across the session detail flow.
+library;
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
 import '../models.dart';

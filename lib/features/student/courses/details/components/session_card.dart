@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_theme.dart';
 import 'package:provider/provider.dart';
+import '../../../../auth/auth_provider.dart';
 import '../../../../teacher/home/teacher_provider.dart';
-import '../../../live_streaming_screen.dart';
+import '../../../../teacher/sessions/live/prejoin.dart';
 import '../../../models.dart';
 import '../../../sessions/sessions_provider.dart';
+import '../course_detail_provider.dart';
 
 class StudentSessionCard extends StatelessWidget {
   final SessionModel session;
@@ -125,15 +127,24 @@ class StudentSessionCard extends StatelessWidget {
       if (liveResponseModel == null || !context.mounted) return;
       _snack(context, 'جاري فتح الحصة المباشرة…', const Color(0xFF185FA5));
       print(liveResponseModel.url);
+      UserModel? user = context.read<AuthProvider>().currentUser;
+
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => StudentLiveSessionScreen(
-            // wsUrl: liveResponseModel.url,
-            sessionId: session.id,
-            authToken: liveResponseModel.token,
-            sessionName: session.name,
-            courseId: session.courseId,
+          builder: (_) => PreJoinPage(
+            args: JoinArgs(
+              isTeacher: user!.isTeacher,
+              userId: user.id,
+              userName: user.name,
+              sessionId: session.id,
+              courseId: session.courseId,
+              onEnd: () async => await context
+                  .read<StudentSessionsProvider>()
+                  .checkOut(session.id),
+              onStart: () async=>       await context.read<StudentSessionsProvider>().joinLive(session.id)
+            ,
+            ),
           ),
         ),
       );
@@ -500,5 +511,47 @@ class _MarkCompleteDialog extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+class SessionsTab extends StatelessWidget {
+  const SessionsTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<CourseDetailProvider>();
+    final sessions = provider.course.sessions;
+    if (provider.isLoadingSession) {
+      return const Padding(
+          padding: EdgeInsets.all(40),
+          child: Center(
+              child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation(AppTheme.primary))));
+    }
+    if (sessions.isEmpty) {
+      return const Padding(
+          padding: EdgeInsets.all(40),
+          child: Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.video_library_outlined,
+                    size: 64, color: AppTheme.textLight),
+                SizedBox(height: 12),
+                Text('لا توجد دروس بعد', style: AppTheme.body)
+              ])));
+    }
+    return Column(children: [
+      // Filter hint
+      ...List.generate(
+          sessions.length,
+              (i) => Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: StudentSessionCard(
+              session: sessions[i],
+              isCheckedIn: false,
+              onCheckIn: () {},
+              onCheckOut: () {},
+            ),
+          ))
+      // ...List.generate( sessions.length,(i) => _SessionTile(session: sessions[i])),
+    ]);
   }
 }

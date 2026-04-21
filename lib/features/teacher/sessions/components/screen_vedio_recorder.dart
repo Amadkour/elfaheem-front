@@ -10,6 +10,7 @@
 /// in 5 MB chunks via  POST /sessions/{id}/upload-chunk  then finalized via
 /// POST /sessions/{id}/finalize-recording.
 /// This gives upload progress and survives network hiccups on individual chunks.
+library;
 
 import 'dart:io';
 import 'dart:math' show min;
@@ -17,7 +18,6 @@ import 'dart:math' show min;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_screen_recording/flutter_screen_recording.dart';
 import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_education_app/config/app_config.dart';

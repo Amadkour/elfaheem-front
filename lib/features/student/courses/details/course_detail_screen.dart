@@ -1,324 +1,756 @@
 /// courses/details/course_detail_screen.dart
-/// Student course detail — 3 tabs:
-///   الدروس  (sessions list, default)
-///   نبذة عن (about, schedule, certificates, tools, prerequisites)
-///   البث    (live session join)
+library;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../../../config/app_theme.dart';
 import '../../../../utils/widget/app_network_image.dart';
 import '../../enrollment/enrollment_provider.dart';
 import '../../enrollment/enrollment_screen.dart';
 import '../../models.dart';
-import 'components/about.dart';
+import 'components/app_responsive.dart';
 import 'components/content.dart';
-import 'course_detail_provider.dart';
 import 'components/stat_chip.dart';
+import 'course_detail_provider.dart';
 
 class CourseDetailScreen extends StatelessWidget {
   const CourseDetailScreen({super.key, required this.course});
   final CourseModel course;
+
   @override
   Widget build(BuildContext context) {
     context.read<CourseDetailProvider>().init(course);
+    final isWide = context.showSidebar;
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: AppTheme.background,
-        body: SafeArea(
-            child: Column(children: [
-          Expanded(
-            child: RefreshIndicator(
-              color: AppTheme.primary,
-              onRefresh: () => context.read<CourseDetailProvider>().refresh(),
-              child: CustomScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  slivers: [
-                    SliverToBoxAdapter(child: _CourseHeader()),
-                    SliverToBoxAdapter(child: _CourseMeta()),
-                    const SliverToBoxAdapter(child: SizedBox(height: 8)),
-                    SliverToBoxAdapter(child: _TabBar()),
-                    const SliverToBoxAdapter(child: TabContent()),
-                  ]),
-            ),
-          ),
-          _EnrollButton(),
-        ])),
+        body: isWide ? _WebDetail() : _MobileDetail(),
       ),
     );
   }
 }
 
-// ── Header ────────────────────────────────────────────────────────────────────
+// ── Mobile layout ─────────────────────────────────────────────────────────────
 
-class _CourseHeader extends StatelessWidget {
+class _MobileDetail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final course = context.watch<CourseDetailProvider>().course;
-    final isFav = course.isFavorite;
-    return Stack(children: [
-      AppNetworkImage(
-          url: course.imageUrl,
-          width: double.infinity,
-          height: 220,
-          borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(28),
-              bottomRight: Radius.circular(28))),
-      Positioned.fill(
-          child: DecoratedBox(
-              decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(28),
-                      bottomRight: Radius.circular(28)),
-                  gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.black.withValues(alpha: 0.45),
-                        Colors.transparent
-                      ])))),
-      Positioned(
-          top: 14,
-          right: 16,
-          left: 16,
-          child:
-              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            _CircleBtn(
-                icon: isFav
-                    ? Icons.favorite_rounded
-                    : Icons.favorite_border_rounded,
-                iconColor: isFav ? Colors.red : null,
-                onTap: () =>
-                    context.read<CourseDetailProvider>().toggleFavorite()),
-            _CircleBtn(
-                icon: Icons.arrow_forward_rounded,
-                onTap: () => Navigator.of(context).maybePop()),
-          ])),
-    ]);
+    return SafeArea(
+      child: Column(
+        children: [
+          Expanded(
+            child: RefreshIndicator(
+              color: AppTheme.primary,
+              onRefresh: () => context.read<CourseDetailProvider>().refresh(),
+              child: CustomScrollView(
+                physics: const BouncingScrollPhysics(),
+                slivers: [
+                  SliverToBoxAdapter(child: _CourseHero()),
+                  SliverToBoxAdapter(child: _CourseMeta()),
+                  SliverToBoxAdapter(child: _TabBarWidget()),
+                  const SliverToBoxAdapter(child: SizedBox(height: 4)),
+                  const SliverToBoxAdapter(child: TabContent()),
+                ],
+              ),
+            ),
+          ),
+          _EnrollButton(),
+        ],
+      ),
+    );
   }
 }
 
-class _CircleBtn extends StatelessWidget {
+// ── Web layout: two-column ────────────────────────────────────────────────────
+
+class _WebDetail extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Column(
+        children: [
+          // Web top bar
+          _WebTopBar(),
+          Expanded(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints:
+                const BoxConstraints(maxWidth: Breakpoints.contentMax),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Left: scrollable content
+                    Expanded(
+                      flex: 3,
+                      child: RefreshIndicator(
+                        color: AppTheme.primary,
+                        onRefresh: () =>
+                            context.read<CourseDetailProvider>().refresh(),
+                        child: CustomScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          slivers: [
+                            SliverToBoxAdapter(
+                                child: _CourseHero(height: 300)),
+                            SliverToBoxAdapter(child: _CourseMeta()),
+                            SliverToBoxAdapter(child: _TabBarWidget()),
+                            const SliverToBoxAdapter(
+                                child: SizedBox(height: 4)),
+                            const SliverToBoxAdapter(child: TabContent()),
+                            const SliverToBoxAdapter(
+                                child: SizedBox(height: 32)),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // Right: sticky sidebar
+                    SizedBox(
+                      width: 260,
+                      child: SingleChildScrollView(
+                        padding:
+                        const EdgeInsets.fromLTRB(0, 20, 0, 32),
+                        child: _WebSidebar(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WebTopBar extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final c = context.watch<CourseDetailProvider>().course;
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      decoration: BoxDecoration(
+        color: AppTheme.cardBg,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.of(context).maybePop(),
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppTheme.background,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                    color: Colors.black.withOpacity(0.08)),
+              ),
+              child: const Icon(Icons.arrow_forward_rounded,
+                  size: 18, color: AppTheme.textDark),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              c.name,
+              style: AppTheme.h3.copyWith(fontSize: 15),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ),
+          _FavButton(),
+        ],
+      ),
+    );
+  }
+}
+
+class _WebSidebar extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final p = context.watch<CourseDetailProvider>();
+    final c = p.course;
+    final isEnrolled = p.isEnrolled;
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 0, right: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Price card
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppTheme.cardBg,
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.07),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  c.price == 0
+                      ? 'مجاني تماماً'
+                      : '\$ ${c.price.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                    color: c.price == 0
+                        ? const Color(0xFF0F6E56)
+                        : AppTheme.primary,
+                    fontFamily: 'Cairo',
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _EnrollButton(),
+                const SizedBox(height: 16),
+                _WebCourseFacts(course: c),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WebCourseFacts extends StatelessWidget {
+  final CourseModel course;
+  const _WebCourseFacts({required this.course});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _Fact(
+            icon: Icons.people_alt_rounded,
+            label: '${course.studentsCount} طالب مسجّل',
+            color: AppTheme.primary),
+        _Fact(
+            icon: Icons.video_library_rounded,
+            label: '${course.sessionsCount} محاضرة',
+            color: const Color(0xFF185FA5)),
+        _Fact(
+            icon: Icons.access_time_rounded,
+            label: '${course.totalHours.toStringAsFixed(0)} ساعة إجمالية',
+            color: const Color(0xFFBA7517)),
+        if (course.certificates.isNotEmpty)
+          _Fact(
+              icon: Icons.workspace_premium_rounded,
+              label: 'شهادة إتمام معتمدة',
+              color: AppTheme.accent),
+        if (course.type == 'live')
+          _Fact(
+              icon: Icons.sensors_rounded,
+              label: 'بث مباشر',
+              color: AppTheme.danger)
+        else
+          _Fact(
+              icon: Icons.play_circle_outline_rounded,
+              label: 'كورس مسجّل',
+              color: AppTheme.primary),
+      ],
+    );
+  }
+}
+
+class _Fact extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  const _Fact(
+      {required this.icon, required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 7),
+    child: Row(
+      children: [
+        Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 16, color: color),
+        ),
+        const SizedBox(width: 10),
+        Text(label,
+            style: AppTheme.body.copyWith(
+                fontSize: 13, fontWeight: FontWeight.w600)),
+      ],
+    ),
+  );
+}
+
+// ── Hero image ────────────────────────────────────────────────────────────────
+
+class _CourseHero extends StatelessWidget {
+  final double height;
+  const _CourseHero({this.height = 260});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.watch<CourseDetailProvider>().course;
+
+    return Stack(
+      children: [
+        AppNetworkImage(
+          url: c.imageUrl,
+          width: double.infinity,
+          height: height,
+          borderRadius: const BorderRadius.only(
+            bottomLeft: Radius.circular(24),
+            bottomRight: Radius.circular(24),
+          ),
+        ),
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(24),
+                bottomRight: Radius.circular(24),
+              ),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withOpacity(0.5),
+                  Colors.transparent,
+                  Colors.black.withOpacity(0.6),
+                ],
+                stops: const [0, 0.42, 1],
+              ),
+            ),
+          ),
+        ),
+        // Mobile back + fav buttons (hidden on web — web uses topbar)
+        if (!context.showSidebar)
+          Positioned(
+            top: 14,
+            right: 16,
+            left: 16,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _FavButton(),
+                _CircleIconBtn(
+                  icon: Icons.arrow_forward_rounded,
+                  onTap: () => Navigator.of(context).maybePop(),
+                ),
+              ],
+            ),
+          ),
+        // Category + title overlay at bottom
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (c.categoryName != null) ...[
+                  _HeroBadge(c.categoryName!),
+                  const SizedBox(height: 8),
+                ],
+                Text(
+                  c.name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    fontFamily: 'Cairo',
+                    letterSpacing: -0.4,
+                    height: 1.25,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HeroBadge extends StatelessWidget {
+  final String label;
+  const _HeroBadge(this.label);
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding:
+    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+    decoration: BoxDecoration(
+      color: Colors.white.withOpacity(0.2),
+      borderRadius: BorderRadius.circular(20),
+      border:
+      Border.all(color: Colors.white.withOpacity(0.3)),
+    ),
+    child: Text(
+      label,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        fontFamily: 'Cairo',
+      ),
+    ),
+  );
+}
+
+class _FavButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final isFav = context.watch<CourseDetailProvider>().course.isFavorite;
+    return _CircleIconBtn(
+      icon: isFav
+          ? Icons.favorite_rounded
+          : Icons.favorite_border_rounded,
+      iconColor: isFav ? AppTheme.danger : null,
+      onTap: () =>
+          context.read<CourseDetailProvider>().toggleFavorite(),
+    );
+  }
+}
+
+class _CircleIconBtn extends StatelessWidget {
   final IconData icon;
   final Color? iconColor;
   final VoidCallback onTap;
-
-  const _CircleBtn({required this.icon, required this.onTap, this.iconColor});
+  const _CircleIconBtn(
+      {required this.icon, required this.onTap, this.iconColor});
 
   @override
-  Widget build(BuildContext ctx) => GestureDetector(
-      onTap: onTap,
-      child: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.9),
-              shape: BoxShape.circle,
-              boxShadow: AppTheme.cardShadow),
-          child: Icon(icon, size: 20, color: iconColor ?? AppTheme.textDark)));
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.9),
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Icon(icon,
+          size: 20, color: iconColor ?? AppTheme.textDark),
+    ),
+  );
 }
 
-// ── Meta ──────────────────────────────────────────────────────────────────────
+// ── Meta section ──────────────────────────────────────────────────────────────
 
 class _CourseMeta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.watch<CourseDetailProvider>().course;
+
     return Padding(
-        padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(c.name, style: AppTheme.h1),
-          const SizedBox(height: 8),
-          Row(children: [
-            if (c.categoryName != null) ...[
-              _Badge(c.categoryName!),
-              const SizedBox(width: 10)
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Stars row
+          Row(
+            children: [
+              ...List.generate(5, (i) {
+                if (i < c.averageRating.floor()) {
+                  return const Icon(Icons.star_rounded,
+                      color: AppTheme.accent, size: 17);
+                } else if (i < c.averageRating) {
+                  return const Icon(Icons.star_half_rounded,
+                      color: AppTheme.accent, size: 17);
+                }
+                return const Icon(Icons.star_outline_rounded,
+                    color: AppTheme.accent, size: 17);
+              }),
+              const SizedBox(width: 8),
+              Text(
+                c.averageRating.toStringAsFixed(1),
+                style: AppTheme.label.copyWith(
+                    fontWeight: FontWeight.w800, fontSize: 15),
+              ),
+              const SizedBox(width: 6),
+              Text('(${c.studentsCount} طالب)',
+                  style: AppTheme.caption),
             ],
-            const Icon(Icons.star_rounded, color: AppTheme.accent, size: 18),
-            const SizedBox(width: 4),
-            Text(
-                '${c.averageRating.toStringAsFixed(1)} (${c.studentsCount} طالب)',
-                style: AppTheme.label),
-          ]),
-          const SizedBox(height: 14),
-          Row(children: [
-            StatChip(
+          ),
+          const SizedBox(height: 18),
+
+          // Stat chips — 4-col grid
+          GridView.count(
+            crossAxisCount: 4,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 0.95,
+            children: [
+              StatChip(
                 icon: Icons.people_alt_rounded,
-                label: '${c.studentsCount} طالب'),
-            const SizedBox(width: 10),
-            StatChip(
+                label: '${c.studentsCount}\nطالب',
+                iconColor: AppTheme.primary,
+              ),
+              StatChip(
                 icon: Icons.video_library_rounded,
-                label: '${c.sessionsCount} محاضرة'),
-            const SizedBox(width: 10),
-            StatChip(
+                label: '${c.sessionsCount}\nمحاضرة',
+                iconColor: const Color(0xFF185FA5),
+                iconBg: const Color(0xFFE6F1FB),
+              ),
+              StatChip(
                 icon: Icons.access_time_rounded,
-                label: '${c.totalHours.toStringAsFixed(1)} ساعه'),
-            if (c.certificates.isNotEmpty) ...[
-              const SizedBox(width: 10),
-              const StatChip(
+                label: '${c.totalHours.toStringAsFixed(0)}\nساعة',
+                iconColor: const Color(0xFFBA7517),
+                iconBg: const Color(0xFFFAEEDA),
+              ),
+              if (c.certificates.isNotEmpty)
+                const StatChip(
                   icon: Icons.workspace_premium_rounded,
-                  label: 'شهادة',
-                  iconColor: AppTheme.accent),
+                  label: 'شهادة\nإتمام',
+                  iconColor: AppTheme.accent,
+                  iconBg: Color(0xFFFAEEDA),
+                )
+              else
+                StatChip(
+                  icon: c.type == 'live'
+                      ? Icons.sensors_rounded
+                      : Icons.play_circle_outline_rounded,
+                  label: c.type == 'live' ? 'مباشر' : 'مسجّل',
+                  iconColor: c.type == 'live'
+                      ? AppTheme.danger
+                      : AppTheme.primary,
+                ),
             ],
-          ]),
-        ]));
+          ),
+        ],
+      ),
+    );
   }
 }
 
-class _Badge extends StatelessWidget {
-  final String label;
+// ── Tab bar ───────────────────────────────────────────────────────────────────
 
-  const _Badge(this.label);
-
-  @override
-  Widget build(BuildContext ctx) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-          color: AppTheme.primary.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(8)),
-      child:
-          Text(label, style: AppTheme.label.copyWith(color: AppTheme.primary)));
-}
-
-// ── Tab Bar ───────────────────────────────────────────────────────────────────
-
-class _TabBar extends StatelessWidget {
+class _TabBarWidget extends StatelessWidget {
   static const _tabs = [
-    (CourseDetailTab.lessons, 'الدروس'),
-    (CourseDetailTab.about, 'نبذة عن'),
-    (CourseDetailTab.live, 'البث المباشر'),
+    (CourseDetailTab.lessons, 'الدروس', Icons.play_lesson_rounded),
+    (CourseDetailTab.about, 'نبذة عن', Icons.info_outline_rounded),
+    (CourseDetailTab.live, 'مباشر', Icons.sensors_rounded),
   ];
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<CourseDetailProvider>();
+
     return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: AppTheme.cardBg,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
         child: Row(
-            children: _tabs.map((t) {
-          final (tab, label) = t;
-          final isActive = provider.activeTab == tab;
-          return Expanded(
+          children: _tabs.map((t) {
+            final (tab, label, icon) = t;
+            final isActive = provider.activeTab == tab;
+
+            return Expanded(
               child: GestureDetector(
-                  onTap: () => context.read<CourseDetailProvider>().setTab(tab),
-                  child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                          border: Border(
-                              bottom: BorderSide(
-                                  color: isActive
-                                      ? AppTheme.primary
-                                      : Colors.transparent,
-                                  width: 2.5))),
-                      child: Text(label,
-                          textAlign: TextAlign.center,
-                          style: AppTheme.label.copyWith(
-                              color: isActive
-                                  ? AppTheme.primary
-                                  : AppTheme.textMedium,
-                              fontWeight:
-                                  isActive ? FontWeight.w700 : FontWeight.w500,
-                              fontSize: 13)))));
-        }).toList()));
+                onTap: () =>
+                    context.read<CourseDetailProvider>().setTab(tab),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOut,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    gradient:
+                    isActive ? AppTheme.primaryGradient : null,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: isActive
+                        ? [
+                      BoxShadow(
+                        color: AppTheme.primary.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                        : null,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        icon,
+                        size: 14,
+                        color: isActive
+                            ? Colors.white
+                            : AppTheme.textLight,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        label,
+                        style: AppTheme.label.copyWith(
+                          color: isActive
+                              ? Colors.white
+                              : AppTheme.textLight,
+                          fontWeight: isActive
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
   }
 }
 
-// ── Enroll Button ─────────────────────────────────────────────────────────────
+// ── Enroll button ─────────────────────────────────────────────────────────────
 
 class _EnrollButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<CourseDetailProvider>();
+    final isWide = context.showSidebar;
+
     if (p.isEnrolled) {
-      return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-          child: Container(
-              height: 54,
-              decoration: BoxDecoration(
-                  color: AppTheme.success.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: AppTheme.success)),
-              child: const Center(
-                  child: Text('تم الاشتراك ✓',
-                      style: TextStyle(
-                          color: AppTheme.success,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                          fontFamily: 'Cairo')))));
+      return _EnrollWrap(
+        isWide: isWide,
+        child: Container(
+          height: 52,
+          decoration: BoxDecoration(
+            color: AppTheme.accent2.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(32),
+            border: Border.all(color: AppTheme.accent2),
+          ),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.check_circle_rounded,
+                  color: AppTheme.accent2, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'تم الاشتراك بنجاح',
+                style: TextStyle(
+                  color: AppTheme.accent2,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                  fontFamily: 'Cairo',
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
+
     final label = p.course.price == 0
-        ? 'سجّل مجاناً'
-        : 'الانضمام الآن — \$ ${p.course.price.toStringAsFixed(2)}';
-    return Padding(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-        child: GestureDetector(
-            onTap: p.isEnrolling
-                ? null
-                : () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => ChangeNotifierProvider(
-                        create: (_) => EnrollmentProvider(p.course),
-                        child: const EnrollmentScreen()))),
-            child: Container(
-                height: 54,
-                decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: AppTheme.primaryShadow),
-                child: Center(
-                    child: p.isEnrolling
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2.5))
-                        : Text(label,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 16,
-                                fontFamily: 'Cairo'))))));
+        ? 'سجّل مجاناً الآن'
+        : 'انضم الآن — \$ ${p.course.price.toStringAsFixed(2)}';
+
+    return _EnrollWrap(
+      isWide: isWide,
+      child: GestureDetector(
+        onTap: p.isEnrolling
+            ? null
+            : () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ChangeNotifierProvider(
+              create: (_) => EnrollmentProvider(p.course),
+              child: const EnrollmentScreen(),
+            ),
+          ),
+        ),
+        child: Container(
+          height: 52,
+          decoration: BoxDecoration(
+            gradient: AppTheme.primaryGradient,
+            borderRadius: BorderRadius.circular(32),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.primary.withOpacity(0.42),
+                blurRadius: 22,
+                offset: const Offset(0, 7),
+              ),
+            ],
+          ),
+          child: Center(
+            child: p.isEnrolling
+                ? const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                  color: Colors.white, strokeWidth: 2.5),
+            )
+                : Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 15,
+                fontFamily: 'Cairo',
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
-class SectionHdr extends StatelessWidget {
-  final String title;
-  final IconData? icon;
-  final Color? iconColor;
-
-  const SectionHdr({required this.title, this.icon, this.iconColor});
+class _EnrollWrap extends StatelessWidget {
+  final Widget child;
+  final bool isWide;
+  const _EnrollWrap({required this.child, required this.isWide});
 
   @override
-  Widget build(BuildContext ctx) => Row(children: [
-        if (icon != null) ...[
-          Icon(icon, size: 20, color: iconColor ?? AppTheme.primary),
-          const SizedBox(width: 8)
-        ],
-        Text(title, style: AppTheme.h3)
-      ]);
-}
-
-class ScheduleChip extends StatelessWidget {
-  final CourseSchedule schedule;
-
-  const ScheduleChip({required this.schedule});
-
-  @override
-  Widget build(BuildContext ctx) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-          color: AppTheme.primary.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-          border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2))),
-      child: Row(children: [
-        const Icon(Icons.access_time_filled_rounded,
-            color: AppTheme.primary, size: 18),
-        const SizedBox(width: 10),
-        Text(schedule.dayLabel,
-            style: AppTheme.label.copyWith(
-                color: AppTheme.primary, fontWeight: FontWeight.w700)),
-        const Spacer(),
-        Text('${schedule.startTime}  —  ${schedule.endTime}',
-            style: AppTheme.label.copyWith(color: AppTheme.textDark))
-      ]));
+  Widget build(BuildContext context) => isWide
+      ? child
+      : Padding(
+    padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+    child: SafeArea(top: false, child: child),
+  );
 }

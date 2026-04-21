@@ -9,7 +9,7 @@
 ///   ✅ Delete exam with confirmation
 ///   ✅ Add / delete questions (MCQ + open-ended)
 ///   ✅ Results: ALL enrolled students with scores, "لم يحاول" for those who didn't
-import 'dart:convert';
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
@@ -19,7 +19,6 @@ import 'package:provider/provider.dart';
 import '../../../../config/app_theme.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../shared/exams_provider.dart';
-import '../shared/live_models.dart';
 import '../../../../core/api_client.dart';
 
 // ── Local models for new fields ───────────────────────────────────────────────
@@ -1002,7 +1001,9 @@ class _AddQuestionSheetState extends State<_AddQuestionSheet> {
   void dispose() {
     _titleCtrl.dispose();
     _correctCtrl.dispose();
-    for (final c in _optCtrls) c.dispose();
+    for (final c in _optCtrls) {
+      c.dispose();
+    }
     super.dispose();
   }
 

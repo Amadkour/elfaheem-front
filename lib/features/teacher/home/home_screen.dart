@@ -122,7 +122,7 @@ class _Shimmer extends StatefulWidget {
   final double height;
   final double radius;
 
-  const _Shimmer({required this.width, required this.height, this.radius = 12});
+  const _Shimmer({required this.width, required this.height,this.radius=20.0});
 
   @override
   State<_Shimmer> createState() => _ShimmerState();
@@ -712,7 +712,7 @@ class _StartButton extends StatefulWidget {
 }
 
 class _StartButtonState extends State<_StartButton> {
-  bool _busy = false;
+  final bool _busy = false;
 
   @override
   Widget build(BuildContext context) {

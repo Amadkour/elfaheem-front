@@ -7,6 +7,7 @@
 ///   refresh_token  – JWT refresh token
 ///   current_user   – JSON-encoded UserModel (saved after login/verify-otp)
 /// ─────────────────────────────────────────────────────────────────────────────
+library;
 
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';

@@ -9,7 +9,7 @@ class ProfileHeader extends StatelessWidget {
   final ProfileProvider provider;
   final VoidCallback onImageTap;
 
-  const ProfileHeader({
+  const ProfileHeader({super.key, 
     required this.provider,
     required this.onImageTap,
   });

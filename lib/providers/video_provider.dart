@@ -6,8 +6,8 @@ import '../services/api_service.dart';
 class VideoProvider with ChangeNotifier {
   final ApiService _apiService;
 
-  Map<int, VideoProgress> _progressMap = {};
-  bool _isLoading = false;
+  final Map<int, VideoProgress> _progressMap = {};
+  final bool _isLoading = false;
   String? _errorMessage;
 
   VideoProvider(this._apiService);

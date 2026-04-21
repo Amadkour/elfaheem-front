@@ -6,6 +6,7 @@
 ///
 /// Supported file types: PDF, video, image, Word, Excel, PPT
 /// ─────────────────────────────────────────────────────────────────────────────
+library;
 
 import 'dart:io';
 import '../../../core/api_client.dart';

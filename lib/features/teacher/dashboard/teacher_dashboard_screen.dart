@@ -1,13 +1,11 @@
 /// teacher_dashboard_screen.dart
+library;
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../config/app_theme.dart';
-import '../../student/dashboard/dashboard_screen.dart';
 import '../analytics_hub_screen.dart';
 import '../courses/courses_screen.dart';
 import '../home/home_screen.dart';
-import '../home/teacher_provider.dart';
 import '../profile/profile_screen.dart';
 import '../schedules/schedules_provider.dart';
 import '../schedules/schedules_screen.dart';

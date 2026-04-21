@@ -18,6 +18,8 @@ import 'component/search_bar_icon.dart';
 import 'component/top_bar.dart';
 import '../../teacher/schedules/schedules_provider.dart';
 
+const double _kContentMax = 900;
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -49,52 +51,68 @@ class _HomeScreenState extends State<HomeScreen>
       child: Scaffold(
         backgroundColor: AppTheme.background,
         body: SafeArea(
-          child: CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              SliverToBoxAdapter(child: TopBar()),
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
-              const SliverToBoxAdapter(child: SearchBarIcon()),
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
-              SliverToBoxAdapter(
-                child: SectionHeader(
-                  title: 'categories'.tr,
-                  actionLabel: 'show_more'.tr,
-                  onAction: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const CategoriesScreen()),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: _kContentMax),
+              child: CustomScrollView(
+                physics: const BouncingScrollPhysics(),
+                slivers: [
+                  // ── Top bar ──────────────────────────────────────────────
+                  SliverToBoxAdapter(child: TopBar()),
+                  const SliverToBoxAdapter(child: SizedBox(height: 18)),
+
+                  // ── Search bar ───────────────────────────────────────────
+                  const SliverToBoxAdapter(child: SearchBarIcon()),
+                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+                  // ── Upcoming session banner ──────────────────────────────
+                  const SliverToBoxAdapter(child: _UpcomingBanner()),
+                  const SliverToBoxAdapter(child: SizedBox(height: 28)),
+
+                  // ── Categories ───────────────────────────────────────────
+                  SliverToBoxAdapter(
+                    child: SectionHeader(
+                      title: 'categories'.tr,
+                      actionLabel: 'show_more'.tr,
+                      onAction: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const CategoriesScreen()),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 14)),
-              const SliverToBoxAdapter(child: CategoriesRow()),
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
-              SliverToBoxAdapter(
-                child: SectionHeader(
-                  title: 'courses'.tr,
-                  actionLabel: 'show_more'.tr,
-                  onAction: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                        builder: (_) => const CoursesListScreen()),
+                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                  const SliverToBoxAdapter(child: CategoriesRow()),
+                  const SliverToBoxAdapter(child: SizedBox(height: 28)),
+
+                  // ── Courses ──────────────────────────────────────────────
+                  SliverToBoxAdapter(
+                    child: SectionHeader(
+                      title: 'courses'.tr,
+                      actionLabel: 'show_more'.tr,
+                      onAction: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const CoursesListScreen()),
+                      ),
+                    ),
                   ),
-                ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                  const SliverToBoxAdapter(child: CoursesRow()),
+                  const SliverToBoxAdapter(child: SizedBox(height: 28)),
+
+                  // ── Best teachers ────────────────────────────────────────
+                  SliverToBoxAdapter(
+                    child: SectionHeader(
+                      title: 'best_teachers'.tr,
+                      actionLabel: 'show_more'.tr,
+                      onAction: () {},
+                    ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                  SliverToBoxAdapter(child: InstructorsRow()),
+                  const SliverToBoxAdapter(child: SizedBox(height: 40)),
+                ],
               ),
-              const SliverToBoxAdapter(child: SizedBox(height: 14)),
-              const SliverToBoxAdapter(child: CoursesRow()),
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
-              SliverToBoxAdapter(
-                child: SectionHeader(
-                  title: 'best_teachers'.tr,
-                  actionLabel: 'show_more'.tr,
-                  onAction: () {},
-                ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 14)),
-              SliverToBoxAdapter(child: InstructorsRow()),
-              const SliverToBoxAdapter(child: SizedBox(height: 20)),
-              // Real upcoming session banner
-              const SliverToBoxAdapter(child: _UpcomingBanner()),
-              const SliverToBoxAdapter(child: SizedBox(height: 32)),
-            ],
+            ),
           ),
         ),
       ),
@@ -102,10 +120,9 @@ class _HomeScreenState extends State<HomeScreen>
   }
 }
 
-// ─────────────────────────────────────────────
-//  Real upcoming banner — fetches /student/schedules
-//  then counts down to the next session every second
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Upcoming session banner — redesigned premium
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _UpcomingBanner extends StatefulWidget {
   const _UpcomingBanner();
@@ -116,24 +133,22 @@ class _UpcomingBanner extends StatefulWidget {
 
 class _UpcomingBannerState extends State<_UpcomingBanner>
     with SingleTickerProviderStateMixin {
-  // ── Bell animation ───────────────────────────
   late AnimationController _bellCtrl;
   late Animation<double> _bellAnim;
 
-  // ── Schedule data ────────────────────────────
   final StudentSchedulesProvider _schedProv = StudentSchedulesProvider();
   Timer? _tickTimer;
-  int _secondsLeft = 0; // live countdown
+  int _secondsLeft = 0;
 
   @override
   void initState() {
     super.initState();
-    if(_schedProv!=null) {
-      _schedProv.fetch().then((_) => _startTick());
-    }else{
-      _startTick();
-    }
-    //
+    _bellCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 400));
+    _bellAnim = Tween<double>(begin: -0.06, end: 0.06).animate(
+      CurvedAnimation(parent: _bellCtrl, curve: Curves.elasticIn),
+    );
+    _schedProv.fetch().then((_) => _startTick());
   }
 
   @override
@@ -149,11 +164,13 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
     _tickTimer?.cancel();
     _tickTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       if (_secondsLeft > 0) {
-        setState(() => _secondsLeft-=60);
+        setState(() => _secondsLeft -= 60);
       } else {
-        // Re-fetch when a session is about to start/end
         _schedProv.fetch().then((_) => _recalcSeconds());
       }
+    });
+    Timer.periodic(const Duration(seconds: 5), (_) {
+      if (mounted) _bellCtrl.forward(from: 0);
     });
   }
 
@@ -176,8 +193,9 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
     final h = _secondsLeft ~/ 3600;
     final m = (_secondsLeft % 3600) ~/ 60;
     final s = _secondsLeft % 60;
-    if (h > 0)
+    if (h > 0) {
       return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+    }
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
@@ -187,112 +205,233 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
       listenable: _schedProv,
       builder: (_, __) {
         final next = _schedProv.nextSlot;
+        final isOngoing = next?.isOngoing ?? false;
+
+        // Ongoing = red gradient, upcoming = primary, no session = softer purple
+        final gradient = isOngoing
+            ? const LinearGradient(
+          colors: [Color(0xFFC0392B), Color(0xFFE57373)],
+          begin: Alignment.centerRight,
+          end: Alignment.centerLeft,
+        )
+            : next != null
+            ? AppTheme.primaryGradient
+            : const LinearGradient(
+          colors: [Color(0xFF6C5CE7), Color(0xFFA29BFE)],
+          begin: Alignment.centerRight,
+          end: Alignment.centerLeft,
+        );
 
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+            padding:
+            const EdgeInsets.symmetric(horizontal: 22, vertical: 22),
             decoration: BoxDecoration(
-              gradient: next != null && next.isOngoing
-                  ? const LinearGradient(
-                      colors: [Color(0xFFD32F2F), Color(0xFFE57373)],
-                      begin: Alignment.centerRight,
-                      end: Alignment.centerLeft)
-                  : AppTheme.primaryGradient,
-              borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-              boxShadow: AppTheme.primaryShadow,
-            ),
-            child: Row(children: [
-              Expanded(
-                child: next == null
-                    // ── No upcoming session today ──────────────────
-                    ? const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('لا توجد حصص اليوم',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 15,
-                                  fontFamily: 'Cairo')),
-                          SizedBox(height: 4),
-                          Text('تحقق من جدولك الأسبوعي',
-                              style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 13,
-                                  fontFamily: 'Cairo')),
-                        ],
-                      )
-                    // ── Upcoming / ongoing session ─────────────────
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            next.isOngoing ? '🔴 جارية الآن' : 'الحصة القادمة',
-                            style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 11,
-                                fontFamily: 'Cairo',
-                                fontWeight: FontWeight.w600),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            next.courseName,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 15,
-                                fontFamily: 'Cairo'),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            '${next.startTime} — ${next.endTime}',
-                            style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 12,
-                                fontFamily: 'Cairo'),
-                          ),
-                          if (_countdownText.isNotEmpty) ...[
-                            const SizedBox(height: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(20)),
-                              child: Text(
-                                next.isOngoing
-                                    ? 'تنتهي بعد $_countdownText'
-                                    : 'تبدأ بعد $_countdownText',
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    fontFamily: 'Cairo'),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-              ),
-              const SizedBox(width: 12),
-              // Animated bell
-              Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.notifications_active_rounded,
-                      color: Colors.white, size: 30),
+              gradient: gradient,
+              borderRadius: BorderRadius.circular(AppTheme.radiusXL),
+              boxShadow: [
+                BoxShadow(
+                  color: (isOngoing
+                      ? const Color(0xFFC0392B)
+                      : AppTheme.primary)
+                      .withValues(alpha:0.38),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
                 ),
-            ]),
+              ],
+            ),
+            child: Stack(
+              children: [
+                // Decorative circles
+                Positioned(
+                  right: -22,
+                  top: -22,
+                  child: Container(
+                    width: 110,
+                    height: 110,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha:0.08),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 36,
+                  bottom: -34,
+                  child: Container(
+                    width: 75,
+                    height: 75,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha:0.06),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: -16,
+                  top: -16,
+                  child: Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha:0.05),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+
+                // Content row
+                Row(
+                  children: [
+                    Expanded(
+                      child: next == null
+                          ? _BannerContent(
+                        tag: 'اليوم',
+                        title: 'لا توجد حصص اليوم',
+                        subtitle: 'تحقق من جدولك الأسبوعي',
+                      )
+                          : _BannerContent(
+                        tag: next.isOngoing
+                            ? '🔴 جارية الآن'
+                            : 'الحصة القادمة',
+                        title: next.courseName,
+                        subtitle:
+                        '${next.startTime} — ${next.endTime}',
+                        countdown: _countdownText.isNotEmpty
+                            ? (next.isOngoing
+                            ? 'تنتهي بعد $_countdownText'
+                            : 'تبدأ بعد $_countdownText')
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+
+                    // Animated bell
+                    AnimatedBuilder(
+                      animation: _bellAnim,
+                      builder: (_, child) => Transform.rotate(
+                          angle: _bellAnim.value, child: child),
+                      child: Container(
+                        width: 58,
+                        height: 58,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha:0.20),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha:0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.notifications_active_rounded,
+                          color: Colors.white,
+                          size: 26,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         );
       },
+    );
+  }
+}
+
+/// Inner content for the banner
+class _BannerContent extends StatelessWidget {
+  final String tag;
+  final String title;
+  final String subtitle;
+  final String? countdown;
+
+  const _BannerContent({
+    required this.tag,
+    required this.title,
+    required this.subtitle,
+    this.countdown,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Tag pill
+        Container(
+          padding:
+          const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha:0.22),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            tag,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontFamily: 'Cairo',
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        const SizedBox(height: 9),
+        Text(
+          title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+            fontSize: 16,
+            fontFamily: 'Cairo',
+            letterSpacing: -0.3,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 5),
+        Row(
+          children: [
+            Icon(Icons.access_time_rounded,
+                color: Colors.white.withValues(alpha:0.75), size: 13),
+            const SizedBox(width: 5),
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha:0.80),
+                fontSize: 12,
+                fontFamily: 'Cairo',
+              ),
+            ),
+          ],
+        ),
+        if (countdown != null) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha:0.22),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.white.withValues(alpha:0.3),
+                width: 0.5,
+              ),
+            ),
+            child: Text(
+              countdown!,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                fontFamily: 'Cairo',
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

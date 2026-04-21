@@ -11,12 +11,12 @@ class CourseCard extends StatelessWidget {
   final bool isInstructorView;
 
   const CourseCard({
-    Key? key,
+    super.key,
     required this.course,
     this.onTap,
     this.showProgress = false,
     this.isInstructorView = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

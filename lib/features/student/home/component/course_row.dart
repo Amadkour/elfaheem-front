@@ -1,12 +1,10 @@
-/// course_row.dart  —  v3.2.0
-/// Horizontal scrollable course cards on the home screen.
-/// Shows: thumbnail, title, averageRating, studentsCount, sessionsCount, category
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/student/models.dart'
+    show CourseModel;
 import 'package:provider/provider.dart';
 
 import '../../../../config/app_theme.dart';
 import '../../../../utils/widget/app_network_image.dart';
-import '../../courses/details/course_detail_provider.dart';
 import '../../courses/details/course_detail_screen.dart';
 import '../../courses/list/courses_provider.dart';
 
@@ -15,16 +13,21 @@ class CoursesRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final CoursesProvider provider = context.watch<CoursesProvider>();
+    final provider = context.watch<CoursesProvider>();
+    final isWide = MediaQuery.of(context).size.width >= 680;
 
     if (provider.isLoading) {
       return const SizedBox(
-        height: 218,
+        height: 270,
         child: Center(
-            child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation(AppTheme.primary))),
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation(AppTheme.primary),
+            strokeWidth: 2.5,
+          ),
+        ),
       );
     }
+
     if (provider.courses.isEmpty) {
       return const SizedBox(
         height: 100,
@@ -32,124 +35,498 @@ class CoursesRow extends StatelessWidget {
       );
     }
 
-    final display = provider.courses.take(5).toList();
+    final display = provider.courses.take(6).toList();
 
+    // ── Wide: 3-column grid ─────────────────────────────────────────────────
+    if (isWide) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 0.68,
+          ),
+          itemCount: display.length,
+          itemBuilder: (_, i) => _CourseCard(course: display[i]),
+        ),
+      );
+    }
+
+    // ── Mobile: horizontal scroll ───────────────────────────────────────────
     return SizedBox(
-      height: 230,
+      height: 296,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         scrollDirection: Axis.horizontal,
         itemCount: display.length,
         separatorBuilder: (_, __) => const SizedBox(width: 14),
-        itemBuilder: (_, i) {
-          final course = display[i];
-          return GestureDetector(
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => CourseDetailScreen(
-                course: course,
-              ),
-            )),
-            child: Container(
-              width: 175,
-              decoration: BoxDecoration(
-                color: AppTheme.cardBg,
-                borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                boxShadow: AppTheme.cardShadow,
-              ),
-              clipBehavior: Clip.antiAlias,
+        itemBuilder: (_, i) =>
+            _CourseCard(course: display[i], fixedWidth: 188),
+      ),
+    );
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Course Card — full data display
+// ────────────────────────────────────────────────────────────────────────────
+class _CourseCard extends StatelessWidget {
+  final CourseModel course;
+  final double? fixedWidth;
+
+  const _CourseCard({required this.course, this.fixedWidth});
+
+  Color get _accentColor {
+    final name = course.categoryName?.toLowerCase() ?? '';
+    if (name.contains('برمج') || name.contains('تقن')) return const Color(0xFF5B4FCF);
+    if (name.contains('رياض') || name.contains('علوم')) return const Color(0xFF0F6E56);
+    if (name.contains('لغ')) return const Color(0xFFD85A30);
+    if (name.contains('تصم') || name.contains('فن')) return const Color(0xFFD4537E);
+    return AppTheme.primary;
+  }
+
+  Color get _accentLight => _accentColor.withValues(alpha:0.12);
+
+  bool get _isLive => course.type == 'live';
+  bool get _hasProgress => course.progress > 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => CourseDetailScreen(course: course)),
+      ),
+      child: Container(
+        width: fixedWidth,
+        decoration: BoxDecoration(
+          color: AppTheme.cardBg,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha:0.07),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _Thumbnail(course: course, isLive: _isLive),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 11, 12, 13),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Thumbnail + price badge
-                  Stack(children: [
-                    AppNetworkImage(
-                      url: course.imageUrl,
-                      width: 175,
-                      height: 118,
+                  // Title
+                  Text(
+                    course.title,
+                    style: AppTheme.h3.copyWith(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.2,
                     ),
-                    Positioned(
-                      bottom: 10,
-                      right: 10,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: AppTheme.accent,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          course.price == 0
-                              ? 'مجاني'
-                              : '\$ ${course.price.toStringAsFixed(0)}',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 12,
-                              fontFamily: 'Cairo'),
-                        ),
-                      ),
-                    ),
-                  ]),
-                  Padding(
-                    padding: const EdgeInsets.all(10),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(course.title,
-                            style: AppTheme.h3.copyWith(fontSize: 13),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis),
-                        const SizedBox(height: 4),
-                        // Rating + students
-                        Row(children: [
-                          const Icon(Icons.star_rounded,
-                              color: AppTheme.accent, size: 13),
-                          const SizedBox(width: 3),
-                          Text(course.rate?.toStringAsFixed(1) ?? '',
-                              style: AppTheme.caption.copyWith(
-                                  color: AppTheme.textDark,
-                                  fontWeight: FontWeight.w700)),
-                          const SizedBox(width: 6),
-                          Expanded(
-                              child: Text(
-                            '${course.studentsCount} طالب',
-                            style: AppTheme.caption,
-                            overflow: TextOverflow.ellipsis,
-                          )),
-                        ]),
-                        const SizedBox(height: 4),
-                        // Sessions count + category
-                        Row(children: [
-                          const Icon(Icons.video_library_rounded,
-                              size: 11, color: AppTheme.textLight),
-                          const SizedBox(width: 3),
-                          if (course.sessions.isNotEmpty)
-                            Text('${course.sessions.length} محاضرة',
-                                style: AppTheme.caption),
-                          const SizedBox(width: 8),
-                          if (course.categoryName != null)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primary.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(5),
-                              ),
-                              child: Text(course.categoryName!,
-                                  style: AppTheme.caption.copyWith(
-                                      color: AppTheme.primary,
-                                      fontWeight: FontWeight.w700)),
-                            ),
-                        ]),
-                      ],
-                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
+                  const SizedBox(height: 6),
+
+                  // Teacher
+                  if (course.instructorName.isNotEmpty)
+                    _TeacherRow(
+                      name: course.instructorName,
+                      accentColor: _accentColor,
+                      accentLight: _accentLight,
+                    ),
+
+                  const _CardDivider(),
+
+                  // Rating + students
+                  _StatsRow(course: course),
+                  const SizedBox(height: 6),
+
+                  // Lectures + hours
+                  _MetaRow(course: course),
+                  const SizedBox(height: 8),
+
+                  // Category pill + price
+                  _BottomRow(
+                    course: course,
+                    accentColor: _accentColor,
+                    accentLight: _accentLight,
+                  ),
+
+                  // Progress bar — only when enrolled
+                  if (_hasProgress) ...[
+                    const SizedBox(height: 9),
+                    _ProgressBar(progress: course.progress),
+                  ],
                 ],
               ),
             ),
-          );
-        },
+          ],
+        ),
       ),
+    );
+  }
+}
+
+// ── Thumbnail ────────────────────────────────────────────────────────────────
+class _Thumbnail extends StatelessWidget {
+  final CourseModel course;
+  final bool isLive;
+
+  const _Thumbnail({required this.course, required this.isLive});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        AppNetworkImage(
+          url: course.imageUrl,
+          width: double.infinity,
+          height: 118,
+        ),
+        // Bottom dark gradient for readability
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.transparent, Colors.black.withValues(alpha:0.36)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+          ),
+        ),
+
+        // Type badge — top right
+        Positioned(
+          top: 10,
+          right: 10,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha:0.45),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              isLive ? 'مباشر' : 'مسجّل',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'Cairo',
+              ),
+            ),
+          ),
+        ),
+
+        // Favorite heart — top left
+        Positioned(
+          top: 8,
+          left: 10,
+          child: Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha:0.88),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              course.isFavorite
+                  ? Icons.favorite_rounded
+                  : Icons.favorite_border_rounded,
+              size: 15,
+              color: course.isFavorite
+                  ? const Color(0xFFE24B4A)
+                  : Colors.grey.shade400,
+            ),
+          ),
+        ),
+
+        // Price badge — bottom right
+        Positioned(
+          bottom: 10,
+          right: 10,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: course.price == 0
+                  ? const Color(0xFF0F6E56)
+                  : AppTheme.primary,
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [
+                BoxShadow(
+                  color: (course.price == 0
+                      ? const Color(0xFF0F6E56)
+                      : AppTheme.primary)
+                      .withValues(alpha:0.35),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Text(
+              course.price == 0
+                  ? 'مجاني'
+                  : '\$ ${course.price.toStringAsFixed(0)}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 11,
+                fontFamily: 'Cairo',
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Teacher row ──────────────────────────────────────────────────────────────
+class _TeacherRow extends StatelessWidget {
+  final String name;
+  final Color accentColor;
+  final Color accentLight;
+
+  const _TeacherRow({
+    required this.name,
+    required this.accentColor,
+    required this.accentLight,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final initial = name.isNotEmpty ? name[0] : '؟';
+    return Row(
+      children: [
+        Container(
+          width: 20,
+          height: 20,
+          decoration: BoxDecoration(color: accentLight, shape: BoxShape.circle),
+          alignment: Alignment.center,
+          child: Text(
+            initial,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: accentColor,
+              fontFamily: 'Cairo',
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            'أ. $name',
+            style: AppTheme.caption.copyWith(fontSize: 11, color: AppTheme.textLight),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Thin divider ─────────────────────────────────────────────────────────────
+class _CardDivider extends StatelessWidget {
+  const _CardDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Divider(
+        height: 0.5,
+        thickness: 0.5,
+        color: Colors.black.withValues(alpha:0.07),
+      ),
+    );
+  }
+}
+
+// ── Rating + students ────────────────────────────────────────────────────────
+class _StatsRow extends StatelessWidget {
+  final CourseModel course;
+
+  const _StatsRow({required this.course});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Icon(Icons.star_rounded, color: AppTheme.accent, size: 13),
+        const SizedBox(width: 3),
+        Text(
+          course.rate?.toStringAsFixed(1) ?? '–',
+          style: AppTheme.caption.copyWith(
+            color: AppTheme.textDark,
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+          ),
+        ),
+        _Dot(),
+        Expanded(
+          child: Text(
+            '${course.studentsCount} طالب',
+            style: AppTheme.caption.copyWith(fontSize: 11),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Lectures + hours ─────────────────────────────────────────────────────────
+class _MetaRow extends StatelessWidget {
+  final CourseModel course;
+
+  const _MetaRow({required this.course});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasLectures = course.sessions.isNotEmpty;
+    final hasHours = course.hoursCount > 0;
+
+    if (!hasLectures && !hasHours) return const SizedBox.shrink();
+
+    return Row(
+      children: [
+        if (hasLectures) ...[
+          const Icon(Icons.play_circle_outline_rounded,
+              size: 12, color: AppTheme.textLight),
+          const SizedBox(width: 3),
+          Text(
+            '${course.sessions.length} محاضرة',
+            style: AppTheme.caption.copyWith(fontSize: 10),
+          ),
+        ],
+        if (hasLectures && hasHours) _Dot(),
+        if (hasHours) ...[
+          const Icon(Icons.access_time_rounded,
+              size: 12, color: AppTheme.textLight),
+          const SizedBox(width: 3),
+          Text(
+            '${course.hoursCount} ساعة',
+            style: AppTheme.caption.copyWith(fontSize: 10),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+// ── Bottom row: category + price ─────────────────────────────────────────────
+class _BottomRow extends StatelessWidget {
+  final CourseModel course;
+  final Color accentColor;
+  final Color accentLight;
+
+  const _BottomRow({
+    required this.course,
+    required this.accentColor,
+    required this.accentLight,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        if (course.categoryName != null)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+            decoration: BoxDecoration(
+              color: accentLight,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              course.categoryName!,
+              style: AppTheme.caption.copyWith(
+                color: accentColor,
+                fontWeight: FontWeight.w700,
+                fontSize: 10,
+              ),
+            ),
+          )
+        else
+          const SizedBox.shrink(),
+        Text(
+          course.price == 0
+              ? 'مجاني'
+              : '\$ ${course.price.toStringAsFixed(0)}',
+          style: TextStyle(
+            color: course.price == 0
+                ? const Color(0xFF0F6E56)
+                : AppTheme.primary,
+            fontWeight: FontWeight.w800,
+            fontSize: 13,
+            fontFamily: 'Cairo',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Progress bar ─────────────────────────────────────────────────────────────
+class _ProgressBar extends StatelessWidget {
+  final double progress;
+
+  const _ProgressBar({required this.progress});
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = (progress * 100).round();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('تقدمك', style: AppTheme.caption.copyWith(fontSize: 10)),
+            Text(
+              '$pct%',
+              style: AppTheme.caption.copyWith(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.primary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 5),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: LinearProgressIndicator(
+            value: progress.clamp(0.0, 1.0),
+            minHeight: 5,
+            backgroundColor: AppTheme.primaryLight,
+            valueColor: const AlwaysStoppedAnimation(AppTheme.primary),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Dot separator ────────────────────────────────────────────────────────────
+class _Dot extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 5),
+      child: CircleAvatar(radius: 1.5, backgroundColor: AppTheme.textLight),
     );
   }
 }

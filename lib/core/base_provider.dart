@@ -17,6 +17,7 @@
 ///   • _baseDelay is reduced to 500 ms — the transport layer already waited
 ///     up to 3 s total; a long extra pause here would just frustrate the user.
 /// ─────────────────────────────────────────────────────────────────────────────
+library;
 
 import 'dart:async';
 import 'dart:io';

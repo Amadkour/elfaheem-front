@@ -9,7 +9,6 @@ import 'package:provider/provider.dart';
 import '../config/storage_service.dart' show StorageService;
 import '../features/auth/auth_provider.dart';
 import '../features/category/categories_provider.dart';
-import '../features/live/progress_provider.dart';
 import '../features/material/materials_provider.dart';
 import '../features/module/modules_provider.dart';
 import '../features/notification/notifications_provider.dart';
@@ -101,9 +100,6 @@ List<SingleChildWidget> appProviders({required StorageService storage}) => [
       ),
       ChangeNotifierProvider<RatingsProvider>(
         create: (_) => RatingsProvider(),
-      ),
-      ChangeNotifierProvider<ProgressProvider>(
-        create: (_) => ProgressProvider(),
       ),
       ChangeNotifierProvider<TeacherProvider>(
         create: (_) => TeacherProvider(),

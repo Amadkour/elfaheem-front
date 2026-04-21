@@ -1,5 +1,6 @@
-﻿/// Main API service for making HTTP requests to backend.
+/// Main API service for making HTTP requests to backend.
 /// Handles authentication, error handling, and request/response processing.
+library;
 
 import 'dart:convert';
 import 'dart:developer';
@@ -7,7 +8,6 @@ import 'dart:developer';
 import 'package:dio/dio.dart';
 import '../config/app_config.dart';
 import '../config/storage_service.dart';
-import 'storage_service.dart';
 
 class ApiService {
   late Dio _dio;
@@ -395,8 +395,9 @@ class ApiService {
     final data = <String, dynamic>{};
     if (title != null) data['title'] = title;
     if (description != null) data['description'] = description;
-    if (scheduledAt != null)
+    if (scheduledAt != null) {
       data['scheduled_at'] = scheduledAt.toIso8601String();
+    }
     if (duration != null) data['duration'] = duration;
 
     final response = await _dio.put('/live-sessions/$sessionId', data: data);

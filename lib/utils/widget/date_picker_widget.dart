@@ -53,7 +53,7 @@ class MyDatePicker extends StatelessWidget {
     );
   }
 
-  _selectDate(BuildContext context) async {
+  Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: selectedDate,
