@@ -325,6 +325,8 @@ class _PreJoinPageState extends State<PreJoinPage>
                   fastConnection: true,
                   onEnd: widget.args.onEnd,
                   isTeacher: widget.args.isTeacher,
+              courseId: widget.args.courseId,
+              sessionId: widget.args.sessionId,
                 )),
       );
     } catch (error) {
