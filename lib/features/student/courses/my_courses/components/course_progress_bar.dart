@@ -25,7 +25,7 @@ class CourseProgressBar extends StatelessWidget {
                   width: 14,
                   height: 14,
                   decoration: BoxDecoration(
-                    color: effectiveClr.withOpacity(0.15),
+                    color: effectiveClr.withValues(alpha:0.15),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Icon(
@@ -64,7 +64,7 @@ class CourseProgressBar extends StatelessWidget {
           child: LinearProgressIndicator(
             value: progress.clamp(0.0, 1.0),
             minHeight: 7,
-            backgroundColor: effectiveClr.withOpacity(0.12),
+            backgroundColor: effectiveClr.withValues(alpha:0.12),
             valueColor: AlwaysStoppedAnimation(effectiveClr),
           ),
         ),

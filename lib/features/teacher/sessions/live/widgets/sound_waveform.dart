@@ -53,8 +53,8 @@ class SoundWaveformWidget extends StatefulWidget {
     required this.audioTrack,
     this.barCount = 5,
     this.width = 5,
-    this.minHeight = 8,
-    this.maxHeight = 100,
+    this.minHeight = 5,
+    this.maxHeight = 20,
     this.durationInMilliseconds = 500,
   });
   final AudioTrack audioTrack;

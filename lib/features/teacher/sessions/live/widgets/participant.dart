@@ -10,13 +10,18 @@ import 'sound_waveform.dart';
 
 abstract class ParticipantWidget extends StatefulWidget {
   // Convenience method to return relevant widget for participant
-  static ParticipantWidget widgetFor(ParticipantTrack participantTrack, {bool showStatsLayer = false}) {
+  static ParticipantWidget widgetFor(ParticipantTrack participantTrack,
+      {bool showStatsLayer = false}) {
     if (participantTrack.participant is LocalParticipant) {
       return LocalParticipantWidget(
-          participantTrack.participant as LocalParticipant, participantTrack.type, showStatsLayer);
+          participantTrack.participant as LocalParticipant,
+          participantTrack.type,
+          showStatsLayer);
     } else if (participantTrack.participant is RemoteParticipant) {
       return RemoteParticipantWidget(
-          participantTrack.participant as RemoteParticipant, participantTrack.type, showStatsLayer);
+          participantTrack.participant as RemoteParticipant,
+          participantTrack.type,
+          showStatsLayer);
     }
     throw UnimplementedError('Unknown participant type');
   }
@@ -71,12 +76,18 @@ class RemoteParticipantWidget extends ParticipantWidget {
   State<StatefulWidget> createState() => _RemoteParticipantWidgetState();
 }
 
-abstract class _ParticipantWidgetState<T extends ParticipantWidget> extends State<T> {
+abstract class _ParticipantWidgetState<T extends ParticipantWidget>
+    extends State<T> {
   bool _visible = true;
+
   VideoTrack? get activeVideoTrack;
+
   AudioTrack? get activeAudioTrack;
+
   TrackPublication? get videoPublication;
+
   TrackPublication? get audioPublication;
+
   bool get isScreenShare => widget.type == ParticipantTrackType.kScreenShare;
   EventsListener<ParticipantEvent>? _listener;
 
@@ -153,7 +164,8 @@ abstract class _ParticipantWidgetState<T extends ParticipantWidget> extends Stat
                     title: widget.participant.name.isNotEmpty
                         ? '${widget.participant.name} (${widget.participant.identity})'
                         : widget.participant.identity,
-                    audioAvailable: audioPublication?.muted == false && audioPublication?.subscribed == true,
+                    audioAvailable: audioPublication?.muted == false &&
+                        audioPublication?.subscribed == true,
                     connectionQuality: widget.participant.connectionQuality,
                     isScreenShare: isScreenShare,
                     enabledE2EE: widget.participant.isEncrypted,
@@ -168,33 +180,24 @@ abstract class _ParticipantWidgetState<T extends ParticipantWidget> extends Stat
                   child: ParticipantStatsWidget(
                     participant: widget.participant,
                   )),
-            if (activeAudioTrack != null && !activeAudioTrack!.muted)
-              Positioned(
-                top: 10,
-                right: 10,
-                left: 10,
-                bottom: 10,
-                child: SoundWaveformWidget(
-                  key: ValueKey(activeAudioTrack!.hashCode),
-                  audioTrack: activeAudioTrack!,
-                  width: 8,
-                ),
-              ),
           ],
         ),
       );
 }
 
-class _LocalParticipantWidgetState extends _ParticipantWidgetState<LocalParticipantWidget> {
+class _LocalParticipantWidgetState
+    extends _ParticipantWidgetState<LocalParticipantWidget> {
   @override
-  LocalTrackPublication<LocalVideoTrack>? get videoPublication => widget.participant.videoTrackPublications
-      .where((element) => element.source == widget.type.lkVideoSourceType)
-      .firstOrNull;
+  LocalTrackPublication<LocalVideoTrack>? get videoPublication =>
+      widget.participant.videoTrackPublications
+          .where((element) => element.source == widget.type.lkVideoSourceType)
+          .firstOrNull;
 
   @override
-  LocalTrackPublication<LocalAudioTrack>? get audioPublication => widget.participant.audioTrackPublications
-      .where((element) => element.source == widget.type.lkAudioSourceType)
-      .firstOrNull;
+  LocalTrackPublication<LocalAudioTrack>? get audioPublication =>
+      widget.participant.audioTrackPublications
+          .where((element) => element.source == widget.type.lkAudioSourceType)
+          .firstOrNull;
 
   @override
   VideoTrack? get activeVideoTrack => videoPublication?.track;
@@ -203,16 +206,19 @@ class _LocalParticipantWidgetState extends _ParticipantWidgetState<LocalParticip
   AudioTrack? get activeAudioTrack => audioPublication?.track;
 }
 
-class _RemoteParticipantWidgetState extends _ParticipantWidgetState<RemoteParticipantWidget> {
+class _RemoteParticipantWidgetState
+    extends _ParticipantWidgetState<RemoteParticipantWidget> {
   @override
-  RemoteTrackPublication<RemoteVideoTrack>? get videoPublication => widget.participant.videoTrackPublications
-      .where((element) => element.source == widget.type.lkVideoSourceType)
-      .firstOrNull;
+  RemoteTrackPublication<RemoteVideoTrack>? get videoPublication =>
+      widget.participant.videoTrackPublications
+          .where((element) => element.source == widget.type.lkVideoSourceType)
+          .firstOrNull;
 
   @override
-  RemoteTrackPublication<RemoteAudioTrack>? get audioPublication => widget.participant.audioTrackPublications
-      .where((element) => element.source == widget.type.lkAudioSourceType)
-      .firstOrNull;
+  RemoteTrackPublication<RemoteAudioTrack>? get audioPublication =>
+      widget.participant.audioTrackPublications
+          .where((element) => element.source == widget.type.lkAudioSourceType)
+          .firstOrNull;
 
   @override
   VideoTrack? get activeVideoTrack => videoPublication?.track;
@@ -256,6 +262,7 @@ class _RemoteParticipantWidgetState extends _ParticipantWidgetState<RemotePartic
 class RemoteTrackPublicationMenuWidget extends StatelessWidget {
   final IconData icon;
   final RemoteTrackPublication pub;
+
   const RemoteTrackPublicationMenuWidget({
     required this.pub,
     required this.icon,
@@ -294,6 +301,7 @@ class RemoteTrackPublicationMenuWidget extends StatelessWidget {
 class RemoteTrackFPSMenuWidget extends StatelessWidget {
   final IconData icon;
   final RemoteTrackPublication pub;
+
   const RemoteTrackFPSMenuWidget({
     required this.pub,
     required this.icon,
@@ -328,6 +336,7 @@ class RemoteTrackFPSMenuWidget extends StatelessWidget {
 class RemoteTrackQualityMenuWidget extends StatelessWidget {
   final IconData icon;
   final RemoteTrackPublication pub;
+
   const RemoteTrackQualityMenuWidget({
     required this.pub,
     required this.icon,

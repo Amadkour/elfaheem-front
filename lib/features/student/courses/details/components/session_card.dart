@@ -142,8 +142,9 @@ class StudentSessionCard extends StatelessWidget {
               onEnd: () async => await context
                   .read<StudentSessionsProvider>()
                   .checkOut(session.id),
-              onStart: () async=>       await context.read<StudentSessionsProvider>().joinLive(session.id)
-            ,
+              onStart: () async => await context
+                  .read<StudentSessionsProvider>()
+                  .joinLive(session.id),
             ),
           ),
         ),
@@ -513,6 +514,7 @@ class _MarkCompleteDialog extends StatelessWidget {
     );
   }
 }
+
 class SessionsTab extends StatelessWidget {
   const SessionsTab({super.key});
 
@@ -532,25 +534,25 @@ class SessionsTab extends StatelessWidget {
           padding: EdgeInsets.all(40),
           child: Center(
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.video_library_outlined,
-                    size: 64, color: AppTheme.textLight),
-                SizedBox(height: 12),
-                Text('لا توجد دروس بعد', style: AppTheme.body)
-              ])));
+            Icon(Icons.video_library_outlined,
+                size: 64, color: AppTheme.textLight),
+            SizedBox(height: 12),
+            Text('لا توجد دروس بعد', style: AppTheme.body)
+          ])));
     }
     return Column(children: [
       // Filter hint
       ...List.generate(
           sessions.length,
-              (i) => Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: StudentSessionCard(
-              session: sessions[i],
-              isCheckedIn: false,
-              onCheckIn: () {},
-              onCheckOut: () {},
-            ),
-          ))
+          (i) => Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: StudentSessionCard(
+                  session: sessions[i],
+                  isCheckedIn: false,
+                  onCheckIn: () {},
+                  onCheckOut: () {},
+                ),
+              ))
       // ...List.generate( sessions.length,(i) => _SessionTile(session: sessions[i])),
     ]);
   }

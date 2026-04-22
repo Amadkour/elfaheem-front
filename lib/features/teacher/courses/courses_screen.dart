@@ -1,21 +1,15 @@
-/// ─────────────────────────────────────────────────────────────────────────────
-/// teacher_courses_screen.dart  —  API v3.2.0
-///
-/// Changes:
-///   • Course card now shows sessions_count
-///   • Course card shows average_rating (from API) instead of hardcoded 5.0
-///   • Schedule / Certificates / Tools / Prerequisites shown in expand panel
-/// ─────────────────────────────────────────────────────────────────────────────
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show TeacherCourseStatus, TeacherCourse;
+import 'package:flutter_education_app/features/teacher/home/teacher_models.dart'
+    show TeacherCourseStatus, TeacherCourse;
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart' as Helpers;
 import '../../../config/app_theme.dart';
 import '../../../utils/widget/app_network_image.dart';
 import '../../../utils/widget/app_bar.dart';
+import '../../student/courses/details/components/app_responsive.dart';
 import '../home/teacher_provider.dart';
 import '../schedules/schedules_screen.dart';
 import '../sessions/sessions_screen.dart';
@@ -25,33 +19,39 @@ class TeacherCoursesScreen extends StatefulWidget {
   const TeacherCoursesScreen({super.key});
 
   @override
-  State<TeacherCoursesScreen> createState() => _TeacherCoursesScreenState();
+  State<TeacherCoursesScreen> createState() =>
+      _TeacherCoursesScreenState();
 }
 
-class _TeacherCoursesScreenState extends State<TeacherCoursesScreen>{
-
+class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<TeacherProvider>().fetchMyCourses();
-    });
+    WidgetsBinding.instance.addPostFrameCallback(
+            (_) => context.read<TeacherProvider>().fetchMyCourses());
   }
 
   @override
   Widget build(BuildContext context) {
+    final isWide = context.showSidebar;
     return Directionality(
       textDirection: Helpers.pageDirection,
-      child: const Scaffold(
+      child: Scaffold(
         backgroundColor: AppTheme.background,
         body: SafeArea(
           child: Column(
             children: [
-              ScreenAppBar(title: 'الكورسات'),
-              SizedBox(height: 8),
-              _FilterTabs(),
-              SizedBox(height: 16),
-              Expanded(child: _CourseList()),
+              // Header
+              if (!isWide)
+                ScreenAppBar(title: 'الكورسات',
+                    actions: [_AddBtn()])
+              else
+                _WebHeader(),
+
+              const SizedBox(height: 8),
+              const _FilterTabs(),
+              const SizedBox(height: 14),
+              const Expanded(child: _CourseList()),
             ],
           ),
         ),
@@ -60,125 +60,257 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen>{
   }
 }
 
-// ── Filter Tabs ───────────────────────────────────────────────────────────────
+class _WebHeader extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 56,
+    padding: const EdgeInsets.symmetric(horizontal: 24),
+    decoration: BoxDecoration(
+      color: AppTheme.cardBg,
+      boxShadow: [
+        BoxShadow(
+            color: Colors.black.withValues(alpha:0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2)),
+      ],
+    ),
+    child: Row(children: [
+      Text('كورساتي', style: AppTheme.h2.copyWith(fontSize: 16)),
+      const Spacer(),
+      GestureDetector(
+        onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const AddCourseScreen())),
+        child: Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            gradient: AppTheme.primaryGradient,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                  color: AppTheme.primary.withValues(alpha:0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3)),
+            ],
+          ),
+          child: const Row(children: [
+            Icon(Icons.add_rounded, color: Colors.white, size: 16),
+            SizedBox(width: 6),
+            Text('إضافة كورس',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'Cairo')),
+          ]),
+        ),
+      ),
+    ]),
+  );
+}
+
+class _AddBtn extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const AddCourseScreen())),
+    child: Container(
+      width: 40,
+      height: 40,
+      margin: const EdgeInsets.only(left: 4),
+      decoration: BoxDecoration(
+          gradient: AppTheme.primaryGradient,
+          shape: BoxShape.circle,
+          boxShadow: AppTheme.primaryShadow),
+      child:
+      const Icon(Icons.add_rounded, color: Colors.white, size: 22),
+    ),
+  );
+}
+
+// ── Filter tabs ───────────────────────────────────────────────────────────────
 
 class _FilterTabs extends StatelessWidget {
   const _FilterTabs();
 
-  static const _tabs = [
-    (TeacherCourseStatus.all, 'الكل'),
-    (TeacherCourseStatus.published, 'منشورة'),
-    (TeacherCourseStatus.draft, 'مسودات'),
+  static  const _tabs = [
+    (TeacherCourseStatus.all, 'الكل', Icons.apps_rounded),
+    (TeacherCourseStatus.published, 'منشورة', Icons.public_rounded),
+    (TeacherCourseStatus.draft, 'مسودات', Icons.drafts_rounded),
   ];
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<TeacherProvider>();
-    return Padding(
+    final p = context.watch<TeacherProvider>();
+    return ContentBox(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        children: _tabs.map((t) {
-          final (status, label) = t;
-          final isActive = provider.activeFilter == status;
-          return Expanded(
-            child: GestureDetector(
-              onTap: () => context.read<TeacherProvider>().setFilter(status),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  border: Border(
-                      bottom: BorderSide(
-                    color: isActive ? AppTheme.primary : Colors.transparent,
-                    width: 2.5,
-                  )),
-                ),
-                child: Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  style: AppTheme.label.copyWith(
-                    color: isActive ? AppTheme.primary : AppTheme.textMedium,
-                    fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                    fontSize: 15,
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: AppTheme.cardBg,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha:0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2)),
+          ],
+        ),
+        child: Row(
+          children: _tabs.map((t) {
+            final (status, label, icon) = t;
+            final active = p.activeFilter == status;
+            return Expanded(
+              child: GestureDetector(
+                onTap: () =>
+                    context.read<TeacherProvider>().setFilter(status),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  decoration: BoxDecoration(
+                    gradient: active ? AppTheme.primaryGradient : null,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: active
+                        ? [
+                      BoxShadow(
+                          color: AppTheme.primary.withValues(alpha:0.28),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2))
+                    ]
+                        : null,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(icon,
+                            size: 13,
+                            color: active
+                                ? Colors.white
+                                : AppTheme.textLight),
+                        const SizedBox(width: 5),
+                        Text(label,
+                            style: AppTheme.label.copyWith(
+                              color: active
+                                  ? Colors.white
+                                  : AppTheme.textLight,
+                              fontWeight: active
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              fontSize: 12,
+                            )),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          );
-        }).toList(),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
 }
 
-// ── Course List ───────────────────────────────────────────────────────────────
+// ── Course list ───────────────────────────────────────────────────────────────
 
 class _CourseList extends StatelessWidget {
   const _CourseList();
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<TeacherProvider>();
+    final p = context.watch<TeacherProvider>();
+    final isWide = context.showSidebar;
 
-    if (provider.isLoading && provider.filteredCourses.isEmpty) {
+    if (p.isLoading && p.filteredCourses.isEmpty) {
       return const Center(
           child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation(AppTheme.primary)));
+              valueColor: AlwaysStoppedAnimation(AppTheme.primary),
+              strokeWidth: 2.5));
     }
 
-    final courses = provider.filteredCourses;
+    final courses = p.filteredCourses;
 
     if (courses.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.school_outlined,
-                size: 64, color: AppTheme.textLight),
-            const SizedBox(height: 12),
-            const Text('لا توجد كورسات في هذا القسم', style: AppTheme.body),
-            const SizedBox(height: 16),
-            GestureDetector(
-              onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const AddCourseScreen())),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text('إضافة دورة جديدة',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontFamily: 'Cairo')),
-              ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: AppTheme.primaryLight.withValues(alpha:0.3),
+              shape: BoxShape.circle,
             ),
-          ],
-        ),
+            child: const Icon(Icons.school_outlined,
+                size: 38, color: AppTheme.primary),
+          ),
+          const SizedBox(height: 14),
+          const Text('لا توجد كورسات في هذا القسم',
+              style: AppTheme.body),
+          const SizedBox(height: 18),
+          GestureDetector(
+            onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                    builder: (_) => const AddCourseScreen())),
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 24, vertical: 12),
+              decoration: BoxDecoration(
+                  gradient: AppTheme.primaryGradient,
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: AppTheme.primaryShadow),
+              child: const Text('إضافة دورة جديدة',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'Cairo')),
+            ),
+          ),
+        ]),
       );
     }
 
     return RefreshIndicator(
       color: AppTheme.primary,
-      onRefresh: () => provider.fetchMyCourses(),
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        physics: const BouncingScrollPhysics(),
-        itemCount: courses.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 14),
-        itemBuilder: (_, i) => _CourseCard(course: courses[i]),
+      onRefresh: () => p.fetchMyCourses(),
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints:
+          const BoxConstraints(maxWidth: Breakpoints.contentMax),
+          child: isWide
+              ? GridView.builder(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+            physics: const BouncingScrollPhysics(),
+            gridDelegate:
+            const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 14,
+              mainAxisSpacing: 14,
+              childAspectRatio: 1.5,
+            ),
+            itemCount: courses.length,
+            itemBuilder: (_, i) => _CourseCard(course: courses[i]),
+          )
+              : ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            physics: const BouncingScrollPhysics(),
+            itemCount: courses.length,
+            separatorBuilder: (_, __) =>
+            const SizedBox(height: 14),
+            itemBuilder: (_, i) => _CourseCard(course: courses[i]),
+          ),
+        ),
       ),
     );
   }
 }
 
-// ── Course Card ───────────────────────────────────────────────────────────────
+// ── Course card ───────────────────────────────────────────────────────────────
 
 class _CourseCard extends StatefulWidget {
   final TeacherCourse course;
-
   const _CourseCard({required this.course});
 
   @override
@@ -189,383 +321,383 @@ class _CourseCardState extends State<_CourseCard> {
   bool _expanded = false;
 
   Future<void> _confirmDelete() async {
-    final confirmed = await showDialog<bool>(
+    final ok = await showDialog<bool>(
       context: context,
       builder: (_) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
+          backgroundColor: AppTheme.cardBg,
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
+              borderRadius: BorderRadius.circular(20)),
           title: const Text('حذف الدورة',
-              style:
-                  TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
+              style: TextStyle(
+                  fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
           content: Text('هل تريد حذف "${widget.course.title}"؟',
               style: const TextStyle(fontFamily: 'Cairo')),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('إلغاء',
-                  style: TextStyle(
-                      fontFamily: 'Cairo', color: AppTheme.textMedium)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.danger,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10))),
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('حذف',
-                  style: TextStyle(
-                      fontFamily: 'Cairo',
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700)),
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('إلغاء',
+                    style: TextStyle(
+                        fontFamily: 'Cairo', color: AppTheme.textMedium))),
+            Container(
+              decoration: BoxDecoration(
+                  color: AppTheme.danger,
+                  borderRadius: BorderRadius.circular(10)),
+              child: TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('حذف',
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700)),
+              ),
             ),
           ],
         ),
       ),
     );
-
-    if (confirmed == true && mounted) {
-      final ok =
-          await context.read<TeacherProvider>().deleteCourse(widget.course.id);
-      if (mounted && ok) {
+    if (ok == true && mounted) {
+      final deleted = await context
+          .read<TeacherProvider>()
+          .deleteCourse(widget.course.id);
+      if (mounted && deleted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: const Text('تم حذف الدورة',
               style: TextStyle(fontFamily: 'Cairo', color: Colors.white)),
           backgroundColor: AppTheme.success,
           behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12)),
         ));
       }
     }
   }
 
   Future<void> _togglePublish() async {
-    final provider = context.read<TeacherProvider>();
-    final ok = widget.course.isPublished
-        ? await provider.unpublishCourse(widget.course.id)
-        : await provider.publishCourse(widget.course.id);
-
-    if (mounted && ok) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(
-            widget.course.isPublished ? 'تم إيقاف نشر الدورة' : 'تم نشر الدورة',
-            style: const TextStyle(fontFamily: 'Cairo', color: Colors.white)),
-        backgroundColor: AppTheme.success,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ));
-    }
+    final p = context.read<TeacherProvider>();
+    await (widget.course.isPublished
+        ? p.unpublishCourse(widget.course.id)
+        : p.publishCourse(widget.course.id));
   }
 
   @override
   Widget build(BuildContext context) {
-    final course = widget.course;
-    final isDraft = !course.isPublished;
+    final c = widget.course;
+    final isDraft = !c.isPublished;
 
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.cardBg,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        boxShadow: AppTheme.cardShadow,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha:0.06),
+              blurRadius: 14,
+              offset: const Offset(0, 4)),
+        ],
       ),
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
+      clipBehavior: Clip.antiAlias,
+      child: Column(children: [
+        // ── Main info ────────────────────────────────────────────────
+        GestureDetector(
+          onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (_) => TeacherSessionsScreen(course: course)),
-          );
-        },
-        child: Column(
-          children: [
-            // ── Main row ────────────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  AppNetworkImage(
-                    url: course.imageUrl,
-                    width: 90,
-                    height: 90,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(course.title,
-                            style: AppTheme.h3,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis),
-                        const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 4,
-                          children: [
-                            _Meta(Icons.people_rounded,
-                                '${course.studentsCount} طالب'),
-                            _Meta(Icons.video_library_rounded,
-                                '${course.sessionsCount} محاضرة'),
-                            _Meta(Icons.access_time_rounded,
-                                '${course.totalHours.toStringAsFixed(0)} ساعه'),
-                            _Meta(Icons.star_rounded,
-                                course.averageRating.toStringAsFixed(1),
-                                color: AppTheme.accent),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        _StatusBadge(isPublished: course.isPublished),
-                      ],
+                builder: (_) => TeacherSessionsScreen(course: c)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(children: [
+              // Thumbnail
+              Stack(children: [
+                AppNetworkImage(
+                    url: c.imageUrl,
+                    width: 88,
+                    height: 88,
+                    borderRadius: BorderRadius.circular(14)),
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: isDraft
+                          ? AppTheme.accent
+                          : AppTheme.accent2,
+                      borderRadius: BorderRadius.circular(7),
                     ),
-                  ),
-                  Column(children: [
-                    _IconBtn(
-                        icon: Icons.delete_rounded,
-                        color: AppTheme.danger,
-                        bg: AppTheme.danger.withValues(alpha: 0.1),
-                        onTap: _confirmDelete),
-                    const SizedBox(height: 8),
-                    _IconBtn(
-                        icon: Icons.edit_rounded,
-                        color: AppTheme.primary,
-                        bg: AppTheme.primary.withValues(alpha: 0.1),
-                        onTap: () {}),
-                    const SizedBox(height: 8),
-                    // Expand / collapse extras
-                    _IconBtn(
-                      icon: _expanded
-                          ? Icons.keyboard_arrow_up_rounded
-                          : Icons.keyboard_arrow_down_rounded,
-                      color: AppTheme.textMedium,
-                      bg: AppTheme.divider,
-                      onTap: () => setState(() => _expanded = !_expanded),
-                    ),
-                  ]),
-                ],
-              ),
-            ),
-
-            // ── Extras (expandable) ─────────────────────────────────────────────
-            if (_expanded) ...[
-              const Divider(height: 1),
-              _ExtrasPanel(course: course),
-            ],
-
-            // ── Publish button ──────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              child: GestureDetector(
-                onTap: _togglePublish,
-                child: Container(
-                  height: 40,
-                  decoration: BoxDecoration(
-                    gradient: isDraft
-                        ? AppTheme.primaryGradient
-                        : const LinearGradient(
-                            colors: [Color(0xFF6B7280), Color(0xFF9CA3AF)]),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: isDraft ? AppTheme.primaryShadow : [],
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                          isDraft
-                              ? Icons.upload_rounded
-                              : Icons.visibility_off_rounded,
-                          color: Colors.white,
-                          size: 18),
-                      const SizedBox(width: 8),
-                      Text(isDraft ? 'نشر الدورة' : 'إيقاف النشر',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                              fontFamily: 'Cairo')),
-                    ],
+                    child: Text(isDraft ? 'مسودة' : 'منشورة',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            fontFamily: 'Cairo')),
                   ),
                 ),
+              ]),
+              const SizedBox(width: 14),
+
+              // Info
+              Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(c.title,
+                          style: AppTheme.h3.copyWith(
+                              fontSize: 14, fontWeight: FontWeight.w800),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 7),
+                      Wrap(spacing: 10, runSpacing: 6, children: [
+                        _Chip(Icons.people_alt_rounded,
+                            '${c.studentsCount} طالب',
+                            AppTheme.primary),
+                        _Chip(Icons.video_library_rounded,
+                            '${c.sessionsCount} محاضرة',
+                            const Color(0xFF185FA5)),
+                        _Chip(Icons.access_time_rounded,
+                            '${c.totalHours.toStringAsFixed(0)}س',
+                            const Color(0xFFBA7517)),
+                        _Chip(Icons.star_rounded,
+                            c.averageRating.toStringAsFixed(1),
+                            AppTheme.accent),
+                      ]),
+                    ]),
               ),
-            ),
-          ],
+
+              // Actions
+              Column(children: [
+                _ActionBtn(
+                    icon: Icons.edit_rounded,
+                    color: AppTheme.primary,
+                    onTap: () {}),
+                const SizedBox(height: 8),
+                _ActionBtn(
+                    icon: Icons.delete_rounded,
+                    color: AppTheme.danger,
+                    onTap: _confirmDelete),
+                const SizedBox(height: 8),
+                _ActionBtn(
+                  icon: _expanded
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                  color: AppTheme.textMedium,
+                  onTap: () =>
+                      setState(() => _expanded = !_expanded),
+                ),
+              ]),
+            ]),
+          ),
         ),
-      ),
-    );
-  }
-}
 
-// ── Extras Panel ──────────────────────────────────────────────────────────────
-
-class _ExtrasPanel extends StatelessWidget {
-  final TeacherCourse course;
-
-  const _ExtrasPanel({required this.course});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Schedule
-          if (course.schedules.isNotEmpty) ...[
-            InkWell(
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => TeacherSchedulesScreen(course: course),
-                  ),
-                );
-              },
-              child: _ExtrasRow(
-                icon: Icons.calendar_month_rounded,
-                label: 'الجدول الأسبوعي',
-                items: course.schedules
-                    .map((s) => '${s.dayLabel}  ${s.startTime} – ${s.endTime}')
-                    .toList(),
-              ),
-            ),
-            const SizedBox(height: 10),
-          ],
-          // Certificates
-          if (course.certificates.isNotEmpty) ...[
-            _ExtrasRow(
-              icon: Icons.workspace_premium_rounded,
-              label: 'الشهادات',
-              items: course.certificates.map((c) => c.title).toList(),
-            ),
-            const SizedBox(height: 10),
-          ],
-          // Tools
-          if (course.tools.isNotEmpty) ...[
-            _ExtrasRow(
-              icon: Icons.build_rounded,
-              label: 'الأدوات المطلوبة',
-              items: course.tools.map((t) => t.name).toList(),
-            ),
-            const SizedBox(height: 10),
-          ],
-          // Prerequisites
-          if (course.prerequisites.isNotEmpty) ...[
-            _ExtrasRow(
-              icon: Icons.checklist_rounded,
-              label: 'المتطلبات السابقة',
-              items: course.prerequisites.map((p) => p.title).toList(),
-            ),
-          ],
-          if (course.schedules.isEmpty &&
-              course.certificates.isEmpty &&
-              course.tools.isEmpty &&
-              course.prerequisites.isEmpty)
-            Text('لا توجد تفاصيل إضافية — أضفها من شاشة إضافة الدورة',
-                style: AppTheme.caption.copyWith(color: AppTheme.textLight)),
-          const SizedBox(height: 8),
+        // ── Expandable extras ─────────────────────────────────────────
+        if (_expanded) ...[
+          Divider(height: 0.5, color: Colors.black.withValues(alpha:0.07)),
+          _ExtrasPanel(course: c),
         ],
-      ),
-    );
-  }
-}
 
-class _ExtrasRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final List<String> items;
-
-  const _ExtrasRow(
-      {required this.icon, required this.label, required this.items});
-
-  @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            Icon(icon, size: 14, color: AppTheme.primary),
-            const SizedBox(width: 6),
-            Text(label,
-                style: AppTheme.label
-                    .copyWith(color: AppTheme.primary, fontSize: 12)),
-          ]),
-          const SizedBox(height: 4),
-          ...items.map((item) => Padding(
-                padding: const EdgeInsets.only(right: 20, bottom: 3),
-                child: Row(children: [
-                  const Icon(Icons.circle, size: 5, color: AppTheme.textLight),
-                  const SizedBox(width: 6),
-                  Expanded(child: Text(item, style: AppTheme.caption)),
+        // ── Publish / unpublish ───────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+          child: GestureDetector(
+            onTap: _togglePublish,
+            child: Container(
+              height: 42,
+              decoration: BoxDecoration(
+                gradient: isDraft
+                    ? AppTheme.primaryGradient
+                    : const LinearGradient(colors: [
+                  Color(0xFF6B7280),
+                  Color(0xFF9CA3AF)
                 ]),
-              )),
-        ],
-      );
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: isDraft
+                    ? [
+                  BoxShadow(
+                      color: AppTheme.primary.withValues(alpha:0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3))
+                ]
+                    : null,
+              ),
+              child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                        isDraft
+                            ? Icons.upload_rounded
+                            : Icons.visibility_off_rounded,
+                        color: Colors.white,
+                        size: 17),
+                    const SizedBox(width: 7),
+                    Text(isDraft ? 'نشر الدورة' : 'إيقاف النشر',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            fontFamily: 'Cairo')),
+                  ]),
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
 }
 
-// ── Small helpers ─────────────────────────────────────────────────────────────
-
-class _Meta extends StatelessWidget {
+class _Chip extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
-
-  const _Meta(this.icon, this.label, {this.color = AppTheme.textLight});
+  const _Chip(this.icon, this.label, this.color);
 
   @override
   Widget build(BuildContext context) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 3),
-          Text(label, style: AppTheme.caption),
-        ],
-      );
-}
-
-class _StatusBadge extends StatelessWidget {
-  final bool isPublished;
-
-  const _StatusBadge({required this.isPublished});
-
-  @override
-  Widget build(BuildContext context) {
-    final color = isPublished ? AppTheme.success : AppTheme.accent;
-    final label = isPublished ? 'منشورة' : 'مسودة';
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 18,
+        height: 18,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha:0.12),
+          borderRadius: BorderRadius.circular(5),
+        ),
+        child: Icon(icon, size: 11, color: color),
       ),
-      child: Text(label,
-          style: AppTheme.caption
-              .copyWith(color: color, fontWeight: FontWeight.w700)),
-    );
-  }
+      const SizedBox(width: 4),
+      Text(label, style: AppTheme.caption.copyWith(fontSize: 11)),
+    ],
+  );
 }
 
-class _IconBtn extends StatelessWidget {
+class _ActionBtn extends StatelessWidget {
   final IconData icon;
   final Color color;
-  final Color bg;
   final VoidCallback onTap;
-
-  const _IconBtn(
-      {required this.icon,
-      required this.color,
-      required this.bg,
-      required this.onTap});
+  const _ActionBtn(
+      {required this.icon, required this.color, required this.onTap});
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 36,
-          height: 36,
-          decoration:
-              BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
-          child: Icon(icon, color: color, size: 18),
+    onTap: onTap,
+    child: Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+          color: color.withValues(alpha:0.1),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha:0.2))),
+      child: Icon(icon, color: color, size: 17),
+    ),
+  );
+}
+
+class _ExtrasPanel extends StatelessWidget {
+  final TeacherCourse course;
+  const _ExtrasPanel({required this.course});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (course.schedules.isNotEmpty)
+          _ExtRow(
+            Icons.calendar_month_rounded,
+            'الجدول الأسبوعي',
+            course.schedules
+                .map((s) =>
+            '${s.dayLabel}  ${s.startTime} – ${s.endTime}')
+                .toList(),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) =>
+                    TeacherSchedulesScreen(course: course))),
+          ),
+        if (course.certificates.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          _ExtRow(
+            Icons.workspace_premium_rounded,
+            'الشهادات',
+            course.certificates.map((c) => c.title).toList(),
+          ),
+        ],
+        if (course.tools.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          _ExtRow(
+            Icons.build_rounded,
+            'الأدوات المطلوبة',
+            course.tools.map((t) => t.name).toList(),
+          ),
+        ],
+        if (course.prerequisites.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          _ExtRow(
+            Icons.checklist_rounded,
+            'المتطلبات السابقة',
+            course.prerequisites.map((p) => p.title).toList(),
+          ),
+        ],
+        if (course.schedules.isEmpty &&
+            course.certificates.isEmpty &&
+            course.tools.isEmpty &&
+            course.prerequisites.isEmpty)
+          Text('لا توجد تفاصيل إضافية',
+              style: AppTheme.caption
+                  .copyWith(color: AppTheme.textLight)),
+        const SizedBox(height: 8),
+      ],
+    ),
+  );
+}
+
+class _ExtRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final List<String> items;
+  final VoidCallback? onTap;
+  const _ExtRow(this.icon, this.label, this.items, {this.onTap});
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        Container(
+          width: 22,
+          height: 22,
+          decoration: BoxDecoration(
+              color: AppTheme.primary.withValues(alpha:0.1),
+              borderRadius: BorderRadius.circular(6)),
+          child: Icon(icon, size: 13, color: AppTheme.primary),
         ),
-      );
+        const SizedBox(width: 7),
+        Text(label,
+            style: AppTheme.label
+                .copyWith(color: AppTheme.primary, fontSize: 12)),
+        if (onTap != null) ...[
+          const Spacer(),
+          const Icon(Icons.chevron_left_rounded,
+              size: 16, color: AppTheme.primary),
+        ],
+      ]),
+      const SizedBox(height: 5),
+      ...items.map((item) => Padding(
+        padding: const EdgeInsets.only(right: 29, bottom: 3),
+        child: Row(children: [
+          Container(
+            width: 5,
+            height: 5,
+            decoration: const BoxDecoration(
+                color: AppTheme.textLight,
+                shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 7),
+          Expanded(child: Text(item, style: AppTheme.caption)),
+        ]),
+      )),
+    ]),
+  );
 }

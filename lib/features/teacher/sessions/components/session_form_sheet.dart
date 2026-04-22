@@ -19,10 +19,10 @@ class SessionFormSheet extends StatefulWidget {
 }
 
 class _SessionFormSheetState extends State<SessionFormSheet> {
-  final _formKey = GlobalKey<FormState>();
+  final _formKey  = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
-  final _durCtrl = TextEditingController(text: '60');
+  final _durCtrl  = TextEditingController(text: '60');
   final _orderCtrl = TextEditingController(text: '0');
   String _type = 'pre-recorded';
   DateTime? _scheduled;
@@ -34,9 +34,9 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
     super.initState();
     final s = widget.existing;
     if (s != null) {
-      _nameCtrl.text = s.name;
-      _descCtrl.text = s.description ?? '';
-      _durCtrl.text = s.durationMinutes.toString();
+      _nameCtrl.text  = s.name;
+      _descCtrl.text  = s.description ?? '';
+      _durCtrl.text   = s.durationMinutes.toString();
       _orderCtrl.text = s.order.toString();
       _type = s.type ?? 'pre-recorded';
       if (s.scheduledAt != null) _scheduled = DateTime.tryParse(s.scheduledAt!);
@@ -54,14 +54,28 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
 
   Future<void> _pickDateTime() async {
     final date = await showDatePicker(
-        context: context,
-        initialDate: _scheduled ?? DateTime.now(),
-        firstDate: DateTime.now(),
-        lastDate: DateTime.now().add(const Duration(days: 365)));
+      context: context,
+      initialDate: _scheduled ?? DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(primary: AppTheme.primary),
+        ),
+        child: child!,
+      ),
+    );
     if (date == null || !mounted) return;
     final time = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.fromDateTime(_scheduled ?? DateTime.now()));
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_scheduled ?? DateTime.now()),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(primary: AppTheme.primary),
+        ),
+        child: child!,
+      ),
+    );
     if (time == null || !mounted) return;
     setState(() => _scheduled =
         DateTime(date.year, date.month, date.day, time.hour, time.minute));
@@ -72,37 +86,48 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
     final p = context.read<TeacherSessionsProvider>();
     bool ok;
     if (_isEdit) {
-      final r = await p.updateSession(widget.existing!.id,
-          name: _nameCtrl.text.trim(),
-          description:
-              _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
-          type: _type,
-          scheduledAt: _scheduled?.toUtc().toIso8601String(),
-          durationMinutes: int.tryParse(_durCtrl.text),
-          order: int.tryParse(_orderCtrl.text));
+      final r = await p.updateSession(
+        widget.existing!.id,
+        name: _nameCtrl.text.trim(),
+        description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+        type: _type,
+        scheduledAt: _scheduled?.toUtc().toIso8601String(),
+        durationMinutes: int.tryParse(_durCtrl.text),
+        order: int.tryParse(_orderCtrl.text),
+      );
       ok = r != null;
     } else {
       final r = await p.createSession(
-          courseId: widget.courseId,
-          name: _nameCtrl.text.trim(),
-          type: _type,
-          description:
-              _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
-          scheduledAt: _scheduled?.toUtc().toIso8601String(),
-          durationMinutes: int.tryParse(_durCtrl.text) ?? 60,
-          order: int.tryParse(_orderCtrl.text) ?? 0);
+        courseId: widget.courseId,
+        name: _nameCtrl.text.trim(),
+        type: _type,
+        description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+        scheduledAt: _scheduled?.toUtc().toIso8601String(),
+        durationMinutes: int.tryParse(_durCtrl.text) ?? 60,
+        order: int.tryParse(_orderCtrl.text) ?? 0,
+      );
       ok = r != null;
     }
     if (mounted) {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-              ok ? (_isEdit ? 'تم تعديل الدرس' : 'تم إضافة الدرس') : 'حدث خطأ',
-              style: const TextStyle(fontFamily: 'Cairo', color: Colors.white)),
-          backgroundColor: ok ? AppTheme.success : AppTheme.danger,
-          behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))));
+        content: Row(children: [
+          Icon(ok ? Icons.check_circle_rounded : Icons.error_rounded,
+              color: Colors.white, size: 18),
+          const SizedBox(width: 10),
+          Text(
+            ok ? (_isEdit ? 'تم تعديل الدرس' : 'تم إضافة الدرس') : 'حدث خطأ',
+            style: const TextStyle(
+                fontFamily: 'bahji',
+                color: Colors.white,
+                fontWeight: FontWeight.w600),
+          ),
+        ]),
+        backgroundColor: ok ? AppTheme.success : AppTheme.danger,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ));
     }
   }
 
@@ -113,97 +138,176 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
       textDirection: Helpers.pageDirection,
       child: Container(
         padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 24,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 32),
-        decoration: const BoxDecoration(
-            color: AppTheme.cardBg,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+          left: 24,
+          right: 24,
+          top: 8,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 32,
+        ),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceCard,
+          borderRadius:
+          const BorderRadius.vertical(top: Radius.circular(AppTheme.radiusXL)),
+        ),
         child: Form(
-            key: _formKey,
-            child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Handle
-                  Center(
-                      child: Container(
-                          width: 40,
-                          height: 4,
-                          decoration: BoxDecoration(
-                              color: AppTheme.divider,
-                              borderRadius: BorderRadius.circular(2)))),
-                  const SizedBox(height: 18),
-                  Text(_isEdit ? 'تعديل الدرس' : 'إضافة درس جديد',
-                      style: AppTheme.h2),
-                  const SizedBox(height: 20),
-                  MyTextField(
-                      controller: _nameCtrl,
-                      label: 'اسم الدرس',
-                      validator: (v) =>
-                          (v?.isEmpty ?? true) ? 'أدخل اسم الدرس' : null),
-                  const SizedBox(height: 14),
-                  MyTextField(
-                      controller: _descCtrl,
-                      label: 'وصف الدرس (اختياري)',
-                      maxLine: 2),
-                  const SizedBox(height: 14),
-                  _TypeSelector(
-                      selected: _type,
-                      onChanged: (t) => setState(() => _type = t)),
-                  const SizedBox(height: 14),
-                  Row(children: [
-                    Expanded(
-                        child: MyTextField(
-                            controller: _durCtrl,
-                            label: 'المدة (دقيقة)',
-                            keyboard: TextInputType.number)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                        child: MyTextField(
-                            controller: _orderCtrl,
-                            label: 'الترتيب',
-                            keyboard: TextInputType.number)),
-                  ]),
-                  if (_type == 'live') ...[
-                    const SizedBox(height: 14),
-                    GestureDetector(
-                        onTap: _pickDateTime,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 14),
-                          decoration: BoxDecoration(
-                              color: AppTheme.background,
-                              borderRadius:
-                                  BorderRadius.circular(AppTheme.radiusMedium)),
-                          child: Row(children: [
-                            const Icon(Icons.calendar_month_rounded,
-                                color: AppTheme.primary, size: 20),
-                            const SizedBox(width: 10),
-                            Text(
-                                _scheduled != null
-                                    ? '${_scheduled!.day}/${_scheduled!.month}/${_scheduled!.year}  ${_scheduled!.hour.toString().padLeft(2, '0')}:${_scheduled!.minute.toString().padLeft(2, '0')}'
-                                    : 'اختر موعد الحصة المباشرة',
-                                style: AppTheme.label.copyWith(
-                                    color: _scheduled != null
-                                        ? AppTheme.textDark
-                                        : AppTheme.textLight)),
-                          ]),
-                        )),
-                  ],
-                  const SizedBox(height: 20),
-                  MyPrimaryButton(
-                      label: _isEdit ? 'save_changes'.tr : 'add_session'.tr,
-                      isLoading: isLoading,
-                      onPressed: _submit),
-                ])),
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: AppTheme.divider,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+
+              // Title row
+              Row(children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.primaryGradient,
+                    borderRadius: BorderRadius.circular(11),
+                    boxShadow: AppTheme.primaryShadow,
+                  ),
+                  child: Icon(
+                    _isEdit ? Icons.edit_rounded : Icons.add_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  _isEdit ? 'تعديل الدرس' : 'درس جديد',
+                  style: AppTheme.h2,
+                ),
+              ]),
+
+              const SizedBox(height: 22),
+
+              // Fields
+              MyTextField(
+                controller: _nameCtrl,
+                label: 'اسم الدرس',
+                validator: (v) => (v?.isEmpty ?? true) ? 'أدخل اسم الدرس' : null,
+              ),
+              const SizedBox(height: 14),
+              MyTextField(
+                controller: _descCtrl,
+                label: 'وصف الدرس (اختياري)',
+                maxLine: 2,
+              ),
+              const SizedBox(height: 14),
+
+              // Type selector
+              _TypeSelector(
+                selected: _type,
+                onChanged: (t) => setState(() => _type = t),
+              ),
+
+              const SizedBox(height: 14),
+
+              // Duration + Order row
+              Row(children: [
+                Expanded(
+                  child: MyTextField(
+                    controller: _durCtrl,
+                    label: 'المدة (دقيقة)',
+                    keyboard: TextInputType.number,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: MyTextField(
+                    controller: _orderCtrl,
+                    label: 'الترتيب',
+                    keyboard: TextInputType.number,
+                  ),
+                ),
+              ]),
+
+              // Date picker (live only)
+              if (_type == 'live') ...[
+                const SizedBox(height: 14),
+                GestureDetector(
+                  onTap: _pickDateTime,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: _scheduled != null
+                          ? AppTheme.primaryLight
+                          : AppTheme.background,
+                      borderRadius:
+                      BorderRadius.circular(AppTheme.radiusMedium),
+                      border: Border.all(
+                        color: _scheduled != null
+                            ? AppTheme.primary.withValues(alpha: 0.35)
+                            : AppTheme.divider,
+                        width: _scheduled != null ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Row(children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: const Icon(Icons.event_rounded,
+                            color: AppTheme.primary, size: 17),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _scheduled != null
+                              ? '${_scheduled!.day}/${_scheduled!.month}/${_scheduled!.year}  ${_scheduled!.hour.toString().padLeft(2, '0')}:${_scheduled!.minute.toString().padLeft(2, '0')}'
+                              : 'اختر موعد الحصة المباشرة',
+                          style: AppTheme.label.copyWith(
+                            color: _scheduled != null
+                                ? AppTheme.primary
+                                : AppTheme.textLight,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        _scheduled != null
+                            ? Icons.check_circle_rounded
+                            : Icons.chevron_left_rounded,
+                        color: _scheduled != null
+                            ? AppTheme.success
+                            : AppTheme.textLight,
+                        size: 18,
+                      ),
+                    ]),
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 24),
+              MyPrimaryButton(
+                label: _isEdit ? 'save_changes'.tr : 'add_session'.tr,
+                isLoading: isLoading,
+                onPressed: _submit,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
 
-// ── Type selector (live / pre-recorded) ───────────────────────────────────────
+// ── Type Selector ──────────────────────────────────────────────────────────────
 class _TypeSelector extends StatelessWidget {
   final String selected;
   final ValueChanged<String> onChanged;
@@ -212,57 +316,84 @@ class _TypeSelector extends StatelessWidget {
 
   static const _types = [
     ('pre-recorded', 'مسجّل مسبقاً', Icons.play_circle_outline_rounded),
-    ('live', 'مباشر', Icons.live_tv_rounded)
+    ('live', 'مباشر', Icons.live_tv_rounded),
   ];
 
   @override
-  Widget build(BuildContext ctx) =>
-      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('نوع الدرس',
-            style: AppTheme.label.copyWith(
-                color: AppTheme.textDark, fontWeight: FontWeight.w700)),
-        const SizedBox(height: 8),
-        Row(
-            children: _types.map((t) {
+  Widget build(BuildContext ctx) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text('نوع الدرس',
+          style: AppTheme.label.copyWith(
+              color: AppTheme.textDark, fontWeight: FontWeight.w700)),
+      const SizedBox(height: 10),
+      Row(
+        children: _types.map((t) {
           final (v, l, i) = t;
-          final a = selected == v;
+          final isSelected = selected == v;
+          final isLast = v == 'live';
+
           return Expanded(
-              child: Padding(
-                  padding: EdgeInsets.only(
-                      left: v == 'live' ? 0 : 6, right: v == 'live' ? 6 : 0),
-                  child: GestureDetector(
-                      onTap: () => onChanged(v),
-                      child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                              color: a
-                                  ? AppTheme.primary.withValues(alpha: 0.1)
-                                  : AppTheme.background,
-                              borderRadius:
-                                  BorderRadius.circular(AppTheme.radiusMedium),
-                              border: Border.all(
-                                  color:
-                                      a ? AppTheme.primary : AppTheme.divider,
-                                  width: a ? 2 : 1)),
-                          child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(i,
-                                    size: 18,
-                                    color: a
-                                        ? AppTheme.primary
-                                        : AppTheme.textMedium),
-                                const SizedBox(width: 6),
-                                Text(l,
-                                    style: AppTheme.label.copyWith(
-                                        color: a
-                                            ? AppTheme.primary
-                                            : AppTheme.textMedium,
-                                        fontWeight: a
-                                            ? FontWeight.w700
-                                            : FontWeight.w500))
-                              ])))));
-        }).toList()),
-      ]);
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: isLast ? 0 : 6,
+                right: isLast ? 6 : 0,
+              ),
+              child: GestureDetector(
+                onTap: () => onChanged(v),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  decoration: BoxDecoration(
+                    gradient: isSelected
+                        ? (v == 'live'
+                        ? AppTheme.dangerGradient
+                        : AppTheme.primaryGradient)
+                        : null,
+                    color: isSelected ? null : AppTheme.background,
+                    borderRadius:
+                    BorderRadius.circular(AppTheme.radiusMedium),
+                    border: isSelected
+                        ? null
+                        : Border.all(color: AppTheme.divider, width: 1),
+                    boxShadow: isSelected
+                        ? [
+                      BoxShadow(
+                        color: (v == 'live'
+                            ? AppTheme.danger
+                            : AppTheme.primary)
+                            .withValues(alpha: 0.28),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      )
+                    ]
+                        : [],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(i,
+                          size: 17,
+                          color: isSelected
+                              ? Colors.white
+                              : AppTheme.textMedium),
+                      const SizedBox(width: 7),
+                      Text(l,
+                          style: AppTheme.label.copyWith(
+                              color: isSelected
+                                  ? Colors.white
+                                  : AppTheme.textMedium,
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    ],
+  );
 }

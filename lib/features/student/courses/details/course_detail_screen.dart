@@ -138,7 +138,7 @@ class _WebTopBar extends StatelessWidget {
         color: AppTheme.cardBg,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha:0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -155,7 +155,7 @@ class _WebTopBar extends StatelessWidget {
                 color: AppTheme.background,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                    color: Colors.black.withOpacity(0.08)),
+                    color: Colors.black.withValues(alpha:0.08)),
               ),
               child: const Icon(Icons.arrow_forward_rounded,
                   size: 18, color: AppTheme.textDark),
@@ -197,7 +197,7 @@ class _WebSidebar extends StatelessWidget {
               borderRadius: BorderRadius.circular(18),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.07),
+                  color: Colors.black.withValues(alpha:0.07),
                   blurRadius: 16,
                   offset: const Offset(0, 4),
                 ),
@@ -288,7 +288,7 @@ class _Fact extends StatelessWidget {
           width: 30,
           height: 30,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha:0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, size: 16, color: color),
@@ -334,9 +334,9 @@ class _CourseHero extends StatelessWidget {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.black.withOpacity(0.5),
+                  Colors.black.withValues(alpha:0.5),
                   Colors.transparent,
-                  Colors.black.withOpacity(0.6),
+                  Colors.black.withValues(alpha:0.6),
                 ],
                 stops: const [0, 0.42, 1],
               ),
@@ -406,10 +406,10 @@ class _HeroBadge extends StatelessWidget {
     padding:
     const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
     decoration: BoxDecoration(
-      color: Colors.white.withOpacity(0.2),
+      color: Colors.white.withValues(alpha:0.2),
       borderRadius: BorderRadius.circular(20),
       border:
-      Border.all(color: Colors.white.withOpacity(0.3)),
+      Border.all(color: Colors.white.withValues(alpha:0.3)),
     ),
     child: Text(
       label,
@@ -452,11 +452,11 @@ class _CircleIconBtn extends StatelessWidget {
       width: 40,
       height: 40,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
+        color: Colors.white.withValues(alpha:0.9),
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.12),
+            color: Colors.black.withValues(alpha:0.12),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -580,7 +580,7 @@ class _TabBarWidget extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha:0.05),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -606,7 +606,7 @@ class _TabBarWidget extends StatelessWidget {
                     boxShadow: isActive
                         ? [
                       BoxShadow(
-                        color: AppTheme.primary.withOpacity(0.3),
+                        color: AppTheme.primary.withValues(alpha:0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -662,7 +662,7 @@ class _EnrollButton extends StatelessWidget {
         child: Container(
           height: 52,
           decoration: BoxDecoration(
-            color: AppTheme.accent2.withOpacity(0.1),
+            color: AppTheme.accent2.withValues(alpha:0.1),
             borderRadius: BorderRadius.circular(32),
             border: Border.all(color: AppTheme.accent2),
           ),
@@ -711,7 +711,7 @@ class _EnrollButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(32),
             boxShadow: [
               BoxShadow(
-                color: AppTheme.primary.withOpacity(0.42),
+                color: AppTheme.primary.withValues(alpha:0.42),
                 blurRadius: 22,
                 offset: const Offset(0, 7),
               ),

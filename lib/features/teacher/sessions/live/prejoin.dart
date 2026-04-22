@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:developer';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../../utils/exts.dart';
@@ -53,16 +52,13 @@ class JoinArgs {
 // ─────────────────────────────────────────────────────────────────────────────
 class _DS {
   static const bg = Color(0xFF060810);
-  static const surface = Color(0xFF0E1120);
   static const surfaceHi = Color(0xFF151826);
 
   static const cyan = Color(0xFF00D4FF);
   static const indigo = Color(0xFF6B6EF9);
-  static const emerald = Color(0xFF00E5A0);
   static const rose = Color(0xFFFF4F72);
 
   static const textHigh = Color(0xFFFFFFFF);
-  static const textMid = Color(0xB3FFFFFF);
   static const textLow = Color(0x66FFFFFF);
 
   static const glass10 = Color(0x1AFFFFFF);
@@ -614,97 +610,6 @@ class _PreJoinPageState extends State<PreJoinPage>
       ]),
     );
   }
-
-  // ── Camera toggle pill ────────────────────────────────────────────────────
-  Widget _buildCameraTogglePill() {
-    final isOn = _enableVideo;
-    final color = isOn ? _DS.cyan : _DS.rose;
-    final gradColors = isOn ? _DS.camOnGrad : _DS.camOffGrad;
-
-    return GestureDetector(
-      onTap: _toggleCamera,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(40),
-          color: _DS.glass10,
-          border: Border.all(color: color.withValues(alpha: 0.35), width: 1),
-          boxShadow: [
-            BoxShadow(color: color.withValues(alpha: 0.18), blurRadius: 20)
-          ],
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          // Gradient icon circle
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                  colors: gradColors,
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight),
-              boxShadow: [
-                BoxShadow(color: color.withValues(alpha: 0.45), blurRadius: 14)
-              ],
-            ),
-            child: Icon(
-                isOn ? Icons.videocam_rounded : Icons.videocam_off_rounded,
-                color: Colors.white,
-                size: 19),
-          ),
-          const SizedBox(width: 10),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child: Text(
-              isOn ? 'Camera On' : 'Camera Off',
-              key: ValueKey(isOn),
-              style: TextStyle(
-                  color: color,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.2),
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Toggle track
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            width: 44,
-            height: 24,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              gradient: isOn ? LinearGradient(colors: gradColors) : null,
-              color: isOn ? null : _DS.glass15,
-              border: isOn ? null : Border.all(color: _DS.glassBdr, width: 1),
-            ),
-            child: AnimatedAlign(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-              alignment: isOn ? Alignment.centerRight : Alignment.centerLeft,
-              child: Container(
-                margin: const EdgeInsets.all(3),
-                width: 18,
-                height: 18,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                        color: color.withValues(alpha: 0.4), blurRadius: 6)
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 4),
-        ]),
-      ),
-    );
-  }
-
   // ── Bottom section ─────────────────────────────────────────────────────────
   Widget _buildBottomSection() {
     return Padding(

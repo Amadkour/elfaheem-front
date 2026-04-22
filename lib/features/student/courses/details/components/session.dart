@@ -43,7 +43,7 @@ class SessionsTab extends StatelessWidget {
                 width: 72,
                 height: 72,
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryLight.withOpacity(0.3),
+                  color: AppTheme.primaryLight.withValues(alpha:0.3),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.video_library_outlined,
@@ -107,7 +107,7 @@ class _ProgressBanner extends StatelessWidget {
       borderRadius: BorderRadius.circular(18),
       boxShadow: [
         BoxShadow(
-          color: AppTheme.primary.withOpacity(0.32),
+          color: AppTheme.primary.withValues(alpha:0.32),
           blurRadius: 18,
           offset: const Offset(0, 5),
         ),
@@ -125,7 +125,7 @@ class _ProgressBanner extends StatelessWidget {
               child: CircularProgressIndicator(
                 value: progress,
                 strokeWidth: 5,
-                backgroundColor: Colors.white.withOpacity(0.25),
+                backgroundColor: Colors.white.withValues(alpha:0.25),
                 valueColor:
                 const AlwaysStoppedAnimation(Colors.white),
               ),
@@ -159,7 +159,7 @@ class _ProgressBanner extends StatelessWidget {
               Text(
                 'أكملت $completed من $total محاضرة',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.8),
+                  color: Colors.white.withValues(alpha:0.8),
                   fontSize: 12,
                   fontFamily: 'Cairo',
                 ),
@@ -170,7 +170,7 @@ class _ProgressBanner extends StatelessWidget {
                 child: LinearProgressIndicator(
                   value: progress,
                   minHeight: 6,
-                  backgroundColor: Colors.white.withOpacity(0.25),
+                  backgroundColor: Colors.white.withValues(alpha:0.25),
                   valueColor:
                   const AlwaysStoppedAnimation(Colors.white),
                 ),
@@ -205,9 +205,9 @@ class StudentSessionCard extends StatelessWidget {
 
     Color? borderColor;
     if (isDone) {
-      borderColor = AppTheme.accent2.withOpacity(0.35);
+      borderColor = AppTheme.accent2.withValues(alpha:0.35);
     } else if (isLive && isCheckedIn) {
-      borderColor = AppTheme.danger.withOpacity(0.4);
+      borderColor = AppTheme.danger.withValues(alpha:0.4);
     }
 
     return GestureDetector(
@@ -222,7 +222,7 @@ class StudentSessionCard extends StatelessWidget {
               : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withValues(alpha:0.06),
               blurRadius: 12,
               offset: const Offset(0, 3),
             ),
@@ -399,7 +399,7 @@ class _Thumbnail extends StatelessWidget {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: badgeBg.withOpacity(0.4),
+                    color: badgeBg.withValues(alpha:0.4),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
@@ -433,7 +433,7 @@ class _Thumbnail extends StatelessWidget {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.accent2.withOpacity(0.4),
+                      color: AppTheme.accent2.withValues(alpha:0.4),
                       blurRadius: 6,
                       offset: const Offset(0, 2),
                     ),
@@ -607,16 +607,16 @@ class _AttendanceRow extends StatelessWidget {
     label: 'تسجيل المغادرة',
     icon: Icons.logout_rounded,
     fg: AppTheme.danger,
-    bg: AppTheme.danger.withOpacity(0.09),
-    border: AppTheme.danger.withOpacity(0.35),
+    bg: AppTheme.danger.withValues(alpha:0.09),
+    border: AppTheme.danger.withValues(alpha:0.35),
     onTap: onCheckOut,
   )
       : _AttendBtn(
     label: 'تسجيل الحضور',
     icon: Icons.login_rounded,
     fg: AppTheme.accent2,
-    bg: AppTheme.accent2.withOpacity(0.09),
-    border: AppTheme.accent2.withOpacity(0.35),
+    bg: AppTheme.accent2.withValues(alpha:0.09),
+    border: AppTheme.accent2.withValues(alpha:0.35),
     onTap: onCheckIn,
   );
 }

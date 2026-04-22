@@ -18,17 +18,17 @@ class StatChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fg = iconColor ?? AppTheme.primary;
-    final bg = iconBg ?? fg.withOpacity(0.12);
+    final bg = iconBg ?? fg.withValues(alpha:0.12);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       decoration: BoxDecoration(
         color: AppTheme.cardBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: fg.withOpacity(0.12)),
+        border: Border.all(color: fg.withValues(alpha:0.12)),
         boxShadow: [
           BoxShadow(
-            color: fg.withOpacity(0.08),
+            color: fg.withValues(alpha:0.08),
             blurRadius: 12,
             offset: const Offset(0, 3),
           ),
@@ -83,7 +83,7 @@ class MiniStatChip extends StatelessWidget {
         width: 18,
         height: 18,
         decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
+          color: color.withValues(alpha:0.12),
           borderRadius: BorderRadius.circular(5),
         ),
         child: Icon(icon, size: 11, color: color),

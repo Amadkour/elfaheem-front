@@ -121,7 +121,7 @@ class _Sidebar extends StatelessWidget {
                     borderRadius: BorderRadius.circular(11),
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.primary.withOpacity(0.4),
+                        color: AppTheme.primary.withValues(alpha:0.4),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
@@ -144,7 +144,7 @@ class _Sidebar extends StatelessWidget {
             ),
           ),
 
-          Container(height: 0.5, color: Colors.white.withOpacity(0.08)),
+          Container(height: 0.5, color: Colors.white.withValues(alpha:0.08)),
           const SizedBox(height: 12),
 
           // Nav items
@@ -161,7 +161,7 @@ class _Sidebar extends StatelessWidget {
           }),
 
           const Spacer(),
-          Container(height: 0.5, color: Colors.white.withOpacity(0.08)),
+          Container(height: 0.5, color: Colors.white.withValues(alpha:0.08)),
 
           // User footer
           Padding(
@@ -204,7 +204,7 @@ class _Sidebar extends StatelessWidget {
                       Text(
                         'طالب',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.5),
+                          color: Colors.white.withValues(alpha:0.5),
                           fontSize: 10,
                           fontFamily: 'Cairo',
                         ),
@@ -245,7 +245,7 @@ class _SideNavItem extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           decoration: BoxDecoration(
             color: active
-                ? AppTheme.primary.withOpacity(0.22)
+                ? AppTheme.primary.withValues(alpha:0.22)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
@@ -257,12 +257,12 @@ class _SideNavItem extends StatelessWidget {
                 height: 34,
                 decoration: BoxDecoration(
                   gradient: active ? AppTheme.primaryGradient : null,
-                  color: active ? null : Colors.white.withOpacity(0.07),
+                  color: active ? null : Colors.white.withValues(alpha:0.07),
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: active
                       ? [
                           BoxShadow(
-                            color: AppTheme.primary.withOpacity(0.35),
+                            color: AppTheme.primary.withValues(alpha:0.35),
                             blurRadius: 8,
                             offset: const Offset(0, 3),
                           ),
@@ -273,7 +273,7 @@ class _SideNavItem extends StatelessWidget {
                     size: 18,
                     color: active
                         ? Colors.white
-                        : Colors.white.withOpacity(0.5)),
+                        : Colors.white.withValues(alpha:0.5)),
               ),
               const SizedBox(width: 12),
               Text(
@@ -281,7 +281,7 @@ class _SideNavItem extends StatelessWidget {
                 style: TextStyle(
                   color: active
                       ? Colors.white
-                      : Colors.white.withOpacity(0.55),
+                      : Colors.white.withValues(alpha:0.55),
                   fontSize: 13,
                   fontWeight:
                       active ? FontWeight.w700 : FontWeight.w500,
@@ -335,13 +335,13 @@ class _BottomNav extends StatelessWidget {
         color: AppTheme.cardBg,
         border: Border(
           top: BorderSide(
-            color: Colors.black.withOpacity(0.07),
+            color: Colors.black.withValues(alpha:0.07),
             width: 0.5,
           ),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha:0.06),
             blurRadius: 20,
             offset: const Offset(0, -4),
           ),

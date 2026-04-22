@@ -65,10 +65,10 @@ class AuthSidebar extends StatelessWidget {
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
+                          color: Colors.white.withValues(alpha:0.15),
                           borderRadius: BorderRadius.circular(12),
                           border:
-                              Border.all(color: Colors.white.withOpacity(0.2)),
+                              Border.all(color: Colors.white.withValues(alpha:0.2)),
                         ),
                         child: const Icon(Icons.layers_rounded,
                             color: Colors.white, size: 22),
@@ -89,7 +89,7 @@ class AuthSidebar extends StatelessWidget {
                           Text(
                             'Learning Platform',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.5),
+                              color: Colors.white.withValues(alpha:0.5),
                               fontSize: 11,
                               letterSpacing: 1.2,
                               fontFamily: 'Bahji',
@@ -117,7 +117,7 @@ class AuthSidebar extends StatelessWidget {
                   Text(
                     'Join thousands of students and educators in a rich digital learning experience.',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.65),
+                      color: Colors.white.withValues(alpha:0.65),
                       fontSize: 14,
                       fontFamily: 'Bahji',
                       height: 1.7,
@@ -175,7 +175,7 @@ class _Circle extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors.white.withOpacity(opacity),
+          color: Colors.white.withValues(alpha:opacity),
         ),
       );
 }
@@ -193,7 +193,7 @@ class _SidebarFeature extends StatelessWidget {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.12),
+              color: Colors.white.withValues(alpha:0.12),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, size: 16, color: const Color(0xFF93C5FD)),
@@ -203,7 +203,7 @@ class _SidebarFeature extends StatelessWidget {
             child: Text(
               text,
               style: TextStyle(
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withValues(alpha:0.8),
                 fontSize: 13,
                 fontFamily: 'Bahji',
               ),
@@ -222,9 +222,9 @@ class _TrustBadge extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.1),
+          color: Colors.white.withValues(alpha:0.1),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withOpacity(0.15)),
+          border: Border.all(color: Colors.white.withValues(alpha:0.15)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -241,7 +241,7 @@ class _TrustBadge extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                color: Colors.white.withOpacity(0.7),
+                color: Colors.white.withValues(alpha:0.7),
                 fontSize: 11,
                 fontFamily: 'Bahji',
               ),
@@ -446,7 +446,7 @@ class PrimaryButton extends StatelessWidget {
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppTheme.accent,
-          disabledBackgroundColor: AppTheme.accent.withOpacity(0.6),
+          disabledBackgroundColor: AppTheme.accent.withValues(alpha:0.6),
           foregroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
@@ -607,8 +607,8 @@ class RolePicker extends StatelessWidget {
                     height: 40,
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? AppTheme.accent.withOpacity(0.15)
-                          : const Color(0xFF9CA3AF).withOpacity(0.1),
+                          ? AppTheme.accent.withValues(alpha:0.15)
+                          : const Color(0xFF9CA3AF).withValues(alpha:0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(

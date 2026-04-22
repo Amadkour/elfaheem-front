@@ -95,7 +95,7 @@ class _WebHeader extends StatelessWidget {
       color: AppTheme.cardBg,
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.05),
+          color: Colors.black.withValues(alpha:0.05),
           blurRadius: 8,
           offset: const Offset(0, 2),
         ),
@@ -133,7 +133,7 @@ class _SearchBar extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.06),
+          color: Colors.black.withValues(alpha:0.06),
           blurRadius: 12,
           offset: const Offset(0, 2),
         ),
@@ -157,7 +157,7 @@ class _SearchBar extends StatelessWidget {
           width: 32,
           height: 32,
           decoration: BoxDecoration(
-            color: AppTheme.primaryLight.withOpacity(0.3),
+            color: AppTheme.primaryLight.withValues(alpha:0.3),
             borderRadius: BorderRadius.circular(9),
           ),
           child: const Icon(Icons.search_rounded,
@@ -303,7 +303,7 @@ class _CourseCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.06),
+                color: Colors.black.withValues(alpha:0.06),
                 blurRadius: 14,
                 offset: const Offset(0, 3),
               ),
@@ -329,7 +329,7 @@ class _CourseCard extends StatelessWidget {
                           gradient: LinearGradient(
                             colors: [
                               Colors.transparent,
-                              Colors.black.withOpacity(0.32),
+                              Colors.black.withValues(alpha:0.32),
                             ],
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
@@ -385,7 +385,7 @@ class _CourseCard extends StatelessWidget {
                               height: 18,
                               decoration: BoxDecoration(
                                 color: AppTheme.primary
-                                    .withOpacity(0.12),
+                                    .withValues(alpha:0.12),
                                 shape: BoxShape.circle,
                               ),
                               alignment: Alignment.center,
@@ -462,7 +462,7 @@ class _PricePill extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: (isFree ? const Color(0xFF0F6E56) : AppTheme.primary)
-                .withOpacity(0.4),
+                .withValues(alpha:0.4),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -492,7 +492,7 @@ class _TypeTag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: c.withOpacity(0.1),
+        color: c.withValues(alpha:0.1),
         borderRadius: BorderRadius.circular(7),
       ),
       child: Row(
@@ -524,7 +524,7 @@ class _CatTag extends StatelessWidget {
     padding:
     const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
     decoration: BoxDecoration(
-      color: AppTheme.primaryLight.withOpacity(0.2),
+      color: AppTheme.primaryLight.withValues(alpha:0.2),
       borderRadius: BorderRadius.circular(7),
     ),
     child: Text(
@@ -570,7 +570,7 @@ class _EmptyState extends StatelessWidget {
           width: 80,
           height: 80,
           decoration: BoxDecoration(
-            color: AppTheme.primaryLight.withOpacity(0.3),
+            color: AppTheme.primaryLight.withValues(alpha:0.3),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, size: 38, color: AppTheme.primary),

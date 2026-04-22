@@ -79,7 +79,7 @@ class _WebHeader extends StatelessWidget {
       color: AppTheme.cardBg,
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.05),
+          color: Colors.black.withValues(alpha:0.05),
           blurRadius: 8,
           offset: const Offset(0, 2),
         ),
@@ -160,7 +160,7 @@ class _StatCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: shadowColor.withOpacity(0.32),
+            color: shadowColor.withValues(alpha:0.32),
             blurRadius: 16,
             offset: const Offset(0, 5),
           ),
@@ -173,7 +173,7 @@ class _StatCard extends StatelessWidget {
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha:0.2),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: Colors.white, size: 18),
@@ -193,7 +193,7 @@ class _StatCard extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.75),
+              color: Colors.white.withValues(alpha:0.75),
               fontSize: 11,
               fontFamily: 'Cairo',
             ),
@@ -229,7 +229,7 @@ class _FilterTabs extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha:0.05),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -253,7 +253,7 @@ class _FilterTabs extends StatelessWidget {
                     boxShadow: active
                         ? [
                       BoxShadow(
-                        color: AppTheme.primary.withOpacity(0.3),
+                        color: AppTheme.primary.withValues(alpha:0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -325,7 +325,7 @@ class _CourseList extends StatelessWidget {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: AppTheme.primaryLight.withOpacity(0.3),
+                color: AppTheme.primaryLight.withValues(alpha:0.3),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.menu_book_rounded,
@@ -391,12 +391,12 @@ class _EnrolledCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
             border: isDone
                 ? Border.all(
-                color: AppTheme.accent2.withOpacity(0.3),
+                color: AppTheme.accent2.withValues(alpha:0.3),
                 width: 1.5)
                 : null,
             boxShadow: [
               BoxShadow(
-                color: accentColor.withOpacity(isDone ? 0.1 : 0.06),
+                color: accentColor.withValues(alpha:isDone ? 0.1 : 0.06),
                 blurRadius: 14,
                 offset: const Offset(0, 4),
               ),
@@ -428,7 +428,7 @@ class _EnrolledCard extends StatelessWidget {
                             boxShadow: [
                               BoxShadow(
                                 color:
-                                AppTheme.accent2.withOpacity(0.4),
+                                AppTheme.accent2.withValues(alpha:0.4),
                                 blurRadius: 6,
                                 offset: const Offset(0, 2),
                               ),
@@ -521,7 +521,7 @@ class _ProgressDot extends StatelessWidget {
       shape: BoxShape.circle,
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.1),
+          color: Colors.black.withValues(alpha:0.1),
           blurRadius: 4,
         ),
       ],

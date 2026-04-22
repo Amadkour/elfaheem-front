@@ -43,11 +43,15 @@ class StudentSessionsProvider extends BaseProvider {
     final r =
         await run(() => _api.get('/api/v1/live-sessions/$sessionId/join'));
     if (r is Map<String, dynamic>) {
-      final String url = r['ws_url'] as String? ?? '';
-      return LiveResponseModel(
+      final LiveResponseModel url = LiveResponseModel(
           sessionId: sessionId,
           url: r['ws_url'] as String? ?? '',
           token: r['token'] as String? ?? '');
+      print("--------------------------------------------------------");
+      print(url.toJson);
+      print("--------------------------------------------------------");
+
+      return url ;
     }
     return null;
   }

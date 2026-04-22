@@ -116,6 +116,7 @@ class TeacherSessionsProvider extends BaseProvider {
     bool enableRecording = true,
     int durationHours = 24,
   }) async {
+    print("---------------------[starting to fetch]-----------------------------------");
     final result = await run(() => _api.post(
           '/api/v1/live-sessions/start',
           queryParams: {
@@ -125,16 +126,23 @@ class TeacherSessionsProvider extends BaseProvider {
           },
         ));
     if (result is Map<String, dynamic>) {
-      final url = result['ws_url'] as String? ?? '';
-      final token = result['token'] as String? ?? '';
+      final LiveResponseModel url = LiveResponseModel(
+          sessionId: sessionId,
+          url: result['ws_url'] as String? ?? '',
+          token: result['token'] as String? ?? '');
+      print("---------------------[starting to join]-----------------------------------");
+      print(url.toJson);
+      print("--------------------------------------------------------");
       // Mark session as active locally
       _sessions = _sessions
           .map((s) => s.id == sessionId
-              ? s.copyWith(isLiveActive: true, roomUrl: url)
+              ? s.copyWith(isLiveActive: true, roomUrl: url.url)
               : s)
           .toList();
       notifyListeners();
-      return LiveResponseModel(sessionId: sessionId, url: url, token: token);
+      return url;
+    }else{
+      print(result);
     }
     return null;
   }

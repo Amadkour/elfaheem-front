@@ -234,7 +234,6 @@ class _ControlsWidgetState extends State<ControlsWidget>
           _buildAudioOutputButton(),
 
         // ── Screen share (teacher only) ───────────────────────────────────
-        if (widget.isTeacher)
           _CtrlButton(
             icon: _screenShareBusy
                 ? null
@@ -246,7 +245,7 @@ class _ControlsWidgetState extends State<ControlsWidget>
           ),
 
         // ── Extra developer options ───────────────────────────────────────
-        _buildMoreMenu(),
+        // _buildMoreMenu(),
 
         // ── Disconnect ────────────────────────────────────────────────────
         _buildEndButton(),

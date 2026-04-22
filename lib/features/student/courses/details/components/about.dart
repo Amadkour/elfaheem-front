@@ -112,7 +112,7 @@ class _SectionTitle extends StatelessWidget {
           width: 34,
           height: 34,
           decoration: BoxDecoration(
-            color: c.withOpacity(0.1),
+            color: c.withValues(alpha:0.1),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, size: 18, color: c),
@@ -137,10 +137,10 @@ class ScheduleChip extends StatelessWidget {
     padding: const EdgeInsets.symmetric(
         horizontal: 16, vertical: 13),
     decoration: BoxDecoration(
-      color: AppTheme.primaryLight.withOpacity(0.12),
+      color: AppTheme.primaryLight.withValues(alpha:0.12),
       borderRadius: BorderRadius.circular(14),
       border: Border.all(
-          color: AppTheme.primary.withOpacity(0.2)),
+          color: AppTheme.primary.withValues(alpha:0.2)),
     ),
     child: Row(
       children: [
@@ -148,7 +148,7 @@ class ScheduleChip extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: AppTheme.primary.withOpacity(0.1),
+            color: AppTheme.primary.withValues(alpha:0.1),
             shape: BoxShape.circle,
           ),
           child: const Icon(Icons.access_time_filled_rounded,
@@ -165,7 +165,7 @@ class ScheduleChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(
               horizontal: 12, vertical: 5),
           decoration: BoxDecoration(
-            color: AppTheme.primary.withOpacity(0.1),
+            color: AppTheme.primary.withValues(alpha:0.1),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
@@ -193,7 +193,7 @@ class _InstructorCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       boxShadow: [
         BoxShadow(
-          color: AppTheme.primary.withOpacity(0.36),
+          color: AppTheme.primary.withValues(alpha:0.36),
           blurRadius: 22,
           offset: const Offset(0, 7),
         ),
@@ -205,10 +205,10 @@ class _InstructorCard extends StatelessWidget {
           width: 58,
           height: 58,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
+            color: Colors.white.withValues(alpha:0.2),
             shape: BoxShape.circle,
             border: Border.all(
-                color: Colors.white.withOpacity(0.4), width: 2),
+                color: Colors.white.withValues(alpha:0.4), width: 2),
           ),
           alignment: Alignment.center,
           child: name.isNotEmpty
@@ -249,10 +249,10 @@ class _InstructorCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(
               horizontal: 11, vertical: 6),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
+            color: Colors.white.withValues(alpha:0.2),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-                color: Colors.white.withOpacity(0.3)),
+                color: Colors.white.withValues(alpha:0.3)),
           ),
           child: const Row(
             mainAxisSize: MainAxisSize.min,
@@ -303,7 +303,7 @@ class _InfoCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha:0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -366,7 +366,7 @@ class SectionHdr extends StatelessWidget {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: c.withOpacity(0.1),
+              color: c.withValues(alpha:0.1),
               borderRadius: BorderRadius.circular(9),
             ),
             child: Icon(icon, size: 17, color: c),

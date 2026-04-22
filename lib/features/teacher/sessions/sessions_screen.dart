@@ -38,6 +38,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
       context: ctx,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      useSafeArea: true,
       builder: (_) => ChangeNotifierProvider.value(
         value: ctx.read<TeacherSessionsProvider>(),
         child: SessionFormSheet(existing: existing, courseId: widget.course.id),
@@ -47,6 +48,8 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.sizeOf(context).width > 700;
+
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Scaffold(
@@ -54,19 +57,19 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              ScreenAppBar(
-                title: '${'sessions'.tr} — ${widget.course.title}',
-                actions: [
-                  _AddBtn(onTap: _openAddSheet),
-                ],
+              _Header(
+                title: widget.course.title,
+                onAdd: _openAddSheet,
               ),
               Expanded(
-                  child: _SessionList(
-                course: widget.course,
-                onEdit: (s) => _openSheet(context, existing: s),
-                onAttend: (s) => _openAttendance(context, s),
-                onExam: (s) => _openExams(context, s),
-              )),
+                child: _SessionList(
+                  course: widget.course,
+                  onEdit: (s) => _openSheet(context, existing: s),
+                  onAttend: (s) => _openAttendance(context, s),
+                  onExam: (s) => _openExams(context, s),
+                  isWide: isWide,
+                ),
+              ),
             ],
           ),
         ),
@@ -76,17 +79,18 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
 
   void _openAttendance(BuildContext ctx, TeacherSessionItem session) {
     Navigator.push(
-        ctx,
-        MaterialPageRoute(
-          builder: (_) => ChangeNotifierProvider.value(
-            value: ctx.read<TeacherSessionsProvider>(),
-            child: TeacherAttendanceScreen(
-              sessionId: session.id,
-              courseId: session.courseId,
-              sessionName: session.name,
-            ),
+      ctx,
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider.value(
+          value: ctx.read<TeacherSessionsProvider>(),
+          child: TeacherAttendanceScreen(
+            sessionId: session.id,
+            courseId: session.courseId,
+            sessionName: session.name,
           ),
-        ));
+        ),
+      ),
+    );
   }
 
   void _openExams(BuildContext ctx, TeacherSessionItem session) {
@@ -104,19 +108,69 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
   }
 }
 
-// ── Session List ──────────────────────────────────────────────────────────────
+// ── Redesigned Header ─────────────────────────────────────────────────────────
+class _Header extends StatelessWidget {
+  final String title;
+  final VoidCallback onAdd;
+  const _Header({required this.title, required this.onAdd});
 
+  @override
+  Widget build(BuildContext context) => Container(
+    color: AppTheme.surfaceCard,
+    padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
+    child: Row(
+      children: [
+        GestureDetector(
+          onTap: () => Navigator.maybePop(context),
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppTheme.background,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.divider, width: 1),
+            ),
+            child: const Icon(Icons.arrow_back_ios_new_rounded,
+                size: 16, color: AppTheme.textDark),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('الدروس', style: AppTheme.caption),
+              Text(
+                title,
+                style: AppTheme.h3.copyWith(fontSize: 16),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        _AddButton(onTap: onAdd),
+      ],
+    ),
+  );
+}
+
+// ── Session list with responsive grid ────────────────────────────────────────
 class _SessionList extends StatelessWidget {
   final TeacherCourse course;
   final void Function(TeacherSessionItem) onEdit;
   final void Function(TeacherSessionItem) onAttend;
   final void Function(TeacherSessionItem) onExam;
+  final bool isWide;
 
   const _SessionList({
     required this.course,
     required this.onEdit,
     required this.onAttend,
     required this.onExam,
+    required this.isWide,
   });
 
   @override
@@ -124,9 +178,21 @@ class _SessionList extends StatelessWidget {
     final provider = context.watch<TeacherSessionsProvider>();
 
     if (provider.isLoading && provider.sessions.isEmpty) {
-      return const Center(
-          child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation(AppTheme.primary)));
+      return Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          SizedBox(
+            width: 40,
+            height: 40,
+            child: CircularProgressIndicator(
+              valueColor: const AlwaysStoppedAnimation(AppTheme.primary),
+              strokeWidth: 3,
+              backgroundColor: AppTheme.primaryLight,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text('جاري تحميل الدروس...', style: AppTheme.body),
+        ]),
+      );
     }
 
     if (provider.sessions.isEmpty) {
@@ -135,6 +201,7 @@ class _SessionList extends StatelessWidget {
           context: context,
           isScrollControlled: true,
           backgroundColor: Colors.transparent,
+          useSafeArea: true,
           builder: (_) => ChangeNotifierProvider.value(
             value: context.read<TeacherSessionsProvider>(),
             child: SessionFormSheet(courseId: course.id),
@@ -145,68 +212,89 @@ class _SessionList extends StatelessWidget {
 
     return RefreshIndicator(
       color: AppTheme.primary,
+      backgroundColor: AppTheme.surfaceCard,
       onRefresh: () => provider.fetchSessions(course.id),
-      child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-        physics: const BouncingScrollPhysics(),
-        itemCount: provider.sessions.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 14),
-        itemBuilder: (ctx, i) {
-          final s = provider.sessions[i];
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SessionCard(
-                session: s,
-                onEdit: () => onEdit(s),
-                onDelete: () => _confirmDelete(ctx, s),
-                onStartLive: () => _handleStart(ctx, s),
-                onEndLive: () => _handleEnd(ctx, s),
-                onRecording: () => _handleRecording(ctx, s),
-                onAttend: () => onAttend(s),
-              ),
-              // ── Exam shortcut button ─────────────────────────────
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 6, right: 4, left: 4),
-                  child: GestureDetector(
-                    onTap: () => onExam(s),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF8B6FFF).withValues(alpha: 0.09),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                            color:
-                                const Color(0xFF8B6FFF).withValues(alpha: 0.3)),
-                      ),
-                      child:
-                          const Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(Icons.quiz_rounded,
-                            size: 13, color: Color(0xFF8B6FFF)),
-                        SizedBox(width: 5),
-                        Text('اختبارات الحصة',
-                            style: TextStyle(
-                              fontFamily: 'Cairo',
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF8B6FFF),
-                            )),
-                      ]),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
+      child: isWide
+          ? _buildGrid(context, provider)
+          : _buildList(context, provider),
     );
   }
 
-  // ── Dialogs & handlers ────────────────────────────────────────────────────
+  Widget _buildList(BuildContext context, TeacherSessionsProvider provider) {
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+      physics: const BouncingScrollPhysics(),
+      itemCount: provider.sessions.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (ctx, i) => _buildSessionItem(ctx, provider.sessions[i]),
+    );
+  }
+
+  Widget _buildGrid(BuildContext context, TeacherSessionsProvider provider) {
+    return GridView.builder(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+      physics: const BouncingScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 520,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 16,
+        childAspectRatio: 1.5,
+      ),
+      itemCount: provider.sessions.length,
+      itemBuilder: (ctx, i) => _buildSessionItem(ctx, provider.sessions[i]),
+    );
+  }
+
+  Widget _buildSessionItem(BuildContext ctx, TeacherSessionItem s) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SessionCard(
+          session: s,
+          onEdit: () => onEdit(s),
+          onDelete: () => _confirmDelete(ctx, s),
+          onStartLive: () => _handleStart(ctx, s),
+          onEndLive: () => _handleEnd(ctx, s),
+          onRecording: () => _handleRecording(ctx, s),
+          onAttend: () => onAttend(s),
+        ),
+        // Exam quick-link
+        Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 8, right: 4, left: 4),
+            child: GestureDetector(
+              onTap: () => onExam(s),
+              child: Container(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7B5FFF).withValues(alpha: 0.07),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: const Color(0xFF7B5FFF).withValues(alpha: 0.25),
+                      width: 1),
+                ),
+                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.quiz_rounded, size: 13, color: Color(0xFF7B5FFF)),
+                  SizedBox(width: 6),
+                  Text('اختبارات الحصة',
+                      style: TextStyle(
+                        fontFamily: 'bahji',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF7B5FFF),
+                      )),
+                ]),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Dialogs ──────────────────────────────────────────────────────────────────
 
   Future<void> _confirmDelete(BuildContext ctx, TeacherSessionItem s) async {
     final ok = await showDialog<bool>(
@@ -214,37 +302,51 @@ class _SessionList extends StatelessWidget {
       builder: (_) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('حذف الدرس',
-              style:
-                  TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
+          backgroundColor: AppTheme.surfaceCard,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusLarge)),
+          title: Row(children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppTheme.danger.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.delete_rounded,
+                  color: AppTheme.danger, size: 18),
+            ),
+            const SizedBox(width: 12),
+            const Text('حذف الدرس',
+                style: TextStyle(
+                    fontFamily: 'bahji', fontWeight: FontWeight.w700)),
+          ]),
           content: Text('هل تريد حذف "${s.name}"؟',
-              style: const TextStyle(fontFamily: 'Cairo')),
+              style: const TextStyle(fontFamily: 'bahji', color: AppTheme.textMedium)),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('إلغاء',
-                    style: TextStyle(
-                        fontFamily: 'Cairo', color: AppTheme.textMedium))),
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('إلغاء',
+                  style: TextStyle(fontFamily: 'bahji', color: AppTheme.textMedium)),
+            ),
             ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.danger,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10))),
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('حذف',
-                    style: TextStyle(
-                        fontFamily: 'Cairo',
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700))),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.danger,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10))),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('حذف',
+                  style: TextStyle(fontFamily: 'bahji', fontWeight: FontWeight.w700)),
+            ),
           ],
         ),
       ),
     );
     if (ok == true && ctx.mounted) {
       final deleted =
-          await ctx.read<TeacherSessionsProvider>().deleteSession(s.id);
+      await ctx.read<TeacherSessionsProvider>().deleteSession(s.id);
       if (ctx.mounted) {
         _snack(ctx, deleted ? 'تم الحذف' : 'فشل الحذف',
             deleted ? AppTheme.success : AppTheme.danger);
@@ -258,38 +360,52 @@ class _SessionList extends StatelessWidget {
       builder: (_) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('بدء الحصة المباشرة',
-              style:
-                  TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
+          backgroundColor: AppTheme.surfaceCard,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusLarge)),
+          title: Row(children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                gradient: AppTheme.primaryGradient,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.play_circle_rounded,
+                  color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text('بدء الحصة المباشرة',
+                  style: TextStyle(
+                      fontFamily: 'bahji', fontWeight: FontWeight.w700)),
+            ),
+          ]),
           content: Text(
               'سيتم إنشاء غرفة مباشرة لـ "${s.name}". هل تريد المتابعة؟',
-              style: const TextStyle(fontFamily: 'Cairo')),
+              style: const TextStyle(fontFamily: 'bahji', color: AppTheme.textMedium)),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('إلغاء',
-                    style: TextStyle(
-                        fontFamily: 'Cairo', color: AppTheme.textMedium))),
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('إلغاء',
+                  style: TextStyle(fontFamily: 'bahji', color: AppTheme.textMedium)),
+            ),
             ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.danger,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10))),
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('بدء البث',
-                    style: TextStyle(
-                        fontFamily: 'Cairo',
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700))),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10))),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('بدء البث',
+                  style: TextStyle(fontFamily: 'bahji', fontWeight: FontWeight.w700)),
+            ),
           ],
         ),
       ),
     );
     if (confirmed != true || !ctx.mounted) return;
-
-    if (!ctx.mounted) return;
     ctx.read<TeacherSessionsProvider>().joinLive(ctx, s.id, s.courseId, 5);
   }
 
@@ -301,41 +417,83 @@ class _SessionList extends StatelessWidget {
         builder: (dCtx, setD) => Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: const Text('إنهاء الحصة المباشرة',
-                style: TextStyle(
-                    fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
+            backgroundColor: AppTheme.surfaceCard,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppTheme.radiusLarge)),
+            title: Row(children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppTheme.danger.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.stop_circle_rounded,
+                    color: AppTheme.danger, size: 20),
+              ),
+              const SizedBox(width: 12),
+              const Text('إنهاء الحصة',
+                  style: TextStyle(
+                      fontFamily: 'bahji', fontWeight: FontWeight.w700)),
+            ]),
             content: Column(mainAxisSize: MainAxisSize.min, children: [
-              const Text('هل تريد إنهاء الحصة؟',
-                  style: TextStyle(fontFamily: 'Cairo')),
-              const SizedBox(height: 12),
-              Row(children: [
-                Checkbox(
-                    value: saveRecording,
-                    activeColor: AppTheme.primary,
-                    onChanged: (v) => setD(() => saveRecording = v ?? true)),
-                const Text('حفظ التسجيل تلقائياً',
-                    style: TextStyle(fontFamily: 'Cairo')),
-              ]),
+              const Text('هل تريد إنهاء الحصة للجميع؟',
+                  style: TextStyle(fontFamily: 'bahji', color: AppTheme.textMedium)),
+              const SizedBox(height: 14),
+              GestureDetector(
+                onTap: () => setD(() => saveRecording = !saveRecording),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.background,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.divider),
+                  ),
+                  child: Row(children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        color: saveRecording ? AppTheme.primary : Colors.transparent,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: saveRecording ? AppTheme.primary : AppTheme.divider,
+                          width: 2,
+                        ),
+                      ),
+                      child: saveRecording
+                          ? const Icon(Icons.check_rounded,
+                          size: 14, color: Colors.white)
+                          : null,
+                    ),
+                    const SizedBox(width: 10),
+                    const Text('حفظ التسجيل تلقائياً',
+                        style: TextStyle(
+                            fontFamily: 'bahji',
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textDark)),
+                  ]),
+                ),
+              ),
             ]),
             actions: [
               TextButton(
-                  onPressed: () => Navigator.pop(dCtx, false),
-                  child: const Text('إلغاء',
-                      style: TextStyle(
-                          fontFamily: 'Cairo', color: AppTheme.textMedium))),
+                onPressed: () => Navigator.pop(dCtx, false),
+                child: const Text('إلغاء',
+                    style: TextStyle(fontFamily: 'bahji', color: AppTheme.textMedium)),
+              ),
               ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.danger,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10))),
-                  onPressed: () => Navigator.pop(dCtx, true),
-                  child: const Text('إنهاء',
-                      style: TextStyle(
-                          fontFamily: 'Cairo',
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700))),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.danger,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10))),
+                onPressed: () => Navigator.pop(dCtx, true),
+                child: const Text('إنهاء الحصة',
+                    style: TextStyle(fontFamily: 'bahji', fontWeight: FontWeight.w700)),
+              ),
             ],
           ),
         ),
@@ -347,7 +505,7 @@ class _SessionList extends StatelessWidget {
         .endLive(s.id, saveRecording: saveRecording);
     if (ctx.mounted) {
       _snack(ctx, ok ? 'تم إنهاء الحصة' : 'حدث خطأ',
-          ok ? AppTheme.primary : AppTheme.danger);
+          ok ? AppTheme.success : AppTheme.danger);
     }
   }
 
@@ -361,7 +519,7 @@ class _SessionList extends StatelessWidget {
     }
     _snack(ctx, 'جاري البحث عن التسجيل...', AppTheme.primary);
     final url =
-        await ctx.read<TeacherSessionsProvider>().fetchRecordingUrl(s.id);
+    await ctx.read<TeacherSessionsProvider>().fetchRecordingUrl(s.id);
     if (!ctx.mounted) return;
     if (url != null) {
       final uri = Uri.parse(url);
@@ -375,62 +533,113 @@ class _SessionList extends StatelessWidget {
 
   void _snack(BuildContext ctx, String msg, Color color) =>
       ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-          content: Text(msg,
-              style: const TextStyle(fontFamily: 'Cairo', color: Colors.white)),
+          content: Row(children: [
+            Icon(
+              color == AppTheme.success
+                  ? Icons.check_circle_rounded
+                  : color == AppTheme.danger
+                  ? Icons.error_rounded
+                  : Icons.info_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(msg,
+                  style: const TextStyle(
+                      fontFamily: 'bahji',
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600)),
+            ),
+          ]),
           backgroundColor: color,
           behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))));
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14))));
 }
 
 // ── Empty State ───────────────────────────────────────────────────────────────
-
 class _EmptyState extends StatelessWidget {
   final VoidCallback onAdd;
-
   const _EmptyState({required this.onAdd});
 
   @override
   Widget build(BuildContext ctx) => Center(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.video_library_outlined,
-            size: 64, color: AppTheme.textLight),
-        const SizedBox(height: 12),
-        Text('لا توجد دروس بعد', style: AppTheme.body),
-        const SizedBox(height: 16),
+    child: Padding(
+      padding: const EdgeInsets.all(40),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(
+          width: 90,
+          height: 90,
+          decoration: BoxDecoration(
+            gradient: AppTheme.primaryGradient,
+            shape: BoxShape.circle,
+            boxShadow: AppTheme.primaryShadow,
+          ),
+          child: const Icon(Icons.video_library_rounded,
+              size: 40, color: Colors.white),
+        ),
+        const SizedBox(height: 20),
+        Text('لا توجد دروس بعد',
+            style: AppTheme.h3.copyWith(color: AppTheme.textDark)),
+        const SizedBox(height: 8),
+        Text('أضف أول درس لتبدأ في تنظيم مواد الكورس',
+            style: AppTheme.body,
+            textAlign: TextAlign.center),
+        const SizedBox(height: 28),
         GestureDetector(
-            onTap: onAdd,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  borderRadius: BorderRadius.circular(20)),
-              child: const Text('أضف أول درس',
+          onTap: onAdd,
+          child: Container(
+            padding:
+            const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+            decoration: BoxDecoration(
+                gradient: AppTheme.primaryGradient,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: AppTheme.primaryShadow),
+            child: const Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.add_rounded, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text('أضف أول درس',
                   style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
-                      fontFamily: 'Cairo')),
-            )),
-      ]));
+                      fontFamily: 'bahji',
+                      fontSize: 15)),
+            ]),
+          ),
+        ),
+      ]),
+    ),
+  );
 }
 
-// ── Add Button ────────────────────────────────────────────────────────────────
-
-class _AddBtn extends StatelessWidget {
+// ── Add Button ─────────────────────────────────────────────────────────────────
+class _AddButton extends StatelessWidget {
   final VoidCallback onTap;
-
-  const _AddBtn({required this.onTap});
+  const _AddButton({required this.onTap});
 
   @override
   Widget build(BuildContext ctx) => GestureDetector(
-      onTap: onTap,
-      child: Container(
-          width: 40,
-          height: 40,
-          margin: const EdgeInsets.only(left: 4),
-          decoration: BoxDecoration(
-              gradient: AppTheme.primaryGradient,
-              shape: BoxShape.circle,
-              boxShadow: AppTheme.primaryShadow),
-          child: const Icon(Icons.add_rounded, color: Colors.white, size: 22)));
+    onTap: onTap,
+    child: Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        gradient: AppTheme.primaryGradient,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: AppTheme.primaryShadow,
+      ),
+      child: const Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.add_rounded, color: Colors.white, size: 20),
+        SizedBox(width: 6),
+        Text('إضافة',
+            style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'bahji',
+                fontSize: 13)),
+      ]),
+    ),
+  );
 }
