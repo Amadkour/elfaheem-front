@@ -202,7 +202,7 @@ class _NotFoundScreen extends StatelessWidget {
             const SizedBox(height: 20),
             TextButton(
               onPressed: () =>
-                  Navigator.of(context).pushReplacementNamed('/dashboard'),
+                  Navigator.of(context).pushReplacementNamed(context.read<AuthProvider>().isTeacher?'/teacher_dashboard':'/dashboard'),
               child: const Text('الرئيسية',
                   style:
                       TextStyle(fontFamily: 'bahji', color: Color(0xFF5B8FFF))),

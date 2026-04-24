@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:intl/intl.dart';
 import 'package:livekit_client/livekit_client.dart';
 import '../../../../utils/exts.dart';
 import 'widgets/controls.dart';
@@ -42,20 +43,51 @@ class EnrolledStudent {
   final String name;
   final String? imageUrl;
   bool isAttended;
+  final DateTime? joinDate;
+  final DateTime? leaveDate;
 
   EnrolledStudent({
     required this.id,
     required this.name,
     this.imageUrl,
     this.isAttended = false,
+    this.joinDate,
+    this.leaveDate,
   });
 
-  factory EnrolledStudent.fromJson(Map<String, dynamic> j) => EnrolledStudent(
+  factory EnrolledStudent.fromJson(Map<String, dynamic> j, List<int> studentsId,
+      List<String> studentsJoinDate, List<String> studentsLeaveDate) {
+    bool isPresent = false;
+    String? presentDate;
+    String? leaveDate;
+    int? index;
+    int it = 0;
+    for (int i = 0; i < studentsId.length; i++) {
+      if (studentsId[i] == j['id']) {
+        presentDate = studentsJoinDate[i];
+        leaveDate = studentsLeaveDate[i];
+        isPresent = true;
+      }
+    }
+    studentsId.firstWhereIndexedOrNull((e, i) {
+      bool t = e == j['id'];
+      if (t) index = it;
+      it++;
+      return t;
+    });
+    if (index != null) {
+      isPresent = true;
+      presentDate = studentsJoinDate[index!];
+    }
+
+    return EnrolledStudent(
         id: j['id'] ?? 0,
-        name:  j['name'] ?? '',
+        name: j['name'] ?? '',
         imageUrl: j['image_url'],
-        isAttended:  false,
-      );
+        isAttended: isPresent,
+        joinDate: presentDate != null ? DateTime.parse(presentDate) : null,
+        leaveDate: leaveDate != null ? DateTime.parse(leaveDate) : null);
+  }
 }
 
 class ActiveQuiz {
@@ -77,7 +109,8 @@ class ActiveQuiz {
     required this.questions,
   });
 
-  factory ActiveQuiz.fromJson(Map<String, dynamic> j) => ActiveQuiz(
+  factory ActiveQuiz.fromJson(Map<String, dynamic> j) =>
+      ActiveQuiz(
         examId: j['id'] ?? 0,
         name: j['name'] ?? '',
         description: j['description'],
@@ -134,13 +167,13 @@ class RoomPage extends StatefulWidget {
 
   RoomPage(this.room, this.listener,
       {this.fastConnection = false,
-      super.key,
-      required this.onEnd,
-      required this.isTeacher,
-      required this.courseId,
-      required this.sessionId,
-      this.onToggleRecording,
-      ApiClient? api})
+        super.key,
+        required this.onEnd,
+        required this.isTeacher,
+        required this.courseId,
+        required this.sessionId,
+        this.onToggleRecording,
+        ApiClient? api})
       : apiClient = api ?? ApiClient();
 
   @override
@@ -193,7 +226,7 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
   late Animation<double> _quizSlide;
 
   static const _screenShareChannel =
-      MethodChannel('com.example.flutter_education_app/screen_share');
+  MethodChannel('com.example.flutter_education_app/screen_share');
 
   @override
   void initState() {
@@ -215,8 +248,8 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
 
     // Aurora background
     _auroraAnim =
-        AnimationController(vsync: this, duration: const Duration(seconds: 8))
-          ..repeat();
+    AnimationController(vsync: this, duration: const Duration(seconds: 8))
+      ..repeat();
 
     // Entry animation
     _entryAnim = AnimationController(
@@ -281,15 +314,31 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
       //     '${widget.apiBaseUrl}/api/v1/exams/0/attendance-results'
       //         .replaceFirst('/exams/0', ''));
       // Actually call the enrolled-students-with-attendance endpoint
-      final resp =
-         await widget.apiClient.get('/api/v1/courses/${widget.courseId}/students');
-      print("================================================[students]============================");
+      final resp = await widget.apiClient
+          .get('/api/v1/courses/${widget.courseId}/students');
+      List<dynamic> participant = await widget.apiClient
+          .get('/api/v1/live-sessions/${widget.sessionId}/participants');
+      List<int> studentsId = [];
+      List<String> studentsJoinDate = [];
+      List<String> studentsLeaveDate = [];
+      for (int i = 0; i < participant.length; i++) {
+        studentsId.add(participant[i]['student_id']);
+        studentsJoinDate.add(participant[i]['join_date']);
+        studentsLeaveDate.add(participant[i]['leave_date']);
+      }
+      print(
+          "================================================[students]============================");
       print(resp);
-      print("=====================================================================");
+      print(
+          "=====================================================================");
       if (resp['students'] != null && resp['students'] is List) {
         setState(() {
           _enrolledStudents = resp['students']
-              .map((e) => EnrolledStudent.fromJson(e as Map<String, dynamic>)).toList().cast<EnrolledStudent>();
+              .map((e) =>
+              EnrolledStudent.fromJson(e as Map<String, dynamic>,
+                  studentsId, studentsJoinDate, studentsLeaveDate))
+              .toList()
+              .cast<EnrolledStudent>();
         });
       }
       print(_enrolledStudents.length);
@@ -322,7 +371,7 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
 
       // Fetch questions for this exam
       final qData =
-          await widget.apiClient.get('/api/v1/exams/$examId/questions');
+      await widget.apiClient.get('/api/v1/exams/$examId/questions');
       if (qData == null || qData is! List) return;
 
       examJson['questions'] = qData;
@@ -388,55 +437,50 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
 
   // ── Listeners ──────────────────────────────────────────────────────────────
 
-  void _setUpListeners() => _listener
-    ..on<RoomDisconnectedEvent>((event) async {
-      if (event.reason != null)
-        log('Room disconnected: reason => ${event.reason}');
-      WidgetsBindingCompatible.instance?.addPostFrameCallback(
-          (_) => Navigator.popUntil(context, (r) => r.isFirst));
-    })
-    ..on<ParticipantEvent>((_) => _sortParticipants())
-    ..on<RoomRecordingStatusChanged>((event) {
-      setState(() => _isRecording = event.activeRecording);
-      unawaited(
-          context.showRecordingStatusChangedDialog(event.activeRecording));
-    })
-    ..on<RoomAttemptReconnectEvent>(
-        (e) => log('Reconnect ${e.attempt}/${e.maxAttemptsRetry}'))
-    ..on<LocalTrackPublishedEvent>((_) => _sortParticipants())
-    ..on<LocalTrackUnpublishedEvent>((_) => _sortParticipants())
-    ..on<TrackSubscribedEvent>((_) => _sortParticipants())
-    // ── AUTO DISCONNECT: when local participant's track is unsubscribed (student removed) ──
-    ..on<TrackUnsubscribedEvent>((event) {
-      _sortParticipants();
-      // If the local participant lost subscription on their own track it means
-      // the teacher removed them — end the session automatically.
-      if (!widget.isTeacher &&
-          event.participant.sid == widget.room.localParticipant?.sid) {
-        log('Local track unsubscribed — auto-ending session');
-        unawaited(_autoEndSession());
-      }
-    })
-    ..on<TrackE2EEStateEvent>((e) => log('e2ee: $e'))
-    ..on<ParticipantNameUpdatedEvent>((e) {
-      log('Name: ${e.participant.identity} → ${e.name}');
-      _sortParticipants();
-    })
-    ..on<DataReceivedEvent>((event) {
-      String decoded = 'Failed to decode';
-      try {
-        decoded = utf8.decode(event.data);
-      } catch (e) {
-        log('Decode: $e');
-      }
-      unawaited(context.showDataReceivedDialog(decoded));
-    })
-    ..on<AudioPlaybackStatusChanged>((event) async {
-      if (!widget.room.canPlaybackAudio) {
-        final yesNo = await context.showPlayAudioManuallyDialog();
-        if (yesNo == true) await widget.room.startAudio();
-      }
-    });
+  void _setUpListeners() =>
+      _listener..on<RoomDisconnectedEvent>((event) async {
+        if (event.reason != null)
+          log('Room disconnected: reason => ${event.reason}');
+        WidgetsBindingCompatible.instance?.addPostFrameCallback(
+                (_) => Navigator.popUntil(context, (r) => r.isFirst));
+      })..on<ParticipantEvent>((_) => _sortParticipants())..on<
+          RoomRecordingStatusChanged>((event) {
+        setState(() => _isRecording = event.activeRecording);
+        unawaited(
+            context.showRecordingStatusChangedDialog(event.activeRecording));
+      })..on<RoomAttemptReconnectEvent>(
+              (e) => log('Reconnect ${e.attempt}/${e.maxAttemptsRetry}'))..on<
+          LocalTrackPublishedEvent>((_) => _sortParticipants())..on<
+          LocalTrackUnpublishedEvent>((_) => _sortParticipants())..on<
+          TrackSubscribedEvent>((_) => _sortParticipants())
+      // ── AUTO DISCONNECT: when local participant's track is unsubscribed (student removed) ──
+        ..on<TrackUnsubscribedEvent>((event) {
+          _sortParticipants();
+          // If the local participant lost subscription on their own track it means
+          // the teacher removed them — end the session automatically.
+          if (!widget.isTeacher &&
+              event.participant.sid == widget.room.localParticipant?.sid) {
+            log('Local track unsubscribed — auto-ending session');
+            unawaited(_autoEndSession());
+          }
+        })..on<TrackE2EEStateEvent>((e) => log('e2ee: $e'))..on<
+          ParticipantNameUpdatedEvent>((e) {
+        log('Name: ${e.participant.identity} → ${e.name}');
+        _sortParticipants();
+      })..on<DataReceivedEvent>((event) {
+        String decoded = 'Failed to decode';
+        try {
+          decoded = utf8.decode(event.data);
+        } catch (e) {
+          log('Decode: $e');
+        }
+        unawaited(context.showDataReceivedDialog(decoded));
+      })..on<AudioPlaybackStatusChanged>((event) async {
+        if (!widget.room.canPlaybackAudio) {
+          final yesNo = await context.showPlayAudioManuallyDialog();
+          if (yesNo == true) await widget.room.startAudio();
+        }
+      });
 
   Future<void> _autoEndSession() async {
     try {
@@ -530,7 +574,7 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
 
   bool get _isScreenShareMain =>
       participantTracks.isNotEmpty &&
-      participantTracks.first.type == ParticipantTrackType.kScreenShare;
+          participantTracks.first.type == ParticipantTrackType.kScreenShare;
 
   // ── Recording ──────────────────────────────────────────────────────────────
   Future<void> _handleRecordingToggle() async {
@@ -645,12 +689,13 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
   }) =>
       showDialog<bool>(
         context: context,
-        builder: (ctx) => _StyledDialog(
-          title: title,
-          message: message,
-          confirmLabel: confirmLabel,
-          isDanger: isDanger,
-        ),
+        builder: (ctx) =>
+            _StyledDialog(
+              title: title,
+              message: message,
+              confirmLabel: confirmLabel,
+              isDanger: isDanger,
+            ),
       );
 
   // ── Participant panel helpers ──────────────────────────────────────────────
@@ -662,7 +707,7 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
     } else {
       setState(() => _showParticipants = true);
       _panelAnim.forward();
-       await _fetchEnrolledStudents();
+      await _fetchEnrolledStudents();
     }
   }
 
@@ -687,10 +732,11 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
             // Aurora background
             AnimatedBuilder(
               animation: _auroraAnim,
-              builder: (_, __) => CustomPaint(
-                painter: _AuroraPainter(_auroraAnim.value),
-                child: const SizedBox.expand(),
-              ),
+              builder: (_, __) =>
+                  CustomPaint(
+                    painter: _AuroraPainter(_auroraAnim.value),
+                    child: const SizedBox.expand(),
+                  ),
             ),
 
             // Main content
@@ -702,76 +748,80 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
                     // Main video area
                     Expanded(
                       child: LayoutBuilder(
-                        builder: (ctx, constraints) => Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            // Main video
-                            ClipRRect(
-                              borderRadius:
+                        builder: (ctx, constraints) =>
+                            Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                // Main video
+                                ClipRRect(
+                                  borderRadius:
                                   const BorderRadius.all(Radius.circular(20)),
-                              child: _buildMainVideo(),
-                            ),
+                                  child: _buildMainVideo(),
+                                ),
 
-                            // Thumbnail strip
-                            if (participantTracks.length > 1 &&
-                                !_isScreenShareMain)
-                              FadeTransition(
-                                opacity: _thumbBarFade,
-                                child: Positioned(
-                                  top: 12,
-                                  left: 0,
-                                  right: 0,
-                                  child: SizedBox(
-                                    height: 108,
-                                    child: ListView.builder(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 12),
-                                      scrollDirection: Axis.horizontal,
-                                      itemCount: participantTracks.length - 1,
-                                      itemBuilder: (_, i) => _ThumbnailCard(
-                                        track: participantTracks[i + 1],
-                                        resolveScreenTrack: _resolveScreenTrack,
+                                // Thumbnail strip
+                                if (participantTracks.length > 1 &&
+                                    !_isScreenShareMain)
+                                  FadeTransition(
+                                    opacity: _thumbBarFade,
+                                    child: Positioned(
+                                      top: 12,
+                                      left: 0,
+                                      right: 0,
+                                      child: SizedBox(
+                                        height: 108,
+                                        child: ListView.builder(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 12),
+                                          scrollDirection: Axis.horizontal,
+                                          itemCount: participantTracks.length -
+                                              1,
+                                          itemBuilder: (_, i) =>
+                                              _ThumbnailCard(
+                                                track: participantTracks[i + 1],
+                                                resolveScreenTrack: _resolveScreenTrack,
+                                              ),
+                                        ),
                                       ),
                                     ),
                                   ),
+
+                                // PiP (screen share mode)
+                                _buildDraggablePip(constraints),
+
+                                // REC indicator
+                                _buildRecordingIndicator(),
+
+                                // Participant count badge — tappable to open panel
+                                Positioned(
+                                  bottom: 14,
+                                  right: _isScreenShareMain
+                                      ? _pipRight + _pipW + 8
+                                      : 14,
+                                  child: GestureDetector(
+                                    onTap: _toggleParticipantPanel,
+                                    child: _GlassBadge(
+                                      icon: Icons.people_rounded,
+                                      label:
+                                      '${widget.room.remoteParticipants.length +
+                                          1}',
+                                      color: _showParticipants ? _cyan : null,
+                                    ),
+                                  ),
                                 ),
-                              ),
 
-                            // PiP (screen share mode)
-                            _buildDraggablePip(constraints),
-
-                            // REC indicator
-                            _buildRecordingIndicator(),
-
-                            // Participant count badge — tappable to open panel
-                            Positioned(
-                              bottom: 14,
-                              right: _isScreenShareMain
-                                  ? _pipRight + _pipW + 8
-                                  : 14,
-                              child: GestureDetector(
-                                onTap: _toggleParticipantPanel,
-                                child: _GlassBadge(
-                                  icon: Icons.people_rounded,
-                                  label:
-                                      '${widget.room.remoteParticipants.length + 1}',
-                                  color: _showParticipants ? _cyan : null,
-                                ),
-                              ),
+                                // Quiz overlay (freeze screen)
+                                if (_quizVisible && _activeQuiz != null)
+                                  _buildQuizOverlay(),
+                              ],
                             ),
-
-                            // Quiz overlay (freeze screen)
-                            if (_quizVisible && _activeQuiz != null)
-                              _buildQuizOverlay(),
-                          ],
-                        ),
                       ),
                     ),
 
                     // Controls bar
                     SlideTransition(
                       position: Tween<Offset>(
-                              begin: const Offset(0, 1), end: Offset.zero)
+                          begin: const Offset(0, 1), end: Offset.zero)
                           .animate(_entrySlide),
                       child: _buildControlsBar(),
                     ),
@@ -813,7 +863,9 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
             child: _GlassBadge(
               icon: Icons.screen_share_rounded,
               label:
-                  '${main.participant.name.isNotEmpty ? main.participant.name : 'Screen'} sharing',
+              '${main.participant.name.isNotEmpty
+                  ? main.participant.name
+                  : 'Screen'} sharing',
               color: _indigo,
             ),
           ),
@@ -831,8 +883,8 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
     final localEntry = participantTracks
         .skip(1)
         .where((t) =>
-            t.participant == widget.room.localParticipant &&
-            t.type != ParticipantTrackType.kScreenShare)
+    t.participant == widget.room.localParticipant &&
+        t.type != ParticipantTrackType.kScreenShare)
         .firstOrNull;
     if (localEntry == null) return const SizedBox.shrink();
 
@@ -842,12 +894,13 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
       right: _pipRight,
       bottom: _pipBottom,
       child: GestureDetector(
-        onPanUpdate: (d) => setState(() {
-          _pipRight = (_pipRight - d.delta.dx)
-              .clamp(8.0, constraints.maxWidth - _pipW - 8.0);
-          _pipBottom = (_pipBottom - d.delta.dy)
-              .clamp(8.0, constraints.maxHeight - _pipH - 8.0);
-        }),
+        onPanUpdate: (d) =>
+            setState(() {
+              _pipRight = (_pipRight - d.delta.dx)
+                  .clamp(8.0, constraints.maxWidth - _pipW - 8.0);
+              _pipBottom = (_pipBottom - d.delta.dy)
+                  .clamp(8.0, constraints.maxHeight - _pipH - 8.0);
+            }),
         child: Container(
           width: _pipW,
           height: _pipH,
@@ -912,7 +965,7 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
             width: 8,
             height: 8,
             decoration:
-                const BoxDecoration(color: _recRed, shape: BoxShape.circle),
+            const BoxDecoration(color: _recRed, shape: BoxShape.circle),
           ),
         ),
         const SizedBox(width: 6),
@@ -979,7 +1032,7 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
   Widget _buildParticipantPanel() {
     // Determine connected livekit identities for matching
     final liveIdentities =
-        widget.room.remoteParticipants.values.map((p) => p.identity).toSet();
+    widget.room.remoteParticipants.values.map((p) => p.identity).toSet();
 
     return Positioned.fill(
       child: GestureDetector(
@@ -1055,7 +1108,8 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
                   micOn: widget.room.localParticipant?.isMicrophoneEnabled() ??
                       false,
                   camOn:
-                      widget.room.localParticipant?.isCameraEnabled() ?? false,
+                  widget.room.localParticipant?.isCameraEnabled() ?? false,
+                  joinDate: widget.room.localParticipant?.joinedAt,
                 ),
 
                 Divider(color: _glassBdr, height: 1),
@@ -1083,7 +1137,9 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
                               color: _emerald.withValues(alpha: 0.3)),
                         ),
                         child: Text(
-                          '${_enrolledStudents.where((s) => s.isAttended).length} attended',
+                          '${_enrolledStudents
+                              .where((s) => s.isAttended)
+                              .length} attended',
                           style: TextStyle(
                               color: _emerald,
                               fontSize: 10,
@@ -1098,41 +1154,43 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
                 Expanded(
                   child: _enrolledStudents.isEmpty
                       ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.school_outlined,
-                                  color: _textLow, size: 32),
-                              const SizedBox(height: 8),
-                              Text('No students enrolled',
-                                  style:
-                                      TextStyle(color: _textLow, fontSize: 13)),
-                            ],
-                          ),
-                        )
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.school_outlined,
+                            color: _textLow, size: 32),
+                        const SizedBox(height: 8),
+                        Text('No students enrolled',
+                            style:
+                            TextStyle(color: _textLow, fontSize: 13)),
+                      ],
+                    ),
+                  )
                       : ListView.builder(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          itemCount: _enrolledStudents.length,
-                          itemBuilder: (ctx, i) {
-                            final s = _enrolledStudents[i];
-                            final online =
-                                liveIdentities.contains(s.id.toString()) ||
-                                    liveIdentities.contains(s.name);
-                            // Find matching remote participant for mic/cam
-                            final rp = widget.room.remoteParticipants.values
-                                .firstWhereOrNull((p) =>
-                                    p.identity == s.id.toString() ||
-                                    p.name == s.name);
-                            return _ParticipantRow(
-                              name: s.name,
-                              isOnline: online,
-                              isTeacher: false,
-                              isAttended: s.isAttended,
-                              micOn: rp?.isMicrophoneEnabled() ?? false,
-                              camOn: rp?.isCameraEnabled() ?? false,
-                            );
-                          },
-                        ),
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    itemCount: _enrolledStudents.length,
+                    itemBuilder: (ctx, i) {
+                      final s = _enrolledStudents[i];
+                      final online =
+                          liveIdentities.contains(s.id.toString()) ||
+                              liveIdentities.contains(s.name);
+                      // Find matching remote participant for mic/cam
+                      final rp = widget.room.remoteParticipants.values
+                          .firstWhereOrNull((p) =>
+                      p.identity == s.id.toString() ||
+                          p.name == s.name);
+                      return _ParticipantRow(
+                        name: s.name,
+                        isOnline: online,
+                        isTeacher: false,
+                        isAttended: s.isAttended,
+                        joinDate: s.joinDate,
+                        leaveDate: s.leaveDate,
+                        micOn: rp?.isMicrophoneEnabled() ?? false,
+                        camOn: rp?.isCameraEnabled() ?? false,
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
@@ -1207,7 +1265,7 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
             children: [
               Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: _cyan.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
@@ -1228,7 +1286,7 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
               // Timer
               Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: _quizSecondsLeft < 30
                       ? _rose.withValues(alpha: 0.2)
@@ -1270,7 +1328,8 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
           child: Row(children: [
             Text(
-              'Question ${_currentQuestionIndex + 1} of ${quiz.questions.length}',
+              'Question ${_currentQuestionIndex + 1} of ${quiz.questions
+                  .length}',
               style: TextStyle(color: _textLow, fontSize: 11),
             ),
             const SizedBox(width: 10),
@@ -1319,10 +1378,10 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
                 ),
                 boxShadow: selected
                     ? [
-                        BoxShadow(
-                            color: _cyan.withValues(alpha: 0.15),
-                            blurRadius: 12)
-                      ]
+                  BoxShadow(
+                      color: _cyan.withValues(alpha: 0.15),
+                      blurRadius: 12)
+                ]
                     : [],
               ),
               child: Row(
@@ -1449,7 +1508,7 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
               shape: BoxShape.circle,
               color: _emerald.withValues(alpha: 0.15),
               border:
-                  Border.all(color: _emerald.withValues(alpha: 0.4), width: 2),
+              Border.all(color: _emerald.withValues(alpha: 0.4), width: 2),
             ),
             child: const Icon(Icons.check_rounded, color: _emerald, size: 36),
           ),
@@ -1497,14 +1556,19 @@ extension _WidgetEx on Widget {
 // _ParticipantRow  (used inside the panel)
 // ─────────────────────────────────────────────────────────────────────────────
 class _ParticipantRow extends StatelessWidget {
-  const _ParticipantRow({
+   _ParticipantRow({
     required this.name,
     required this.isOnline,
     required this.isTeacher,
     required this.isAttended,
     required this.micOn,
     required this.camOn,
-  });
+    this.joinDate,
+    this.leaveDate,
+  }){
+    print(joinDate?.day);
+    print("jjjjjjjjjjjjjjjjjjjjjjjjj");
+  }
 
   final String name;
   final bool isOnline;
@@ -1512,6 +1576,8 @@ class _ParticipantRow extends StatelessWidget {
   final bool isAttended;
   final bool micOn;
   final bool camOn;
+  final DateTime? joinDate;
+  final DateTime? leaveDate;
 
   @override
   Widget build(BuildContext context) {
@@ -1520,7 +1586,7 @@ class _ParticipantRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: isTeacher ? _cyan.withValues(alpha: 0.05) : Colors.transparent,
         border:
-            Border(bottom: BorderSide(color: _glassBdr.withValues(alpha: 0.4))),
+        Border(bottom: BorderSide(color: _glassBdr.withValues(alpha: 0.4))),
       ),
       child: Row(
         children: [
@@ -1534,9 +1600,9 @@ class _ParticipantRow extends StatelessWidget {
                 gradient: LinearGradient(
                   colors: isTeacher
                       ? [
-                          _cyan.withValues(alpha: 0.8),
-                          _indigo.withValues(alpha: 0.8)
-                        ]
+                    _cyan.withValues(alpha: 0.8),
+                    _indigo.withValues(alpha: 0.8)
+                  ]
                       : [_glass15, _glass10],
                 ),
                 border: Border.all(
@@ -1590,17 +1656,38 @@ class _ParticipantRow extends StatelessWidget {
                 Row(children: [
                   if (isTeacher)
                     _MiniTag(label: 'Teacher', color: _cyan)
-                  else ...[
-                    _MiniTag(
-                      label: isAttended ? 'Attended' : 'Absent',
-                      color: isAttended ? _emerald : _rose,
-                    ),
-                    if (isOnline) ...[
-                      const SizedBox(width: 4),
-                      _MiniTag(label: 'Online', color: _emerald),
+                  else
+                    ...[
+                      _MiniTag(
+                        label: isAttended ? 'Attended' : 'Absent',
+                        color: isAttended ? _emerald : _rose,
+                      ),
+                      if (isOnline) ...[
+                        const SizedBox(width: 4),
+                        _MiniTag(label: 'Online', color: _emerald),
+                      ],
                     ],
-                  ],
                 ]),
+                Row(
+                  children: [
+                    if(joinDate != null)
+                      ...[Text(DateTime
+                          .now()
+                          .difference(joinDate!)
+                          .inMinutes
+                          .toString()),
+                        Text('-', style: TextStyle(
+                            color: Colors.green
+                        ),),
+                        if(joinDate != null)
+                          Text(DateTime
+                              .now()
+                              .difference(joinDate!)
+                              .inMinutes
+                              .toString())
+                      ]
+                  ],
+                )
               ],
             ),
           ),
@@ -1632,7 +1719,8 @@ class _MiniTag extends StatelessWidget {
   final Color color;
 
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) =>
+      Container(
         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.12),
@@ -1679,25 +1767,25 @@ class _RecordingButton extends StatelessWidget {
               width: 1),
           boxShadow: isRecording
               ? [
-                  BoxShadow(
-                      color: _recRed.withValues(alpha: 0.3), blurRadius: 16)
-                ]
+            BoxShadow(
+                color: _recRed.withValues(alpha: 0.3), blurRadius: 16)
+          ]
               : [],
         ),
         child: loading
             ? const Padding(
-                padding: EdgeInsets.all(13),
-                child:
-                    CircularProgressIndicator(strokeWidth: 2, color: _recRed),
-              )
+          padding: EdgeInsets.all(13),
+          child:
+          CircularProgressIndicator(strokeWidth: 2, color: _recRed),
+        )
             : isRecording
-                ? FadeTransition(
-                    opacity: recDotOpacity,
-                    child: const Icon(Icons.stop_circle_rounded,
-                        color: _recRed, size: 24),
-                  )
-                : const Icon(Icons.fiber_manual_record_rounded,
-                    color: _textLow, size: 22),
+            ? FadeTransition(
+          opacity: recDotOpacity,
+          child: const Icon(Icons.stop_circle_rounded,
+              color: _recRed, size: 24),
+        )
+            : const Icon(Icons.fiber_manual_record_rounded,
+            color: _textLow, size: 22),
       ),
     );
   }
@@ -1729,8 +1817,8 @@ class _ThumbnailCard extends StatelessWidget {
           color: isSpeaking
               ? _cyan.withValues(alpha: 0.8)
               : isScreen
-                  ? _cyan.withValues(alpha: 0.55)
-                  : _glassBdr,
+              ? _cyan.withValues(alpha: 0.55)
+              : _glassBdr,
           width: isSpeaking ? 2 : 1,
         ),
         boxShadow: [
@@ -1913,7 +2001,7 @@ class _StyledDialog extends StatelessWidget {
       ),
       title: Text(title,
           style:
-              const TextStyle(color: _textHigh, fontWeight: FontWeight.w700)),
+          const TextStyle(color: _textHigh, fontWeight: FontWeight.w700)),
       content: Text(message,
           style: TextStyle(color: _textMid.withValues(alpha: 0.8))),
       actions: [
@@ -1989,7 +2077,7 @@ class _AuroraPainter extends CustomPainter {
 // ─────────────────────────────────────────────────────────────────────────────
 class NotificationChannelHelper {
   static const _channel =
-      MethodChannel('com.example.flutter_education_app/notifications');
+  MethodChannel('com.example.flutter_education_app/notifications');
   static const String screenShareChannelId = 'livekit_screen_share';
   static const String screenShareChannelName = 'Screen Share';
 

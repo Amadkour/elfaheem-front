@@ -1,3 +1,4 @@
+// ignore_for_file: depend_on_referenced_packages, use_build_context_synchronously
 library;
 
 import 'package:flutter/material.dart';
@@ -15,12 +16,15 @@ import '../schedules/schedules_screen.dart';
 import '../sessions/sessions_screen.dart';
 import 'add_course_screen.dart';
 
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TeacherCoursesScreen
+// ═══════════════════════════════════════════════════════════════════════════════
+
 class TeacherCoursesScreen extends StatefulWidget {
   const TeacherCoursesScreen({super.key});
 
   @override
-  State<TeacherCoursesScreen> createState() =>
-      _TeacherCoursesScreenState();
+  State<TeacherCoursesScreen> createState() => _TeacherCoursesScreenState();
 }
 
 class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
@@ -28,29 +32,30 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback(
-            (_) => context.read<TeacherProvider>().fetchMyCourses());
+          (_) => context.read<TeacherProvider>().fetchMyCourses(),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final isWide = context.showSidebar;
+
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Scaffold(
         backgroundColor: AppTheme.background,
+        floatingActionButton: isWide ? null : _FloatingAddBtn(),
         body: SafeArea(
+          bottom: false,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header
-              if (!isWide)
-                ScreenAppBar(title: 'الكورسات',
-                    actions: [_AddBtn()])
-              else
-                _WebHeader(),
-
-              const SizedBox(height: 8),
+              isWide
+                  ? const _WebHeader()
+                  : ScreenAppBar(title: 'my_courses'.tr),
+              const SizedBox(height: 4),
               const _FilterTabs(),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
               const Expanded(child: _CourseList()),
             ],
           ),
@@ -60,106 +65,145 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Header variants
+// ═══════════════════════════════════════════════════════════════════════════════
+
 class _WebHeader extends StatelessWidget {
+  const _WebHeader();
+
   @override
   Widget build(BuildContext context) => Container(
-    height: 56,
-    padding: const EdgeInsets.symmetric(horizontal: 24),
+    height: 60,
+    padding: const EdgeInsets.symmetric(horizontal: 28),
     decoration: BoxDecoration(
       color: AppTheme.cardBg,
       boxShadow: [
         BoxShadow(
-            color: Colors.black.withValues(alpha:0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2)),
+          color: Colors.black.withValues(alpha: 0.06),
+          blurRadius: 12,
+          offset: const Offset(0, 2),
+        ),
       ],
     ),
-    child: Row(children: [
-      Text('كورساتي', style: AppTheme.h2.copyWith(fontSize: 16)),
-      const Spacer(),
-      GestureDetector(
-        onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const AddCourseScreen())),
-        child: Container(
-          height: 36,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+    child: Row(
+      children: [
+        Container(
+          width: 4,
+          height: 24,
           decoration: BoxDecoration(
             gradient: AppTheme.primaryGradient,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                  color: AppTheme.primary.withValues(alpha:0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3)),
-            ],
+            borderRadius: BorderRadius.circular(4),
           ),
-          child: const Row(children: [
-            Icon(Icons.add_rounded, color: Colors.white, size: 16),
-            SizedBox(width: 6),
-            Text('إضافة كورس',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'Cairo')),
-          ]),
         ),
-      ),
-    ]),
+        const SizedBox(width: 10),
+        Text('my_courses'.tr, style: AppTheme.h2.copyWith(fontSize: 17)),
+        const Spacer(),
+        _AddCourseButton(compact: false),
+      ],
+    ),
   );
 }
 
-class _AddBtn extends StatelessWidget {
+class _FloatingAddBtn extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => FloatingActionButton(
+    onPressed: () => Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const AddCourseScreen()),
+    ),
+    backgroundColor: Colors.transparent,
+    elevation: 0,
+    child: Container(
+      width: 56,
+      height: 56,
+      decoration: BoxDecoration(
+        gradient: AppTheme.primaryGradient,
+        shape: BoxShape.circle,
+        boxShadow: AppTheme.primaryShadow,
+      ),
+      child: const Icon(Icons.add_rounded, color: Colors.white, size: 26),
+    ),
+  );
+}
+
+class _AddCourseButton extends StatelessWidget {
+  final bool compact;
+  const _AddCourseButton({required this.compact});
+
   @override
   Widget build(BuildContext context) => GestureDetector(
     onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const AddCourseScreen())),
+      MaterialPageRoute(builder: (_) => const AddCourseScreen()),
+    ),
     child: Container(
-      width: 40,
-      height: 40,
-      margin: const EdgeInsets.only(left: 4),
+      height: 38,
+      padding: EdgeInsets.symmetric(horizontal: compact ? 14 : 18),
       decoration: BoxDecoration(
-          gradient: AppTheme.primaryGradient,
-          shape: BoxShape.circle,
-          boxShadow: AppTheme.primaryShadow),
-      child:
-      const Icon(Icons.add_rounded, color: Colors.white, size: 22),
+        gradient: AppTheme.primaryGradient,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primary.withValues(alpha: 0.32),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.add_rounded, color: Colors.white, size: 16),
+          const SizedBox(width: 6),
+          Text(
+            compact ? 'add'.tr : 'add_course'.tr,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Cairo',
+            ),
+          ),
+        ],
+      ),
     ),
   );
 }
 
-// ── Filter tabs ───────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Filter tabs
+// ═══════════════════════════════════════════════════════════════════════════════
 
 class _FilterTabs extends StatelessWidget {
   const _FilterTabs();
 
-  static  const _tabs = [
-    (TeacherCourseStatus.all, 'الكل', Icons.apps_rounded),
-    (TeacherCourseStatus.published, 'منشورة', Icons.public_rounded),
-    (TeacherCourseStatus.draft, 'مسودات', Icons.drafts_rounded),
+  static const _tabs = [
+    (TeacherCourseStatus.all, 'filter_all', Icons.apps_rounded),
+    (TeacherCourseStatus.published, 'filter_published', Icons.public_rounded),
+    (TeacherCourseStatus.draft, 'filter_drafts', Icons.drafts_rounded),
   ];
 
   @override
   Widget build(BuildContext context) {
     final p = context.watch<TeacherProvider>();
-    return ContentBox(
+    return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
-        height: 48,
+        height: 46,
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
           color: AppTheme.cardBg,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withValues(alpha:0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2)),
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
           ],
         ),
         child: Row(
           children: _tabs.map((t) {
-            final (status, label, icon) = t;
+            final (status, labelKey, icon) = t;
             final active = p.activeFilter == status;
             return Expanded(
               child: GestureDetector(
@@ -173,35 +217,33 @@ class _FilterTabs extends StatelessWidget {
                     boxShadow: active
                         ? [
                       BoxShadow(
-                          color: AppTheme.primary.withValues(alpha:0.28),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2))
+                        color:
+                        AppTheme.primary.withValues(alpha: 0.28),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      )
                     ]
                         : null,
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(icon,
-                            size: 13,
-                            color: active
-                                ? Colors.white
-                                : AppTheme.textLight),
-                        const SizedBox(width: 5),
-                        Text(label,
-                            style: AppTheme.label.copyWith(
-                              color: active
-                                  ? Colors.white
-                                  : AppTheme.textLight,
-                              fontWeight: active
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
-                              fontSize: 12,
-                            )),
-                      ],
-                    ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(icon,
+                          size: 13,
+                          color:
+                          active ? Colors.white : AppTheme.textLight),
+                      const SizedBox(width: 5),
+                      Text(
+                        labelKey.tr,
+                        style: AppTheme.label.copyWith(
+                          color: active ? Colors.white : AppTheme.textLight,
+                          fontWeight: active
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -213,7 +255,11 @@ class _FilterTabs extends StatelessWidget {
   }
 }
 
-// ── Course list ───────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Course list
+//  Web → _TwoColumnMasonry (self-sizing, no childAspectRatio)
+//  Mobile → plain ListView
+// ═══════════════════════════════════════════════════════════════════════════════
 
 class _CourseList extends StatelessWidget {
   const _CourseList();
@@ -225,51 +271,15 @@ class _CourseList extends StatelessWidget {
 
     if (p.isLoading && p.filteredCourses.isEmpty) {
       return const Center(
-          child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation(AppTheme.primary),
-              strokeWidth: 2.5));
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation(AppTheme.primary),
+          strokeWidth: 2.5,
+        ),
+      );
     }
 
     final courses = p.filteredCourses;
-
-    if (courses.isEmpty) {
-      return Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: AppTheme.primaryLight.withValues(alpha:0.3),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.school_outlined,
-                size: 38, color: AppTheme.primary),
-          ),
-          const SizedBox(height: 14),
-          const Text('لا توجد كورسات في هذا القسم',
-              style: AppTheme.body),
-          const SizedBox(height: 18),
-          GestureDetector(
-            onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                    builder: (_) => const AddCourseScreen())),
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 24, vertical: 12),
-              decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  borderRadius: BorderRadius.circular(22),
-                  boxShadow: AppTheme.primaryShadow),
-              child: const Text('إضافة دورة جديدة',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Cairo')),
-            ),
-          ),
-        ]),
-      );
-    }
+    if (courses.isEmpty) return const _EmptyState();
 
     return RefreshIndicator(
       color: AppTheme.primary,
@@ -280,25 +290,12 @@ class _CourseList extends StatelessWidget {
           constraints:
           const BoxConstraints(maxWidth: Breakpoints.contentMax),
           child: isWide
-              ? GridView.builder(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
-            physics: const BouncingScrollPhysics(),
-            gridDelegate:
-            const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 14,
-              mainAxisSpacing: 14,
-              childAspectRatio: 1.5,
-            ),
-            itemCount: courses.length,
-            itemBuilder: (_, i) => _CourseCard(course: courses[i]),
-          )
+              ? _TwoColumnMasonry(courses: courses)
               : ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
             physics: const BouncingScrollPhysics(),
             itemCount: courses.length,
-            separatorBuilder: (_, __) =>
-            const SizedBox(height: 14),
+            separatorBuilder: (_, __) => const SizedBox(height: 14),
             itemBuilder: (_, i) => _CourseCard(course: courses[i]),
           ),
         ),
@@ -307,7 +304,131 @@ class _CourseList extends StatelessWidget {
   }
 }
 
-// ── Course card ───────────────────────────────────────────────────────────────
+/// Two-column masonry: splits courses into left/right lists so each card
+/// sizes itself naturally — no fixed childAspectRatio, no overflow.
+class _TwoColumnMasonry extends StatelessWidget {
+  final List<TeacherCourse> courses;
+  const _TwoColumnMasonry({required this.courses});
+
+  @override
+  Widget build(BuildContext context) {
+    final left = <TeacherCourse>[];
+    final right = <TeacherCourse>[];
+    for (var i = 0; i < courses.length; i++) {
+      (i.isEven ? left : right).add(courses[i]);
+    }
+
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              children: left
+                  .map((c) => Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: _CourseCard(course: c),
+              ))
+                  .toList(),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              children: right
+                  .map((c) => Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: _CourseCard(course: c),
+              ))
+                  .toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Empty state
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: SingleChildScrollView(
+      padding:
+      const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 88,
+            height: 88,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppTheme.primaryLight.withValues(alpha: 0.5),
+                  AppTheme.primaryLight.withValues(alpha: 0.15),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.school_outlined,
+                size: 40, color: AppTheme.primary),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            'no_courses_section'.tr,
+            style: AppTheme.body.copyWith(
+                fontWeight: FontWeight.w600, fontSize: 15),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'add_first_course_hint'.tr,
+            style: AppTheme.caption
+                .copyWith(color: AppTheme.textLight),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 22),
+          GestureDetector(
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const AddCourseScreen())),
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 28, vertical: 14),
+              decoration: BoxDecoration(
+                gradient: AppTheme.primaryGradient,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: AppTheme.primaryShadow,
+              ),
+              child: Text(
+                'add_new_course'.tr,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'Cairo',
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Course card
+// ═══════════════════════════════════════════════════════════════════════════════
 
 class _CourseCard extends StatefulWidget {
   final TeacherCourse course;
@@ -329,25 +450,31 @@ class _CourseCardState extends State<_CourseCard> {
           backgroundColor: AppTheme.cardBg,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20)),
-          title: const Text('حذف الدورة',
-              style: TextStyle(
-                  fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
-          content: Text('هل تريد حذف "${widget.course.title}"؟',
-              style: const TextStyle(fontFamily: 'Cairo')),
+          title: Text(
+            'delete_course'.tr,
+            style: const TextStyle(
+                fontFamily: 'Cairo', fontWeight: FontWeight.w800),
+          ),
+          content: Text(
+            '${'delete_course_confirm'.tr} "${widget.course.title}"؟',
+            style: const TextStyle(fontFamily: 'Cairo'),
+          ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('إلغاء',
-                    style: TextStyle(
-                        fontFamily: 'Cairo', color: AppTheme.textMedium))),
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('cancel'.tr,
+                  style: const TextStyle(
+                      fontFamily: 'Cairo',
+                      color: AppTheme.textMedium)),
+            ),
             Container(
               decoration: BoxDecoration(
                   color: AppTheme.danger,
                   borderRadius: BorderRadius.circular(10)),
               child: TextButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: const Text('حذف',
-                    style: TextStyle(
+                child: Text('delete'.tr,
+                    style: const TextStyle(
                         fontFamily: 'Cairo',
                         color: Colors.white,
                         fontWeight: FontWeight.w700)),
@@ -363,8 +490,9 @@ class _CourseCardState extends State<_CourseCard> {
           .deleteCourse(widget.course.id);
       if (mounted && deleted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: const Text('تم حذف الدورة',
-              style: TextStyle(fontFamily: 'Cairo', color: Colors.white)),
+          content: Text('course_deleted'.tr,
+              style: const TextStyle(
+                  fontFamily: 'Cairo', color: Colors.white)),
           backgroundColor: AppTheme.success,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
@@ -389,268 +517,432 @@ class _CourseCardState extends State<_CourseCard> {
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.cardBg,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha:0.06),
-              blurRadius: 14,
-              offset: const Offset(0, 4)),
+            color: Colors.black.withValues(alpha: 0.07),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       clipBehavior: Clip.antiAlias,
-      child: Column(children: [
-        // ── Main info ────────────────────────────────────────────────
-        GestureDetector(
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) => TeacherSessionsScreen(course: c)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(children: [
-              // Thumbnail
-              Stack(children: [
-                AppNetworkImage(
-                    url: c.imageUrl,
-                    width: 88,
-                    height: 88,
-                    borderRadius: BorderRadius.circular(14)),
-                Positioned(
-                  top: 6,
-                  right: 6,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 7, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: isDraft
-                          ? AppTheme.accent
-                          : AppTheme.accent2,
-                      borderRadius: BorderRadius.circular(7),
-                    ),
-                    child: Text(isDraft ? 'مسودة' : 'منشورة',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                            fontFamily: 'Cairo')),
-                  ),
-                ),
-              ]),
-              const SizedBox(width: 14),
-
-              // Info
-              Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(c.title,
-                          style: AppTheme.h3.copyWith(
-                              fontSize: 14, fontWeight: FontWeight.w800),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 7),
-                      Wrap(spacing: 10, runSpacing: 6, children: [
-                        _Chip(Icons.people_alt_rounded,
-                            '${c.studentsCount} طالب',
-                            AppTheme.primary),
-                        _Chip(Icons.video_library_rounded,
-                            '${c.sessionsCount} محاضرة',
-                            const Color(0xFF185FA5)),
-                        _Chip(Icons.access_time_rounded,
-                            '${c.totalHours.toStringAsFixed(0)}س',
-                            const Color(0xFFBA7517)),
-                        _Chip(Icons.star_rounded,
-                            c.averageRating.toStringAsFixed(1),
-                            AppTheme.accent),
-                      ]),
-                    ]),
-              ),
-
-              // Actions
-              Column(children: [
-                _ActionBtn(
-                    icon: Icons.edit_rounded,
-                    color: AppTheme.primary,
-                    onTap: () {}),
-                const SizedBox(height: 8),
-                _ActionBtn(
-                    icon: Icons.delete_rounded,
-                    color: AppTheme.danger,
-                    onTap: _confirmDelete),
-                const SizedBox(height: 8),
-                _ActionBtn(
-                  icon: _expanded
-                      ? Icons.keyboard_arrow_up_rounded
-                      : Icons.keyboard_arrow_down_rounded,
-                  color: AppTheme.textMedium,
-                  onTap: () =>
-                      setState(() => _expanded = !_expanded),
-                ),
-              ]),
-            ]),
-          ),
-        ),
-
-        // ── Expandable extras ─────────────────────────────────────────
-        if (_expanded) ...[
-          Divider(height: 0.5, color: Colors.black.withValues(alpha:0.07)),
-          _ExtrasPanel(course: c),
-        ],
-
-        // ── Publish / unpublish ───────────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-          child: GestureDetector(
-            onTap: _togglePublish,
-            child: Container(
-              height: 42,
-              decoration: BoxDecoration(
-                gradient: isDraft
-                    ? AppTheme.primaryGradient
-                    : const LinearGradient(colors: [
-                  Color(0xFF6B7280),
-                  Color(0xFF9CA3AF)
-                ]),
-                borderRadius: BorderRadius.circular(22),
-                boxShadow: isDraft
-                    ? [
-                  BoxShadow(
-                      color: AppTheme.primary.withValues(alpha:0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3))
-                ]
-                    : null,
-              ),
-              child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                        isDraft
-                            ? Icons.upload_rounded
-                            : Icons.visibility_off_rounded,
-                        color: Colors.white,
-                        size: 17),
-                    const SizedBox(width: 7),
-                    Text(isDraft ? 'نشر الدورة' : 'إيقاف النشر',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                            fontFamily: 'Cairo')),
-                  ]),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── Status accent bar ────────────────────────────────────────
+          Container(
+            height: 3,
+            decoration: BoxDecoration(
+              gradient: isDraft
+                  ? const LinearGradient(
+                  colors: [Color(0xFFf59e0b), Color(0xFFfbbf24)])
+                  : AppTheme.primaryGradient,
             ),
           ),
-        ),
-      ]),
+
+          // ── Full-width 16:9 thumbnail with overlaid actions ──────────
+          Stack(
+            children: [
+              AspectRatio(
+                aspectRatio: 16 / 9,
+                child: AppNetworkImage(
+                  url: c.imageUrl,
+                  width: double.infinity,
+                  borderRadius: BorderRadius.zero,
+                ),
+              ),
+              // Status badge — top right
+              Positioned(
+                top: 8,
+                right: 8,
+                child: _StatusBadge(isDraft: isDraft),
+              ),
+              // Edit / Delete overlay buttons — top left
+              Positioned(
+                top: 8,
+                left: 8,
+                child: Row(
+                  children: [
+                    _OverlayBtn(
+                      icon: Icons.edit_rounded,
+                      color: AppTheme.primary,
+                      onTap: () {},
+                    ),
+                    const SizedBox(width: 6),
+                    _OverlayBtn(
+                      icon: Icons.delete_rounded,
+                      color: AppTheme.danger,
+                      onTap: _confirmDelete,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // ── Title + stats ────────────────────────────────────────────
+          InkWell(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => TeacherSessionsScreen(course: c)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    c.title,
+                    style: AppTheme.h3.copyWith(
+                        fontSize: 14, fontWeight: FontWeight.w800),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 10),
+                  // 2×2 stats grid — deterministic height, no Wrap
+                  _StatsGrid(course: c),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Expand toggle ────────────────────────────────────────────
+          InkWell(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Padding(
+              padding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              child: Row(
+                children: [
+                  Text(
+                    _expanded ? 'hide_details'.tr : 'show_details'.tr,
+                    style: AppTheme.label
+                        .copyWith(color: AppTheme.primary, fontSize: 12),
+                  ),
+                  const SizedBox(width: 4),
+                  AnimatedRotation(
+                    turns: _expanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 220),
+                    child: const Icon(Icons.keyboard_arrow_down_rounded,
+                        size: 16, color: AppTheme.primary),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Expandable extras ────────────────────────────────────────
+          AnimatedSize(
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeInOut,
+            child: _expanded
+                ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Divider(
+                    height: 1,
+                    color: Colors.black.withValues(alpha: 0.07)),
+                _ExtrasPanel(course: c),
+              ],
+            )
+                : const SizedBox.shrink(),
+          ),
+
+          // ── Publish / unpublish ──────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
+            child: _PublishButton(isDraft: isDraft, onTap: _togglePublish),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class _Chip extends StatelessWidget {
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Stats — 2×2 fixed grid so height is always deterministic
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _StatsGrid extends StatelessWidget {
+  final TeacherCourse course;
+  const _StatsGrid({required this.course});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = course;
+    final rows = [
+      [
+        (Icons.people_alt_rounded,
+        '${c.studentsCount} ${'student'.tr}', AppTheme.primary),
+        (Icons.video_library_rounded,
+        '${c.sessionsCount} ${'session'.tr}',
+        const Color(0xFF185FA5)),
+      ],
+      [
+        (Icons.access_time_rounded,
+        '${c.totalHours.toStringAsFixed(0)}${'h'.tr}',
+        const Color(0xFFBA7517)),
+        (Icons.star_rounded,
+        c.averageRating.toStringAsFixed(1), AppTheme.accent),
+      ],
+    ];
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: rows.map((row) {
+        final isLast = row == rows.last;
+        return Padding(
+          padding: EdgeInsets.only(bottom: isLast ? 0 : 6),
+          child: Row(
+            children: row.map((item) {
+              final (icon, label, color) =
+              item as (IconData, String, Color);
+              final isLastInRow = item == row.last;
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(left: isLastInRow ? 0 : 4),
+                  child: _StatCell(icon, label, color),
+                ),
+              );
+            }).toList(),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _StatCell extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
-  const _Chip(this.icon, this.label, this.color);
+  const _StatCell(this.icon, this.label, this.color);
 
   @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Container(
-        width: 18,
-        height: 18,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha:0.12),
-          borderRadius: BorderRadius.circular(5),
+  Widget build(BuildContext context) => Container(
+    padding:
+    const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.07),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12, color: color),
+        const SizedBox(width: 5),
+        Flexible(
+          child: Text(
+            label,
+            style: AppTheme.caption.copyWith(
+                fontSize: 11, fontWeight: FontWeight.w600),
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
-        child: Icon(icon, size: 11, color: color),
-      ),
-      const SizedBox(width: 4),
-      Text(label, style: AppTheme.caption.copyWith(fontSize: 11)),
-    ],
+      ],
+    ),
   );
 }
 
-class _ActionBtn extends StatelessWidget {
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Status badge
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _StatusBadge extends StatelessWidget {
+  final bool isDraft;
+  const _StatusBadge({required this.isDraft});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding:
+    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    decoration: BoxDecoration(
+      color: isDraft ? const Color(0xFFf59e0b) : AppTheme.accent2,
+      borderRadius: BorderRadius.circular(8),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.18),
+          blurRadius: 6,
+          offset: const Offset(0, 2),
+        ),
+      ],
+    ),
+    child: Text(
+      isDraft ? 'status_draft'.tr : 'status_published'.tr,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 10,
+        fontWeight: FontWeight.w800,
+        fontFamily: 'Cairo',
+      ),
+    ),
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Overlay button (sits on top of the thumbnail image)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _OverlayBtn extends StatelessWidget {
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
-  const _ActionBtn(
+  const _OverlayBtn(
       {required this.icon, required this.color, required this.onTap});
 
   @override
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
     child: Container(
-      width: 36,
-      height: 36,
+      width: 32,
+      height: 32,
       decoration: BoxDecoration(
-          color: color.withValues(alpha:0.1),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withValues(alpha:0.2))),
-      child: Icon(icon, color: color, size: 17),
+        color: Colors.white.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Icon(icon, color: color, size: 15),
     ),
   );
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Publish button
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _PublishButton extends StatelessWidget {
+  final bool isDraft;
+  final VoidCallback onTap;
+  const _PublishButton({required this.isDraft, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      height: 40,
+      decoration: BoxDecoration(
+        gradient: isDraft
+            ? AppTheme.primaryGradient
+            : const LinearGradient(
+            colors: [Color(0xFF6B7280), Color(0xFF9CA3AF)]),
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: isDraft
+            ? [
+          BoxShadow(
+            color: AppTheme.primary.withValues(alpha: 0.28),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          )
+        ]
+            : null,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            isDraft
+                ? Icons.upload_rounded
+                : Icons.visibility_off_rounded,
+            color: Colors.white,
+            size: 16,
+          ),
+          const SizedBox(width: 7),
+          Text(
+            isDraft ? 'publish_course'.tr : 'unpublish_course'.tr,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              fontFamily: 'Cairo',
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Extras panel
+// ═══════════════════════════════════════════════════════════════════════════════
 
 class _ExtrasPanel extends StatelessWidget {
   final TeacherCourse course;
   const _ExtrasPanel({required this.course});
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (course.schedules.isNotEmpty)
-          _ExtRow(
-            Icons.calendar_month_rounded,
-            'الجدول الأسبوعي',
-            course.schedules
-                .map((s) =>
-            '${s.dayLabel}  ${s.startTime} – ${s.endTime}')
-                .toList(),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) =>
-                    TeacherSchedulesScreen(course: course))),
-          ),
-        if (course.certificates.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          _ExtRow(
-            Icons.workspace_premium_rounded,
-            'الشهادات',
-            course.certificates.map((c) => c.title).toList(),
-          ),
+  Widget build(BuildContext context) {
+    final hasContent = course.schedules.isNotEmpty ||
+        course.certificates.isNotEmpty ||
+        course.tools.isNotEmpty ||
+        course.prerequisites.isNotEmpty;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (!hasContent)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Text('no_extra_details'.tr,
+                  style: AppTheme.caption
+                      .copyWith(color: AppTheme.textLight)),
+            ),
+          if (course.schedules.isNotEmpty)
+            _ExtRow(
+              Icons.calendar_month_rounded,
+              'weekly_schedule'.tr,
+              course.schedules
+                  .map((s) =>
+              '${s.dayLabel}  ${s.startTime} – ${s.endTime}')
+                  .toList(),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                    builder: (_) =>
+                        TeacherSchedulesScreen(course: course)),
+              ),
+            ),
+          if (course.certificates.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _ExtRow(
+              Icons.workspace_premium_rounded,
+              'certificates'.tr,
+              course.certificates.map((c) => c.title).toList(),
+            ),
+          ],
+          if (course.tools.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _ExtRow(
+              Icons.build_rounded,
+              'required_tools'.tr,
+              course.tools.map((t) => t.name).toList(),
+            ),
+          ],
+          if (course.prerequisites.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _ExtRow(
+              Icons.checklist_rounded,
+              'prerequisites'.tr,
+              course.prerequisites.map((p) => p.title).toList(),
+            ),
+          ],
+          const SizedBox(height: 6),
         ],
-        if (course.tools.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          _ExtRow(
-            Icons.build_rounded,
-            'الأدوات المطلوبة',
-            course.tools.map((t) => t.name).toList(),
-          ),
-        ],
-        if (course.prerequisites.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          _ExtRow(
-            Icons.checklist_rounded,
-            'المتطلبات السابقة',
-            course.prerequisites.map((p) => p.title).toList(),
-          ),
-        ],
-        if (course.schedules.isEmpty &&
-            course.certificates.isEmpty &&
-            course.tools.isEmpty &&
-            course.prerequisites.isEmpty)
-          Text('لا توجد تفاصيل إضافية',
-              style: AppTheme.caption
-                  .copyWith(color: AppTheme.textLight)),
-        const SizedBox(height: 8),
-      ],
-    ),
-  );
+      ),
+    );
+  }
 }
 
 class _ExtRow extends StatelessWidget {
@@ -658,46 +950,79 @@ class _ExtRow extends StatelessWidget {
   final String label;
   final List<String> items;
   final VoidCallback? onTap;
+
   const _ExtRow(this.icon, this.label, this.items, {this.onTap});
 
   @override
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(children: [
-        Container(
-          width: 22,
-          height: 22,
-          decoration: BoxDecoration(
-              color: AppTheme.primary.withValues(alpha:0.1),
-              borderRadius: BorderRadius.circular(6)),
-          child: Icon(icon, size: 13, color: AppTheme.primary),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(icon, size: 13, color: AppTheme.primary),
+            ),
+            const SizedBox(width: 7),
+            Expanded(
+              child: Text(
+                label,
+                style: AppTheme.label.copyWith(
+                    color: AppTheme.primary, fontSize: 12),
+              ),
+            ),
+            if (onTap != null)
+              const Icon(Icons.chevron_left_rounded,
+                  size: 16, color: AppTheme.primary),
+          ],
         ),
-        const SizedBox(width: 7),
-        Text(label,
-            style: AppTheme.label
-                .copyWith(color: AppTheme.primary, fontSize: 12)),
-        if (onTap != null) ...[
-          const Spacer(),
-          const Icon(Icons.chevron_left_rounded,
-              size: 16, color: AppTheme.primary),
-        ],
-      ]),
-      const SizedBox(height: 5),
-      ...items.map((item) => Padding(
-        padding: const EdgeInsets.only(right: 29, bottom: 3),
-        child: Row(children: [
-          Container(
-            width: 5,
-            height: 5,
-            decoration: const BoxDecoration(
-                color: AppTheme.textLight,
-                shape: BoxShape.circle),
+        const SizedBox(height: 5),
+        ...items.take(3).map(
+              (item) => Padding(
+            padding:
+            const EdgeInsets.only(right: 29, bottom: 3),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 5),
+                  child: Container(
+                    width: 5,
+                    height: 5,
+                    decoration: const BoxDecoration(
+                      color: AppTheme.textLight,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                    child: Text(item,
+                        style: AppTheme.caption)),
+              ],
+            ),
           ),
-          const SizedBox(width: 7),
-          Expanded(child: Text(item, style: AppTheme.caption)),
-        ]),
-      )),
-    ]),
+        ),
+        if (items.length > 3)
+          Padding(
+            padding: const EdgeInsets.only(right: 29, top: 2),
+            child: Text(
+              '+ ${items.length - 3} ${'others'.tr}',
+              style: AppTheme.caption.copyWith(
+                color: AppTheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+      ],
+    ),
   );
 }

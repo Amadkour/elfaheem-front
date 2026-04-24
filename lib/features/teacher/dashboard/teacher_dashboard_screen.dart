@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../config/app_theme.dart';
 import '../../../features/auth/auth_provider.dart';
+import '../../auth/auth_widgets.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import '../analytics_hub_screen.dart';
 import '../courses/courses_screen.dart';
@@ -107,125 +108,150 @@ class _Sidebar extends StatelessWidget {
     final initial = name.isNotEmpty ? name[0] : '؟';
 
     return Container(
-      width: Breakpoints.sidebarW,
-      color: const Color(0xFF0F0E1A),
-      child: Column(
-        children: [
-          // Logo
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 26, 16, 18),
-            child: Row(children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  borderRadius: BorderRadius.circular(11),
-                  boxShadow: [
-                    BoxShadow(
-                        color: AppTheme.primary.withValues(alpha:0.42),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4)),
-                  ],
-                ),
-                child: const Icon(Icons.school_rounded,
-                    color: Colors.white, size: 20),
+        width: Breakpoints.sidebarW,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF0F3A8F), Color(0xFF1A56C4), Color(0xFF2563EB)],
+          ),
+        ),
+        child: Stack(children: [
+          // Decorative circles
+          Positioned(
+            top: -80,
+            right: -80,
+            child: Circle(size: 320, opacity: 0.06),
+          ),
+          Positioned(
+            bottom: -100,
+            left: -60,
+            child: Circle(size: 280, opacity: 0.04),
+          ),
+          Positioned(
+            top: 200,
+            left: -40,
+            child: Circle(size: 160, opacity: 0.05),
+          ),
+          Column(
+            children: [
+              // Logo
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 26, 16, 18),
+                child: Row(children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      borderRadius: BorderRadius.circular(11),
+                      boxShadow: [
+                        BoxShadow(
+                            color: AppTheme.primary.withValues(alpha: 0.42),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4)),
+                      ],
+                    ),
+                    child: const Icon(Icons.school_rounded,
+                        color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('EduPro',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                fontFamily: 'Cairo')),
+                        Container(
+                          margin: const EdgeInsets.only(top: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary.withValues(alpha: 0.22),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child:  Text((context.read<AuthProvider>().isTeacher?'teacher':'student').tr,
+                              style: TextStyle(
+                                  color: Color(0xFFA29BFE),
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  fontFamily: 'Cairo')),
+                        ),
+                      ],
+                    ),
+                  ),
+                ]),
               ),
-              const SizedBox(width: 11),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('EduPro',
-                        style: TextStyle(
+
+              Container(
+                  height: 0.5, color: Colors.white.withValues(alpha: 0.07)),
+              const SizedBox(height: 10),
+
+              // Nav
+              ...pages.asMap().entries.map((e) {
+                final i = e.key;
+                final p = e.value;
+                final active = i == index;
+                return _SideItem(
+                  label: p.label,
+                  icon: active ? p.activeIcon : p.icon,
+                  active: active,
+                  onTap: () => onSelect(i),
+                );
+              }),
+
+              const Spacer(),
+              Container(
+                  height: 0.5, color: Colors.white.withValues(alpha: 0.07)),
+
+              // User footer
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(initial,
+                        style: const TextStyle(
                             color: Colors.white,
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
                             fontFamily: 'Cairo')),
-                    Container(
-                      margin: const EdgeInsets.only(top: 2),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 7, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primary.withValues(alpha:0.22),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Text('معلم',
-                          style: TextStyle(
-                              color: Color(0xFFA29BFE),
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              fontFamily: 'Cairo')),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(name,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                fontFamily: 'Cairo'),
+                            overflow: TextOverflow.ellipsis),
+                        Text('معلم معتمد',
+                            style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.45),
+                                fontSize: 10,
+                                fontFamily: 'Cairo')),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ]),
               ),
-            ]),
+            ],
           ),
-
-          Container(height: 0.5, color: Colors.white.withValues(alpha:0.07)),
-          const SizedBox(height: 10),
-
-          // Nav
-          ...pages.asMap().entries.map((e) {
-            final i = e.key;
-            final p = e.value;
-            final active = i == index;
-            return _SideItem(
-              label: p.label,
-              icon: active ? p.activeIcon : p.icon,
-              active: active,
-              onTap: () => onSelect(i),
-            );
-          }),
-
-          const Spacer(),
-          Container(height: 0.5, color: Colors.white.withValues(alpha:0.07)),
-
-          // User footer
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
-                child: Text(initial,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        fontFamily: 'Cairo')),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(name,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            fontFamily: 'Cairo'),
-                        overflow: TextOverflow.ellipsis),
-                    Text('معلم معتمد',
-                        style: TextStyle(
-                            color: Colors.white.withValues(alpha:0.45),
-                            fontSize: 10,
-                            fontFamily: 'Cairo')),
-                  ],
-                ),
-              ),
-            ]),
-          ),
-        ],
-      ),
-    );
+        ]));
   }
 }
 

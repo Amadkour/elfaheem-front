@@ -85,7 +85,7 @@
   },
   "enter_verification_code": {
     "en": "Enter Verification Code",
-    "ar": "ادخل رمز  التحقق"
+    "ar": "ادخل رمز التحقق"
   },
   "verification_code_sent": {
     "en": "The verification code has been sent to",
@@ -322,5 +322,149 @@
   "forget_subtitle": {
     "en": "Enter your email to receive a reset link.",
     "ar": "أدخل بريدك الإلكتروني لتتلقى رابط إعادة التعيين."
+  },
+  "my_courses": {
+    "en": "My Courses",
+    "ar": "كورساتي"
+  },
+  "add": {
+    "en": "Add",
+    "ar": "إضافة"
+  },
+  "add_course": {
+    "en": "Add Course",
+    "ar": "إضافة كورس"
+  },
+  "add_new_course": {
+    "en": "Add New Course",
+    "ar": "إضافة دورة جديدة"
+  },
+  "add_first_course_hint": {
+    "en": "Start by adding your first course now",
+    "ar": "ابدأ بإضافة دورتك الأولى الآن"
+  },
+  "no_courses_section": {
+    "en": "No courses in this section",
+    "ar": "لا توجد كورسات في هذا القسم"
+  },
+  "filter_all": {
+    "en": "All",
+    "ar": "الكل"
+  },
+  "filter_published": {
+    "en": "Published",
+    "ar": "منشورة"
+  },
+  "filter_drafts": {
+    "en": "Drafts",
+    "ar": "مسودات"
+  },
+  "status_draft": {
+    "en": "Draft",
+    "ar": "مسودة"
+  },
+  "status_published": {
+    "en": "Published",
+    "ar": "منشورة"
+  },
+  "delete_course": {
+    "en": "Delete Course",
+    "ar": "حذف الدورة"
+  },
+  "delete_course_confirm": {
+    "en": "Are you sure you want to delete",
+    "ar": "هل تريد حذف"
+  },
+  "delete": {
+    "en": "Delete",
+    "ar": "حذف"
+  },
+  "course_deleted": {
+    "en": "Course deleted successfully",
+    "ar": "تم حذف الدورة"
+  },
+  "publish_course": {
+    "en": "Publish Course",
+    "ar": "نشر الدورة"
+  },
+  "unpublish_course": {
+    "en": "Unpublish Course",
+    "ar": "إيقاف النشر"
+  },
+  "show_details": {
+    "en": "Show Details",
+    "ar": "عرض التفاصيل"
+  },
+  "hide_details": {
+    "en": "Hide Details",
+    "ar": "إخفاء التفاصيل"
+  },
+  "no_extra_details": {
+    "en": "No additional details",
+    "ar": "لا توجد تفاصيل إضافية"
+  },
+  "weekly_schedule": {
+    "en": "Weekly Schedule",
+    "ar": "الجدول الأسبوعي"
+  },
+  "certificates": {
+    "en": "Certificates",
+    "ar": "الشهادات"
+  },
+  "required_tools": {
+    "en": "Required Tools",
+    "ar": "الأدوات المطلوبة"
+  },
+  "prerequisites": {
+    "en": "Prerequisites",
+    "ar": "المتطلبات السابقة"
+  },
+  "others": {
+    "en": "more",
+    "ar": "أخرى"
+  },
+  "h": {
+    "en": "h",
+    "ar": "س"
+  },
+  "edit_session": {
+    "en": "Edit Session",
+    "ar": "تعديل الحصة"
+  },
+  "delete_session": {
+    "en": "Delete Session",
+    "ar": "حذف الحصة"
+  },
+  "attendees": {
+    "en": "Attendees",
+    "ar": "المشتركون"
+  },
+  "minutes": {
+    "en": "min",
+    "ar": "دقيقة"
+  },
+  "session_type_live": {
+    "en": "Live",
+    "ar": "مباشر"
+  },
+  "session_type_recorded": {
+    "en": "Recorded",
+    "ar": "مسجّل"
+  },
+  "session_is_live": {
+    "en": "Session is live now",
+    "ar": "الحصة تبث الآن"
+  },
+  "start_live_session": {
+    "en": "Start Live Session",
+    "ar": "بدء الحصة المباشرة"
+  },
+  "end_session": {
+    "en": "End Session",
+    "ar": "إنهاء الحصة"
+  },
+  "live_room": {
+    "en": "Live Room",
+    "ar": "الغرفة المباشرة"
   }
 }

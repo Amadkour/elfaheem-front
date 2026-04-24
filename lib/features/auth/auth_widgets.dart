@@ -39,17 +39,17 @@ class AuthSidebar extends StatelessWidget {
           Positioned(
             top: -80,
             right: -80,
-            child: _Circle(size: 320, opacity: 0.06),
+            child: Circle(size: 320, opacity: 0.06),
           ),
           Positioned(
             bottom: -100,
             left: -60,
-            child: _Circle(size: 280, opacity: 0.04),
+            child: Circle(size: 280, opacity: 0.04),
           ),
           Positioned(
             top: 200,
             left: -40,
-            child: _Circle(size: 160, opacity: 0.05),
+            child: Circle(size: 160, opacity: 0.05),
           ),
           // Content
           SafeArea(
@@ -163,11 +163,11 @@ class AuthSidebar extends StatelessWidget {
   }
 }
 
-class _Circle extends StatelessWidget {
+class Circle extends StatelessWidget {
   final double size;
   final double opacity;
 
-  const _Circle({required this.size, required this.opacity});
+  const Circle({super.key, required this.size, required this.opacity});
 
   @override
   Widget build(BuildContext context) => Container(
