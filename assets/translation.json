@@ -466,5 +466,397 @@
   "live_room": {
     "en": "Live Room",
     "ar": "الغرفة المباشرة"
+  },
+  "attendance_and_exams": {
+    "en": "Attendance & Exams",
+    "ar": "الحضور والاختبارات"
+  },
+  "select_course_hint": {
+    "en": "Select a course to view attendance or manage exams",
+    "ar": "اختر كورساً لعرض الحضور أو إدارة الاختبارات"
+  },
+  "no_courses_yet": {
+    "en": "No courses yet",
+    "ar": "لا توجد كورسات بعد"
+  },
+  "add_course_first_hint": {
+    "en": "Add a course first from My Courses tab",
+    "ar": "أضف كورساً أولاً من تبويب \"كورساتي\""
+  },
+  "no_search_results": {
+    "en": "No search results",
+    "ar": "لا توجد نتائج للبحث"
+  },
+  "search_course": {
+    "en": "Search for a course...",
+    "ar": "ابحث عن كورس..."
+  },
+  "attendance": {
+    "en": "Attendance",
+    "ar": "الحضور"
+  },
+  "attendance_record": {
+    "en": "Attendance Record",
+    "ar": "سجل الحضور"
+  },
+  "select_lecture": {
+    "en": "Select Lecture",
+    "ar": "اختر المحاضرة"
+  },
+  "total_students": {
+    "en": "Total Students",
+    "ar": "إجمالي الطلاب"
+  },
+  "present": {
+    "en": "Present",
+    "ar": "حاضر"
+  },
+  "absent": {
+    "en": "Absent",
+    "ar": "غائب"
+  },
+  "mark_all_present": {
+    "en": "All Present",
+    "ar": "كل حاضر"
+  },
+  "mark_all_absent": {
+    "en": "All Absent",
+    "ar": "كل غائب"
+  },
+  "save_attendance": {
+    "en": "Save Attendance",
+    "ar": "حفظ الحضور"
+  },
+  "attendance_saved": {
+    "en": "Attendance saved successfully",
+    "ar": "تم حفظ الحضور بنجاح"
+  },
+  "saving": {
+    "en": "Saving...",
+    "ar": "جارٍ الحفظ..."
+  },
+  "attendance_duration": {
+    "en": "Attendance duration",
+    "ar": "مدة الحضور"
+  },
+  "search_student": {
+    "en": "Search for a student...",
+    "ar": "ابحث عن طالب..."
+  },
+  "attendance_rate": {
+    "en": "Attendance Rate",
+    "ar": "نسبة الحضور"
+  },
+  "my_attendance": {
+    "en": "My Attendance",
+    "ar": "حضوري"
+  },
+  "exams": {
+    "en": "Exams",
+    "ar": "الاختبارات"
+  },
+  "manage_exams": {
+    "en": "Manage Exams",
+    "ar": "إدارة الاختبارات"
+  },
+  "new_exam": {
+    "en": "New Exam",
+    "ar": "اختبار جديد"
+  },
+  "create_exam": {
+    "en": "Create New Exam",
+    "ar": "إنشاء اختبار جديد"
+  },
+  "exam_name": {
+    "en": "Exam Name",
+    "ar": "اسم الاختبار"
+  },
+  "exam_name_placeholder": {
+    "en": "e.g. Unit 1 Quiz",
+    "ar": "مثال: اختبار الوحدة الأولى"
+  },
+  "exam_description": {
+    "en": "Description (optional)",
+    "ar": "الوصف (اختياري)"
+  },
+  "exam_description_placeholder": {
+    "en": "Brief description of the exam",
+    "ar": "وصف مختصر للاختبار"
+  },
+  "total_marks": {
+    "en": "Total Marks",
+    "ar": "إجمالي الدرجات"
+  },
+  "passing_score": {
+    "en": "Passing Score %",
+    "ar": "درجة النجاح %"
+  },
+  "duration_minutes": {
+    "en": "Duration (min)",
+    "ar": "المدة (دقيقة)"
+  },
+  "no_exams_yet": {
+    "en": "No exams yet",
+    "ar": "لا توجد اختبارات بعد"
+  },
+  "no_exams_hint": {
+    "en": "Press \"New Exam\" to create the first exam",
+    "ar": "اضغط على \"اختبار جديد\" لإنشاء أول اختبار"
+  },
+  "publish_exam": {
+    "en": "Publish",
+    "ar": "نشر"
+  },
+  "published": {
+    "en": "Published",
+    "ar": "منشور"
+  },
+  "unpublish_exam": {
+    "en": "Unpublish",
+    "ar": "إيقاف النشر"
+  },
+  "exam_status_active": {
+    "en": "Active",
+    "ar": "نشط"
+  },
+  "exam_status_scheduled": {
+    "en": "Scheduled",
+    "ar": "مجدول"
+  },
+  "exam_status_draft": {
+    "en": "Draft",
+    "ar": "مسودة"
+  },
+  "exam_status_ended": {
+    "en": "Ended",
+    "ar": "انتهى"
+  },
+  "view_results": {
+    "en": "Results",
+    "ar": "النتائج"
+  },
+  "student_results": {
+    "en": "Student Results",
+    "ar": "نتائج الطلاب"
+  },
+  "select_exam_hint": {
+    "en": "Select an exam to view results",
+    "ar": "اختر اختباراً لعرض النتائج"
+  },
+  "select_exam_from_tab": {
+    "en": "Go to Exams tab and press View Results",
+    "ar": "اذهب إلى تبويب \"الاختبارات\" واضغط على \"عرض النتائج\""
+  },
+  "attempted": {
+    "en": "Attempted",
+    "ar": "أجاب"
+  },
+  "not_attempted": {
+    "en": "Not Attempted",
+    "ar": "لم يؤدِّ"
+  },
+  "passed": {
+    "en": "Passed",
+    "ar": "نجح"
+  },
+  "failed": {
+    "en": "Failed",
+    "ar": "راسب"
+  },
+  "average_score": {
+    "en": "Average",
+    "ar": "متوسط"
+  },
+  "enrolled": {
+    "en": "Enrolled",
+    "ar": "مسجّل"
+  },
+  "view_answers": {
+    "en": "Answers",
+    "ar": "الإجابات"
+  },
+  "student_answers": {
+    "en": "Student Answers",
+    "ar": "إجابات الطالب"
+  },
+  "no_answers_recorded": {
+    "en": "No answers recorded",
+    "ar": "لا توجد إجابات مسجّلة"
+  },
+  "question_number": {
+    "en": "Question",
+    "ar": "السؤال"
+  },
+  "marks_obtained": {
+    "en": "marks",
+    "ar": "درجة"
+  },
+  "cannot_publish_no_questions": {
+    "en": "Cannot publish an exam with no questions",
+    "ar": "لا يمكن نشر اختبار بدون أسئلة"
+  },
+  "exam_published": {
+    "en": "Exam published",
+    "ar": "تم نشر الاختبار"
+  },
+  "exam_unpublished": {
+    "en": "Exam unpublished",
+    "ar": "تم إيقاف نشر الاختبار"
+  },
+  "enable_passcode": {
+    "en": "Enable Passcode",
+    "ar": "تفعيل كلمة مرور"
+  },
+  "exam_passcode": {
+    "en": "Exam Passcode",
+    "ar": "كلمة مرور الاختبار"
+  },
+  "exam_passcode_placeholder": {
+    "en": "e.g. EXAM2025",
+    "ar": "مثال: EXAM2025"
+  },
+  "schedule_exam": {
+    "en": "Schedule Specific Time",
+    "ar": "جدولة وقت محدد"
+  },
+  "pick_date_time": {
+    "en": "Pick date and time",
+    "ar": "اختر التاريخ والوقت"
+  },
+  "create_exam_btn": {
+    "en": "Create Exam",
+    "ar": "إنشاء الاختبار"
+  },
+  "enter_exam": {
+    "en": "Enter Exam",
+    "ar": "دخول الاختبار"
+  },
+  "start_exam_now": {
+    "en": "Start Exam Now",
+    "ar": "ابدأ الاختبار الآن"
+  },
+  "exam_starts_in": {
+    "en": "Exam starts in",
+    "ar": "يبدأ الاختبار خلال"
+  },
+  "enter_passcode_prompt": {
+    "en": "Please enter the exam passcode",
+    "ar": "يرجى إدخال كلمة مرور الاختبار"
+  },
+  "wrong_passcode": {
+    "en": "Incorrect passcode",
+    "ar": "كلمة المرور غير صحيحة"
+  },
+  "passcode_required": {
+    "en": "Passcode is required",
+    "ar": "يرجى إدخال كلمة المرور"
+  },
+  "exam_warning": {
+    "en": "Once started the exam cannot be paused. Make sure you have internet connection.",
+    "ar": "بمجرد بدء الاختبار لا يمكن إيقافه مؤقتاً. تأكد من اتصالك بالإنترنت."
+  },
+  "question_of": {
+    "en": "Question {current} of {total}",
+    "ar": "السؤال {current} من {total}"
+  },
+  "answered_of": {
+    "en": "{answered} / {total} answered",
+    "ar": "{answered} / {total} تمت الإجابة"
+  },
+  "submit_exam": {
+    "en": "Submit Exam",
+    "ar": "تسليم الاختبار"
+  },
+  "submit_confirm_title": {
+    "en": "Submit Exam",
+    "ar": "تسليم الاختبار"
+  },
+  "submit_confirm_unanswered": {
+    "en": "You have {count} unanswered questions. Are you sure you want to submit?",
+    "ar": "لم تجب على {count} سؤال. هل أنت متأكد من التسليم؟"
+  },
+  "submit_confirm_all_answered": {
+    "en": "Are you sure you want to submit your answers?",
+    "ar": "هل تريد تسليم إجاباتك الآن؟"
+  },
+  "confirm_submit": {
+    "en": "Confirm Submit",
+    "ar": "تأكيد التسليم"
+  },
+  "exam_result": {
+    "en": "Exam Result",
+    "ar": "نتيجة الاختبار"
+  },
+  "congratulations_passed": {
+    "en": "Congratulations! You passed the exam",
+    "ar": "تهانينا! اجتزت الاختبار بنجاح"
+  },
+  "sorry_failed": {
+    "en": "You did not pass this time",
+    "ar": "لم تجتز الاختبار هذه المرة"
+  },
+  "your_score": {
+    "en": "Your Score",
+    "ar": "درجتك"
+  },
+  "questions_answered": {
+    "en": "Questions Answered",
+    "ar": "الأسئلة المجابة"
+  },
+  "passing_mark": {
+    "en": "Passing Mark",
+    "ar": "درجة النجاح"
+  },
+  "back_to_home": {
+    "en": "Back to Home",
+    "ar": "العودة للرئيسية"
+  },
+  "next_question": {
+    "en": "Next",
+    "ar": "التالي"
+  },
+  "previous_question": {
+    "en": "Previous",
+    "ar": "السابق"
+  },
+  "my_exams": {
+    "en": "My Exams",
+    "ar": "اختباراتي"
+  },
+  "exam_coming_soon": {
+    "en": "Coming Soon",
+    "ar": "قادم"
+  },
+  "exam_not_taken": {
+    "en": "Not Taken",
+    "ar": "لم تؤدِّه"
+  },
+  "my_score": {
+    "en": "My Score",
+    "ar": "درجتي"
+  },
+  "hours": {
+    "en": "h",
+    "ar": "ساعة"
+  },
+  "seconds": {
+    "en": "sec",
+    "ar": "ثانية"
+  },
+  "attending": {
+    "en": "Attended",
+    "ar": "حضر"
+  },
+  "did_not_attend": {
+    "en": "Absent",
+    "ar": "غاب"
+  },
+  "register_and_create": {
+    "en": "Create and Manage",
+    "ar": "إنشاء وإدارة"
+  },
+  "record_and_edit": {
+    "en": "Record and Edit",
+    "ar": "تسجيل وتعديل"
   }
 }

@@ -1,34 +1,3 @@
-/// ─────────────────────────────────────────────────────────────────────────────
-/// auth_provider.dart
-/// Manages the full authentication lifecycle.
-///
-/// Session persistence:
-///   • After login / OTP verification the user JSON is saved to SharedPreferences
-///     via StorageService.saveUser().
-///   • On cold start, AuthProvider._loadCachedUser() reads it back so
-///     _currentUser and role getters are immediately available — no extra
-///     network call needed before showing the correct home screen.
-///   • On logout, StorageService.clearAll() wipes tokens + user.
-///
-/// Registration flow:
-///   1. register()            → POST /api/v1/auth/register
-///   2. verifyOtp()           → POST /api/v1/auth/verify-otp  (saves user)
-///   3. completeTeacher()     → POST /api/v1/auth/teacher-profile (teachers)
-///
-/// Login flow:
-///   login()                  → POST /api/v1/auth/login  (saves user)
-///
-/// Token management:
-///   refreshToken()           → POST /api/v1/auth/refresh
-///   getMe()                  → GET  /api/v1/auth/me     (updates saved user)
-///   logout()                 → clears storage
-///
-/// Password flows:
-///   changePassword()         → PUT  /api/v1/auth/change-password
-///   forgotPassword()         → POST /api/v1/auth/forgot-password
-///   resetPassword()          → POST /api/v1/auth/reset-password
-///   resendOtp()              → POST /api/v1/auth/resend-otp
-/// ─────────────────────────────────────────────────────────────────────────────
 library;
 
 import 'package:flutter/cupertino.dart';
@@ -271,13 +240,12 @@ class AuthProvider extends BaseProvider {
   }) async {
     isLoadingLogin = true;
     notifyListeners();
-
+    _currentUser=UserModel(id: 0, name: '', gmail: gmail, role: 'student');
     final result = await run(() => _api.post(
           '/api/v1/auth/login',
           body: {'gmail': gmail, 'password': password},
           auth: false,
         ));
-
     if (result != null && result is Map) {
       // 1. Save tokens
       await _persistTokens(result);

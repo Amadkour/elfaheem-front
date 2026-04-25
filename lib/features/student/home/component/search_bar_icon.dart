@@ -48,29 +48,6 @@ class SearchBarIcon extends StatelessWidget {
                   ),
                 ),
               ),
-
-              // Filter button with gradient
-              Container(
-                width: 36,
-                height: 36,
-                margin: const EdgeInsets.only(left: 8, right: 8),
-                decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  borderRadius: BorderRadius.circular(11),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.primary.withValues(alpha:0.35),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.tune_rounded,
-                  color: Colors.white,
-                  size: 17,
-                ),
-              ),
             ],
           ),
         ),

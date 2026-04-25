@@ -7,8 +7,8 @@ import '../../../config/app_config.dart' as Helpers;
 import '../../../config/app_theme.dart';
 import '../../../features/auth/auth_provider.dart';
 import '../../auth/auth_widgets.dart';
+import '../../exam/teacher/analytics_hub_screen.dart';
 import '../../student/courses/details/components/app_responsive.dart';
-import '../analytics_hub_screen.dart';
 import '../courses/courses_screen.dart';
 import '../home/home_screen.dart';
 import '../profile/profile_screen.dart';
@@ -40,7 +40,7 @@ class _State extends State<TeacherDashboardScreen> {
       const TeacherHomeScreen(),
       const TeacherCoursesScreen(),
       _TeacherScheduleTab(),
-      const AnalyticsHubScreen(),
+       AnalyticsHubScreen(),
       const TeacherProfileScreen(),
     ];
 
@@ -104,7 +104,7 @@ class _Sidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().currentUser;
-    final name = user?.name ?? 'معلم';
+    final name = user?.name ?? 'student'.tr;
     final initial = name.isNotEmpty ? name[0] : '؟';
 
     return Container(

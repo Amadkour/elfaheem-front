@@ -4,6 +4,7 @@ import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/utils/widget/password_text_field.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
+import '../../core/api_client.dart';
 import '../../utils/helpers.dart';
 import '../teacher/dashboard/teacher_dashboard_screen.dart';
 import 'auth_provider.dart';
@@ -67,6 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ApiClient().context=context;
     final isWide = MediaQuery.of(context).size.width > 800;
 
     return Consumer<LangProvider>(

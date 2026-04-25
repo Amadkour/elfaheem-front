@@ -22,13 +22,6 @@ class StudentScheduleTabState extends State<StudentHomeTab>
     super.dispose();
   }
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _prov.init(context);
-    });
-  }
 
   @override
   Widget build(BuildContext context) {

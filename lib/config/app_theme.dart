@@ -63,7 +63,7 @@ class AppTheme {
   );
 
   static const LinearGradient successGradient = LinearGradient(
-    colors: [Color(0xFF34C270), Color(0xFF57E28F)],
+    colors: [success, Colors.teal],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

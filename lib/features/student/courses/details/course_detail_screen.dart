@@ -182,7 +182,7 @@ class _WebSidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.watch<CourseDetailProvider>();
     final c = p.course;
-    final isEnrolled = p.isEnrolled;
+    final isEnrolled = p.course.isEnrolled;
 
     return Padding(
       padding: const EdgeInsets.only(left: 0, right: 20),
@@ -220,6 +220,8 @@ class _WebSidebar extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
+                isEnrolled?
+                    Text('you are enrolled'):
                 _EnrollButton(),
                 const SizedBox(height: 16),
                 _WebCourseFacts(course: c),
@@ -656,7 +658,7 @@ class _EnrollButton extends StatelessWidget {
     final p = context.watch<CourseDetailProvider>();
     final isWide = context.showSidebar;
 
-    if (p.isEnrolled) {
+    if (p.course.isEnrolled) {
       return _EnrollWrap(
         isWide: isWide,
         child: Container(
@@ -694,7 +696,7 @@ class _EnrollButton extends StatelessWidget {
     return _EnrollWrap(
       isWide: isWide,
       child: GestureDetector(
-        onTap: p.isEnrolling
+        onTap: p.course.isEnrolled
             ? null
             : () => Navigator.of(context).push(
           MaterialPageRoute(
@@ -718,7 +720,7 @@ class _EnrollButton extends StatelessWidget {
             ],
           ),
           child: Center(
-            child: p.isEnrolling
+            child: p.course.isEnrolled
                 ? const SizedBox(
               width: 24,
               height: 24,

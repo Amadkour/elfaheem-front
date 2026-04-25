@@ -200,6 +200,7 @@ class CourseModel {
   final double price, averageRating, totalHours;
   final int studentsCount, sessionsCount;
   final bool isPublished;
+   bool isEnrolled;
   bool isFavorite;
   double progress;
   late List<SessionModel> sessions;
@@ -227,7 +228,7 @@ class CourseModel {
       this.schedules = const [],
       this.certificates = const [],
       this.tools = const [],
-      this.prerequisites = const []});
+      this.prerequisites = const [], required this.isEnrolled});
 
   String get title => name;
 
@@ -249,7 +250,8 @@ class CourseModel {
         certificates: [],
         tools: [],
         schedules: [],
-        prerequisites: [],
+        prerequisites: [], 
+    isEnrolled: false,
       );
 
   factory CourseModel.fromJson(Map<String, dynamic> j) => CourseModel(
@@ -292,7 +294,7 @@ class CourseModel {
           .toList(),
       prerequisites: (j['prerequisites'] as List? ?? [])
           .map((e) => CourseInfoItem.fromJson(e as Map<String, dynamic>))
-          .toList());
+          .toList(), isEnrolled: j['is_enrolled']);
 
   CourseModel copyWith(
           {bool? isFavorite,
@@ -322,7 +324,7 @@ class CourseModel {
           schedules: schedules,
           certificates: certificates,
           tools: tools,
-          prerequisites: prerequisites);
+          prerequisites: prerequisites, isEnrolled: this.isEnrolled);
 }
 
 class AttendanceRecord {

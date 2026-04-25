@@ -13,6 +13,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/auth/forget_screen.dart';
 import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart';
@@ -66,7 +67,6 @@ class ElFaheemApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
-
     // Decide the first screen synchronously — storage is already loaded.
     final String initialRoute;
     if (!auth.isAuthenticated) {
@@ -88,7 +88,10 @@ class ElFaheemApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      builder: (a, child) => ResponsiveBreakpoints.builder(
+      builder: (a, child) {
+        ApiClient().context=a;
+
+        return ResponsiveBreakpoints.builder(
         breakpoints: [
           const Breakpoint(start: 0, end: 450, name: MOBILE),
           const Breakpoint(start: 451, end: 800, name: TABLET),
@@ -97,7 +100,8 @@ class ElFaheemApp extends StatelessWidget {
         ],
         useShortestSide: true,
         child: child!,
-      ),
+      );
+      },
       supportedLocales: context
           .read<LangProvider>()
           .languages

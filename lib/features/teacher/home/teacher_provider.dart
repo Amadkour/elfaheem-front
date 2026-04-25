@@ -175,7 +175,7 @@ class TeacherProvider extends BaseProvider {
       if (totalHours != null) 'total_hours': totalHours.toString(),
     };
     print('============================');
-    print(logoFile!.path);
+    print(logoFile?.path);
     print('============================');
 
     final result = await run(() => _api.postMultipart(

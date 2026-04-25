@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/student/dashboard/component/student_home_tab.dart';
 import 'package:flutter_education_app/features/student/dashboard/component/student_schedule_tab.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/app_theme.dart';
 import '../../../config/app_config.dart' as Helpers;
+import '../../auth/auth_widgets.dart';
+import '../../exam/student/student_analytics_screen.dart';
+import '../courses/details/components/app_responsive.dart';
 import '../courses/my_courses/my_courses_screen.dart';
 import '../../notification/notifications_provider.dart';
 import '../profile/profile_screen.dart';
-import 'component/student_exam_tab.dart';
+import '../../exam/teacher/analytics_hub_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DashboardScreen — responsive shell
@@ -21,11 +25,6 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  @override
-  void initState() {
-    WidgetsBinding.instance.addPostFrameCallback((_) async {});
-    super.initState();
-  }
 
   int _currentIndex = 0;
 
@@ -34,7 +33,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     StudentHomeTab(),
     MyCoursesScreen(),
     StudentScheduleTab(),
-    StudentExamsTab(),
+    StudentAnalyticsScreen(),
     ProfileScreen(),
   ];
 
@@ -125,119 +124,145 @@ class _WideShell extends StatelessWidget {
           SizedBox(
             width: 240,
             child: Container(
-              color: AppTheme.primaryDark,
-              child: Column(
-                children: [
-                  const SizedBox(height: 32),
+              width: Breakpoints.sidebarW,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF0F3A8F), Color(0xFF1A56C4), Color(0xFF2563EB)],
+                ),
+              ),
+              child: Stack(children: [
+                // Decorative circles
+                Positioned(
+                  top: -80,
+                  right: -80,
+                  child: Circle(size: 320, opacity: 0.06),
+                ),
+                Positioned(
+                  bottom: -100,
+                  left: -60,
+                  child: Circle(size: 280, opacity: 0.04),
+                ),
+                Positioned(
+                  top: 200,
+                  left: -40,
+                  child: Circle(size: 160, opacity: 0.05),
+                ),
+                  Column(
+                    children: [
+                      const SizedBox(height: 32),
 
-                  // Logo row
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 42,
-                          height: 42,
-                          decoration: BoxDecoration(
-                            color: AppTheme.primary.withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(13),
-                          ),
-                          child: const Icon(Icons.school_rounded,
-                              color: Colors.white, size: 22),
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      // Logo row
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        child: Row(
                           children: [
-                            const Text('Elfaheem',
-                                style: TextStyle(
-                                    fontFamily: 'Cairo',
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 17)),
-                            Text('منصة التعلم الذكي',
-                                style: TextStyle(
-                                    fontFamily: 'bahji',
-                                    color: Colors.white.withValues(alpha: 0.4),
-                                    fontSize: 10)),
+                            Container(
+                              width: 42,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: AppTheme.primary.withValues(alpha: 0.3),
+                                borderRadius: BorderRadius.circular(13),
+                              ),
+                              child: const Icon(Icons.school_rounded,
+                                  color: Colors.white, size: 22),
+                            ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Elfaheem',
+                                    style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 17)),
+                                Text('منصة التعلم الذكي',
+                                    style: TextStyle(
+                                        fontFamily: 'bahji',
+                                        color: Colors.white.withValues(alpha: 0.4),
+                                        fontSize: 10)),
+                              ],
+                            ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  Divider(
-                      height: 1, color: Colors.white.withValues(alpha: 0.07)),
-                  const SizedBox(height: 10),
-
-                  // Nav items
-                  for (int i = 0; i < labels.length; i++)
-                    _SidebarTile(
-                      icon: icons[i],
-                      selectedIcon: selectedIcons[i],
-                      label: labels[i],
-                      selected: currentIndex == i,
-                      badge: i == 4 && unread > 0 ? unread : 0,
-                      onTap: () => onTap(i),
-                    ),
-
-                  const Spacer(),
-                  Divider(
-                      height: 1, color: Colors.white.withValues(alpha: 0.07)),
-                  const SizedBox(height: 14),
-
-                  // User chip at bottom
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 28),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.07),
-                        borderRadius: BorderRadius.circular(14),
                       ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 34,
-                            height: 34,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border:
-                                  Border.all(color: AppTheme.primary, width: 2),
-                            ),
-                            child: const ClipOval(
-                              child: Icon(Icons.person_rounded,
-                                  size: 18, color: AppTheme.primary),
-                            ),
+                      const SizedBox(height: 28),
+                      Divider(
+                          height: 1, color: Colors.white.withValues(alpha: 0.07)),
+                      const SizedBox(height: 10),
+
+                      // Nav items
+                      for (int i = 0; i < labels.length; i++)
+                        _SidebarTile(
+                          icon: icons[i],
+                          selectedIcon: selectedIcons[i],
+                          label: labels[i],
+                          selected: currentIndex == i,
+                          badge: i == 4 && unread > 0 ? unread : 0,
+                          onTap: () => onTap(i),
+                        ),
+
+                      const Spacer(),
+                      Divider(
+                          height: 1, color: Colors.white.withValues(alpha: 0.07)),
+                      const SizedBox(height: 14),
+
+                      // User chip at bottom
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 0, 14, 28),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.07),
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text('أحمد محمد',
-                                style: TextStyle(
-                                    fontFamily: 'Cairo',
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 13),
-                                overflow: TextOverflow.ellipsis),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 34,
+                                height: 34,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border:
+                                      Border.all(color: AppTheme.primary, width: 2),
+                                ),
+                                child: const ClipOval(
+                                  child: Icon(Icons.person_rounded,
+                                      size: 18, color: AppTheme.primary),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(context.read<AuthProvider>().currentUser?.name??'sir',
+                                    style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        color: Colors.white.withValues(alpha: 0.9),
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13),
+                                    overflow: TextOverflow.ellipsis),
+                              ),
+                              if (unread > 0)
+                                Container(
+                                  width: 20,
+                                  height: 20,
+                                  decoration: const BoxDecoration(
+                                      color: AppTheme.danger,
+                                      shape: BoxShape.circle),
+                                  child: Center(
+                                      child: Text('$unread',
+                                          style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w800))),
+                                ),
+                            ],
                           ),
-                          if (unread > 0)
-                            Container(
-                              width: 20,
-                              height: 20,
-                              decoration: const BoxDecoration(
-                                  color: AppTheme.danger,
-                                  shape: BoxShape.circle),
-                              child: Center(
-                                  child: Text('$unread',
-                                      style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w800))),
-                            ),
-                        ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ],
               ),

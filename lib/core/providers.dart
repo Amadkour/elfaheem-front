@@ -2,8 +2,6 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/student/attendance/attendance_provider.dart';
 import 'package:flutter_education_app/features/student/courses/details/course_detail_provider.dart';
 import 'package:flutter_education_app/features/teacher/shared/exams_provider.dart';
-import 'package:flutter_education_app/providers/course_provider.dart';
-import 'package:flutter_education_app/services/api_service.dart';
 import 'package:provider/provider.dart';
 
 import '../config/storage_service.dart' show StorageService;
@@ -65,9 +63,6 @@ List<SingleChildWidget> appProviders({required StorageService storage}) => [
       ChangeNotifierProvider<ProfileProvider>(
         create: (_) => ProfileProvider(),
       ),
-      ChangeNotifierProvider<CourseProvider>(
-        create: (_) => CourseProvider(null),
-      ),
       ChangeNotifierProvider<CoursesProvider>(
         create: (_) => CoursesProvider(),
       ),
@@ -109,8 +104,5 @@ List<SingleChildWidget> appProviders({required StorageService storage}) => [
       ),
       ChangeNotifierProvider<NotificationsProvider>(
         create: (_) => NotificationsProvider(),
-      ),
-      Provider<ApiService>(
-        create: (ctx) => ApiService(ctx.read<StorageService>()),
       ),
     ];

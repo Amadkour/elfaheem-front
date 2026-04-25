@@ -2,14 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/category/categories_screen.dart';
+import 'package:flutter_education_app/features/student/home/home_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../config/app_theme.dart';
-import '../../category/categories_provider.dart';
 import '../courses/list/courses_list_screen.dart';
-import '../courses/list/courses_provider.dart';
 import 'component/category_row.dart';
 import 'component/course_row.dart';
 import 'component/home_section_header.dart';
@@ -36,10 +35,7 @@ class _HomeScreenState extends State<HomeScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await Future.value([
-        context.read<CategoriesProvider>().fetchCategories(),
-        context.read<CoursesProvider>().fetchCourses(),
-      ]);
+      await context.read<HomeProvider>().init(context);
     });
   }
 
@@ -145,7 +141,7 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
     super.initState();
     _bellCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 400));
-    _bellAnim = Tween<double>(begin: -0.06, end: 0.06).animate(
+    _bellAnim = Tween<double>(begin: -200, end: 200).animate(
       CurvedAnimation(parent: _bellCtrl, curve: Curves.elasticIn),
     );
     _schedProv.fetch().then((_) => _startTick());
@@ -210,32 +206,26 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
         // Ongoing = red gradient, upcoming = primary, no session = softer purple
         final gradient = isOngoing
             ? const LinearGradient(
-          colors: [Color(0xFFC0392B), Color(0xFFE57373)],
-          begin: Alignment.centerRight,
-          end: Alignment.centerLeft,
-        )
+                colors: [Color(0xFFC0392B), Color(0xFFE57373)],
+                begin: Alignment.centerRight,
+                end: Alignment.centerLeft,
+              )
             : next != null
-            ? AppTheme.primaryGradient
-            : const LinearGradient(
-          colors: [Color(0xFF6C5CE7), Color(0xFFA29BFE)],
-          begin: Alignment.centerRight,
-          end: Alignment.centerLeft,
-        );
+                ? AppTheme.primaryGradient
+                : AppTheme.successGradient;
 
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Container(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 22, vertical: 22),
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 22),
             decoration: BoxDecoration(
               gradient: gradient,
               borderRadius: BorderRadius.circular(AppTheme.radiusXL),
               boxShadow: [
                 BoxShadow(
-                  color: (isOngoing
-                      ? const Color(0xFFC0392B)
-                      : AppTheme.primary)
-                      .withValues(alpha:0.38),
+                  color:
+                      (isOngoing ? const Color(0xFFC0392B) : AppTheme.primary)
+                          .withValues(alpha: 0.38),
                   blurRadius: 24,
                   offset: const Offset(0, 8),
                 ),
@@ -251,7 +241,7 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
                     width: 110,
                     height: 110,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha:0.08),
+                      color: Colors.white.withValues(alpha: 0.08),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -263,7 +253,7 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
                     width: 75,
                     height: 75,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha:0.06),
+                      color: Colors.white.withValues(alpha: 0.06),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -275,7 +265,7 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha:0.05),
+                      color: Colors.white.withValues(alpha: 0.05),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -287,23 +277,22 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
                     Expanded(
                       child: next == null
                           ? _BannerContent(
-                        tag: 'اليوم',
-                        title: 'لا توجد حصص اليوم',
-                        subtitle: 'تحقق من جدولك الأسبوعي',
-                      )
+                              tag: 'اليوم',
+                              title: 'لا توجد حصص اليوم',
+                              subtitle: 'تحقق من جدولك الأسبوعي',
+                            )
                           : _BannerContent(
-                        tag: next.isOngoing
-                            ? '🔴 جارية الآن'
-                            : 'الحصة القادمة',
-                        title: next.courseName,
-                        subtitle:
-                        '${next.startTime} — ${next.endTime}',
-                        countdown: _countdownText.isNotEmpty
-                            ? (next.isOngoing
-                            ? 'تنتهي بعد $_countdownText'
-                            : 'تبدأ بعد $_countdownText')
-                            : null,
-                      ),
+                              tag: next.isOngoing
+                                  ? '🔴 جارية الآن'
+                                  : 'الحصة القادمة',
+                              title: next.courseName,
+                              subtitle: '${next.startTime} — ${next.endTime}',
+                              countdown: _countdownText.isNotEmpty
+                                  ? (next.isOngoing
+                                      ? 'تنتهي بعد $_countdownText'
+                                      : 'تبدأ بعد $_countdownText')
+                                  : null,
+                            ),
                     ),
                     const SizedBox(width: 16),
 
@@ -316,10 +305,10 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
                         width: 58,
                         height: 58,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha:0.20),
+                          color: Colors.white.withValues(alpha: 0.20),
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: Colors.white.withValues(alpha:0.3),
+                            color: Colors.white.withValues(alpha: 0.3),
                             width: 1,
                           ),
                         ),
@@ -362,10 +351,9 @@ class _BannerContent extends StatelessWidget {
       children: [
         // Tag pill
         Container(
-          padding:
-          const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha:0.22),
+            color: Colors.white.withValues(alpha: 0.22),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
@@ -395,12 +383,12 @@ class _BannerContent extends StatelessWidget {
         Row(
           children: [
             Icon(Icons.access_time_rounded,
-                color: Colors.white.withValues(alpha:0.75), size: 13),
+                color: Colors.white.withValues(alpha: 0.75), size: 13),
             const SizedBox(width: 5),
             Text(
               subtitle,
               style: TextStyle(
-                color: Colors.white.withValues(alpha:0.80),
+                color: Colors.white.withValues(alpha: 0.80),
                 fontSize: 12,
                 fontFamily: 'Cairo',
               ),
@@ -410,13 +398,12 @@ class _BannerContent extends StatelessWidget {
         if (countdown != null) ...[
           const SizedBox(height: 12),
           Container(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha:0.22),
+              color: Colors.white.withValues(alpha: 0.22),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: Colors.white.withValues(alpha:0.3),
+                color: Colors.white.withValues(alpha: 0.3),
                 width: 0.5,
               ),
             ),

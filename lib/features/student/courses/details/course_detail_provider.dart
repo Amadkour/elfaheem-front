@@ -1,5 +1,6 @@
 /// courses/details/course_detail_provider.dart
 library;
+
 import '../../../../core/api_client.dart';
 import '../../../../core/base_provider.dart';
 import '../../models.dart';
@@ -11,16 +12,10 @@ class CourseDetailProvider extends BaseProvider {
 
   late CourseModel course;
   CourseDetailTab _activeTab = CourseDetailTab.lessons;
-  bool _isEnrolled = false;
-  bool _isEnrolling = false;
 
   CourseDetailTab get activeTab => _activeTab;
 
-  bool get isEnrolled => _isEnrolled;
-
-  bool get isEnrolling => _isEnrolling;
-
-  void init(CourseModel course) async{
+  void init(CourseModel course) async {
     this.course = course;
     await fetchSessions(course.id);
   }
@@ -72,13 +67,12 @@ class CourseDetailProvider extends BaseProvider {
     }
   }
 
-  Future<void> enroll() async {
-    if (_isEnrolled || _isEnrolling) return;
-    _isEnrolling = true;
+  Future<void> enroll(CourseModel c) async {
+    if (c.isEnrolled) return;
     notifyListeners();
     final r = await run(() => _api.post('/api/v1/courses/${course.id}/enroll'));
-    _isEnrolling = false;
-    if (r != null) _isEnrolled = true;
+    c.isEnrolled = false;
+    if (r != null) c.isEnrolled = true;
     notifyListeners();
   }
 }
