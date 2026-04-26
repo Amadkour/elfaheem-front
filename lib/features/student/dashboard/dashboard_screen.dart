@@ -5,13 +5,12 @@ import 'package:flutter_education_app/features/student/dashboard/component/stude
 import 'package:provider/provider.dart';
 import '../../../../config/app_theme.dart';
 import '../../../config/app_config.dart' as Helpers;
+import '../../analytics/student/student_analytics_screen.dart';
 import '../../auth/auth_widgets.dart';
-import '../../exam/student/student_analytics_screen.dart';
 import '../courses/details/components/app_responsive.dart';
 import '../courses/my_courses/my_courses_screen.dart';
 import '../../notification/notifications_provider.dart';
 import '../profile/profile_screen.dart';
-import '../../exam/teacher/analytics_hub_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DashboardScreen — responsive shell

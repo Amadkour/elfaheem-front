@@ -1,7 +1,7 @@
 // features/teacher/exam/teacher_exam_provider.dart
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'exam_model.dart';
+import 'package:flutter_education_app/features/analytics/teacher/exam/exam_model.dart';
 import 'teacher_exam_api.dart';
 
 class TeacherExamProvider extends ChangeNotifier {
@@ -34,18 +34,25 @@ class TeacherExamProvider extends ChangeNotifier {
   String? _resultsError;
   String? get resultsError => _resultsError;
 
-  // ── Questions (for the add-question sheet) ─────────────────────────────────
-  bool _loadingQuestions = false;
-  bool get loadingQuestions => _loadingQuestions;
+  // ── Questions — keyed by examId so each exam has its own list ─────────────
+  // { examId → List<Question> }
+  final Map<int, List<Question>> _questionsByExam = {};
+  final Map<int, bool> _loadingQuestionsByExam = {};
+  final Map<int, String?> _questionErrorByExam = {};
 
-  List<Question> _questions = [];
-  List<Question> get questions => _questions;
+  List<Question> questionsFor(int examId) =>
+      _questionsByExam[examId] ?? [];
+
+  bool loadingQuestionsFor(int examId) =>
+      _loadingQuestionsByExam[examId] ?? false;
+
+  String? questionErrorFor(int examId) => _questionErrorByExam[examId];
 
   // ── Saving ─────────────────────────────────────────────────────────────────
   bool _saving = false;
   bool get saving => _saving;
 
-  // ── Tab (0=exams, 1=results) ───────────────────────────────────────────────
+  // ── Tab (0 = exams, 1 = results) ──────────────────────────────────────────
   int _tab = 0;
   int get tab => _tab;
   void setTab(int t) {
@@ -63,7 +70,9 @@ class TeacherExamProvider extends ChangeNotifier {
     return done.fold(0.0, (s, r) => s + r.percentage!) / done.length;
   }
 
-  // ── Load exams ─────────────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+  // Exams CRUD
+  // ══════════════════════════════════════════════════════════════════════════
 
   Future<void> loadExams() async {
     _loadingExams = true;
@@ -80,8 +89,6 @@ class TeacherExamProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
-
-  // ── Create exam ────────────────────────────────────────────────────────────
 
   Future<bool> createExam({
     required String name,
@@ -119,9 +126,7 @@ class TeacherExamProvider extends ChangeNotifier {
     }
   }
 
-  // ── Toggle publish ─────────────────────────────────────────────────────────
-
-  /// Returns null on success, error message on failure.
+  /// Returns null on success, error string on failure.
   Future<String?> togglePublish(ExamModel exam) async {
     if (!exam.isPublished && exam.questionCount == 0) {
       return 'لا يمكن نشر اختبار بدون أسئلة';
@@ -130,9 +135,7 @@ class TeacherExamProvider extends ChangeNotifier {
       final updated = exam.isPublished
           ? await _api.unpublishExam(exam.id)
           : await _api.publishExam(exam.id);
-      final idx = _exams.indexWhere((e) => e.id == exam.id);
-      if (idx != -1) _exams[idx] = updated;
-      notifyListeners();
+      _replaceExam(updated);
       return null;
     } on ApiException catch (e) {
       return e.message;
@@ -141,12 +144,11 @@ class TeacherExamProvider extends ChangeNotifier {
     }
   }
 
-  // ── Delete exam ────────────────────────────────────────────────────────────
-
   Future<bool> deleteExam(int examId) async {
     try {
       await _api.deleteExam(examId);
       _exams.removeWhere((e) => e.id == examId);
+      _questionsByExam.remove(examId);
       notifyListeners();
       return true;
     } on ApiException catch (e) {
@@ -156,7 +158,9 @@ class TeacherExamProvider extends ChangeNotifier {
     }
   }
 
-  // ── Load results for a selected exam ──────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+  // Results
+  // ══════════════════════════════════════════════════════════════════════════
 
   Future<void> loadResults(ExamModel exam) async {
     _selectedExam = exam;
@@ -177,29 +181,75 @@ class TeacherExamProvider extends ChangeNotifier {
     }
   }
 
-  // ── Questions ──────────────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+  // Questions
+  // ══════════════════════════════════════════════════════════════════════════
 
   Future<void> loadQuestions(int examId) async {
-    _loadingQuestions = true;
+    _loadingQuestionsByExam[examId] = true;
+    _questionErrorByExam[examId] = null;
     notifyListeners();
     try {
-      _questions = await _api.fetchQuestions(examId);
+      _questionsByExam[examId] = await _api.fetchQuestions(examId);
+    } on ApiException catch (e) {
+      _questionErrorByExam[examId] = e.message;
+    } catch (e) {
+      _questionErrorByExam[examId] = e.toString();
     } finally {
-      _loadingQuestions = false;
+      _loadingQuestionsByExam[examId] = false;
       notifyListeners();
     }
   }
 
-  Future<bool> addQuestion({
+  /// Add a new question. Returns the created [Question] or null on error.
+  Future<Question?> addQuestion({
     required int examId,
     required String title,
     required List<String> options,
     String? correctAnswer,
-    double marks = 1.0,
-    int order = 0,
+    required double marks,
   }) async {
+    _saving = true;
+    notifyListeners();
     try {
+      final nextOrder = (questionsFor(examId).length);
       final q = await _api.addQuestion(
+        examId: examId,
+        title: title,
+        options: options,
+        correctAnswer: correctAnswer,
+        marks: marks,
+        order: nextOrder,
+      );
+      _questionsByExam.putIfAbsent(examId, () => []).add(q);
+      _bumpQuestionCount(examId, 1);
+      return q;
+    } catch (_) {
+      return null;
+    } finally {
+      _saving = false;
+      notifyListeners();
+    }
+  }
+
+  /// Update an existing question. Returns the updated [Question] or null on error.
+  Future<Question?> updateQuestion({
+    required int questionId,
+    required int examId,
+    required String title,
+    required List<String> options,
+    String? correctAnswer,
+    required double marks,
+  }) async {
+    _saving = true;
+    notifyListeners();
+    try {
+      final list = questionsFor(examId);
+      final idx = list.indexWhere((q) => q.id == questionId);
+      final order = idx != -1 ? list[idx].order : 0;
+
+      final updated = await _api.updateQuestion(
+        questionId: questionId,
         examId: examId,
         title: title,
         options: options,
@@ -207,47 +257,60 @@ class TeacherExamProvider extends ChangeNotifier {
         marks: marks,
         order: order,
       );
-      _questions.add(q);
-      // bump local question count
-      final idx = _exams.indexWhere((e) => e.id == examId);
       if (idx != -1) {
-        final old = _exams[idx];
-        _exams[idx] = ExamModel(
-          id: old.id, name: old.name, description: old.description,
-          courseId: old.courseId, startDate: old.startDate, duration: old.duration,
-          passingScore: old.passingScore, totalMarks: old.totalMarks,
-          passcode: old.passcode, isPublished: old.isPublished,
-          createdAt: old.createdAt,
-          questionCount: old.questionCount + 1,
-        );
+        _questionsByExam[examId]![idx] = updated;
       }
-      notifyListeners();
-      return true;
+      return updated;
     } catch (_) {
-      return false;
+      return null;
+    } finally {
+      _saving = false;
+      notifyListeners();
     }
   }
 
-  Future<bool> deleteQuestion(int questionId, int examId) async {
+  /// Delete a question. Returns true on success.
+  Future<bool> deleteQuestion({
+    required int questionId,
+    required int examId,
+  }) async {
     try {
       await _api.deleteQuestion(questionId);
-      _questions.removeWhere((q) => q.id == questionId);
-      final idx = _exams.indexWhere((e) => e.id == examId);
-      if (idx != -1) {
-        final old = _exams[idx];
-        _exams[idx] = ExamModel(
-          id: old.id, name: old.name, description: old.description,
-          courseId: old.courseId, startDate: old.startDate, duration: old.duration,
-          passingScore: old.passingScore, totalMarks: old.totalMarks,
-          passcode: old.passcode, isPublished: old.isPublished,
-          createdAt: old.createdAt,
-          questionCount: (old.questionCount - 1).clamp(0, 9999),
-        );
-      }
-      notifyListeners();
+      _questionsByExam[examId]?.removeWhere((q) => q.id == questionId);
+      _bumpQuestionCount(examId, -1);
       return true;
     } catch (_) {
       return false;
+    } finally {
+      notifyListeners();
     }
+  }
+
+  // ── Private helpers ────────────────────────────────────────────────────────
+
+  void _replaceExam(ExamModel updated) {
+    final idx = _exams.indexWhere((e) => e.id == updated.id);
+    if (idx != -1) _exams[idx] = updated;
+    notifyListeners();
+  }
+
+  void _bumpQuestionCount(int examId, int delta) {
+    final idx = _exams.indexWhere((e) => e.id == examId);
+    if (idx == -1) return;
+    final old = _exams[idx];
+    _exams[idx] = ExamModel(
+      id: old.id,
+      name: old.name,
+      description: old.description,
+      courseId: old.courseId,
+      startDate: old.startDate,
+      duration: old.duration,
+      passingScore: old.passingScore,
+      totalMarks: old.totalMarks,
+      passcode: old.passcode,
+      isPublished: old.isPublished,
+      createdAt: old.createdAt,
+      questionCount: (old.questionCount + delta).clamp(0, 9999),
+    );
   }
 }
