@@ -4,6 +4,7 @@ import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/utils/widget/password_text_field.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
+import '../../config/app_theme.dart';
 import '../../core/api_client.dart';
 import '../../utils/helpers.dart';
 import '../teacher/dashboard/teacher_dashboard_screen.dart';
@@ -122,31 +123,37 @@ class _LoginScreenState extends State<LoginScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Lang row
-          LangRow(),
-          const SizedBox(height: 28),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              AppNetworkImage(url: '',width: 100,height: 100,),
+              LangDropdown(),
 
-          // Screen icon + title
-          AppNetworkImage(url: '',width: 100,height: 100,),
+
+              // Screen icon + title
+
+            ],
+          ),
           const SizedBox(height: 16),
           Text(
-            'login_welcome'.tr,
+            'login'.tr,
             style: const TextStyle(
-              fontFamily: 'Bahji',
+              fontFamily: 'Tajawal',
               fontSize: 26,
               fontWeight: FontWeight.bold,
               color: Color(0xFF16181D),
             ),
           ),
-          const SizedBox(height: 6),
           Text(
-            'sign_in_subtitle'.tr,
-            style: const TextStyle(
-              fontFamily: 'Bahji',
-              fontSize: 14,
-              color: Color(0xFF6B7280),
-              height: 1.5,
+            'login_welcome'.tr,
+            style:  TextStyle(
+              fontFamily: 'Tajawal',
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color:AppTheme.scondeText,
             ),
           ),
+
           const SizedBox(height: 32),
 
           // Email
@@ -174,16 +181,16 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               child: Text(
                 'forget_password'.tr,
-                style: const TextStyle(
-                  fontFamily: 'Bahji',
+                style: TextStyle(
+                  fontFamily: 'Tajawal',
                   fontSize: 13,
-                  color: Color(0xFF1A56C4),
+                  color: AppTheme.primaryBlue,
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 100),
 
           // Login button
           PrimaryButton(

@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/verified_screen.dart';
-import 'package:flutter_education_app/config/app_theme.dart';
 import 'package:flutter_education_app/utils/widget/date_picker_widget.dart';
-import 'package:flutter_education_app/utils/widget/primary_menue.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
-import '../../utils/widget/primary_button.dart';
+import '../../config/app_theme.dart';
 import 'auth_provider.dart';
 import '../../utils/helpers.dart';
 import 'auth_widgets.dart';
@@ -154,11 +152,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const Icon(Icons.arrow_back_ios_rounded, size: 14, color: Color(0xFF6B7280)),
                 const SizedBox(width: 4),
                 Text(
-                  'login'.tr,
+                  'create_account'.tr,
                   style: const TextStyle(
-                    fontFamily: 'Bahji',
-                    fontSize: 13,
-                    color: Color(0xFF6B7280),
+                    fontFamily:  'Tajawal',
+                    fontSize: 16,
+                    color: Color(0xFF16181D),
                   ),
                 ),
               ],
@@ -166,12 +164,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           const SizedBox(height: 20),
 
-          ScreenIcon(icon: Icons.person_add_rounded),
           const SizedBox(height: 16),
           Text(
             'create_account'.tr,
             style: const TextStyle(
-              fontFamily: 'Bahji',
+              fontFamily:  'Tajawal',
               fontSize: 26,
               fontWeight: FontWeight.bold,
               color: Color(0xFF16181D),
@@ -180,10 +177,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const SizedBox(height: 6),
           Text(
             'registration_welcome'.tr,
-            style: const TextStyle(
-              fontFamily: 'Bahji',
+            style:  TextStyle(
+              fontFamily:  'Tajawal',
               fontSize: 14,
-              color: Color(0xFF6B7280),
+              color: AppTheme.scondeText,
               height: 1.5,
             ),
           ),

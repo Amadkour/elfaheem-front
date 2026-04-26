@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
+import '../../config/app_theme.dart';
 import 'auth_provider.dart';
 import '../../utils/helpers.dart';
 import 'register_screen.dart';
@@ -102,28 +103,20 @@ class _ForgetScreenState extends State<ForgetScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.arrow_back_ios_rounded, size: 14, color: Color(0xFF6B7280)),
+                const Icon(Icons.arrow_back_ios_rounded, size: 14),
                 const SizedBox(width: 4),
-                Text(
-                  'back'.tr,
-                  style: const TextStyle(
-                    fontFamily: 'Bahji',
-                    fontSize: 13,
-                    color: Color(0xFF6B7280),
-                  ),
-                ),
+
               ],
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 50),
 
-          ScreenIcon(icon: Icons.lock_reset_rounded),
-          const SizedBox(height: 16),
+
 
           Text(
             'forget'.tr,
             style: const TextStyle(
-              fontFamily: 'Bahji',
+              fontFamily:  'Tajawal',
               fontSize: 26,
               fontWeight: FontWeight.bold,
               color: Color(0xFF16181D),
@@ -132,14 +125,14 @@ class _ForgetScreenState extends State<ForgetScreen> {
           const SizedBox(height: 6),
           Text(
             'forget_welcome'.tr,
-            style: const TextStyle(
-              fontFamily: 'Bahji',
+            style:  TextStyle(
+              fontFamily:  'Tajawal',
               fontSize: 14,
-              color: Color(0xFF6B7280),
+              color:AppTheme.scondeText ,
               height: 1.6,
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 50),
 
           IconTextField(
             controller: _emailController,
@@ -152,19 +145,20 @@ class _ForgetScreenState extends State<ForgetScreen> {
           // Hint
           Row(
             children: [
-              const Icon(Icons.info_outline_rounded, size: 13, color: Color(0xFF9CA3AF)),
+              const Icon(Icons.info_outline_rounded, size: 13, color: AppTheme.primaryBlue,
+              ),
               const SizedBox(width: 6),
               Text(
                 'reset_link_hint'.tr,
                 style: const TextStyle(
-                  fontFamily: 'Bahji',
+                  fontFamily:  'Tajawal',
                   fontSize: 12,
-                  color: Color(0xFF9CA3AF),
+                  color: AppTheme.primaryBlue,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 100),
 
           PrimaryButton(
             isLoading: context.watch<AuthProvider>().isLoadingLogin,

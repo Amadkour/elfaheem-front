@@ -51,9 +51,18 @@
     "en": "Forget Your password",
     "ar": "نسيت كلمة المرور ؟"
   },
+  "reset_link_hint": {
+    "en": "we will send code to this email",
+    "ar": "سنرسل رمزًا إلى هذا البريد الإلكتروني"
+  },
+  "login_entre": {
+    "en": "Login",
+    "ar": " سجّل الدخول"
+  },
+
   "login_welcome": {
-    "en": "Log in to continue your learning journey\n",
-    "ar": " سجّل الدخول  \n لمتابعة رحلتك التعليمية"
+    "en": "to continue your learning journey",
+    "ar": "لمتابعة رحلتك التعليمية"
   },
   "registration_welcome": {
     "en": "Create your own account",

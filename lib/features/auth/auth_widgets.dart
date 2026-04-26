@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../utils/widget/primary_menue.dart' show MyPrimaryMenu;
 import 'auth_provider.dart';
+import 'dart:ui'; // مهم للـ blur
 
 // ── Brand colours ─────────────────────────────────────────────────────────────
 const _kBrandLight = Color(0xFFEBF1FD);
@@ -83,7 +84,7 @@ class AuthSidebar extends StatelessWidget {
                               color: Colors.white,
                               fontSize: 18,
                               fontWeight: FontWeight.w600,
-                              fontFamily: 'Bahji',
+                              fontFamily:  'Tajawal',
                             ),
                           ),
                           Text(
@@ -92,7 +93,7 @@ class AuthSidebar extends StatelessWidget {
                               color: Colors.white.withValues(alpha:0.5),
                               fontSize: 11,
                               letterSpacing: 1.2,
-                              fontFamily: 'Bahji',
+                              fontFamily:  'Tajawal',
                             ),
                           ),
                         ],
@@ -109,7 +110,7 @@ class AuthSidebar extends StatelessWidget {
                       color: Colors.white,
                       fontSize: 36,
                       fontWeight: FontWeight.bold,
-                      fontFamily: 'Bahji',
+                      fontFamily:  'Tajawal',
                       height: 1.2,
                     ),
                   ),
@@ -119,7 +120,7 @@ class AuthSidebar extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.white.withValues(alpha:0.65),
                       fontSize: 14,
-                      fontFamily: 'Bahji',
+                      fontFamily:  'Tajawal',
                       height: 1.7,
                     ),
                   ),
@@ -205,7 +206,7 @@ class _SidebarFeature extends StatelessWidget {
               style: TextStyle(
                 color: Colors.white.withValues(alpha:0.8),
                 fontSize: 13,
-                fontFamily: 'Bahji',
+                fontFamily:  'Tajawal',
               ),
             ),
           ),
@@ -243,7 +244,7 @@ class _TrustBadge extends StatelessWidget {
               style: TextStyle(
                 color: Colors.white.withValues(alpha:0.7),
                 fontSize: 11,
-                fontFamily: 'Bahji',
+                fontFamily:  'Tajawal',
               ),
             ),
           ],
@@ -294,7 +295,7 @@ class IconTextField extends StatelessWidget {
           controller: controller,
           keyboardType: keyboard,
           style: const TextStyle(
-            fontFamily: 'Bahji',
+            fontFamily: 'Tajawal',
             fontSize: 14,
             color: _kText,
           ),
@@ -302,7 +303,7 @@ class IconTextField extends StatelessWidget {
             prefixIcon: Icon(icon, size: 18, color: const Color(0xFF9CA3AF)),
             hintText: label,
             hintStyle: const TextStyle(
-              fontFamily: 'Bahji',
+              fontFamily: 'Tajawal',
               fontSize: 14,
               color: Color(0xFF9CA3AF),
             ),
@@ -369,7 +370,7 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
           controller: widget.controller,
           obscureText: _obscure,
           style: const TextStyle(
-            fontFamily: 'Bahji',
+            fontFamily: 'Tajawal',
             fontSize: 14,
             color: _kText,
           ),
@@ -394,7 +395,7 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
             ),
             hintText: '••••••••',
             hintStyle: const TextStyle(
-              fontFamily: 'Bahji',
+              fontFamily: 'Tajawal',
               fontSize: 14,
               color: Color(0xFF9CA3AF),
             ),
@@ -468,7 +469,7 @@ class PrimaryButton extends StatelessWidget {
                   Text(
                     label,
                     style: const TextStyle(
-                      fontFamily: 'Bahji',
+                      fontFamily: 'Tajawal',
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
@@ -492,7 +493,7 @@ class SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) => Text(
         label.toUpperCase(),
         style: const TextStyle(
-          fontFamily: 'Bahji',
+          fontFamily: 'Tajawal',
           fontSize: 11,
           fontWeight: FontWeight.w600,
           color: _kMuted,
@@ -520,7 +521,7 @@ class LinkRow extends StatelessWidget {
           Text(
             message,
             style: const TextStyle(
-              fontFamily: 'Bahji',
+              fontFamily: 'Tajawal',
               fontSize: 14,
               color: _kMuted,
             ),
@@ -531,9 +532,9 @@ class LinkRow extends StatelessWidget {
             child: Text(
               linkText,
               style: const TextStyle(
-                fontFamily: 'Bahji',
+                fontFamily: 'Tajawal',
                 fontSize: 14,
-                color: AppTheme.accent,
+                color: AppTheme.primaryBlue,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -586,50 +587,53 @@ class RolePicker extends StatelessWidget {
           child: GestureDetector(
             onTap: () => provider.onChangeRole(
                 provider.roles.indexOf(role), rolController),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: EdgeInsets.only(
-                right: role == provider.roles.last ? 0 : 10,
-              ),
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-              decoration: BoxDecoration(
-                color: isSelected ? _kBrandLight : AppTheme.textFieldBackground,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: isSelected ? AppTheme.accent : _kBorder,
-                  width: isSelected ? 2 : 1.5,
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: EdgeInsets.only(
+                  right: role == provider.roles.last ? 0 : 10,
                 ),
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? AppTheme.accent.withValues(alpha:0.15)
-                          : const Color(0xFF9CA3AF).withValues(alpha:0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      role['text'] == 'teacher'
-                          ? Icons.cast_for_education_outlined
-                          : Icons.school_outlined,
-                      color: isSelected ? AppTheme.accent : _kMuted,
-                      size: 20,
-                    ),
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                decoration: BoxDecoration(
+                  color: isSelected ? _kBrandLight : AppTheme.textFieldBackground,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isSelected ? AppTheme.primaryBlue : _kBorder,
+                    width: isSelected ? 2 : 1.5,
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    role['text'].toString().tr,
-                    style: TextStyle(
-                      fontFamily: 'Bahji',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: isSelected ? AppTheme.accent : _kText,
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppTheme.primaryBlue.withValues(alpha:0.15)
+                            : const Color(0xFF9CA3AF).withValues(alpha:0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        role['text'] == 'teacher'
+                            ? Icons.cast_for_education_outlined
+                            : Icons.school_outlined,
+                        color: isSelected ? AppTheme.primaryBlue : _kMuted,
+                        size: 20,
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                    Text(
+                      role['text'].toString().tr,
+                      style: TextStyle(
+                        fontFamily: 'Tajawal',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: isSelected ? AppTheme.primaryBlue : _kText,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -724,7 +728,7 @@ class LangRow extends StatelessWidget {
                   Text(
                     l.tr,
                     style: TextStyle(
-                      fontFamily: 'Bahji',
+                      fontFamily: 'Tajawal',
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                       color: isActive ? AppTheme.primary : _kMuted,
@@ -739,3 +743,73 @@ class LangRow extends StatelessWidget {
     );
   }
 }
+
+class LangDropdown extends StatelessWidget {
+  const LangDropdown({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<LangProvider>();
+
+    return GestureDetector(
+      onTap: () async {
+        final RenderBox button = context.findRenderObject() as RenderBox;
+        final RenderBox overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
+
+        const double dropdownSpacing = 20; // 👈 تحكمي في المسافة
+
+        final Offset topLeft = button.localToGlobal(Offset.zero, ancestor: overlay);
+        final Offset bottomRight = button.localToGlobal(
+          button.size.bottomRight(Offset.zero),
+          ancestor: overlay,
+        );
+
+        // 👇 نزود المسافة لتحت
+        final Rect rect = Rect.fromPoints(
+          topLeft.translate(0, dropdownSpacing),
+          bottomRight.translate(0, dropdownSpacing),
+        );
+
+        final position = RelativeRect.fromRect(
+          rect,
+          Offset.zero & overlay.size,
+        );
+        final selected = await showMenu<String>(
+          context: context,
+          position: position, // ✅ هنا الصح
+          items: provider.languages.map((l) {
+            return PopupMenuItem(
+              value: l,
+              child: Text(l.tr),
+            );
+          }).toList(),
+        );
+
+        if (selected != null) {
+          provider.changeLang(selected);
+        }
+      },
+
+      // 👇 هنا التحكم الكامل 100%
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.language, size: 20,color: AppTheme.primaryBlue,),
+
+          const SizedBox(width: 5), // 👈 تحكمي فيها (0 لو عايزة تلزقيهم)
+
+          Text(
+            lang.tr,
+            style: const TextStyle(fontSize: 13),
+          ),
+
+          const SizedBox(width: 2), // 👈 المسافة بين النص والسهم
+
+          const Icon(Icons.keyboard_arrow_down, size: 18),
+        ],
+      ),
+    );
+  }
+}
+

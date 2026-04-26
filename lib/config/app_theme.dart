@@ -12,6 +12,8 @@ class AppTheme {
 
   // ── Core Palette ─────────────────────────────────────────────────────────────
   static const Color primary      = Color(0xFF4F7FFF);   // Vivid blue
+  static const Color primaryBlue     = Color(0xFF158CEA);   // Vivid blue
+  static const Color scondeText     = Color(0xFF687280);   // Vivid blue
   static const Color primaryDark  = Color(0xFF2D5CE8);   // Deeper blue for press states
   static const Color primaryLight = Color(0xFFEEF3FF);   // Tint for backgrounds
   static const Color lightPrimary = Color(0x204F7FFF);   // 12% opacity primary
@@ -128,7 +130,7 @@ class AppTheme {
     fontSize: 28,
     fontWeight: FontWeight.w800,
     color: textDark,
-    fontFamily: 'bahji',
+    fontFamily:  'Tajawal',
     letterSpacing: -0.5,
     height: 1.2,
   );
@@ -137,7 +139,7 @@ class AppTheme {
     fontSize: 22,
     fontWeight: FontWeight.w700,
     color: textDark,
-    fontFamily: 'bahji',
+    fontFamily:  'Tajawal',
     letterSpacing: -0.3,
   );
 
@@ -145,7 +147,7 @@ class AppTheme {
     fontSize: 17,
     fontWeight: FontWeight.w700,
     color: textDark,
-    fontFamily: 'bahji',
+    fontFamily:  'Tajawal',
     letterSpacing: -0.2,
   );
 
@@ -153,14 +155,14 @@ class AppTheme {
     fontSize: 14,
     fontWeight: FontWeight.w400,
     color: textMedium,
-    fontFamily: 'bahji',
+    fontFamily:  'Tajawal',
     height: 1.65,
   );
 
   static const TextStyle caption = TextStyle(
     fontSize: 12,
     color: textLight,
-    fontFamily: 'bahji',
+    fontFamily:  'Tajawal',
     height: 1.4,
   );
 
@@ -168,17 +170,17 @@ class AppTheme {
     fontSize: 13,
     fontWeight: FontWeight.w600,
     color: textMedium,
-    fontFamily: 'bahji',
+    fontFamily:  'Tajawal',
   );
 
   static const TextStyle navLabelSelected = TextStyle(
-    fontFamily: 'bahji',
+    fontFamily:  'Tajawal',
     fontWeight: FontWeight.w700,
     fontSize: 11,
   );
 
   static const TextStyle navLabelUnselected = TextStyle(
-    fontFamily: 'bahji',
+    fontFamily:  'Tajawal',
     fontSize: 11,
   );
 
@@ -203,9 +205,9 @@ class AppTheme {
       borderRadius: BorderRadius.circular(radiusMedium),
       borderSide: const BorderSide(color: danger, width: 1.5),
     ),
-    labelStyle: const TextStyle(color: textLight, fontFamily: 'bahji'),
-    floatingLabelStyle: const TextStyle(color: primary, fontFamily: 'bahji'),
-    hintStyle: const TextStyle(color: textLight, fontFamily: 'bahji'),
+    labelStyle: const TextStyle(color: textLight, fontFamily:  'Tajawal'),
+    floatingLabelStyle: const TextStyle(color: primary, fontFamily:  'Tajawal'),
+    hintStyle: const TextStyle(color: textLight, fontFamily:  'Tajawal'),
   );
 
   // ── Button Themes ─────────────────────────────────────────────────────────────
@@ -221,7 +223,7 @@ class AppTheme {
       ),
       padding: const EdgeInsets.symmetric(vertical: 15),
       textStyle: const TextStyle(
-          fontSize: 16, fontWeight: FontWeight.w700, fontFamily: 'bahji'),
+          fontSize: 16, fontWeight: FontWeight.w700, fontFamily:  'Tajawal'),
     ),
   );
 
@@ -234,13 +236,13 @@ class AppTheme {
       ),
       padding: const EdgeInsets.symmetric(vertical: 15),
       textStyle: const TextStyle(
-          fontSize: 16, fontWeight: FontWeight.w600, fontFamily: 'bahji'),
+          fontSize: 16, fontWeight: FontWeight.w600, fontFamily:  'Tajawal'),
     ),
   );
 
   // ── ThemeData ─────────────────────────────────────────────────────────────────
   static ThemeData get themeData => ThemeData(
-    fontFamily: 'bahji',
+    fontFamily:  'Tajawal',
     useMaterial3: true,
     brightness: Brightness.light,
     scaffoldBackgroundColor: background,
@@ -274,11 +276,11 @@ class AppTheme {
       indicatorColor: primary,
       labelStyle: TextStyle(
         fontWeight: FontWeight.w700,
-        fontFamily: 'bahji',
+        fontFamily:  'Tajawal',
         fontSize: 14,
       ),
       unselectedLabelStyle: TextStyle(
-        fontFamily: 'bahji',
+        fontFamily:  'Tajawal',
         fontSize: 14,
       ),
     ),
