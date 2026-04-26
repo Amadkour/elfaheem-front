@@ -3,21 +3,21 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/exam/teacher/teacher_exam_hub_screen.dart';
 import 'package:provider/provider.dart';
 import '../../../../../config/app_theme.dart';
 import '../../teacher/home/teacher_models.dart';
 import '../../teacher/home/teacher_provider.dart';
+import 'exam/teacher_exam_hub_screen.dart';
 import 'teacher_attendance_screen.dart';
 
-class AnalyticsHubScreen extends StatefulWidget {
-  const AnalyticsHubScreen({super.key});
+class TeacherAnalyticsHubScreen extends StatefulWidget {
+  const TeacherAnalyticsHubScreen({super.key});
 
   @override
-  State<AnalyticsHubScreen> createState() => _AnalyticsHubScreenState();
+  State<TeacherAnalyticsHubScreen> createState() => _TeacherAnalyticsHubScreenState();
 }
 
-class _AnalyticsHubScreenState extends State<AnalyticsHubScreen>
+class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen>
     with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
@@ -266,7 +266,8 @@ class _CourseAnalyticsCard extends StatelessWidget {
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => TeacherExamHubScreen(
+                    builder: (_) =>
+                        TeacherExamHubScreen(
                       courseId: course.id,
                       courseTitle: course.title,
                     ),

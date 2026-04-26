@@ -1,9 +1,9 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../teacher/analytics_models.dart';
-import '../../../../../config/app_theme.dart';
-import '../../../../../core/api_client.dart';
+import 'package:flutter_education_app/features/analytics/teacher/exam/exam_model.dart';
+import '../../../../../../config/app_theme.dart';
+import '../../../../../../core/api_client.dart';
 
 // ── Entry point: passcode gate ───────────────────────────────────────────────
 class StudentExamEntryScreen extends StatefulWidget {

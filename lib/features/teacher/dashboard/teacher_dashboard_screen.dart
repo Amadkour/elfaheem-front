@@ -1,13 +1,11 @@
-/// teacher_dashboard_screen.dart — responsive shell
 library;
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../config/app_theme.dart';
 import '../../../features/auth/auth_provider.dart';
+import '../../analytics/teacher/analytics_hub_screen.dart';
 import '../../auth/auth_widgets.dart';
-import '../../exam/teacher/analytics_hub_screen.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import '../courses/courses_screen.dart';
 import '../home/home_screen.dart';
@@ -40,7 +38,7 @@ class _State extends State<TeacherDashboardScreen> {
       const TeacherHomeScreen(),
       const TeacherCoursesScreen(),
       _TeacherScheduleTab(),
-       AnalyticsHubScreen(),
+       TeacherAnalyticsHubScreen(),
       const TeacherProfileScreen(),
     ];
 

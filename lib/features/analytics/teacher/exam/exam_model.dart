@@ -32,13 +32,15 @@ class ExamModel {
     this.passcode,
     required this.isPublished,
     required this.createdAt,
-    this.questionCount = 0,
+    required this.questionCount,
   });
 
   /// Server shape (ExamResponse):
   /// {id, name, description?, course_id, start_date?, duration?,
   ///  passcode?, is_published, passing_score?, total_marks?, question_count?}
-  factory ExamModel.fromJson(Map<String, dynamic> j) => ExamModel(
+  factory ExamModel.fromJson(Map<String, dynamic> j) {
+    print(j.keys.toList());
+    return ExamModel(
         id: j['id'] as int,
         name: j['name'] as String,
         description: j['description'] as String?,
@@ -53,8 +55,9 @@ class ExamModel {
         isPublished: j['is_published'] as bool? ?? false,
         createdAt:
             DateTime.tryParse(j['created_at'] as String? ?? '') ?? DateTime.now(),
-        questionCount: j['question_count'] as int? ?? 0,
+      questionCount:(j['questions_count'] as num?)?.toInt()??0,
       );
+  }
 
   ExamStatus get status {
     if (!isPublished) return ExamStatus.draft;

@@ -1,15 +1,3 @@
-// features/teacher/exam/teacher_exam_api.dart
-// Server endpoints (from exams_provider.dart comments & schemas.py):
-//   GET  /api/v1/exams?course_id={id}          → list exams for course
-//   POST /api/v1/exams                          → create exam   (ExamCreate)
-//   POST /api/v1/exams/{id}/publish             → publish exam
-//   POST /api/v1/exams/{id}/unpublish           → unpublish exam
-//   DELETE /api/v1/exams/{id}                   → delete exam
-//   GET  /api/v1/exams/{id}/questions           → questions (teacher view, includes correct_answer)
-//   POST /api/v1/questions                      → add question  (QuestionCreate)
-//   DELETE /api/v1/questions/{id}               → delete question
-//   GET  /api/v1/exams/{id}/results             → student results for this exam
-
 import 'package:flutter_education_app/core/api_client.dart';
 import 'exam_model.dart';
 
@@ -19,20 +7,17 @@ class TeacherExamApi {
 
   // ── Exams ───────────────────────────────────────────────────────────────────
 
-  /// GET /api/v1/exams?course_id={courseId}
+  /// GET /api/v1/courses/{courseId}/exams/all
   Future<List<ExamModel>> fetchCourseExams(int courseId) async {
-    final data = await _api.get(
-      '/api/v1/exams',
-      queryParams: {'course_id': courseId},
-    );
+    final data = await _api.get('/api/v1/courses/$courseId/exams/all');
     if (data is! List) return [];
-    return (data as List)
+    return (data)
         .cast<Map<String, dynamic>>()
         .map(ExamModel.fromJson)
         .toList();
   }
 
-  /// POST /api/v1/exams  — body: ExamCreate schema
+  /// POST /api/v1/exams
   Future<ExamModel> createExam({
     required String name,
     String? description,
@@ -79,20 +64,20 @@ class TeacherExamApi {
   Future<List<Question>> fetchQuestions(int examId) async {
     final data = await _api.get('/api/v1/exams/$examId/questions');
     if (data is! List) return [];
-    return (data as List)
+    return (data)
         .cast<Map<String, dynamic>>()
         .map(Question.fromJson)
         .toList();
   }
 
-  /// POST /api/v1/questions  — body: QuestionCreate schema
+  /// POST /api/v1/questions — QuestionCreate schema
   Future<Question> addQuestion({
     required int examId,
     required String title,
     required List<String> options,
     String? correctAnswer,
-    double marks = 1.0,
-    int order = 0,
+    required double marks,
+    required int order,
   }) async {
     final data = await _api.post('/api/v1/questions', body: {
       'exam_id': examId,
@@ -100,7 +85,30 @@ class TeacherExamApi {
       'marks': marks,
       'order': order,
       if (options.isNotEmpty) 'options': options,
-      if (correctAnswer != null) 'correct_answer': correctAnswer,
+      if (correctAnswer != null && correctAnswer.isNotEmpty)
+        'correct_answer': correctAnswer,
+    });
+    return Question.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// PUT /api/v1/questions/{questionId} — QuestionCreate schema (same body)
+  Future<Question> updateQuestion({
+    required int questionId,
+    required int examId,
+    required String title,
+    required List<String> options,
+    String? correctAnswer,
+    required double marks,
+    required int order,
+  }) async {
+    final data = await _api.put('/api/v1/questions/$questionId', body: {
+      'exam_id': examId,
+      'title': title,
+      'marks': marks,
+      'order': order,
+      if (options.isNotEmpty) 'options': options,
+      if (correctAnswer != null && correctAnswer.isNotEmpty)
+        'correct_answer': correctAnswer,
     });
     return Question.fromJson(data as Map<String, dynamic>);
   }
@@ -112,12 +120,11 @@ class TeacherExamApi {
 
   // ── Results ─────────────────────────────────────────────────────────────────
 
-  /// GET /api/v1/exams/{examId}/results
-  /// Returns list of StudentExamResult (teacher view with all students).
+  /// GET /api/v1/exams/{examId}/attendance-results
   Future<List<StudentExamResult>> fetchExamResults(int examId) async {
-    final data = await _api.get('/api/v1/exams/$examId/results');
+    final data = await _api.get('/api/v1/exams/$examId/attendance-results');
     if (data is! List) return [];
-    return (data as List)
+    return (data)
         .cast<Map<String, dynamic>>()
         .map(StudentExamResult.fromJson)
         .toList();
