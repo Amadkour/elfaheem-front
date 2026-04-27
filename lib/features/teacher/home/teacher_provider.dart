@@ -287,7 +287,7 @@ class TeacherProvider extends BaseProvider {
   // ── DELETE /api/v1/courses/{id} ───────────────────────────────────────────────
 
   Future<bool> deleteCourse(int courseId) async {
-    await run(() => _api.delete('/api/v1/courses/$courseId'));
+    await run(() => _api.delete('/api/v1/courses/$courseId',queryParams: {'forceDelete':true}));
     if (state == ProviderState.success) {
       _allCourses = _allCourses.where((c) => c.id != courseId).toList();
       _updateStats();
