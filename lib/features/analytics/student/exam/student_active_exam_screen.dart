@@ -1,9 +1,8 @@
-
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/analytics/teacher/exam/exam_model.dart';
-import '../../../../../../config/app_theme.dart';
-import '../../../../../../core/api_client.dart';
+import '../../../../config/app_theme.dart';
+import '../../../../core/api_client.dart';
 
 // ── Entry point: passcode gate ───────────────────────────────────────────────
 class StudentExamEntryScreen extends StatefulWidget {
@@ -41,7 +40,7 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
     // Fetch actual questions from server before entering the quiz
     try {
       final data =
-          await ApiClient().get('/api/v1/exams/${widget.exam.id}/questions');
+      await ApiClient().get('/api/v1/exams/${widget.exam.id}/questions');
       if (!mounted) return;
       final questions = (data as List)
           .map((q) => Question.fromJson(q as Map<String, dynamic>))
@@ -94,7 +93,7 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
           foregroundColor: Colors.white,
           title: const Text('دخول الاختبار',
               style:
-                  TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
+              TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
           leading: IconButton(
               icon: const Icon(Icons.arrow_forward_ios),
               onPressed: () => Navigator.pop(context)),
@@ -121,7 +120,7 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
                 ],
               ),
               child:
-                  const Icon(Icons.quiz_rounded, color: Colors.white, size: 42),
+              const Icon(Icons.quiz_rounded, color: Colors.white, size: 42),
             ),
             const SizedBox(height: 20),
             Text(exam.name,
@@ -224,21 +223,21 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
                   ),
                   child: _loading
                       ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
                       : const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                              Icon(Icons.play_arrow_rounded, size: 22),
-                              SizedBox(width: 8),
-                              Text('ابدأ الاختبار الآن',
-                                  style: TextStyle(
-                                      fontFamily: 'Cairo',
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700)),
-                            ]),
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.play_arrow_rounded, size: 22),
+                        SizedBox(width: 8),
+                        Text('ابدأ الاختبار الآن',
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700)),
+                      ]),
                 ),
               ),
               const SizedBox(height: 12),
@@ -248,7 +247,7 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
                   color: Colors.orange.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(12),
                   border:
-                      Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                  Border.all(color: Colors.orange.withValues(alpha: 0.3)),
                 ),
                 child: const Row(children: [
                   Icon(Icons.warning_amber_rounded,
@@ -256,12 +255,12 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
                   SizedBox(width: 8),
                   Expanded(
                       child: Text(
-                    'بمجرد بدء الاختبار لا يمكن إيقافه مؤقتاً. تأكد من اتصالك بالإنترنت.',
-                    style: TextStyle(
-                        fontFamily: 'Cairo',
-                        fontSize: 12,
-                        color: Colors.orange),
-                  )),
+                        'بمجرد بدء الاختبار لا يمكن إيقافه مؤقتاً. تأكد من اتصالك بالإنترنت.',
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 12,
+                            color: Colors.orange),
+                      )),
                 ]),
               ),
             ],
@@ -378,8 +377,8 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
   Color get _timerColor => _secondsLeft < 120
       ? Colors.redAccent
       : _secondsLeft < 300
-          ? Colors.orange
-          : AppTheme.success;
+      ? Colors.orange
+      : AppTheme.success;
 
   int get _answeredCount => _answers.values.where((v) => v != null).length;
 
@@ -497,7 +496,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                                   horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
                                   color:
-                                      AppTheme.primary.withValues(alpha: 0.1),
+                                  AppTheme.primary.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(8)),
                               child: Text('${q.marks.toInt()} درجات',
                                   style: TextStyle(
@@ -565,7 +564,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                                 ),
                                 child: selected
                                     ? const Icon(Icons.check_rounded,
-                                        color: Colors.white, size: 14)
+                                    color: Colors.white, size: 14)
                                     : null,
                               ),
                               const SizedBox(width: 12),
@@ -585,12 +584,12 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                         );
                       })
                     else
-                      // Open-ended text field
+                    // Open-ended text field
                       TextField(
                         textDirection: TextDirection.rtl,
                         maxLines: 4,
                         onChanged: (v) => _answers[_current] =
-                            v.trim().isEmpty ? null : v.trim(),
+                        v.trim().isEmpty ? null : v.trim(),
                         decoration: InputDecoration(
                           hintText: 'اكتب إجابتك هنا...',
                           hintStyle: const TextStyle(
@@ -600,11 +599,11 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                           border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(14),
                               borderSide:
-                                  BorderSide(color: Colors.grey.shade200)),
+                              BorderSide(color: Colors.grey.shade200)),
                           enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(14),
                               borderSide:
-                                  BorderSide(color: Colors.grey.shade200)),
+                              BorderSide(color: Colors.grey.shade200)),
                           contentPadding: const EdgeInsets.all(16),
                         ),
                       ),
@@ -628,14 +627,14 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                               color: isCurrent
                                   ? AppTheme.primary
                                   : answered
-                                      ? AppTheme.success.withValues(alpha: 0.12)
-                                      : Colors.white,
+                                  ? AppTheme.success.withValues(alpha: 0.12)
+                                  : Colors.white,
                               border: Border.all(
                                 color: isCurrent
                                     ? AppTheme.primary
                                     : answered
-                                        ? AppTheme.success
-                                        : Colors.grey.shade300,
+                                    ? AppTheme.success
+                                    : Colors.grey.shade300,
                                 width: isCurrent ? 2 : 1,
                               ),
                             ),
@@ -648,8 +647,8 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                                         color: isCurrent
                                             ? Colors.white
                                             : answered
-                                                ? AppTheme.success
-                                                : Colors.grey))),
+                                            ? AppTheme.success
+                                            : Colors.grey))),
                           ),
                         );
                       }),
@@ -722,10 +721,10 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
           title: const Text('تسليم الاختبار',
               style:
-                  TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
+              TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
           content: Text(
             _answeredCount < widget.questions.length
                 ? 'لم تجب على ${widget.questions.length - _answeredCount} سؤال. هل أنت متأكد من التسليم؟'
@@ -736,7 +735,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
             TextButton(
                 onPressed: () => Navigator.pop(context),
                 child:
-                    const Text('إلغاء', style: TextStyle(fontFamily: 'Cairo'))),
+                const Text('إلغاء', style: TextStyle(fontFamily: 'Cairo'))),
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
@@ -765,7 +764,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
     final passed = _serverResult?['passed'] as bool? ??
         pct >= (widget.exam.passingScore ?? 60);
     final marksObtained =
-        (_serverResult?['marks_obtained'] as num?)?.toDouble();
+    (_serverResult?['marks_obtained'] as num?)?.toDouble();
     final totalMarks = (_serverResult?['total_marks'] as num?)?.toDouble() ??
         widget.questions.fold(0.0, (s, q) => (s ?? 0) + q.marks);
 
@@ -786,7 +785,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child:
-                Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Column(mainAxisAlignment: MainAxisAlignment.center, children: [
               // Error banner if submission had an error
               if (_submitError != null) ...[
                 Container(
@@ -803,12 +802,12 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                         child: Text(
-                      'تعذّر إرسال بعض الإجابات: $_submitError',
-                      style: const TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: 12,
-                          color: Colors.orange),
-                    )),
+                          'تعذّر إرسال بعض الإجابات: $_submitError',
+                          style: const TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 12,
+                              color: Colors.orange),
+                        )),
                   ]),
                 ),
               ],
@@ -820,33 +819,33 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                 curve: Curves.easeOut,
                 builder: (_, v, __) =>
                     Stack(alignment: Alignment.center, children: [
-                  SizedBox(
-                    width: 160,
-                    height: 160,
-                    child: CircularProgressIndicator(
-                      value: v,
-                      strokeWidth: 12,
-                      backgroundColor: Colors.grey.shade100,
-                      color: passed ? AppTheme.success : Colors.redAccent,
-                    ),
-                  ),
-                  Column(mainAxisSize: MainAxisSize.min, children: [
-                    Text('${(v * 100).toStringAsFixed(0)}%',
-                        style: TextStyle(
-                            fontFamily: 'Cairo',
-                            fontSize: 36,
-                            fontWeight: FontWeight.w900,
-                            color:
+                      SizedBox(
+                        width: 160,
+                        height: 160,
+                        child: CircularProgressIndicator(
+                          value: v,
+                          strokeWidth: 12,
+                          backgroundColor: Colors.grey.shade100,
+                          color: passed ? AppTheme.success : Colors.redAccent,
+                        ),
+                      ),
+                      Column(mainAxisSize: MainAxisSize.min, children: [
+                        Text('${(v * 100).toStringAsFixed(0)}%',
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 36,
+                                fontWeight: FontWeight.w900,
+                                color:
                                 passed ? AppTheme.success : Colors.redAccent)),
-                    Text(passed ? 'ناجح ✓' : 'راسب ✗',
-                        style: TextStyle(
-                            fontFamily: 'Cairo',
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color:
+                        Text(passed ? 'ناجح ✓' : 'راسب ✗',
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color:
                                 passed ? AppTheme.success : Colors.redAccent)),
-                  ]),
-                ]),
+                      ]),
+                    ]),
               ),
               const SizedBox(height: 28),
               Text(
@@ -931,22 +930,22 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)
-          ],
-        ),
-        child: Column(
-            children: children
-                .map((c) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4), child: c))
-                .toList()),
-      );
+    width: double.infinity,
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      boxShadow: [
+        BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)
+      ],
+    ),
+    child: Column(
+        children: children
+            .map((c) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4), child: c))
+            .toList()),
+  );
 }
 
 class _InfoRow extends StatelessWidget {
@@ -958,19 +957,19 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(children: [
-        Icon(icon, color: color, size: 18),
-        const SizedBox(width: 10),
-        Text(label,
-            style: const TextStyle(
-                fontFamily: 'Cairo', fontSize: 13, color: Colors.grey)),
-        const Spacer(),
-        Text(value,
-            style: TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: color)),
-      ]);
+    Icon(icon, color: color, size: 18),
+    const SizedBox(width: 10),
+    Text(label,
+        style: const TextStyle(
+            fontFamily: 'Cairo', fontSize: 13, color: Colors.grey)),
+    const Spacer(),
+    Text(value,
+        style: TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: color)),
+  ]);
 }
 
 class _ResultRow extends StatelessWidget {
@@ -981,17 +980,17 @@ class _ResultRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(children: [
-        Text(label,
-            style: const TextStyle(
-                fontFamily: 'Cairo', fontSize: 14, color: Colors.grey)),
-        const Spacer(),
-        Text(value,
-            style: TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: color)),
-      ]);
+    Text(label,
+        style: const TextStyle(
+            fontFamily: 'Cairo', fontSize: 14, color: Colors.grey)),
+    const Spacer(),
+    Text(value,
+        style: TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: color)),
+  ]);
 }
 
 class _CountdownBanner extends StatefulWidget {
@@ -1028,44 +1027,44 @@ class _CountdownBannerState extends State<_CountdownBanner> {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.orange.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
-        ),
-        child: Column(children: [
-          const Text('يبدأ الاختبار خلال',
-              style: TextStyle(
-                  fontFamily: 'Cairo',
-                  fontSize: 14,
-                  color: Colors.orange,
-                  fontWeight: FontWeight.w600)),
-          const SizedBox(height: 10),
-          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            _TimeBox(_remaining.inHours.toString().padLeft(2, '0'), 'ساعة'),
-            const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Text(':',
-                    style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.orange))),
-            _TimeBox(((_remaining.inMinutes) % 60).toString().padLeft(2, '0'),
-                'دقيقة'),
-            const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Text(':',
-                    style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.orange))),
-            _TimeBox(((_remaining.inSeconds) % 60).toString().padLeft(2, '0'),
-                'ثانية'),
-          ]),
-        ]),
-      );
+    width: double.infinity,
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.orange.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+    ),
+    child: Column(children: [
+      const Text('يبدأ الاختبار خلال',
+          style: TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 14,
+              color: Colors.orange,
+              fontWeight: FontWeight.w600)),
+      const SizedBox(height: 10),
+      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        _TimeBox(_remaining.inHours.toString().padLeft(2, '0'), 'ساعة'),
+        const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8),
+            child: Text(':',
+                style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.orange))),
+        _TimeBox(((_remaining.inMinutes) % 60).toString().padLeft(2, '0'),
+            'دقيقة'),
+        const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8),
+            child: Text(':',
+                style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.orange))),
+        _TimeBox(((_remaining.inSeconds) % 60).toString().padLeft(2, '0'),
+            'ثانية'),
+      ]),
+    ]),
+  );
 }
 
 class _TimeBox extends StatelessWidget {
@@ -1075,23 +1074,23 @@ class _TimeBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(children: [
-        Container(
-          width: 54,
-          height: 54,
-          decoration: BoxDecoration(
-              color: Colors.orange.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12)),
-          child: Center(
-              child: Text(value,
-                  style: const TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.orange))),
-        ),
-        const SizedBox(height: 4),
-        Text(label,
-            style: const TextStyle(
-                fontFamily: 'Cairo', fontSize: 11, color: Colors.grey)),
-      ]);
+    Container(
+      width: 54,
+      height: 54,
+      decoration: BoxDecoration(
+          color: Colors.orange.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(12)),
+      child: Center(
+          child: Text(value,
+              style: const TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.orange))),
+    ),
+    const SizedBox(height: 4),
+    Text(label,
+        style: const TextStyle(
+            fontFamily: 'Cairo', fontSize: 11, color: Colors.grey)),
+  ]);
 }
