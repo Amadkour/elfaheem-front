@@ -330,17 +330,20 @@ class _StatsRow extends StatelessWidget {
       value: stats.overallRating.toStringAsFixed(1),
       label: 'التقييم العام',
       icon: Icons.star_rounded,
-      gradient: const LinearGradient(
-          colors: [Color(0xFFBA7517), Color(0xFFEF9F27)]),
-      shadowColor: const Color(0xFFBA7517),
+        gradient: const LinearGradient(
+           colors: [Color(0xFFFF9500),Color(0xFFFF9500)]),
+        shadowColor: const Color(0xFFFF9500),
     ),
     const SizedBox(width: 12),
     _StatCard(
       value: '${stats.totalStudents}',
       label: 'إجمالي الطلاب',
       icon: Icons.people_alt_rounded,
-      gradient: AppTheme.primaryGradient,
-      shadowColor: AppTheme.primary,
+
+      gradient: const LinearGradient(
+          colors: [Color(0xFFFFD166),Color(0xFFFFD166)]),
+      shadowColor: const Color(0xFFFFD166),
+
     ),
     const SizedBox(width: 12),
     _StatCard(
@@ -382,17 +385,9 @@ class _StatCard extends StatelessWidget {
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha:0.2),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: Colors.white, size: 18),
-          ),
+          Icon(icon, color: Colors.white, size: 18),
           const SizedBox(height: 10),
           Text(value,
               style: const TextStyle(
@@ -404,8 +399,10 @@ class _StatCard extends StatelessWidget {
           const SizedBox(height: 3),
           Text(label,
               style: TextStyle(
-                  color: Colors.white.withValues(alpha:0.75),
-                  fontSize: 11,
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+
                   fontFamily: 'Cairo')),
         ],
       ),
@@ -471,7 +468,7 @@ class _CoursesRow extends StatelessWidget {
       );
     }
     return SizedBox(
-      height: 210,
+      height: 230,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         scrollDirection: Axis.horizontal,
@@ -495,7 +492,7 @@ class _TeacherCourseCard extends StatelessWidget {
           builder: (_) => TeacherSessionsScreen(course: course)),
     ),
     child: Container(
-      width: 170,
+
       decoration: BoxDecoration(
         color: AppTheme.cardBg,
         borderRadius: BorderRadius.circular(18),
@@ -510,45 +507,12 @@ class _TeacherCourseCard extends StatelessWidget {
       child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Stack(children: [
-              AppNetworkImage(
-                  url: course.imageUrl, width: 170, height: 100),
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.transparent, Colors.black.withValues(alpha:0.3)],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: course.isPublished
-                        ? AppTheme.accent2
-                        : AppTheme.accent,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    course.isPublished ? 'منشورة' : 'مسودة',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        fontFamily: 'Cairo'),
-                  ),
-                ),
-              ),
-            ]),
+            AppNetworkImage(
+                url: course.imageUrl,fit: BoxFit.contain,height: 100,),
+            Divider(),
+
             Padding(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.only(left: 10,right: 10,bottom: 10),
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -558,18 +522,44 @@ class _TeacherCourseCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 6),
-                    Row(children: [
+                    Row(
+                        children: [
                       _MetaIcon(Icons.people_rounded, '${course.studentsCount}',
-                          color: AppTheme.primary),
+                          color: AppTheme.primary,hintLabel: "student_participant".tr,),
                       const SizedBox(width: 10),
                       _MetaIcon(Icons.video_library_rounded,
                           '${course.sessionsCount}',
-                          color: const Color(0xFF185FA5)),
-                      const SizedBox(width: 10),
-                      _MetaIcon(Icons.star_rounded,
-                          course.averageRating.toStringAsFixed(1),
-                          color: AppTheme.accent),
+                          color: const Color(0xFF185FA5),hintLabel: "student_views".tr),
+
                     ]),
+                    const SizedBox(height: 10),
+                    _MetaIcon(Icons.star_rounded,
+                        course.averageRating.toStringAsFixed(1),
+                        color: AppTheme.accent,hintLabel: "student_rate".tr),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: course.isPublished
+                                ? AppTheme.accent2
+                                : AppTheme.accent,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            course.isPublished ? 'منشورة' : 'مسودة',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                fontFamily: 'Cairo'),
+                          ),
+                        ),
+                      ],
+                    ),
                   ]),
             ),
           ]),
@@ -579,9 +569,10 @@ class _TeacherCourseCard extends StatelessWidget {
 
 class _MetaIcon extends StatelessWidget {
   final IconData icon;
+  final String hintLabel;
   final String label;
   final Color color;
-  const _MetaIcon(this.icon, this.label, {required this.color});
+  const _MetaIcon(this.icon, this.label, {required this.color, required this.hintLabel});
 
   @override
   Widget build(BuildContext context) => Row(
@@ -597,7 +588,8 @@ class _MetaIcon extends StatelessWidget {
         child: Icon(icon, size: 10, color: color),
       ),
       const SizedBox(width: 3),
-      Text(label, style: AppTheme.caption.copyWith(fontSize: 10)),
+      Text("$hintLabel :",style: AppTheme.label.copyWith(fontSize: 10)),
+      Text(label, style: AppTheme.label.copyWith(fontSize: 10)),
     ],
   );
 }
@@ -657,7 +649,7 @@ class _ScheduleCard extends StatelessWidget {
       ? AppTheme.danger
       : session.isToday
       ? AppTheme.accent2
-      : AppTheme.primary;
+      : AppTheme.primaryBlue;
 
   @override
   Widget build(BuildContext context) {

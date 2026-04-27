@@ -35,14 +35,11 @@ class SectionHeader extends StatelessWidget {
               child: Container(
                 padding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryLight,
-                  borderRadius: BorderRadius.circular(20),
-                ),
+
                 child: Text(
                   actionLabel!,
                   style: AppTheme.label.copyWith(
-                    color: AppTheme.primary,
+                    color: AppTheme.primaryBlue,
                     fontWeight: FontWeight.w700,
                     fontSize: 12,
                   ),
