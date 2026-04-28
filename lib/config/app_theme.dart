@@ -41,7 +41,7 @@ class AppTheme {
 
   // ── Gradients ─────────────────────────────────────────────────────────────────
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [Color(0xFF4F7FFF), Color(0xFF7B5FFF)],
+    colors: [Color(0xFF158CEA), Color(0xFF158CEA)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

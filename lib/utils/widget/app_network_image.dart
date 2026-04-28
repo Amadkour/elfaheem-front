@@ -38,6 +38,7 @@ class AppNetworkImage extends StatelessWidget {
             'assets/images/logo.png',
             height: height,
             width: width,
+            fit: fit,
           ),
         ),
       ),

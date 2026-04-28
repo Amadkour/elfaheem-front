@@ -394,7 +394,7 @@ class _BottomNav extends StatelessWidget {
                         boxShadow: active
                             ? [
                           BoxShadow(
-                              color: AppTheme.primary
+                              color: AppTheme.primaryBlue
                                   .withValues(alpha:0.3),
                               blurRadius: 8,
                               offset: const Offset(0, 2))
@@ -418,7 +418,7 @@ class _BottomNav extends StatelessWidget {
                             ? FontWeight.w700
                             : FontWeight.w500,
                         color: active
-                            ? AppTheme.primary
+                            ? AppTheme.primaryBlue
                             : AppTheme.textLight,
                         fontFamily: 'Cairo',
                       ),

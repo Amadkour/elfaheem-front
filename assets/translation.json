@@ -867,5 +867,18 @@
   "record_and_edit": {
     "en": "Record and Edit",
     "ar": "تسجيل وتعديل"
+  },
+  "student_participant": {
+    "en": "student participants",
+    "ar": "الطلاب المشاركون"
+  },
+  "student_views": {
+    "en": "views",
+    "ar": "المشاهدات"
+  },
+  "student_rate": {
+
+    "en": "rate",
+    "ar": "التقييم"
   }
 }
