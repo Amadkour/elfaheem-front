@@ -14,20 +14,35 @@ import 'components/content.dart';
 import 'components/stat_chip.dart';
 import 'course_detail_provider.dart';
 
-class CourseDetailScreen extends StatelessWidget {
+class CourseDetailScreen extends StatefulWidget {
   const CourseDetailScreen({super.key, required this.course});
+
   final CourseModel course;
 
   @override
+  State<CourseDetailScreen> createState() => _CourseDetailScreenState();
+}
+
+class _CourseDetailScreenState extends State<CourseDetailScreen> {
+  @override
+  void initState() {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      context.read<CourseDetailProvider>().init(widget.course);
+    });
+    super.initState();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    context.read<CourseDetailProvider>().init(course);
+    CourseDetailProvider provider = context.read<CourseDetailProvider>()
+      ..init(widget.course);
     final isWide = context.showSidebar;
 
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: AppTheme.background,
-        body: isWide ? _WebDetail() : _MobileDetail(),
+        body: isWide ? _WebDetail(provider) : _MobileDetail(provider),
       ),
     );
   }
@@ -36,6 +51,10 @@ class CourseDetailScreen extends StatelessWidget {
 // ── Mobile layout ─────────────────────────────────────────────────────────────
 
 class _MobileDetail extends StatelessWidget {
+  const _MobileDetail(this.provider);
+
+  final CourseDetailProvider provider;
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -44,7 +63,7 @@ class _MobileDetail extends StatelessWidget {
           Expanded(
             child: RefreshIndicator(
               color: AppTheme.primary,
-              onRefresh: () => context.read<CourseDetailProvider>().refresh(),
+              onRefresh: () => provider.refresh(),
               child: CustomScrollView(
                 physics: const BouncingScrollPhysics(),
                 slivers: [
@@ -52,7 +71,10 @@ class _MobileDetail extends StatelessWidget {
                   SliverToBoxAdapter(child: _CourseMeta()),
                   SliverToBoxAdapter(child: _TabBarWidget()),
                   const SliverToBoxAdapter(child: SizedBox(height: 4)),
-                  const SliverToBoxAdapter(child: TabContent()),
+                  SliverToBoxAdapter(
+                      child: TabContent(
+                    activeTab: provider.activeTab,
+                  )),
                 ],
               ),
             ),
@@ -67,6 +89,10 @@ class _MobileDetail extends StatelessWidget {
 // ── Web layout: two-column ────────────────────────────────────────────────────
 
 class _WebDetail extends StatelessWidget {
+  const _WebDetail(this.provider);
+
+  final CourseDetailProvider provider;
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -79,7 +105,7 @@ class _WebDetail extends StatelessWidget {
               alignment: Alignment.topCenter,
               child: ConstrainedBox(
                 constraints:
-                const BoxConstraints(maxWidth: Breakpoints.contentMax),
+                    const BoxConstraints(maxWidth: Breakpoints.contentMax),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -93,13 +119,15 @@ class _WebDetail extends StatelessWidget {
                         child: CustomScrollView(
                           physics: const BouncingScrollPhysics(),
                           slivers: [
-                            SliverToBoxAdapter(
-                                child: _CourseHero(height: 300)),
+                            SliverToBoxAdapter(child: _CourseHero(height: 300)),
                             SliverToBoxAdapter(child: _CourseMeta()),
                             SliverToBoxAdapter(child: _TabBarWidget()),
                             const SliverToBoxAdapter(
                                 child: SizedBox(height: 4)),
-                            const SliverToBoxAdapter(child: TabContent()),
+                            SliverToBoxAdapter(
+                                child: TabContent(
+                              activeTab: provider.activeTab,
+                            )),
                             const SliverToBoxAdapter(
                                 child: SizedBox(height: 32)),
                           ],
@@ -111,8 +139,7 @@ class _WebDetail extends StatelessWidget {
                     SizedBox(
                       width: 260,
                       child: SingleChildScrollView(
-                        padding:
-                        const EdgeInsets.fromLTRB(0, 20, 0, 32),
+                        padding: const EdgeInsets.fromLTRB(0, 20, 0, 32),
                         child: _WebSidebar(),
                       ),
                     ),
@@ -138,7 +165,7 @@ class _WebTopBar extends StatelessWidget {
         color: AppTheme.cardBg,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha:0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -154,8 +181,7 @@ class _WebTopBar extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppTheme.background,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                    color: Colors.black.withValues(alpha:0.08)),
+                border: Border.all(color: Colors.black.withValues(alpha: 0.08)),
               ),
               child: const Icon(Icons.arrow_forward_rounded,
                   size: 18, color: AppTheme.textDark),
@@ -197,7 +223,7 @@ class _WebSidebar extends StatelessWidget {
               borderRadius: BorderRadius.circular(18),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha:0.07),
+                  color: Colors.black.withValues(alpha: 0.07),
                   blurRadius: 16,
                   offset: const Offset(0, 4),
                 ),
@@ -220,9 +246,7 @@ class _WebSidebar extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                isEnrolled?
-                    Text('you are enrolled'):
-                _EnrollButton(),
+                isEnrolled ? Text('you are enrolled') : _EnrollButton(),
                 const SizedBox(height: 16),
                 _WebCourseFacts(course: c),
               ],
@@ -236,6 +260,7 @@ class _WebSidebar extends StatelessWidget {
 
 class _WebCourseFacts extends StatelessWidget {
   final CourseModel course;
+
   const _WebCourseFacts({required this.course});
 
   @override
@@ -278,36 +303,37 @@ class _Fact extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
-  const _Fact(
-      {required this.icon, required this.label, required this.color});
+
+  const _Fact({required this.icon, required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 7),
-    child: Row(
-      children: [
-        Container(
-          width: 30,
-          height: 30,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha:0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, size: 16, color: color),
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Row(
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, size: 16, color: color),
+            ),
+            const SizedBox(width: 10),
+            Text(label,
+                style: AppTheme.body
+                    .copyWith(fontSize: 13, fontWeight: FontWeight.w600)),
+          ],
         ),
-        const SizedBox(width: 10),
-        Text(label,
-            style: AppTheme.body.copyWith(
-                fontSize: 13, fontWeight: FontWeight.w600)),
-      ],
-    ),
-  );
+      );
 }
 
 // ── Hero image ────────────────────────────────────────────────────────────────
 
 class _CourseHero extends StatelessWidget {
   final double height;
+
   const _CourseHero({this.height = 260});
 
   @override
@@ -336,9 +362,9 @@ class _CourseHero extends StatelessWidget {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.black.withValues(alpha:0.5),
+                  Colors.black.withValues(alpha: 0.5),
                   Colors.transparent,
-                  Colors.black.withValues(alpha:0.6),
+                  Colors.black.withValues(alpha: 0.6),
                 ],
                 stops: const [0, 0.42, 1],
               ),
@@ -401,28 +427,27 @@ class _CourseHero extends StatelessWidget {
 
 class _HeroBadge extends StatelessWidget {
   final String label;
+
   const _HeroBadge(this.label);
 
   @override
   Widget build(BuildContext context) => Container(
-    padding:
-    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha:0.2),
-      borderRadius: BorderRadius.circular(20),
-      border:
-      Border.all(color: Colors.white.withValues(alpha:0.3)),
-    ),
-    child: Text(
-      label,
-      style: const TextStyle(
-        color: Colors.white,
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        fontFamily: 'Cairo',
-      ),
-    ),
-  );
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            fontFamily: 'Cairo',
+          ),
+        ),
+      );
 }
 
 class _FavButton extends StatelessWidget {
@@ -430,12 +455,9 @@ class _FavButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final isFav = context.watch<CourseDetailProvider>().course.isFavorite;
     return _CircleIconBtn(
-      icon: isFav
-          ? Icons.favorite_rounded
-          : Icons.favorite_border_rounded,
+      icon: isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
       iconColor: isFav ? AppTheme.danger : null,
-      onTap: () =>
-          context.read<CourseDetailProvider>().toggleFavorite(),
+      onTap: () => context.read<CourseDetailProvider>().toggleFavorite(),
     );
   }
 }
@@ -444,30 +466,30 @@ class _CircleIconBtn extends StatelessWidget {
   final IconData icon;
   final Color? iconColor;
   final VoidCallback onTap;
+
   const _CircleIconBtn(
       {required this.icon, required this.onTap, this.iconColor});
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha:0.9),
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha:0.12),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+        onTap: onTap,
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.9),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Icon(icon,
-          size: 20, color: iconColor ?? AppTheme.textDark),
-    ),
-  );
+          child: Icon(icon, size: 20, color: iconColor ?? AppTheme.textDark),
+        ),
+      );
 }
 
 // ── Meta section ──────────────────────────────────────────────────────────────
@@ -499,12 +521,11 @@ class _CourseMeta extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 c.averageRating.toStringAsFixed(1),
-                style: AppTheme.label.copyWith(
-                    fontWeight: FontWeight.w800, fontSize: 15),
+                style: AppTheme.label
+                    .copyWith(fontWeight: FontWeight.w800, fontSize: 15),
               ),
               const SizedBox(width: 6),
-              Text('(${c.studentsCount} طالب)',
-                  style: AppTheme.caption),
+              Text('(${c.studentsCount} طالب)', style: AppTheme.caption),
             ],
           ),
           const SizedBox(height: 18),
@@ -548,9 +569,8 @@ class _CourseMeta extends StatelessWidget {
                       ? Icons.sensors_rounded
                       : Icons.play_circle_outline_rounded,
                   label: c.type == 'live' ? 'مباشر' : 'مسجّل',
-                  iconColor: c.type == 'live'
-                      ? AppTheme.danger
-                      : AppTheme.primary,
+                  iconColor:
+                      c.type == 'live' ? AppTheme.danger : AppTheme.primary,
                 ),
             ],
           ),
@@ -582,7 +602,7 @@ class _TabBarWidget extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha:0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -595,24 +615,22 @@ class _TabBarWidget extends StatelessWidget {
 
             return Expanded(
               child: GestureDetector(
-                onTap: () =>
-                    context.read<CourseDetailProvider>().setTab(tab),
+                onTap: () => context.read<CourseDetailProvider>().setTab(tab),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 220),
                   curve: Curves.easeOut,
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   decoration: BoxDecoration(
-                    gradient:
-                    isActive ? AppTheme.primaryGradient : null,
+                    gradient: isActive ? AppTheme.primaryGradient : null,
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: isActive
                         ? [
-                      BoxShadow(
-                        color: AppTheme.primary.withValues(alpha:0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
+                            BoxShadow(
+                              color: AppTheme.primary.withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
                         : null,
                   ),
                   child: Row(
@@ -621,20 +639,15 @@ class _TabBarWidget extends StatelessWidget {
                       Icon(
                         icon,
                         size: 14,
-                        color: isActive
-                            ? Colors.white
-                            : AppTheme.textLight,
+                        color: isActive ? Colors.white : AppTheme.textLight,
                       ),
                       const SizedBox(width: 5),
                       Text(
                         label,
                         style: AppTheme.label.copyWith(
-                          color: isActive
-                              ? Colors.white
-                              : AppTheme.textLight,
-                          fontWeight: isActive
-                              ? FontWeight.w700
-                              : FontWeight.w500,
+                          color: isActive ? Colors.white : AppTheme.textLight,
+                          fontWeight:
+                              isActive ? FontWeight.w700 : FontWeight.w500,
                           fontSize: 12,
                         ),
                       ),
@@ -664,7 +677,7 @@ class _EnrollButton extends StatelessWidget {
         child: Container(
           height: 52,
           decoration: BoxDecoration(
-            color: AppTheme.accent2.withValues(alpha:0.1),
+            color: AppTheme.accent2.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(32),
             border: Border.all(color: AppTheme.accent2),
           ),
@@ -699,13 +712,13 @@ class _EnrollButton extends StatelessWidget {
         onTap: p.course.isEnrolled
             ? null
             : () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => ChangeNotifierProvider(
-              create: (_) => EnrollmentProvider(p.course),
-              child: const EnrollmentScreen(),
-            ),
-          ),
-        ),
+                  MaterialPageRoute(
+                    builder: (_) => ChangeNotifierProvider(
+                      create: (_) => EnrollmentProvider(p.course),
+                      child: const EnrollmentScreen(),
+                    ),
+                  ),
+                ),
         child: Container(
           height: 52,
           decoration: BoxDecoration(
@@ -713,7 +726,7 @@ class _EnrollButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(32),
             boxShadow: [
               BoxShadow(
-                color: AppTheme.primary.withValues(alpha:0.42),
+                color: AppTheme.primary.withValues(alpha: 0.42),
                 blurRadius: 22,
                 offset: const Offset(0, 7),
               ),
@@ -722,20 +735,20 @@ class _EnrollButton extends StatelessWidget {
           child: Center(
             child: p.course.isEnrolled
                 ? const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(
-                  color: Colors.white, strokeWidth: 2.5),
-            )
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2.5),
+                  )
                 : Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 15,
-                fontFamily: 'Cairo',
-              ),
-            ),
+                    label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      fontFamily: 'Cairo',
+                    ),
+                  ),
           ),
         ),
       ),
@@ -746,13 +759,14 @@ class _EnrollButton extends StatelessWidget {
 class _EnrollWrap extends StatelessWidget {
   final Widget child;
   final bool isWide;
+
   const _EnrollWrap({required this.child, required this.isWide});
 
   @override
   Widget build(BuildContext context) => isWide
       ? child
       : Padding(
-    padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-    child: SafeArea(top: false, child: child),
-  );
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: SafeArea(top: false, child: child),
+        );
 }

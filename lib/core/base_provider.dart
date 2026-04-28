@@ -40,6 +40,13 @@ abstract class BaseProvider extends ChangeNotifier {
   bool get isLoading => _state == ProviderState.loading;
   bool get hasError  => _state == ProviderState.error;
   bool get isSuccess => _state == ProviderState.success;
+  void makeLoading(){
+    _state=ProviderState.loading;
+    notifyListeners();
+  } void stopLoading(){
+    _state=ProviderState.success;
+    notifyListeners();
+  }
 
   // ── Retry config ───────────────────────────────────────────────────────────
 

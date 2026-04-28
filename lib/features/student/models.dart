@@ -199,9 +199,9 @@ class CourseModel {
   final String? categoryId, categoryName, teacherName, description;
   final double price, averageRating, totalHours;
   final int studentsCount, sessionsCount;
-  final bool isPublished;
    bool isEnrolled;
   bool isFavorite;
+  bool isSubscribed;
   double progress;
   late List<SessionModel> sessions;
   final List<CourseSchedule> schedules;
@@ -221,8 +221,8 @@ class CourseModel {
       this.studentsCount = 0,
       this.sessionsCount = 0,
       this.totalHours = 0.0,
-      this.isPublished = false,
       this.isFavorite = false,
+      this.isSubscribed = false,
       this.progress = 0.0,
       this.sessions = const [],
       this.schedules = const [],
@@ -277,7 +277,7 @@ class CourseModel {
               '',
       description: j['description'] as String? ?? '',
       type: j['type'] as String? ?? 'recorded',
-      isPublished: j['is_published'] as bool? ?? false,
+      isSubscribed: j['is_subscribed'] as bool? ?? false,
       isFavorite: j['is_favorite'] as bool? ?? false,
       sessions: (j['sessions'] as List? ?? [])
           .map((e) => SessionModel.fromJson(e as Map<String, dynamic>))
@@ -317,7 +317,6 @@ class CourseModel {
           totalHours: totalHours,
           teacherName: teacherName,
           description: description,
-          isPublished: isPublished,
           isFavorite: isFavorite ?? this.isFavorite,
           progress: progress ?? this.progress,
           sessions: sessions ?? this.sessions,
@@ -344,117 +343,3 @@ class AttendanceRecord {
       checkInAt: j['check_in_date'] as String? ?? '',
       checkOutAt: j['check_out_date'] as String? ?? '');
 }
-
-// ════════════════════════════════════════════════════════════════════════════
-//  models.dart  —  PATCH: add recordingUrl + recordingStatus to session models
-//
-//  The backend now returns recording_url and recording_status inside every
-//  session object from GET /api/v1/courses/{id}/sessions.
-//  Add the fields below to your existing models so Flutter can read them.
-// ════════════════════════════════════════════════════════════════════════════
-
-// ── 1.  StudentSessionModel  (used in course_detail_provider.dart) ────────────
-//
-// In your existing SessionModel class, add:
-
-/*
-  // Recording — present only when a completed recording exists in MinIO.
-  // The URL already points to the public tunnel so phones can open it directly.
-  final String? recordingUrl;
-  final String? recordingStatus;   // "uploaded" | "pending" | "failed" | null
-
-  // ── Update the constructor ──────────────────────────────────────────────
-  SessionModel({
-    // ... existing fields ...
-    this.recordingUrl,
-    this.recordingStatus,
-  });
-
-  // ── Update fromJson ─────────────────────────────────────────────────────
-  factory SessionModel.fromJson(Map<String, dynamic> json) {
-    return SessionModel(
-      // ... existing fields ...
-      recordingUrl:    json['recording_url']    as String?,
-      recordingStatus: json['recording_status'] as String?,
-    );
-  }
-
-  // ── Convenience getter ──────────────────────────────────────────────────
-  bool get hasRecording =>
-      recordingUrl != null && recordingUrl!.isNotEmpty;
-*/
-
-
-// ── 2.  TeacherSessionItem  (used in sessions_provider.dart) ─────────────────
-//
-// In your existing TeacherSessionItem class, add:
-
-/*
-  final String? recordingUrl;
-  final String? recordingStatus;
-
-  // ── Update the constructor ──────────────────────────────────────────────
-  TeacherSessionItem({
-    // ... existing fields ...
-    this.recordingUrl,
-    this.recordingStatus,
-  });
-
-  // ── Update fromJson ─────────────────────────────────────────────────────
-  factory TeacherSessionItem.fromJson(Map<String, dynamic> json) {
-    return TeacherSessionItem(
-      // ... existing fields ...
-      recordingUrl:    json['recording_url']    as String?,
-      recordingStatus: json['recording_status'] as String?,
-    );
-  }
-
-  // ── Update copyWith ─────────────────────────────────────────────────────
-  TeacherSessionItem copyWith({
-    // ... existing fields ...
-    String? recordingUrl,
-    String? recordingStatus,
-  }) {
-    return TeacherSessionItem(
-      // ... existing fields ...
-      recordingUrl:    recordingUrl    ?? this.recordingUrl,
-      recordingStatus: recordingStatus ?? this.recordingStatus,
-    );
-  }
-
-  // ── Convenience getters (replaces the old hasRecording / recordingUrl) ──
-  bool get hasRecording =>
-      recordingUrl != null && recordingUrl!.isNotEmpty;
-*/
-
-
-// ════════════════════════════════════════════════════════════════════════════
-//  HOW TO USE RecordingButton in your UI
-// ════════════════════════════════════════════════════════════════════════════
-
-// ── Teacher session card (sessions_screen.dart / session_card.dart) ──────────
-//
-// The existing _handleRecording() already works.  You can also show an inline
-// pill directly on the card without any extra tap, e.g. inside your
-// SessionCard widget:
-//
-//   import 'package:flutter_education_app/utils/widget/recording_button.dart';
-//
-//   // Inside the card Column / Row:
-//   RecordingButton(recordingUrl: session.recordingUrl, compact: true),
-//
-// That removes the need to tap "recording" then wait for a fetch — the URL
-// is already embedded in the session list response.
-
-
-// ── Student course detail (content.dart — your sessions tab) ─────────────────
-//
-// Inside the widget that renders each SessionModel row, add:
-//
-//   import 'package:flutter_education_app/utils/widget/recording_button.dart';
-//
-//   // After the session title / duration row:
-//   RecordingButton(recordingUrl: session.recordingUrl),
-//
-// The button hides itself (SizedBox.shrink) when recordingUrl is null, so
-// sessions without a recording look exactly the same as before.

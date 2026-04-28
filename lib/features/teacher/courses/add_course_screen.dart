@@ -83,7 +83,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
       fees: double.tryParse(_priceCtrl.text) ?? 0,
       totalHours: double.tryParse(_hoursCtrl.text),
-      categoryId: _selectedCategoryId,
+      categoryId: provider.selectedSpecialization?['id']??'-1',
       maxStudents: int.tryParse(_maxCtrl.text),
       logoFile: _logoFile,
       publishNow: publishNow,
@@ -164,6 +164,10 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
               // ── Step indicator ───────────────────────────────────────────
               _StepIndicator(currentStep: _step),
               const SizedBox(height: 4),
+              provider.isLoading ?
+                  Center(child: CircularProgressIndicator(
+
+                  ),):
               Expanded(
                 child:
                     _step == 1 ? _buildStep1(provider) : _buildStep2(provider),

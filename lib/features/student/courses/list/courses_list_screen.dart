@@ -15,6 +15,7 @@ import 'courses_provider.dart';
 
 class CoursesListScreen extends StatefulWidget {
   const CoursesListScreen({super.key, this.openSearch = false});
+
   final bool openSearch;
 
   @override
@@ -23,7 +24,7 @@ class CoursesListScreen extends StatefulWidget {
 
 class _CoursesListScreenState extends State<CoursesListScreen> {
   final _searchCtrl = TextEditingController();
-  final _focusNode  = FocusNode();
+  final _focusNode = FocusNode();
 
   @override
   void initState() {
@@ -42,8 +43,8 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
   }
 
   void _onSearch(String q) => context.read<CoursesProvider>().fetchCourses(
-    search: q.trim().isEmpty ? null : q.trim(),
-  );
+        search: q.trim().isEmpty ? null : q.trim(),
+      );
 
   void _clearSearch() {
     _searchCtrl.clear();
@@ -67,14 +68,14 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
                 _WebHeader(),
               ],
               ContentBox(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
                 child: _SearchBar(
                   controller: _searchCtrl,
                   focusNode: _focusNode,
                   onChanged: _onSearch,
                   onClear: _clearSearch,
                 ),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 0),
               ),
               const SizedBox(height: 14),
               const Expanded(child: _CourseList()),
@@ -89,25 +90,24 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
 class _WebHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
-    height: 56,
-    padding: const EdgeInsets.symmetric(horizontal: 24),
-    decoration: BoxDecoration(
-      color: AppTheme.cardBg,
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha:0.05),
-          blurRadius: 8,
-          offset: const Offset(0, 2),
+        height: 56,
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        decoration: BoxDecoration(
+          color: AppTheme.cardBg,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-      ],
-    ),
-    child: Row(
-      children: [
-        Text('استكشف الكورسات',
-            style: AppTheme.h2.copyWith(fontSize: 16)),
-      ],
-    ),
-  );
+        child: Row(
+          children: [
+            Text('استكشف الكورسات', style: AppTheme.h2.copyWith(fontSize: 16)),
+          ],
+        ),
+      );
 }
 
 // ── Search bar ────────────────────────────────────────────────────────────────
@@ -127,57 +127,55 @@ class _SearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    height: 52,
-    decoration: BoxDecoration(
-      color: AppTheme.cardBg,
-      borderRadius: BorderRadius.circular(14),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha:0.06),
-          blurRadius: 12,
-          offset: const Offset(0, 2),
+        height: 52,
+        decoration: BoxDecoration(
+          color: AppTheme.cardBg,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-      ],
-    ),
-    child: TextField(
-      controller: controller,
-      focusNode: focusNode,
-      textDirection: TextDirection.rtl,
-      onChanged: onChanged,
-      style: const TextStyle(
-          fontFamily: 'Cairo',
-          fontSize: 14,
-          color: AppTheme.textDark),
-      decoration: InputDecoration(
-        hintText: 'بحث عن كورس...',
-        hintStyle: AppTheme.caption.copyWith(fontSize: 14),
-        hintTextDirection: TextDirection.rtl,
-        prefixIcon: Container(
-          margin: const EdgeInsets.all(10),
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: AppTheme.primaryLight.withValues(alpha:0.3),
-            borderRadius: BorderRadius.circular(9),
+        child: TextField(
+          controller: controller,
+          focusNode: focusNode,
+          textDirection: TextDirection.rtl,
+          onChanged: onChanged,
+          style: const TextStyle(
+              fontFamily: 'Cairo', fontSize: 14, color: AppTheme.textDark),
+          decoration: InputDecoration(
+            hintText: 'بحث عن كورس...',
+            hintStyle: AppTheme.caption.copyWith(fontSize: 14),
+            hintTextDirection: TextDirection.rtl,
+            prefixIcon: Container(
+              margin: const EdgeInsets.all(10),
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: AppTheme.primaryLight.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: const Icon(Icons.search_rounded,
+                  color: AppTheme.primary, size: 18),
+            ),
+            suffixIcon: ListenableBuilder(
+              listenable: controller,
+              builder: (_, __) => controller.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.close_rounded,
+                          color: AppTheme.textLight, size: 18),
+                      onPressed: onClear)
+                  : const SizedBox.shrink(),
+            ),
+            border: InputBorder.none,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           ),
-          child: const Icon(Icons.search_rounded,
-              color: AppTheme.primary, size: 18),
         ),
-        suffixIcon: ListenableBuilder(
-          listenable: controller,
-          builder: (_, __) => controller.text.isNotEmpty
-              ? IconButton(
-              icon: const Icon(Icons.close_rounded,
-                  color: AppTheme.textLight, size: 18),
-              onPressed: onClear)
-              : const SizedBox.shrink(),
-        ),
-        border: InputBorder.none,
-        contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16, vertical: 14),
-      ),
-    ),
-  );
+      );
 }
 
 // ── Course list ───────────────────────────────────────────────────────────────
@@ -188,9 +186,9 @@ class _CourseList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<CoursesProvider>();
-    final w        = context.screenW;
-    final cols     = w >= 1100 ? 3 : (w >= 700 ? 2 : 1);
-    final isGrid   = cols > 1;
+    final w = context.screenW;
+    final cols = w >= 1100 ? 3 : (w >= 700 ? 2 : 1);
+    final isGrid = cols > 1;
 
     if (provider.isLoading && provider.courses.isEmpty) {
       return const Center(
@@ -221,59 +219,54 @@ class _CourseList extends StatelessWidget {
         child: Align(
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
-            constraints:
-            const BoxConstraints(maxWidth: Breakpoints.contentMax),
+            constraints: const BoxConstraints(maxWidth: Breakpoints.contentMax),
             child: isGrid
                 ? GridView.builder(
-              padding:
-              const EdgeInsets.fromLTRB(20, 0, 20, 28),
-              physics: const BouncingScrollPhysics(),
-              gridDelegate:
-              SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: cols,
-                crossAxisSpacing: 14,
-                mainAxisSpacing: 14,
-                childAspectRatio: 2.3,
-              ),
-              itemCount: provider.courses.length +
-                  (provider.hasMore ? 1 : 0),
-              itemBuilder: (_, i) {
-                if (i >= provider.courses.length) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation(
-                          AppTheme.primary),
-                      strokeWidth: 2,
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                    physics: const BouncingScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: cols,
+                      crossAxisSpacing: 14,
+                      mainAxisSpacing: 14,
+                      childAspectRatio: 2.3,
                     ),
-                  );
-                }
-                return _CourseCard(course: provider.courses[i]);
-              },
-            )
+                    itemCount:
+                        provider.courses.length + (provider.hasMore ? 1 : 0),
+                    itemBuilder: (_, i) {
+                      if (i >= provider.courses.length) {
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            valueColor:
+                                AlwaysStoppedAnimation(AppTheme.primary),
+                            strokeWidth: 2,
+                          ),
+                        );
+                      }
+                      return _CourseCard(course: provider.courses[i]);
+                    },
+                  )
                 : ListView.separated(
-              padding:
-              const EdgeInsets.fromLTRB(20, 0, 20, 28),
-              physics: const BouncingScrollPhysics(),
-              itemCount: provider.courses.length +
-                  (provider.hasMore ? 1 : 0),
-              separatorBuilder: (_, __) =>
-              const SizedBox(height: 12),
-              itemBuilder: (_, i) {
-                if (i == provider.courses.length) {
-                  return const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation(
-                            AppTheme.primary),
-                        strokeWidth: 2,
-                      ),
-                    ),
-                  );
-                }
-                return _CourseCard(course: provider.courses[i]);
-              },
-            ),
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                    physics: const BouncingScrollPhysics(),
+                    itemCount:
+                        provider.courses.length + (provider.hasMore ? 1 : 0),
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (_, i) {
+                      if (i == provider.courses.length) {
+                        return const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              valueColor:
+                                  AlwaysStoppedAnimation(AppTheme.primary),
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        );
+                      }
+                      return _CourseCard(course: provider.courses[i]);
+                    },
+                  ),
           ),
         ),
       ),
@@ -285,11 +278,12 @@ class _CourseList extends StatelessWidget {
 
 class _CourseCard extends StatelessWidget {
   final CourseModel course;
+
   const _CourseCard({required this.course});
 
   void _open(BuildContext ctx) => Navigator.of(ctx).push(
-    MaterialPageRoute(builder: (_) => CourseDetailScreen(course: course)),
-  );
+        MaterialPageRoute(builder: (_) => CourseDetailScreen(course: course)),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -303,7 +297,7 @@ class _CourseCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha:0.06),
+                color: Colors.black.withValues(alpha: 0.06),
                 blurRadius: 14,
                 offset: const Offset(0, 3),
               ),
@@ -329,7 +323,7 @@ class _CourseCard extends StatelessWidget {
                           gradient: LinearGradient(
                             colors: [
                               Colors.transparent,
-                              Colors.black.withValues(alpha:0.32),
+                              Colors.black.withValues(alpha: 0.32),
                             ],
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
@@ -352,8 +346,7 @@ class _CourseCard extends StatelessWidget {
               // Info
               Expanded(
                 child: Padding(
-                  padding:
-                  const EdgeInsets.fromLTRB(14, 12, 10, 12),
+                  padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -384,8 +377,7 @@ class _CourseCard extends StatelessWidget {
                               width: 18,
                               height: 18,
                               decoration: BoxDecoration(
-                                color: AppTheme.primary
-                                    .withValues(alpha:0.12),
+                                color: AppTheme.primary.withValues(alpha: 0.12),
                                 shape: BoxShape.circle,
                               ),
                               alignment: Alignment.center,
@@ -402,8 +394,7 @@ class _CourseCard extends StatelessWidget {
                             const SizedBox(width: 5),
                             Text(
                               'أ. ${course.instructorName}',
-                              style: AppTheme.caption
-                                  .copyWith(fontSize: 11),
+                              style: AppTheme.caption.copyWith(fontSize: 11),
                             ),
                           ],
                         ),
@@ -421,8 +412,7 @@ class _CourseCard extends StatelessWidget {
                           _MetaItem(Icons.people_rounded,
                               '${course.studentsCount} طالب'),
                           if (course.sessions.isNotEmpty)
-                            _MetaItem(
-                                Icons.video_library_rounded,
+                            _MetaItem(Icons.video_library_rounded,
                                 '${course.sessions.length} محاضرة'),
                           if (course.hoursCount > 0)
                             _MetaItem(Icons.access_time_rounded,
@@ -449,6 +439,7 @@ class _CourseCard extends StatelessWidget {
 
 class _PricePill extends StatelessWidget {
   final num price;
+
   const _PricePill({required this.price});
 
   @override
@@ -462,7 +453,7 @@ class _PricePill extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: (isFree ? const Color(0xFF0F6E56) : AppTheme.primary)
-                .withValues(alpha:0.4),
+                .withValues(alpha: 0.4),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -483,6 +474,7 @@ class _PricePill extends StatelessWidget {
 
 class _TypeTag extends StatelessWidget {
   final String type;
+
   const _TypeTag({required this.type});
 
   @override
@@ -492,7 +484,7 @@ class _TypeTag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: c.withValues(alpha:0.1),
+        color: c.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(7),
       ),
       child: Row(
@@ -506,8 +498,8 @@ class _TypeTag extends StatelessWidget {
           const SizedBox(width: 3),
           Text(
             isLive ? 'مباشر' : 'مسجّل',
-            style: AppTheme.caption.copyWith(
-                color: c, fontWeight: FontWeight.w700, fontSize: 10),
+            style: AppTheme.caption
+                .copyWith(color: c, fontWeight: FontWeight.w700, fontSize: 10),
           ),
         ],
       ),
@@ -517,69 +509,68 @@ class _TypeTag extends StatelessWidget {
 
 class _CatTag extends StatelessWidget {
   final String label;
+
   const _CatTag({required this.label});
 
   @override
   Widget build(BuildContext context) => Container(
-    padding:
-    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-    decoration: BoxDecoration(
-      color: AppTheme.primaryLight.withValues(alpha:0.2),
-      borderRadius: BorderRadius.circular(7),
-    ),
-    child: Text(
-      label,
-      style: AppTheme.caption.copyWith(
-          color: AppTheme.primary,
-          fontWeight: FontWeight.w700,
-          fontSize: 10),
-    ),
-  );
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: AppTheme.primaryLight.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(7),
+        ),
+        child: Text(
+          label,
+          style: AppTheme.caption.copyWith(
+              color: AppTheme.primary,
+              fontWeight: FontWeight.w700,
+              fontSize: 10),
+        ),
+      );
 }
 
 class _MetaItem extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
-  const _MetaItem(this.icon, this.label,
-      {this.color = AppTheme.textLight});
+
+  const _MetaItem(this.icon, this.label, {this.color = AppTheme.textLight});
 
   @override
   Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Icon(icon, size: 12, color: color),
-      const SizedBox(width: 3),
-      Text(label,
-          style: AppTheme.caption.copyWith(fontSize: 11)),
-    ],
-  );
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 3),
+          Text(label, style: AppTheme.caption.copyWith(fontSize: 11)),
+        ],
+      );
 }
 
 class _EmptyState extends StatelessWidget {
   final IconData icon;
   final String message;
+
   const _EmptyState({required this.icon, required this.message});
 
   @override
   Widget build(BuildContext context) => Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            color: AppTheme.primaryLight.withValues(alpha:0.3),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, size: 38, color: AppTheme.primary),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: AppTheme.primaryLight.withValues(alpha: 0.3),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 38, color: AppTheme.primary),
+            ),
+            const SizedBox(height: 16),
+            Text(message,
+                style: AppTheme.body.copyWith(fontWeight: FontWeight.w600)),
+          ],
         ),
-        const SizedBox(height: 16),
-        Text(message,
-            style: AppTheme.body
-                .copyWith(fontWeight: FontWeight.w600)),
-      ],
-    ),
-  );
+      );
 }

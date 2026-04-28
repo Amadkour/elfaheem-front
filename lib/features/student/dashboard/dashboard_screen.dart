@@ -434,10 +434,10 @@ class _WideTopBar extends StatelessWidget {
               color: AppTheme.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: const [
+            child: Row(mainAxisSize: MainAxisSize.min, children:  [
               Icon(Icons.person_rounded, color: AppTheme.primary, size: 15),
               SizedBox(width: 6),
-              Text('أحمد محمد',
+              Text(context.read<AuthProvider>().currentUser?.name??'',
                   style: TextStyle(
                       fontFamily: 'Cairo',
                       color: AppTheme.primary,

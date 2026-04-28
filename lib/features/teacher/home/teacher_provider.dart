@@ -1,9 +1,4 @@
-/// shared/teacher_provider.dart
-///
-/// Endpoints consumed:
-///   GET  /api/v1/teacher/dashboard   — stats + courses + schedule
-///   POST /api/v1/sessions            — create a new session
-///   POST /api/v1/live-sessions/start — start a Daily.co room
+
 library;
 
 import 'dart:io';
@@ -156,7 +151,7 @@ class TeacherProvider extends BaseProvider {
     String? description,
     double fees = 0,
     double? totalHours,
-    int? categoryId,
+    required String categoryId,
     int? maxStudents,
     String? startDate,
     String? endDate,
@@ -168,7 +163,7 @@ class TeacherProvider extends BaseProvider {
       'type': type,
       'fees': fees.toString(),
       if (description != null) 'description': description,
-      if (categoryId != null) 'category_id': categoryId.toString(),
+      'category_id': categoryId,
       if (maxStudents != null) 'max_students': maxStudents.toString(),
       if (startDate != null) 'start_date': startDate,
       if (endDate != null) 'end_date': endDate,
@@ -176,6 +171,7 @@ class TeacherProvider extends BaseProvider {
     };
     print('============================');
     print(logoFile?.path);
+    print(categoryId);
     print('============================');
 
     final result = await run(() => _api.postMultipart(
@@ -541,7 +537,7 @@ class TeacherProvider extends BaseProvider {
 
   List<TeacherCourse> _allCourses = [];
   TeacherCourseStatus _activeFilter = TeacherCourseStatus.all;
-  late List<Map<String, dynamic>> specializations;
+   List<Map<String, dynamic>> specializations=[];
   Map<String, dynamic>? selectedTeachingType;
   Map<String, dynamic>? selectedSpecialization;
   List<Map<String, String>> teachingTypes = [
@@ -585,8 +581,9 @@ class TeacherProvider extends BaseProvider {
       _allCourses.where((c) => c.id == id).firstOrNull;
 
   Future<void> initAddCourse(BuildContext context) async {
+    makeLoading();
     specializations =
         await context.read<CategoriesProvider>().getSpecialization();
-    notifyListeners();
+    stopLoading();
   }
 }
