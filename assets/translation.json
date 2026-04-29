@@ -880,5 +880,10 @@
 
     "en": "rate",
     "ar": "التقييم"
+  },
+  "update_account": {
+    "en": "Update Account",
+    "ar": "تعديل الحساب"
   }
+
 }

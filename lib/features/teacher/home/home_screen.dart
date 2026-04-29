@@ -507,6 +507,7 @@ class _TeacherCourseCard extends StatelessWidget {
       child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+
             AppNetworkImage(
                 url: course.imageUrl,fit: BoxFit.contain,height: 100,),
             Divider(),
@@ -731,7 +732,7 @@ class _ScheduleCard extends StatelessWidget {
                         const SizedBox(width: 10),
                         _InfoChip(Icons.timer_rounded,
                             '${session.durationMinutes}د',
-                            AppTheme.textLight),
+                            AppTheme.textMedium),
                       ]),
                       const SizedBox(height: 8),
                       Row(children: [

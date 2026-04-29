@@ -87,9 +87,8 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen>
                           ),
                           SettingsTile(
                             icon: Icons.account_balance_wallet_rounded,
-                            iconBg: const Color(0xFF8B6FFF)
-                                .withValues(alpha:0.12),
-                            iconColor: const Color(0xFF8B6FFF),
+                            iconBg: AppTheme.success.withValues(alpha:0.12),
+                            iconColor: AppTheme.success,
                             label: 'payment_method'.tr,
                             onTap: () =>
                                 _push(const PaymentMethodsScreen()),
@@ -114,10 +113,10 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen>
                             trailing: Switch.adaptive(
                               value: p.notificationsEnabled,
                               onChanged: p.toggleNotifications,
-                              thumbColor: const WidgetStatePropertyAll(
-                                  AppTheme.primary),
+                              activeColor: AppTheme.primaryBlue,
+                              thumbColor:  WidgetStatePropertyAll(
+                                  Colors.white)),
                             ),
-                          ),
                           SettingsTile(
                             icon: Icons.language_rounded,
                             iconBg: const Color(0xFF8B6FFF)
@@ -136,8 +135,9 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen>
                             trailing: Switch.adaptive(
                               value: p.darkMode,
                               onChanged: p.toggleDarkMode,
+                              activeColor: AppTheme.primaryBlue,
                               thumbColor: const WidgetStatePropertyAll(
-                                  AppTheme.primary),
+                                  Colors.white),
                             ),
                           ),
                         ],
@@ -194,39 +194,40 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen>
                                 .logout(context);
                           }
                         },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 18, vertical: 16),
-                          decoration: BoxDecoration(
-                            color: AppTheme.danger.withValues(alpha:0.06),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                                color:
-                                AppTheme.danger.withValues(alpha:0.2)),
-                          ),
-                          child: Row(children: [
-                            Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: AppTheme.danger.withValues(alpha:0.12),
-                                borderRadius: BorderRadius.circular(11),
-                              ),
-                              child: const Icon(Icons.logout_rounded,
-                                  size: 18, color: AppTheme.danger),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 18, vertical: 16),
+                            decoration: BoxDecoration(
+                              color: AppTheme.danger.withValues(alpha:0.06),
+                              borderRadius: BorderRadius.circular(16),
+
                             ),
-                            const SizedBox(width: 12),
-                            const Text('تسجيل الخروج',
-                                style: TextStyle(
-                                  fontFamily: 'Cairo',
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14,
-                                  color: AppTheme.danger,
-                                )),
-                            const Spacer(),
-                            const Icon(Icons.chevron_left_rounded,
-                                color: AppTheme.danger, size: 20),
-                          ]),
+                            child: Row(children: [
+                              Container(
+                                width: 38,
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  color: AppTheme.danger.withValues(alpha:0.12),
+                                  borderRadius: BorderRadius.circular(11),
+                                ),
+                                child: const Icon(Icons.logout_rounded,
+                                    size: 18, color: AppTheme.danger),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text('تسجيل الخروج',
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                    color: AppTheme.danger,
+                                  )),
+                              const Spacer(),
+                              const Icon(Icons.chevron_right_rounded,
+                                  color: AppTheme.danger, size: 20),
+                            ]),
+                          ),
                         ),
                       ),
                     ),
