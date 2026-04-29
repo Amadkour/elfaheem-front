@@ -209,41 +209,42 @@ class _FilterTabs extends StatelessWidget {
               child: GestureDetector(
                 onTap: () =>
                     context.read<TeacherProvider>().setFilter(status),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 220),
+                child: Container(
+
+                //  duration: const Duration(milliseconds: 220),
                   decoration: BoxDecoration(
-                    gradient: active ? AppTheme.primaryGradient : null,
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: active
-                        ? [
-                      BoxShadow(
-                        color:
-                        AppTheme.primary.withValues(alpha: 0.28),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      )
-                    ]
-                        : null,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(icon,
-                          size: 13,
-                          color:
-                          active ? Colors.white : AppTheme.textLight),
-                      const SizedBox(width: 5),
-                      Text(
-                        labelKey.tr,
-                        style: AppTheme.label.copyWith(
-                          color: active ? Colors.white : AppTheme.textLight,
-                          fontWeight: active
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                          fontSize: 12,
-                        ),
+                   // gradient: active ? AppTheme.primaryGradient : null,
+                    border: active
+                        ? Border(
+                      bottom: BorderSide(
+                        color: AppTheme.primaryBlue,
+                        width: 1,
                       ),
-                    ],
+                    ):null,
+
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(icon,
+                            size: 13,
+                            color:
+                            active ? AppTheme.primaryBlue: AppTheme.textLight),
+                        const SizedBox(width: 5),
+                        Text(
+                          labelKey.tr,
+                          style: AppTheme.label.copyWith(
+                            color: active ?AppTheme.primaryBlue : AppTheme.textLight,
+                            fontWeight: active
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -518,9 +519,10 @@ class _CourseCardState extends State<_CourseCard> {
       decoration: BoxDecoration(
         color: AppTheme.cardBg,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color:AppTheme.primaryBlue ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.07),
+            color: Colors.black.withValues(alpha: 0.09),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -532,15 +534,15 @@ class _CourseCardState extends State<_CourseCard> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // ── Status accent bar ────────────────────────────────────────
-          Container(
-            height: 3,
-            decoration: BoxDecoration(
-              gradient: isDraft
-                  ? const LinearGradient(
-                  colors: [Color(0xFFf59e0b), Color(0xFFfbbf24)])
-                  : AppTheme.primaryGradient,
-            ),
-          ),
+          // Container(
+          //   height: 3,
+          //   decoration: BoxDecoration(
+          //     gradient: isDraft
+          //         ? const LinearGradient(
+          //         colors: [Color(0xFFf59e0b), Color(0xFFfbbf24)])
+          //         : AppTheme.primaryGradient,
+          //   ),
+          // ),
 
           // ── Full-width 16:9 thumbnail with overlaid actions ──────────
           Stack(

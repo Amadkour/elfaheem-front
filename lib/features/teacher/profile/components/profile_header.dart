@@ -27,12 +27,12 @@ class ProfileHeader extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: AppTheme.primary.withValues(alpha: 0.1),
-                border: Border.all(color: AppTheme.primary, width: 2.5),
+                border: Border.all(color: AppTheme.primaryBlue, width: 2.5),
               ),
               child: provider.avatarUrl != null
                   ? ClipOval(child: AppNetworkImage(url: provider.avatarUrl!))
                   : const Icon(Icons.person_rounded,
-                  size: 52, color: AppTheme.primary),
+                  size: 52, color: AppTheme.primaryBlue),
             ),
             GestureDetector(
               onTap: onImageTap,
@@ -40,7 +40,7 @@ class ProfileHeader extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: const BoxDecoration(
-                    color: AppTheme.primary, shape: BoxShape.circle),
+                    color: AppTheme.primaryBlue, shape: BoxShape.circle),
                 child: const Icon(Icons.camera_alt_rounded,
                     size: 16, color: Colors.white),
               ),

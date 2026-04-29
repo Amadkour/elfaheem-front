@@ -29,14 +29,7 @@ class SettingsTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
           children: [
-            // Label on the right (RTL)
-            Expanded(
-              child: Text(label,
-                  style: AppTheme.label
-                      .copyWith(color: AppTheme.textDark, fontSize: 14)),
-            ),
-            const SizedBox(width: 12),
-            // Icon container on the left
+
             Container(
               width: 36,
               height: 36,
@@ -46,13 +39,23 @@ class SettingsTile extends StatelessWidget {
               ),
               child: Icon(icon, size: 18, color: iconColor),
             ),
+            const SizedBox(width: 10),
+            // Label on the right (RTL)
+            Expanded(
+              child: Text(label,
+                  style: AppTheme.label
+                      .copyWith(color: AppTheme.textDark, fontSize: 14)),
+            ),
+            const SizedBox(width: 12),
+            // Icon container on the left
+
             if (trailing != null) ...[
               const SizedBox(width: 10),
               trailing!,
             ] else if (onTap != null)
               const Padding(
                 padding: EdgeInsets.only(left: 4),
-                child: Icon(Icons.chevron_left_rounded,
+                child: Icon(Icons.chevron_right_rounded,
                     color: AppTheme.textLight, size: 20),
               ),
           ],
