@@ -72,7 +72,7 @@ class CourseTool {
   factory CourseTool.fromJson(Map<String, dynamic> j) => CourseTool(
       id: j['id'] as int,
       courseId: j['course_id'] as int? ?? 0,
-      name: j['name'] as String? ?? '',
+      name: j['title'] as String? ?? '',
       description: j['description'] as String?);
 }
 

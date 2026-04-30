@@ -16,6 +16,8 @@ class CourseDetailProvider extends BaseProvider {
   CourseDetailTab get activeTab => _activeTab;
 
   void init(CourseModel course) async {
+    isLoadingSession = true;
+    notifyListeners();
     this.course = course;
     await fetchSessions(course.id);
   }
@@ -29,11 +31,9 @@ class CourseDetailProvider extends BaseProvider {
     }
   }
 
-  bool isLoadingSession = false;
+  bool isLoadingSession = true;
 
   Future<void> fetchSessions(String courseId) async {
-    isLoadingSession = true;
-    notifyListeners();
     final result =
         await run(() => _api.get('/api/v1/courses/$courseId/sessions'));
     if (result is List) {

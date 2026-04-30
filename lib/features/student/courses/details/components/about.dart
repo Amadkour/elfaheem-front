@@ -3,6 +3,7 @@ import 'package:flutter_education_app/features/student/models.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../config/app_theme.dart';
+import '../../../../teacher/home/teacher_models.dart';
 import '../course_detail_provider.dart';
 
 class AboutTab extends StatelessWidget {

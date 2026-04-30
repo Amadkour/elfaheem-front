@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/category/categories_provider.dart';
@@ -15,6 +16,8 @@ import '../../../config/app_config.dart' as Helpers;
 import '../../../config/app_theme.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../home/teacher_provider.dart';
+import 'component/day_dropdown.dart';
+import 'component/gradient_button.dart';
 
 class AddCourseScreen extends StatefulWidget {
   const AddCourseScreen({super.key});
@@ -29,7 +32,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     // TODO: implement initState
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-       context.read<TeacherProvider>().initAddCourse(context);
+      context.read<TeacherProvider>().initAddCourse(context);
     });
   }
 
@@ -78,16 +81,17 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
 
     final provider = context.read<TeacherProvider>();
     final created = await context.read<TeacherProvider>().createCourse(
-      title: _titleCtrl.text.trim(),
-      type: _courseType,
-      description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
-      fees: double.tryParse(_priceCtrl.text) ?? 0,
-      totalHours: double.tryParse(_hoursCtrl.text),
-      categoryId: provider.selectedSpecialization?['id']??'-1',
-      maxStudents: int.tryParse(_maxCtrl.text),
-      logoFile: _logoFile,
-      publishNow: publishNow,
-    );
+          title: _titleCtrl.text.trim(),
+          type: _courseType,
+          description:
+              _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+          fees: double.tryParse(_priceCtrl.text) ?? 0,
+          totalHours: double.tryParse(_hoursCtrl.text),
+          categoryId: provider.selectedSpecialization?['id'] ?? '-1',
+          maxStudents: int.tryParse(_maxCtrl.text),
+          logoFile: _logoFile,
+          publishNow: publishNow,
+        );
 
     if (!mounted) return;
 
@@ -97,9 +101,9 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         _step = 2;
       });
     } else {
-      print('================================================');
-      print(provider.errorMessage);
-      print('================================================');
+      log('================================================');
+      log(provider.errorMessage.toString());
+      log('================================================');
       _snack(
           provider.errorMessage ?? 'حدث خطأ، حاول مرة أخرى', AppTheme.danger);
     }
@@ -164,14 +168,15 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
               // ── Step indicator ───────────────────────────────────────────
               _StepIndicator(currentStep: _step),
               const SizedBox(height: 4),
-              provider.isLoading ?
-                  Center(child: CircularProgressIndicator(
-
-                  ),):
-              Expanded(
-                child:
-                    _step == 1 ? _buildStep1(provider) : _buildStep2(provider),
-              ),
+              provider.isLoading
+                  ? Center(
+                      child: CircularProgressIndicator(),
+                    )
+                  : Expanded(
+                      child: _step == 1
+                          ? _buildStep1(provider)
+                          : _buildStep2(provider),
+                    ),
             ],
           ),
         ),
@@ -213,24 +218,24 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12.0),
-                    child: context.read<CategoriesProvider>().isLoadingCategory?
-                    CircularProgressIndicator():
-                    MyPrimaryMenu(
-                        controller: categoryController,
-                        initValue: provider.selectedSpecialization,
-                        options: provider.specializations,
-                        haveLogo: false,
-                        onChange: (i) => provider.onChangeSpecialization(
-                            i, categoryController),
-                        label: 'category'.tr),
+                    child: context.read<CategoriesProvider>().isLoadingCategory
+                        ? CircularProgressIndicator()
+                        : MyPrimaryMenu(
+                            controller: categoryController,
+                            initValue: provider.selectedSpecialization,
+                            options: provider.specializations,
+                            haveLogo: false,
+                            onChange: (i) => provider.onChangeSpecialization(
+                                i, categoryController),
+                            label: 'category'.tr),
                   ),
                   MyPrimaryMenu(
                       controller: teachingController,
                       initValue: provider.selectedTeachingType,
                       options: provider.teachingTypes,
                       haveLogo: false,
-                      onChange: (i) => provider.onChangeTeachingType(
-                          i, teachingController),
+                      onChange: (i) =>
+                          provider.onChangeTeachingType(i, teachingController),
                       label: 'teaching_type'.tr),
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12.0),
@@ -280,7 +285,17 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                       .map((s) => '${s.dayLabel}  '
                           '${s.startTime} – ${s.endTime}')
                       .toList(),
-                  onAdd: () => _addScheduleDialog(),
+                  onAdd: () => addScheduleDialog(context, (String? selectedDay,
+                      String? startTime, String? endTime) {
+                    if (selectedDay != null) {
+                      setState(() => _pendingSchedules.add(_PendingSchedule(
+                            day: selectedDay,
+                            startTime: startTime!,
+                            endTime: endTime!,
+                          )));
+                      Navigator.pop(context);
+                    }
+                  }),
                   onRemove: (i) =>
                       setState(() => _pendingSchedules.removeAt(i)),
                 ),
@@ -344,7 +359,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _GradientButton(
+                child: GradientButton(
                   label: 'حفظ التفاصيل',
                   isLoading: provider.isLoading,
                   onTap: _submitStep2,
@@ -408,102 +423,6 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       ),
     );
     if (result != null && result.isNotEmpty) onAdd(result);
-  }
-
-  Future<void> _addScheduleDialog() async {
-    String? selectedDay;
-    final startCtrl = TextEditingController(text: '10:00');
-    final endCtrl = TextEditingController(text: '12:00');
-
-    const days = [
-      ('monday', 'الإثنين'),
-      ('tuesday', 'الثلاثاء'),
-      ('wednesday', 'الأربعاء'),
-      ('thursday', 'الخميس'),
-      ('friday', 'الجمعة'),
-      ('saturday', 'السبت'),
-      ('sunday', 'الأحد'),
-    ];
-
-    await showDialog<void>(
-      context: context,
-      builder: (_) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: StatefulBuilder(
-          builder: (ctx, setDialogState) => AlertDialog(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
-            title: const Text('إضافة موعد أسبوعي',
-                style: TextStyle(
-                    fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Day picker
-                DropdownButtonFormField<String>(
-                  initialValue: selectedDay,
-                  decoration: InputDecoration(
-                    labelText: 'اليوم',
-                    labelStyle: AppTheme.caption,
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                  ),
-                  items: days
-                      .map((d) => DropdownMenuItem(
-                            value: d.$1,
-                            child: Text(d.$2,
-                                style: const TextStyle(fontFamily: 'Cairo')),
-                          ))
-                      .toList(),
-                  onChanged: (v) => setDialogState(() => selectedDay = v),
-                ),
-                const SizedBox(height: 12),
-                // Times
-                Row(
-                  children: [
-                    Expanded(
-                        child: _TimeField(label: 'من', controller: startCtrl)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                        child: _TimeField(label: 'إلى', controller: endCtrl)),
-                  ],
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('إلغاء',
-                    style: TextStyle(
-                        fontFamily: 'Cairo', color: AppTheme.textMedium)),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                ),
-                onPressed: () {
-                  if (selectedDay != null) {
-                    setState(() => _pendingSchedules.add(_PendingSchedule(
-                          day: selectedDay!,
-                          startTime: startCtrl.text,
-                          endTime: endCtrl.text,
-                        )));
-                    Navigator.pop(context);
-                  }
-                },
-                child: const Text('إضافة',
-                    style: TextStyle(
-                        fontFamily: 'Cairo',
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700)),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   List<XFile>? _mediaFileList;
@@ -872,22 +791,24 @@ class _PendingSchedule {
   final String day;
   final String startTime;
   final String endTime;
+
   /// Arabic name for this day.
   String get dayLabel {
     const map = {
-      'monday':    'الاثنين',
-      'tuesday':   'الثلاثاء',
+      'monday': 'الاثنين',
+      'tuesday': 'الثلاثاء',
       'wednesday': 'الأربعاء',
-      'thursday':  'الخميس',
-      'friday':    'الجمعة',
-      'saturday':  'السبت',
-      'sunday':    'الأحد',
+      'thursday': 'الخميس',
+      'friday': 'الجمعة',
+      'saturday': 'السبت',
+      'sunday': 'الأحد',
     };
     return map[day.toLowerCase()] ?? day;
   }
 
   /// "الاثنين  10:00 — 12:00"
   String get displayLabel => '$dayLabel   $startTime — $endTime';
+
   const _PendingSchedule(
       {required this.day, required this.startTime, required this.endTime});
 }
@@ -1059,27 +980,6 @@ class _Dot extends StatelessWidget {
 
 // ── Time Field ────────────────────────────────────────────────────────────────
 
-class _TimeField extends StatelessWidget {
-  final String label;
-  final TextEditingController controller;
-
-  const _TimeField({required this.label, required this.controller});
-
-  @override
-  Widget build(BuildContext context) => TextField(
-        controller: controller,
-        textAlign: TextAlign.center,
-        keyboardType: TextInputType.datetime,
-        style: const TextStyle(fontFamily: 'Cairo', fontSize: 14),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: AppTheme.caption,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-          contentPadding: const EdgeInsets.symmetric(vertical: 10),
-        ),
-      );
-}
-
 // ── Outline / Gradient Buttons ────────────────────────────────────────────────
 
 class _OutlineButton extends StatelessWidget {
@@ -1111,42 +1011,6 @@ class _OutlineButton extends StatelessWidget {
       );
 }
 
-class _GradientButton extends StatelessWidget {
-  final String label;
-  final bool isLoading;
-  final VoidCallback? onTap;
-
-  const _GradientButton(
-      {required this.label, required this.isLoading, this.onTap});
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: isLoading ? null : onTap,
-        child: Container(
-          height: 50,
-          decoration: BoxDecoration(
-            gradient: AppTheme.primaryGradient,
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: AppTheme.primaryShadow,
-          ),
-          child: Center(
-            child: isLoading
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
-                : Text(label,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14,
-                        fontFamily: 'Cairo')),
-          ),
-        ),
-      );
-}
-
 // ── Shared small widgets (kept identical to original) ─────────────────────────
 
 class _Label extends StatelessWidget {
@@ -1157,110 +1021,6 @@ class _Label extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       Text(text, style: AppTheme.h3.copyWith(fontSize: 15));
-}
-
-class _CategoryDropdown extends StatelessWidget {
-  final List<(int, String)> categories;
-  final int? value;
-  final ValueChanged<int?> onChanged;
-
-  const _CategoryDropdown({
-    required this.categories,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) => Container(
-        height: 52,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: AppTheme.cardBg,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        ),
-        child: DropdownButtonHideUnderline(
-          child: DropdownButton<int>(
-            value: value,
-            isExpanded: true,
-            hint: Text('اختر التصنيف',
-                style: AppTheme.caption.copyWith(fontSize: 13)),
-            icon: const Icon(Icons.keyboard_arrow_down_rounded,
-                color: AppTheme.textLight),
-            style: const TextStyle(
-                fontFamily: 'Cairo', fontSize: 14, color: AppTheme.textDark),
-            items: categories
-                .map((c) => DropdownMenuItem<int>(
-                      value: c.$1,
-                      child: Text(c.$2),
-                    ))
-                .toList(),
-            onChanged: onChanged,
-          ),
-        ),
-      );
-}
-
-class _CourseTypeSelector extends StatelessWidget {
-  final String selected;
-  final ValueChanged<String> onChanged;
-
-  const _CourseTypeSelector({required this.selected, required this.onChanged});
-
-  static const _types = [
-    ('recorded', 'مسجّل', Icons.play_circle_outline_rounded),
-    ('live', 'مباشر', Icons.live_tv_rounded),
-  ];
-
-  @override
-  Widget build(BuildContext context) => Row(
-        children: _types.map((t) {
-          final (value, label, icon) = t;
-          final isSelected = selected == value;
-          return Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(
-                  left: value == 'live' ? 0 : 6,
-                  right: value == 'live' ? 6 : 0),
-              child: GestureDetector(
-                onTap: () => onChanged(value),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? AppTheme.primary.withValues(alpha: 0.1)
-                        : AppTheme.cardBg,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                    border: Border.all(
-                      color: isSelected ? AppTheme.primary : AppTheme.divider,
-                      width: isSelected ? 2 : 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(icon,
-                          size: 18,
-                          color: isSelected
-                              ? AppTheme.primary
-                              : AppTheme.textMedium),
-                      const SizedBox(width: 8),
-                      Text(label,
-                          style: AppTheme.label.copyWith(
-                            color: isSelected
-                                ? AppTheme.primary
-                                : AppTheme.textMedium,
-                            fontWeight:
-                                isSelected ? FontWeight.w700 : FontWeight.w500,
-                          )),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      );
 }
 
 class _ImageUploader extends StatelessWidget {
@@ -1350,7 +1110,7 @@ class _BottomButtons extends StatelessWidget {
                   label: 'حفظ كمسوده', onTap: isLoading ? null : onDraft)),
           const SizedBox(width: 12),
           Expanded(
-              child: _GradientButton(
+              child: GradientButton(
                   label: 'نشر الدوره', isLoading: isLoading, onTap: onPublish)),
         ]),
       );

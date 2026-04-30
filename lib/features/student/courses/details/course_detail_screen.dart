@@ -34,15 +34,24 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    CourseDetailProvider provider = context.read<CourseDetailProvider>()
-      ..init(widget.course);
+    CourseDetailProvider provider = context.watch<CourseDetailProvider>();
     final isWide = context.showSidebar;
 
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: AppTheme.background,
-        body: isWide ? _WebDetail(provider) : _MobileDetail(provider),
+        body: provider.isLoadingSession
+            ? Center(
+                child: const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                    color: Colors.white, strokeWidth: 2.5),
+              ))
+            : isWide
+                ? _WebDetail(provider)
+                : _MobileDetail(provider),
       ),
     );
   }
@@ -99,7 +108,7 @@ class _WebDetail extends StatelessWidget {
       child: Column(
         children: [
           // Web top bar
-          _WebTopBar(),
+          _WebTopBar(course: provider.course),
           Expanded(
             child: Align(
               alignment: Alignment.topCenter,
@@ -140,7 +149,7 @@ class _WebDetail extends StatelessWidget {
                       width: 260,
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.fromLTRB(0, 20, 0, 32),
-                        child: _WebSidebar(),
+                        child: _WebSidebar(provider: provider),
                       ),
                     ),
                   ],
@@ -155,9 +164,12 @@ class _WebDetail extends StatelessWidget {
 }
 
 class _WebTopBar extends StatelessWidget {
+  final CourseModel course;
+
+  const _WebTopBar({super.key, required this.course});
+
   @override
   Widget build(BuildContext context) {
-    final c = context.watch<CourseDetailProvider>().course;
     return Container(
       height: 56,
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -190,7 +202,7 @@ class _WebTopBar extends StatelessWidget {
           const SizedBox(width: 14),
           Expanded(
             child: Text(
-              c.name,
+              course.name,
               style: AppTheme.h3.copyWith(fontSize: 15),
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
@@ -204,11 +216,14 @@ class _WebTopBar extends StatelessWidget {
 }
 
 class _WebSidebar extends StatelessWidget {
+  final CourseDetailProvider provider;
+
+  const _WebSidebar({super.key, required this.provider});
+
   @override
   Widget build(BuildContext context) {
-    final p = context.watch<CourseDetailProvider>();
-    final c = p.course;
-    final isEnrolled = p.course.isEnrolled;
+    final c = provider.course;
+    final isEnrolled = provider.course.isEnrolled;
 
     return Padding(
       padding: const EdgeInsets.only(left: 0, right: 20),

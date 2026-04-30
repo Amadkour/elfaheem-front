@@ -16,7 +16,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/student/models.dart' show CourseSchedule;
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show TeacherCourse;
+import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show TeacherCourse, CourseSchedule;
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../config/app_theme.dart';

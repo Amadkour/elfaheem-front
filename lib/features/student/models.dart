@@ -2,41 +2,42 @@
 library;
 
 import '../category/model.dart';
+import '../teacher/home/teacher_models.dart';
 
 enum CourseStatus { all, inProgress, completed }
 
 enum CourseDetailTab { lessons, about, live }
 
-class CourseSchedule {
-  final int id, courseId;
-  final String day, startTime, endTime;
-
-  const CourseSchedule(
-      {required this.id,
-      required this.courseId,
-      required this.day,
-      required this.startTime,
-      required this.endTime});
-
-  String get dayLabel =>
-      const {
-        'monday': 'الإثنين',
-        'tuesday': 'الثلاثاء',
-        'wednesday': 'الأربعاء',
-        'thursday': 'الخميس',
-        'friday': 'الجمعة',
-        'saturday': 'السبت',
-        'sunday': 'الأحد'
-      }[day] ??
-      day;
-
-  factory CourseSchedule.fromJson(Map<String, dynamic> j) => CourseSchedule(
-      id: j['id'] as int? ?? -1,
-      courseId: j['course_id'] as int? ?? 0,
-      day: j['day'] as String? ?? '',
-      startTime: j['start_time'] as String? ?? '',
-      endTime: j['end_time'] as String? ?? '');
-}
+// class CourseSchedule {
+//   final int id, courseId;
+//   final String day, startTime, endTime;
+//
+//   const CourseSchedule(
+//       {required this.id,
+//       required this.courseId,
+//       required this.day,
+//       required this.startTime,
+//       required this.endTime});
+//
+//   String get dayLabel =>
+//       const {
+//         'monday': 'الإثنين',
+//         'tuesday': 'الثلاثاء',
+//         'wednesday': 'الأربعاء',
+//         'thursday': 'الخميس',
+//         'friday': 'الجمعة',
+//         'saturday': 'السبت',
+//         'sunday': 'الأحد'
+//       }[day] ??
+//       day;
+//
+//   factory CourseSchedule.fromJson(Map<String, dynamic> j) => CourseSchedule(
+//       id: j['id'] as int? ?? -1,
+//       courseId: j['course_id'] as int? ?? 0,
+//       day: j['day'] as String? ?? '',
+//       startTime: j['start_time'] as String? ?? '',
+//       endTime: j['end_time'] as String? ?? '');
+// }
 
 class CourseInfoItem {
   final int id;

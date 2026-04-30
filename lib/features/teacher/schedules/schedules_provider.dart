@@ -1,10 +1,9 @@
 /// schedules/schedules_provider.dart
 library;
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show TeacherCourse;
+import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show TeacherCourse, CourseSchedule;
 
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
-import '../../student/models.dart';
 
 // ─────────────────────────────────────────────
 //  Day constants
