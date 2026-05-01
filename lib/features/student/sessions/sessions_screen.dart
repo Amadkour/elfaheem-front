@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../config/app_theme.dart';
 import '../../../utils/widget/app_bar.dart';
+import '../../teacher/sessions/model/live_response_model.dart';
 import '../models.dart';
 import 'components/recording_button.dart';
 import 'sessions_provider.dart';

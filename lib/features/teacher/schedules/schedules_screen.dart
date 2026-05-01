@@ -1034,7 +1034,15 @@ class _LoadingState extends StatelessWidget {
 class TeacherSchedulesScreen extends StatefulWidget {
   final TeacherCourse course;
   const TeacherSchedulesScreen({super.key, required this.course});
-
+  static void openAddScheduleScreenSheet(BuildContext context,) => showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => ChangeNotifierProvider.value(
+      value: context.read<TeacherSchedulesProvider>(),
+      child: const AddScheduleSheet(),
+    ),
+  );
   @override
   State<TeacherSchedulesScreen> createState() =>
       _TeacherSchedulesScreenState();
@@ -1050,15 +1058,7 @@ class _TeacherSchedulesScreenState extends State<TeacherSchedulesScreen> {
             .fetchSchedules(widget.course));
   }
 
-  void _openAddSheet() => showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (_) => ChangeNotifierProvider.value(
-      value: context.read<TeacherSchedulesProvider>(),
-      child: const _AddScheduleSheet(),
-    ),
-  );
+
 
   @override
   Widget build(BuildContext context) {
@@ -1070,7 +1070,7 @@ class _TeacherSchedulesScreenState extends State<TeacherSchedulesScreen> {
         body: SafeArea(child: Column(children: [
           ScreenAppBar(
             title: 'المواعيد — ${widget.course.title}',
-            actions: [_AddBtn(onTap: _openAddSheet)],
+            actions: [_AddBtn(onTap:()=> TeacherSchedulesScreen.openAddScheduleScreenSheet(context))],
           ),
 
           // Info banner
@@ -1112,7 +1112,7 @@ class _TeacherSchedulesScreenState extends State<TeacherSchedulesScreen> {
                     valueColor:
                     AlwaysStoppedAnimation(AppTheme.primary)))
                 : provider.schedules.isEmpty
-                ? _ManageEmptyState(onAdd: _openAddSheet)
+                ? _ManageEmptyState(onAdd: ()=>TeacherSchedulesScreen.openAddScheduleScreenSheet(context))
                 : _ManageList(schedules: provider.schedules),
           ),
         ])),
@@ -1304,13 +1304,13 @@ class _ManageEmptyState extends StatelessWidget {
 
 // ── Add Schedule Sheet ────────────────────────────────────────────────────────
 
-class _AddScheduleSheet extends StatefulWidget {
-  const _AddScheduleSheet();
+class AddScheduleSheet extends StatefulWidget {
+  const AddScheduleSheet({super.key});
   @override
-  State<_AddScheduleSheet> createState() => _AddScheduleSheetState();
+  State<AddScheduleSheet> createState() => _AddScheduleSheetState();
 }
 
-class _AddScheduleSheetState extends State<_AddScheduleSheet> {
+class _AddScheduleSheetState extends State<AddScheduleSheet> {
   static const _days = [
     ('monday',    'الاثنين'),
     ('tuesday',   'الثلاثاء'),

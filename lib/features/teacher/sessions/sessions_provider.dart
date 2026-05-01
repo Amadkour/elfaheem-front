@@ -8,6 +8,7 @@ import '../../auth/auth_provider.dart';
 import '../../student/models.dart';
 import '../../student/sessions/sessions_provider.dart';
 import 'live/prejoin.dart';
+import 'model/live_response_model.dart';
 
 class TeacherSessionsProvider extends BaseProvider {
   final ApiClient _api;

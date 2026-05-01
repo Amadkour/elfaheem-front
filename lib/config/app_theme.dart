@@ -46,6 +46,12 @@ class AppTheme {
     end: Alignment.bottomRight,
   );
 
+  static const LinearGradient disableGradient = LinearGradient(
+    colors: [Color(0x500F1729), Color(0x505A6580)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
   static const LinearGradient backgroundGradient = LinearGradient(
     colors: [Color(0xFFF0F4FF), Color(0xFFF8F5FF)],
     begin: Alignment.topCenter,
@@ -86,6 +92,18 @@ class AppTheme {
   static List<BoxShadow> cardShadow = [
     BoxShadow(
       color: const Color(0xFF4F7FFF).withValues(alpha: 0.06),
+      blurRadius: 24,
+      offset: const Offset(0, 8),
+    ),
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.04),
+      blurRadius: 4,
+      offset: const Offset(0, 2),
+    ),
+  ];
+  static List<BoxShadow> disableShadow = [
+    BoxShadow(
+      color: const Color(0x004F7FFF).withValues(alpha: 0.06),
       blurRadius: 24,
       offset: const Offset(0, 8),
     ),

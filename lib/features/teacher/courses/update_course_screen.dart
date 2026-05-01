@@ -1,75 +1,52 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Update Course Screen
+// update_course_screen.dart
 // ─────────────────────────────────────────────────────────────────────────────
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/student/models.dart' show CourseModel;
 import 'package:provider/provider.dart';
 
+import '../../../config/app_config.dart';
 import '../../../config/app_theme.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/primary_menue.dart';
 import '../../../utils/widget/text_field.dart';
 import '../home/teacher_models.dart';
 import '../home/teacher_provider.dart';
+import '../schedules/schedules_provider.dart';
+import '../schedules/schedules_screen.dart';
+import 'component/add_item_dialog.dart';
 import 'component/gradient_button.dart';
+import 'component/section_card.dart';
 
 class UpdateCourseScreen extends StatefulWidget {
   final TeacherCourse course;
 
-  const UpdateCourseScreen({
-    super.key,
-    required this.course,
-  });
+  const UpdateCourseScreen({super.key, required this.course});
 
   @override
   State<UpdateCourseScreen> createState() => _UpdateCourseScreenState();
 }
 
 class _UpdateCourseScreenState extends State<UpdateCourseScreen> {
+  // ── Pure-UI state (controllers only) ────────────────────────────────────────
   final _formKey = GlobalKey<FormState>();
-
   late final TextEditingController _titleCtrl;
   late final TextEditingController _descCtrl;
   late final TextEditingController _priceCtrl;
-  late final TextEditingController _maxCtrl;
-
-  final ExpansibleController categoryController = ExpansibleController();
-
-  DateTime? _startDate;
-  DateTime? _endDate;
+  late final TextEditingController _hoursCtrl;
+  final ExpansibleController _categoryCtrl = ExpansibleController();
 
   @override
   void initState() {
     super.initState();
+    final c = widget.course;
+    _titleCtrl = TextEditingController(text: c.title);
+    _descCtrl = TextEditingController(text: c.description ?? '');
+    _priceCtrl = TextEditingController(text: c.price.toString());
+    _hoursCtrl = TextEditingController(text: c.totalHours.toString());
 
-    final course = widget.course;
-
-    _titleCtrl = TextEditingController(text: course.title ?? '');
-    _descCtrl = TextEditingController(text: course.description ?? '');
-    _priceCtrl = TextEditingController(
-      text: course.price.toString() ?? '',
-    );
-    _maxCtrl = TextEditingController(
-      text: course.studentsCount.toString() ?? '',
-    );
-
-
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final provider = context.read<TeacherProvider>();
-      await provider.initAddCourse(context);
-
-      if (course.categoryName != null) {
-        final category = provider.specializations.firstWhere(
-              (e) => e['title'] == course.categoryName,
-          orElse: () => {},
-        );
-
-        if (category.isNotEmpty) {
-          provider.selectedSpecialization = category;
-        }
-      }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<TeacherProvider>().initUpdateCourse(context, widget.course);
     });
   }
 
@@ -78,29 +55,33 @@ class _UpdateCourseScreenState extends State<UpdateCourseScreen> {
     _titleCtrl.dispose();
     _descCtrl.dispose();
     _priceCtrl.dispose();
-    _maxCtrl.dispose();
+    _hoursCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _updateCourse() async {
-    if (!_formKey.currentState!.validate()) return;
+  // ── Submit ────────────────────────────────────────────────────────────────────
+  bool get showButton {
+    return _titleCtrl.text != widget.course.title ||
+        _descCtrl.text != (widget.course.description??'') ||
+        double.parse(_priceCtrl.text) != widget.course.price ||
+        double.parse(_hoursCtrl.text) != widget.course.totalHours;
+  }
 
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
     final provider = context.read<TeacherProvider>();
 
-    final TeacherCourse? success = await provider.updateCourse(
-      widget.course.id,
+    final updated = await provider.submitUpdateCourse(
+      widget.course,
       name: _titleCtrl.text.trim(),
-      description: _descCtrl.text.trim().isEmpty
-          ? null
-          : _descCtrl.text.trim(),
+      description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
       fees: double.tryParse(_priceCtrl.text),
-      categoryId: provider.selectedSpecialization?['id'],
-      maxStudents: int.tryParse(_maxCtrl.text),
+      totalHours: double.tryParse(_hoursCtrl.text),
     );
 
     if (!mounted) return;
 
-    if (success!=null) {
+    if (updated != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('تم تحديث الدورة بنجاح'),
@@ -111,41 +92,19 @@ class _UpdateCourseScreenState extends State<UpdateCourseScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            provider.errorMessage ?? 'حدث خطأ أثناء التحديث',
-          ),
+          content: Text(provider.errorMessage ?? 'حدث خطأ أثناء التحديث'),
           backgroundColor: AppTheme.danger,
         ),
       );
     }
   }
 
-  Future<void> _pickDate({
-    required bool isStart,
-  }) async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: isStart
-          ? (_startDate ?? DateTime.now())
-          : (_endDate ?? DateTime.now()),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
-    );
-
-    if (picked != null) {
-      setState(() {
-        if (isStart) {
-          _startDate = picked;
-        } else {
-          _endDate = picked;
-        }
-      });
-    }
-  }
+  // ── Build ─────────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<TeacherProvider>();
+    final form = provider.form;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -155,66 +114,126 @@ class _UpdateCourseScreenState extends State<UpdateCourseScreen> {
           child: Column(
             children: [
               const ScreenAppBar(title: 'تعديل الدورة'),
+
+              // ── Scrollable form ───────────────────────────────────────────
               Expanded(
                 child: Form(
                   key: _formKey,
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(20),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        MyTextField(
+                        // ── Basic fields ──────────────────────────────────
+
+                        ...TextFieldWithTitle(
                           controller: _titleCtrl,
                           label: 'عنوان الدورة',
-                          validator: (v) =>
-                          (v?.trim().isEmpty ?? true)
+                          validator: (v) => (v?.trim().isEmpty ?? true)
                               ? 'يرجى إدخال عنوان الدورة'
                               : null,
                         ),
                         const SizedBox(height: 16),
 
-                        MyTextField(
+                        ...TextFieldWithTitle(
                           controller: _descCtrl,
                           label: 'وصف الدورة',
-                          maxLine: 4,
+                          maxLines: 4,
                         ),
                         const SizedBox(height: 16),
 
-                        MyTextField(
+                        ...TextFieldWithTitle(
                           controller: _priceCtrl,
-                          label: 'رسوم الدورة',
+                          label: 'course_fees'.tr,
                           keyboard: const TextInputType.numberWithOptions(
-                            decimal: true,
+                              decimal: true),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'category'.tr,
+                          style: TextStyle(fontSize: 14, fontFamily: 'bahji'),
+                        ),
+                        MyPrimaryMenu(
+                          controller: _categoryCtrl,
+                          initValue: provider.selectedSpecialization,
+                          options: provider.specializations,
+                          haveLogo: false,
+                          onChange: (i) =>
+                              provider.onChangeSpecialization(i, _categoryCtrl),
+                          label: 'category'.tr,
+                        ),
+                        const SizedBox(height: 16),
+
+                        ...TextFieldWithTitle(
+                          controller: _hoursCtrl,
+                          label: 'expected_hours'.tr,
+                          keyboard: TextInputType.number,
+                        ),
+                        const SizedBox(height: 20),
+
+                        // ── Schedule ──────────────────────────────────────
+                        ChangeNotifierProvider.value(
+                          value: context.watch<TeacherSchedulesProvider>()
+                            ..initCourse(widget.course.id),
+                          child: SectionCard(
+                            icon: Icons.calendar_month_rounded,
+                            title: 'الجدول الأسبوعي',
+                            items: context
+                                .read<TeacherSchedulesProvider>()
+                                .schedules
+                                .map((s) =>
+                                    '${s.dayLabel}  ${s.startTime} – ${s.endTime}')
+                                .toList(),
+                            onAdd: () => TeacherSchedulesScreen
+                                .openAddScheduleScreenSheet(context),
+                            onRemove: (int index) => context
+                                .read<TeacherSchedulesProvider>()
+                                .removeSchedule(context
+                                    .read<TeacherSchedulesProvider>()
+                                    .schedules[index]
+                                    .id),
                           ),
                         ),
                         const SizedBox(height: 16),
 
-                        MyPrimaryMenu(
-                          controller: categoryController,
-                          initValue: provider.selectedSpecialization,
-                          options: provider.specializations,
-                          haveLogo: false,
-                          onChange: (value) =>
-                              provider.onChangeSpecialization(
-                                value,
-                                categoryController,
-                              ),
-                          label: 'التصنيف',
+                        // ── Certificates ──────────────────────────────────
+                        SectionCard(
+                          icon: Icons.workspace_premium_rounded,
+                          title: 'الشهادات',
+                          items: form.certificates,
+                          onAdd: () => addItemDialog('أضف شهادة',
+                              provider.addFormCertificate, context),
+                          onRemove: provider.removeFormCertificate,
                         ),
                         const SizedBox(height: 16),
 
-                        MyTextField(
-                          controller: _maxCtrl,
-                          label: 'الحد الأقصى للطلاب',
-                          keyboard: TextInputType.number,
+                        // ── Tools ─────────────────────────────────────────
+                        SectionCard(
+                          icon: Icons.build_rounded,
+                          title: 'الأدوات المطلوبة',
+                          items: form.tools,
+                          onAdd: () => addItemDialog(
+                              'أضف أداة', provider.addFormTool, context),
+                          onRemove: provider.removeFormTool,
                         ),
+                        const SizedBox(height: 16),
 
-
+                        // ── Prerequisites ─────────────────────────────────
+                        SectionCard(
+                          icon: Icons.checklist_rounded,
+                          title: 'المتطلبات السابقة',
+                          items: form.prerequisites,
+                          onAdd: () => addItemDialog('أضف متطلب',
+                              provider.addFormPrerequisite, context),
+                          onRemove: provider.removeFormPrerequisite,
+                        ),
                       ],
                     ),
                   ),
                 ),
               ),
 
+              // ── Save button ───────────────────────────────────────────────
               Container(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
                 decoration: BoxDecoration(
@@ -222,9 +241,11 @@ class _UpdateCourseScreenState extends State<UpdateCourseScreen> {
                   boxShadow: AppTheme.bottomNavShadow,
                 ),
                 child: GradientButton(
-                  label: 'حفظ التعديلات',
+                  label:showButton? 'حفظ التعديلات':'لا يوجد تعديلات للحفظ',
                   isLoading: provider.isLoading,
-                  onTap: _updateCourse,
+                  enable: showButton,
+
+                  onTap: _submit,
                 ),
               ),
             ],
@@ -233,4 +254,28 @@ class _UpdateCourseScreenState extends State<UpdateCourseScreen> {
       ),
     );
   }
+}
+
+List<Widget> TextFieldWithTitle(
+    {required TextEditingController controller,
+    required String label,
+    String? Function(String?)? validator,
+    int maxLines = 1,
+    TextInputType keyboard = TextInputType.text}) {
+  return [
+    Text(
+      label,
+      style: TextStyle(fontSize: 14, fontFamily: 'bahji'),
+    ),
+    SizedBox(
+      height: 5,
+    ),
+    MyTextField(
+      controller: controller,
+      label: label,
+      validator: validator,
+      maxLine: maxLines,
+      keyboard: keyboard,
+    )
+  ];
 }

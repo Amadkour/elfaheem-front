@@ -564,12 +564,7 @@ class _CourseCardState extends State<_CourseCard> {
                                 )));
                       },
                     ),
-                    const SizedBox(width: 6),
-                    _OverlayBtn(
-                      icon: Icons.delete_rounded,
-                      color: AppTheme.danger,
-                      onTap: _confirmDelete,
-                    ),
+
                   ],
                 ),
               ),
@@ -605,27 +600,29 @@ class _CourseCardState extends State<_CourseCard> {
           ),
 
           // ── Expand toggle ────────────────────────────────────────────
-          InkWell(
-            onTap: () => setState(() => _expanded = !_expanded),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              child: Row(
-                children: [
-                  Text(
-                    _expanded ? 'hide_details'.tr : 'show_details'.tr,
-                    style: AppTheme.label
-                        .copyWith(color: AppTheme.primary, fontSize: 12),
+
+              InkWell(
+                onTap: () => setState(() => _expanded = !_expanded),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  child: Row(
+                    children: [
+                      Text(
+                        _expanded ? 'hide_details'.tr : 'show_details'.tr,
+                        style: AppTheme.label
+                            .copyWith(color: AppTheme.primary, fontSize: 12),
+                      ),
+                      const SizedBox(width: 4),
+                      AnimatedRotation(
+                        turns: _expanded ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 220),
+                        child: const Icon(Icons.keyboard_arrow_down_rounded,
+                            size: 16, color: AppTheme.primary),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 4),
-                  AnimatedRotation(
-                    turns: _expanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 220),
-                    child: const Icon(Icons.keyboard_arrow_down_rounded,
-                        size: 16, color: AppTheme.primary),
-                  ),
-                ],
-              ),
-            ),
+                ),
           ),
 
           // ── Expandable extras ────────────────────────────────────────
@@ -648,7 +645,32 @@ class _CourseCardState extends State<_CourseCard> {
           // ── Publish / unpublish ──────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
-            child: _PublishButton(isDraft: isDraft, onTap: _togglePublish),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child:
+                      _PublishButton(isDraft: isDraft, onTap: _togglePublish),
+                ),
+                Container(
+                  height: 40,
+                  width: 40,
+                    margin: EdgeInsets.symmetric(vertical: 10,horizontal: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.all(Radius.circular(7)),
+                    ),
+
+                    child: IconButton(
+                      onPressed: _confirmDelete,
+                      icon: Icon(
+                        Icons.delete,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    )),
+              ],
+            ),
           ),
         ],
       ),
@@ -831,39 +853,31 @@ class _PublishButton extends StatelessWidget {
   const _PublishButton({required this.isDraft, required this.onTap});
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
+  Widget build(BuildContext context) {
+    Color primaryColor= isDraft? AppTheme.primary:AppTheme.danger;
+    return GestureDetector(
         onTap: onTap,
         child: Container(
           height: 40,
           decoration: BoxDecoration(
-            gradient: isDraft
-                ? AppTheme.primaryGradient
-                : const LinearGradient(
-                    colors: [Color(0xFF6B7280), Color(0xFF9CA3AF)]),
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: isDraft
-                ? [
-                    BoxShadow(
-                      color: AppTheme.primary.withValues(alpha: 0.28),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    )
-                  ]
-                : null,
+
+            borderRadius: BorderRadius.circular(7),
+            border: BoxBorder.all(color: primaryColor),
+            
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 isDraft ? Icons.upload_rounded : Icons.visibility_off_rounded,
-                color: Colors.white,
+                color:primaryColor,
                 size: 16,
               ),
               const SizedBox(width: 7),
               Text(
                 isDraft ? 'publish_course'.tr : 'unpublish_course'.tr,
-                style: const TextStyle(
-                  color: Colors.white,
+                style:  TextStyle(
+                  color:  primaryColor,
                   fontWeight: FontWeight.w700,
                   fontSize: 13,
                   fontFamily: 'Cairo',
@@ -873,6 +887,7 @@ class _PublishButton extends StatelessWidget {
           ),
         ),
       );
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -10,6 +10,7 @@ import '../../auth/auth_provider.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import '../../student/home/component/home_section_header.dart';
 import '../courses/add_course_screen.dart';
+import '../courses/component/teacher_stats.dart';
 import '../courses/courses_screen.dart';
 import '../sessions/sessions_provider.dart';
 import '../sessions/sessions_screen.dart';
@@ -38,7 +39,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
   Widget build(BuildContext context) {
     super.build(context);
     final provider = context.watch<TeacherProvider>();
-    final loading = provider.isLoading || !provider.initDone;
+    final loading = provider.isLoading ;
     final isWide = context.showSidebar;
 
     return Directionality(

@@ -2,6 +2,7 @@ import 'package:flutter_education_app/features/teacher/home/teacher_provider.dar
 
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
+import '../../teacher/sessions/model/live_response_model.dart';
 import '../models.dart';
 
 class StudentSessionsProvider extends BaseProvider {

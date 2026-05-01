@@ -5,6 +5,8 @@
 /// derived from CourseSchedule (not SessionModel.scheduled_at).
 library;
 
+import '../courses/component/teacher_stats.dart';
+
 class CourseSchedule {
   final int id;
   final int courseId;
@@ -28,7 +30,19 @@ class CourseSchedule {
         'sunday': 'الأحد'
       }[day] ??
       day;
-
+  /// Lightweight constructor for pending (not-yet-saved) entries.
+  factory CourseSchedule.pending({
+    required String day,
+    required String startTime,
+    required String endTime,
+  }) =>
+      CourseSchedule(
+        id: -1,
+        courseId: -1,
+        day: day,
+        startTime: startTime,
+        endTime: endTime,
+      );
   factory CourseSchedule.fromJson(Map<String, dynamic> j) => CourseSchedule(
       id: j['id'] as int,
       courseId: j['course_id'] as int? ?? 0,
@@ -100,26 +114,6 @@ class CoursePrerequisite {
 //  TeacherStats
 // ─────────────────────────────────────────────
 enum TeacherCourseStatus { all, published, draft }
-class TeacherStats {
-  final double overallRating;
-  final int    totalStudents;
-  final int    totalCourses;
-
-  const TeacherStats({
-    required this.overallRating,
-    required this.totalStudents,
-    required this.totalCourses,
-  });
-
-  factory TeacherStats.fromJson(Map<String, dynamic> j) => TeacherStats(
-    overallRating: (j['overall_rating'] as num?)?.toDouble() ?? 0.0,
-    totalStudents: j['total_students'] as int? ?? 0,
-    totalCourses:  j['total_courses']  as int? ?? 0,
-  );
-
-  static const empty = TeacherStats(
-      overallRating: 0, totalStudents: 0, totalCourses: 0);
-}
 
 // ─────────────────────────────────────────────
 //  ScheduleSession
@@ -129,64 +123,76 @@ class TeacherStats {
 
 class ScheduleSession {
   // Identity
-  final int    scheduleId;
-  final int    courseId;
+  final int scheduleId;
+  final int courseId;
   final String courseName;
   final String? courseImage;
 
   // When
-  final String  day;            // 'monday' … 'sunday'
-  final String  dayLabel;       // Arabic label (localised server-side or client-side)
-  final String  startTime;      // 'HH:MM'
-  final String  endTime;        // 'HH:MM'
-  final String? scheduledDate;  // 'YYYY-MM-DD' — concrete date of next occurrence
+  final String day; // 'monday' … 'sunday'
+  final String dayLabel; // Arabic label (localised server-side or client-side)
+  final String startTime; // 'HH:MM'
+  final String endTime; // 'HH:MM'
+  final String?
+      scheduledDate; // 'YYYY-MM-DD' — concrete date of next occurrence
 
   // Duration & capacity
-  final int  durationMinutes;
+  final int durationMinutes;
   final int? maxStudents;
 
   // Live state
   final bool isToday;
   final bool isOngoing;
   final int? minutesUntilStart; // null → other day; ≤0 → already started
-  final int? minutesUntilEnd;   // non-null only when isOngoing
+  final int? minutesUntilEnd; // non-null only when isOngoing
 
   // Day labels map (fallback when server sends English key only)
   static const _labels = {
-    'monday': 'الاثنين', 'tuesday': 'الثلاثاء',
-    'wednesday': 'الأربعاء', 'thursday': 'الخميس',
-    'friday': 'الجمعة', 'saturday': 'السبت', 'sunday': 'الأحد',
+    'monday': 'الاثنين',
+    'tuesday': 'الثلاثاء',
+    'wednesday': 'الأربعاء',
+    'thursday': 'الخميس',
+    'friday': 'الجمعة',
+    'saturday': 'السبت',
+    'sunday': 'الأحد',
   };
 
   const ScheduleSession({
-    required this.scheduleId, required this.courseId,
-    required this.courseName, required this.day,
-    required this.dayLabel, required this.startTime,
-    required this.endTime, required this.durationMinutes,
-    required this.isToday, required this.isOngoing,
-    this.courseImage, this.scheduledDate,
-    this.maxStudents, this.minutesUntilStart, this.minutesUntilEnd,
+    required this.scheduleId,
+    required this.courseId,
+    required this.courseName,
+    required this.day,
+    required this.dayLabel,
+    required this.startTime,
+    required this.endTime,
+    required this.durationMinutes,
+    required this.isToday,
+    required this.isOngoing,
+    this.courseImage,
+    this.scheduledDate,
+    this.maxStudents,
+    this.minutesUntilStart,
+    this.minutesUntilEnd,
   });
 
   factory ScheduleSession.fromJson(Map<String, dynamic> j) {
     final day = j['day'] as String;
     return ScheduleSession(
-      scheduleId:        j['schedule_id']        as int,
-      courseId:          j['course_id']           as int,
-      courseName:        j['course_name']         as String,
-      courseImage:       j['course_image']        as String?,
-      day:               day,
-      dayLabel:          j['day_label']           as String? ??
-                         _labels[day] ?? day,
-      startTime:         j['start_time']          as String,
-      endTime:           j['end_time']            as String,
-      scheduledDate:     j['scheduled_date']      as String?,
-      durationMinutes:   j['duration_minutes']    as int? ?? 0,
-      maxStudents:       j['max_students']        as int?,
-      isToday:           j['is_today']            as bool? ?? false,
-      isOngoing:         j['is_ongoing']          as bool? ?? false,
+      scheduleId: j['schedule_id'] as int,
+      courseId: j['course_id'] as int,
+      courseName: j['course_name'] as String,
+      courseImage: j['course_image'] as String?,
+      day: day,
+      dayLabel: j['day_label'] as String? ?? _labels[day] ?? day,
+      startTime: j['start_time'] as String,
+      endTime: j['end_time'] as String,
+      scheduledDate: j['scheduled_date'] as String?,
+      durationMinutes: j['duration_minutes'] as int? ?? 0,
+      maxStudents: j['max_students'] as int?,
+      isToday: j['is_today'] as bool? ?? false,
+      isOngoing: j['is_ongoing'] as bool? ?? false,
       minutesUntilStart: j['minutes_until_start'] as int?,
-      minutesUntilEnd:   j['minutes_until_end']   as int?,
+      minutesUntilEnd: j['minutes_until_end'] as int?,
     );
   }
 
@@ -200,9 +206,7 @@ class ScheduleSession {
       return 'جارية — تنتهي بعد $leftد';
     }
     if (!isToday) {
-      return scheduledDate != null
-          ? '$dayLabel  $startTime'
-          : dayLabel;
+      return scheduledDate != null ? '$dayLabel  $startTime' : dayLabel;
     }
     final mu = minutesUntilStart ?? 0;
     if (mu <= 0) return 'بدأت للتو';
@@ -211,10 +215,8 @@ class ScheduleSession {
   }
 
   /// Default session name to pre-fill the "create session" form.
-  String get defaultSessionName =>
-      'حصة $dayLabel — $startTime';
+  String get defaultSessionName => 'حصة $dayLabel — $startTime';
 }
-
 
 // ── TeacherCourse ─────────────────────────────────────────────────────────────
 class TeacherCourse {

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../../auth/auth_provider.dart';
 import '../../../../teacher/home/teacher_provider.dart';
 import '../../../../teacher/sessions/live/prejoin.dart';
+import '../../../../teacher/sessions/model/live_response_model.dart';
 import '../../../models.dart';
 import '../../../sessions/sessions_provider.dart';
 import '../course_detail_provider.dart';
@@ -126,7 +127,6 @@ class StudentSessionCard extends StatelessWidget {
           await provider.joinLive(session.id);
       if (liveResponseModel == null || !context.mounted) return;
       _snack(context, 'جاري فتح الحصة المباشرة…', const Color(0xFF185FA5));
-      print(liveResponseModel.url);
       UserModel? user = context.read<AuthProvider>().currentUser;
 
       Navigator.push(
