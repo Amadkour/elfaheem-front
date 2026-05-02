@@ -348,10 +348,19 @@ class _CourseHero extends StatelessWidget {
   Widget _buildBackground() {
     final imageUrl = course.imageUrl;
     if ( imageUrl.isNotEmpty) {
-      return Image.network(
-        imageUrl,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _GradientBackground(),
+      return Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF1A1F3A), Color(0xFF2D3461)],
+          ),
+        ),
+        child: Image.network(
+          imageUrl,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => _GradientBackground(),
+        ),
       );
     }
     return _GradientBackground();

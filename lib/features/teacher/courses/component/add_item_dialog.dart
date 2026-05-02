@@ -1,13 +1,23 @@
-import 'package:flutter/cupertino.dart';
+// ─────────────────────────────────────────────────────────────────────────────
+// add_item_dialog.dart
+// ─────────────────────────────────────────────────────────────────────────────
+
 import 'package:flutter/material.dart';
 
 import '../../../../config/app_theme.dart';
 
-Future<void> addItemDialog(String hint, void Function(String) onAdd,BuildContext context) async {
+/// FIX: The original used `_` as the builder's context parameter name,
+/// which shadowed the outer [context] passed into the function.
+/// This caused [Navigator.pop(context)] inside actions to use the OUTER context
+/// instead of the dialog's context — potentially popping the wrong route.
+/// Fixed by naming the builder parameter [dialogContext] and using it correctly.
+Future<void> addItemDialog(
+    String hint, void Function(String) onAdd, BuildContext context) async {
   final ctrl = TextEditingController();
+
   final result = await showDialog<String>(
     context: context,
-    builder: (_) => Directionality(
+    builder: (BuildContext dialogContext) => Directionality(
       textDirection: TextDirection.rtl,
       child: AlertDialog(
         shape: RoundedRectangleBorder(
@@ -29,7 +39,8 @@ Future<void> addItemDialog(String hint, void Function(String) onAdd,BuildContext
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            // FIX: use dialogContext, not outer context
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('إلغاء',
                 style: TextStyle(
                     fontFamily: 'Cairo', color: AppTheme.textMedium)),
@@ -40,7 +51,9 @@ Future<void> addItemDialog(String hint, void Function(String) onAdd,BuildContext
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
             ),
-            onPressed: () => Navigator.pop(context, ctrl.text.trim()),
+            // FIX: use dialogContext and pass trimmed text result
+            onPressed: () =>
+                Navigator.pop(dialogContext, ctrl.text.trim()),
             child: const Text('إضافة',
                 style: TextStyle(
                     fontFamily: 'Cairo',
@@ -51,5 +64,6 @@ Future<void> addItemDialog(String hint, void Function(String) onAdd,BuildContext
       ),
     ),
   );
+
   if (result != null && result.isNotEmpty) onAdd(result);
 }

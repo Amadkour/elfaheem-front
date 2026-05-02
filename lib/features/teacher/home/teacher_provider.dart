@@ -1,20 +1,19 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // teacher_provider.dart
-//
-// Single source of truth for:
-//   • Course list state (fetch / publish / delete)
-//   • Add-course form state (step 1 + step 2 extras)
-//   • Update-course form state (pre-populated from an existing course)
-//
-// Screens only hold TextEditingControllers (pure UI); every list mutation and
-// every API call lives here.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import 'dart:io';
+import 'dart:developer';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/features/category/categories_provider.dart';
+import 'package:http/http.dart' hide MultipartFile;
 import 'package:provider/provider.dart';
+import 'package:cross_file/cross_file.dart';
+import 'package:dio/dio.dart' as dio;
+import 'package:http_parser/http_parser.dart';
+import 'package:path/path.dart' as p;
 
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
@@ -22,7 +21,7 @@ import '../courses/component/teacher_stats.dart';
 import 'teacher_models.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CourseFormState  —  the mutable form data owned by the provider
+// CourseFormState
 // ─────────────────────────────────────────────────────────────────────────────
 
 class CourseFormState {
@@ -51,7 +50,6 @@ class CourseFormState {
         prerequisites: prerequisites ?? this.prerequisites,
       );
 
-  /// Clears all lists.
   CourseFormState cleared() => const CourseFormState(
     schedules: [],
     certificates: [],
@@ -92,12 +90,12 @@ class TeacherProvider extends BaseProvider {
   TeacherCourse? courseById(int id) =>
       _allCourses.where((c) => c.id == id).firstOrNull;
 
-  // ── Form state (shared by add & update screens) ───────────────────────────────
+  // ── Form state ───────────────────────────────────────────────────────────────
 
   CourseFormState _form = const CourseFormState();
   CourseFormState get form => _form;
 
-  // ── Add-course step tracking ──────────────────────────────────────────────────
+  // ── Add-course step tracking ─────────────────────────────────────────────────
 
   int _addStep = 1;
   int? _createdCourseId;
@@ -105,7 +103,7 @@ class TeacherProvider extends BaseProvider {
   int get addStep => _addStep;
   int? get createdCourseId => _createdCourseId;
 
-  // ── Category / teaching-type dropdowns ───────────────────────────────────────
+  // ── Dropdowns ────────────────────────────────────────────────────────────────
 
   List<Map<String, dynamic>> specializations = [];
   Map<String, dynamic>? selectedSpecialization;
@@ -121,25 +119,20 @@ class TeacherProvider extends BaseProvider {
   // Form initialisation
   // ─────────────────────────────────────────────────────────────────────────────
 
-  /// Call once when entering the Add-course screen.
   Future<void> initAddCourse(BuildContext context) async {
-    // Reset step + form lists
     _addStep = 1;
     _createdCourseId = null;
     _form = const CourseFormState();
     selectedSpecialization = null;
     selectedTeachingType = null;
     notifyListeners();
-
     await _loadCategories(context);
   }
 
-  /// Call once when entering the Update-course screen.
   Future<void> initUpdateCourse(
       BuildContext context,
       TeacherCourse course,
       ) async {
-    // Pre-populate form from existing course data
     _form = CourseFormState(
       schedules: List.of(course.schedules),
       certificates: course.certificates.map((e) => e.title).toList(),
@@ -151,7 +144,6 @@ class TeacherProvider extends BaseProvider {
 
     await _loadCategories(context);
 
-    // Restore previously-selected category after categories are loaded
     if (course.categoryName != null) {
       _restoreSpecialization(course);
     }
@@ -163,8 +155,6 @@ class TeacherProvider extends BaseProvider {
     notifyListeners();
   }
 
-  /// Matches the course's category name against the loaded specialisations list
-  /// and sets [selectedSpecialization] so the dropdown shows the right value.
   void _restoreSpecialization(TeacherCourse course) {
     try {
       selectedSpecialization = specializations.firstWhere(
@@ -193,7 +183,7 @@ class TeacherProvider extends BaseProvider {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Form list mutations  (used by both add and update screens)
+  // Form list mutations
   // ─────────────────────────────────────────────────────────────────────────────
 
   void addFormSchedule(String day, String startTime, String endTime) {
@@ -247,11 +237,9 @@ class TeacherProvider extends BaseProvider {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Add-course step 1  —  create the course record
+  // Add-course step 1  —  create the course record THEN upload image separately
   // ─────────────────────────────────────────────────────────────────────────────
 
-  /// Returns the created [TeacherCourse] on success, null on failure.
-  /// Automatically advances [addStep] to 2 on success.
   Future<TeacherCourse?> submitAddCourseStep1({
     required String title,
     required String type,
@@ -259,30 +247,36 @@ class TeacherProvider extends BaseProvider {
     double fees = 0,
     double? totalHours,
     int? maxStudents,
-    File? logoFile,
+    XFile? logoFile,
     bool publishNow = false,
   }) async {
-    final fields = <String, String>{
-      'name': title,
-      'type': type,
-      'fees': fees.toString(),
-      if (description != null) 'description': description,
-      if (selectedSpecialization?['id'] != null)
-        'category_id': selectedSpecialization!['id'].toString(),
-      if (maxStudents != null) 'max_students': maxStudents.toString(),
-      if (totalHours != null) 'total_hours': totalHours.toString(),
-    };
-
-    final result = await run(() => _api.postMultipart(
+    // FIX: POST /courses with JSON only — no multipart here.
+    // The API /courses endpoint accepts a CourseBase JSON body, NOT a file.
+    // Image is uploaded separately via POST /courses/{id}/image.
+    final result = await run(() => _api.post(
       '/api/v1/courses',
-      fields: fields,
-      imageFile: logoFile,
-      imageFieldName: 'logo',
+      body: {
+        'name': title,
+        'type': type,
+        'fees': fees,
+        if (description != null) 'description': description,
+        if (selectedSpecialization?['id'] != null)
+          'category_id': selectedSpecialization!['id'],
+        if (maxStudents != null) 'max_students': maxStudents,
+        if (totalHours != null) 'total_hours': totalHours,
+      },
     ));
 
     if (result is! Map<String, dynamic>) return null;
 
     TeacherCourse created = TeacherCourse.fromJson(result);
+
+    // FIX: Upload image AFTER course is created using the correct endpoint
+    if (logoFile != null) {
+      final withImage =
+      await uploadCourseImage(logoFile, courseId: created.id);
+      if (withImage != null) created = withImage;
+    }
 
     if (publishNow) {
       await _callPublish(created.id);
@@ -301,9 +295,6 @@ class TeacherProvider extends BaseProvider {
   // Add-course step 2  —  persist extras concurrently
   // ─────────────────────────────────────────────────────────────────────────────
 
-  /// Fires all pending extras as concurrent API calls.
-  /// Returns true when all calls succeed (individual failures are silent —
-  /// the same behaviour as the original code).
   Future<bool> submitAddCourseStep2() async {
     final id = _createdCourseId;
     if (id == null) return false;
@@ -313,10 +304,9 @@ class TeacherProvider extends BaseProvider {
         addSchedule(id, day: s.day, startTime: s.startTime, endTime: s.endTime),
       for (final t in _form.certificates) addCertificate(id, title: t),
       for (final t in _form.tools) addTool(id, name: t),
-      for (final p in _form.prerequisites) addPrerequisite(id, title: p),
+      for (final pr in _form.prerequisites) addPrerequisite(id, title: pr),
     ]);
 
-    // Clean up form state
     _form = const CourseFormState();
     _addStep = 1;
     _createdCourseId = null;
@@ -325,22 +315,17 @@ class TeacherProvider extends BaseProvider {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Update-course  —  single submit that patches basic fields + syncs extras
+  // Update-course
   // ─────────────────────────────────────────────────────────────────────────────
 
-  /// Patches the course basic fields, then concurrently:
-  ///   • Removes extras that were deleted in the form
-  ///   • Adds extras that are new (id == -1)
-  ///
-  /// Returns the updated [TeacherCourse] on success, null on failure.
   Future<TeacherCourse?> submitUpdateCourse(
       TeacherCourse original, {
         required String name,
         String? description,
         double? fees,
         double? totalHours,
+        XFile? logoFile, // deferred image — uploaded together with all other changes
       }) async {
-    // 1. Patch basic fields
     final patchResult =
     await run(() => _api.put('/api/v1/courses/${original.id}', body: {
       'name': name,
@@ -355,25 +340,16 @@ class TeacherProvider extends BaseProvider {
 
     TeacherCourse updated = TeacherCourse.fromJson(patchResult);
 
-    // 2. Sync extras concurrently ─────────────────────────────────────────────
-    //
-    // Strategy:
-    //   • Schedules with id == -1 are new → POST
-    //   • Original schedules whose id is NOT in the form list → DELETE
-    //   • Same logic for certificates, tools, prerequisites
-
     final removedScheduleIds = original.schedules
         .where((o) => !_form.schedules.any((f) => f.id == o.id))
         .map((s) => s.id)
         .toList();
-
     final newSchedules = _form.schedules.where((s) => s.id == -1).toList();
 
     final removedCertIds = original.certificates
         .where((o) => !_form.certificates.contains(o.title))
         .map((c) => c.id)
         .toList();
-
     final newCerts = _form.certificates
         .where((t) => !original.certificates.any((o) => o.title == t))
         .toList();
@@ -382,40 +358,35 @@ class TeacherProvider extends BaseProvider {
         .where((o) => !_form.tools.contains(o.name))
         .map((t) => t.id)
         .toList();
-
     final newTools = _form.tools
         .where((n) => !original.tools.any((o) => o.name == n))
         .toList();
 
     final removedPrereqIds = original.prerequisites
         .where((o) => !_form.prerequisites.contains(o.title))
-        .map((p) => p.id)
+        .map((pr) => pr.id)
         .toList();
-
     final newPrereqs = _form.prerequisites
         .where((t) => !original.prerequisites.any((o) => o.title == t))
         .toList();
 
     await Future.wait([
-      // Removes
+      if (logoFile != null) uploadCourseImage(logoFile, courseId: original.id),
       for (final id in removedScheduleIds) removeSchedule(original.id, id),
       for (final id in removedCertIds) removeCertificate(original.id, id),
       for (final id in removedToolIds) removeTool(original.id, id),
       for (final id in removedPrereqIds) removePrerequisite(original.id, id),
-      // Adds
       for (final s in newSchedules)
         addSchedule(original.id,
             day: s.day, startTime: s.startTime, endTime: s.endTime),
       for (final t in newCerts) addCertificate(original.id, title: t),
       for (final t in newTools) addTool(original.id, name: t),
-      for (final p in newPrereqs) addPrerequisite(original.id, title: p),
+      for (final pr in newPrereqs) addPrerequisite(original.id, title: pr),
     ]);
 
-    // 3. Refresh full course from API so local cache is accurate
     final refreshed = await fetchCourseDetail(original.id);
     updated = refreshed ?? updated;
 
-    // Clean up form state
     _form = const CourseFormState();
     notifyListeners();
     return updated;
@@ -437,12 +408,13 @@ class TeacherProvider extends BaseProvider {
       notifyListeners();
     }
   }
-  Future<int> createSession(
-      {required int courseId,
-        required String name,
-        required int durationMinutes,
-        String? description}) async {
-    // ── Step 1: Create the session ──────────────────────────────────────────
+
+  Future<int> createSession({
+    required int courseId,
+    required String name,
+    required int durationMinutes,
+    String? description,
+  }) async {
     final sessionResult = await run(() => _api.post(
       '/api/v1/sessions',
       body: {
@@ -456,6 +428,7 @@ class TeacherProvider extends BaseProvider {
     ));
     return sessionResult['id'];
   }
+
   Future<void> fetchMyCourses({int skip = 0, int limit = 50}) async {
     final result = await run(() => _api.get(
       '/api/v1/my-courses',
@@ -528,28 +501,68 @@ class TeacherProvider extends BaseProvider {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Course-image upload
+  // Course-image upload — POST /api/v1/courses/{id}/image
+  //
+  // FIX 1: Use _api's baseUrl via _api.buildUri() so the host is never missing.
+  // FIX 2: Use readAsBytes() + MultipartFile.fromBytes() for Web compatibility.
+  // FIX 3: Copy auth headers from the existing _api client.
   // ─────────────────────────────────────────────────────────────────────────────
 
-  Future<bool> uploadCourseImage(int courseId, File imageFile) async {
-    final result = await run(() => _api.uploadImage(
-      '/api/v1/courses/$courseId/image',
-      file: imageFile,
-    ));
-    if (result is Map<String, dynamic>) {
-      final url = result['image_url'] as String? ??
-          result['logo_url'] as String? ??
-          result['url'] as String?;
-      if (url != null) {
-        _mutateCourse(courseId, (c) => c.copyWith(imageUrl: url));
-      }
-      return true;
+  // Called from update_screen with just XFile (no courseId yet known there).
+  // Also called internally from submitAddCourseStep1 with courseId + XFile?.
+  Future<TeacherCourse?> uploadCourseImage(XFile logoFile, {int? courseId}) async {
+    final id = courseId ?? _createdCourseId;
+    if (id == null) return null;
+
+    try {
+      final ext =
+      p.extension(logoFile.path).replaceFirst('.', '').toLowerCase();
+      final mimeType = switch (ext) {
+        'png' => 'image/png',
+        'webp' => 'image/webp',
+        'gif' => 'image/gif',
+        _ => 'image/jpeg',
+      };
+
+      // ── Read bytes — works on Web AND mobile ────────────────────────────────
+      final bytes = await logoFile.readAsBytes();
+      final filename = p.basename(logoFile.path).isNotEmpty
+          ? p.basename(logoFile.path)
+          : 'image.${ext.isEmpty ? 'jpg' : ext}';
+
+      final formData = FormData.fromMap({
+        'file': MultipartFile.fromBytes(
+          bytes,
+          filename: filename,                      // FastAPI requires a filename
+          contentType: MediaType.parse(mimeType),
+        ),
+      });
+
+      // FIX: Use _api's own Dio instance (has baseUrl + auth headers already).
+      // _api.dio is the internal Dio instance — adjust the getter name to match
+      // whatever your ApiClient exposes (commonly .dio or .client).
+      final response = await _api.dio.post(
+        '/api/v1/courses/$id/image',
+        data: formData,
+        // ⚠️ Do NOT set Content-Type here — Dio sets it with boundary automatically
+      );
+
+      log('uploadCourseImage ✅ status=${response.statusCode}');
+      log('uploadCourseImage body=${response.data}');
+
+      if (response.statusCode != 200) return null;
+      return TeacherCourse.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      log('uploadCourseImage ❌ ${e.response?.statusCode}: ${e.response?.data}');
+      return null;
+    } catch (e) {
+      log('uploadCourseImage ❌ unexpected: $e');
+      return null;
     }
-    return false;
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Extras CRUD  (also used internally by submitAddCourseStep2 / submitUpdateCourse)
+  // Extras CRUD
   // ─────────────────────────────────────────────────────────────────────────────
 
   Future<CourseSchedule?> addSchedule(
@@ -597,8 +610,10 @@ class TeacherProvider extends BaseProvider {
     ));
     if (result is Map<String, dynamic>) {
       final c = CourseCertificate.fromJson(result);
-      _mutateCourse(courseId,
-              (course) => course.copyWith(certificates: [...course.certificates, c]));
+      _mutateCourse(
+          courseId,
+              (course) =>
+              course.copyWith(certificates: [...course.certificates, c]));
       return c;
     }
     return null;
@@ -610,9 +625,8 @@ class TeacherProvider extends BaseProvider {
       _mutateCourse(
           courseId,
               (c) => c.copyWith(
-              certificates: c.certificates
-                  .where((x) => x.id != certificateId)
-                  .toList()));
+              certificates:
+              c.certificates.where((x) => x.id != certificateId).toList()));
       return true;
     }
     return false;
@@ -632,8 +646,7 @@ class TeacherProvider extends BaseProvider {
     ));
     if (result is Map<String, dynamic>) {
       final t = CourseTool.fromJson(result);
-      _mutateCourse(
-          courseId, (c) => c.copyWith(tools: [...c.tools, t]));
+      _mutateCourse(courseId, (c) => c.copyWith(tools: [...c.tools, t]));
       return t;
     }
     return null;
@@ -664,10 +677,11 @@ class TeacherProvider extends BaseProvider {
       },
     ));
     if (result is Map<String, dynamic>) {
-      final p = CoursePrerequisite.fromJson(result);
-      _mutateCourse(courseId,
-              (c) => c.copyWith(prerequisites: [...c.prerequisites, p]));
-      return p;
+      final pr = CoursePrerequisite.fromJson(result);
+      _mutateCourse(
+          courseId,
+              (c) => c.copyWith(prerequisites: [...c.prerequisites, pr]));
+      return pr;
     }
     return null;
   }
@@ -678,9 +692,8 @@ class TeacherProvider extends BaseProvider {
       _mutateCourse(
           courseId,
               (c) => c.copyWith(
-              prerequisites: c.prerequisites
-                  .where((p) => p.id != prerequisiteId)
-                  .toList()));
+              prerequisites:
+              c.prerequisites.where((pr) => pr.id != prerequisiteId).toList()));
       return true;
     }
     return false;
@@ -711,7 +724,8 @@ class TeacherProvider extends BaseProvider {
     return null;
   }
 
-  Future<bool> endLiveSession(int sessionId, {bool saveRecording = true}) async {
+  Future<bool> endLiveSession(int sessionId,
+      {bool saveRecording = true}) async {
     final result = await run(() => _api.post(
       '/api/v1/live-sessions/$sessionId/end',
       queryParams: {'save_recording': saveRecording},
@@ -724,8 +738,7 @@ class TeacherProvider extends BaseProvider {
   // ─────────────────────────────────────────────────────────────────────────────
 
   void _mutateCourse(int courseId, TeacherCourse Function(TeacherCourse) fn) {
-    _allCourses =
-        _allCourses.map((c) => c.id == courseId ? fn(c) : c).toList();
+    _allCourses = _allCourses.map((c) => c.id == courseId ? fn(c) : c).toList();
     notifyListeners();
   }
 

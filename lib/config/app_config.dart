@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 /// Application configuration and AppTheme.
 class AppConfig {
 // For Android Emulator
-  static const String baseUrl = 'https://propose-distributors-blake-intelligence.trycloudflare.com';
+  static const String baseUrl = 'https://melbourne-willow-empire-muze.trycloudflare.com';
 }
 
 Map<String, dynamic> translation = {};

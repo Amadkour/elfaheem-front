@@ -133,8 +133,7 @@ class ScheduleSession {
   final String dayLabel; // Arabic label (localised server-side or client-side)
   final String startTime; // 'HH:MM'
   final String endTime; // 'HH:MM'
-  final String?
-      scheduledDate; // 'YYYY-MM-DD' — concrete date of next occurrence
+  final DateTime scheduledDate; // 'YYYY-MM-DD' — concrete date of next occurrence
 
   // Duration & capacity
   final int durationMinutes;
@@ -169,7 +168,7 @@ class ScheduleSession {
     required this.isToday,
     required this.isOngoing,
     this.courseImage,
-    this.scheduledDate,
+    required this.scheduledDate,
     this.maxStudents,
     this.minutesUntilStart,
     this.minutesUntilEnd,
@@ -186,7 +185,7 @@ class ScheduleSession {
       dayLabel: j['day_label'] as String? ?? _labels[day] ?? day,
       startTime: j['start_time'] as String,
       endTime: j['end_time'] as String,
-      scheduledDate: j['scheduled_date'] as String?,
+      scheduledDate: DateTime.parse(j['scheduled_date'] as String),
       durationMinutes: j['duration_minutes'] as int? ?? 0,
       maxStudents: j['max_students'] as int?,
       isToday: j['is_today'] as bool? ?? false,

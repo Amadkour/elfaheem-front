@@ -1,6 +1,8 @@
-import 'dart:math';
+// ─────────────────────────────────────────────────────────────────────────────
+// gradient_button.dart
+// ─────────────────────────────────────────────────────────────────────────────
 
-import 'package:flutter/cupertino.dart';
+// FIX: removed unused `dart:math` import that caused an analysis warning.
 import 'package:flutter/material.dart';
 
 import '../../../../config/app_theme.dart';
@@ -11,18 +13,25 @@ class GradientButton extends StatelessWidget {
   final bool enable;
   final VoidCallback? onTap;
 
-  const GradientButton(
-      {super.key, required this.label, required this.isLoading, this.onTap,  this.enable=true});
+  const GradientButton({
+    super.key,
+    required this.label,
+    required this.isLoading,
+    this.onTap,
+    this.enable = true,
+  });
 
   @override
   Widget build(BuildContext context) => GestureDetector(
     onTap: isLoading || !enable ? null : onTap,
-    child: Container(
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
       height: 50,
       decoration: BoxDecoration(
-        gradient: enable? AppTheme.primaryGradient: AppTheme.disableGradient,
+        gradient:
+        enable ? AppTheme.primaryGradient : AppTheme.disableGradient,
         borderRadius: BorderRadius.circular(30),
-        boxShadow: AppTheme.primaryShadow,
+        boxShadow: enable ? AppTheme.primaryShadow : null,
       ),
       child: Center(
         child: isLoading
@@ -31,12 +40,15 @@ class GradientButton extends StatelessWidget {
             height: 20,
             child: CircularProgressIndicator(
                 strokeWidth: 2, color: Colors.white))
-            : Text(label,
-            style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 14,
-                fontFamily: 'Cairo')),
+            : Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+            fontSize: 14,
+            fontFamily: 'Cairo',
+          ),
+        ),
       ),
     ),
   );

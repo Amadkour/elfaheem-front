@@ -255,7 +255,7 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen>
       ],
     ),
     child: Row(children: [
-      Text('ملفي الشخصي',
+      Text('account'.tr,
           style: AppTheme.h2.copyWith(fontSize: 16)),
     ]),
   );

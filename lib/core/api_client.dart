@@ -3,15 +3,19 @@ library;
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
-import 'package:flutter/cupertino.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/auth/verified_screen.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:dio/dio.dart';
+import 'package:http_parser/http_parser.dart';
+import 'package:path/path.dart' as p;
 
 import '../models/user.dart';
 
@@ -72,14 +76,7 @@ class ApiClient {
   static const String baseUrl = AppConfig.baseUrl;
   static const Duration _timeout = Duration(seconds: 30);
 
-  /// How many times _send() will attempt the raw TCP+HTTP call.
-  /// 3 = first attempt + 2 automatic retries inside the transport layer,
-  /// completely transparent to BaseProvider.
   static const int _sendMaxTries = 3;
-
-  /// Pause between consecutive _send() tries.
-  /// Index 0 → delay after attempt 1 (1 s).
-  /// Index 1 → delay after attempt 2 (2 s).
   static const List<Duration> _sendDelays = [
     Duration(seconds: 1),
     Duration(seconds: 2),
@@ -87,31 +84,98 @@ class ApiClient {
 
   final _storage = TokenStorage();
 
+  // ── Shared Dio instance with interceptor ──────────────────────────────────
+
+  late final Dio _dio = _buildDio();
+
+  Dio _buildDio() {
+    final dio = Dio(BaseOptions(
+      baseUrl: baseUrl,
+      connectTimeout: _timeout,
+      receiveTimeout: _timeout,
+      receiveDataWhenStatusError: true,
+    ));
+
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        // ── Inject Bearer token before every request ──────────────────────
+        onRequest: (options, handler) async {
+          final token = await _storage.getAccessToken();
+          if (token != null) {
+            options.headers['Authorization'] = 'Bearer $token';
+          } else {
+            options.headers.remove('Authorization');
+          }
+          handler.next(options);
+        },
+
+        // ── On 401 → refresh token → retry once ──────────────────────────
+        onError: (DioException error, handler) async {
+          final response = error.response;
+
+          if (response?.statusCode == 401) {
+            final refreshed = await _refreshToken();
+            if (refreshed) {
+              try {
+                // Retry the failed request — onRequest interceptor will
+                // re-inject the new token automatically.
+                final retryOptions = Options(
+                  method: error.requestOptions.method,
+                  headers: error.requestOptions.headers,
+                );
+
+                final retryResponse = await dio.request(
+                  error.requestOptions.path,
+                  data: error.requestOptions.data,
+                  queryParameters: error.requestOptions.queryParameters,
+                  options: retryOptions,
+                );
+
+                return handler.resolve(retryResponse);
+              } catch (e) {
+                return handler.next(error);
+              }
+            }
+          }
+
+          handler.next(error);
+        },
+      ),
+    );
+
+    return dio;
+  }
+
+  /// Exposed so providers can call _api.dio.post(...) directly for multipart.
+  Dio get dio => _dio;
+
+  // ── package:http transport ────────────────────────────────────────────────
+
   Future<http.Response> _send(
-    Future<http.Response> Function(http.Client) fn,
-  ) async {
+      Future<http.Response> Function(http.Client) fn,
+      ) async {
     for (int attempt = 1; attempt <= _sendMaxTries; attempt++) {
       final client = http.Client();
       try {
-        return await fn(client); // happy path — return immediately
+        return await fn(client);
       } on ApiException {
-        rethrow; // server error: never retry at transport level
+        rethrow;
       } catch (e) {
         final isLast = attempt >= _sendMaxTries;
         debugPrint(
           '🔌 _send attempt $attempt/$_sendMaxTries: $e'
-          '${isLast ? " → giving up, re-throwing" : " → retrying…"}',
+              '${isLast ? " → giving up" : " → retrying…"}',
         );
         if (isLast) rethrow;
         await Future.delayed(_sendDelays[attempt - 1]);
       } finally {
-        client.close(); // always release the socket, even on success
+        client.close();
       }
     }
-    throw StateError('_send: unreachable'); // satisfies the compiler
+    throw StateError('_send: unreachable');
   }
 
-  // ── Auth header ───────────────────────────────────────────────────────────
+  // ── Auth headers (for package:http requests only) ─────────────────────────
 
   Future<Map<String, String>> _headers({bool auth = true}) async {
     final headers = <String, String>{
@@ -133,10 +197,10 @@ class ApiClient {
     if (refresh == null) return false;
 
     final uri =
-        Uri.parse('$baseUrl/api/v1/auth/refresh?refresh_token=$refresh');
+    Uri.parse('$baseUrl/api/v1/auth/refresh?refresh_token=$refresh');
 
     final res = await _send(
-      (c) async =>
+          (c) async =>
           c.post(uri, headers: await _headers(auth: false)).timeout(_timeout),
     );
 
@@ -152,26 +216,48 @@ class ApiClient {
     return false;
   }
 
-  // ── Response handler ──────────────────────────────────────────────────────
+  // ── Response handler (http + dio) ─────────────────────────────────────────
 
-  dynamic _handleResponse(http.Response res) {
-    if (res.statusCode == 204) return true;
+  dynamic _handleResponse(dynamic res) {
+    final int statusCode;
+    dynamic body;
+    String? requestPath;
 
-    final body = res.body.isNotEmpty ? jsonDecode(res.body) : null;
-    if(res.statusCode==403) {
-      if(context!=null) {
-        Navigator.of(context!).push(MaterialPageRoute(builder: (c){
-          UserModel? u=c.read<AuthProvider>().currentUser;
-
-          return OtpVerificationScreen(email: u?.gmail??'', role: u?.role??'');
-        }));
-      }
+    if (res is http.Response) {
+      statusCode = res.statusCode;
+      requestPath = res.request?.url.path;
+      body = res.body.isNotEmpty ? jsonDecode(res.body) : null;
+    } else if (res is Response) {
+      // dio.Response — JSON already decoded by dio
+      statusCode = res.statusCode ?? 0;
+      requestPath = res.realUri.path;
+      body = res.data;
+    } else {
+      throw ApiException(
+        statusCode: 0,
+        message: 'Unknown response type: ${res.runtimeType}',
+        body: null,
+      );
     }
-    if (res.statusCode >= 200 && res.statusCode < 300){
-      log("=================[${res.request?.url.path}]====================");
-      log(res.body);
-      log("====================================");
-      return body;}
+
+    if (statusCode == 204) return true;
+
+    if (statusCode == 403 && context != null) {
+      Navigator.of(context!).push(MaterialPageRoute(builder: (c) {
+        final UserModel? u = c.read<AuthProvider>().currentUser;
+        return OtpVerificationScreen(
+          email: u?.gmail ?? '',
+          role: u?.role ?? '',
+        );
+      }));
+    }
+
+    if (statusCode >= 200 && statusCode < 300) {
+      log('=================[${requestPath}]====================');
+      log(body?.toString() ?? 'null');
+      log('====================================');
+      return body;
+    }
 
     String message = 'Request failed';
     if (body is Map && body.containsKey('detail')) {
@@ -181,26 +267,25 @@ class ApiClient {
           : (detail as List?)?.map((e) => e['msg']).join(', ') ?? message;
     }
 
-    throw ApiException(
-        statusCode: res.statusCode, message: message, body: body);
+    throw ApiException(statusCode: statusCode, message: message, body: body);
   }
 
   // ── GET ───────────────────────────────────────────────────────────────────
 
   Future<dynamic> get(
-    String path, {
-    Map<String, dynamic>? queryParams,
-    bool auth = true,
-  }) async {
+      String path, {
+        Map<String, dynamic>? queryParams,
+        bool auth = true,
+      }) async {
     final uri = _buildUri(path, queryParams);
     var res = await _send(
-      (c) async =>
+          (c) async =>
           c.get(uri, headers: await _headers(auth: auth)).timeout(_timeout),
     );
     if (res.statusCode == 401 && auth) {
       if (await _refreshToken()) {
         res = await _send(
-          (c) async => c.get(uri, headers: await _headers()).timeout(_timeout),
+              (c) async => c.get(uri, headers: await _headers()).timeout(_timeout),
         );
       }
     }
@@ -210,26 +295,26 @@ class ApiClient {
   // ── POST ──────────────────────────────────────────────────────────────────
 
   Future<dynamic> post(
-    String path, {
-    dynamic body,
-    Map<String, dynamic>? queryParams,
-    bool auth = true,
-  }) async {
+      String path, {
+        dynamic body,
+        Map<String, dynamic>? queryParams,
+        bool auth = true,
+      }) async {
     final uri = _buildUri(path, queryParams);
     var res = await _send(
-      (c) async => c
+          (c) async => c
           .post(uri,
-              headers: await _headers(auth: auth),
-              body: body != null ? jsonEncode(body) : null)
+          headers: await _headers(auth: auth),
+          body: body != null ? jsonEncode(body) : null)
           .timeout(_timeout),
     );
     if (res.statusCode == 401 && auth) {
       if (await _refreshToken()) {
         res = await _send(
-          (c) async => c
+              (c) async => c
               .post(uri,
-                  headers: await _headers(),
-                  body: body != null ? jsonEncode(body) : null)
+              headers: await _headers(),
+              body: body != null ? jsonEncode(body) : null)
               .timeout(_timeout),
         );
       }
@@ -240,26 +325,26 @@ class ApiClient {
   // ── PUT ───────────────────────────────────────────────────────────────────
 
   Future<dynamic> put(
-    String path, {
-    dynamic body,
-    Map<String, dynamic>? queryParams,
-    bool auth = true,
-  }) async {
+      String path, {
+        dynamic body,
+        Map<String, dynamic>? queryParams,
+        bool auth = true,
+      }) async {
     final uri = _buildUri(path, queryParams);
     var res = await _send(
-      (c) async => c
+          (c) async => c
           .put(uri,
-              headers: await _headers(auth: auth),
-              body: body != null ? jsonEncode(body) : null)
+          headers: await _headers(auth: auth),
+          body: body != null ? jsonEncode(body) : null)
           .timeout(_timeout),
     );
     if (res.statusCode == 401 && auth) {
       if (await _refreshToken()) {
         res = await _send(
-          (c) async => c
+              (c) async => c
               .put(uri,
-                  headers: await _headers(),
-                  body: body != null ? jsonEncode(body) : null)
+              headers: await _headers(),
+              body: body != null ? jsonEncode(body) : null)
               .timeout(_timeout),
         );
       }
@@ -270,19 +355,20 @@ class ApiClient {
   // ── DELETE ────────────────────────────────────────────────────────────────
 
   Future<dynamic> delete(
-    String path, {
-    Map<String, dynamic>? queryParams,
-    bool auth = true,
-  }) async {
+      String path, {
+        Map<String, dynamic>? queryParams,
+        bool auth = true,
+      }) async {
     final uri = _buildUri(path, queryParams);
     var res = await _send(
-      (c) async =>
-          c.delete(uri, headers: await _headers(auth: auth)).timeout(_timeout),
+          (c) async => c
+          .delete(uri, headers: await _headers(auth: auth))
+          .timeout(_timeout),
     );
     if (res.statusCode == 401 && auth) {
       if (await _refreshToken()) {
         res = await _send(
-          (c) async =>
+              (c) async =>
               c.delete(uri, headers: await _headers()).timeout(_timeout),
         );
       }
@@ -290,66 +376,103 @@ class ApiClient {
     return _handleResponse(res);
   }
 
-  // ── POST multipart ────────────────────────────────────────────────────────
+  // ── Upload image (multipart POST via Dio) ─────────────────────────────────
+  //
+  // Token is injected automatically by the Dio interceptor — no manual
+  // _applyDioAuth() call needed.
 
-  /// Used for `POST /api/v1/courses` — multipart/form-data with optional logo.
-  Future<dynamic> postMultipart(
-    String path, {
-    required Map<String, String> fields,
-    File? imageFile,
-    String imageFieldName = 'logo',
-    bool auth = true,
-  }) async {
+  Future<dynamic> uploadImage(
+      String path, {
+        required XFile file,
+        String fieldName = 'file',
+        bool auth = true,
+      }) async {
+    final ext = p.extension(file.path).replaceFirst('.', '').toLowerCase();
+    final mime = switch (ext) {
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      'gif' => 'image/gif',
+      _ => 'image/jpeg',
+    };
+
+    final bytes = await file.readAsBytes();
+
+    final filename = p.basename(file.path).isNotEmpty
+        ? p.basename(file.path)
+        : 'upload.${ext.isEmpty ? 'jpg' : ext}';
+
+    final formData = FormData.fromMap({
+      fieldName: MultipartFile.fromBytes(
+        bytes,
+        filename: filename,
+        contentType: MediaType.parse(mime),
+      ),
+    });
+
     final uri = _buildUri(path, null);
-    final headers = await _headers(auth: auth)
-        // ..remove(HttpHeaders.contentTypeHeader)
-        ;
 
-    final request = http.MultipartRequest('POST', uri)
-      ..headers.addAll(headers)
-      ..fields.addAll(fields);
+    final response = await _dio
+        .post(
+      uri.toString(),
+      data: formData,
+    )
+        .timeout(_timeout);
+
+    return _handleResponse(response);
+  }
+
+  // ── POST multipart (form fields + optional image) ─────────────────────────
+  //
+  // Token is injected automatically by the Dio interceptor — no manual
+  // _applyDioAuth() call needed.
+
+  Future<dynamic> postMultipart(
+      String path, {
+        required Map<String, String> fields,
+        XFile? imageFile,
+        String imageFieldName = 'logo',
+        bool auth = true,
+      }) async {
+    final formMap = <String, dynamic>{...fields};
 
     if (imageFile != null) {
-      request.files.add(
-        await http.MultipartFile.fromPath(imageFieldName, imageFile.path,
-            contentType: http.MediaType.parse('image/jpeg')),
+      final ext =
+      p.extension(imageFile.path).replaceFirst('.', '').toLowerCase();
+      final mime = switch (ext) {
+        'png' => 'image/png',
+        'webp' => 'image/webp',
+        _ => 'image/jpeg',
+      };
+
+      final bytes = await imageFile.readAsBytes();
+      final filename = p.basename(imageFile.path).isNotEmpty
+          ? p.basename(imageFile.path)
+          : 'upload.${ext.isEmpty ? 'jpg' : ext}';
+
+      formMap[imageFieldName] = MultipartFile.fromBytes(
+        bytes,
+        filename: filename,
+        contentType: MediaType.parse(mime),
       );
     }
 
-    final streamed = await request.send().timeout(_timeout);
-    final res = await http.Response.fromStream(streamed);
-    return _handleResponse(res);
-  }
-
-  // ── Upload image ──────────────────────────────────────────────────────────
-
-  Future<dynamic> uploadImage(
-    String path, {
-    required File file,
-    String fieldName = 'file',
-    bool auth = true,
-  }) async {
+    final formData = FormData.fromMap(formMap);
     final uri = _buildUri(path, null);
-    final headers = await _headers(auth: auth)
-      ..remove(HttpHeaders.contentTypeHeader);
 
-    final request = http.MultipartRequest('POST', uri)
-      ..headers.addAll(headers)
-      ..files.add(await http.MultipartFile.fromPath(fieldName, file.path));
+    final response =
+    await _dio.post(uri.toString(), data: formData).timeout(_timeout);
 
-    final streamed = await request.send().timeout(_timeout);
-    final res = await http.Response.fromStream(streamed);
-    return _handleResponse(res);
+    return _handleResponse(response);
   }
 
-  // ── Legacy uploadFile ─────────────────────────────────────────────────────
+  // ── Legacy uploadFile (kept for backward compat, mobile only) ────────────
 
   Future<dynamic> uploadFile(
-    String path, {
-    required File file,
-    required Map<String, String> fields,
-    bool auth = true,
-  }) async {
+      String path, {
+        required File file,
+        required Map<String, String> fields,
+        bool auth = true,
+      }) async {
     final uri = _buildUri(path, null);
     final headers = await _headers(auth: auth)
       ..remove(HttpHeaders.contentTypeHeader);
@@ -368,7 +491,7 @@ class ApiClient {
 
   Uri _buildUri(String path, Map<String, dynamic>? queryParams) {
     final params = queryParams?.map(
-      (k, v) => MapEntry(k, v?.toString() ?? ''),
+          (k, v) => MapEntry(k, v?.toString() ?? ''),
     );
     return Uri.parse('$baseUrl$path').replace(
       queryParameters: (params?.isEmpty ?? true) ? null : params,
@@ -383,5 +506,6 @@ class ApiClient {
     required String accessToken,
     required String refreshToken,
   }) =>
-      _storage.saveTokens(accessToken: accessToken, refreshToken: refreshToken);
+      _storage.saveTokens(
+          accessToken: accessToken, refreshToken: refreshToken);
 }
