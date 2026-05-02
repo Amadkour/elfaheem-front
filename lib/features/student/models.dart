@@ -119,11 +119,11 @@ class TeacherSessionItem {
   final String name;
   final String? description,
       type,
-      scheduledAt,
       roomUrl,
       recordingUrl,
       recordingStatus;
   final bool isLiveActive;
+  final DateTime scheduledAt;
 
   const TeacherSessionItem({
     required this.id,
@@ -133,7 +133,7 @@ class TeacherSessionItem {
     required this.order,
     this.description,
     this.type,
-    this.scheduledAt,
+    required this.scheduledAt,
     this.isLiveActive = false,
     this.roomUrl,
     this.recordingUrl,
@@ -148,10 +148,10 @@ class TeacherSessionItem {
   String get scheduledLabel {
     if (scheduledAt == null) return '';
     try {
-      final dt = DateTime.parse(scheduledAt!).toLocal();
+      final dt = scheduledAt.toLocal();
       return '${dt.day}/${dt.month}  ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     } catch (_) {
-      return scheduledAt!;
+      return scheduledAt.toIso8601String();
     }
   }
 
@@ -162,7 +162,7 @@ class TeacherSessionItem {
           name: j['name'] as String? ?? '',
           description: j['description'] as String?,
           type: j['type'] as String?,
-          scheduledAt: j['scheduled_at'] as String?,
+          scheduledAt: DateTime.parse(j['scheduled_at'] as String),
           durationMinutes: j['duration_minutes'] as int? ?? 0,
           order: j['order'] as int? ?? 0,
           isLiveActive: j['is_live_active'] as bool? ?? false,
@@ -173,7 +173,7 @@ class TeacherSessionItem {
   TeacherSessionItem copyWith(
       {String? name,
         String? description,
-        String? scheduledAt,
+        DateTime? scheduledAt,
         int? durationMinutes,
         int? order,
         bool? isLiveActive,

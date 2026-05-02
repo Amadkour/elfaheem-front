@@ -39,7 +39,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
       _durCtrl.text   = s.durationMinutes.toString();
       _orderCtrl.text = s.order.toString();
       _type = s.type ?? 'pre-recorded';
-      if (s.scheduledAt != null) _scheduled = DateTime.tryParse(s.scheduledAt!);
+      if (s.scheduledAt != null) _scheduled =s.scheduledAt;
     }
   }
 
