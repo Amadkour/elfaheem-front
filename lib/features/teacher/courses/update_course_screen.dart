@@ -25,6 +25,7 @@ import 'component/section_card.dart';
 class UpdateCourseScreen extends StatefulWidget {
   // FIX: made final — mutating a widget field is an anti-pattern
   final TeacherCourse course;
+
   const UpdateCourseScreen({super.key, required this.course});
 
   @override
@@ -105,16 +106,16 @@ class _UpdateCourseScreenState extends State<UpdateCourseScreen> {
   // ── Submit guard ─────────────────────────────────────────────────────────────
 
   bool get showButton {
-    final newPrice =
-        double.tryParse(_priceCtrl.text) ?? widget.course.price;
+    final newPrice = double.tryParse(_priceCtrl.text) ?? widget.course.price;
     final newHours =
         double.tryParse(_hoursCtrl.text) ?? widget.course.totalHours;
+
 
     return _logoBytes != null || // new image picked
         _titleCtrl.text != widget.course.title ||
         _descCtrl.text != (widget.course.description ?? '') ||
         newPrice != widget.course.price ||
-        newHours != widget.course.totalHours;
+        newHours != widget.course.totalHours ;
   }
 
   // ── Submit ────────────────────────────────────────────────────────────────────
@@ -126,8 +127,7 @@ class _UpdateCourseScreenState extends State<UpdateCourseScreen> {
     final updated = await provider.submitUpdateCourse(
       widget.course,
       name: _titleCtrl.text.trim(),
-      description:
-      _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+      description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
       fees: double.tryParse(_priceCtrl.text),
       totalHours: double.tryParse(_hoursCtrl.text),
       logoFile: _logoFile, // deferred image upload — fires on save only
@@ -214,8 +214,8 @@ class _UpdateCourseScreenState extends State<UpdateCourseScreen> {
                           initValue: provider.selectedSpecialization,
                           options: provider.specializations,
                           haveLogo: false,
-                          onChange: (i) => provider.onChangeSpecialization(
-                              i, _categoryCtrl),
+                          onChange: (i) =>
+                              provider.onChangeSpecialization(i, _categoryCtrl),
                           label: 'category'.tr,
                         ),
                         const SizedBox(height: 16),
@@ -225,30 +225,7 @@ class _UpdateCourseScreenState extends State<UpdateCourseScreen> {
                           label: 'expected_hours'.tr,
                           keyboard: TextInputType.number,
                         ),
-                        const SizedBox(height: 20),
 
-                        ChangeNotifierProvider.value(
-                          value: context.watch<TeacherSchedulesProvider>()
-                            ..initCourse(widget.course.id),
-                          child: SectionCard(
-                            icon: Icons.calendar_month_rounded,
-                            title: 'الجدول الأسبوعي',
-                            items: context
-                                .read<TeacherSchedulesProvider>()
-                                .schedules
-                                .map((s) =>
-                            '${s.dayLabel}  ${s.startTime} – ${s.endTime}')
-                                .toList(),
-                            onAdd: () => TeacherSchedulesScreen
-                                .openAddScheduleScreenSheet(context),
-                            onRemove: (int index) => context
-                                .read<TeacherSchedulesProvider>()
-                                .removeSchedule(context
-                                .read<TeacherSchedulesProvider>()
-                                .schedules[index]
-                                .id),
-                          ),
-                        ),
                         const SizedBox(height: 16),
 
                         SectionCard(
@@ -284,19 +261,46 @@ class _UpdateCourseScreenState extends State<UpdateCourseScreen> {
                   ),
                 ),
               ),
-
               Container(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
                 decoration: BoxDecoration(
                     color: AppTheme.cardBg,
                     boxShadow: AppTheme.bottomNavShadow),
-                child: GradientButton(
-                  label: showButton
-                      ? 'حفظ التعديلات'
-                      : 'لا يوجد تعديلات للحفظ',
-                  isLoading: provider.isLoading,
-                  enable: showButton,
-                  onTap: _submit,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: GradientButton(
+                          label: showButton || provider.changeLists
+                              ? 'حفظ التعديلات'
+                              : 'لا يوجد تعديلات للحفظ',
+                          isLoading: provider.isLoading,
+                          enable: showButton || provider.changeLists,
+                          onTap: _submit,
+                        ),
+                      ),
+                    ),
+                    InkWell(
+                      child: Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(Icons.calendar_month_rounded, size: 30, color: AppTheme.primary),
+                      ),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                TeacherSchedulesScreen(course: widget.course),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -319,8 +323,7 @@ List<Widget> TextFieldWithTitle({
   TextInputType keyboard = TextInputType.text,
 }) {
   return [
-    Text(label,
-        style: const TextStyle(fontSize: 14, fontFamily: 'bahji')),
+    Text(label, style: const TextStyle(fontSize: 14, fontFamily: 'bahji')),
     const SizedBox(height: 5),
     MyTextField(
       controller: controller,

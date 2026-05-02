@@ -68,7 +68,7 @@ class TeacherProvider extends BaseProvider {
   TeacherProvider({ApiClient? api}) : _api = api ?? ApiClient();
 
   // ── Course list state ────────────────────────────────────────────────────────
-
+  bool  changeLists=false;
   TeacherStats _stats = const TeacherStats();
   List<TeacherCourse> _allCourses = [];
   List<ScheduleSession> _schedule = [];
@@ -173,66 +173,55 @@ class TeacherProvider extends BaseProvider {
   void onChangeSpecialization(int i, ExpansibleController ctrl) {
     ctrl.collapse();
     selectedSpecialization = specializations[i];
+    changeLists=true;
     notifyListeners();
   }
 
   void onChangeTeachingType(int i, ExpansibleController ctrl) {
     ctrl.collapse();
+    changeLists=true;
     selectedTeachingType = teachingTypes[i];
     notifyListeners();
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Form list mutations
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  void addFormSchedule(String day, String startTime, String endTime) {
-    _form = _form.copyWith(
-      schedules: [
-        ..._form.schedules,
-        CourseSchedule.pending(
-            day: day, startTime: startTime, endTime: endTime),
-      ],
-    );
-    notifyListeners();
-  }
-
-  void removeFormSchedule(int index) {
-    final updated = List<CourseSchedule>.of(_form.schedules)..removeAt(index);
-    _form = _form.copyWith(schedules: updated);
-    notifyListeners();
-  }
 
   void addFormCertificate(String title) {
     _form = _form.copyWith(certificates: [..._form.certificates, title]);
+    changeLists=true;
     notifyListeners();
   }
 
   void removeFormCertificate(int index) {
     final updated = List<String>.of(_form.certificates)..removeAt(index);
     _form = _form.copyWith(certificates: updated);
+    changeLists=true;
+
     notifyListeners();
   }
 
   void addFormTool(String name) {
     _form = _form.copyWith(tools: [..._form.tools, name]);
+    changeLists=true;
     notifyListeners();
   }
 
   void removeFormTool(int index) {
     final updated = List<String>.of(_form.tools)..removeAt(index);
     _form = _form.copyWith(tools: updated);
+    changeLists=true;
     notifyListeners();
   }
 
   void addFormPrerequisite(String title) {
     _form = _form.copyWith(prerequisites: [..._form.prerequisites, title]);
+    changeLists=true;
     notifyListeners();
   }
 
   void removeFormPrerequisite(int index) {
     final updated = List<String>.of(_form.prerequisites)..removeAt(index);
     _form = _form.copyWith(prerequisites: updated);
+    changeLists=true;
     notifyListeners();
   }
 

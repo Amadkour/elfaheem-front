@@ -257,23 +257,6 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                ChangeNotifierProvider.value(
-                  value: context.read<TeacherSchedulesProvider>(),
-                  child: SectionCard(
-                    icon: Icons.calendar_month_rounded,
-                    title: 'الجدول الأسبوعي',
-                    items: context
-                        .read<TeacherSchedulesProvider>()
-                        .schedules
-                        .map((s) =>
-                    '${s.dayLabel}  ${s.startTime} – ${s.endTime}')
-                        .toList(),
-                    onAdd: () =>
-                        TeacherSchedulesScreen.openAddScheduleScreenSheet(
-                            context),
-                    onRemove: provider.removeFormSchedule,
-                  ),
-                ),
                 const SizedBox(height: 16),
                 SectionCard(
                   icon: Icons.workspace_premium_rounded,
