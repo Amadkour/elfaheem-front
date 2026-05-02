@@ -45,9 +45,6 @@ class AppRoutes {
           ),
         );
 
-      case createCourse:
-        return MaterialPageRoute(builder: (_) => const AddCourseScreen());
-
       default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(

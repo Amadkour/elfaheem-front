@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/attendance/teacher_attendance_screen.dart';
+import 'package:flutter_education_app/features/teacher/courses/course_form_screen.dart';
 import 'package:flutter_education_app/features/teacher/courses/update_course_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -40,11 +41,11 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
   }
 
   Future<void> _refreshCourse() async {
-    final updated =
-    await context.read<TeacherProvider>().fetchCourseDetail(widget.course.id);
-    if (updated != null && mounted) {
-      setState(() => _course = updated);
-    }
+    // final updated =
+    // await context.read<TeacherProvider>().fetchCourseDetail(widget.course.id);
+    // if (updated != null && mounted) {
+    //   setState(() => _course = updated);
+    // }
   }
 
   void _openAddSheet() => _openSheet(context);
@@ -65,7 +66,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
   void _openEditCourse() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => UpdateCourseScreen(course: _course)),
+      MaterialPageRoute(builder: (_) => CourseFormScreen(course: _course)),
     );
   }
 

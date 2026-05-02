@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/teacher/courses/course_form_screen.dart';
 import 'package:flutter_education_app/features/teacher/home/queue_work_items.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart'
     show TeacherStats, TeacherCourse, ScheduleSession;
@@ -408,7 +409,7 @@ class _AddCourseButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => GestureDetector(
         onTap: () => Navigator.of(context)
-            .push(MaterialPageRoute(builder: (_) => const AddCourseScreen())),
+            .push(MaterialPageRoute(builder: (_) => const CourseFormScreen())),
         child: Container(
           height: 54,
           decoration: BoxDecoration(

@@ -15,7 +15,7 @@ import '../../student/courses/details/components/app_responsive.dart';
 import '../home/teacher_provider.dart';
 import '../schedules/schedules_screen.dart';
 import '../sessions/sessions_screen.dart';
-import 'add_course_screen.dart';
+import 'course_form_screen.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  TeacherCoursesScreen
@@ -110,7 +110,7 @@ class _FloatingAddBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) => FloatingActionButton(
         onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const AddCourseScreen()),
+          MaterialPageRoute(builder: (_) => const CourseFormScreen()),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -135,7 +135,7 @@ class _AddCourseButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => GestureDetector(
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const AddCourseScreen()),
+          MaterialPageRoute(builder: (_) => const CourseFormScreen()),
         ),
         child: Container(
           height: 38,
@@ -400,8 +400,8 @@ class _EmptyState extends StatelessWidget {
               ),
               const SizedBox(height: 22),
               GestureDetector(
-                onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const AddCourseScreen())),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const CourseFormScreen())),
                 child: Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
@@ -559,12 +559,11 @@ class _CourseCardState extends State<_CourseCard> {
                       color: AppTheme.primary,
                       onTap: () {
                         Navigator.of(context).push(MaterialPageRoute(
-                            builder: (_) => UpdateCourseScreen(
+                            builder: (_) => CourseFormScreen(
                                   course: c,
                                 )));
                       },
                     ),
-
                   ],
                 ),
               ),
@@ -601,28 +600,27 @@ class _CourseCardState extends State<_CourseCard> {
 
           // ── Expand toggle ────────────────────────────────────────────
 
-              InkWell(
-                onTap: () => setState(() => _expanded = !_expanded),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                  child: Row(
-                    children: [
-                      Text(
-                        _expanded ? 'hide_details'.tr : 'show_details'.tr,
-                        style: AppTheme.label
-                            .copyWith(color: AppTheme.primary, fontSize: 12),
-                      ),
-                      const SizedBox(width: 4),
-                      AnimatedRotation(
-                        turns: _expanded ? 0.5 : 0,
-                        duration: const Duration(milliseconds: 220),
-                        child: const Icon(Icons.keyboard_arrow_down_rounded,
-                            size: 16, color: AppTheme.primary),
-                      ),
-                    ],
+          InkWell(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              child: Row(
+                children: [
+                  Text(
+                    _expanded ? 'hide_details'.tr : 'show_details'.tr,
+                    style: AppTheme.label
+                        .copyWith(color: AppTheme.primary, fontSize: 12),
                   ),
-                ),
+                  const SizedBox(width: 4),
+                  AnimatedRotation(
+                    turns: _expanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 220),
+                    child: const Icon(Icons.keyboard_arrow_down_rounded,
+                        size: 16, color: AppTheme.primary),
+                  ),
+                ],
+              ),
+            ),
           ),
 
           // ── Expandable extras ────────────────────────────────────────
@@ -653,14 +651,13 @@ class _CourseCardState extends State<_CourseCard> {
                       _PublishButton(isDraft: isDraft, onTap: _togglePublish),
                 ),
                 Container(
-                  height: 40,
-                  width: 40,
-                    margin: EdgeInsets.symmetric(vertical: 10,horizontal: 2),
+                    height: 40,
+                    width: 40,
+                    margin: EdgeInsets.symmetric(vertical: 10, horizontal: 2),
                     decoration: BoxDecoration(
                       color: Colors.red,
                       borderRadius: BorderRadius.all(Radius.circular(7)),
                     ),
-
                     child: IconButton(
                       onPressed: _confirmDelete,
                       icon: Icon(
@@ -854,39 +851,37 @@ class _PublishButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color primaryColor= isDraft? AppTheme.primary:AppTheme.danger;
+    Color primaryColor = isDraft ? AppTheme.primary : AppTheme.danger;
     return GestureDetector(
-        onTap: onTap,
-        child: Container(
-          height: 40,
-          decoration: BoxDecoration(
-
-            borderRadius: BorderRadius.circular(7),
-            border: BoxBorder.all(color: primaryColor),
-            
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                isDraft ? Icons.upload_rounded : Icons.visibility_off_rounded,
-                color:primaryColor,
-                size: 16,
-              ),
-              const SizedBox(width: 7),
-              Text(
-                isDraft ? 'publish_course'.tr : 'unpublish_course'.tr,
-                style:  TextStyle(
-                  color:  primaryColor,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                  fontFamily: 'Cairo',
-                ),
-              ),
-            ],
-          ),
+      onTap: onTap,
+      child: Container(
+        height: 40,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(7),
+          border: BoxBorder.all(color: primaryColor),
         ),
-      );
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isDraft ? Icons.upload_rounded : Icons.visibility_off_rounded,
+              color: primaryColor,
+              size: 16,
+            ),
+            const SizedBox(width: 7),
+            Text(
+              isDraft ? 'publish_course'.tr : 'unpublish_course'.tr,
+              style: TextStyle(
+                color: primaryColor,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+                fontFamily: 'Cairo',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
