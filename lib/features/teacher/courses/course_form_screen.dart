@@ -228,7 +228,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
         _titleCtrl.text.trim().isNotEmpty;
 
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: pageDirection,
       child: Scaffold(
         backgroundColor: AppTheme.background,
         body: FadeTransition(
@@ -241,7 +241,6 @@ class _CourseFormInnerState extends State<_CourseFormInner>
               imageUrl: widget.course?.imageUrl,
               onPickImage: _pickImage,
             ),
-             SizedBox(height: context.width/7,),
             // ── Scrollable form ────────────────────────────────────────────
             Expanded(
               child: Form(
@@ -421,13 +420,17 @@ class _HeroHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final top = MediaQuery.of(context).padding.top;
     return SizedBox(
-      height: 200 + top,
+      height: context.width/2 + top,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           // Gradient background
-          Positioned.fill(
+          Positioned(
+            top: 0,
+            right: 0,
+            left: 0,
             child: Container(
+              height: context.width/4,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
@@ -441,7 +444,16 @@ class _HeroHeader extends StatelessWidget {
               ),
             ),
           ),
+          Positioned(
+            bottom: 0,
+            right: 0,
+            left: 0,
+            child: Container(
+              height: context.width/4,
+              color: Colors.white,
 
+            ),
+          ),
           // Decorative circles
           Positioned(
             top: -30,
@@ -484,7 +496,7 @@ class _HeroHeader extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.arrow_forward_ios_rounded,
+                    child: const Icon(Icons.arrow_back_ios_rounded,
                         color: Colors.white, size: 16),
                   ),
                 ),
@@ -526,61 +538,64 @@ class _HeroHeader extends StatelessWidget {
 
           // Image picker — overlaps bottom of header
           Positioned(
-            bottom: context.width / -8,
+            bottom: context.width / 8,
             left: 0,
             right: 0,
-            child: Stack(
-              children: [
-                Center(
-                  child: GestureDetector(
-                    onTap: onPickImage,
-                    child: Container(
-                      width: context.width / 4,
-                      height: context.width / 4,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.white, width: 3),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.2),
-                            blurRadius: 20,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
+            child: Center(
+              child: GestureDetector(
+                onTap: onPickImage,
+                child: Container(
+                  width: context.width / 4,
+                  height: context.width / 4,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white, width: 3),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 20,
+                        offset: const Offset(0, 6),
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(17),
-                        child: _imageChild(logoBytes, imageUrl),
-                      ),
-                    ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(17),
+                    child: _imageChild(logoBytes, imageUrl),
                   ),
                 ),
-                if(logoBytes!=null || imageUrl!=null)
-                Positioned(
-                  bottom: 0 ,
-                  right: context.width*3/8,
-                  child: Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.primaryGradient,
-                      borderRadius: BorderRadius.all(Radius.circular(10)),
-                      border: Border.all(color: Colors.white, width: 2),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.primary.withValues(alpha: 0.4),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        )
-                      ],
-                    ),
-                    child: const Icon(Icons.camera_alt_rounded,
-                        size: 16, color: Colors.white),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
+          if (logoBytes != null || imageUrl != null)
+            Positioned(
+              bottom: context.width / 8,
+              right: context.width * 3 / 8,
+              child: InkWell(
+                borderRadius: const BorderRadius.all(Radius.circular(10)),
+                onTap: onPickImage,
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.primaryGradient,
+                    borderRadius: const BorderRadius.all(Radius.circular(10)),
+                    border: Border.all(color: Colors.white, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primary.withValues(alpha: 0.4),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.camera_alt_rounded,
+                    size: 16,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
