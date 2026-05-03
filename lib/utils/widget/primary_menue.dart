@@ -34,7 +34,7 @@ class MyPrimaryMenu extends StatelessWidget {
         title: Text(
           initValue == null ? label : initValue!['text'].toString().tr,
           style: const TextStyle(
-            fontFamily: 'bahji',
+            fontFamily: 'Tajawal',
             fontWeight: FontWeight.w100,
             fontSize: 17,
             color: AppTheme.textMedium,
@@ -58,7 +58,7 @@ class MyPrimaryMenu extends StatelessWidget {
                         title: Text(
                           options[i]['text'].toString().tr,
                           style: const TextStyle(
-                            fontFamily: 'bahji',
+                            fontFamily: 'Tajawal',
                             fontWeight: FontWeight.w100,
                             fontSize: 17,
                             color: AppTheme.textMedium,

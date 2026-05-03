@@ -202,14 +202,14 @@ class _NotFoundScreen extends StatelessWidget {
             const Text('404',
                 style: TextStyle(fontSize: 64, fontWeight: FontWeight.w900)),
             const Text('الصفحة غير موجودة',
-                style: TextStyle(fontFamily: 'bahji', fontSize: 16)),
+                style: TextStyle(fontFamily: 'Tajawal', fontSize: 16)),
             const SizedBox(height: 20),
             TextButton(
               onPressed: () =>
                   Navigator.of(context).pushReplacementNamed(context.read<AuthProvider>().isTeacher?'/teacher_dashboard':'/dashboard'),
               child: const Text('الرئيسية',
                   style:
-                      TextStyle(fontFamily: 'bahji', color: Color(0xFF5B8FFF))),
+                      TextStyle(fontFamily: 'Tajawal', color: Color(0xFF5B8FFF))),
             ),
           ],
         ),
