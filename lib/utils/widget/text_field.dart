@@ -34,7 +34,7 @@ class MyTextField extends StatelessWidget {
         textInputAction: TextInputAction.next,
         controller: controller,
         style:  TextStyle(
-            fontFamily: 'bahji',
+            fontFamily: 'Tajawal',
             fontWeight: FontWeight.w500,
             fontSize: 15,
             color: AppTheme.textDark),
@@ -46,7 +46,7 @@ class MyTextField extends StatelessWidget {
           hint: Text(
             label,
             style: const TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: 'Tajawal',
                 fontWeight: FontWeight.w600,
                 color: AppTheme.textMedium),
             textDirection: TextDirection.rtl,

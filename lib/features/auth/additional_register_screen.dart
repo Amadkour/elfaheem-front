@@ -138,7 +138,7 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
           Text(
             'complete_profile'.tr,
             style: const TextStyle(
-              fontFamily: 'Bahji',
+              fontFamily: 'Tajawal',
               fontSize: 26,
               fontWeight: FontWeight.bold,
               color: Color(0xFF16181D),
@@ -148,7 +148,7 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
           Text(
             'additional_registration_welcome'.tr,
             style: const TextStyle(
-              fontFamily: 'Bahji',
+              fontFamily: 'Tajawal',
               fontSize: 14,
               color: Color(0xFF6B7280),
               height: 1.5,

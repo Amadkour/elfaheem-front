@@ -85,7 +85,7 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen>
               labelColor: Colors.white,
               unselectedLabelColor: AppTheme.textMedium,
               labelStyle: const TextStyle(
-                  fontFamily: 'bahji',
+                  fontFamily: 'Tajawal',
                   fontWeight: FontWeight.w700,
                   fontSize: 13),
               dividerColor: Colors.transparent,

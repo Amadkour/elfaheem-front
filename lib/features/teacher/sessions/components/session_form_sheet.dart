@@ -118,7 +118,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
           Text(
             ok ? (_isEdit ? 'تم تعديل الدرس' : 'تم إضافة الدرس') : 'حدث خطأ',
             style: const TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: 'Tajawal',
                 color: Colors.white,
                 fontWeight: FontWeight.w600),
           ),

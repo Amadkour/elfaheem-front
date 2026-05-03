@@ -429,7 +429,7 @@ class _DetailCardState extends State<_DetailCard>
                     child: Text(
                       widget.title,
                       style: TextStyle(
-                        fontFamily: 'bahji',
+                        fontFamily: 'Tajawal',
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         color: AppTheme.textDark,
@@ -447,7 +447,7 @@ class _DetailCardState extends State<_DetailCard>
                     child: Text(
                       '${widget.children.length}',
                       style: TextStyle(
-                        fontFamily: 'bahji',
+                        fontFamily: 'Tajawal',
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: widget.color,
@@ -525,7 +525,7 @@ class _ScheduleRow extends StatelessWidget {
           child: Text(
             schedule.dayLabel,
             style: const TextStyle(
-              fontFamily: 'bahji',
+              fontFamily: 'Tajawal',
               fontSize: 12,
               fontWeight: FontWeight.w700,
               color: Color(0xFF4DA6FF),
@@ -540,7 +540,7 @@ class _ScheduleRow extends StatelessWidget {
         Text(
           '${schedule.startTime} – ${schedule.endTime}',
           style: const TextStyle(
-            fontFamily: 'bahji',
+            fontFamily: 'Tajawal',
             fontSize: 12,
             fontWeight: FontWeight.w600,
             color: AppTheme.textDark,
@@ -570,7 +570,7 @@ class _BulletRow extends StatelessWidget {
           child: Text(
             text,
             style: const TextStyle(
-              fontFamily: 'bahji',
+              fontFamily: 'Tajawal',
               fontSize: 13,
               color: AppTheme.textDark,
               height: 1.4,
@@ -601,7 +601,7 @@ class _CertificateRow extends StatelessWidget {
               Text(
                 cert.title,
                 style: const TextStyle(
-                  fontFamily: 'bahji',
+                  fontFamily: 'Tajawal',
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: AppTheme.textDark,
@@ -613,7 +613,7 @@ class _CertificateRow extends StatelessWidget {
                 Text(
                   cert.description!,
                   style: const TextStyle(
-                    fontFamily: 'bahji',
+                    fontFamily: 'Tajawal',
                     fontSize: 11,
                     color: AppTheme.textMedium,
                     height: 1.4,
@@ -702,7 +702,7 @@ class _CourseHero extends StatelessWidget {
                   child: Text(
                     course.categoryName ?? course.type,
                     style: const TextStyle(
-                      fontFamily: 'bahji',
+                      fontFamily: 'Tajawal',
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
@@ -712,7 +712,7 @@ class _CourseHero extends StatelessWidget {
               Text(
                 course.title,
                 style: const TextStyle(
-                  fontFamily: 'bahji',
+                  fontFamily: 'Tajawal',
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
                   color: Colors.white,
@@ -727,7 +727,7 @@ class _CourseHero extends StatelessWidget {
                 Text(
                   course.description!,
                   style: TextStyle(
-                    fontFamily: 'bahji',
+                    fontFamily: 'Tajawal',
                     fontSize: 12,
                     color: Colors.white.withValues(alpha: 0.80),
                     height: 1.45,
@@ -812,7 +812,7 @@ class _CircleBtn extends StatelessWidget {
               const SizedBox(width: 6),
               Text(label!,
                   style: const TextStyle(
-                    fontFamily: 'bahji',
+                    fontFamily: 'Tajawal',
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
@@ -840,7 +840,7 @@ class _StatsRow extends StatelessWidget {
     final stats = <_StatItem>[
       _StatItem(
         icon: Icons.people_alt_rounded,
-        label: 'students'.tr,
+        label: 'student'.tr,
         value: '${course.studentsCount}',
         color: const Color(0xFF4DA6FF),
       ),
@@ -850,14 +850,14 @@ class _StatsRow extends StatelessWidget {
         value: '$sessionCount',
         color: AppTheme.primary,
       ),
-      if (course.price > 0)
+    //  if (course.price > 0)
         _StatItem(
           icon: Icons.sell_rounded,
           label: 'cost'.tr,
           value: course.price == 0 ? 'free'.tr : '${course.price} ج',
           color: const Color(0xFF1DB954),
         ),
-      if (course.totalHours > 0)
+     // if (course.totalHours > 0)
         _StatItem(
           icon: Icons.timer_rounded,
           label: 'duration'.tr,
@@ -923,7 +923,7 @@ class _StatChip extends StatelessWidget {
       Text(
         item.value,
         style: TextStyle(
-          fontFamily: 'bahji',
+          fontFamily: 'Tajawal',
           fontSize: 14,
           fontWeight: FontWeight.w800,
           color: AppTheme.textDark,
@@ -933,7 +933,7 @@ class _StatChip extends StatelessWidget {
       Text(
         item.label,
         style: const TextStyle(
-          fontFamily: 'bahji',
+          fontFamily: 'Tajawal',
           fontSize: 10,
           color: AppTheme.textMedium,
         ),
@@ -1029,17 +1029,17 @@ class _SessionTile extends StatelessWidget {
             const SizedBox(width: 12),
             const Text('حذف الدرس',
                 style: TextStyle(
-                    fontFamily: 'bahji', fontWeight: FontWeight.w700)),
+                    fontFamily: 'Tajawal', fontWeight: FontWeight.w700)),
           ]),
           content: Text('هل تريد حذف "${s.name}"؟',
               style: const TextStyle(
-                  fontFamily: 'bahji', color: AppTheme.textMedium)),
+                  fontFamily: 'Tajawal', color: AppTheme.textMedium)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
               child: const Text('إلغاء',
                   style: TextStyle(
-                      fontFamily: 'bahji', color: AppTheme.textMedium)),
+                      fontFamily: 'Tajawal', color: AppTheme.textMedium)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -1051,7 +1051,7 @@ class _SessionTile extends StatelessWidget {
               onPressed: () => Navigator.pop(ctx, true),
               child: const Text('حذف',
                   style: TextStyle(
-                      fontFamily: 'bahji', fontWeight: FontWeight.w700)),
+                      fontFamily: 'Tajawal', fontWeight: FontWeight.w700)),
             ),
           ],
         ),
@@ -1091,19 +1091,19 @@ class _SessionTile extends StatelessWidget {
             const Expanded(
               child: Text('بدء الحصة المباشرة',
                   style: TextStyle(
-                      fontFamily: 'bahji', fontWeight: FontWeight.w700)),
+                      fontFamily: 'Tajawal', fontWeight: FontWeight.w700)),
             ),
           ]),
           content: Text(
               'سيتم إنشاء غرفة مباشرة لـ "${s.name}". هل تريد المتابعة؟',
               style: const TextStyle(
-                  fontFamily: 'bahji', color: AppTheme.textMedium)),
+                  fontFamily: 'Tajawal', color: AppTheme.textMedium)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
               child: Text('cancel'.tr,
                   style: const TextStyle(
-                      fontFamily: 'bahji', color: AppTheme.textMedium)),
+                      fontFamily: 'Tajawal', color: AppTheme.textMedium)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -1115,7 +1115,7 @@ class _SessionTile extends StatelessWidget {
               onPressed: () => Navigator.pop(ctx, true),
               child: const Text('بدء البث',
                   style: TextStyle(
-                      fontFamily: 'bahji', fontWeight: FontWeight.w700)),
+                      fontFamily: 'Tajawal', fontWeight: FontWeight.w700)),
             ),
           ],
         ),
@@ -1149,12 +1149,12 @@ class _SessionTile extends StatelessWidget {
               const SizedBox(width: 12),
               const Text('إنهاء الحصة',
                   style: TextStyle(
-                      fontFamily: 'bahji', fontWeight: FontWeight.w700)),
+                      fontFamily: 'Tajawal', fontWeight: FontWeight.w700)),
             ]),
             content: Column(mainAxisSize: MainAxisSize.min, children: [
               const Text('هل تريد إنهاء الحصة للجميع؟',
                   style: TextStyle(
-                      fontFamily: 'bahji', color: AppTheme.textMedium)),
+                      fontFamily: 'Tajawal', color: AppTheme.textMedium)),
               const SizedBox(height: 14),
               GestureDetector(
                 onTap: () => setD(() => saveRecording = !saveRecording),
@@ -1189,7 +1189,7 @@ class _SessionTile extends StatelessWidget {
                     const SizedBox(width: 10),
                     const Text('حفظ التسجيل تلقائياً',
                         style: TextStyle(
-                            fontFamily: 'bahji',
+                            fontFamily: 'Tajawal',
                             fontWeight: FontWeight.w600,
                             color: AppTheme.textDark)),
                   ]),
@@ -1201,7 +1201,7 @@ class _SessionTile extends StatelessWidget {
                 onPressed: () => Navigator.pop(dCtx, false),
                 child: const Text('إلغاء',
                     style: TextStyle(
-                        fontFamily: 'bahji', color: AppTheme.textMedium)),
+                        fontFamily: 'Tajawal', color: AppTheme.textMedium)),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -1213,7 +1213,7 @@ class _SessionTile extends StatelessWidget {
                 onPressed: () => Navigator.pop(dCtx, true),
                 child: const Text('إنهاء الحصة',
                     style: TextStyle(
-                        fontFamily: 'bahji', fontWeight: FontWeight.w700)),
+                        fontFamily: 'Tajawal', fontWeight: FontWeight.w700)),
               ),
             ],
           ),
@@ -1269,7 +1269,7 @@ class _SessionTile extends StatelessWidget {
             Expanded(
               child: Text(msg,
                   style: const TextStyle(
-                      fontFamily: 'bahji',
+                      fontFamily: 'Tajawal',
                       color: Colors.white,
                       fontWeight: FontWeight.w600)),
             ),
@@ -1349,7 +1349,7 @@ class _EmptyState extends StatelessWidget {
                   style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
-                      fontFamily: 'bahji',
+                      fontFamily: 'Tajawal',
                       fontSize: 15)),
             ]),
           ),
@@ -1381,7 +1381,7 @@ class _AddButton extends StatelessWidget {
             style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
-                fontFamily: 'bahji',
+                fontFamily: 'Tajawal',
                 fontSize: 12)),
       ]),
     ),
@@ -1509,7 +1509,7 @@ class SessionCard extends StatelessWidget {
                                 Text(
                                   session.name,
                                   style: const TextStyle(
-                                    fontFamily: 'bahji',
+                                    fontFamily: 'Tajawal',
                                     fontSize: 14,
                                     fontWeight: FontWeight.w800,
                                     color: AppTheme.textDark,
@@ -1714,7 +1714,7 @@ class _StatusBadgeState extends State<_StatusBadge>
           Text(
             widget.label,
             style: TextStyle(
-              fontFamily: 'bahji',
+              fontFamily: 'Tajawal',
               fontSize: 10,
               fontWeight: FontWeight.w700,
               color: widget.color,
@@ -1787,7 +1787,7 @@ class _MetaChip extends StatelessWidget {
       Text(
         label,
         style: const TextStyle(
-          fontFamily: 'bahji',
+          fontFamily: 'Tajawal',
           fontSize: 11,
           color: AppTheme.textMedium,
           fontWeight: FontWeight.w500,
@@ -1846,7 +1846,7 @@ class _ContextMenu extends StatelessWidget {
             const SizedBox(width: 10),
             const Text('تعديل',
                 style: TextStyle(
-                    fontFamily: 'bahji', fontWeight: FontWeight.w600)),
+                    fontFamily: 'Tajawal', fontWeight: FontWeight.w600)),
           ]),
         ),
         PopupMenuItem(
@@ -1865,7 +1865,7 @@ class _ContextMenu extends StatelessWidget {
             const SizedBox(width: 10),
             const Text('حذف',
                 style: TextStyle(
-                    fontFamily: 'bahji',
+                    fontFamily: 'Tajawal',
                     fontWeight: FontWeight.w600,
                     color: AppTheme.danger)),
           ]),
@@ -2046,7 +2046,7 @@ class _ActionBtn extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: 'Tajawal',
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color: textColor,

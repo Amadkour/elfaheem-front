@@ -298,7 +298,7 @@ class _InlineStartButton extends StatelessWidget {
             Text(
               _label,
               style: const TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: 'Tajawal',
                 fontSize: 10,
                 fontWeight: FontWeight.normal,
                 color: Colors.white,

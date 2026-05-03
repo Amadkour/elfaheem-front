@@ -208,7 +208,7 @@
 //
 //                         Text('category'.tr,
 //                             style: const TextStyle(
-//                                 fontSize: 14, fontFamily: 'bahji')),
+//                                 fontSize: 14, fontFamily: 'Tajawal')),
 //                         MyPrimaryMenu(
 //                           controller: _categoryCtrl,
 //                           initValue: provider.selectedSpecialization,
@@ -323,7 +323,7 @@
 //   TextInputType keyboard = TextInputType.text,
 // }) {
 //   return [
-//     Text(label, style: const TextStyle(fontSize: 14, fontFamily: 'bahji')),
+//     Text(label, style: const TextStyle(fontSize: 14, fontFamily: 'Tajawal')),
 //     const SizedBox(height: 5),
 //     MyTextField(
 //       controller: controller,

@@ -131,7 +131,7 @@ class _TeacherProfileScreenState extends State<TeacherProfileScreen>
                             iconBg:
                             AppTheme.textDark.withValues(alpha:0.08),
                             iconColor: AppTheme.textDark,
-                            label: 'الوضع الليلي',
+                           label: 'الوضع الليلي',
                             trailing: Switch.adaptive(
                               value: p.darkMode,
                               onChanged: p.toggleDarkMode,

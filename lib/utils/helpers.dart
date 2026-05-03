@@ -79,7 +79,7 @@ class Helpers {
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
         title:  Text('logout'.tr,
             style: const TextStyle(
-                fontFamily: 'Bahji', fontWeight: FontWeight.w700)),
+                fontFamily: 'Tajawal', fontWeight: FontWeight.w700)),
         content: const Text('هل أنت متأكد أنك تريد تسجيل الخروج؟',
             style: TextStyle(fontFamily: 'Cairo')),
         actions: [
@@ -87,7 +87,7 @@ class Helpers {
             onPressed: () => Navigator.pop(context, false),
             child:  Text('cancel'.tr,
                 style: const TextStyle(
-                    fontFamily: 'Bahji', color: AppTheme.textMedium)),
+                    fontFamily: 'Tajawal', color: AppTheme.textMedium)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -98,7 +98,7 @@ class Helpers {
             onPressed: () => Navigator.pop(context, true),
             child:  Text('exit'.tr,
                 style: const TextStyle(
-                    fontFamily: 'Bahji',
+                    fontFamily: 'Tajawal',
                     color: Colors.white,
                     fontWeight: FontWeight.w700)),
           ),

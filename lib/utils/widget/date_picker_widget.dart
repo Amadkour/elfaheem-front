@@ -26,7 +26,7 @@ class MyDatePicker extends StatelessWidget {
         textDirection: TextDirection.rtl,
         controller: controller,
         style: const TextStyle(
-            fontFamily: 'bahji',
+            fontFamily: 'Tajawal',
             fontWeight: FontWeight.w500,
             fontSize: 15,
             color: AppTheme.textDark),
@@ -37,7 +37,7 @@ class MyDatePicker extends StatelessWidget {
             hint: Text(
               label,
               style: const TextStyle(
-                  fontFamily: 'bahji',
+                  fontFamily: 'Tajawal',
                   fontWeight: FontWeight.w600,
                   color: AppTheme.textMedium),
               textDirection: TextDirection.rtl,
@@ -70,8 +70,8 @@ class MyDatePicker extends StatelessWidget {
               onSurface: Colors.black, // Header background
             ),
             textTheme: TextTheme.of(context).copyWith(
-              displaySmall: const TextStyle(fontFamily: 'bahji'),
-              titleLarge: const TextStyle(fontFamily: 'bahji'),
+              displaySmall: const TextStyle(fontFamily: 'Tajawal'),
+              titleLarge: const TextStyle(fontFamily: 'Tajawal'),
             ),
           ),
           child: child!,
