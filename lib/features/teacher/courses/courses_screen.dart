@@ -517,10 +517,10 @@ class _CourseCardState extends State<_CourseCard> {
       decoration: BoxDecoration(
         color: AppTheme.cardBg,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.primaryBlue),
+      //  border: Border.all(color: AppTheme.primaryBlue),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.09),
+            color: AppTheme.textLight.withValues(alpha: 0.7),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -543,30 +543,30 @@ class _CourseCardState extends State<_CourseCard> {
                 ),
               ),
               // Status badge — top right
-              Positioned(
-                top: 8,
-                right: 8,
-                child: _StatusBadge(isDraft: isDraft),
-              ),
+              // Positioned(
+              //   top: 8,
+              //   right: 8,
+              //   child: _StatusBadge(isDraft: isDraft),
+              // ),
               // Edit / Delete overlay buttons — top left
-              Positioned(
-                top: 8,
-                left: 8,
-                child: Row(
-                  children: [
-                    _OverlayBtn(
-                      icon: Icons.edit_rounded,
-                      color: AppTheme.primary,
-                      onTap: () {
-                        Navigator.of(context).push(MaterialPageRoute(
-                            builder: (_) => CourseFormScreen(
-                                  course: c,
-                                )));
-                      },
-                    ),
-                  ],
-                ),
-              ),
+              // Positioned(
+              //   top: 8,
+              //   left: 8,
+              //   child: Row(
+              //     children: [
+              //       _OverlayBtn(
+              //         icon: Icons.edit_rounded,
+              //         color: Colors.white,
+              //         onTap: () {
+              //           Navigator.of(context).push(MaterialPageRoute(
+              //               builder: (_) => CourseFormScreen(
+              //                     course: c,
+              //                   )));
+              //         },
+              //       ),
+              //     ],
+              //   ),
+              // ),
             ],
           ),
 
@@ -648,27 +648,45 @@ class _CourseCardState extends State<_CourseCard> {
                 Expanded(
                   flex: 3,
                   child:
-                      _PublishButton(isDraft: isDraft, onTap: _togglePublish),
+                  _StatusBadge(isDraft: isDraft),
+                     // _PublishButton(isDraft: isDraft, onTap: _togglePublish),
                 ),
+                SizedBox(width: 5,),
                 Container(
                     height: 40,
                     width: 40,
                     margin: EdgeInsets.symmetric(vertical: 10, horizontal: 2),
                     decoration: BoxDecoration(
-                      color: Colors.red,
+                      color: Colors.white,
                       borderRadius: BorderRadius.all(Radius.circular(7)),
+                      border: Border.all(color:Colors.red)
                     ),
                     child: IconButton(
                       onPressed: _confirmDelete,
                       icon: Icon(
                         Icons.delete,
-                        color: Colors.white,
+                        color: Colors.red,
                         size: 20,
                       ),
                     )),
+            SizedBox(width: 5,),
+                _OverlayBtn(
+                  icon: Icons.edit_rounded,
+                  color: AppTheme.primaryBlue,
+                  onTap: () {
+                    Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => CourseFormScreen(
+                          course: c,
+                        )));
+                  },
+                ),
               ],
             ),
           ),
+
+          _PublishButton(isDraft: isDraft, onTap: _togglePublish),
+
+
         ],
       ),
     );
@@ -749,7 +767,7 @@ class _StatCell extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.07),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -781,23 +799,21 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
+    height: 40,
+
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: isDraft ? const Color(0xFFf59e0b) : AppTheme.accent2,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.18),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          border: Border.all(color:isDraft ? const Color(0xFFf59e0b) : AppTheme.accent2 ),
+
         ),
         child: Text(
           isDraft ? 'status_draft'.tr : 'status_published'.tr,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 10,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: isDraft ? const Color(0xFFf59e0b) : AppTheme.accent2,
+            fontSize: 16,
             fontWeight: FontWeight.w800,
             fontFamily: 'Cairo',
           ),
@@ -821,11 +837,12 @@ class _OverlayBtn extends StatelessWidget {
   Widget build(BuildContext context) => GestureDetector(
         onTap: onTap,
         child: Container(
-          width: 32,
-          height: 32,
+          width: 40,
+          height: 40,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.92),
+            color: Colors.white,
             borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppTheme.primaryBlue),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.12),
@@ -851,28 +868,27 @@ class _PublishButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color primaryColor = isDraft ? AppTheme.primary : AppTheme.danger;
+    Color primaryColor = isDraft ? AppTheme.primaryBlue : Colors.red;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         height: 40,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(7),
-          border: BoxBorder.all(color: primaryColor),
+          color: primaryColor,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               isDraft ? Icons.upload_rounded : Icons.visibility_off_rounded,
-              color: primaryColor,
+              color:  Colors.white,
               size: 16,
             ),
             const SizedBox(width: 7),
             Text(
               isDraft ? 'publish_course'.tr : 'unpublish_course'.tr,
               style: TextStyle(
-                color: primaryColor,
+                color: Colors.white,
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
                 fontFamily: 'Cairo',
