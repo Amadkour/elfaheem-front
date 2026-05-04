@@ -3,7 +3,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
-/// Application configuration and AppTheme.
+/// Application configuration and context.colors.
 class AppConfig {
 // For Android Emulator
   static const String baseUrl = 'https://warcraft-continued-gasoline-pest.trycloudflare.com';

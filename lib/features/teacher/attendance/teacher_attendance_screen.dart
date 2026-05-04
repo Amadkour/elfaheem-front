@@ -50,7 +50,7 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen>
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: SafeArea(
             child: Column(children: [
           ScreenAppBar(title: 'الحضور — ${widget.sessionName}'),
@@ -60,13 +60,14 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen>
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
               child: Row(children: [
-                _StatCard('الكل', '$total', AppTheme.primary),
+                _StatCard('الكل', '$total', context.colors.primary),
                 const SizedBox(width: 8),
-                _StatCard('حضر', '${prov.presentCount}', AppTheme.success),
+                _StatCard(
+                    'حضر', '${prov.presentCount}', context.colors.success),
                 const SizedBox(width: 8),
-                _StatCard('غاب', '${prov.absentCount}', AppTheme.danger),
+                _StatCard('غاب', '${prov.absentCount}', context.colors.danger),
                 const SizedBox(width: 8),
-                _StatCard('النسبة', '$pct%', AppTheme.accent),
+                _StatCard('النسبة', '$pct%', context.colors.accent),
               ]),
             ),
 
@@ -75,15 +76,17 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen>
             margin: const EdgeInsets.symmetric(horizontal: 20),
             height: 40,
             decoration: BoxDecoration(
-                color: AppTheme.cardBg,
-                borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
+                color: context.colors.cardBg,
+                borderRadius:
+                    BorderRadius.circular(context.colors.radiusMedium)),
             child: TabBar(
               controller: _tabs,
               indicator: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
+                  gradient: context.colors.primaryGradient,
+                  borderRadius:
+                      BorderRadius.circular(context.colors.radiusMedium)),
               labelColor: Colors.white,
-              unselectedLabelColor: AppTheme.textMedium,
+              unselectedLabelColor: context.colors.textMedium,
               labelStyle: const TextStyle(
                   fontFamily: 'Tajawal',
                   fontWeight: FontWeight.w700,
@@ -101,9 +104,10 @@ class _TeacherAttendanceScreenState extends State<TeacherAttendanceScreen>
           // ── Content ──────────────────────────────────────────────────────
           Expanded(
               child: prov.listLoading
-                  ? const Center(
+                  ? Center(
                       child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation(AppTheme.primary)))
+                          valueColor:
+                              AlwaysStoppedAnimation(context.colors.primary)))
                   : prov.list.isEmpty
                       ? _EmptyState()
                       : TabBarView(controller: _tabs, children: [
@@ -148,7 +152,7 @@ class _AttendanceList extends StatelessWidget {
   Widget build(BuildContext context) {
     if (records.isEmpty) return _EmptyState();
     return RefreshIndicator(
-      color: AppTheme.primary,
+      color: context.colors.primary,
       onRefresh: onRefresh,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -175,11 +179,11 @@ class _AttendanceCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        boxShadow: AppTheme.cardShadow,
+        color: context.colors.cardBg,
+        borderRadius: BorderRadius.circular(context.colors.radiusMedium),
+        boxShadow: context.colors.cardShadow,
         border: record.isPresent
-            ? Border.all(color: AppTheme.success.withValues(alpha: 0.25))
+            ? Border.all(color: context.colors.success.withValues(alpha: 0.25))
             : null,
       ),
       child: Row(children: [
@@ -190,14 +194,16 @@ class _AttendanceCard extends StatelessWidget {
           decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: record.isPresent
-                  ? AppTheme.success.withValues(alpha: 0.12)
-                  : AppTheme.textLight.withValues(alpha: 0.12),
+                  ? context.colors.success.withValues(alpha: 0.12)
+                  : context.colors.textLight.withValues(alpha: 0.12),
               border: Border.all(
                   color: record.isPresent
-                      ? AppTheme.success.withValues(alpha: 0.3)
-                      : AppTheme.divider)),
+                      ? context.colors.success.withValues(alpha: 0.3)
+                      : context.colors.divider)),
           child: Icon(Icons.person_rounded,
-              color: record.isPresent ? AppTheme.success : AppTheme.textLight,
+              color: record.isPresent
+                  ? context.colors.success
+                  : context.colors.textLight,
               size: 24),
         ),
         const SizedBox(width: 12),
@@ -206,23 +212,28 @@ class _AttendanceCard extends StatelessWidget {
         Expanded(
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(record.studentName, style: AppTheme.h3.copyWith(fontSize: 14)),
+          Text(record.studentName,
+              style: context.colors.h3.copyWith(fontSize: 14)),
           const SizedBox(height: 4),
           if (record.isPresent)
             Wrap(spacing: 12, runSpacing: 4, children: [
               if (record.checkInDate != null)
                 _TimeChip(Icons.login_rounded, 'دخل', record.checkInLabel,
-                    AppTheme.success),
+                    context.colors.success),
               if (record.checkOutDate != null)
                 _TimeChip(Icons.logout_rounded, 'خرج', record.checkOutLabel,
-                    AppTheme.danger),
+                    context.colors.danger),
               if (record.durationMinutes != null)
-                _TimeChip(Icons.timer_rounded, 'المدة',
-                    '${record.durationMinutes!.round()} د', AppTheme.primary),
+                _TimeChip(
+                    Icons.timer_rounded,
+                    'المدة',
+                    '${record.durationMinutes!.round()} د',
+                    context.colors.primary),
             ])
           else
             Text('لم يحضر',
-                style: AppTheme.caption.copyWith(color: AppTheme.danger)),
+                style: context.colors.caption
+                    .copyWith(color: context.colors.danger)),
         ])),
 
         // Badge + manual check-in
@@ -230,19 +241,24 @@ class _AttendanceCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
             decoration: BoxDecoration(
-              color: (record.isPresent ? AppTheme.success : AppTheme.danger)
+              color: (record.isPresent
+                      ? context.colors.success
+                      : context.colors.danger)
                   .withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(7),
               border: Border.all(
-                  color: (record.isPresent ? AppTheme.success : AppTheme.danger)
+                  color: (record.isPresent
+                          ? context.colors.success
+                          : context.colors.danger)
                       .withValues(alpha: 0.35)),
             ),
             child: Text(record.isPresent ? 'حضر' : 'غاب',
                 style: TextStyle(
                     fontFamily: 'Cairo',
                     fontSize: 11,
-                    color:
-                        record.isPresent ? AppTheme.success : AppTheme.danger,
+                    color: record.isPresent
+                        ? context.colors.success
+                        : context.colors.danger,
                     fontWeight: FontWeight.w700)),
           ),
           // Manual override for absent
@@ -253,15 +269,15 @@ class _AttendanceCard extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                    color: AppTheme.primary.withValues(alpha: 0.1),
+                    color: context.colors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(7),
                     border: Border.all(
-                        color: AppTheme.primary.withValues(alpha: 0.35))),
-                child: const Text('تحضير',
+                        color: context.colors.primary.withValues(alpha: 0.35))),
+                child: Text('تحضير',
                     style: TextStyle(
                         fontFamily: 'Cairo',
                         fontSize: 10,
-                        color: AppTheme.primary,
+                        color: context.colors.primary,
                         fontWeight: FontWeight.w700)),
               ),
             ),
@@ -271,15 +287,15 @@ class _AttendanceCard extends StatelessWidget {
     );
   }
 
-  Future<void> _manualCheckIn(BuildContext ctx) async {
-    final ok = await ctx
+  Future<void> _manualCheckIn(BuildContext context) async {
+    final ok = await context
         .read<AttendanceProvider>()
         .manualCheckIn(sessionId, record.studentId);
-    if (ctx.mounted) {
-      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(ok ? 'تم تحضير ${record.studentName} ✓' : 'حدث خطأ',
-            style: const TextStyle(fontFamily: 'Cairo', color: Colors.white)),
-        backgroundColor: ok ? AppTheme.success : AppTheme.danger,
+            style: TextStyle(fontFamily: 'Cairo', color: Colors.white)),
+        backgroundColor: ok ? context.colors.success : context.colors.danger,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ));
@@ -295,12 +311,13 @@ class _TimeChip extends StatelessWidget {
   const _TimeChip(this.i, this.l, this.v, this.c);
 
   @override
-  Widget build(BuildContext ctx) =>
+  Widget build(BuildContext context) =>
       Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(i, size: 12, color: c),
         const SizedBox(width: 3),
         Text('$l: $v',
-            style: AppTheme.caption.copyWith(color: AppTheme.textDark))
+            style:
+                context.colors.caption.copyWith(color: context.colors.textDark))
       ]);
 }
 
@@ -311,12 +328,12 @@ class _StatCard extends StatelessWidget {
   const _StatCard(this.l, this.v, this.c);
 
   @override
-  Widget build(BuildContext ctx) => Expanded(
+  Widget build(BuildContext context) => Expanded(
       child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
               color: c.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+              borderRadius: BorderRadius.circular(context.colors.radiusMedium),
               border: Border.all(color: c.withValues(alpha: 0.25))),
           child: Column(children: [
             Text(v,
@@ -325,17 +342,17 @@ class _StatCard extends StatelessWidget {
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
                     color: c)),
-            Text(l, style: AppTheme.caption.copyWith(fontSize: 10)),
+            Text(l, style: context.colors.caption.copyWith(fontSize: 10)),
           ])));
 }
 
 class _EmptyState extends StatelessWidget {
   @override
-  Widget build(BuildContext ctx) => Center(
+  Widget build(BuildContext context) => Center(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.people_outline_rounded,
-            size: 64, color: AppTheme.textLight),
+        Icon(Icons.people_outline_rounded,
+            size: 64, color: context.colors.textLight),
         const SizedBox(height: 12),
-        Text('لا يوجد سجل حضور', style: AppTheme.body)
+        Text('لا يوجد سجل حضور', style: context.colors.body)
       ]));
 }

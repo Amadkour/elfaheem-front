@@ -7,8 +7,6 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_webrtc/flutter_webrtc.dart';
-import 'package:intl/intl.dart';
 import 'package:livekit_client/livekit_client.dart';
 import '../../../../utils/exts.dart';
 import 'widgets/controls.dart';
@@ -439,8 +437,9 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
 
   void _setUpListeners() =>
       _listener..on<RoomDisconnectedEvent>((event) async {
-        if (event.reason != null)
+        if (event.reason != null) {
           log('Room disconnected: reason => ${event.reason}');
+        }
         WidgetsBindingCompatible.instance?.addPostFrameCallback(
                 (_) => Navigator.popUntil(context, (r) => r.isFirst));
       })..on<ParticipantEvent>((_) => _sortParticipants())..on<
@@ -523,8 +522,9 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
       final as_ = a.participant.lastSpokeAt?.millisecondsSinceEpoch ?? 0;
       final bs_ = b.participant.lastSpokeAt?.millisecondsSinceEpoch ?? 0;
       if (as_ != bs_) return as_ > bs_ ? -1 : 1;
-      if (a.participant.hasVideo != b.participant.hasVideo)
+      if (a.participant.hasVideo != b.participant.hasVideo) {
         return a.participant.hasVideo ? -1 : 1;
+      }
       return a.participant.joinedAt.millisecondsSinceEpoch -
           b.participant.joinedAt.millisecondsSinceEpoch;
     });
@@ -552,10 +552,11 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
         : [if (localCamera != null) localCamera, ...userMedia];
 
     setState(() => participantTracks = ordered);
-    if (ordered.length > 1)
+    if (ordered.length > 1) {
       _thumbBarAnim.forward();
-    else
+    } else {
       _thumbBarAnim.reverse();
+    }
   }
 
   VideoTrack? _resolveScreenTrack(Participant p) {

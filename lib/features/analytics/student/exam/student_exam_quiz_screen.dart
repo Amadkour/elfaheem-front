@@ -73,7 +73,7 @@ class StudentExamQuizScreen extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         // ── App bar with timer ──────────────────────────────────────────────
         appBar: AppBar(
           backgroundColor: Colors.white,
@@ -221,7 +221,7 @@ class _ProgressBar extends StatelessWidget {
             child: LinearProgressIndicator(
               value: current / total,
               backgroundColor: Colors.grey.shade100,
-              color: AppTheme.primary,
+              color: context.colors.primary,
               minHeight: 6,
             ),
           ),
@@ -255,7 +255,7 @@ class _QuestionCard extends StatelessWidget {
             padding:
                 const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-                color: AppTheme.primary.withValues(alpha: 0.1),
+                color: context.colors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8)),
             child: Text(
               '${marks.toInt()} درجات',
@@ -263,7 +263,7 @@ class _QuestionCard extends StatelessWidget {
                   fontFamily: 'Cairo',
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: AppTheme.primary),
+                  color: context.colors.primary),
             ),
           ),
           const SizedBox(height: 12),
@@ -297,11 +297,11 @@ class _McqOption extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             color: selected
-                ? AppTheme.primary.withValues(alpha: 0.08)
+                ? context.colors.primary.withValues(alpha: 0.08)
                 : Colors.white,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: selected ? AppTheme.primary : Colors.grey.shade200,
+              color: selected ? context.colors.primary : Colors.grey.shade200,
               width: selected ? 2 : 1,
             ),
             boxShadow: [
@@ -319,10 +319,10 @@ class _McqOption extends StatelessWidget {
               height: 22,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: selected ? AppTheme.primary : Colors.transparent,
+                color: selected ? context.colors.primary : Colors.transparent,
                 border: Border.all(
                     color:
-                        selected ? AppTheme.primary : Colors.grey.shade300,
+                        selected ? context.colors.primary : Colors.grey.shade300,
                     width: 2),
               ),
               child: selected
@@ -340,7 +340,7 @@ class _McqOption extends StatelessWidget {
                     fontWeight: selected
                         ? FontWeight.w600
                         : FontWeight.w400,
-                    color: selected ? AppTheme.primary : Colors.black87),
+                    color: selected ? context.colors.primary : Colors.black87),
               ),
             ),
           ]),
@@ -394,7 +394,7 @@ class _OpenEndedFieldState extends State<_OpenEndedField> {
               borderSide: BorderSide(color: Colors.grey.shade200)),
           focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: AppTheme.primary, width: 2)),
+              borderSide: BorderSide(color: context.colors.primary, width: 2)),
           contentPadding: const EdgeInsets.all(16),
         ),
       );
@@ -422,15 +422,15 @@ class _DotNavigator extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: isCurrent
-                    ? AppTheme.primary
+                    ? context.colors.primary
                     : answered
-                        ? AppTheme.success.withValues(alpha: 0.12)
+                        ? context.colors.success.withValues(alpha: 0.12)
                         : Colors.white,
                 border: Border.all(
                   color: isCurrent
-                      ? AppTheme.primary
+                      ? context.colors.primary
                       : answered
-                          ? AppTheme.success
+                          ? context.colors.success
                           : Colors.grey.shade300,
                   width: isCurrent ? 2 : 1,
                 ),
@@ -445,7 +445,7 @@ class _DotNavigator extends StatelessWidget {
                     color: isCurrent
                         ? Colors.white
                         : answered
-                            ? AppTheme.success
+                            ? context.colors.success
                             : Colors.grey,
                   ),
                 ),
@@ -494,7 +494,7 @@ class _BottomNavBar extends StatelessWidget {
                       fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
               label: const Icon(Icons.arrow_back_ios_rounded, size: 14),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primary,
+                backgroundColor: context.colors.primary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
@@ -510,7 +510,7 @@ class _BottomNavBar extends StatelessWidget {
                   style: TextStyle(
                       fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.success,
+                backgroundColor: context.colors.success,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
@@ -553,7 +553,7 @@ class _BottomNavBar extends StatelessWidget {
                 prov.submitExam();
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.success,
+                backgroundColor: context.colors.success,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),

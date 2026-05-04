@@ -15,7 +15,7 @@ class EnrollmentScreen extends StatelessWidget {
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: SafeArea(
           child: Consumer<EnrollmentProvider>(
             builder: (context, provider, _) {
@@ -72,7 +72,7 @@ class _MethodStep extends StatelessWidget {
                 _PriceBreakdown(provider: provider),
                 const SizedBox(height: 24),
                 if (!isFree) ...[
-                  Text('طريقة الدفع', style: AppTheme.h2),
+                  Text('طريقة الدفع', style: context.colors.h2),
                   const SizedBox(height: 14),
                   _PaymentMethodCard(
                     method:   PaymentMethod.mada,
@@ -120,9 +120,9 @@ class _CourseSummaryCard extends StatelessWidget {
     return Container(
       padding:    const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color:        AppTheme.cardBg,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        boxShadow:    AppTheme.cardShadow,
+        color:        context.colors.cardBg,
+        borderRadius: BorderRadius.circular(context.colors.radiusMedium),
+        boxShadow:    context.colors.cardShadow,
       ),
       child: Row(
         children: [
@@ -141,25 +141,25 @@ class _CourseSummaryCard extends StatelessWidget {
               children: [
                 Text(
                   course.name as String,
-                  style:    AppTheme.h3,
+                  style:    context.colors.h3,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 if ((course.teacherName as String?) != null &&
                     (course.teacherName as String).isNotEmpty)
-                  Text(course.teacherName as String, style: AppTheme.caption),
+                  Text(course.teacherName as String, style: context.colors.caption),
                 const SizedBox(height: 6),
                 Row(
                   children: [
                     if ((course.rate as double?) != null) ...[
-                      const Icon(Icons.star_rounded,
-                          color: AppTheme.accent, size: 14),
+                       Icon(Icons.star_rounded,
+                          color: context.colors.accent, size: 14),
                       const SizedBox(width: 3),
                       Text(
                         (course.rate as double).toStringAsFixed(1),
-                        style: AppTheme.caption
-                            .copyWith(color: AppTheme.textDark),
+                        style: context.colors.caption
+                            .copyWith(color: context.colors.textDark),
                       ),
                       const SizedBox(width: 10),
                     ],
@@ -188,20 +188,20 @@ class _PriceBreakdown extends StatelessWidget {
       return Container(
         padding:    const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color:        AppTheme.success.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+          color:        context.colors.success.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(context.colors.radiusMedium),
           border: Border.all(
-            color: AppTheme.success.withValues(alpha: 0.3),
+            color: context.colors.success.withValues(alpha: 0.3),
           ),
         ),
         child: Row(
           children: [
-            const Icon(Icons.card_giftcard_rounded,
-                color: AppTheme.success, size: 28),
+             Icon(Icons.card_giftcard_rounded,
+                color: context.colors.success, size: 28),
             const SizedBox(width: 12),
             Text(
               'هذا الكورس مجاني تماماً!',
-              style: AppTheme.h3.copyWith(color: AppTheme.success),
+              style: context.colors.h3.copyWith(color: context.colors.success),
             ),
           ],
         ),
@@ -211,16 +211,16 @@ class _PriceBreakdown extends StatelessWidget {
     return Container(
       padding:    const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color:        AppTheme.cardBg,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        boxShadow:    AppTheme.cardShadow,
+        color:        context.colors.cardBg,
+        borderRadius: BorderRadius.circular(context.colors.radiusMedium),
+        boxShadow:    context.colors.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('ملخص الطلب', style: AppTheme.h3),
+          Text('ملخص الطلب', style: context.colors.h3),
           const SizedBox(height: 14),
-          const Divider(color: AppTheme.divider, height: 1),
+           Divider(color: context.colors.divider, height: 1),
           const SizedBox(height: 14),
           _PriceRow(label: 'سعر الكورس',
               value: '\$ ${provider.subtotal.toStringAsFixed(2)}'),
@@ -228,15 +228,15 @@ class _PriceBreakdown extends StatelessWidget {
           _PriceRow(label: 'ضريبة القيمة المضافة (15%)',
               value: '\$ ${provider.vat.toStringAsFixed(2)}'),
           const SizedBox(height: 14),
-          const Divider(color: AppTheme.divider, height: 1),
+           Divider(color: context.colors.divider, height: 1),
           const SizedBox(height: 14),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('الإجمالي', style: AppTheme.h2),
+              Text('الإجمالي', style: context.colors.h2),
               Text(
                 '\$ ${provider.total.toStringAsFixed(2)}',
-                style: AppTheme.h2.copyWith(color: AppTheme.primary),
+                style: context.colors.h2.copyWith(color: context.colors.primary),
               ),
             ],
           ),
@@ -257,8 +257,8 @@ class _PriceRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: AppTheme.body.copyWith(height: 1)),
-        Text(value, style: AppTheme.label.copyWith(color: AppTheme.textDark)),
+        Text(label, style: context.colors.body.copyWith(height: 1)),
+        Text(value, style: context.colors.label.copyWith(color: context.colors.textDark)),
       ],
     );
   }
@@ -288,14 +288,14 @@ class _PaymentMethodCard extends StatelessWidget {
         padding:  const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color:        selected
-              ? AppTheme.primary.withValues(alpha: 0.07)
-              : AppTheme.cardBg,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+              ? context.colors.primary.withValues(alpha: 0.07)
+              : context.colors.cardBg,
+          borderRadius: BorderRadius.circular(context.colors.radiusMedium),
           border: Border.all(
-            color: selected ? AppTheme.primary : AppTheme.divider,
+            color: selected ? context.colors.primary : context.colors.divider,
             width: selected ? 2 : 1.5,
           ),
-          boxShadow: selected ? AppTheme.primaryShadow : AppTheme.cardShadow,
+          boxShadow: selected ? context.colors.primaryShadow : context.colors.cardShadow,
         ),
         child: Row(
           children: [
@@ -306,14 +306,14 @@ class _PaymentMethodCard extends StatelessWidget {
               height: 46,
               decoration: BoxDecoration(
                 color:        selected
-                    ? AppTheme.primary.withValues(alpha: 0.12)
-                    : AppTheme.background,
+                    ? context.colors.primary.withValues(alpha: 0.12)
+                    : context.colors.background,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 icon,
                 size:  24,
-                color: selected ? AppTheme.primary : AppTheme.textMedium,
+                color: selected ? context.colors.primary : context.colors.textMedium,
               ),
             ),
             const SizedBox(width: 14),
@@ -321,8 +321,8 @@ class _PaymentMethodCard extends StatelessWidget {
             Expanded(
               child: Text(
                 method.label,
-                style: AppTheme.label.copyWith(
-                  color:      selected ? AppTheme.primary : AppTheme.textDark,
+                style: context.colors.label.copyWith(
+                  color:      selected ? context.colors.primary : context.colors.textDark,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                   fontSize:   14,
                 ),
@@ -335,9 +335,9 @@ class _PaymentMethodCard extends StatelessWidget {
               height: 22,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: selected ? AppTheme.primary : Colors.transparent,
+                color: selected ? context.colors.primary : Colors.transparent,
                 border: Border.all(
-                  color: selected ? AppTheme.primary : AppTheme.textLight,
+                  color: selected ? context.colors.primary : context.colors.textLight,
                   width: 2,
                 ),
               ),
@@ -361,11 +361,11 @@ class _SecureNote extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Icon(Icons.lock_rounded, size: 14, color: AppTheme.textLight),
+         Icon(Icons.lock_rounded, size: 14, color: context.colors.textLight),
         const SizedBox(width: 6),
         Text(
           'الدفع آمن ومشفر بالكامل',
-          style: AppTheme.caption.copyWith(fontSize: 12),
+          style: context.colors.caption.copyWith(fontSize: 12),
         ),
       ],
     );
@@ -394,8 +394,8 @@ class _ConfirmBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
       decoration: BoxDecoration(
-        color:     AppTheme.cardBg,
-        boxShadow: AppTheme.bottomNavShadow,
+        color:     context.colors.cardBg,
+        boxShadow: context.colors.bottomNavShadow,
       ),
       child: AnimatedOpacity(
         opacity:  _canConfirm ? 1.0 : 0.55,
@@ -407,9 +407,9 @@ class _ConfirmBar extends StatelessWidget {
           child: Container(
             height: 54,
             decoration: BoxDecoration(
-              gradient:     AppTheme.primaryGradient,
+              gradient:     context.colors.primaryGradient,
               borderRadius: BorderRadius.circular(30),
-              boxShadow:    _canConfirm ? AppTheme.primaryShadow : [],
+              boxShadow:    _canConfirm ? context.colors.primaryShadow : [],
             ),
             child: Center(
               child: provider.isLoading
@@ -464,22 +464,22 @@ class _BankStep extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color:        AppTheme.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                    color:        context.colors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(context.colors.radiusMedium),
                     border: Border.all(
-                        color: AppTheme.primary.withValues(alpha: 0.25)),
+                        color: context.colors.primary.withValues(alpha: 0.25)),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.info_outline_rounded,
-                          color: AppTheme.primary, size: 22),
+                       Icon(Icons.info_outline_rounded,
+                          color: context.colors.primary, size: 22),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           'يرجى تحويل المبلغ إلى الحساب أدناه، ثم الضغط على "تم التحويل". سيتم تفعيل الكورس بعد التحقق من التحويل.',
-                          style: AppTheme.body.copyWith(
-                              height: 1.6, color: AppTheme.primary),
+                          style: context.colors.body.copyWith(
+                              height: 1.6, color: context.colors.primary),
                         ),
                       ),
                     ],
@@ -521,9 +521,9 @@ class _BankStep extends StatelessWidget {
                   child: Container(
                     height:     54,
                     decoration: BoxDecoration(
-                      gradient:     AppTheme.primaryGradient,
+                      gradient:     context.colors.primaryGradient,
                       borderRadius: BorderRadius.circular(30),
-                      boxShadow:    AppTheme.primaryShadow,
+                      boxShadow:    context.colors.primaryShadow,
                     ),
                     child: const Center(
                       child: Text(
@@ -545,15 +545,15 @@ class _BankStep extends StatelessWidget {
                   child: Container(
                     height:     48,
                     decoration: BoxDecoration(
-                      color:        AppTheme.background,
+                      color:        context.colors.background,
                       borderRadius: BorderRadius.circular(30),
-                      border: Border.all(color: AppTheme.divider),
+                      border: Border.all(color: context.colors.divider),
                     ),
                     child: Center(
                       child: Text(
                         'العودة لاختيار طريقة الدفع',
-                        style: AppTheme.label.copyWith(
-                            color: AppTheme.textMedium),
+                        style: context.colors.label.copyWith(
+                            color: context.colors.textMedium),
                       ),
                     ),
                   ),
@@ -588,15 +588,15 @@ class _BankDetailTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color:        highlight
-            ? AppTheme.accent.withValues(alpha: 0.08)
-            : AppTheme.cardBg,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+            ? context.colors.accent.withValues(alpha: 0.08)
+            : context.colors.cardBg,
+        borderRadius: BorderRadius.circular(context.colors.radiusMedium),
         border:       Border.all(
           color: highlight
-              ? AppTheme.accent.withValues(alpha: 0.3)
-              : AppTheme.divider,
+              ? context.colors.accent.withValues(alpha: 0.3)
+              : context.colors.divider,
         ),
-        boxShadow: highlight ? [] : AppTheme.cardShadow,
+        boxShadow: highlight ? [] : context.colors.cardShadow,
       ),
       child: Row(
         children: [
@@ -605,14 +605,14 @@ class _BankDetailTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label,
-                    style: AppTheme.caption
-                        .copyWith(color: AppTheme.textMedium)),
+                    style: context.colors.caption
+                        .copyWith(color: context.colors.textMedium)),
                 const SizedBox(height: 4),
                 Text(
                   value,
                   style: highlight
-                      ? AppTheme.h2.copyWith(color: AppTheme.accent)
-                      : AppTheme.h3.copyWith(
+                      ? context.colors.h2.copyWith(color: context.colors.accent)
+                      : context.colors.h3.copyWith(
                           fontWeight: FontWeight.w600,
                           letterSpacing: 0.5,
                         ),
@@ -628,7 +628,7 @@ class _BankDetailTile extends StatelessWidget {
                   SnackBar(
                     content: Text('تم النسخ: $value',
                         style: const TextStyle(fontFamily: 'Cairo')),
-                    backgroundColor: AppTheme.success,
+                    backgroundColor: context.colors.success,
                     behavior:        SnackBarBehavior.floating,
                     duration:        const Duration(seconds: 2),
                     shape: RoundedRectangleBorder(
@@ -639,11 +639,11 @@ class _BankDetailTile extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color:        AppTheme.primary.withValues(alpha: 0.1),
+                  color:        context.colors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.copy_rounded,
-                    color: AppTheme.primary, size: 18),
+                child:  Icon(Icons.copy_rounded,
+                    color: context.colors.primary, size: 18),
               ),
             ),
         ],
@@ -708,14 +708,14 @@ class _SuccessStepState extends State<_SuccessStep>
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   shape:     BoxShape.circle,
-                  gradient:  const LinearGradient(
-                    colors: [AppTheme.success, Color(0xFF2ECC71)],
+                  gradient:   LinearGradient(
+                    colors: [context.colors.success, Color(0xFF2ECC71)],
                     begin:  Alignment.topLeft,
                     end:    Alignment.bottomRight,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color:      AppTheme.success.withValues(alpha: 0.40),
+                      color:      context.colors.success.withValues(alpha: 0.40),
                       blurRadius: 28,
                       offset:     const Offset(0, 10),
                     ),
@@ -727,13 +727,13 @@ class _SuccessStepState extends State<_SuccessStep>
             ),
             Text(
               'تم الاشتراك بنجاح! 🎉',
-              style:     AppTheme.h1.copyWith(fontSize: 26),
+              style:     context.colors.h1.copyWith(fontSize: 26),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
             Text(
               'أنت الآن مسجّل في كورس "${course.name}". يمكنك الوصول إليه من قسم "كورساتي".',
-              style:     AppTheme.body.copyWith(height: 1.7),
+              style:     context.colors.body.copyWith(height: 1.7),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 40),
@@ -746,9 +746,9 @@ class _SuccessStepState extends State<_SuccessStep>
               child: Container(
                 height:     54,
                 decoration: BoxDecoration(
-                  gradient:     AppTheme.primaryGradient,
+                  gradient:     context.colors.primaryGradient,
                   borderRadius: BorderRadius.circular(30),
-                  boxShadow:    AppTheme.primaryShadow,
+                  boxShadow:    context.colors.primaryShadow,
                 ),
                 child: const Center(
                   child: Text(
@@ -770,14 +770,14 @@ class _SuccessStepState extends State<_SuccessStep>
               child: Container(
                 height:     48,
                 decoration: BoxDecoration(
-                  color:        AppTheme.background,
+                  color:        context.colors.background,
                   borderRadius: BorderRadius.circular(30),
-                  border:       Border.all(color: AppTheme.divider),
+                  border:       Border.all(color: context.colors.divider),
                 ),
                 child: Center(
                   child: Text(
                     'متابعة التصفح',
-                    style: AppTheme.label.copyWith(color: AppTheme.textMedium),
+                    style: context.colors.label.copyWith(color: context.colors.textMedium),
                   ),
                 ),
               ),
@@ -799,7 +799,7 @@ class _TypeBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isLive = type == 'live';
-    final color  = isLive ? AppTheme.danger : AppTheme.primary;
+    final color  = isLive ? context.colors.danger : context.colors.primary;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -809,7 +809,7 @@ class _TypeBadge extends StatelessWidget {
       ),
       child: Text(
         isLive ? '🔴 مباشر' : '▶ مسجّل',
-        style: AppTheme.caption.copyWith(
+        style: context.colors.caption.copyWith(
           color:      color,
           fontWeight: FontWeight.w700,
         ),

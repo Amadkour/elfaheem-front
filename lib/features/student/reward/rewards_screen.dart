@@ -49,7 +49,7 @@ class _OverviewView extends StatelessWidget {
     final courses  = provider.enrolledCourses;
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: context.colors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -73,8 +73,8 @@ class _OverviewView extends StatelessWidget {
                             end:    Alignment.bottomRight,
                           ),
                           borderRadius:
-                              BorderRadius.circular(AppTheme.radiusLarge),
-                          boxShadow: AppTheme.primaryShadow,
+                              BorderRadius.circular(context.colors.radiusLarge),
+                          boxShadow: context.colors.primaryShadow,
                         ),
                         child: Stack(
                           alignment: Alignment.center,
@@ -115,7 +115,7 @@ class _OverviewView extends StatelessWidget {
                     if (courses.isNotEmpty) ...[
                       Align(
                         alignment: Alignment.centerRight,
-                        child: Text('كورساتي', style: AppTheme.h2),
+                        child: Text('كورساتي', style: context.colors.h2),
                       ),
                       const SizedBox(height: 16),
                       GridView.builder(
@@ -135,11 +135,11 @@ class _OverviewView extends StatelessWidget {
                     ] else
                       Column(
                         children: [
-                          const Icon(Icons.school_outlined,
-                              size: 64, color: AppTheme.textLight),
+                           Icon(Icons.school_outlined,
+                              size: 64, color: context.colors.textLight),
                           const SizedBox(height: 12),
                           Text('سجّل في كورس لتبدأ رحلتك!',
-                              style: AppTheme.body),
+                              style: context.colors.body),
                         ],
                       ),
                   ],
@@ -167,7 +167,7 @@ class _CourseCircle extends StatelessWidget {
           height: 120,
           decoration: BoxDecoration(
             shape:     BoxShape.circle,
-            boxShadow: AppTheme.cardShadow,
+            boxShadow: context.colors.cardShadow,
           ),
           child: ClipOval(
             child: AppNetworkImage(
@@ -179,7 +179,7 @@ class _CourseCircle extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           course.name as String,
-          style:     AppTheme.label.copyWith(color: AppTheme.textDark),
+          style:     context.colors.label.copyWith(color: context.colors.textDark),
           textAlign: TextAlign.center,
           maxLines:  2,
           overflow:  TextOverflow.ellipsis,
@@ -201,7 +201,7 @@ class _DetailView extends StatelessWidget {
     final provider = context.watch<RewardsProvider>();
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: context.colors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -219,7 +219,7 @@ class _DetailView extends StatelessWidget {
                     // ── Achievements ─────────────────────────────────────────
                     _Section(
                       title:    'الإنجازات 🏆',
-                      color:    AppTheme.primary,
+                      color:    context.colors.primary,
                       children: provider.achievements
                           .map((a) => _AchievementRow(item: a))
                           .toList(),
@@ -228,7 +228,7 @@ class _DetailView extends StatelessWidget {
                     // ── Leaderboard ──────────────────────────────────────────
                     _Section(
                       title:    'لوحة المتصدرين 🥇',
-                      color:    AppTheme.accent,
+                      color:    context.colors.accent,
                       children: provider.leaderboard
                           .map((e) => _LeaderRow(entry: e))
                           .toList(),
@@ -237,7 +237,7 @@ class _DetailView extends StatelessWidget {
                     // ── Tips ─────────────────────────────────────────────────
                     _Section(
                       title:    'هل تريد أن تصبح الطالب المتفوق؟ 🔥',
-                      color:    AppTheme.danger,
+                      color:    context.colors.danger,
                       children: provider.tips
                           .map((a) => _AchievementRow(item: a))
                           .toList(),
@@ -271,18 +271,18 @@ class _UserTrophy extends StatelessWidget {
               height: 110,
               decoration: BoxDecoration(
                 shape:     BoxShape.circle,
-                color:     AppTheme.accent.withValues(alpha: 0.1),
+                color:     context.colors.accent.withValues(alpha: 0.1),
                 border: Border.all(
-                    color: AppTheme.accent.withValues(alpha: 0.3), width: 3),
+                    color: context.colors.accent.withValues(alpha: 0.3), width: 3),
               ),
-              child: const Icon(Icons.person_rounded,
-                  size: 60, color: AppTheme.accent),
+              child:  Icon(Icons.person_rounded,
+                  size: 60, color: context.colors.accent),
             ),
             // Ribbon
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               decoration: BoxDecoration(
-                color:        AppTheme.accent,
+                color:        context.colors.accent,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -300,7 +300,7 @@ class _UserTrophy extends StatelessWidget {
         const SizedBox(height: 16),
         Text(
           '${provider.totalPoints} نقطة',
-          style: AppTheme.h2.copyWith(color: AppTheme.primary),
+          style: context.colors.h2.copyWith(color: context.colors.primary),
         ),
       ],
     );
@@ -322,9 +322,9 @@ class _Section extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color:        AppTheme.cardBg,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        boxShadow:    AppTheme.cardShadow,
+        color:        context.colors.cardBg,
+        borderRadius: BorderRadius.circular(context.colors.radiusMedium),
+        boxShadow:    context.colors.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -335,12 +335,12 @@ class _Section extends StatelessWidget {
             decoration: BoxDecoration(
               color:        color.withValues(alpha: 0.08),
               borderRadius: BorderRadius.only(
-                topRight: Radius.circular(AppTheme.radiusMedium),
-                topLeft:  Radius.circular(AppTheme.radiusMedium),
+                topRight: Radius.circular(context.colors.radiusMedium),
+                topLeft:  Radius.circular(context.colors.radiusMedium),
               ),
             ),
             child: Text(title,
-                style: AppTheme.h3.copyWith(color: color, fontSize: 14)),
+                style: context.colors.h3.copyWith(color: color, fontSize: 14)),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
@@ -368,15 +368,15 @@ class _AchievementRow extends StatelessWidget {
           Expanded(
             child: Text(
               item.title as String,
-              style: AppTheme.label.copyWith(
-                color:      earned ? AppTheme.textDark : AppTheme.textLight,
+              style: context.colors.label.copyWith(
+                color:      earned ? context.colors.textDark : context.colors.textLight,
                 decoration: earned ? null : TextDecoration.lineThrough,
               ),
             ),
           ),
           Icon(
             earned ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
-            color: earned ? AppTheme.success : AppTheme.textLight,
+            color: earned ? context.colors.success : context.colors.textLight,
             size:  20,
           ),
         ],
@@ -402,7 +402,7 @@ class _LeaderRow extends StatelessWidget {
       child: Row(
         children: [
           Text(entry.name,
-              style: AppTheme.label.copyWith(color: AppTheme.textDark)),
+              style: context.colors.label.copyWith(color: context.colors.textDark)),
           const Spacer(),
           Text(medal,
               style: const TextStyle(fontSize: 18)),

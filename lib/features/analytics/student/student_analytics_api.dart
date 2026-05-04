@@ -41,7 +41,7 @@ class StudentAnalyticsApi {
   Future<List<StudentExamSummary>> fetchMyExamsForCourse(int courseId) async {
     final data = await _api.get('/api/v1/student/exams');
     if (data is! List) return [];
-    return (data as List)
+    return (data)
         .cast<Map<String, dynamic>>()
         .map(StudentExamSummary.fromJson)
         .where((e) => e.courseId == courseId)

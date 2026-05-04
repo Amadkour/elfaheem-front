@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/student/models.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../config/app_theme.dart';
@@ -26,7 +25,7 @@ class AboutTab extends StatelessWidget {
             const _SectionTitle(title: 'عن الكورس', icon: Icons.info_outline_rounded),
             const SizedBox(height: 10),
             Text(c.description!,
-                style: AppTheme.body.copyWith(height: 1.75)),
+                style: context.colors.body.copyWith(height: 1.75)),
             const SizedBox(height: 26),
           ],
 
@@ -34,7 +33,7 @@ class AboutTab extends StatelessWidget {
             _SectionTitle(
                 title: 'المواعيد الأسبوعية',
                 icon: Icons.calendar_month_rounded,
-                color: AppTheme.primary),
+                color: context.colors.primary),
             const SizedBox(height: 12),
             ...c.schedules.map((s) => Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -47,12 +46,12 @@ class AboutTab extends StatelessWidget {
             _SectionTitle(
                 title: 'الشهادات',
                 icon: Icons.workspace_premium_rounded,
-                color: AppTheme.accent),
+                color: context.colors.accent),
             const SizedBox(height: 12),
             ...c.certificates.map((x) => _InfoCard(
               icon: Icons.verified_rounded,
               iconBg: const Color(0xFFFAEEDA),
-              iconColor: AppTheme.accent,
+              iconColor: context.colors.accent,
               title: x.title,
               subtitle: x.description,
             )),
@@ -67,7 +66,7 @@ class AboutTab extends StatelessWidget {
             ...c.tools.map((x) => _InfoCard(
               icon: Icons.settings_rounded,
               iconBg: const Color(0xFFEEEDFE),
-              iconColor: AppTheme.primary,
+              iconColor: context.colors.primary,
               title: x.title,
               subtitle: x.description,
             )),
@@ -78,12 +77,12 @@ class AboutTab extends StatelessWidget {
             _SectionTitle(
                 title: 'المتطلبات المسبقة',
                 icon: Icons.checklist_rounded,
-                color: AppTheme.accent2),
+                color: context.colors.accent2),
             const SizedBox(height: 12),
             ...c.prerequisites.map((x) => _InfoCard(
               icon: Icons.check_circle_outline_rounded,
               iconBg: const Color(0xFFE1F5EE),
-              iconColor: AppTheme.accent2,
+              iconColor: context.colors.accent2,
               title: x.title,
               subtitle: x.description,
             )),
@@ -106,7 +105,7 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? AppTheme.primary;
+    final c = color ?? context.colors.primary;
     return Row(
       children: [
         Container(
@@ -120,7 +119,7 @@ class _SectionTitle extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         Text(title,
-            style: AppTheme.h3.copyWith(
+            style: context.colors.h3.copyWith(
                 fontSize: 15, fontWeight: FontWeight.w800)),
       ],
     );
@@ -138,10 +137,10 @@ class ScheduleChip extends StatelessWidget {
     padding: const EdgeInsets.symmetric(
         horizontal: 16, vertical: 13),
     decoration: BoxDecoration(
-      color: AppTheme.primaryLight.withValues(alpha:0.12),
+      color: context.colors.primaryLight.withValues(alpha:0.12),
       borderRadius: BorderRadius.circular(14),
       border: Border.all(
-          color: AppTheme.primary.withValues(alpha:0.2)),
+          color: context.colors.primary.withValues(alpha:0.2)),
     ),
     child: Row(
       children: [
@@ -149,30 +148,30 @@ class ScheduleChip extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: AppTheme.primary.withValues(alpha:0.1),
+            color: context.colors.primary.withValues(alpha:0.1),
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.access_time_filled_rounded,
-              color: AppTheme.primary, size: 18),
+          child:  Icon(Icons.access_time_filled_rounded,
+              color: context.colors.primary, size: 18),
         ),
         const SizedBox(width: 12),
         Text(
           schedule.dayLabel,
-          style: AppTheme.label.copyWith(
-              color: AppTheme.primary, fontWeight: FontWeight.w700),
+          style: context.colors.label.copyWith(
+              color: context.colors.primary, fontWeight: FontWeight.w700),
         ),
         const Spacer(),
         Container(
           padding: const EdgeInsets.symmetric(
               horizontal: 12, vertical: 5),
           decoration: BoxDecoration(
-            color: AppTheme.primary.withValues(alpha:0.1),
+            color: context.colors.primary.withValues(alpha:0.1),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
             '${schedule.startTime} — ${schedule.endTime}',
-            style: AppTheme.label.copyWith(
-                color: AppTheme.textDark, fontWeight: FontWeight.w600),
+            style: context.colors.label.copyWith(
+                color: context.colors.textDark, fontWeight: FontWeight.w600),
           ),
         ),
       ],
@@ -190,11 +189,11 @@ class _InstructorCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(18),
     decoration: BoxDecoration(
-      gradient: AppTheme.primaryGradient,
+      gradient: context.colors.primaryGradient,
       borderRadius: BorderRadius.circular(20),
       boxShadow: [
         BoxShadow(
-          color: AppTheme.primary.withValues(alpha:0.36),
+          color: context.colors.primary.withValues(alpha:0.36),
           blurRadius: 22,
           offset: const Offset(0, 7),
         ),
@@ -232,7 +231,7 @@ class _InstructorCard extends StatelessWidget {
             children: [
               Text(
                 name.isNotEmpty ? name : 'المدرس',
-                style: AppTheme.h3.copyWith(
+                style: context.colors.h3.copyWith(
                     color: Colors.white,
                     fontSize: 17,
                     fontWeight: FontWeight.w900),
@@ -240,7 +239,7 @@ class _InstructorCard extends StatelessWidget {
               if (category.isNotEmpty) ...[
                 const SizedBox(height: 3),
                 Text(category,
-                    style: AppTheme.caption
+                    style: context.colors.caption
                         .copyWith(color: Colors.white70)),
               ],
             ],
@@ -300,7 +299,7 @@ class _InfoCard extends StatelessWidget {
     child: Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: context.colors.cardBg,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
@@ -329,14 +328,14 @@ class _InfoCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: AppTheme.label.copyWith(
-                      color: AppTheme.textDark,
+                  style: context.colors.label.copyWith(
+                      color: context.colors.textDark,
                       fontSize: 14,
                       fontWeight: FontWeight.w700),
                 ),
                 if (subtitle != null && subtitle!.isNotEmpty) ...[
                   const SizedBox(height: 4),
-                  Text(subtitle!, style: AppTheme.caption),
+                  Text(subtitle!, style: context.colors.caption),
                 ],
               ],
             ),
@@ -359,7 +358,7 @@ class SectionHdr extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = iconColor ?? AppTheme.primary;
+    final c = iconColor ?? context.colors.primary;
     return Row(
       children: [
         if (icon != null) ...[
@@ -375,7 +374,7 @@ class SectionHdr extends StatelessWidget {
           const SizedBox(width: 10),
         ],
         Text(title,
-            style: AppTheme.h3
+            style: context.colors.h3
                 .copyWith(fontWeight: FontWeight.w800, fontSize: 15)),
       ],
     );

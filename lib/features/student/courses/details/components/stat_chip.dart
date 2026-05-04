@@ -17,13 +17,13 @@ class StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = iconColor ?? AppTheme.primary;
+    final fg = iconColor ?? context.colors.primary;
     final bg = iconBg ?? fg.withValues(alpha:0.12);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: context.colors.cardBg,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: fg.withValues(alpha:0.12)),
         boxShadow: [
@@ -47,10 +47,10 @@ class StatChip extends StatelessWidget {
           const SizedBox(height: 7),
           Text(
             label,
-            style: AppTheme.caption.copyWith(
+            style: context.colors.caption.copyWith(
               fontSize: 10,
               fontWeight: FontWeight.w700,
-              color: AppTheme.textDark,
+              color: context.colors.textDark,
               height: 1.35,
             ),
             textAlign: TextAlign.center,
@@ -67,12 +67,12 @@ class StatChip extends StatelessWidget {
 class MiniStatChip extends StatelessWidget {
   final IconData icon;
   final String label;
-  final Color color;
+  final Color? color;
   const MiniStatChip({
     super.key,
     required this.icon,
     required this.label,
-    this.color = AppTheme.textLight,
+    this.color,
   });
 
   @override
@@ -83,13 +83,13 @@ class MiniStatChip extends StatelessWidget {
         width: 18,
         height: 18,
         decoration: BoxDecoration(
-          color: color.withValues(alpha:0.12),
+          color: (color??context.colors.textLight).withValues(alpha:0.12),
           borderRadius: BorderRadius.circular(5),
         ),
-        child: Icon(icon, size: 11, color: color),
+        child: Icon(icon, size: 11, color: color??context.colors.textLight),
       ),
       const SizedBox(width: 4),
-      Text(label, style: AppTheme.caption.copyWith(fontSize: 11)),
+      Text(label, style: context.colors.caption.copyWith(fontSize: 11)),
     ],
   );
 }

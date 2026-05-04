@@ -1,12 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_provider.dart';
 import 'package:provider/provider.dart';
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
 import '../../auth/auth_provider.dart';
 import '../../student/models.dart';
-import '../../student/sessions/sessions_provider.dart';
 import 'live/prejoin.dart';
 import 'model/live_response_model.dart';
 

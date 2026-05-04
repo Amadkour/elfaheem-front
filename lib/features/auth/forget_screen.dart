@@ -128,7 +128,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
             style:  TextStyle(
               fontFamily:  'Tajawal',
               fontSize: 14,
-              color:AppTheme.scondeText ,
+              color:context.colors.scondeText ,
               height: 1.6,
             ),
           ),
@@ -145,15 +145,15 @@ class _ForgetScreenState extends State<ForgetScreen> {
           // Hint
           Row(
             children: [
-              const Icon(Icons.info_outline_rounded, size: 13, color: AppTheme.primaryBlue,
+               Icon(Icons.info_outline_rounded, size: 13, color: context.colors.primaryBlue,
               ),
               const SizedBox(width: 6),
               Text(
                 'reset_link_hint'.tr,
-                style: const TextStyle(
+                style:  TextStyle(
                   fontFamily:  'Tajawal',
                   fontSize: 12,
-                  color: AppTheme.primaryBlue,
+                  color: context.colors.primaryBlue,
                 ),
               ),
             ],

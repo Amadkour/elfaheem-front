@@ -76,7 +76,7 @@ class Helpers {
       textDirection: Helpers.pageDirection,
       child: AlertDialog(
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
+            borderRadius: BorderRadius.circular(context.colors.radiusMedium)),
         title:  Text('logout'.tr,
             style: const TextStyle(
                 fontFamily: 'Tajawal', fontWeight: FontWeight.w700)),
@@ -86,12 +86,12 @@ class Helpers {
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child:  Text('cancel'.tr,
-                style: const TextStyle(
-                    fontFamily: 'Tajawal', color: AppTheme.textMedium)),
+                style:  TextStyle(
+                    fontFamily: 'Tajawal', color: context.colors.textMedium)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.danger,
+              backgroundColor: context.colors.danger,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
             ),

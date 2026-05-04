@@ -138,13 +138,13 @@
 //     if (updated != null) {
 //       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
 //         content: Text('تم تحديث الدورة بنجاح'),
-//         backgroundColor: AppTheme.success,
+//         backgroundColor: context.colors.success,
 //       ));
 //       Navigator.pop(context, true);
 //     } else {
 //       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
 //         content: Text(provider.errorMessage ?? 'حدث خطأ أثناء التحديث'),
-//         backgroundColor: AppTheme.danger,
+//         backgroundColor: context.colors.danger,
 //       ));
 //     }
 //   }
@@ -159,7 +159,7 @@
 //     return Directionality(
 //       textDirection: TextDirection.rtl,
 //       child: Scaffold(
-//         backgroundColor: AppTheme.background,
+//         backgroundColor: context.colors.background,
 //         body: SafeArea(
 //           child: Column(
 //             children: [
@@ -264,8 +264,8 @@
 //               Container(
 //                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
 //                 decoration: BoxDecoration(
-//                     color: AppTheme.cardBg,
-//                     boxShadow: AppTheme.bottomNavShadow),
+//                     color: context.colors.cardBg,
+//                     boxShadow: context.colors.bottomNavShadow),
 //                 child: Row(
 //                   children: [
 //                     Expanded(
@@ -286,10 +286,10 @@
 //                         width: 50,
 //                         height: 50,
 //                         decoration: BoxDecoration(
-//                           color: AppTheme.primary.withValues(alpha: 0.1),
+//                           color: context.colors.primary.withValues(alpha: 0.1),
 //                           borderRadius: BorderRadius.circular(10),
 //                         ),
-//                         child: Icon(Icons.calendar_month_rounded, size: 30, color: AppTheme.primary),
+//                         child: Icon(Icons.calendar_month_rounded, size: 30, color: context.colors.primary),
 //                       ),
 //                       onTap: () {
 //                         Navigator.of(context).push(

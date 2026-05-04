@@ -23,7 +23,7 @@ class SectionHeader extends StatelessWidget {
         children: [
           Text(
             title,
-            style: AppTheme.h2.copyWith(
+            style: context.colors.h2.copyWith(
               fontSize: 18,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.3,
@@ -38,8 +38,8 @@ class SectionHeader extends StatelessWidget {
 
                 child: Text(
                   actionLabel!,
-                  style: AppTheme.label.copyWith(
-                    color: AppTheme.primaryBlue,
+                  style: context.colors.label.copyWith(
+                    color: context.colors.primaryBlue,
                     fontWeight: FontWeight.w700,
                     fontSize: 12,
                   ),

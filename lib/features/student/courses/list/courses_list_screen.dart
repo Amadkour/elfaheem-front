@@ -56,7 +56,7 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: SafeArea(
           child: Column(
             children: [
@@ -93,7 +93,7 @@ class _WebHeader extends StatelessWidget {
         height: 56,
         padding: const EdgeInsets.symmetric(horizontal: 24),
         decoration: BoxDecoration(
-          color: AppTheme.cardBg,
+          color: context.colors.cardBg,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),
@@ -104,7 +104,7 @@ class _WebHeader extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Text('استكشف الكورسات', style: AppTheme.h2.copyWith(fontSize: 16)),
+            Text('استكشف الكورسات', style: context.colors.h2.copyWith(fontSize: 16)),
           ],
         ),
       );
@@ -129,7 +129,7 @@ class _SearchBar extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         height: 52,
         decoration: BoxDecoration(
-          color: AppTheme.cardBg,
+          color: context.colors.cardBg,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
@@ -144,29 +144,29 @@ class _SearchBar extends StatelessWidget {
           focusNode: focusNode,
           textDirection: TextDirection.rtl,
           onChanged: onChanged,
-          style: const TextStyle(
-              fontFamily: 'Cairo', fontSize: 14, color: AppTheme.textDark),
+          style:  TextStyle(
+              fontFamily: 'Cairo', fontSize: 14, color: context.colors.textDark),
           decoration: InputDecoration(
             hintText: 'بحث عن كورس...',
-            hintStyle: AppTheme.caption.copyWith(fontSize: 14),
+            hintStyle: context.colors.caption.copyWith(fontSize: 14),
             hintTextDirection: TextDirection.rtl,
             prefixIcon: Container(
               margin: const EdgeInsets.all(10),
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: AppTheme.primaryLight.withValues(alpha: 0.3),
+                color: context.colors.primaryLight.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(9),
               ),
-              child: const Icon(Icons.search_rounded,
-                  color: AppTheme.primary, size: 18),
+              child:  Icon(Icons.search_rounded,
+                  color: context.colors.primary, size: 18),
             ),
             suffixIcon: ListenableBuilder(
               listenable: controller,
               builder: (_, __) => controller.text.isNotEmpty
                   ? IconButton(
-                      icon: const Icon(Icons.close_rounded,
-                          color: AppTheme.textLight, size: 18),
+                      icon:  Icon(Icons.close_rounded,
+                          color: context.colors.textLight, size: 18),
                       onPressed: onClear)
                   : const SizedBox.shrink(),
             ),
@@ -191,9 +191,9 @@ class _CourseList extends StatelessWidget {
     final isGrid = cols > 1;
 
     if (provider.isLoading && provider.courses.isEmpty) {
-      return const Center(
+      return  Center(
         child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation(AppTheme.primary),
+          valueColor: AlwaysStoppedAnimation(context.colors.primary),
           strokeWidth: 2.5,
         ),
       );
@@ -214,7 +214,7 @@ class _CourseList extends StatelessWidget {
         return false;
       },
       child: RefreshIndicator(
-        color: AppTheme.primary,
+        color: context.colors.primary,
         onRefresh: provider.fetchCourses,
         child: Align(
           alignment: Alignment.topCenter,
@@ -234,10 +234,10 @@ class _CourseList extends StatelessWidget {
                         provider.courses.length + (provider.hasMore ? 1 : 0),
                     itemBuilder: (_, i) {
                       if (i >= provider.courses.length) {
-                        return const Center(
+                        return  Center(
                           child: CircularProgressIndicator(
                             valueColor:
-                                AlwaysStoppedAnimation(AppTheme.primary),
+                                AlwaysStoppedAnimation(context.colors.primary),
                             strokeWidth: 2,
                           ),
                         );
@@ -253,12 +253,12 @@ class _CourseList extends StatelessWidget {
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
                     itemBuilder: (_, i) {
                       if (i == provider.courses.length) {
-                        return const Padding(
+                        return  Padding(
                           padding: EdgeInsets.all(16),
                           child: Center(
                             child: CircularProgressIndicator(
                               valueColor:
-                                  AlwaysStoppedAnimation(AppTheme.primary),
+                                  AlwaysStoppedAnimation(context.colors.primary),
                               strokeWidth: 2,
                             ),
                           ),
@@ -293,7 +293,7 @@ class _CourseCard extends StatelessWidget {
         onTap: () => _open(context),
         child: Container(
           decoration: BoxDecoration(
-            color: AppTheme.cardBg,
+            color: context.colors.cardBg,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
@@ -361,7 +361,7 @@ class _CourseCard extends StatelessWidget {
                       const SizedBox(height: 6),
                       Text(
                         course.title,
-                        style: AppTheme.h3.copyWith(
+                        style: context.colors.h3.copyWith(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.2,
@@ -377,7 +377,7 @@ class _CourseCard extends StatelessWidget {
                               width: 18,
                               height: 18,
                               decoration: BoxDecoration(
-                                color: AppTheme.primary.withValues(alpha: 0.12),
+                                color: context.colors.primary.withValues(alpha: 0.12),
                                 shape: BoxShape.circle,
                               ),
                               alignment: Alignment.center,
@@ -386,7 +386,7 @@ class _CourseCard extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: 9,
                                   fontWeight: FontWeight.w800,
-                                  color: AppTheme.primary,
+                                  color: context.colors.primary,
                                   fontFamily: 'Cairo',
                                 ),
                               ),
@@ -394,7 +394,7 @@ class _CourseCard extends StatelessWidget {
                             const SizedBox(width: 5),
                             Text(
                               'أ. ${course.instructorName}',
-                              style: AppTheme.caption.copyWith(fontSize: 11),
+                              style: context.colors.caption.copyWith(fontSize: 11),
                             ),
                           ],
                         ),
@@ -407,7 +407,7 @@ class _CourseCard extends StatelessWidget {
                           _MetaItem(
                             Icons.star_rounded,
                             course.rate?.toStringAsFixed(1) ?? '–',
-                            color: AppTheme.accent,
+                            color: context.colors.accent,
                           ),
                           _MetaItem(Icons.people_rounded,
                               '${course.studentsCount} طالب'),
@@ -427,7 +427,7 @@ class _CourseCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(left: 8),
                 child: Icon(Icons.chevron_left_rounded,
-                    color: AppTheme.textLight, size: 20),
+                    color: context.colors.textLight, size: 20),
               ),
             ],
           ),
@@ -448,11 +448,11 @@ class _PricePill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
-        color: isFree ? const Color(0xFF0F6E56) : AppTheme.primary,
+        color: isFree ? const Color(0xFF0F6E56) : context.colors.primary,
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: (isFree ? const Color(0xFF0F6E56) : AppTheme.primary)
+            color: (isFree ? const Color(0xFF0F6E56) : context.colors.primary)
                 .withValues(alpha: 0.4),
             blurRadius: 8,
             offset: const Offset(0, 2),
@@ -480,7 +480,7 @@ class _TypeTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isLive = type == 'live';
-    final c = isLive ? AppTheme.danger : AppTheme.primary;
+    final c = isLive ? context.colors.danger : context.colors.primary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
@@ -498,7 +498,7 @@ class _TypeTag extends StatelessWidget {
           const SizedBox(width: 3),
           Text(
             isLive ? 'مباشر' : 'مسجّل',
-            style: AppTheme.caption
+            style: context.colors.caption
                 .copyWith(color: c, fontWeight: FontWeight.w700, fontSize: 10),
           ),
         ],
@@ -516,13 +516,13 @@ class _CatTag extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: AppTheme.primaryLight.withValues(alpha: 0.2),
+          color: context.colors.primaryLight.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(7),
         ),
         child: Text(
           label,
-          style: AppTheme.caption.copyWith(
-              color: AppTheme.primary,
+          style: context.colors.caption.copyWith(
+              color: context.colors.primary,
               fontWeight: FontWeight.w700,
               fontSize: 10),
         ),
@@ -532,17 +532,17 @@ class _CatTag extends StatelessWidget {
 class _MetaItem extends StatelessWidget {
   final IconData icon;
   final String label;
-  final Color color;
+  final Color? color;
 
-  const _MetaItem(this.icon, this.label, {this.color = AppTheme.textLight});
+  const _MetaItem(this.icon, this.label, {this.color});
 
   @override
   Widget build(BuildContext context) => Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: color),
+          Icon(icon, size: 12, color: color??context.colors.textLight),
           const SizedBox(width: 3),
-          Text(label, style: AppTheme.caption.copyWith(fontSize: 11)),
+          Text(label, style: context.colors.caption.copyWith(fontSize: 11)),
         ],
       );
 }
@@ -562,14 +562,14 @@ class _EmptyState extends StatelessWidget {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: AppTheme.primaryLight.withValues(alpha: 0.3),
+                color: context.colors.primaryLight.withValues(alpha: 0.3),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 38, color: AppTheme.primary),
+              child: Icon(icon, size: 38, color: context.colors.primary),
             ),
             const SizedBox(height: 16),
             Text(message,
-                style: AppTheme.body.copyWith(fontWeight: FontWeight.w600)),
+                style: context.colors.body.copyWith(fontWeight: FontWeight.w600)),
           ],
         ),
       );

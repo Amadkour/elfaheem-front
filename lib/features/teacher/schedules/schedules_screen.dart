@@ -104,7 +104,7 @@ class _ScheduleTabBodyState extends State<ScheduleTabBody>
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: SafeArea(child: ListenableBuilder(
           listenable: widget.provider,
           builder: (_, __) {
@@ -126,7 +126,7 @@ class _ScheduleTabBodyState extends State<ScheduleTabBody>
                 : <ScheduleSlot>[];
 
             return RefreshIndicator(
-              color: AppTheme.primary,
+              color: context.colors.primary,
               onRefresh: _doRefresh,
               child: CustomScrollView(
                 physics: const BouncingScrollPhysics(
@@ -228,10 +228,10 @@ class _Header extends StatelessWidget {
           Expanded(child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: AppTheme.h1),
+              Text(title, style: context.colors.h1),
               const SizedBox(height: 2),
               Text(todayLabel,
-                  style: AppTheme.caption.copyWith(fontSize: 12)),
+                  style: context.colors.caption.copyWith(fontSize: 12)),
             ],
           )),
 
@@ -246,13 +246,13 @@ class _Header extends StatelessWidget {
         child: Row(children: [
           Icon(Icons.history_rounded,
               size: 13,
-              color: AppTheme.textLight.withValues(alpha: 0.7)),
+              color: context.colors.textLight.withValues(alpha: 0.7)),
           const SizedBox(width: 4),
           Text(
             _lastFetchedLabel(),
-            style: AppTheme.caption.copyWith(
+            style: context.colors.caption.copyWith(
                 fontSize: 11,
-                color: AppTheme.textLight.withValues(alpha: 0.8)),
+                color: context.colors.textLight.withValues(alpha: 0.8)),
           ),
         ]),
       ),
@@ -312,12 +312,12 @@ class _RefreshButtonState extends State<_RefreshButton>
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          gradient: widget.isRefreshing ? null : AppTheme.primaryGradient,
+          gradient: widget.isRefreshing ? null : context.colors.primaryGradient,
           color:    widget.isRefreshing
-              ? AppTheme.primary.withValues(alpha: 0.1)
+              ? context.colors.primary.withValues(alpha: 0.1)
               : null,
           borderRadius: BorderRadius.circular(22),
-          boxShadow: widget.isRefreshing ? null : AppTheme.primaryShadow,
+          boxShadow: widget.isRefreshing ? null : context.colors.primaryShadow,
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           RotationTransition(
@@ -325,7 +325,7 @@ class _RefreshButtonState extends State<_RefreshButton>
             child: Icon(
               Icons.refresh_rounded,
               size: 16,
-              color: widget.isRefreshing ? AppTheme.primary : Colors.white,
+              color: widget.isRefreshing ? context.colors.primary : Colors.white,
             ),
           ),
           const SizedBox(width: 6),
@@ -335,7 +335,7 @@ class _RefreshButtonState extends State<_RefreshButton>
               fontFamily: 'Cairo',
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: widget.isRefreshing ? AppTheme.primary : Colors.white,
+              color: widget.isRefreshing ? context.colors.primary : Colors.white,
             ),
           ),
         ]),
@@ -360,13 +360,13 @@ class _NextBanner extends StatelessWidget {
         colors: [Color(0xFFB71C1C), Color(0xFFEF5350)],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight)
-        : AppTheme.primaryGradient;
+        : context.colors.primaryGradient;
 
     return Container(
       decoration: BoxDecoration(
           gradient: gradient,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: AppTheme.primaryShadow),
+          boxShadow: context.colors.primaryShadow),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
         child: Stack(children: [
@@ -606,26 +606,26 @@ class _WeekStrip extends StatelessWidget {
                 width: 56,
                 decoration: BoxDecoration(
                   gradient: isSel
-                      ? AppTheme.primaryGradient
+                      ? context.colors.primaryGradient
                       : isToday
                       ? LinearGradient(colors: [
-                    AppTheme.primary.withValues(alpha: 0.13),
-                    AppTheme.primary.withValues(alpha: 0.06),
+                    context.colors.primary.withValues(alpha: 0.13),
+                    context.colors.primary.withValues(alpha: 0.06),
                   ])
                       : null,
-                  color: isSel || isToday ? null : AppTheme.cardBg,
+                  color: isSel || isToday ? null : context.colors.cardBg,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isSel
                         ? Colors.transparent
                         : isToday
-                        ? AppTheme.primary.withValues(alpha: 0.4)
+                        ? context.colors.primary.withValues(alpha: 0.4)
                         : isActive
-                        ? AppTheme.divider
-                        : AppTheme.divider.withValues(alpha: 0.35),
+                        ? context.colors.divider
+                        : context.colors.divider.withValues(alpha: 0.35),
                     width: isSel ? 0 : 1,
                   ),
-                  boxShadow: isSel ? AppTheme.primaryShadow : null,
+                  boxShadow: isSel ? context.colors.primaryShadow : null,
                 ),
                 child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -639,10 +639,10 @@ class _WeekStrip extends StatelessWidget {
                           color: isSel
                               ? Colors.white
                               : isToday
-                              ? AppTheme.primary
+                              ? context.colors.primary
                               : isActive
-                              ? AppTheme.textDark
-                              : AppTheme.textLight,
+                              ? context.colors.textDark
+                              : context.colors.textLight,
                         ),
                       ),
                       const SizedBox(height: 5),
@@ -656,12 +656,12 @@ class _WeekStrip extends StatelessWidget {
                               height: 6,
                               decoration: BoxDecoration(
                                 color: hasOngoing
-                                    ? (isSel ? Colors.white : AppTheme.danger)
+                                    ? (isSel ? Colors.white : context.colors.danger)
                                     : isSel
                                     ? Colors.white.withValues(alpha: 0.8)
                                     : isToday
-                                    ? AppTheme.primary
-                                    : AppTheme.textLight,
+                                    ? context.colors.primary
+                                    : context.colors.textLight,
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -703,22 +703,22 @@ class ScheduleSlotCard extends StatelessWidget {
     final isToday = slot.isToday;
 
     final accentColor = isNow
-        ? AppTheme.danger
+        ? context.colors.danger
         : isToday
-        ? AppTheme.success
-        : AppTheme.primary;
+        ? context.colors.success
+        : context.colors.primary;
 
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: context.colors.cardBg,
         borderRadius: BorderRadius.circular(18),
-        boxShadow: AppTheme.cardShadow,
+        boxShadow: context.colors.cardShadow,
         border: Border.all(
           color: isNow
-              ? AppTheme.danger
+              ? context.colors.danger
               : isToday
-              ? AppTheme.success.withValues(alpha: 0.45)
-              : AppTheme.divider,
+              ? context.colors.success.withValues(alpha: 0.45)
+              : context.colors.divider,
           width: isNow ? 1.8 : isToday ? 1.2 : 0.8,
         ),
       ),
@@ -774,21 +774,21 @@ class ScheduleSlotCard extends StatelessWidget {
                 children: [
                   if (showCourseName)
                     Text(slot.courseName,
-                        style: AppTheme.h3.copyWith(fontSize: 15),
+                        style: context.colors.h3.copyWith(fontSize: 15),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis)
                   else
-                    Text(slot.dayLabelStr, style: AppTheme.label),
+                    Text(slot.dayLabelStr, style: context.colors.label),
                   const SizedBox(height: 6),
                   Wrap(spacing: 8, runSpacing: 4, children: [
                     _InfoChip(Icons.access_time_rounded,
                         '${slot.calcDuration}د', accentColor.withValues(alpha: 0.8)),
                     if (slot.maxStudents != null)
                       _InfoChip(Icons.people_outline_rounded,
-                          'حتى ${slot.maxStudents}', AppTheme.textLight),
+                          'حتى ${slot.maxStudents}', context.colors.textLight),
                     if (slot.scheduledDate != null && !isToday)
                       _InfoChip(Icons.calendar_today_rounded,
-                          slot.scheduledDate!, AppTheme.textLight),
+                          slot.scheduledDate!, context.colors.textLight),
                   ]),
                   const SizedBox(height: 8),
                   _StatusRow(
@@ -807,8 +807,8 @@ class ScheduleSlotCard extends StatelessWidget {
         if (isNow)
           LinearProgressIndicator(
             value: slot.progressFraction(ongoingSecondsLeft),
-            backgroundColor: AppTheme.danger.withValues(alpha: 0.1),
-            valueColor: const AlwaysStoppedAnimation(AppTheme.danger),
+            backgroundColor: context.colors.danger.withValues(alpha: 0.1),
+            valueColor:  AlwaysStoppedAnimation(context.colors.danger),
             minHeight: 4,
           ),
       ]),
@@ -832,17 +832,17 @@ class _StatusRow extends StatelessWidget {
     if (slot.isOngoing) {
       final pct = ((slot.progressFraction(ongoingSecondsLeft)) * 100).toInt();
       return Row(children: [
-        const Icon(Icons.timer_outlined, size: 13, color: AppTheme.danger),
+         Icon(Icons.timer_outlined, size: 13, color: context.colors.danger),
         const SizedBox(width: 4),
         Text(slot.countdownLabel(ongoingSecondsLeft),
-            style: const TextStyle(
+            style:  TextStyle(
                 fontFamily: 'Cairo',
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: AppTheme.danger)),
+                color: context.colors.danger)),
         const SizedBox(width: 8),
         Text('$pct%',
-            style: AppTheme.caption.copyWith(color: AppTheme.danger)),
+            style: context.colors.caption.copyWith(color: context.colors.danger)),
       ]);
     }
     if (slot.isToday) {
@@ -858,11 +858,11 @@ class _StatusRow extends StatelessWidget {
       ]);
     }
     return Row(children: [
-      const Icon(Icons.calendar_month_outlined,
-          size: 13, color: AppTheme.textLight),
+       Icon(Icons.calendar_month_outlined,
+          size: 13, color: context.colors.textLight),
       const SizedBox(width: 4),
       Text(slot.dayLabelStr,
-          style: AppTheme.caption.copyWith(fontWeight: FontWeight.w600)),
+          style: context.colors.caption.copyWith(fontWeight: FontWeight.w600)),
     ]);
   }
 }
@@ -877,19 +877,19 @@ class _StatusBadge extends StatelessWidget {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-            color:  AppTheme.danger.withValues(alpha: 0.1),
+            color:  context.colors.danger.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-                color: AppTheme.danger.withValues(alpha: 0.3))),
-        child: const Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.circle, size: 7, color: AppTheme.danger),
+                color: context.colors.danger.withValues(alpha: 0.3))),
+        child:  Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.circle, size: 7, color: context.colors.danger),
           SizedBox(width: 4),
           Text('مباشر',
               style: TextStyle(
                   fontFamily: 'Cairo',
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
-                  color: AppTheme.danger)),
+                  color: context.colors.danger)),
         ]),
       );
     }
@@ -897,29 +897,29 @@ class _StatusBadge extends StatelessWidget {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-            color:  AppTheme.success.withValues(alpha: 0.1),
+            color:  context.colors.success.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-                color: AppTheme.success.withValues(alpha: 0.3))),
-        child: const Text('اليوم',
+                color: context.colors.success.withValues(alpha: 0.3))),
+        child:  Text('اليوم',
             style: TextStyle(
                 fontFamily: 'Cairo',
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
-                color: AppTheme.success)),
+                color: context.colors.success)),
       );
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-          color: AppTheme.primary.withValues(alpha: 0.07),
+          color: context.colors.primary.withValues(alpha: 0.07),
           borderRadius: BorderRadius.circular(8)),
       child: Text(slotDayShort(slot.day),
           style: TextStyle(
               fontFamily: 'Cairo',
               fontSize: 10,
               fontWeight: FontWeight.w700,
-              color: AppTheme.primary.withValues(alpha: 0.8))),
+              color: context.colors.primary.withValues(alpha: 0.8))),
     );
   }
 }
@@ -958,15 +958,15 @@ class _EmptyDay extends StatelessWidget {
       padding:
       const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
       decoration: BoxDecoration(
-          color: AppTheme.cardBg,
+          color: context.colors.cardBg,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: AppTheme.cardShadow),
+          boxShadow: context.colors.cardShadow),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Container(
           width: 72,
           height: 72,
           decoration: BoxDecoration(
-            color: AppTheme.primary.withValues(alpha: 0.07),
+            color: context.colors.primary.withValues(alpha: 0.07),
             shape: BoxShape.circle,
           ),
           child: Icon(
@@ -974,7 +974,7 @@ class _EmptyDay extends StatelessWidget {
                 ? Icons.wb_sunny_outlined
                 : Icons.calendar_today_outlined,
             size: 34,
-            color: AppTheme.primary.withValues(alpha: 0.45),
+            color: context.colors.primary.withValues(alpha: 0.45),
           ),
         ),
         const SizedBox(height: 16),
@@ -983,13 +983,13 @@ class _EmptyDay extends StatelessWidget {
               (isToday
                   ? 'لا توجد حصص اليوم 🎉'
                   : 'لا توجد حصص يوم $day'),
-          style: AppTheme.body.copyWith(color: AppTheme.textMedium),
+          style: context.colors.body.copyWith(color: context.colors.textMedium),
           textAlign: TextAlign.center,
         ),
         if (isToday) ...[
           const SizedBox(height: 6),
-          const Text('استرح وتابع الجدول يوماً بيوم',
-              style: AppTheme.caption, textAlign: TextAlign.center),
+           Text('استرح وتابع الجدول يوماً بيوم',
+              style: context.colors.caption, textAlign: TextAlign.center),
         ],
       ]),
     ),
@@ -1003,14 +1003,14 @@ class _LoadingState extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
     child: Column(mainAxisSize: MainAxisSize.min, children: [
-      const CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation(AppTheme.primary)),
+       CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation(context.colors.primary)),
       const SizedBox(height: 16),
-      const Text('جاري تحميل الجدول…',
+       Text('جاري تحميل الجدول…',
           style: TextStyle(
               fontFamily: 'Cairo',
               fontSize: 13,
-              color: AppTheme.textMedium)),
+              color: context.colors.textMedium)),
       const SizedBox(height: 20),
       GestureDetector(
         onTap: onRefresh,
@@ -1018,10 +1018,10 @@ class _LoadingState extends StatelessWidget {
             style: TextStyle(
                 fontFamily: 'Cairo',
                 fontSize: 13,
-                color: AppTheme.primary,
+                color: context.colors.primary,
                 fontWeight: FontWeight.w700,
                 decoration: TextDecoration.underline,
-                decorationColor: AppTheme.primary)),
+                decorationColor: context.colors.primary)),
       ),
     ]),
   );
@@ -1066,7 +1066,7 @@ class _TeacherSchedulesScreenState extends State<TeacherSchedulesScreen> {
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: SafeArea(child: Column(children: [
           ScreenAppBar(
             title: 'المواعيد — ${widget.course.title}',
@@ -1079,26 +1079,26 @@ class _TeacherSchedulesScreenState extends State<TeacherSchedulesScreen> {
             child: Container(
               padding: const EdgeInsets.all(13),
               decoration: BoxDecoration(
-                  color: AppTheme.primary.withValues(alpha: 0.06),
+                  color: context.colors.primary.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                      color: AppTheme.primary.withValues(alpha: 0.15))),
+                      color: context.colors.primary.withValues(alpha: 0.15))),
               child: Row(children: [
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: AppTheme.primary.withValues(alpha: 0.1),
+                    color: context.colors.primary.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.repeat_rounded,
-                      color: AppTheme.primary, size: 15),
+                  child:  Icon(Icons.repeat_rounded,
+                      color: context.colors.primary, size: 15),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'المواعيد تتكرر أسبوعياً تلقائياً  •  الطلاب يرونها في جدولهم',
-                    style: AppTheme.caption.copyWith(
-                        color: AppTheme.primary, height: 1.5),
+                    style: context.colors.caption.copyWith(
+                        color: context.colors.primary, height: 1.5),
                   ),
                 ),
               ]),
@@ -1107,10 +1107,10 @@ class _TeacherSchedulesScreenState extends State<TeacherSchedulesScreen> {
 
           Expanded(
             child: provider.isLoading && provider.schedules.isEmpty
-                ? const Center(
+                ?  Center(
                 child: CircularProgressIndicator(
                     valueColor:
-                    AlwaysStoppedAnimation(AppTheme.primary)))
+                    AlwaysStoppedAnimation(context.colors.primary)))
                 : provider.schedules.isEmpty
                 ? _ManageEmptyState(onAdd: ()=>TeacherSchedulesScreen.openAddScheduleScreenSheet(context))
                 : _ManageList(schedules: provider.schedules),
@@ -1151,16 +1151,16 @@ class _ManageCard extends StatelessWidget {
     padding:
     const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: context.colors.cardBg,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: AppTheme.cardShadow),
+        boxShadow: context.colors.cardShadow),
     child: Row(children: [
       // Day badge
       Container(
         width: 54,
         height: 54,
         decoration: BoxDecoration(
-            gradient: AppTheme.primaryGradient,
+            gradient: context.colors.primaryGradient,
             borderRadius: BorderRadius.circular(14)),
         child: Center(
           child: Text(
@@ -1180,16 +1180,16 @@ class _ManageCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(slotDayLabel(schedule.day),
-                  style: AppTheme.h3.copyWith(fontSize: 15)),
+                  style: context.colors.h3.copyWith(fontSize: 15)),
               const SizedBox(height: 5),
               Row(children: [
-                const Icon(Icons.access_time_filled_rounded,
-                    size: 14, color: AppTheme.primary),
+                 Icon(Icons.access_time_filled_rounded,
+                    size: 14, color: context.colors.primary),
                 const SizedBox(width: 5),
                 Text(
                     '${schedule.startTime}  —  ${schedule.endTime}',
-                    style: AppTheme.label.copyWith(
-                        color: AppTheme.textDark, fontSize: 13)),
+                    style: context.colors.label.copyWith(
+                        color: context.colors.textDark, fontSize: 13)),
               ]),
             ]),
       ),
@@ -1200,12 +1200,12 @@ class _ManageCard extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-                color: AppTheme.danger.withValues(alpha: 0.08),
+                color: context.colors.danger.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                    color: AppTheme.danger.withValues(alpha: 0.2))),
-            child: const Icon(Icons.delete_outline_rounded,
-                color: AppTheme.danger, size: 18)),
+                    color: context.colors.danger.withValues(alpha: 0.2))),
+            child:  Icon(Icons.delete_outline_rounded,
+                color: context.colors.danger, size: 18)),
       ),
     ]),
   );
@@ -1214,7 +1214,7 @@ class _ManageCard extends StatelessWidget {
       BuildContext ctx, CourseSchedule s) async {
     final ok = await showDialog<bool>(
       context: ctx,
-      builder: (_) => Directionality(
+      builder: (BuildContext context) => Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
             shape: RoundedRectangleBorder(
@@ -1229,13 +1229,13 @@ class _ManageCard extends StatelessWidget {
             actions: [
               TextButton(
                   onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('إلغاء',
+                  child:  Text('إلغاء',
                       style: TextStyle(
                           fontFamily: 'Cairo',
-                          color: AppTheme.textMedium))),
+                          color: context.colors.textMedium))),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.danger,
+                    backgroundColor: context.colors.danger,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10))),
                 onPressed: () => Navigator.pop(ctx, true),
@@ -1265,19 +1265,19 @@ class _ManageEmptyState extends StatelessWidget {
             width: 90,
             height: 90,
             decoration: BoxDecoration(
-                gradient: AppTheme.primaryGradient,
+                gradient: context.colors.primaryGradient,
                 shape: BoxShape.circle,
-                boxShadow: AppTheme.primaryShadow),
+                boxShadow: context.colors.primaryShadow),
             child: const Icon(Icons.calendar_month_rounded,
                 color: Colors.white, size: 44)),
         const SizedBox(height: 20),
-        const Text('لا توجد مواعيد بعد', style: AppTheme.h3),
+         Text('لا توجد مواعيد بعد', style: context.colors.h3),
         const SizedBox(height: 6),
-        const Padding(
+         Padding(
           padding: EdgeInsets.symmetric(horizontal: 40),
           child: Text(
             'أضف مواعيد أسبوعية ليراها طلابك في جدولهم',
-            style: AppTheme.caption,
+            style: context.colors.caption,
             textAlign: TextAlign.center,
           ),
         ),
@@ -1288,9 +1288,9 @@ class _ManageEmptyState extends StatelessWidget {
             padding: const EdgeInsets.symmetric(
                 horizontal: 28, vertical: 14),
             decoration: BoxDecoration(
-                gradient: AppTheme.primaryGradient,
+                gradient: context.colors.primaryGradient,
                 borderRadius: BorderRadius.circular(26),
-                boxShadow: AppTheme.primaryShadow),
+                boxShadow: context.colors.primaryShadow),
             child: const Text('+ إضافة موعد أسبوعي',
                 style: TextStyle(
                     color: Colors.white,
@@ -1358,13 +1358,13 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
                 actions: [
                   TextButton(
                       onPressed: () => Navigator.pop(context, false),
-                      child: const Text('إلغاء',
+                      child:  Text('إلغاء',
                           style: TextStyle(
                               fontFamily: 'Cairo',
-                              color: AppTheme.textMedium))),
+                              color: context.colors.textMedium))),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primary,
+                        backgroundColor: context.colors.primary,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10))),
                     onPressed: () => Navigator.pop(context, true),
@@ -1393,7 +1393,7 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
             style: const TextStyle(
                 fontFamily: 'Cairo', color: Colors.white)),
         backgroundColor:
-        r != null ? AppTheme.success : AppTheme.danger,
+        r != null ? context.colors.success : context.colors.danger,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12)),
@@ -1413,8 +1413,8 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
             right: 24,
             top: 24,
             bottom: MediaQuery.of(context).viewInsets.bottom + 32),
-        decoration: const BoxDecoration(
-            color: AppTheme.cardBg,
+        decoration:  BoxDecoration(
+            color: context.colors.cardBg,
             borderRadius:
             BorderRadius.vertical(top: Radius.circular(28))),
         child: Column(
@@ -1427,16 +1427,16 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                        color: AppTheme.divider,
+                        color: context.colors.divider,
                         borderRadius: BorderRadius.circular(2)))),
             const SizedBox(height: 18),
-            const Text('إضافة موعد أسبوعي', style: AppTheme.h2),
+             Text('إضافة موعد أسبوعي', style: context.colors.h2),
             const SizedBox(height: 20),
 
             // Day chips
             Text('اليوم',
-                style: AppTheme.label.copyWith(
-                    color: AppTheme.textDark,
+                style: context.colors.label.copyWith(
+                    color: context.colors.textDark,
                     fontWeight: FontWeight.w700)),
             const SizedBox(height: 10),
             SizedBox(
@@ -1456,22 +1456,22 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
                           horizontal: 16, vertical: 10),
                       decoration: BoxDecoration(
                         gradient:
-                        sel ? AppTheme.primaryGradient : null,
+                        sel ? context.colors.primaryGradient : null,
                         color:
-                        sel ? null : AppTheme.background,
+                        sel ? null : context.colors.background,
                         borderRadius: BorderRadius.circular(22),
                         border: Border.all(
                             color: sel
                                 ? Colors.transparent
-                                : AppTheme.divider),
+                                : context.colors.divider),
                         boxShadow:
-                        sel ? AppTheme.primaryShadow : null,
+                        sel ? context.colors.primaryShadow : null,
                       ),
                       child: Text(l,
-                          style: AppTheme.label.copyWith(
+                          style: context.colors.label.copyWith(
                               color: sel
                                   ? Colors.white
-                                  : AppTheme.textMedium,
+                                  : context.colors.textMedium,
                               fontWeight: sel
                                   ? FontWeight.w700
                                   : FontWeight.w500)),
@@ -1500,8 +1500,8 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
             if (!_valid) ...[
               const SizedBox(height: 6),
               Text('وقت النهاية يجب أن يكون بعد وقت البداية',
-                  style: AppTheme.caption
-                      .copyWith(color: AppTheme.danger)),
+                  style: context.colors.caption
+                      .copyWith(color: context.colors.danger)),
             ],
             const SizedBox(height: 24),
             MyPrimaryButton(
@@ -1530,8 +1530,8 @@ class _TimePicker extends StatelessWidget {
   Widget build(BuildContext context) =>
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(label,
-            style: AppTheme.label.copyWith(
-                color: AppTheme.textDark,
+            style: context.colors.label.copyWith(
+                color: context.colors.textDark,
                 fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),
         GestureDetector(
@@ -1540,23 +1540,23 @@ class _TimePicker extends StatelessWidget {
             padding: const EdgeInsets.symmetric(
                 horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-                color: AppTheme.background,
+                color: context.colors.background,
                 borderRadius:
-                BorderRadius.circular(AppTheme.radiusMedium),
+                BorderRadius.circular(context.colors.radiusMedium),
                 border: Border.all(
                     color: hasError
-                        ? AppTheme.danger
-                        : AppTheme.divider,
+                        ? context.colors.danger
+                        : context.colors.divider,
                     width: hasError ? 1.5 : 1)),
             child: Row(children: [
               Icon(Icons.access_time_rounded,
                   size: 18,
                   color:
-                  hasError ? AppTheme.danger : AppTheme.primary),
+                  hasError ? context.colors.danger : context.colors.primary),
               const SizedBox(width: 8),
               Text(
                   '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
-                  style: AppTheme.h3.copyWith(fontSize: 18)),
+                  style: context.colors.h3.copyWith(fontSize: 18)),
             ]),
           ),
         ),
@@ -1575,9 +1575,9 @@ class _AddBtn extends StatelessWidget {
         height: 40,
         margin: const EdgeInsets.only(left: 4),
         decoration: BoxDecoration(
-            gradient: AppTheme.primaryGradient,
+            gradient: context.colors.primaryGradient,
             shape: BoxShape.circle,
-            boxShadow: AppTheme.primaryShadow),
+            boxShadow: context.colors.primaryShadow),
         child: const Icon(Icons.add_rounded,
             color: Colors.white, size: 22)),
   );

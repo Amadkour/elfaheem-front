@@ -21,7 +21,7 @@ Future<void> addItemDialog(
       textDirection: TextDirection.rtl,
       child: AlertDialog(
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
+            borderRadius: BorderRadius.circular(context.colors.radiusMedium)),
         title: Text(hint,
             style: const TextStyle(
                 fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
@@ -32,7 +32,7 @@ Future<void> addItemDialog(
           style: const TextStyle(fontFamily: 'Cairo'),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: AppTheme.caption,
+            hintStyle: context.colors.caption,
             border:
             OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
@@ -41,13 +41,13 @@ Future<void> addItemDialog(
           TextButton(
             // FIX: use dialogContext, not outer context
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('إلغاء',
+            child:  Text('إلغاء',
                 style: TextStyle(
-                    fontFamily: 'Cairo', color: AppTheme.textMedium)),
+                    fontFamily: 'Cairo', color: context.colors.textMedium)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primary,
+              backgroundColor: context.colors.primary,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
             ),

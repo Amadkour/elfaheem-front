@@ -11,10 +11,8 @@ import '../../../utils/widget/app_network_image.dart';
 import '../../auth/auth_provider.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import '../../student/home/component/home_section_header.dart';
-import '../courses/add_course_screen.dart';
 import '../courses/component/teacher_stats.dart';
 import '../courses/courses_screen.dart';
-import '../sessions/sessions_provider.dart';
 import '../sessions/sessions_screen.dart';
 
 class TeacherHomeScreen extends StatefulWidget {
@@ -44,90 +42,84 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
     final loading = provider.isLoading;
     final isWide = context.showSidebar;
 
-    return Directionality(
-      textDirection: Helpers.pageDirection,
-      child: Scaffold(
-        backgroundColor: AppTheme.background,
-        body: SafeArea(
-          child: RefreshIndicator(
-            color: AppTheme.primary,
-            onRefresh: () => context.read<TeacherProvider>().init(),
-            child: CustomScrollView(
-              physics: const BouncingScrollPhysics(
-                  parent: AlwaysScrollableScrollPhysics()),
-              slivers: [
-                // ── Top bar ─────────────────────────────────────────
-                if (!isWide) SliverToBoxAdapter(child: _TopBar()),
-                if (!isWide)
-                  const SliverToBoxAdapter(child: SizedBox(height: 20))
-                else
-                  SliverToBoxAdapter(child: _WebTopBar()),
+    return  SafeArea(
+        child: RefreshIndicator(
+          color: context.colors.primary,
+          onRefresh: () => context.read<TeacherProvider>().init(),
+          child: CustomScrollView(
+            physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics()),
+            slivers: [
+              // ── Top bar ─────────────────────────────────────────
+              if (!isWide) SliverToBoxAdapter(child: _TopBar()),
+              if (!isWide)
+                const SliverToBoxAdapter(child: SizedBox(height: 20))
+              else
+                SliverToBoxAdapter(child: _WebTopBar()),
 
-                // ── Stats ────────────────────────────────────────────
-                SliverToBoxAdapter(
-                  child: ContentBox(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: loading
-                        ? const _StatsShimmer()
-                        : _StatsRow(stats: provider.stats),
-                  ),
-                ),
-                const SliverToBoxAdapter(child: SizedBox(height: 20)),
-
-                // ── Add course button ────────────────────────────────
-                SliverToBoxAdapter(
-                  child: ContentBox(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: _AddCourseButton(),
-                  ),
-                ),
-                const SliverToBoxAdapter(child: SizedBox(height: 24)),
-
-                // ── Courses ──────────────────────────────────────────
-                SliverToBoxAdapter(
-                  child: ContentBox(
-                    child: SectionHeader(
-                      title: 'الكورسات',
-                      actionLabel: 'عرض الكل',
-                      onAction: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                              builder: (_) => const TeacherCoursesScreen())),
-                    ),
-                  ),
-                ),
-                const SliverToBoxAdapter(child: SizedBox(height: 14)),
-                SliverToBoxAdapter(
-                  child: ContentBox(
-                      child: loading
-                          ? const _CoursesShimmer()
-                          : _CoursesRow(courses: provider.allCourses)),
-                ),
-                const SliverToBoxAdapter(child: SizedBox(height: 26)),
-
-                // ── Schedule ─────────────────────────────────────────
-                SliverToBoxAdapter(
-                  child: ContentBox(
-                    child: SectionHeader(
-                      title: 'الجدول الزمني',
-                      actionLabel: 'المواعيد القادمة',
-                      onAction: () {},
-                    ),
-                  ),
-                ),
-                const SliverToBoxAdapter(child: SizedBox(height: 14)),
-                SliverToBoxAdapter(
+              // ── Stats ────────────────────────────────────────────
+              SliverToBoxAdapter(
+                child: ContentBox(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: loading
-                      ? const _ScheduleShimmer()
-                      : ContentBox(
-                          child:
-                              ScheduleQueueList(sessions: provider.schedule)),
+                      ? const _StatsShimmer()
+                      : _StatsRow(stats: provider.stats),
                 ),
-                const SliverToBoxAdapter(child: SizedBox(height: 36)),
-              ],
-            ),
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 20)),
+
+              // ── Add course button ────────────────────────────────
+              SliverToBoxAdapter(
+                child: ContentBox(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: _AddCourseButton(),
+                ),
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+              // ── Courses ──────────────────────────────────────────
+              SliverToBoxAdapter(
+                child: ContentBox(
+                  child: SectionHeader(
+                    title: 'الكورسات',
+                    actionLabel: 'عرض الكل',
+                    onAction: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const TeacherCoursesScreen())),
+                  ),
+                ),
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 14)),
+              SliverToBoxAdapter(
+                child: ContentBox(
+                    child: loading
+                        ? const _CoursesShimmer()
+                        : _CoursesRow(courses: provider.allCourses)),
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 26)),
+
+              // ── Schedule ─────────────────────────────────────────
+              SliverToBoxAdapter(
+                child: ContentBox(
+                  child: SectionHeader(
+                    title: 'الجدول الزمني',
+                    actionLabel: 'المواعيد القادمة',
+                    onAction: () {},
+                  ),
+                ),
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 14)),
+              SliverToBoxAdapter(
+                child: loading
+                    ? const _ScheduleShimmer()
+                    : ContentBox(
+                        child:
+                            ScheduleQueueList(sessions: provider.schedule)),
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 36)),
+            ],
           ),
         ),
-      ),
     );
   }
 }
@@ -142,7 +134,7 @@ class _WebTopBar extends StatelessWidget {
       height: 56,
       padding: const EdgeInsets.symmetric(horizontal: 24),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: context.colors.cardBg,
         boxShadow: [
           BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),
@@ -151,7 +143,7 @@ class _WebTopBar extends StatelessWidget {
         ],
       ),
       child: Row(children: [
-        Text('مرحباً، $name 👋', style: AppTheme.h2.copyWith(fontSize: 16)),
+        Text('مرحباً، $name 👋', style: context.colors.h2.copyWith(fontSize: 16)),
       ]),
     );
   }
@@ -172,10 +164,10 @@ class _TopBar extends StatelessWidget {
           height: 48,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: AppTheme.primaryGradient,
+            gradient: context.colors.primaryGradient,
             boxShadow: [
               BoxShadow(
-                  color: AppTheme.primary.withValues(alpha: 0.38),
+                  color: context.colors.primary.withValues(alpha: 0.38),
                   blurRadius: 14,
                   offset: const Offset(0, 4))
             ],
@@ -193,8 +185,8 @@ class _TopBar extends StatelessWidget {
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('صباح الخير 🌟',
-                style: AppTheme.caption.copyWith(fontSize: 12)),
-            Text(name, style: AppTheme.h2.copyWith(fontSize: 18)),
+                style: context.colors.caption.copyWith(fontSize: 12)),
+            Text(name, style: context.colors.h2.copyWith(fontSize: 18)),
           ]),
         ),
         // Notification bell
@@ -202,7 +194,7 @@ class _TopBar extends StatelessWidget {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: AppTheme.cardBg,
+            color: context.colors.cardBg,
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
@@ -211,8 +203,8 @@ class _TopBar extends StatelessWidget {
                   offset: const Offset(0, 2))
             ],
           ),
-          child: const Icon(Icons.notifications_rounded,
-              color: AppTheme.primary, size: 22),
+          child:  Icon(Icons.notifications_rounded,
+              color: context.colors.primary, size: 22),
         ),
       ]),
     );
@@ -226,7 +218,7 @@ class _Shimmer extends StatefulWidget {
   final double radius;
 
   const _Shimmer(
-      {required this.width, required this.height, this.radius = 16.0});
+      {required this.width, required this.height, this.radius=0});
 
   @override
   State<_Shimmer> createState() => _ShimmerState();
@@ -260,8 +252,8 @@ class _ShimmerState extends State<_Shimmer>
           height: widget.height,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(widget.radius),
-            color: Color.lerp(AppTheme.divider,
-                AppTheme.divider.withValues(alpha: 0.3), _anim.value),
+            color: Color.lerp(context.colors.divider,
+                context.colors.divider.withValues(alpha: 0.3), _anim.value),
           ),
         ),
       );
@@ -344,8 +336,8 @@ class _StatsRow extends StatelessWidget {
           value: '${stats.totalCourses}',
           label: 'الكورسات',
           icon: Icons.library_books_rounded,
-          gradient: AppTheme.tealGradient,
-          shadowColor: AppTheme.accent2,
+          gradient: context.colors.tealGradient,
+          shadowColor: context.colors.accent2,
         ),
       ]);
 }
@@ -413,11 +405,11 @@ class _AddCourseButton extends StatelessWidget {
         child: Container(
           height: 54,
           decoration: BoxDecoration(
-            gradient: AppTheme.primaryGradient,
+            gradient: context.colors.primaryGradient,
             borderRadius: BorderRadius.circular(30),
             boxShadow: [
               BoxShadow(
-                  color: AppTheme.primary.withValues(alpha: 0.40),
+                  color: context.colors.primary.withValues(alpha: 0.40),
                   blurRadius: 20,
                   offset: const Offset(0, 6)),
             ],
@@ -451,35 +443,35 @@ class _CoursesRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget content = ListView.separated(
-      controller: _controller,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      scrollDirection: Axis.horizontal,
-      physics: ScrollPhysics(),
-      itemCount: courses.length,
-      separatorBuilder: (_, __) => const SizedBox(width: 14),
-      itemBuilder: (_, i) => _TeacherCourseCard(course: courses[i]),
+    Widget content = SizedBox(
+        height: context.height/5,
+      child: ListView.separated(
+        controller: _controller,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        scrollDirection: Axis.horizontal,
+        physics: ScrollPhysics(),
+        itemCount: courses.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 14),
+        itemBuilder: (_, i) => _TeacherCourseCard(course: courses[i]),
+      ),
     );
     if (courses.isEmpty) {
-      return const SizedBox(
+      return  SizedBox(
         height: 140,
         child: Center(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.school_outlined, size: 40, color: AppTheme.textLight),
+          Icon(Icons.school_outlined, size: 40, color: context.colors.textLight),
           SizedBox(height: 8),
-          Text('لا توجد كورسات بعد', style: AppTheme.caption),
+          Text('لا توجد كورسات بعد', style: context.colors.caption),
         ])),
       );
     }
     if (context.isMobile) return content;
-    return SizedBox(
-      height: 230,
-      child: Scrollbar(
-        controller: _controller,
-        thumbVisibility: true, // This keeps the 'cursor' visible
-        trackVisibility: true, // Optional: shows the path of the scrollbar
-        child: content,
-      ),
+    return Scrollbar(
+      controller: _controller,
+      thumbVisibility: true, // This keeps the 'cursor' visible
+      trackVisibility: true, // Optional: shows the path of the scrollbar
+      child: content,
     );
   }
 }
@@ -498,7 +490,7 @@ class _TeacherCourseCard extends StatelessWidget {
         ),
         child: Container(
           decoration: BoxDecoration(
-            color: AppTheme.cardBg,
+            color: context.colors.cardBg,
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
@@ -526,8 +518,8 @@ class _TeacherCourseCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(course.title,
-                        style: AppTheme.label
-                            .copyWith(color: AppTheme.textDark, fontSize: 13),
+                        style: context.colors.label
+                            .copyWith(color: context.colors.textDark, fontSize: 13),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 6),
@@ -535,7 +527,7 @@ class _TeacherCourseCard extends StatelessWidget {
                       _MetaIcon(
                         Icons.people_rounded,
                         '${course.studentsCount}',
-                        color: AppTheme.primary,
+                        color: context.colors.primary,
                         hintLabel: "student_participant".tr,
                       ),
                       const SizedBox(width: 10),
@@ -547,7 +539,7 @@ class _TeacherCourseCard extends StatelessWidget {
                     const SizedBox(height: 10),
                     _MetaIcon(Icons.star_rounded,
                         course.averageRating.toStringAsFixed(1),
-                        color: AppTheme.accent, hintLabel: "student_rate".tr),
+                        color: context.colors.accent, hintLabel: "student_rate".tr),
                     const SizedBox(height: 10),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -557,8 +549,8 @@ class _TeacherCourseCard extends StatelessWidget {
                               horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
                             color: course.isPublished
-                                ? AppTheme.accent2
-                                : AppTheme.accent,
+                                ? context.colors.accent2
+                                : context.colors.accent,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -602,8 +594,8 @@ class _MetaIcon extends StatelessWidget {
             child: Icon(icon, size: 10, color: color),
           ),
           const SizedBox(width: 3),
-          Text("$hintLabel :", style: AppTheme.label.copyWith(fontSize: 10)),
-          Text(label, style: AppTheme.label.copyWith(fontSize: 10)),
+          Text("$hintLabel :", style: context.colors.label.copyWith(fontSize: 10)),
+          Text(label, style: context.colors.label.copyWith(fontSize: 10)),
         ],
       );
 }

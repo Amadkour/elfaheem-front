@@ -20,10 +20,10 @@ class InstructorsRow extends StatelessWidget {
     final instructors = provider.instructors;
 
     if (instructors.isEmpty) {
-      return const SizedBox(
+      return  SizedBox(
         height: 128,
         child: Center(
-          child: Text('لا يوجد مدرسون', style: AppTheme.caption),
+          child: Text('لا يوجد مدرسون', style: context.colors.caption),
         ),
       );
     }
@@ -90,7 +90,7 @@ class InstructorsRow extends StatelessWidget {
                 const SizedBox(height: 9),
                 Text(
                   ins.name,
-                  style: AppTheme.h3.copyWith(
+                  style: context.colors.h3.copyWith(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                   ),
@@ -101,9 +101,9 @@ class InstructorsRow extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   ins.specialty,
-                  style: AppTheme.caption.copyWith(
+                  style: context.colors.caption.copyWith(
                     fontSize: 10,
-                    color: AppTheme.textLight,
+                    color: context.colors.textLight,
                   ),
                   textAlign: TextAlign.center,
                   maxLines: 1,

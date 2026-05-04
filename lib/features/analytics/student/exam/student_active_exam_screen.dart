@@ -87,9 +87,9 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         appBar: AppBar(
-          backgroundColor: AppTheme.primary,
+          backgroundColor: context.colors.primary,
           foregroundColor: Colors.white,
           title: const Text('دخول الاختبار',
               style:
@@ -109,12 +109,12 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
-                  colors: [AppTheme.primary, Colors.deepPurple],
+                  colors: [context.colors.primary, Colors.deepPurple],
                 ),
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                      color: AppTheme.primary.withValues(alpha: 0.3),
+                      color: context.colors.primary.withValues(alpha: 0.3),
                       blurRadius: 20,
                       offset: const Offset(0, 6))
                 ],
@@ -143,7 +143,7 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
               _InfoRow(Icons.star_outline_rounded, 'درجة النجاح',
                   '${exam.passingScore?.toInt() ?? 0}%', Colors.amber.shade700),
               _InfoRow(Icons.help_outline_rounded, 'عدد الأسئلة',
-                  '${exam.questionCount} سؤال', AppTheme.primary),
+                  '${exam.questionCount} سؤال', context.colors.primary),
               if (exam.startDate != null)
                 _InfoRow(Icons.schedule_rounded, 'وقت البدء',
                     _fmtDate(exam.startDate!), Colors.orange),
@@ -214,7 +214,7 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
                 child: ElevatedButton(
                   onPressed: _loading ? null : _enter,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
+                    backgroundColor: context.colors.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -378,7 +378,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
       ? Colors.redAccent
       : _secondsLeft < 300
       ? Colors.orange
-      : AppTheme.success;
+      : context.colors.success;
 
   int get _answeredCount => _answers.values.where((v) => v != null).length;
 
@@ -388,7 +388,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
       return Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
-          backgroundColor: AppTheme.background,
+          backgroundColor: context.colors.background,
           body: Center(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               const CircularProgressIndicator(),
@@ -408,7 +408,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         appBar: AppBar(
           backgroundColor: Colors.white,
           elevation: 0,
@@ -462,7 +462,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                 child: LinearProgressIndicator(
                   value: (_current + 1) / widget.questions.length,
                   backgroundColor: Colors.grey.shade100,
-                  color: AppTheme.primary,
+                  color: context.colors.primary,
                   minHeight: 6,
                 ),
               ),
@@ -496,14 +496,14 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                                   horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
                                   color:
-                                  AppTheme.primary.withValues(alpha: 0.1),
+                                  context.colors.primary.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(8)),
                               child: Text('${q.marks.toInt()} درجات',
                                   style: TextStyle(
                                       fontFamily: 'Cairo',
                                       fontSize: 11,
                                       fontWeight: FontWeight.w700,
-                                      color: AppTheme.primary)),
+                                      color: context.colors.primary)),
                             ),
                             const SizedBox(height: 12),
                             Text(q.title,
@@ -530,12 +530,12 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                                 horizontal: 16, vertical: 14),
                             decoration: BoxDecoration(
                               color: selected
-                                  ? AppTheme.primary.withValues(alpha: 0.08)
+                                  ? context.colors.primary.withValues(alpha: 0.08)
                                   : Colors.white,
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
                                 color: selected
-                                    ? AppTheme.primary
+                                    ? context.colors.primary
                                     : Colors.grey.shade200,
                                 width: selected ? 2 : 1,
                               ),
@@ -554,11 +554,11 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: selected
-                                      ? AppTheme.primary
+                                      ? context.colors.primary
                                       : Colors.transparent,
                                   border: Border.all(
                                       color: selected
-                                          ? AppTheme.primary
+                                          ? context.colors.primary
                                           : Colors.grey.shade300,
                                       width: 2),
                                 ),
@@ -577,7 +577,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                                               ? FontWeight.w600
                                               : FontWeight.w400,
                                           color: selected
-                                              ? AppTheme.primary
+                                              ? context.colors.primary
                                               : Colors.black87))),
                             ]),
                           ),
@@ -625,15 +625,15 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: isCurrent
-                                  ? AppTheme.primary
+                                  ? context.colors.primary
                                   : answered
-                                  ? AppTheme.success.withValues(alpha: 0.12)
+                                  ? context.colors.success.withValues(alpha: 0.12)
                                   : Colors.white,
                               border: Border.all(
                                 color: isCurrent
-                                    ? AppTheme.primary
+                                    ? context.colors.primary
                                     : answered
-                                    ? AppTheme.success
+                                    ? context.colors.success
                                     : Colors.grey.shade300,
                                 width: isCurrent ? 2 : 1,
                               ),
@@ -647,7 +647,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                                         color: isCurrent
                                             ? Colors.white
                                             : answered
-                                            ? AppTheme.success
+                                            ? context.colors.success
                                             : Colors.grey))),
                           ),
                         );
@@ -685,7 +685,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                           fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
                   label: const Icon(Icons.arrow_back_ios_rounded, size: 14),
                   style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primary,
+                      backgroundColor: context.colors.primary,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
@@ -700,7 +700,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                       style: TextStyle(
                           fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
                   style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.success,
+                      backgroundColor: context.colors.success,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
@@ -742,7 +742,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                 _submitExam();
               },
               style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.success,
+                  backgroundColor: context.colors.success,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10))),
               child: const Text('تأكيد التسليم',
@@ -771,9 +771,9 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         appBar: AppBar(
-          backgroundColor: passed ? AppTheme.success : Colors.redAccent,
+          backgroundColor: passed ? context.colors.success : Colors.redAccent,
           automaticallyImplyLeading: false,
           title: const Text('نتيجة الاختبار',
               style: TextStyle(
@@ -826,7 +826,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                           value: v,
                           strokeWidth: 12,
                           backgroundColor: Colors.grey.shade100,
-                          color: passed ? AppTheme.success : Colors.redAccent,
+                          color: passed ? context.colors.success : Colors.redAccent,
                         ),
                       ),
                       Column(mainAxisSize: MainAxisSize.min, children: [
@@ -836,14 +836,14 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                                 fontSize: 36,
                                 fontWeight: FontWeight.w900,
                                 color:
-                                passed ? AppTheme.success : Colors.redAccent)),
+                                passed ? context.colors.success : Colors.redAccent)),
                         Text(passed ? 'ناجح ✓' : 'راسب ✗',
                             style: TextStyle(
                                 fontFamily: 'Cairo',
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
                                 color:
-                                passed ? AppTheme.success : Colors.redAccent)),
+                                passed ? context.colors.success : Colors.redAccent)),
                       ]),
                     ]),
               ),
@@ -856,7 +856,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                     fontFamily: 'Cairo',
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: passed ? AppTheme.success : Colors.redAccent),
+                    color: passed ? context.colors.success : Colors.redAccent),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
@@ -879,7 +879,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                     marksObtained != null
                         ? '${marksObtained.toStringAsFixed(0)} / ${totalMarks?.toStringAsFixed(0)}'
                         : '$_answeredCount / ${widget.questions.length} إجابة',
-                    AppTheme.primary,
+                    context.colors.primary,
                   ),
                   const Divider(height: 20),
                   _ResultRow(
@@ -900,7 +900,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                   onPressed: () =>
                       Navigator.popUntil(context, (r) => r.isFirst),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
+                    backgroundColor: context.colors.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 15),
                     shape: RoundedRectangleBorder(

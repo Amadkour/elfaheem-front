@@ -43,8 +43,8 @@ class SettingsTile extends StatelessWidget {
             // Label on the right (RTL)
             Expanded(
               child: Text(label,
-                  style: AppTheme.label
-                      .copyWith(color: AppTheme.textDark, fontSize: 14)),
+                  style: context.colors.label
+                      .copyWith(color: context.colors.textDark, fontSize: 14)),
             ),
             const SizedBox(width: 12),
             // Icon container on the left
@@ -53,10 +53,10 @@ class SettingsTile extends StatelessWidget {
               const SizedBox(width: 10),
               trailing!,
             ] else if (onTap != null)
-              const Padding(
+               Padding(
                 padding: EdgeInsets.only(left: 4),
                 child: Icon(Icons.chevron_right_rounded,
-                    color: AppTheme.textLight, size: 20),
+                    color: context.colors.textLight, size: 20),
               ),
           ],
         ),

@@ -48,7 +48,7 @@ class _StudentSessionsScreenState extends State<StudentSessionsScreen>
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: SafeArea(
             child: Column(children: [
           ScreenAppBar(title: 'الدروس — ${widget.courseTitle}'),
@@ -57,17 +57,17 @@ class _StudentSessionsScreenState extends State<StudentSessionsScreen>
             margin: const EdgeInsets.fromLTRB(20, 4, 20, 0),
             height: 42,
             decoration: BoxDecoration(
-              color: AppTheme.cardBg,
-              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+              color: context.colors.cardBg,
+              borderRadius: BorderRadius.circular(context.colors.radiusMedium),
             ),
             child: TabBar(
               controller: _tabs,
               indicator: BoxDecoration(
-                gradient: AppTheme.primaryGradient,
-                borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                gradient: context.colors.primaryGradient,
+                borderRadius: BorderRadius.circular(context.colors.radiusMedium),
               ),
               labelColor: Colors.white,
-              unselectedLabelColor: AppTheme.textMedium,
+              unselectedLabelColor: context.colors.textMedium,
               labelStyle: const TextStyle(
                   fontFamily: 'Cairo',
                   fontWeight: FontWeight.w700,
@@ -100,9 +100,9 @@ class _SessionList extends StatelessWidget {
     final provider = context.watch<StudentSessionsProvider>();
 
     if (provider.isLoading && provider.sessions.isEmpty) {
-      return const Center(
+      return  Center(
           child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation(AppTheme.primary)));
+              valueColor: AlwaysStoppedAnimation(context.colors.primary)));
     }
 
     final sessions = filter == 'all'
@@ -113,15 +113,15 @@ class _SessionList extends StatelessWidget {
     if (sessions.isEmpty) {
       return Center(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.video_library_outlined,
-            size: 64, color: AppTheme.textLight),
+         Icon(Icons.video_library_outlined,
+            size: 64, color: context.colors.textLight),
         const SizedBox(height: 12),
-        Text('لا توجد دروس بعد', style: AppTheme.body)
+        Text('لا توجد دروس بعد', style: context.colors.body)
       ]));
     }
 
     return RefreshIndicator(
-      color: AppTheme.primary,
+      color: context.colors.primary,
       onRefresh: () => provider.fetchSessions(courseId),
       child: ListView.builder(
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
@@ -141,10 +141,10 @@ class _SessionList extends StatelessWidget {
                             s.isLive
                                 ? '🔴 الحصص المباشرة'
                                 : '▶ الدروس المسجّلة',
-                            style: AppTheme.h3.copyWith(
+                            style: context.colors.h3.copyWith(
                                 color: s.isLive
-                                    ? AppTheme.danger
-                                    : AppTheme.primary))),
+                                    ? context.colors.danger
+                                    : context.colors.primary))),
                   ] else
                     const SizedBox(height: 12),
                   _SessionCard(session: s),
@@ -173,22 +173,22 @@ class _SessionCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 2),
         decoration: BoxDecoration(
-          color: AppTheme.cardBg,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-          boxShadow: AppTheme.cardShadow,
+          color: context.colors.cardBg,
+          borderRadius: BorderRadius.circular(context.colors.radiusMedium),
+          boxShadow: context.colors.cardShadow,
           border: isCompleted
-              ? Border.all(color: AppTheme.success.withValues(alpha: 0.4))
+              ? Border.all(color: context.colors.success.withValues(alpha: 0.4))
               : isLive && checkedIn
-                  ? Border.all(color: AppTheme.danger.withValues(alpha: 0.5))
+                  ? Border.all(color: context.colors.danger.withValues(alpha: 0.5))
                   : null,
         ),
         child: Row(children: [
           // ── Right side: thumbnail with number badge ─────────────────────
           Stack(children: [
             ClipRRect(
-              borderRadius: const BorderRadius.only(
-                  topRight: Radius.circular(AppTheme.radiusMedium),
-                  bottomRight: Radius.circular(AppTheme.radiusMedium)),
+              borderRadius:  BorderRadius.only(
+                  topRight: Radius.circular(context.colors.radiusMedium),
+                  bottomRight: Radius.circular(context.colors.radiusMedium)),
               child: Container(
                 width: 100,
                 height: 100,
@@ -220,7 +220,7 @@ class _SessionCard extends StatelessWidget {
                       gradient: isLive
                           ? const LinearGradient(
                               colors: [Colors.redAccent, Color(0xFFFF6B6B)])
-                          : AppTheme.primaryGradient,
+                          : context.colors.primaryGradient,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
@@ -244,8 +244,8 @@ class _SessionCard extends StatelessWidget {
                   child: Container(
                       width: 22,
                       height: 22,
-                      decoration: const BoxDecoration(
-                          color: AppTheme.success, shape: BoxShape.circle),
+                      decoration:  BoxDecoration(
+                          color: context.colors.success, shape: BoxShape.circle),
                       child: const Icon(Icons.check_rounded,
                           color: Colors.white, size: 14))),
           ]),
@@ -258,26 +258,26 @@ class _SessionCard extends StatelessWidget {
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               // Title
               Text(session.name,
-                  style: AppTheme.h3.copyWith(fontSize: 14),
+                  style: context.colors.h3.copyWith(fontSize: 14),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis),
               const SizedBox(height: 6),
               // Duration
               Row(children: [
-                const Icon(Icons.access_time_rounded,
-                    size: 13, color: AppTheme.textLight),
+                 Icon(Icons.access_time_rounded,
+                    size: 13, color: context.colors.textLight),
                 const SizedBox(width: 4),
                 Text('${session.durationMinutes} دقيقه',
-                    style: AppTheme.caption),
+                    style: context.colors.caption),
               ]),
               // Scheduled date
               if (session.scheduledAt != null) ...[
                 const SizedBox(height: 4),
                 Row(children: [
-                  const Icon(Icons.calendar_month_rounded,
-                      size: 13, color: AppTheme.textLight),
+                   Icon(Icons.calendar_month_rounded,
+                      size: 13, color: context.colors.textLight),
                   const SizedBox(width: 4),
-                  Text(session.scheduledLabel, style: AppTheme.caption),
+                  Text(session.scheduledLabel, style: context.colors.caption),
                 ]),
               ],
               const SizedBox(height: 8),
@@ -286,9 +286,9 @@ class _SessionCard extends StatelessWidget {
                 _TypeBadge(isLive: isLive),
                 const SizedBox(width: 6),
                 if (isCompleted)
-                  _Badge('مكتمل', AppTheme.success)
+                  _Badge('مكتمل', context.colors.success)
                 else if (checkedIn && isLive)
-                  _Badge('● مباشر', AppTheme.danger),
+                  _Badge('● مباشر', context.colors.danger),
               ]),
               // Check-in / check-out for live sessions
               if (isLive) ...[
@@ -312,7 +312,7 @@ class _SessionCard extends StatelessWidget {
       if (liveResponseModel != null && context.mounted) {
         await _launchUrl(context, liveResponseModel.url);
       } else if (context.mounted) {
-        _snack(context, 'الحصة المباشرة غير متاحة الآن', AppTheme.danger);
+        _snack(context, 'الحصة المباشرة غير متاحة الآن', context.colors.danger);
       }
     } else {
       // Recorded — track view
@@ -339,13 +339,13 @@ class _SessionCard extends StatelessWidget {
                     actions: [
                       TextButton(
                           onPressed: () => Navigator.pop(context, false),
-                          child: const Text('لاحقاً',
+                          child:  Text('لاحقاً',
                               style: TextStyle(
                                   fontFamily: 'Cairo',
-                                  color: AppTheme.textMedium))),
+                                  color: context.colors.textMedium))),
                       ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.success,
+                              backgroundColor: context.colors.success,
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10))),
                           onPressed: () => Navigator.pop(context, true),
@@ -364,11 +364,11 @@ class _SessionCard extends StatelessWidget {
     }
   }
 
-  Future<void> _launchUrl(BuildContext ctx, String url) async {
+  Future<void> _launchUrl(BuildContext context, String url) async {
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else if (ctx.mounted) _snack(ctx, 'تعذر فتح الرابط', AppTheme.danger);
+    } else if (context.mounted) _snack(context, 'تعذر فتح الرابط', context.colors.danger);
   }
 
   void _snack(BuildContext ctx, String msg, Color c) =>
@@ -395,19 +395,19 @@ class _AttendanceRow extends StatelessWidget {
 
     return Row(children: [
       if (!inSession)
-        _SmallBtn('تسجيل الحضور', Icons.login_rounded, AppTheme.success,
+        _SmallBtn('تسجيل الحضور', Icons.login_rounded, context.colors.success,
             () async {
           await provider.checkIn(session.id);
           if (context.mounted) {
-            _snack(context, 'تم تسجيل حضورك ✓', AppTheme.success);
+            _snack(context, 'تم تسجيل حضورك ✓', context.colors.success);
           }
         })
       else
-        _SmallBtn('تسجيل المغادرة', Icons.logout_rounded, AppTheme.danger,
+        _SmallBtn('تسجيل المغادرة', Icons.logout_rounded, context.colors.danger,
             () async {
           await provider.checkOut(session.id);
           if (context.mounted) {
-            _snack(context, 'تم تسجيل مغادرتك', AppTheme.primary);
+            _snack(context, 'تم تسجيل مغادرتك', context.colors.primary);
           }
         }),
     ]);
@@ -458,15 +458,15 @@ class _TypeBadge extends StatelessWidget {
   const _TypeBadge({required this.isLive});
 
   @override
-  Widget build(BuildContext ctx) {
-    final c = isLive ? AppTheme.danger : AppTheme.primary;
+  Widget build(BuildContext context) {
+    final c = isLive ? context.colors.danger : context.colors.primary;
     return Container(
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
         decoration: BoxDecoration(
             color: c.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(6)),
         child: Text(isLive ? '🔴 مباشر' : '▶ مسجّل',
-            style: AppTheme.caption
+            style: context.colors.caption
                 .copyWith(color: c, fontWeight: FontWeight.w700)));
   }
 }
@@ -478,13 +478,13 @@ class _Badge extends StatelessWidget {
   const _Badge(this.text, this.color);
 
   @override
-  Widget build(BuildContext ctx) => Container(
+  Widget build(BuildContext context) => Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
           color: color.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(6),
           border: Border.all(color: color.withValues(alpha: 0.3))),
       child: Text(text,
-          style: AppTheme.caption
+          style: context.colors.caption
               .copyWith(color: color, fontWeight: FontWeight.w700)));
 }

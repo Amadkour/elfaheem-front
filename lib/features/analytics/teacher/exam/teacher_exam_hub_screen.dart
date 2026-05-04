@@ -65,7 +65,7 @@ class _HubViewState extends State<_HubView>
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: NestedScrollView(
           headerSliverBuilder: (ctx, _) => [_buildAppBar(ctx)],
           body: TabBarView(
@@ -76,7 +76,7 @@ class _HubViewState extends State<_HubView>
         floatingActionButton: prov.tab == 0
             ? FloatingActionButton.extended(
           onPressed: () => _showCreateSheet(context),
-          backgroundColor: AppTheme.primary,
+          backgroundColor: context.colors.primary,
           icon: const Icon(Icons.add_rounded, color: Colors.white),
           label: const Text('اختبار جديد',
               style: TextStyle(
@@ -93,7 +93,7 @@ class _HubViewState extends State<_HubView>
   Widget _buildAppBar(BuildContext ctx) => SliverAppBar(
     expandedHeight: 148,
     pinned: true,
-    backgroundColor: AppTheme.primary,
+    backgroundColor: context.colors.primary,
     leading: IconButton(
       icon: const Icon(Icons.arrow_forward_ios,
           color: Colors.white, size: 20),
@@ -101,11 +101,11 @@ class _HubViewState extends State<_HubView>
     ),
     flexibleSpace: FlexibleSpaceBar(
       background: Container(
-        decoration: const BoxDecoration(
+        decoration:  BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topRight,
             end: Alignment.bottomLeft,
-            colors: [AppTheme.primary, Colors.deepPurple],
+            colors: [context.colors.primary, Colors.deepPurple],
           ),
         ),
         child: SafeArea(
@@ -234,7 +234,7 @@ class _HubViewState extends State<_HubView>
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Icon(Icons.quiz_rounded, color: AppTheme.primary, size: 18),
+            Icon(Icons.quiz_rounded, color: context.colors.primary, size: 18),
             const SizedBox(width: 8),
             Expanded(
               child: Text(prov.selectedExam!.name,
@@ -247,8 +247,8 @@ class _HubViewState extends State<_HubView>
           ]),
           const SizedBox(height: 10),
           Row(children: [
-            _MiniStat('${prov.results.length}', 'مسجّل', AppTheme.primary),
-            _MiniStat('${prov.attendedCount}', 'حضر', AppTheme.success),
+            _MiniStat('${prov.results.length}', 'مسجّل', context.colors.primary),
+            _MiniStat('${prov.attendedCount}', 'حضر', context.colors.success),
             _MiniStat('${prov.attemptedCount}', 'أجاب', Colors.orange),
             _MiniStat('${prov.passedCount}', 'نجح', Colors.teal),
             _MiniStat(
@@ -289,7 +289,7 @@ class _HubViewState extends State<_HubView>
               : 'تم إيقاف نشر الاختبار'),
       err != null
           ? Colors.redAccent
-          : (exam.isPublished ? AppTheme.success : Colors.orange),
+          : (exam.isPublished ? context.colors.success : Colors.orange),
     );
   }
 
@@ -329,7 +329,7 @@ class _HubViewState extends State<_HubView>
       final deleted = await prov.deleteExam(examId);
       if (context.mounted) {
         _snack(deleted ? 'تم حذف الاختبار' : 'فشل الحذف',
-            deleted ? AppTheme.success : Colors.redAccent);
+            deleted ? context.colors.success : Colors.redAccent);
       }
     }
   }
@@ -488,7 +488,7 @@ class _ExamCard extends StatelessWidget {
           Expanded(
             child: _ActionBtn(
               onTap: onToggle,
-              color: exam.isPublished ? AppTheme.success : Colors.grey,
+              color: exam.isPublished ? context.colors.success : Colors.grey,
               filled: exam.isPublished,
               icon: exam.isPublished
                   ? Icons.visibility_rounded
@@ -512,7 +512,7 @@ class _ExamCard extends StatelessWidget {
           Expanded(
             child: _ActionBtn(
               onTap: onResults,
-              color: AppTheme.primary,
+              color: context.colors.primary,
               filled: false,
               icon: Icons.bar_chart_rounded,
               label: 'النتائج',
@@ -658,13 +658,13 @@ class _ManageQuestionsSheet extends StatelessWidget {
               TextButton.icon(
                 onPressed: () => _showQuestionForm(context, prov,
                     examId: exam.id, existing: null),
-                icon: const Icon(Icons.add_rounded,
-                    size: 18, color: AppTheme.primary),
-                label: const Text('إضافة',
+                icon:  Icon(Icons.add_rounded,
+                    size: 18, color: context.colors.primary),
+                label:  Text('إضافة',
                     style: TextStyle(
                         fontFamily: 'Cairo',
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.primary)),
+                        color: context.colors.primary)),
               ),
             ]),
           ),
@@ -692,7 +692,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
                         onPressed: () =>
                             prov.loadQuestions(exam.id),
                         style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primary),
+                            backgroundColor: context.colors.primary),
                         child: const Text('إعادة المحاولة',
                             style:
                             TextStyle(fontFamily: 'Cairo')),
@@ -845,7 +845,7 @@ class _QuestionTile extends StatelessWidget {
                 width: 26,
                 height: 26,
                 decoration: BoxDecoration(
-                  color: AppTheme.primary.withValues(alpha: 0.1),
+                  color: context.colors.primary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Center(
@@ -854,7 +854,7 @@ class _QuestionTile extends StatelessWidget {
                           fontFamily: 'Cairo',
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
-                          color: AppTheme.primary)),
+                          color: context.colors.primary)),
                 ),
               ),
               const SizedBox(width: 10),
@@ -877,12 +877,12 @@ class _QuestionTile extends StatelessWidget {
                   if (v == 'delete') onDelete();
                 },
                 itemBuilder: (_) => [
-                  const PopupMenuItem(
+                   PopupMenuItem(
                     value: 'edit',
                     child: ListTile(
                       dense: true,
                       leading:
-                      Icon(Icons.edit_rounded, color: AppTheme.primary),
+                      Icon(Icons.edit_rounded, color: context.colors.primary),
                       title: Text('تعديل',
                           style: TextStyle(fontFamily: 'Cairo')),
                     ),
@@ -919,18 +919,18 @@ class _QuestionTile extends StatelessWidget {
                     horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: isCorrect
-                      ? AppTheme.success.withValues(alpha: 0.1)
+                      ? context.colors.success.withValues(alpha: 0.1)
                       : Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                       color: isCorrect
-                          ? AppTheme.success.withValues(alpha: 0.4)
+                          ? context.colors.success.withValues(alpha: 0.4)
                           : Colors.grey.shade300),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   if (isCorrect) ...[
                     Icon(Icons.check_circle_rounded,
-                        size: 12, color: AppTheme.success),
+                        size: 12, color: context.colors.success),
                     const SizedBox(width: 4),
                   ],
                   Text(opt,
@@ -938,7 +938,7 @@ class _QuestionTile extends StatelessWidget {
                           fontFamily: 'Cairo',
                           fontSize: 12,
                           color: isCorrect
-                              ? AppTheme.success
+                              ? context.colors.success
                               : Colors.grey.shade700,
                           fontWeight: isCorrect
                               ? FontWeight.w700
@@ -1063,7 +1063,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
       if (!context.mounted) return;
       if (q != null) {
         Navigator.pop(context);
-        _snack('تمت إضافة السؤال بنجاح', AppTheme.success);
+        _snack('تمت إضافة السؤال بنجاح', context.colors.success);
       } else {
         _snack('فشلت الإضافة، حاول مرة أخرى', Colors.redAccent);
       }
@@ -1080,7 +1080,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
       if (!context.mounted) return;
       if (q != null) {
         Navigator.pop(context);
-        _snack('تم تعديل السؤال بنجاح', AppTheme.success);
+        _snack('تم تعديل السؤال بنجاح', context.colors.success);
       } else {
         _snack('فشل التعديل، حاول مرة أخرى', Colors.redAccent);
       }
@@ -1128,7 +1128,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                   isEditing
                       ? Icons.edit_rounded
                       : Icons.add_circle_outline_rounded,
-                  color: AppTheme.primary),
+                  color: context.colors.primary),
               const SizedBox(width: 8),
               Text(isEditing ? 'تعديل السؤال' : 'إضافة سؤال',
                   style: const TextStyle(
@@ -1169,8 +1169,9 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                               decimal: true),
                           validator: (v) {
                             if (v == null || v.trim().isEmpty) return 'مطلوب';
-                            if (double.tryParse(v.trim()) == null)
+                            if (double.tryParse(v.trim()) == null) {
                               return 'رقم صحيح';
+                            }
                             return null;
                           },
                         ),
@@ -1261,7 +1262,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                               style: TextStyle(
                                   fontFamily: 'Cairo', fontSize: 13)),
                           style: TextButton.styleFrom(
-                              foregroundColor: AppTheme.primary),
+                              foregroundColor: context.colors.primary),
                         ),
 
                         const SizedBox(height: 12),
@@ -1282,7 +1283,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                         child: ElevatedButton(
                           onPressed: prov.saving ? null : _submit,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primary,
+                            backgroundColor: context.colors.primary,
                             foregroundColor: Colors.white,
                             padding:
                             const EdgeInsets.symmetric(vertical: 15),
@@ -1401,11 +1402,11 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
             decoration: BoxDecoration(
                 color: Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(2))),
-        const Padding(
+         Padding(
           padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
           child: Row(children: [
             Icon(Icons.add_circle_outline_rounded,
-                color: AppTheme.primary),
+                color: context.colors.primary),
             SizedBox(width: 8),
             Text('إنشاء اختبار جديد',
                 style: TextStyle(
@@ -1521,7 +1522,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                     onPressed:
                     widget.provider.saving ? null : _submit,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primary,
+                      backgroundColor: context.colors.primary,
                       foregroundColor: Colors.white,
                       padding:
                       const EdgeInsets.symmetric(vertical: 15),
@@ -1582,14 +1583,14 @@ class _AnswersSheet extends StatelessWidget {
           child: Row(children: [
             CircleAvatar(
               backgroundColor:
-              AppTheme.primary.withValues(alpha: 0.1),
+              context.colors.primary.withValues(alpha: 0.1),
               backgroundImage: result.studentImage != null
                   ? NetworkImage(result.studentImage!)
                   : null,
               child: result.studentImage == null
                   ? Text(result.studentName[0],
                   style: TextStyle(
-                      color: AppTheme.primary,
+                      color: context.colors.primary,
                       fontWeight: FontWeight.w700,
                       fontFamily: 'Cairo'))
                   : null,
@@ -1617,7 +1618,7 @@ class _AnswersSheet extends StatelessWidget {
             _StatusBadge(
                 result.passed == true ? 'نجح' : 'راسب',
                 result.passed == true
-                    ? AppTheme.success
+                    ? context.colors.success
                     : Colors.redAccent),
           ]),
         ),
@@ -1636,7 +1637,7 @@ class _AnswersSheet extends StatelessWidget {
                 final a = result.answers[i];
                 final correct = a.isCorrect == true;
                 final color =
-                correct ? AppTheme.success : Colors.redAccent;
+                correct ? context.colors.success : Colors.redAccent;
                 return Container(
                   margin: const EdgeInsets.only(bottom: 10),
                   padding: const EdgeInsets.all(14),
@@ -1702,7 +1703,7 @@ class _ResultTile extends StatelessWidget {
     final pct = result.percentage;
     final passed = result.passed;
     final color = passed == true
-        ? AppTheme.success
+        ? context.colors.success
         : passed == false
         ? Colors.redAccent
         : Colors.grey;
@@ -1744,7 +1745,7 @@ class _ResultTile extends StatelessWidget {
                 width: 14,
                 height: 14,
                 decoration: BoxDecoration(
-                    color: AppTheme.success,
+                    color: context.colors.success,
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 1.5)),
               ),
@@ -1761,7 +1762,7 @@ class _ResultTile extends StatelessWidget {
               const SizedBox(height: 4),
               Row(children: [
                 _StatusBadge(result.isAttended ? 'حضر' : 'غاب',
-                    result.isAttended ? AppTheme.success : Colors.redAccent),
+                    result.isAttended ? context.colors.success : Colors.redAccent),
                 const SizedBox(width: 6),
                 if (result.attempted)
                   _StatusBadge(passed == true ? 'نجح' : 'راسب', color)
@@ -1795,7 +1796,7 @@ class _ResultTile extends StatelessWidget {
                   style: TextStyle(
                       fontFamily: 'Cairo',
                       fontSize: 11,
-                      color: AppTheme.primary,
+                      color: context.colors.primary,
                       fontWeight: FontWeight.w600)),
             ),
         ]),
@@ -1935,7 +1936,7 @@ class _Toggle extends StatelessWidget {
     child: Column(children: [
       ListTile(
         dense: true,
-        leading: Icon(icon, color: AppTheme.primary, size: 20),
+        leading: Icon(icon, color: context.colors.primary, size: 20),
         title: Text(label,
             style: const TextStyle(
                 fontFamily: 'Cairo',
@@ -1944,7 +1945,7 @@ class _Toggle extends StatelessWidget {
         trailing: Switch.adaptive(
             value: value,
             onChanged: onChanged,
-            activeColor: AppTheme.primary),
+            activeColor: context.colors.primary),
         contentPadding: const EdgeInsets.symmetric(horizontal: 14),
       ),
       if (value && child != null)
@@ -1972,7 +1973,7 @@ class _ErrorView extends StatelessWidget {
       ElevatedButton(
           onPressed: onRetry,
           style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primary,
+              backgroundColor: context.colors.primary,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12))),
           child: const Text('إعادة المحاولة',

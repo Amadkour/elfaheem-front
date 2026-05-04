@@ -8,7 +8,7 @@ class AppNetworkImage extends StatelessWidget {
   final double? height;
   final BoxFit fit;
   final BorderRadius? borderRadius;
-  final Color color;
+  final Color? color;
   final EdgeInsets padding;
 
   const AppNetworkImage({
@@ -18,7 +18,7 @@ class AppNetworkImage extends StatelessWidget {
     this.height,
     this.fit = BoxFit.cover,
     this.borderRadius,
-    this.color = AppTheme.background,
+    this.color,
     this.padding = EdgeInsets.zero,
   });
 
@@ -32,13 +32,14 @@ class AppNetworkImage extends StatelessWidget {
       errorBuilder: (_, __, ___) => Container(
         width: width,
         height: height,
-        color: AppTheme.background,
+        color: context.colors.cardBg,
         child: Center(
           child: Image.asset(
             'assets/images/logo.png',
             height: height,
             width: width,
             fit: fit,
+
           ),
         ),
       ),
@@ -47,11 +48,11 @@ class AppNetworkImage extends StatelessWidget {
         return Container(
           width: width,
           height: height,
-          color: color,
-          child: const Center(
+          color: color??context.colors.cardBg,
+          child:  Center(
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation(AppTheme.primary),
+              valueColor: AlwaysStoppedAnimation(context.colors.primary),
             ),
           ),
         );
@@ -61,7 +62,7 @@ class AppNetworkImage extends StatelessWidget {
     if (borderRadius != null) {
       return Container(
           padding: padding,
-          decoration: BoxDecoration(color: color, borderRadius: borderRadius),
+          decoration: BoxDecoration(color: color??context.colors.cardBg, borderRadius: borderRadius),
           child: ClipRRect(borderRadius: borderRadius!, child: img));
     }
     return img;

@@ -1,8 +1,6 @@
 import 'package:flutter/cupertino.dart';
-import 'package:provider/provider.dart';
 
 import '../../../models.dart';
-import '../course_detail_provider.dart';
 import 'about.dart';
 import 'session.dart'; // uses the SessionsTab defined above
 

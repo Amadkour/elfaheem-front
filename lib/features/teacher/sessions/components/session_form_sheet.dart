@@ -39,7 +39,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
       _durCtrl.text   = s.durationMinutes.toString();
       _orderCtrl.text = s.order.toString();
       _type = s.type ?? 'pre-recorded';
-      if (s.scheduledAt != null) _scheduled =s.scheduledAt;
+      _scheduled =s.scheduledAt;
     }
   }
 
@@ -60,7 +60,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
       lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.light(primary: AppTheme.primary),
+          colorScheme:  ColorScheme.light(primary: context.colors.primary),
         ),
         child: child!,
       ),
@@ -71,7 +71,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
       initialTime: TimeOfDay.fromDateTime(_scheduled ?? DateTime.now()),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.light(primary: AppTheme.primary),
+          colorScheme:  ColorScheme.light(primary: context.colors.primary),
         ),
         child: child!,
       ),
@@ -123,7 +123,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                 fontWeight: FontWeight.w600),
           ),
         ]),
-        backgroundColor: ok ? AppTheme.success : AppTheme.danger,
+        backgroundColor: ok ? context.colors.success : context.colors.danger,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -144,9 +144,9 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
           bottom: MediaQuery.of(context).viewInsets.bottom + 32,
         ),
         decoration: BoxDecoration(
-          color: AppTheme.surfaceCard,
+          color: context.colors.surface,
           borderRadius:
-          const BorderRadius.vertical(top: Radius.circular(AppTheme.radiusXL)),
+           BorderRadius.vertical(top: Radius.circular(context.colors.radiusXL)),
         ),
         child: Form(
           key: _formKey,
@@ -161,7 +161,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                   height: 4,
                   margin: const EdgeInsets.symmetric(vertical: 14),
                   decoration: BoxDecoration(
-                    color: AppTheme.divider,
+                    color: context.colors.divider,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -173,9 +173,9 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
+                    gradient: context.colors.primaryGradient,
                     borderRadius: BorderRadius.circular(11),
-                    boxShadow: AppTheme.primaryShadow,
+                    boxShadow: context.colors.primaryShadow,
                   ),
                   child: Icon(
                     _isEdit ? Icons.edit_rounded : Icons.add_rounded,
@@ -186,7 +186,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                 const SizedBox(width: 12),
                 Text(
                   _isEdit ? 'تعديل الدرس' : 'درس جديد',
-                  style: AppTheme.h2,
+                  style: context.colors.h2,
                 ),
               ]),
 
@@ -244,14 +244,14 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                         horizontal: 16, vertical: 14),
                     decoration: BoxDecoration(
                       color: _scheduled != null
-                          ? AppTheme.primaryLight
-                          : AppTheme.background,
+                          ? context.colors.primaryLight
+                          : context.colors.background,
                       borderRadius:
-                      BorderRadius.circular(AppTheme.radiusMedium),
+                      BorderRadius.circular(context.colors.radiusMedium),
                       border: Border.all(
                         color: _scheduled != null
-                            ? AppTheme.primary.withValues(alpha: 0.35)
-                            : AppTheme.divider,
+                            ? context.colors.primary.withValues(alpha: 0.35)
+                            : context.colors.divider,
                         width: _scheduled != null ? 1.5 : 1,
                       ),
                     ),
@@ -260,11 +260,11 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                         width: 32,
                         height: 32,
                         decoration: BoxDecoration(
-                          color: AppTheme.primary.withValues(alpha: 0.1),
+                          color: context.colors.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(9),
                         ),
-                        child: const Icon(Icons.event_rounded,
-                            color: AppTheme.primary, size: 17),
+                        child:  Icon(Icons.event_rounded,
+                            color: context.colors.primary, size: 17),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -272,10 +272,10 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                           _scheduled != null
                               ? '${_scheduled!.day}/${_scheduled!.month}/${_scheduled!.year}  ${_scheduled!.hour.toString().padLeft(2, '0')}:${_scheduled!.minute.toString().padLeft(2, '0')}'
                               : 'اختر موعد الحصة المباشرة',
-                          style: AppTheme.label.copyWith(
+                          style: context.colors.label.copyWith(
                             color: _scheduled != null
-                                ? AppTheme.primary
-                                : AppTheme.textLight,
+                                ? context.colors.primary
+                                : context.colors.textLight,
                           ),
                         ),
                       ),
@@ -284,8 +284,8 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                             ? Icons.check_circle_rounded
                             : Icons.chevron_left_rounded,
                         color: _scheduled != null
-                            ? AppTheme.success
-                            : AppTheme.textLight,
+                            ? context.colors.success
+                            : context.colors.textLight,
                         size: 18,
                       ),
                     ]),
@@ -320,12 +320,12 @@ class _TypeSelector extends StatelessWidget {
   ];
 
   @override
-  Widget build(BuildContext ctx) => Column(
+  Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Text('نوع الدرس',
-          style: AppTheme.label.copyWith(
-              color: AppTheme.textDark, fontWeight: FontWeight.w700)),
+          style: context.colors.label.copyWith(
+              color: context.colors.textDark, fontWeight: FontWeight.w700)),
       const SizedBox(height: 10),
       Row(
         children: _types.map((t) {
@@ -347,21 +347,21 @@ class _TypeSelector extends StatelessWidget {
                   decoration: BoxDecoration(
                     gradient: isSelected
                         ? (v == 'live'
-                        ? AppTheme.dangerGradient
-                        : AppTheme.primaryGradient)
+                        ? context.colors.dangerGradient
+                        : context.colors.primaryGradient)
                         : null,
-                    color: isSelected ? null : AppTheme.background,
+                    color: isSelected ? null : context.colors.background,
                     borderRadius:
-                    BorderRadius.circular(AppTheme.radiusMedium),
+                    BorderRadius.circular(context.colors.radiusMedium),
                     border: isSelected
                         ? null
-                        : Border.all(color: AppTheme.divider, width: 1),
+                        : Border.all(color: context.colors.divider, width: 1),
                     boxShadow: isSelected
                         ? [
                       BoxShadow(
                         color: (v == 'live'
-                            ? AppTheme.danger
-                            : AppTheme.primary)
+                            ? context.colors.danger
+                            : context.colors.primary)
                             .withValues(alpha: 0.28),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
@@ -376,13 +376,13 @@ class _TypeSelector extends StatelessWidget {
                           size: 17,
                           color: isSelected
                               ? Colors.white
-                              : AppTheme.textMedium),
+                              : context.colors.textMedium),
                       const SizedBox(width: 7),
                       Text(l,
-                          style: AppTheme.label.copyWith(
+                          style: context.colors.label.copyWith(
                               color: isSelected
                                   ? Colors.white
-                                  : AppTheme.textMedium,
+                                  : context.colors.textMedium,
                               fontWeight: isSelected
                                   ? FontWeight.w700
                                   : FontWeight.w500)),

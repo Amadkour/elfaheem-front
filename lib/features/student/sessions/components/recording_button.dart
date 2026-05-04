@@ -142,7 +142,7 @@ Future<void> _openUrl(BuildContext context, String url) async {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: const Text('تعذّر فتح التسجيل',
             style: TextStyle(fontFamily: 'Cairo', color: Colors.white)),
-        backgroundColor: AppTheme.danger,
+        backgroundColor: context.colors.danger,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ));

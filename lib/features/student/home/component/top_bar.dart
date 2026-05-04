@@ -24,10 +24,10 @@ class TopBar extends StatelessWidget {
             height: 50,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: AppTheme.primaryGradient,
+              gradient: context.colors.primaryGradient,
               boxShadow: [
                 BoxShadow(
-                  color: AppTheme.primary.withValues(alpha:0.40),
+                  color: context.colors.primary.withValues(alpha:0.40),
                   blurRadius: 14,
                   offset: const Offset(0, 4),
                 ),
@@ -53,15 +53,15 @@ class TopBar extends StatelessWidget {
               children: [
                 Text(
                   '${'welcome'.tr} 👋',
-                  style: AppTheme.caption.copyWith(
+                  style: context.colors.caption.copyWith(
                     fontSize: 12,
-                    color: AppTheme.textLight,
+                    color: context.colors.textLight,
                   ),
                 ),
                 const SizedBox(height: 1),
                 Text(
                   name,
-                  style: AppTheme.h2.copyWith(
+                  style: context.colors.h2.copyWith(
                     fontSize: 17,
                     letterSpacing: -0.3,
                   ),
@@ -81,9 +81,9 @@ class TopBar extends StatelessWidget {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: AppTheme.cardBg,
+                    color: context.colors.cardBg,
                     borderRadius:
-                    BorderRadius.circular(AppTheme.radiusMedium),
+                    BorderRadius.circular(context.colors.radiusMedium),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha:0.08),
@@ -92,9 +92,9 @@ class TopBar extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: const Icon(
+                  child:  Icon(
                     Icons.notifications_rounded,
-                    color: AppTheme.primary,
+                    color: context.colors.primary,
                     size: 22,
                   ),
                 ),
@@ -105,10 +105,10 @@ class TopBar extends StatelessWidget {
                     width: 9,
                     height: 9,
                     decoration: BoxDecoration(
-                      color: AppTheme.danger,
+                      color: context.colors.danger,
                       shape: BoxShape.circle,
                       border:
-                      Border.all(color: AppTheme.cardBg, width: 1.5),
+                      Border.all(color: context.colors.cardBg, width: 1.5),
                     ),
                   ),
                 ),

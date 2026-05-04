@@ -6,7 +6,6 @@ import '../../../../../utils/theme.dart';
 import 'no_video.dart';
 import 'participant_info.dart';
 import 'participant_stats.dart';
-import 'sound_waveform.dart';
 
 abstract class ParticipantWidget extends StatefulWidget {
   // Convenience method to return relevant widget for participant

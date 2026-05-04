@@ -29,34 +29,27 @@ class SessionCard extends StatelessWidget {
   bool get _hasRec    => session.hasRecording ||
       session.recordingStatus == 'pending' ||
       session.recordingStatus == 'processing';
-
-  Color get _accent =>
-      _isLive ? AppTheme.danger : AppTheme.primary;
-
-  LinearGradient get _gradient =>
-      _isLive ? AppTheme.dangerGradient : AppTheme.primaryGradient;
-
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
+      duration:  Duration(milliseconds: 300),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceCard,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+        color: context.colors.surface,
+        borderRadius: BorderRadius.circular(context.colors.radiusLarge),
         boxShadow: _isRunning
             ? [
           BoxShadow(
-            color: AppTheme.danger.withValues(alpha: 0.20),
+            color: context.colors.danger.withValues(alpha: 0.20),
             blurRadius: 24,
             spreadRadius: 2,
             offset: const Offset(0, 6),
           ),
         ]
-            : AppTheme.cardShadow,
+            : context.colors.cardShadow,
         border: Border.all(
           color: _isRunning
-              ? AppTheme.danger.withValues(alpha: 0.45)
-              : AppTheme.divider,
+              ? context.colors.danger.withValues(alpha: 0.45)
+              : context.colors.divider,
           width: _isRunning ? 1.5 : 1,
         ),
       ),
@@ -68,7 +61,7 @@ class SessionCard extends StatelessWidget {
           // ── Coloured top stripe ──────────────────────────────────────
           Container(
             height: 4,
-            decoration: BoxDecoration(gradient: _gradient),
+            decoration: BoxDecoration(gradient: _isLive? context.colors.dangerGradient : context.colors.primaryGradient),
           ),
 
           // ── Header: badge + title + type + actions ───────────────────
@@ -76,8 +69,8 @@ class SessionCard extends StatelessWidget {
             session: session,
             isLive: _isLive,
             isRunning: _isRunning,
-            accent: _accent,
-            gradient: _gradient,
+            accent:_isLive? context.colors.danger : context.colors.primary,
+            gradient: _isLive?context.colors.dangerGradient : context.colors.primaryGradient,
             onEdit: onEdit,
             onDelete: onDelete,
             onAttend: onAttend,
@@ -88,7 +81,7 @@ class SessionCard extends StatelessWidget {
 
           // ── Live controls ────────────────────────────────────────────
           if (_isLive) ...[
-            Divider(height: 1, color: AppTheme.divider),
+            Divider(height: 1, color: context.colors.divider),
             _LiveControls(
               isRunning: _isRunning,
               hasRec: _hasRec,
@@ -160,7 +153,7 @@ class _CardHeader extends StatelessWidget {
                   Expanded(
                     child: Text(
                       session.name,
-                      style: AppTheme.h3.copyWith(fontSize: 15),
+                      style: context.colors.h3.copyWith(fontSize: 15),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -188,14 +181,14 @@ class _CardHeader extends StatelessWidget {
           children: [
             _RoundIconBtn(
               icon: Icons.edit_rounded,
-              color: AppTheme.primary,
+              color: context.colors.primary,
               onTap: onEdit,
               tooltip: 'edit_session'.tr,
             ),
             const SizedBox(height: 8),
             _RoundIconBtn(
               icon: Icons.delete_outline_rounded,
-              color: AppTheme.danger,
+              color: context.colors.danger,
               onTap: onDelete,
               tooltip: 'delete_session'.tr,
             ),
@@ -236,13 +229,12 @@ class _MetaRow extends StatelessWidget {
           color: const Color(0xFFE8881A),
           bgColor: const Color(0xFFFFF3E0),
         ),
-        if (session.scheduledAt != null)
-          _MetaChip(
-            icon: Icons.event_rounded,
-            label: session.scheduledLabel,
-            color: AppTheme.primary,
-            bgColor: AppTheme.primaryLight,
-          ),
+        _MetaChip(
+          icon: Icons.event_rounded,
+          label: session.scheduledLabel,
+          color: context.colors.primary,
+          bgColor: context.colors.primaryLight,
+        ),
       ],
     ),
   );
@@ -280,7 +272,7 @@ class _LiveControls extends StatelessWidget {
           _GradientPill(
             label: 'start_live_session'.tr,
             icon: Icons.play_circle_rounded,
-            gradient: AppTheme.primaryGradient,
+            gradient: context.colors.primaryGradient,
             onTap: onStartLive,
             fullWidth: true,
           )
@@ -292,7 +284,7 @@ class _LiveControls extends StatelessWidget {
                 child: _GradientPill(
                   label: 'end_session'.tr,
                   icon: Icons.stop_circle_rounded,
-                  gradient: AppTheme.dangerGradient,
+                  gradient: context.colors.dangerGradient,
                   onTap: onEndLive,
                   fullWidth: true,
                 ),
@@ -302,7 +294,7 @@ class _LiveControls extends StatelessWidget {
                 child: _GradientPill(
                   label: 'live_room'.tr,
                   icon: Icons.open_in_new_rounded,
-                  gradient: AppTheme.tealGradient,
+                  gradient: context.colors.tealGradient,
                   onTap: onStartLive,
                   fullWidth: true,
                 ),
@@ -404,10 +396,10 @@ class _PulseBannerState extends State<_PulseBanner>
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: AppTheme.danger.withValues(alpha: 0.10),
+        color: context.colors.danger.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: AppTheme.danger.withValues(alpha: 0.28),
+          color: context.colors.danger.withValues(alpha: 0.28),
           width: 1,
         ),
       ),
@@ -417,16 +409,16 @@ class _PulseBannerState extends State<_PulseBanner>
           Container(
             width: 7,
             height: 7,
-            decoration: const BoxDecoration(
-              color: AppTheme.danger,
+            decoration:  BoxDecoration(
+              color: context.colors.danger,
               shape: BoxShape.circle,
             ),
           ),
           const SizedBox(width: 6),
           Text(
             'session_is_live'.tr,
-            style: AppTheme.caption.copyWith(
-              color: AppTheme.danger,
+            style: context.colors.caption.copyWith(
+              color: context.colors.danger,
               fontWeight: FontWeight.w700,
               fontSize: 11,
             ),
@@ -446,9 +438,9 @@ class _LiveBadge extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     decoration: BoxDecoration(
-      gradient: AppTheme.dangerGradient,
+      gradient: context.colors.dangerGradient,
       borderRadius: BorderRadius.circular(8),
-      boxShadow: AppTheme.dangerShadow,
+      boxShadow: context.colors.dangerShadow,
     ),
     child: const Text(
       '● LIVE',
@@ -473,7 +465,7 @@ class _TypeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isLive ? AppTheme.danger : AppTheme.primary;
+    final color = isLive ? context.colors.danger : context.colors.primary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -492,7 +484,7 @@ class _TypeChip extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             isLive ? 'session_type_live'.tr : 'session_type_recorded'.tr,
-            style: AppTheme.caption.copyWith(
+            style: context.colors.caption.copyWith(
               color: color,
               fontWeight: FontWeight.w700,
               fontSize: 11,
@@ -534,7 +526,7 @@ class _MetaChip extends StatelessWidget {
         const SizedBox(width: 5),
         Text(
           label,
-          style: AppTheme.caption.copyWith(
+          style: context.colors.caption.copyWith(
             color: color,
             fontWeight: FontWeight.w600,
             fontSize: 11,

@@ -15,7 +15,7 @@ class NotificationsScreen extends StatelessWidget {
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: SafeArea(
           child: Column(
             children: [
@@ -65,13 +65,13 @@ class _NotifGroup extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(groupTitle, style: AppTheme.h2),
+            Text(groupTitle, style: context.colors.h2),
             GestureDetector(
               onTap: () =>
                   context.read<NotificationsProvider>().markGroupAsRead(group),
               child: Text(
                 'تحديد الكل كمقروء',
-                style: AppTheme.label.copyWith(color: AppTheme.primary),
+                style: context.colors.label.copyWith(color: context.colors.primary),
               ),
             ),
           ],
@@ -96,27 +96,27 @@ class _NotifTile extends StatelessWidget {
   const _NotifTile({required this.notif});
 
   /// Map iconAsset key → widget
-  Widget _buildIcon(String asset) {
+  Widget _buildIcon(String asset,BuildContext context) {
     switch (asset) {
       case 'payment':
         return _IconBadge(
           icon: Icons.credit_card_rounded,
-          bg: AppTheme.primary.withValues(alpha:0.15),
-          iconColor: AppTheme.primary,
+          bg: context.colors.primary.withValues(alpha:0.15),
+          iconColor: context.colors.primary,
         );
       case 'badge':
         return _IconBadge(
           icon: Icons.workspace_premium_rounded,
-          bg: AppTheme.accent.withValues(alpha:0.15),
-          iconColor: AppTheme.accent,
+          bg: context.colors.accent.withValues(alpha:0.15),
+          iconColor: context.colors.accent,
         );
       case 'new':
         return _NewBadgeIcon();
       default:
-        return const _IconBadge(
+        return  _IconBadge(
           icon: Icons.notifications_rounded,
-          bg: AppTheme.background,
-          iconColor: AppTheme.textMedium,
+          bg: context.colors.background,
+          iconColor: context.colors.textMedium,
         );
     }
   }
@@ -132,12 +132,12 @@ class _NotifTile extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isRead ? AppTheme.cardBg : AppTheme.primary.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+          color: isRead ? context.colors.cardBg : context.colors.primary.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(context.colors.radiusMedium),
           border: Border.all(
-            color: isRead ? Colors.transparent : AppTheme.primary.withValues(alpha:0.2),
+            color: isRead ? Colors.transparent : context.colors.primary.withValues(alpha:0.2),
           ),
-          boxShadow: AppTheme.cardShadow,
+          boxShadow: context.colors.cardShadow,
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -152,10 +152,10 @@ class _NotifTile extends StatelessWidget {
                       Expanded(
                         child: Text(
                           notif.title,
-                          style: AppTheme.h3.copyWith(
+                          style: context.colors.h3.copyWith(
                             color: isRead
-                                ? AppTheme.textDark
-                                : AppTheme.primary,
+                                ? context.colors.textDark
+                                : context.colors.primary,
                           ),
                         ),
                       ),
@@ -163,21 +163,21 @@ class _NotifTile extends StatelessWidget {
                         Container(
                           width: 8,
                           height: 8,
-                          decoration: const BoxDecoration(
-                            color: AppTheme.primary,
+                          decoration:  BoxDecoration(
+                            color: context.colors.primary,
                             shape: BoxShape.circle,
                           ),
                         ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(notif.body, style: AppTheme.body),
+                  Text(notif.body, style: context.colors.body),
                 ],
               ),
             ),
             const SizedBox(width: 12),
             // Icon badge (LTR: on left for RTL layout)
-            _buildIcon(notif.iconAsset),
+            _buildIcon(notif.iconAsset,context),
           ],
         ),
       ),

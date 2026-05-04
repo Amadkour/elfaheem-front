@@ -20,16 +20,16 @@ class SettingsGroup extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
           child: Text(title,
-              style: AppTheme.h3
-                  .copyWith(color: AppTheme.textMedium, fontSize: 14)),
+              style: context.colors.h3
+                  .copyWith(color: context.colors.textMedium, fontSize: 14)),
         ),
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 20),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           decoration: BoxDecoration(
-            color: AppTheme.cardBg,
-            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-            boxShadow: AppTheme.cardShadow,
+            color: context.colors.cardBg,
+            borderRadius: BorderRadius.circular(context.colors.radiusMedium),
+            boxShadow: context.colors.cardShadow,
           ),
           child: Column(
             children: children.map((child) {
@@ -38,8 +38,8 @@ class SettingsGroup extends StatelessWidget {
                 children: [
                   child,
                   if (idx < children.length - 1)
-                    const Divider(
-                        height: 1, color: AppTheme.divider, indent: 48),
+                     Divider(
+                        height: 1, color: context.colors.divider, indent: 48),
                 ],
               );
             }).toList(),

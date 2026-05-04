@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import '../../teacher/analytics_models.dart';
 import '../../teacher/exam/exam_model.dart';
 import 'student_exam_api.dart';
 

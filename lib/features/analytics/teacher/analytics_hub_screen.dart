@@ -52,7 +52,7 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen>
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: SafeArea(
           child: Column(children: [
             _buildHeader(),
@@ -82,19 +82,19 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen>
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                const Text('الحضور والاختبارات', style: AppTheme.h1),
+                 Text('الحضور والاختبارات', style: context.colors.h1),
                 const SizedBox(height: 2),
-                const Text('اختر كورساً لإدارة الحضور أو الاختبارات',
-                    style: AppTheme.body),
+                 Text('اختر كورساً لإدارة الحضور أو الاختبارات',
+                    style: context.colors.body),
               ])),
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppTheme.primary.withValues(alpha: 0.08),
+              color: context.colors.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(Icons.analytics_rounded,
-                color: AppTheme.primary, size: 24),
+                color: context.colors.primary, size: 24),
           ),
         ]),
       );
@@ -162,7 +162,7 @@ class _CourseAnalyticsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.colors.cardBg,
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
@@ -180,7 +180,7 @@ class _CourseAnalyticsCard extends StatelessWidget {
               begin: Alignment.topRight,
               end: Alignment.bottomLeft,
               colors: [
-                AppTheme.primary.withValues(alpha: 0.06),
+                context.colors.primary.withValues(alpha: 0.06),
                 Colors.transparent
               ],
             ),
@@ -191,11 +191,11 @@ class _CourseAnalyticsCard extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: AppTheme.primary.withValues(alpha: 0.1),
+                color: context.colors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(Icons.menu_book_rounded,
-                  color: AppTheme.primary, size: 22),
+                  color: context.colors.primary, size: 22),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -243,7 +243,7 @@ class _CourseAnalyticsCard extends StatelessWidget {
                 icon: Icons.fact_check_rounded,
                 label: 'الحضور',
                 sublabel: 'تسجيل وتعديل',
-                color: AppTheme.success,
+                color: context.colors.success,
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -262,7 +262,7 @@ class _CourseAnalyticsCard extends StatelessWidget {
                 icon: Icons.quiz_rounded,
                 label: 'الاختبارات',
                 sublabel: 'إنشاء وإدارة',
-                color: AppTheme.primary,
+                color: context.colors.primary,
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(

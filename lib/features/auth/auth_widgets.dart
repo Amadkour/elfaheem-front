@@ -11,7 +11,7 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../utils/widget/primary_menue.dart' show MyPrimaryMenu;
 import 'auth_provider.dart';
-import 'dart:ui'; // مهم للـ blur
+// مهم للـ blur
 
 // ── Brand colours ─────────────────────────────────────────────────────────────
 const _kBrandLight = Color(0xFFEBF1FD);
@@ -256,7 +256,7 @@ class _TrustBadge extends StatelessWidget {
 class ScreenIcon extends StatelessWidget {
   final IconData icon;
 
-  const ScreenIcon({required this.icon});
+  const ScreenIcon({super.key, required this.icon});
 
   @override
   Widget build(BuildContext context) => Container(
@@ -266,7 +266,7 @@ class ScreenIcon extends StatelessWidget {
           color: _kBrandLight,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Icon(icon, color: AppTheme.accent, size: 26),
+        child: Icon(icon, color: context.colors.accent, size: 26),
       );
 }
 
@@ -277,7 +277,7 @@ class IconTextField extends StatelessWidget {
   final IconData icon;
   final TextInputType keyboard;
 
-  const IconTextField({
+  const IconTextField({super.key, 
     required this.controller,
     required this.label,
     required this.icon,
@@ -308,7 +308,7 @@ class IconTextField extends StatelessWidget {
               color: Color(0xFF9CA3AF),
             ),
             filled: true,
-            fillColor: AppTheme.textFieldBackground,
+            fillColor: context.colors.inputBg,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             border: OutlineInputBorder(
@@ -321,7 +321,7 @@ class IconTextField extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide:  BorderSide(color: AppTheme.textAction.withAlpha(150), width: 1.5),
+              borderSide:  BorderSide(color: context.colors.textAction.withAlpha(150), width: 1.5),
             ),
           ),
           validator: (v) =>
@@ -339,7 +339,7 @@ class IconPasswordField extends StatefulWidget {
   final bool? obscure;
   final VoidCallback? onToggle;
 
-  const IconPasswordField({
+  const IconPasswordField({super.key, 
     required this.controller,
     required this.label,
     this.obscure,
@@ -400,7 +400,7 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
               color: Color(0xFF9CA3AF),
             ),
             filled: true,
-            fillColor: AppTheme.textFieldBackground,
+            fillColor: context.colors.inputBg,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             border: OutlineInputBorder(
@@ -413,7 +413,7 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide:  BorderSide(color: AppTheme.textAction.withAlpha(150), width: 1.5),
+              borderSide:  BorderSide(color: context.colors.textAction.withAlpha(150), width: 1.5),
             ),
           ),
           validator: (v) =>
@@ -431,7 +431,7 @@ class PrimaryButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onPressed;
 
-  const PrimaryButton({
+  const PrimaryButton({super.key, 
     required this.isLoading,
     required this.label,
     required this.icon,
@@ -446,8 +446,8 @@ class PrimaryButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppTheme.accent,
-          disabledBackgroundColor: AppTheme.accent.withValues(alpha:0.6),
+          backgroundColor: context.colors.accent,
+          disabledBackgroundColor: context.colors.accent.withValues(alpha:0.6),
           foregroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
@@ -487,7 +487,7 @@ class PrimaryButton extends StatelessWidget {
 class SectionLabel extends StatelessWidget {
   final String label;
 
-  const SectionLabel({required this.label});
+  const SectionLabel({super.key, required this.label});
 
   @override
   Widget build(BuildContext context) => Text(
@@ -508,7 +508,7 @@ class LinkRow extends StatelessWidget {
   final String linkText;
   final VoidCallback onTap;
 
-  const LinkRow({
+  const LinkRow({super.key, 
     required this.message,
     required this.linkText,
     required this.onTap,
@@ -531,10 +531,10 @@ class LinkRow extends StatelessWidget {
             onTap: onTap,
             child: Text(
               linkText,
-              style: const TextStyle(
+              style:  TextStyle(
                 fontFamily: 'Tajawal',
                 fontSize: 14,
-                color: AppTheme.primaryBlue,
+                color: context.colors.primaryBlue,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -548,7 +548,7 @@ class ProgressBar extends StatelessWidget {
   final int currentStep;
   final int totalSteps;
 
-  const ProgressBar({required this.currentStep, required this.totalSteps});
+  const ProgressBar({super.key, required this.currentStep, required this.totalSteps});
 
   @override
   Widget build(BuildContext context) => Row(
@@ -559,7 +559,7 @@ class ProgressBar extends StatelessWidget {
               margin: EdgeInsets.only(right: i < totalSteps - 1 ? 6 : 0),
               height: 4,
               decoration: BoxDecoration(
-                color: done ? AppTheme.accent : _kBorder,
+                color: done ? context.colors.accent : _kBorder,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -573,7 +573,7 @@ class RolePicker extends StatelessWidget {
   final AuthProvider provider;
   final ExpansibleController rolController;
 
-  const RolePicker({
+  const RolePicker({super.key, 
     required this.provider,
     required this.rolController,
   });
@@ -596,10 +596,10 @@ class RolePicker extends StatelessWidget {
                 ),
                 padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
                 decoration: BoxDecoration(
-                  color: isSelected ? _kBrandLight : AppTheme.textFieldBackground,
+                  color: isSelected ? _kBrandLight : context.colors.inputBg,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: isSelected ? AppTheme.primaryBlue : _kBorder,
+                    color: isSelected ? context.colors.primaryBlue : _kBorder,
                     width: isSelected ? 2 : 1.5,
                   ),
                 ),
@@ -610,7 +610,7 @@ class RolePicker extends StatelessWidget {
                       height: 40,
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? AppTheme.primaryBlue.withValues(alpha:0.15)
+                            ? context.colors.primaryBlue.withValues(alpha:0.15)
                             : const Color(0xFF9CA3AF).withValues(alpha:0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -618,7 +618,7 @@ class RolePicker extends StatelessWidget {
                         role['text'] == 'teacher'
                             ? Icons.cast_for_education_outlined
                             : Icons.school_outlined,
-                        color: isSelected ? AppTheme.primaryBlue : _kMuted,
+                        color: isSelected ? context.colors.primaryBlue : _kMuted,
                         size: 20,
                       ),
                     ),
@@ -629,7 +629,7 @@ class RolePicker extends StatelessWidget {
                         fontFamily: 'Tajawal',
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: isSelected ? AppTheme.primaryBlue : _kText,
+                        color: isSelected ? context.colors.primaryBlue : _kText,
                       ),
                     ),
                   ],
@@ -652,7 +652,7 @@ class StyledDropdown extends StatelessWidget {
   final List<Map<String, dynamic>> options;
   final Function(dynamic) onChange;
 
-  const StyledDropdown({
+  const StyledDropdown({super.key, 
     required this.icon,
     required this.label,
     required this.controller,
@@ -665,7 +665,7 @@ class StyledDropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.textFieldBackground,
+        color: context.colors.inputBg,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: _kBorder, width: 1.5),
       ),
@@ -693,7 +693,7 @@ class StyledDropdown extends StatelessWidget {
 
 // ── 11. Language switcher row ─────────────────────────────────────────────────
 class LangRow extends StatelessWidget {
-  const LangRow();
+  const LangRow({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -709,10 +709,10 @@ class LangRow extends StatelessWidget {
               duration: const Duration(milliseconds: 180),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
               decoration: BoxDecoration(
-                color: isActive ? _kBrandLight : AppTheme.textFieldBackground,
+                color: isActive ? _kBrandLight : context.colors.inputBg,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isActive ? AppTheme.primary : _kBorder,
+                  color: isActive ? context.colors.primary : _kBorder,
                   width: 1.5,
                 ),
               ),
@@ -722,7 +722,7 @@ class LangRow extends StatelessWidget {
                   Icon(
                     Icons.language_rounded,
                     size: 14,
-                    color: isActive ? AppTheme.primary : _kMuted,
+                    color: isActive ? context.colors.primary : _kMuted,
                   ),
                   const SizedBox(width: 6),
                   Text(
@@ -731,7 +731,7 @@ class LangRow extends StatelessWidget {
                       fontFamily: 'Tajawal',
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
-                      color: isActive ? AppTheme.primary : _kMuted,
+                      color: isActive ? context.colors.primary : _kMuted,
                     ),
                   ),
                 ],
@@ -795,7 +795,7 @@ class LangDropdown extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.language, size: 20,color: AppTheme.primaryBlue,),
+           Icon(Icons.language, size: 20,color: context.colors.primaryBlue,),
 
           const SizedBox(width: 5), // 👈 تحكمي فيها (0 لو عايزة تلزقيهم)
 

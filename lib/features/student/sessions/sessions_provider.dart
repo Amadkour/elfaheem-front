@@ -1,4 +1,3 @@
-import 'package:flutter_education_app/features/teacher/home/teacher_provider.dart';
 
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';

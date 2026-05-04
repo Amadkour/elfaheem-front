@@ -147,7 +147,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('invalid_otp'.tr),
-            backgroundColor: AppTheme.danger,
+            backgroundColor: context.colors.danger,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -157,7 +157,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
 
   Future<void> _onResend() async {
     if (_remainingSeconds > 0) return;
-    for (final c in _controllers) c.clear();
+    for (final c in _controllers) {
+      c.clear();
+    }
     setState(() => _hasError = false);
     _startResendTimer();
     _focusNodes[0].requestFocus();
@@ -166,7 +168,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('otp_resent'.tr),
-          backgroundColor: AppTheme.success,
+          backgroundColor: context.colors.success,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -178,8 +180,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     _resendTimer?.cancel();
     _fadeController.dispose();
     _shakeController.dispose();
-    for (final c in _controllers) c.dispose();
-    for (final f in _focusNodes) f.dispose();
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    for (final f in _focusNodes) {
+      f.dispose();
+    }
     super.dispose();
   }
 
@@ -188,7 +194,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     return Directionality(
       textDirection: pageDirection,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         appBar: AppBar(
           automaticallyImplyLeading: false,
           title: Text('verification'.tr),
@@ -204,9 +210,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                   child: Card(
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppTheme.radiusXL),
+                      borderRadius: BorderRadius.circular(context.colors.radiusXL),
                     ),
-                    color: AppTheme.cardBg,
+                    color: context.colors.cardBg,
                     child: Padding(
                       padding: const EdgeInsets.all(32),
                       child: Column(
@@ -214,19 +220,19 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                         children: [
                           Text(
                             'enter_verification_code'.tr,
-                            style: AppTheme.h1,
+                            style: context.colors.h1,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             'verification_code_sent'.tr,
-                            style: AppTheme.body,
+                            style: context.colors.body,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             widget.email,
-                            style: const TextStyle(
+                            style:  TextStyle(
                               fontWeight: FontWeight.w700,
-                              color: AppTheme.textDark,
+                              color: context.colors.textDark,
                             ),
                           ),
                           const SizedBox(height: 32),
@@ -285,29 +291,29 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     Color bgColor;
 
     if (_hasError) {
-      borderColor = AppTheme.danger;
-      bgColor = AppTheme.danger.withValues(alpha: 0.05);
+      borderColor = context.colors.danger;
+      bgColor = context.colors.danger.withValues(alpha: 0.05);
     } else if (isFocused) {
-      borderColor = AppTheme.primary;
+      borderColor = context.colors.primary;
       bgColor = Colors.white;
     } else if (isFilled) {
-      borderColor = AppTheme.primary.withValues(alpha: 0.5);
+      borderColor = context.colors.primary.withValues(alpha: 0.5);
       bgColor = Colors.white;
     } else {
-      borderColor = AppTheme.divider;
-      bgColor = AppTheme.textFieldBackground;
+      borderColor = context.colors.divider;
+      bgColor = context.colors.inputBg;
     }
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        borderRadius: BorderRadius.circular(context.colors.radiusMedium),
         border: Border.all(color: borderColor, width: isFocused ? 2 : 1),
         boxShadow: isFocused
             ? [
                 BoxShadow(
-                  color: AppTheme.primary.withValues(alpha: 0.1),
+                  color: context.colors.primary.withValues(alpha: 0.1),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -323,10 +329,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
           textAlign: TextAlign.center,
           keyboardType: TextInputType.number,
           maxLength: 1,
-          style: const TextStyle(
+          style:  TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.w800,
-            color: AppTheme.textDark,
+            color: context.colors.textDark,
           ),
           decoration: const InputDecoration(
             counterText: '',
@@ -335,7 +341,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
           ),
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           onChanged: (value) => _onOtpChanged(index, value),
-          cursorColor: AppTheme.primary,
+          cursorColor: context.colors.primary,
         ),
       ),
     );
@@ -351,7 +357,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: canResend ? AppTheme.accent : AppTheme.textLight,
+            color: canResend ? context.colors.accent : context.colors.textLight,
             decoration:
                 canResend ? TextDecoration.underline : TextDecoration.none,
           ),
@@ -364,11 +370,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     return ElevatedButton(
       onPressed: _isOtpComplete && !_isLoading ? _onConfirm : null,
       style: ElevatedButton.styleFrom(
-        backgroundColor: AppTheme.primary,
+        backgroundColor: context.colors.primary,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 16),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+          borderRadius: BorderRadius.circular(context.colors.radiusMedium),
         ),
       ),
       child: _isLoading

@@ -13,7 +13,7 @@ class PaymentMethodsScreen extends StatelessWidget {
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: SafeArea(
           child: Column(
             children: [
@@ -23,14 +23,14 @@ class PaymentMethodsScreen extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: AppTheme.cardBg,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                    boxShadow: AppTheme.cardShadow,
+                    color: context.colors.cardBg,
+                    borderRadius: BorderRadius.circular(context.colors.radiusMedium),
+                    boxShadow: context.colors.cardShadow,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('معلومات الحساب البنكي', style: AppTheme.h3),
+                      Text('معلومات الحساب البنكي', style: context.colors.h3),
                       const SizedBox(height: 16),
                       _Row('اسم البنك', '—'),
                       _Row('رقم الآيبان', '—'),
@@ -65,9 +65,9 @@ class _Row extends StatelessWidget {
     child: Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: AppTheme.label),
+        Text(label, style: context.colors.label),
         Text(value,
-            style: AppTheme.label.copyWith(color: AppTheme.textDark)),
+            style: context.colors.label.copyWith(color: context.colors.textDark)),
       ],
     ),
   );

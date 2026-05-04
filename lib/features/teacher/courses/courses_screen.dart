@@ -2,9 +2,9 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/teacher/courses/update_course_screen.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart'
     show TeacherCourseStatus, TeacherCourse;
+import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart' as Helpers;
@@ -43,10 +43,9 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
 
     return Directionality(
       textDirection: Helpers.pageDirection,
-      child: Scaffold(
-        backgroundColor: AppTheme.background,
+      child: BasePage(
         floatingActionButton: isWide ? null : _FloatingAddBtn(),
-        body: SafeArea(
+        child: SafeArea(
           bottom: false,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -78,7 +77,7 @@ class _WebHeader extends StatelessWidget {
         height: 60,
         padding: const EdgeInsets.symmetric(horizontal: 28),
         decoration: BoxDecoration(
-          color: AppTheme.cardBg,
+          color: context.colors.cardBg,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.06),
@@ -93,12 +92,12 @@ class _WebHeader extends StatelessWidget {
               width: 4,
               height: 24,
               decoration: BoxDecoration(
-                gradient: AppTheme.primaryGradient,
+                gradient: context.colors.primaryGradient,
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
             const SizedBox(width: 10),
-            Text('my_courses'.tr, style: AppTheme.h2.copyWith(fontSize: 17)),
+            Text('my_courses'.tr, style: context.colors.h2.copyWith(fontSize: 17)),
             const Spacer(),
             _AddCourseButton(compact: false),
           ],
@@ -118,9 +117,9 @@ class _FloatingAddBtn extends StatelessWidget {
           width: 56,
           height: 56,
           decoration: BoxDecoration(
-            gradient: AppTheme.primaryGradient,
+            gradient: context.colors.primaryGradient,
             shape: BoxShape.circle,
-            boxShadow: AppTheme.primaryShadow,
+            boxShadow: context.colors.primaryShadow,
           ),
           child: const Icon(Icons.add_rounded, color: Colors.white, size: 26),
         ),
@@ -141,11 +140,11 @@ class _AddCourseButton extends StatelessWidget {
           height: 38,
           padding: EdgeInsets.symmetric(horizontal: compact ? 14 : 18),
           decoration: BoxDecoration(
-            gradient: AppTheme.primaryGradient,
+            gradient: context.colors.primaryGradient,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: AppTheme.primary.withValues(alpha: 0.32),
+                color: context.colors.primary.withValues(alpha: 0.32),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -193,7 +192,7 @@ class _FilterTabs extends StatelessWidget {
         height: 46,
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: AppTheme.cardBg,
+          color: context.colors.cardBg,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
@@ -213,11 +212,11 @@ class _FilterTabs extends StatelessWidget {
                 child: Container(
                   //  duration: const Duration(milliseconds: 220),
                   decoration: BoxDecoration(
-                    // gradient: active ? AppTheme.primaryGradient : null,
+                    // gradient: active ? context.colors.primaryGradient : null,
                     border: active
                         ? Border(
                             bottom: BorderSide(
-                              color: AppTheme.primaryBlue,
+                              color: context.colors.primaryBlue,
                               width: 1,
                             ),
                           )
@@ -231,15 +230,15 @@ class _FilterTabs extends StatelessWidget {
                         Icon(icon,
                             size: 13,
                             color: active
-                                ? AppTheme.primaryBlue
-                                : AppTheme.textLight),
+                                ? context.colors.primaryBlue
+                                : context.colors.textLight),
                         const SizedBox(width: 5),
                         Text(
                           labelKey.tr,
-                          style: AppTheme.label.copyWith(
+                          style: context.colors.label.copyWith(
                             color: active
-                                ? AppTheme.primaryBlue
-                                : AppTheme.textLight,
+                                ? context.colors.primaryBlue
+                                : context.colors.textLight,
                             fontWeight:
                                 active ? FontWeight.w700 : FontWeight.w500,
                             fontSize: 12,
@@ -273,9 +272,9 @@ class _CourseList extends StatelessWidget {
     final isWide = context.showSidebar;
 
     if (p.isLoading && p.filteredCourses.isEmpty) {
-      return const Center(
+      return  Center(
         child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation(AppTheme.primary),
+          valueColor: AlwaysStoppedAnimation(context.colors.primary),
           strokeWidth: 2.5,
         ),
       );
@@ -285,7 +284,7 @@ class _CourseList extends StatelessWidget {
     if (courses.isEmpty) return const _EmptyState();
 
     return RefreshIndicator(
-      color: AppTheme.primary,
+      color: context.colors.primary,
       onRefresh: () => p.fetchMyCourses(),
       child: Align(
         alignment: Alignment.topCenter,
@@ -374,28 +373,28 @@ class _EmptyState extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      AppTheme.primaryLight.withValues(alpha: 0.5),
-                      AppTheme.primaryLight.withValues(alpha: 0.15),
+                      context.colors.primaryLight.withValues(alpha: 0.5),
+                      context.colors.primaryLight.withValues(alpha: 0.15),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.school_outlined,
-                    size: 40, color: AppTheme.primary),
+                child:  Icon(Icons.school_outlined,
+                    size: 40, color: context.colors.primary),
               ),
               const SizedBox(height: 18),
               Text(
                 'no_courses_section'.tr,
-                style: AppTheme.body
+                style: context.colors.body
                     .copyWith(fontWeight: FontWeight.w600, fontSize: 15),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 6),
               Text(
                 'add_first_course_hint'.tr,
-                style: AppTheme.caption.copyWith(color: AppTheme.textLight),
+                style: context.colors.caption.copyWith(color: context.colors.textLight),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 22),
@@ -406,9 +405,9 @@ class _EmptyState extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
                   decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
+                    gradient: context.colors.primaryGradient,
                     borderRadius: BorderRadius.circular(24),
-                    boxShadow: AppTheme.primaryShadow,
+                    boxShadow: context.colors.primaryShadow,
                   ),
                   child: Text(
                     'add_new_course'.tr,
@@ -447,9 +446,9 @@ class _CourseCardState extends State<_CourseCard> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => Directionality(
-        textDirection: TextDirection.rtl,
+        textDirection: Helpers.pageDirection,
         child: AlertDialog(
-          backgroundColor: AppTheme.cardBg,
+          backgroundColor: context.colors.cardBg,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text(
@@ -465,12 +464,12 @@ class _CourseCardState extends State<_CourseCard> {
             TextButton(
               onPressed: () => Navigator.pop(context, false),
               child: Text('cancel'.tr,
-                  style: const TextStyle(
-                      fontFamily: 'Cairo', color: AppTheme.textMedium)),
+                  style:  TextStyle(
+                      fontFamily: 'Cairo', color: context.colors.textMedium)),
             ),
             Container(
               decoration: BoxDecoration(
-                  color: AppTheme.danger,
+                  color: context.colors.danger,
                   borderRadius: BorderRadius.circular(10)),
               child: TextButton(
                 onPressed: () => Navigator.pop(context, true),
@@ -492,7 +491,7 @@ class _CourseCardState extends State<_CourseCard> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('course_deleted'.tr,
               style: const TextStyle(fontFamily: 'Cairo', color: Colors.white)),
-          backgroundColor: AppTheme.success,
+          backgroundColor: context.colors.success,
           behavior: SnackBarBehavior.floating,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -515,12 +514,12 @@ class _CourseCardState extends State<_CourseCard> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: context.colors.cardBg,
         borderRadius: BorderRadius.circular(20),
-      //  border: Border.all(color: AppTheme.primaryBlue),
+      //  border: Border.all(color: context.colors.primaryBlue),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.textLight.withValues(alpha: 0.7),
+            color: context.colors.textLight.withValues(alpha: 0.7),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -542,31 +541,6 @@ class _CourseCardState extends State<_CourseCard> {
                   borderRadius: BorderRadius.zero,
                 ),
               ),
-              // Status badge — top right
-              // Positioned(
-              //   top: 8,
-              //   right: 8,
-              //   child: _StatusBadge(isDraft: isDraft),
-              // ),
-              // Edit / Delete overlay buttons — top left
-              // Positioned(
-              //   top: 8,
-              //   left: 8,
-              //   child: Row(
-              //     children: [
-              //       _OverlayBtn(
-              //         icon: Icons.edit_rounded,
-              //         color: Colors.white,
-              //         onTap: () {
-              //           Navigator.of(context).push(MaterialPageRoute(
-              //               builder: (_) => CourseFormScreen(
-              //                     course: c,
-              //                   )));
-              //         },
-              //       ),
-              //     ],
-              //   ),
-              // ),
             ],
           ),
 
@@ -585,7 +559,7 @@ class _CourseCardState extends State<_CourseCard> {
                 children: [
                   Text(
                     c.title,
-                    style: AppTheme.h3
+                    style: context.colors.h3
                         .copyWith(fontSize: 14, fontWeight: FontWeight.w800),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -608,15 +582,15 @@ class _CourseCardState extends State<_CourseCard> {
                 children: [
                   Text(
                     _expanded ? 'hide_details'.tr : 'show_details'.tr,
-                    style: AppTheme.label
-                        .copyWith(color: AppTheme.primary, fontSize: 12),
+                    style: context.colors.label
+                        .copyWith(color: context.colors.primary, fontSize: 12),
                   ),
                   const SizedBox(width: 4),
                   AnimatedRotation(
                     turns: _expanded ? 0.5 : 0,
                     duration: const Duration(milliseconds: 220),
-                    child: const Icon(Icons.keyboard_arrow_down_rounded,
-                        size: 16, color: AppTheme.primary),
+                    child:  Icon(Icons.keyboard_arrow_down_rounded,
+                        size: 16, color: context.colors.primary),
                   ),
                 ],
               ),
@@ -672,7 +646,7 @@ class _CourseCardState extends State<_CourseCard> {
             SizedBox(width: 5,),
                 _OverlayBtn(
                   icon: Icons.edit_rounded,
-                  color: AppTheme.primaryBlue,
+                  color: context.colors.primaryBlue,
                   onTap: () {
                     Navigator.of(context).push(MaterialPageRoute(
                         builder: (_) => CourseFormScreen(
@@ -710,7 +684,7 @@ class _StatsGrid extends StatelessWidget {
         (
           Icons.people_alt_rounded,
           '${c.studentsCount} ${'student'.tr}',
-          AppTheme.primary
+          context.colors.primary
         ),
         (
           Icons.video_library_rounded,
@@ -727,7 +701,7 @@ class _StatsGrid extends StatelessWidget {
         (
           Icons.star_rounded,
           c.averageRating.toStringAsFixed(1),
-          AppTheme.accent
+          context.colors.accent
         ),
       ],
     ];
@@ -778,7 +752,7 @@ class _StatCell extends StatelessWidget {
             Flexible(
               child: Text(
                 label,
-                style: AppTheme.caption
+                style: context.colors.caption
                     .copyWith(fontSize: 11, fontWeight: FontWeight.w600),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -805,14 +779,14 @@ class _StatusBadge extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color:isDraft ? const Color(0xFFf59e0b) : AppTheme.accent2 ),
+          border: Border.all(color:isDraft ? const Color(0xFFf59e0b) : context.colors.accent2 ),
 
         ),
         child: Text(
           isDraft ? 'status_draft'.tr : 'status_published'.tr,
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: isDraft ? const Color(0xFFf59e0b) : AppTheme.accent2,
+            color: isDraft ? const Color(0xFFf59e0b) : context.colors.accent2,
             fontSize: 16,
             fontWeight: FontWeight.w800,
             fontFamily: 'Cairo',
@@ -842,7 +816,7 @@ class _OverlayBtn extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppTheme.primaryBlue),
+            border: Border.all(color: context.colors.primaryBlue),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.12),
@@ -868,7 +842,7 @@ class _PublishButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color primaryColor = isDraft ? AppTheme.primaryBlue : Colors.red;
+    Color primaryColor = isDraft ? context.colors.primaryBlue : Colors.red;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -927,7 +901,7 @@ class _ExtrasPanel extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Text('no_extra_details'.tr,
-                  style: AppTheme.caption.copyWith(color: AppTheme.textLight)),
+                  style: context.colors.caption.copyWith(color: context.colors.textLight)),
             ),
           if (course.schedules.isNotEmpty)
             _ExtRow(
@@ -993,22 +967,22 @@ class _ExtRow extends StatelessWidget {
                   width: 22,
                   height: 22,
                   decoration: BoxDecoration(
-                    color: AppTheme.primary.withValues(alpha: 0.1),
+                    color: context.colors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Icon(icon, size: 13, color: AppTheme.primary),
+                  child: Icon(icon, size: 13, color: context.colors.primary),
                 ),
                 const SizedBox(width: 7),
                 Expanded(
                   child: Text(
                     label,
-                    style: AppTheme.label
-                        .copyWith(color: AppTheme.primary, fontSize: 12),
+                    style: context.colors.label
+                        .copyWith(color: context.colors.primary, fontSize: 12),
                   ),
                 ),
                 if (onTap != null)
-                  const Icon(Icons.chevron_left_rounded,
-                      size: 16, color: AppTheme.primary),
+                   Icon(Icons.chevron_left_rounded,
+                      size: 16, color: context.colors.primary),
               ],
             ),
             const SizedBox(height: 5),
@@ -1023,14 +997,14 @@ class _ExtRow extends StatelessWidget {
                           child: Container(
                             width: 5,
                             height: 5,
-                            decoration: const BoxDecoration(
-                              color: AppTheme.textLight,
+                            decoration:  BoxDecoration(
+                              color: context.colors.textLight,
                               shape: BoxShape.circle,
                             ),
                           ),
                         ),
                         const SizedBox(width: 7),
-                        Expanded(child: Text(item, style: AppTheme.caption)),
+                        Expanded(child: Text(item, style: context.colors.caption)),
                       ],
                     ),
                   ),
@@ -1040,8 +1014,8 @@ class _ExtRow extends StatelessWidget {
                 padding: const EdgeInsets.only(right: 29, top: 2),
                 child: Text(
                   '+ ${items.length - 3} ${'others'.tr}',
-                  style: AppTheme.caption.copyWith(
-                    color: AppTheme.primary,
+                  style: context.colors.caption.copyWith(
+                    color: context.colors.primary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

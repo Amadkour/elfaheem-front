@@ -116,7 +116,7 @@ class _WideShell extends StatelessWidget {
     final unread = context.watch<NotificationsProvider>().unreadCount;
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: context.colors.background,
       body: Row(
         children: [
           // ── Sidebar 240 px ────────────────────────────────────────────────
@@ -161,7 +161,7 @@ class _WideShell extends StatelessWidget {
                               width: 42,
                               height: 42,
                               decoration: BoxDecoration(
-                                color: AppTheme.primary.withValues(alpha: 0.3),
+                                color: context.colors.primary.withValues(alpha: 0.3),
                                 borderRadius: BorderRadius.circular(13),
                               ),
                               child: const Icon(Icons.school_rounded,
@@ -226,11 +226,11 @@ class _WideShell extends StatelessWidget {
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border:
-                                      Border.all(color: AppTheme.primary, width: 2),
+                                      Border.all(color: context.colors.primary, width: 2),
                                 ),
-                                child: const ClipOval(
+                                child:  ClipOval(
                                   child: Icon(Icons.person_rounded,
-                                      size: 18, color: AppTheme.primary),
+                                      size: 18, color: context.colors.primary),
                                 ),
                               ),
                               const SizedBox(width: 10),
@@ -247,8 +247,8 @@ class _WideShell extends StatelessWidget {
                                 Container(
                                   width: 20,
                                   height: 20,
-                                  decoration: const BoxDecoration(
-                                      color: AppTheme.danger,
+                                  decoration:  BoxDecoration(
+                                      color: context.colors.danger,
                                       shape: BoxShape.circle),
                                   child: Center(
                                       child: Text('$unread',
@@ -316,12 +316,12 @@ class _SidebarTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         decoration: BoxDecoration(
           color: selected
-              ? AppTheme.primary.withValues(alpha: 0.2)
+              ? context.colors.primary.withValues(alpha: 0.2)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: selected
-                ? AppTheme.primary.withValues(alpha: 0.3)
+                ? context.colors.primary.withValues(alpha: 0.3)
                 : Colors.transparent,
           ),
         ),
@@ -333,7 +333,7 @@ class _SidebarTile extends StatelessWidget {
                 width: 3,
                 height: 20,
                 decoration: BoxDecoration(
-                  color: AppTheme.accent,
+                  color: context.colors.accent,
                   borderRadius: BorderRadius.circular(2),
                 ),
                 margin: const EdgeInsetsDirectional.only(end: 10),
@@ -363,7 +363,7 @@ class _SidebarTile extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
-                    color: AppTheme.danger,
+                    color: context.colors.danger,
                     borderRadius: BorderRadius.circular(20)),
                 child: Text('$badge',
                     style: const TextStyle(
@@ -392,10 +392,10 @@ class _WideTopBar extends StatelessWidget {
     return Container(
       height: 64,
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: context.colors.cardBg,
         border: Border(
             bottom:
-                BorderSide(color: AppTheme.primary.withValues(alpha: 0.08))),
+                BorderSide(color: context.colors.primary.withValues(alpha: 0.08))),
         boxShadow: [
           BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
@@ -406,13 +406,13 @@ class _WideTopBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 28),
       child: Row(
         children: [
-          Text(title, style: AppTheme.h2),
+          Text(title, style: context.colors.h2),
           const Spacer(),
           GestureDetector(
             onTap: () => Navigator.of(context).pushNamed('/notifications'),
             child: Stack(clipBehavior: Clip.none, children: [
               Icon(Icons.notifications_rounded,
-                  color: unread > 0 ? AppTheme.primary : AppTheme.textLight,
+                  color: unread > 0 ? context.colors.primary : context.colors.textLight,
                   size: 24),
               if (unread > 0)
                 Positioned(
@@ -421,8 +421,8 @@ class _WideTopBar extends StatelessWidget {
                   child: Container(
                     width: 11,
                     height: 11,
-                    decoration: const BoxDecoration(
-                        color: AppTheme.danger, shape: BoxShape.circle),
+                    decoration:  BoxDecoration(
+                        color: context.colors.danger, shape: BoxShape.circle),
                   ),
                 ),
             ]),
@@ -431,16 +431,16 @@ class _WideTopBar extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
             decoration: BoxDecoration(
-              color: AppTheme.primary.withValues(alpha: 0.08),
+              color: context.colors.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children:  [
-              Icon(Icons.person_rounded, color: AppTheme.primary, size: 15),
+              Icon(Icons.person_rounded, color: context.colors.primary, size: 15),
               SizedBox(width: 6),
               Text(context.read<AuthProvider>().currentUser?.name??'',
                   style: TextStyle(
                       fontFamily: 'Cairo',
-                      color: AppTheme.primary,
+                      color: context.colors.primary,
                       fontWeight: FontWeight.w700,
                       fontSize: 12)),
             ]),
@@ -477,16 +477,16 @@ class _RailShell extends StatelessWidget {
     final unread = context.watch<NotificationsProvider>().unreadCount;
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: context.colors.background,
       body: Row(
         children: [
           NavigationRail(
-            backgroundColor: AppTheme.primaryDark,
+            backgroundColor: context.colors.primaryDark,
             selectedIndex: currentIndex,
             onDestinationSelected: onTap,
             minWidth: 66,
             labelType: NavigationRailLabelType.none,
-            indicatorColor: AppTheme.primary.withValues(alpha: 0.35),
+            indicatorColor: context.colors.primary.withValues(alpha: 0.35),
             selectedIconTheme:
                 const IconThemeData(color: Colors.white, size: 23),
             unselectedIconTheme: IconThemeData(
@@ -537,7 +537,7 @@ class _MobileShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: context.colors.background,
       body: IndexedStack(index: currentIndex, children: screens),
       bottomNavigationBar: _NavBar(currentIndex: currentIndex, onTap: onTap),
     );
@@ -555,14 +555,14 @@ class _NavBar extends StatelessWidget {
     final unread = context.watch<NotificationsProvider>().unreadCount;
     return Container(
       decoration: BoxDecoration(
-          color: AppTheme.cardBg, boxShadow: AppTheme.bottomNavShadow),
+          color: context.colors.cardBg, boxShadow: context.colors.bottomNavShadow),
       child: BottomNavigationBar(
         currentIndex: currentIndex,
         onTap: onTap,
         type: BottomNavigationBarType.fixed,
-        backgroundColor: AppTheme.cardBg,
-        selectedItemColor: AppTheme.primary,
-        unselectedItemColor: AppTheme.textLight,
+        backgroundColor: context.colors.cardBg,
+        selectedItemColor: context.colors.primary,
+        unselectedItemColor: context.colors.textLight,
         showSelectedLabels: false,
         showUnselectedLabels: false,
         elevation: 0,
@@ -587,8 +587,8 @@ class _NavBar extends StatelessWidget {
                   child: Container(
                     width: 14,
                     height: 14,
-                    decoration: const BoxDecoration(
-                        color: AppTheme.danger, shape: BoxShape.circle),
+                    decoration:  BoxDecoration(
+                        color: context.colors.danger, shape: BoxShape.circle),
                     child: Center(
                         child: Text('$unread',
                             style: const TextStyle(

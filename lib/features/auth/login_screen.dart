@@ -1,7 +1,6 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
-import 'package:flutter_education_app/utils/widget/password_text_field.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../config/app_theme.dart';
@@ -9,8 +8,6 @@ import '../../core/api_client.dart';
 import '../../utils/helpers.dart';
 import '../teacher/dashboard/teacher_dashboard_screen.dart';
 import 'auth_provider.dart';
-import '../../utils/widget/primary_button.dart';
-import '../../utils/widget/text_field.dart';
 import 'auth_widgets.dart';
 import 'forget_screen.dart';
 import 'register_screen.dart';
@@ -150,7 +147,7 @@ class _LoginScreenState extends State<LoginScreen> {
               fontFamily: 'Tajawal',
               fontSize: 22,
               fontWeight: FontWeight.bold,
-              color:AppTheme.scondeText,
+              color:context.colors.scondeText,
             ),
           ),
 
@@ -184,7 +181,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: TextStyle(
                   fontFamily: 'Tajawal',
                   fontSize: 13,
-                  color: AppTheme.primaryBlue,
+                  color: context.colors.primaryBlue,
                   fontWeight: FontWeight.w500,
                 ),
               ),

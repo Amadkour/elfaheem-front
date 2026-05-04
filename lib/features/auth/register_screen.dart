@@ -180,7 +180,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             style:  TextStyle(
               fontFamily:  'Tajawal',
               fontSize: 14,
-              color: AppTheme.scondeText,
+              color: context.colors.scondeText,
               height: 1.5,
             ),
           ),

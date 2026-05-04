@@ -13,11 +13,11 @@ class CategoriesRow extends StatelessWidget {
     return Consumer<CategoriesProvider>(
       builder: (context, provider, child) {
         if (provider.isLoadingCategory) {
-          return const SizedBox(
+          return  SizedBox(
             height: 112,
             child: Center(
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation(AppTheme.primary),
+                valueColor: AlwaysStoppedAnimation(context.colors.primary),
                 strokeWidth: 2.5,
               ),
             ),
@@ -25,16 +25,16 @@ class CategoriesRow extends StatelessWidget {
         }
 
         if (provider.categories.isEmpty) {
-          return const SizedBox(
+          return  SizedBox(
             height: 112,
             child: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.category_outlined,
-                      size: 36, color: AppTheme.textLight),
+                      size: 36, color: context.colors.textLight),
                   SizedBox(height: 8),
-                  Text('لا توجد أقسام', style: AppTheme.caption),
+                  Text('لا توجد أقسام', style: context.colors.caption),
                 ],
               ),
             ),
@@ -66,19 +66,19 @@ class CategoriesRow extends StatelessWidget {
                       height: 66,
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? AppTheme.primaryLight
-                            : AppTheme.cardBg,
+                            ? context.colors.primaryLight
+                            : context.colors.cardBg,
                         shape: BoxShape.circle,
                         border: isSelected
                             ? Border.all(
-                            color: AppTheme.primary, width: 2)
+                            color: context.colors.primary, width: 2)
                             : Border.all(
                             color: Colors.transparent, width: 2),
                         boxShadow: isSelected
                             ? [
                           BoxShadow(
                             color:
-                            AppTheme.primary.withValues(alpha:0.28),
+                            context.colors.primary.withValues(alpha:0.28),
                             blurRadius: 14,
                             offset: const Offset(0, 4),
                           )
@@ -98,13 +98,13 @@ class CategoriesRow extends StatelessWidget {
                           child: Image.network(
                             cat.imageUrl,
                             color: isSelected
-                                ? AppTheme.primary
-                                : AppTheme.accent2,
+                                ? context.colors.primary
+                                : context.colors.accent2,
                             errorBuilder: (_, __, ___) => Icon(
                               Icons.category_rounded,
                               color: isSelected
-                                  ? AppTheme.primary
-                                  : AppTheme.textLight,
+                                  ? context.colors.primary
+                                  : context.colors.textLight,
                               size: 28,
                             ),
                           ),
@@ -113,8 +113,8 @@ class CategoriesRow extends StatelessWidget {
                           : Icon(
                         Icons.category_rounded,
                         color: isSelected
-                            ? AppTheme.primary
-                            : AppTheme.textLight,
+                            ? context.colors.primary
+                            : context.colors.textLight,
                         size: 28,
                       ),
                     ),
@@ -123,10 +123,10 @@ class CategoriesRow extends StatelessWidget {
                       width: 70,
                       child: Text(
                         cat.name,
-                        style: AppTheme.caption.copyWith(
+                        style: context.colors.caption.copyWith(
                           color: isSelected
-                              ? AppTheme.primary
-                              : AppTheme.textDark,
+                              ? context.colors.primary
+                              : context.colors.textDark,
                           fontWeight: isSelected
                               ? FontWeight.w700
                               : FontWeight.w500,

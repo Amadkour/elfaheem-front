@@ -21,11 +21,11 @@ class SessionsTab extends StatelessWidget {
     final total     = sessions.length;
 
     if (provider.isLoadingSession) {
-      return const Padding(
+      return  Padding(
         padding: EdgeInsets.all(48),
         child: Center(
           child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation(AppTheme.primary),
+            valueColor: AlwaysStoppedAnimation(context.colors.primary),
             strokeWidth: 2.5,
           ),
         ),
@@ -43,14 +43,14 @@ class SessionsTab extends StatelessWidget {
                 width: 72,
                 height: 72,
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryLight.withValues(alpha:0.3),
+                  color: context.colors.primaryLight.withValues(alpha:0.3),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.video_library_outlined,
-                    size: 36, color: AppTheme.primary),
+                child:  Icon(Icons.video_library_outlined,
+                    size: 36, color: context.colors.primary),
               ),
               const SizedBox(height: 14),
-              const Text('لا توجد دروس بعد', style: AppTheme.body),
+               Text('لا توجد دروس بعد', style: context.colors.body),
             ],
           ),
         ),
@@ -103,11 +103,11 @@ class _ProgressBanner extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
     decoration: BoxDecoration(
-      gradient: AppTheme.primaryGradient,
+      gradient: context.colors.primaryGradient,
       borderRadius: BorderRadius.circular(18),
       boxShadow: [
         BoxShadow(
-          color: AppTheme.primary.withValues(alpha:0.32),
+          color: context.colors.primary.withValues(alpha:0.32),
           blurRadius: 18,
           offset: const Offset(0, 5),
         ),
@@ -205,9 +205,9 @@ class StudentSessionCard extends StatelessWidget {
 
     Color? borderColor;
     if (isDone) {
-      borderColor = AppTheme.accent2.withValues(alpha:0.35);
+      borderColor = context.colors.accent2.withValues(alpha:0.35);
     } else if (isLive && isCheckedIn) {
-      borderColor = AppTheme.danger.withValues(alpha:0.4);
+      borderColor = context.colors.danger.withValues(alpha:0.4);
     }
 
     return GestureDetector(
@@ -215,7 +215,7 @@ class StudentSessionCard extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
-          color: AppTheme.cardBg,
+          color: context.colors.cardBg,
           borderRadius: BorderRadius.circular(16),
           border: borderColor != null
               ? Border.all(color: borderColor, width: 1.5)
@@ -240,7 +240,7 @@ class StudentSessionCard extends StatelessWidget {
                   children: [
                     Text(
                       session.name,
-                      style: AppTheme.h3.copyWith(
+                      style: context.colors.h3.copyWith(
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
                       ),
@@ -306,7 +306,7 @@ class StudentSessionCard extends StatelessWidget {
     }
     await provider.trackView(session.id);
     if (session.hasRecording && context.mounted) {
-      _snack(context, 'فتح التسجيل…', AppTheme.primary);
+      _snack(context, 'فتح التسجيل…', context.colors.primary);
       return;
     }
     if (!session.isCompleted && context.mounted) {
@@ -316,7 +316,7 @@ class StudentSessionCard extends StatelessWidget {
       );
       if (ok == true && context.mounted) {
         await provider.markComplete(session.id);
-        _snack(context, 'تم تحديد الدرس كمكتمل ✓', AppTheme.accent2);
+        _snack(context, 'تم تحديد الدرس كمكتمل ✓', context.colors.accent2);
       }
     }
   }
@@ -356,7 +356,7 @@ class _Thumbnail extends StatelessWidget {
       end: Alignment.bottomRight,
     );
     final badgeBg =
-    isLive ? const Color(0xFFD85A30) : AppTheme.primary;
+    isLive ? const Color(0xFFD85A30) : context.colors.primary;
 
     return SizedBox(
       width: 92,
@@ -429,11 +429,11 @@ class _Thumbnail extends StatelessWidget {
                 width: 24,
                 height: 24,
                 decoration: BoxDecoration(
-                  color: AppTheme.accent2,
+                  color: context.colors.accent2,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.accent2.withValues(alpha:0.4),
+                      color: context.colors.accent2.withValues(alpha:0.4),
                       blurRadius: 6,
                       offset: const Offset(0, 2),
                     ),
@@ -499,7 +499,7 @@ class _MetaItem extends StatelessWidget {
         child: Icon(icon, size: 11, color: color),
       ),
       const SizedBox(width: 5),
-      Text(label, style: AppTheme.caption.copyWith(fontSize: 11)),
+      Text(label, style: context.colors.caption.copyWith(fontSize: 11)),
     ],
   );
 }
@@ -606,17 +606,17 @@ class _AttendanceRow extends StatelessWidget {
       ? _AttendBtn(
     label: 'تسجيل المغادرة',
     icon: Icons.logout_rounded,
-    fg: AppTheme.danger,
-    bg: AppTheme.danger.withValues(alpha:0.09),
-    border: AppTheme.danger.withValues(alpha:0.35),
+    fg: context.colors.danger,
+    bg: context.colors.danger.withValues(alpha:0.09),
+    border: context.colors.danger.withValues(alpha:0.35),
     onTap: onCheckOut,
   )
       : _AttendBtn(
     label: 'تسجيل الحضور',
     icon: Icons.login_rounded,
-    fg: AppTheme.accent2,
-    bg: AppTheme.accent2.withValues(alpha:0.09),
-    border: AppTheme.accent2.withValues(alpha:0.35),
+    fg: context.colors.accent2,
+    bg: context.colors.accent2.withValues(alpha:0.09),
+    border: context.colors.accent2.withValues(alpha:0.35),
     onTap: onCheckIn,
   );
 }
@@ -676,21 +676,21 @@ class _MarkCompleteDialog extends StatelessWidget {
   Widget build(BuildContext context) => Directionality(
     textDirection: TextDirection.rtl,
     child: AlertDialog(
-      backgroundColor: AppTheme.cardBg,
+      backgroundColor: context.colors.cardBg,
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(22)),
-      title: const Text(
+      title:  Text(
         'هل شاهدت هذا الدرس؟',
         style: TextStyle(
           fontFamily: 'Cairo',
           fontWeight: FontWeight.w800,
-          color: AppTheme.textDark,
+          color: context.colors.textDark,
         ),
       ),
       content: Text(
         'هل تريد تحديد "$sessionName" كمكتمل؟',
-        style: const TextStyle(
-            fontFamily: 'Cairo', color: AppTheme.textMedium),
+        style:  TextStyle(
+            fontFamily: 'Cairo', color: context.colors.textMedium),
       ),
       actions: [
         TextButton(
@@ -698,11 +698,11 @@ class _MarkCompleteDialog extends StatelessWidget {
           child: Text('لاحقاً',
               style: TextStyle(
                   fontFamily: 'Cairo',
-                  color: AppTheme.textLight)),
+                  color: context.colors.textLight)),
         ),
         Container(
           decoration: BoxDecoration(
-            color: AppTheme.accent2,
+            color: context.colors.accent2,
             borderRadius: BorderRadius.circular(12),
           ),
           child: TextButton(

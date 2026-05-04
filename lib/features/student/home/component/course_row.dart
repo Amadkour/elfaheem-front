@@ -17,11 +17,11 @@ class CoursesRow extends StatelessWidget {
     final isWide = MediaQuery.of(context).size.width >= 680;
 
     if (provider.isLoading) {
-      return const SizedBox(
+      return  SizedBox(
         height: 270,
         child: Center(
           child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation(AppTheme.primary),
+            valueColor: AlwaysStoppedAnimation(context.colors.primary),
             strokeWidth: 2.5,
           ),
         ),
@@ -29,9 +29,9 @@ class CoursesRow extends StatelessWidget {
     }
 
     if (provider.courses.isEmpty) {
-      return const SizedBox(
+      return  SizedBox(
         height: 100,
-        child: Center(child: Text('لا توجد كورسات', style: AppTheme.body)),
+        child: Center(child: Text('لا توجد كورسات', style: context.colors.body)),
       );
     }
 
@@ -80,16 +80,14 @@ class _CourseCard extends StatelessWidget {
 
   const _CourseCard({required this.course, this.fixedWidth});
 
-  Color get _accentColor {
+  Color? get _accentColor {
     final name = course.categoryName?.toLowerCase() ?? '';
     if (name.contains('برمج') || name.contains('تقن')) return const Color(0xFF5B4FCF);
     if (name.contains('رياض') || name.contains('علوم')) return const Color(0xFF0F6E56);
     if (name.contains('لغ')) return const Color(0xFFD85A30);
     if (name.contains('تصم') || name.contains('فن')) return const Color(0xFFD4537E);
-    return AppTheme.primary;
+    return null;
   }
-
-  Color get _accentLight => _accentColor.withValues(alpha:0.12);
 
   bool get _isLive => course.type == 'live';
   bool get _hasProgress => course.progress > 0;
@@ -103,7 +101,7 @@ class _CourseCard extends StatelessWidget {
       child: Container(
         width: fixedWidth,
         decoration: BoxDecoration(
-          color: AppTheme.cardBg,
+          color: context.colors.cardBg,
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
@@ -127,7 +125,7 @@ class _CourseCard extends StatelessWidget {
                   // Title
                   Text(
                     course.title,
-                    style: AppTheme.h3.copyWith(
+                    style: context.colors.h3.copyWith(
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.2,
@@ -141,8 +139,8 @@ class _CourseCard extends StatelessWidget {
                   if (course.instructorName.isNotEmpty)
                     _TeacherRow(
                       name: course.instructorName,
-                      accentColor: _accentColor,
-                      accentLight: _accentLight,
+                      accentColor: _accentColor??context.colors.primary,
+                      accentLight: (_accentColor??context.colors.primary).withValues(alpha:0.12),
                     ),
 
                   const _CardDivider(),
@@ -158,8 +156,8 @@ class _CourseCard extends StatelessWidget {
                   // Category pill + price
                   _BottomRow(
                     course: course,
-                    accentColor: _accentColor,
-                    accentLight: _accentLight,
+                    accentColor: _accentColor??context.colors.primary,
+                    accentLight: (_accentColor??context.colors.primary)..withValues(alpha:0.12),
                   ),
 
                   // Progress bar — only when enrolled
@@ -260,13 +258,13 @@ class _Thumbnail extends StatelessWidget {
             decoration: BoxDecoration(
               color: course.price == 0
                   ? const Color(0xFF0F6E56)
-                  : AppTheme.primary,
+                  : context.colors.primary,
               borderRadius: BorderRadius.circular(10),
               boxShadow: [
                 BoxShadow(
                   color: (course.price == 0
                       ? const Color(0xFF0F6E56)
-                      : AppTheme.primary)
+                      : context.colors.primary)
                       .withValues(alpha:0.35),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
@@ -327,7 +325,7 @@ class _TeacherRow extends StatelessWidget {
         Expanded(
           child: Text(
             'أ. $name',
-            style: AppTheme.caption.copyWith(fontSize: 11, color: AppTheme.textLight),
+            style: context.colors.caption.copyWith(fontSize: 11, color: context.colors.textLight),
             overflow: TextOverflow.ellipsis,
             maxLines: 1,
           ),
@@ -364,12 +362,12 @@ class _StatsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Icon(Icons.star_rounded, color: AppTheme.accent, size: 13),
+         Icon(Icons.star_rounded, color: context.colors.accent, size: 13),
         const SizedBox(width: 3),
         Text(
           course.rate?.toStringAsFixed(1) ?? '–',
-          style: AppTheme.caption.copyWith(
-            color: AppTheme.textDark,
+          style: context.colors.caption.copyWith(
+            color: context.colors.textDark,
             fontWeight: FontWeight.w700,
             fontSize: 12,
           ),
@@ -378,7 +376,7 @@ class _StatsRow extends StatelessWidget {
         Expanded(
           child: Text(
             '${course.studentsCount} طالب',
-            style: AppTheme.caption.copyWith(fontSize: 11),
+            style: context.colors.caption.copyWith(fontSize: 11),
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -403,22 +401,22 @@ class _MetaRow extends StatelessWidget {
     return Row(
       children: [
         if (hasLectures) ...[
-          const Icon(Icons.play_circle_outline_rounded,
-              size: 12, color: AppTheme.textLight),
+           Icon(Icons.play_circle_outline_rounded,
+              size: 12, color: context.colors.textLight),
           const SizedBox(width: 3),
           Text(
             '${course.sessions.length} محاضرة',
-            style: AppTheme.caption.copyWith(fontSize: 10),
+            style: context.colors.caption.copyWith(fontSize: 10),
           ),
         ],
         if (hasLectures && hasHours) _Dot(),
         if (hasHours) ...[
-          const Icon(Icons.access_time_rounded,
-              size: 12, color: AppTheme.textLight),
+           Icon(Icons.access_time_rounded,
+              size: 12, color: context.colors.textLight),
           const SizedBox(width: 3),
           Text(
             '${course.hoursCount} ساعة',
-            style: AppTheme.caption.copyWith(fontSize: 10),
+            style: context.colors.caption.copyWith(fontSize: 10),
           ),
         ],
       ],
@@ -452,7 +450,7 @@ class _BottomRow extends StatelessWidget {
             ),
             child: Text(
               course.categoryName!,
-              style: AppTheme.caption.copyWith(
+              style: context.colors.caption.copyWith(
                 color: accentColor,
                 fontWeight: FontWeight.w700,
                 fontSize: 10,
@@ -468,7 +466,7 @@ class _BottomRow extends StatelessWidget {
           style: TextStyle(
             color: course.price == 0
                 ? const Color(0xFF0F6E56)
-                : AppTheme.primary,
+                : context.colors.primary,
             fontWeight: FontWeight.w800,
             fontSize: 13,
             fontFamily: 'Cairo',
@@ -494,13 +492,13 @@ class _ProgressBar extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('تقدمك', style: AppTheme.caption.copyWith(fontSize: 10)),
+            Text('تقدمك', style: context.colors.caption.copyWith(fontSize: 10)),
             Text(
               '$pct%',
-              style: AppTheme.caption.copyWith(
+              style: context.colors.caption.copyWith(
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
-                color: AppTheme.primary,
+                color: context.colors.primary,
               ),
             ),
           ],
@@ -511,8 +509,8 @@ class _ProgressBar extends StatelessWidget {
           child: LinearProgressIndicator(
             value: progress.clamp(0.0, 1.0),
             minHeight: 5,
-            backgroundColor: AppTheme.primaryLight,
-            valueColor: const AlwaysStoppedAnimation(AppTheme.primary),
+            backgroundColor: context.colors.primaryLight,
+            valueColor:  AlwaysStoppedAnimation(context.colors.primary),
           ),
         ),
       ],
@@ -524,9 +522,9 @@ class _ProgressBar extends StatelessWidget {
 class _Dot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return const Padding(
+    return  Padding(
       padding: EdgeInsets.symmetric(horizontal: 5),
-      child: CircleAvatar(radius: 1.5, backgroundColor: AppTheme.textLight),
+      child: CircleAvatar(radius: 1.5, backgroundColor: context.colors.textLight),
     );
   }
 }

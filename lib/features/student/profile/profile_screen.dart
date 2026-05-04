@@ -41,7 +41,7 @@ class ProfileScreen extends StatelessWidget {
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: SafeArea(
           child: Center(
             child: ConstrainedBox(
@@ -73,7 +73,7 @@ class ProfileScreen extends StatelessWidget {
                           const SizedBox(width: 16),
                           Expanded(
                             child: Column(children: [
-                              _buildSettings(provider),
+                              _buildSettings(provider,context),
                             ]),
                           ),
                         ],
@@ -83,7 +83,7 @@ class ProfileScreen extends StatelessWidget {
                       Column(children: [
                         _buildAccount(context, provider),
                         const SizedBox(height: 20),
-                        _buildSettings(provider),
+                        _buildSettings(provider,context),
                         const SizedBox(height: 20),
                         _buildHelp(context),
                       ]),
@@ -102,34 +102,34 @@ class ProfileScreen extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 14),
                         decoration: BoxDecoration(
-                          color: AppTheme.cardBg,
+                          color: context.colors.cardBg,
                           borderRadius:
-                              BorderRadius.circular(AppTheme.radiusMedium),
-                          boxShadow: AppTheme.cardShadow,
+                              BorderRadius.circular(context.colors.radiusMedium),
+                          boxShadow: context.colors.cardShadow,
                           border: Border.all(
-                              color: AppTheme.danger.withValues(alpha: 0.15)),
+                              color: context.colors.danger.withValues(alpha: 0.15)),
                         ),
                         child: Row(children: [
-                          const Text('تسجيل الخروج',
+                           Text('تسجيل الخروج',
                               style: TextStyle(
                                   fontFamily: 'Cairo',
                                   fontWeight: FontWeight.w700,
                                   fontSize: 14,
-                                  color: AppTheme.danger)),
+                                  color: context.colors.danger)),
                           const Spacer(),
                           Container(
                             width: 36,
                             height: 36,
                             decoration: BoxDecoration(
-                              color: AppTheme.danger.withValues(alpha: 0.1),
+                              color: context.colors.danger.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: const Icon(Icons.logout_rounded,
-                                size: 18, color: AppTheme.danger),
+                            child:  Icon(Icons.logout_rounded,
+                                size: 18, color: context.colors.danger),
                           ),
                           const SizedBox(width: 10),
-                          const Icon(Icons.chevron_left_rounded,
-                              color: AppTheme.textLight, size: 20),
+                           Icon(Icons.chevron_left_rounded,
+                              color: context.colors.textLight, size: 20),
                         ]),
                       ),
                     ),
@@ -150,22 +150,22 @@ class ProfileScreen extends StatelessWidget {
       children: [
         SettingsTile(
           icon: Icons.person_rounded,
-          iconBg: AppTheme.primary.withValues(alpha: 0.12),
-          iconColor: AppTheme.primary,
+          iconBg: context.colors.primary.withValues(alpha: 0.12),
+          iconColor: context.colors.primary,
           label: 'تعديل الحساب',
           onTap: () => _push(context, const EditAccountScreen()),
         ),
         SettingsTile(
           icon: Icons.lock_rounded,
-          iconBg: AppTheme.accent.withValues(alpha: 0.12),
-          iconColor: AppTheme.accent,
+          iconBg: context.colors.accent.withValues(alpha: 0.12),
+          iconColor: context.colors.accent,
           label: 'تغيير الباسوورد',
           onTap: () => _push(context, const ChangePasswordScreen()),
         ),
         SettingsTile(
           icon: Icons.favorite_rounded,
-          iconBg: AppTheme.danger.withValues(alpha: 0.12),
-          iconColor: AppTheme.danger,
+          iconBg: context.colors.danger.withValues(alpha: 0.12),
+          iconColor: context.colors.danger,
           label: 'الكورسات المفضله',
           onTap: () => _push(context, const FavouriteCoursesScreen()),
         ),
@@ -173,19 +173,19 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSettings(ProfileProvider provider) {
+  Widget _buildSettings(ProfileProvider provider,BuildContext context) {
     return SettingsGroup(
       title: 'الضبط',
       children: [
         SettingsTile(
           icon: Icons.notifications_rounded,
-          iconBg: AppTheme.success.withValues(alpha: 0.12),
-          iconColor: AppTheme.success,
+          iconBg: context.colors.success.withValues(alpha: 0.12),
+          iconColor: context.colors.success,
           label: 'الاشعارات',
           trailing: Switch.adaptive(
             value: provider.notificationsEnabled,
             onChanged: provider.toggleNotifications,
-            activeColor: AppTheme.primary,
+            activeColor: context.colors.primary,
           ),
         ),
         SettingsTile(
@@ -197,13 +197,13 @@ class ProfileScreen extends StatelessWidget {
         ),
         SettingsTile(
           icon: Icons.dark_mode_rounded,
-          iconBg: AppTheme.textDark.withValues(alpha: 0.08),
-          iconColor: AppTheme.textDark,
+          iconBg: context.colors.textDark.withValues(alpha: 0.08),
+          iconColor: context.colors.textDark,
           label: 'الوضع الليلي',
           trailing: Switch.adaptive(
             value: provider.darkMode,
             onChanged: provider.toggleDarkMode,
-            activeColor: AppTheme.primary,
+            activeColor: context.colors.primary,
           ),
         ),
       ],
@@ -216,22 +216,22 @@ class ProfileScreen extends StatelessWidget {
       children: [
         SettingsTile(
           icon: Icons.headset_mic_rounded,
-          iconBg: AppTheme.primary.withValues(alpha: 0.12),
-          iconColor: AppTheme.primary,
+          iconBg: context.colors.primary.withValues(alpha: 0.12),
+          iconColor: context.colors.primary,
           label: 'مركز المساعده',
           onTap: () => _push(context, const SupportScreen()),
         ),
         SettingsTile(
           icon: Icons.privacy_tip_rounded,
-          iconBg: AppTheme.success.withValues(alpha: 0.12),
-          iconColor: AppTheme.success,
+          iconBg: context.colors.success.withValues(alpha: 0.12),
+          iconColor: context.colors.success,
           label: 'الخصوصيه',
           onTap: () => _push(context, const PrivacyScreen()),
         ),
         SettingsTile(
           icon: Icons.info_rounded,
-          iconBg: AppTheme.accent.withValues(alpha: 0.12),
-          iconColor: AppTheme.accent,
+          iconBg: context.colors.accent.withValues(alpha: 0.12),
+          iconColor: context.colors.accent,
           label: 'عنا',
           onTap: () => _push(context, const AboutScreen()),
         ),
@@ -246,7 +246,7 @@ class ProfileScreen extends StatelessWidget {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
+              borderRadius: BorderRadius.circular(context.colors.radiusMedium)),
           title: const Text('تسجيل الخروج',
               style:
                   TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
@@ -255,13 +255,13 @@ class ProfileScreen extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('إلغاء',
+              child:  Text('إلغاء',
                   style: TextStyle(
-                      fontFamily: 'Cairo', color: AppTheme.textMedium)),
+                      fontFamily: 'Cairo', color: context.colors.textMedium)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.danger,
+                  backgroundColor: context.colors.danger,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12))),
               onPressed: () => Navigator.pop(context, true),
@@ -290,9 +290,9 @@ class _ProfileHeaderCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
       decoration: BoxDecoration(
-        gradient: AppTheme.primaryGradient,
+        gradient: context.colors.primaryGradient,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: AppTheme.primaryShadow,
+        boxShadow: context.colors.primaryShadow,
       ),
       child: Row(
         children: [
@@ -404,7 +404,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
     if (mounted) {
       if (ok) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(_snack('تم حفظ التغييرات بنجاح', AppTheme.success));
+            .showSnackBar(_snack('تم حفظ التغييرات بنجاح', context.colors.success));
         Navigator.of(context).pop();
       }
     }
@@ -416,7 +416,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: SafeArea(
           child: Column(children: [
             ScreenAppBar(title: 'تعديل الحساب'),
@@ -432,21 +432,21 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
                           height: 90,
                           decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: AppTheme.primary.withValues(alpha: 0.1),
+                              color: context.colors.primary.withValues(alpha: 0.1),
                               border: Border.all(
-                                  color: AppTheme.primary, width: 2)),
-                          child: const Icon(Icons.person_rounded,
-                              size: 48, color: AppTheme.primary)),
+                                  color: context.colors.primary, width: 2)),
+                          child:  Icon(Icons.person_rounded,
+                              size: 48, color: context.colors.primary)),
                       Container(
                           width: 30,
                           height: 30,
-                          decoration: const BoxDecoration(
-                              shape: BoxShape.circle, color: AppTheme.primary),
+                          decoration:  BoxDecoration(
+                              shape: BoxShape.circle, color: context.colors.primary),
                           child: const Icon(Icons.camera_alt_rounded,
                               size: 16, color: Colors.white)),
                     ]),
                     const SizedBox(height: 8),
-                    Text(provider.phone, style: AppTheme.caption),
+                    Text(provider.phone, style: context.colors.caption),
                     const SizedBox(height: 24),
                     MyTextField(
                         controller: _nameCtrl,
@@ -520,7 +520,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: SafeArea(
           child: Column(children: [
             ScreenAppBar(title: 'change_password'.tr),
@@ -575,15 +575,19 @@ class _OtpPasswordScreenState extends State<_OtpPasswordScreen> {
 
   @override
   void dispose() {
-    for (final c in _controllers) c.dispose();
-    for (final f in _focusNodes) f.dispose();
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    for (final f in _focusNodes) {
+      f.dispose();
+    }
     super.dispose();
   }
 
   Future<void> _confirm() async {
     if (_code.length < 4) return;
     ScaffoldMessenger.of(context).showSnackBar(
-        _snack('تم التحقق وتغيير كلمة المرور بنجاح', AppTheme.success));
+        _snack('تم التحقق وتغيير كلمة المرور بنجاح', context.colors.success));
     Navigator.of(context)
       ..pop()
       ..pop();
@@ -596,7 +600,7 @@ class _OtpPasswordScreenState extends State<_OtpPasswordScreen> {
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: SafeArea(
           child: Column(children: [
             ScreenAppBar(title: 'رمز التحقق'),
@@ -605,10 +609,10 @@ class _OtpPasswordScreenState extends State<_OtpPasswordScreen> {
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text('ادخل رمز التحقق', style: AppTheme.h2),
+                    Text('ادخل رمز التحقق', style: context.colors.h2),
                     const SizedBox(height: 6),
-                    const Text('لقد تم ارسال رمز التحقق الى +966xxxxxx',
-                        style: AppTheme.body),
+                     Text('لقد تم ارسال رمز التحقق الى +966xxxxxx',
+                        style: context.colors.body),
                     const SizedBox(height: 32),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -620,14 +624,14 @@ class _OtpPasswordScreenState extends State<_OtpPasswordScreen> {
                                 margin:
                                     const EdgeInsets.symmetric(horizontal: 6),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.cardBg,
+                                  color: context.colors.cardBg,
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
                                       color: _focusNodes[i].hasFocus
-                                          ? AppTheme.primary
-                                          : AppTheme.divider,
+                                          ? context.colors.primary
+                                          : context.colors.divider,
                                       width: _focusNodes[i].hasFocus ? 2 : 1.5),
-                                  boxShadow: AppTheme.cardShadow,
+                                  boxShadow: context.colors.cardShadow,
                                 ),
                                 child: TextField(
                                   controller: _controllers[i],
@@ -635,15 +639,17 @@ class _OtpPasswordScreenState extends State<_OtpPasswordScreen> {
                                   textAlign: TextAlign.center,
                                   keyboardType: TextInputType.number,
                                   maxLength: 1,
-                                  style: AppTheme.h2.copyWith(fontSize: 24),
+                                  style: context.colors.h2.copyWith(fontSize: 24),
                                   decoration: const InputDecoration(
                                       counterText: '',
                                       border: InputBorder.none),
                                   onChanged: (v) {
-                                    if (v.isNotEmpty && i < 3)
+                                    if (v.isNotEmpty && i < 3) {
                                       _focusNodes[i + 1].requestFocus();
-                                    if (v.isEmpty && i > 0)
+                                    }
+                                    if (v.isEmpty && i > 0) {
                                       _focusNodes[i - 1].requestFocus();
+                                    }
                                   },
                                 ),
                               )),
@@ -654,7 +660,7 @@ class _OtpPasswordScreenState extends State<_OtpPasswordScreen> {
                           context.read<ProfileProvider>().resendOtp(),
                       child: Text('Resend Code in 00:03',
                           style:
-                              AppTheme.label.copyWith(color: AppTheme.primary)),
+                              context.colors.label.copyWith(color: context.colors.primary)),
                     ),
                     const SizedBox(height: 20),
                     MyPrimaryButton(
@@ -681,7 +687,7 @@ class ChangeLanguageScreen extends StatelessWidget {
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: SafeArea(
           child: Column(children: [
             ScreenAppBar(title: 'تغيير اللغه'),
@@ -700,30 +706,30 @@ class ChangeLanguageScreen extends StatelessWidget {
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? AppTheme.primary.withValues(alpha: 0.08)
-                              : AppTheme.cardBg,
+                              ? context.colors.primary.withValues(alpha: 0.08)
+                              : context.colors.cardBg,
                           borderRadius:
-                              BorderRadius.circular(AppTheme.radiusMedium),
+                              BorderRadius.circular(context.colors.radiusMedium),
                           border: Border.all(
                               color: isSelected
-                                  ? AppTheme.primary
-                                  : AppTheme.divider,
+                                  ? context.colors.primary
+                                  : context.colors.divider,
                               width: isSelected ? 2 : 1),
-                          boxShadow: AppTheme.cardShadow,
+                          boxShadow: context.colors.cardShadow,
                         ),
                         child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(lang.label,
-                                  style: AppTheme.label.copyWith(
+                                  style: context.colors.label.copyWith(
                                       color: isSelected
-                                          ? AppTheme.primary
-                                          : AppTheme.textDark,
+                                          ? context.colors.primary
+                                          : context.colors.textDark,
                                       fontWeight: FontWeight.w700,
                                       fontSize: 15)),
                               if (isSelected)
-                                const Icon(Icons.check_circle_rounded,
-                                    color: AppTheme.primary, size: 22),
+                                 Icon(Icons.check_circle_rounded,
+                                    color: context.colors.primary, size: 22),
                             ]),
                       ),
                     ),
@@ -756,21 +762,21 @@ class FavouriteCoursesScreen extends StatelessWidget {
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: SafeArea(
           child: Column(children: [
             ScreenAppBar(title: 'الكورسات المفضله'),
             const SizedBox(height: 8),
             Expanded(
               child: favourites.isEmpty
-                  ? const Center(
+                  ?  Center(
                       child: Column(mainAxisSize: MainAxisSize.min, children: [
                       Icon(Icons.favorite_border_rounded,
-                          size: 64, color: AppTheme.textLight),
+                          size: 64, color: context.colors.textLight),
                       SizedBox(height: 12),
                       Text('لا توجد كورسات مفضّلة بعد',
                           style: TextStyle(
-                              fontFamily: 'Cairo', color: AppTheme.textMedium)),
+                              fontFamily: 'Cairo', color: context.colors.textMedium)),
                     ]))
                   : GridView.builder(
                       padding: const EdgeInsets.all(20),
@@ -805,17 +811,17 @@ class _FavCourseCard extends StatelessWidget {
           builder: (_) => CourseDetailScreen(course: course))),
       child: Container(
         decoration: BoxDecoration(
-            color: AppTheme.cardBg,
-            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-            boxShadow: AppTheme.cardShadow),
+            color: context.colors.cardBg,
+            borderRadius: BorderRadius.circular(context.colors.radiusMedium),
+            boxShadow: context.colors.cardShadow),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Stack(children: [
             AppNetworkImage(
                 url: course.imageUrl,
                 height: 110,
-                borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(AppTheme.radiusMedium),
-                    topRight: Radius.circular(AppTheme.radiusMedium))),
+                borderRadius:  BorderRadius.only(
+                    topLeft: Radius.circular(context.colors.radiusMedium),
+                    topRight: Radius.circular(context.colors.radiusMedium))),
             Positioned(
               top: 8,
               left: 8,
@@ -828,8 +834,8 @@ class _FavCourseCard extends StatelessWidget {
                     decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.9),
                         shape: BoxShape.circle),
-                    child: const Icon(Icons.favorite_rounded,
-                        color: AppTheme.danger, size: 16)),
+                    child:  Icon(Icons.favorite_rounded,
+                        color: context.colors.danger, size: 16)),
               ),
             ),
           ]),
@@ -838,17 +844,17 @@ class _FavCourseCard extends StatelessWidget {
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(course.title,
-                  style: AppTheme.h3.copyWith(fontSize: 13),
+                  style: context.colors.h3.copyWith(fontSize: 13),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis),
               const SizedBox(height: 4),
-              Text(course.instructorName, style: AppTheme.caption, maxLines: 1),
+              Text(course.instructorName, style: context.colors.caption, maxLines: 1),
               const SizedBox(height: 6),
               Text(
                   course.price == 0
                       ? 'مجاني'
                       : '\$ ${course.price.toStringAsFixed(2)}',
-                  style: AppTheme.label.copyWith(color: AppTheme.accent)),
+                  style: context.colors.label.copyWith(color: context.colors.accent)),
             ]),
           ),
         ]),
@@ -896,7 +902,7 @@ class _SupportScreenState extends State<SupportScreen> {
     if (mounted) {
       setState(() => _sending = false);
       ScaffoldMessenger.of(context)
-          .showSnackBar(_snack('تم إرسال رسالتك بنجاح', AppTheme.success));
+          .showSnackBar(_snack('تم إرسال رسالتك بنجاح', context.colors.success));
       _messageCtrl.clear();
     }
   }
@@ -906,7 +912,7 @@ class _SupportScreenState extends State<SupportScreen> {
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: SafeArea(
           child: Column(children: [
             ScreenAppBar(title: 'مركز المساعده'),
@@ -957,7 +963,7 @@ class AboutScreen extends StatelessWidget {
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: SafeArea(
           child: Column(children: [
             ScreenAppBar(title: 'عنا'),
@@ -969,33 +975,33 @@ class AboutScreen extends StatelessWidget {
                     width: 140,
                     height: 140,
                     decoration: BoxDecoration(
-                        gradient: AppTheme.primaryGradient,
+                        gradient: context.colors.primaryGradient,
                         shape: BoxShape.circle,
-                        boxShadow: AppTheme.primaryShadow),
+                        boxShadow: context.colors.primaryShadow),
                     child: const Icon(Icons.school_rounded,
                         size: 72, color: Colors.white),
                   ),
                   const SizedBox(height: 24),
-                  Text('مركز الفهيم', style: AppTheme.h1),
+                  Text('مركز الفهيم', style: context.colors.h1),
                   const SizedBox(height: 8),
                   Text('قدرات وتحصيلي والنجليزي',
-                      style: AppTheme.caption
-                          .copyWith(color: AppTheme.textMedium)),
+                      style: context.colors.caption
+                          .copyWith(color: context.colors.textMedium)),
                   const SizedBox(height: 24),
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                        color: AppTheme.cardBg,
+                        color: context.colors.cardBg,
                         borderRadius:
-                            BorderRadius.circular(AppTheme.radiusMedium),
-                        boxShadow: AppTheme.cardShadow),
-                    child: const Text(
+                            BorderRadius.circular(context.colors.radiusMedium),
+                        boxShadow: context.colors.cardShadow),
+                    child:  Text(
                       'مركز الفهيم يحرص على تقديم احسن الكورسات بأحسن المدرسين ليكون عندنا احسن جيل متقدم',
                       style: TextStyle(
                           fontFamily: 'Cairo',
                           fontSize: 16,
                           height: 1.9,
-                          color: AppTheme.textDark),
+                          color: context.colors.textDark),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -1041,7 +1047,7 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: SafeArea(
           child: Column(children: [
             ScreenAppBar(title: 'السياسه و الخصوصيه'),
@@ -1056,17 +1062,18 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 250),
                     decoration: BoxDecoration(
-                        color: AppTheme.cardBg,
+                        color: context.colors.cardBg,
                         borderRadius:
-                            BorderRadius.circular(AppTheme.radiusMedium),
-                        boxShadow: AppTheme.cardShadow),
+                            BorderRadius.circular(context.colors.radiusMedium),
+                        boxShadow: context.colors.cardShadow),
                     child: Column(children: [
                       GestureDetector(
                         onTap: () => setState(() {
-                          if (isOpen)
+                          if (isOpen) {
                             _expanded.remove(i);
-                          else
+                          } else {
                             _expanded.add(i);
+                          }
                         }),
                         behavior: HitTestBehavior.opaque,
                         child: Padding(
@@ -1074,19 +1081,19 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
                           child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(title, style: AppTheme.h3),
+                                Text(title, style: context.colors.h3),
                                 Icon(
                                     isOpen
                                         ? Icons.expand_less_rounded
                                         : Icons.chevron_left_rounded,
-                                    color: AppTheme.textLight),
+                                    color: context.colors.textLight),
                               ]),
                         ),
                       ),
                       if (isOpen)
                         Padding(
                             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                            child: Text(body, style: AppTheme.body)),
+                            child: Text(body, style: context.colors.body)),
                     ]),
                   );
                 },

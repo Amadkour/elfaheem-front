@@ -30,6 +30,7 @@ class CourseSchedule {
         'sunday': 'الأحد'
       }[day] ??
       day;
+
   /// Lightweight constructor for pending (not-yet-saved) entries.
   factory CourseSchedule.pending({
     required String day,
@@ -43,6 +44,7 @@ class CourseSchedule {
         startTime: startTime,
         endTime: endTime,
       );
+
   factory CourseSchedule.fromJson(Map<String, dynamic> j) => CourseSchedule(
       id: j['id'] as int,
       courseId: j['course_id'] as int? ?? 0,
@@ -121,6 +123,8 @@ enum TeacherCourseStatus { all, published, draft }
 //  Fields match the dict the Python method returns.
 // ─────────────────────────────────────────────
 
+// ── ScheduleSession model (updated) ──────────────────────────────────────────
+
 class ScheduleSession {
   // Identity
   final int scheduleId;
@@ -129,11 +133,11 @@ class ScheduleSession {
   final String? courseImage;
 
   // When
-  final String day; // 'monday' … 'sunday'
-  final String dayLabel; // Arabic label (localised server-side or client-side)
-  final String startTime; // 'HH:MM'
-  final String endTime; // 'HH:MM'
-  final DateTime scheduledDate; // 'YYYY-MM-DD' — concrete date of next occurrence
+  final String day;
+  final String dayLabel;
+  final String startTime;
+  final String endTime;
+  final DateTime scheduledDate;
 
   // Duration & capacity
   final int durationMinutes;
@@ -142,10 +146,19 @@ class ScheduleSession {
   // Live state
   final bool isToday;
   final bool isOngoing;
-  final int? minutesUntilStart; // null → other day; ≤0 → already started
-  final int? minutesUntilEnd; // non-null only when isOngoing
+  final int? minutesUntilStart;
+  final int? minutesUntilEnd;
 
-  // Day labels map (fallback when server sends English key only)
+  // ── NEW: live session fields returned by the updated backend ──────────────
+  final int? sessionId; // SessionModel.id  – null if not yet created
+  final int? onlineSessionId; // OnlineSession.id – null if not yet created
+  final String? roomName; // LiveKit room name
+  final String? provider; // 'livekit' | 'zoom' | …
+  final bool isLive; // OnlineSession.is_active
+  final String? joinUrl; // OnlineSession.url  (room join URL)
+  final String? hostUrl; // OnlineSession.host_url
+  final String? token; // OnlineSession.host_url
+
   static const _labels = {
     'monday': 'الاثنين',
     'tuesday': 'الثلاثاء',
@@ -155,6 +168,13 @@ class ScheduleSession {
     'saturday': 'السبت',
     'sunday': 'الأحد',
   };
+
+  /// Convenience: a session can be joined when it has been created AND
+  /// it is today (or ongoing).
+  bool get canJoinNow =>
+      sessionId != null && (isOngoing || isToday) && joinUrl != null;
+
+  String get defaultSessionName => '$courseName – $dayLabel $startTime';
 
   const ScheduleSession({
     required this.scheduleId,
@@ -172,6 +192,15 @@ class ScheduleSession {
     this.maxStudents,
     this.minutesUntilStart,
     this.minutesUntilEnd,
+    // new
+    this.sessionId,
+    this.onlineSessionId,
+    this.roomName,
+    this.provider,
+    this.isLive = false,
+    this.joinUrl,
+    this.hostUrl,
+    this.token,
   });
 
   factory ScheduleSession.fromJson(Map<String, dynamic> j) {
@@ -192,29 +221,17 @@ class ScheduleSession {
       isOngoing: j['is_ongoing'] as bool? ?? false,
       minutesUntilStart: j['minutes_until_start'] as int?,
       minutesUntilEnd: j['minutes_until_end'] as int?,
+      // new
+      sessionId: j['session_id'] as int?,
+      onlineSessionId: j['online_session_id'] as int?,
+      roomName: j['room_name'] as String?,
+      provider: j['provider'] as String?,
+      isLive: j['is_live'] as bool? ?? false,
+      joinUrl: j['join_url'] as String?,
+      hostUrl: j['host_url'] as String?,
+      token: j['token'] as String?,
     );
   }
-
-  // ── Derived helpers ────────────────────────────────────────────────
-
-  /// Human-readable "when" label shown on the card.
-  String get whenLabel {
-    if (isOngoing) {
-      final left = minutesUntilEnd ?? 0;
-      if (left <= 0) return 'انتهت للتو';
-      return 'جارية — تنتهي بعد $leftد';
-    }
-    if (!isToday) {
-      return scheduledDate != null ? '$dayLabel  $startTime' : dayLabel;
-    }
-    final mu = minutesUntilStart ?? 0;
-    if (mu <= 0) return 'بدأت للتو';
-    if (mu < 60) return 'اليوم — بعد $muد';
-    return 'اليوم — بعد ${mu ~/ 60}س${mu % 60 > 0 ? " ${mu % 60}د" : ""}';
-  }
-
-  /// Default session name to pre-fill the "create session" form.
-  String get defaultSessionName => 'حصة $dayLabel — $startTime';
 }
 
 // ── TeacherCourse ─────────────────────────────────────────────────────────────

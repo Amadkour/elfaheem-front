@@ -45,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen>
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: SafeArea(
           child: Center(
             child: ConstrainedBox(
@@ -211,8 +211,8 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
                 end: Alignment.centerLeft,
               )
             : next != null
-                ? AppTheme.primaryGradient
-                : AppTheme.successGradient;
+                ? context.colors.primaryGradient
+                : context.colors.successGradient;
 
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -220,11 +220,11 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
             padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 22),
             decoration: BoxDecoration(
               gradient: gradient,
-              borderRadius: BorderRadius.circular(AppTheme.radiusXL),
+              borderRadius: BorderRadius.circular(context.colors.radiusXL),
               boxShadow: [
                 BoxShadow(
                   color:
-                      (isOngoing ? const Color(0xFFC0392B) : AppTheme.primary)
+                      (isOngoing ? const Color(0xFFC0392B) : context.colors.primary)
                           .withValues(alpha: 0.38),
                   blurRadius: 24,
                   offset: const Offset(0, 8),

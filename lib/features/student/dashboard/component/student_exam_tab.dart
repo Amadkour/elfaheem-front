@@ -53,7 +53,7 @@ class _StudentExamsTabState extends State<StudentExamsTab>
       for (final exam in list) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showMaterialBanner(MaterialBanner(
-          backgroundColor: AppTheme.accent.withValues(alpha: 0.95),
+          backgroundColor: context.colors.accent.withValues(alpha: 0.95),
           content: Row(children: [
             const Icon(Icons.alarm_rounded, color: Colors.white, size: 20),
             const SizedBox(width: 10),
@@ -107,7 +107,7 @@ class _StudentExamsTabState extends State<StudentExamsTab>
     return Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
-            backgroundColor: AppTheme.background,
+            backgroundColor: context.colors.background,
             body: SafeArea(
                 child: Column(children: [
                   Padding(
@@ -117,62 +117,62 @@ class _StudentExamsTabState extends State<StudentExamsTab>
                             child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('اختباراتي', style: AppTheme.h1),
+                                   Text('اختباراتي', style: context.colors.h1),
                                   if (!_loading)
                                     Text('${_exams.length} اختبار',
-                                        style: AppTheme.caption),
+                                        style: context.colors.caption),
                                 ])),
                         if (!_loading && _exams.isNotEmpty)
                           Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
-                                  color: AppTheme.primary.withValues(alpha: 0.1),
+                                  color: context.colors.primary.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(20)),
                               child: Text(
                                   '${_exams.where((e) => e.isSubmitted).length} / ${_exams.length} مكتمل',
-                                  style: AppTheme.label
-                                      .copyWith(color: AppTheme.primary))),
+                                  style: context.colors.label
+                                      .copyWith(color: context.colors.primary))),
                       ])),
                   if (_upcoming.isNotEmpty)
                     Container(
                         margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                            color: AppTheme.accent.withValues(alpha: 0.08),
+                            color: context.colors.accent.withValues(alpha: 0.08),
                             borderRadius:
-                            BorderRadius.circular(AppTheme.radiusMedium),
+                            BorderRadius.circular(context.colors.radiusMedium),
                             border: Border.all(
-                                color: AppTheme.accent.withValues(alpha: 0.3))),
+                                color: context.colors.accent.withValues(alpha: 0.3))),
                         child: Row(children: [
-                          const Icon(Icons.schedule_rounded,
-                              color: AppTheme.accent, size: 18),
+                           Icon(Icons.schedule_rounded,
+                              color: context.colors.accent, size: 18),
                           const SizedBox(width: 8),
                           Expanded(
                               child: Text(
                                   _upcoming.length == 1
                                       ? 'اختبار "${_upcoming.first.name}" يبدأ بعد ${_upcoming.first.minutesLeft} دقيقة'
                                       : '${_upcoming.length} اختبارات قادمة قريباً',
-                                  style: AppTheme.label
-                                      .copyWith(color: AppTheme.accent))),
+                                  style: context.colors.label
+                                      .copyWith(color: context.colors.accent))),
                         ])),
                   const SizedBox(height: 12),
                   Expanded(
                       child: _loading
-                          ? const Center(
+                          ?  Center(
                           child: CircularProgressIndicator(
                               valueColor:
-                              AlwaysStoppedAnimation(AppTheme.primary)))
+                              AlwaysStoppedAnimation(context.colors.primary)))
                           : _error != null
                           ? Center(
                           child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.error_outline,
-                                    size: 48, color: AppTheme.danger),
+                                 Icon(Icons.error_outline,
+                                    size: 48, color: context.colors.danger),
                                 const SizedBox(height: 12),
                                 Text(_error!,
-                                    style: AppTheme.body,
+                                    style: context.colors.body,
                                     textAlign: TextAlign.center),
                                 const SizedBox(height: 16),
                                 ElevatedButton(
@@ -182,23 +182,23 @@ class _StudentExamsTabState extends State<StudentExamsTab>
                                         TextStyle(fontFamily: 'Cairo'))),
                               ]))
                           : _exams.isEmpty
-                          ? const Center(
+                          ?  Center(
                           child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(Icons.quiz_outlined,
-                                    size: 64, color: AppTheme.textLight),
+                                    size: 64, color: context.colors.textLight),
                                 SizedBox(height: 12),
                                 Text('لا توجد اختبارات متاحة حالياً',
-                                    style: AppTheme.body),
+                                    style: context.colors.body),
                                 SizedBox(height: 6),
                                 Text(
                                     'سيظهر هنا الاختبارات بعد نشرها من قِبل المعلم',
-                                    style: AppTheme.caption,
+                                    style: context.colors.caption,
                                     textAlign: TextAlign.center),
                               ]))
                           : RefreshIndicator(
-                          color: AppTheme.primary,
+                          color: context.colors.primary,
                           onRefresh: _load,
                           child: ListView.separated(
                               padding: const EdgeInsets.fromLTRB(
@@ -224,13 +224,13 @@ class _ExamCard extends StatelessWidget {
     final passed = exam.passed;
     final sub = exam.isSubmitted;
     final color =
-    sub ? (passed ? AppTheme.success : AppTheme.danger) : AppTheme.primary;
+    sub ? (passed ? context.colors.success : context.colors.danger) : context.colors.primary;
     return Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-            color: AppTheme.cardBg,
-            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-            boxShadow: AppTheme.cardShadow,
+            color: context.colors.cardBg,
+            borderRadius: BorderRadius.circular(context.colors.radiusMedium),
+            boxShadow: context.colors.cardShadow,
             border:
             Border.all(color: color.withValues(alpha: 0.25), width: 0.8)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -255,12 +255,12 @@ class _ExamCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(exam.name,
-                          style: AppTheme.h3.copyWith(fontSize: 14),
+                          style: context.colors.h3.copyWith(fontSize: 14),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis),
                       const SizedBox(height: 2),
                       Text('📚 ${exam.courseName}',
-                          style: AppTheme.caption.copyWith(fontSize: 11)),
+                          style: context.colors.caption.copyWith(fontSize: 11)),
                     ])),
             Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -282,7 +282,7 @@ class _ExamCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
                           value: pct / 100,
-                          backgroundColor: AppTheme.divider,
+                          backgroundColor: context.colors.divider,
                           valueColor: AlwaysStoppedAnimation(color),
                           minHeight: 6))),
               const SizedBox(width: 10),
@@ -295,7 +295,7 @@ class _ExamCard extends StatelessWidget {
             ]),
             const SizedBox(height: 4),
             Text('أجبت عن ${exam.answeredCount} / ${exam.questionCount} سؤال',
-                style: AppTheme.caption.copyWith(fontSize: 11)),
+                style: context.colors.caption.copyWith(fontSize: 11)),
           ],
           const SizedBox(height: 8),
           Wrap(spacing: 10, children: [
@@ -317,11 +317,11 @@ class _Chip extends StatelessWidget {
   const _Chip(this.i, this.l);
 
   @override
-  Widget build(BuildContext _) =>
+  Widget build(BuildContext context) =>
       Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(i, size: 12, color: AppTheme.textLight),
+        Icon(i, size: 12, color: context.colors.textLight),
         const SizedBox(width: 3),
-        Text(l, style: AppTheme.caption)
+        Text(l, style: context.colors.caption)
       ]);
 }
 class _StudentExamEntry {

@@ -26,21 +26,21 @@ class ProfileHeader extends StatelessWidget {
               height: 100,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppTheme.primary.withValues(alpha: 0.1),
-                border: Border.all(color: AppTheme.primaryBlue, width: 2.5),
+                color: context.colors.primary.withValues(alpha: 0.1),
+                border: Border.all(color: context.colors.primaryBlue, width: 2.5),
               ),
               child: provider.avatarUrl != null
                   ? ClipOval(child: AppNetworkImage(url: provider.avatarUrl!))
-                  : const Icon(Icons.person_rounded,
-                  size: 52, color: AppTheme.primaryBlue),
+                  :  Icon(Icons.person_rounded,
+                  size: 52, color: context.colors.primaryBlue),
             ),
             GestureDetector(
               onTap: onImageTap,
               child: Container(
                 width: 32,
                 height: 32,
-                decoration: const BoxDecoration(
-                    color: AppTheme.primaryBlue, shape: BoxShape.circle),
+                decoration:  BoxDecoration(
+                    color: context.colors.primaryBlue, shape: BoxShape.circle),
                 child: const Icon(Icons.camera_alt_rounded,
                     size: 16, color: Colors.white),
               ),
@@ -48,9 +48,9 @@ class ProfileHeader extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        Text(provider.name, style: AppTheme.h2.copyWith(fontSize: 20)),
+        Text(provider.name, style: context.colors.h2.copyWith(fontSize: 20)),
         const SizedBox(height: 4),
-        Text(provider.email, style: AppTheme.caption),
+        Text(provider.email, style: context.colors.caption),
       ],
     );
   }

@@ -32,7 +32,7 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: SafeArea(
           child: Column(
             children: [
@@ -76,7 +76,7 @@ class _WebHeader extends StatelessWidget {
     height: 56,
     padding: const EdgeInsets.symmetric(horizontal: 24),
     decoration: BoxDecoration(
-      color: AppTheme.cardBg,
+      color: context.colors.cardBg,
       boxShadow: [
         BoxShadow(
           color: Colors.black.withValues(alpha:0.05),
@@ -88,7 +88,7 @@ class _WebHeader extends StatelessWidget {
     child: Row(
       children: [
         Text('كورساتي',
-            style: AppTheme.h2.copyWith(fontSize: 16)),
+            style: context.colors.h2.copyWith(fontSize: 16)),
       ],
     ),
   );
@@ -111,24 +111,24 @@ class _StatsRow extends StatelessWidget {
             label: 'المسجّلة',
             count: p.allCount,
             icon: Icons.library_books_rounded,
-            gradient: AppTheme.primaryGradient,
-            shadowColor: AppTheme.primary,
+            gradient: context.colors.primaryGradient,
+            shadowColor: context.colors.primary,
           ),
           const SizedBox(width: 10),
           _StatCard(
             label: 'مستمرة',
             count: p.inProgressCount,
             icon: Icons.trending_up_rounded,
-            gradient: AppTheme.accentGradient,
-            shadowColor: AppTheme.accent,
+            gradient: context.colors.accentGradient,
+            shadowColor: context.colors.accent,
           ),
           const SizedBox(width: 10),
           _StatCard(
             label: 'مكتملة',
             count: p.completedCount,
             icon: Icons.workspace_premium_rounded,
-            gradient: AppTheme.tealGradient,
-            shadowColor: AppTheme.accent2,
+            gradient: context.colors.tealGradient,
+            shadowColor: context.colors.accent2,
           ),
         ],
       ),
@@ -225,7 +225,7 @@ class _FilterTabs extends StatelessWidget {
         height: 48,
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: AppTheme.cardBg,
+          color: context.colors.cardBg,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
@@ -248,12 +248,12 @@ class _FilterTabs extends StatelessWidget {
                   duration: const Duration(milliseconds: 220),
                   curve: Curves.easeOut,
                   decoration: BoxDecoration(
-                    gradient: active ? AppTheme.primaryGradient : null,
+                    gradient: active ? context.colors.primaryGradient : null,
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: active
                         ? [
                       BoxShadow(
-                        color: AppTheme.primary.withValues(alpha:0.3),
+                        color: context.colors.primary.withValues(alpha:0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -268,15 +268,15 @@ class _FilterTabs extends StatelessWidget {
                         size: 14,
                         color: active
                             ? Colors.white
-                            : AppTheme.textLight,
+                            : context.colors.textLight,
                       ),
                       const SizedBox(width: 5),
                       Text(
                         label,
-                        style: AppTheme.label.copyWith(
+                        style: context.colors.label.copyWith(
                           color: active
                               ? Colors.white
-                              : AppTheme.textLight,
+                              : context.colors.textLight,
                           fontWeight: active
                               ? FontWeight.w700
                               : FontWeight.w500,
@@ -306,9 +306,9 @@ class _CourseList extends StatelessWidget {
     final isWide = context.showSidebar;
 
     if (p.isLoading && p.allCourses.isEmpty) {
-      return const Center(
+      return  Center(
         child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation(AppTheme.primary),
+          valueColor: AlwaysStoppedAnimation(context.colors.primary),
           strokeWidth: 2.5,
         ),
       );
@@ -325,15 +325,15 @@ class _CourseList extends StatelessWidget {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: AppTheme.primaryLight.withValues(alpha:0.3),
+                color: context.colors.primaryLight.withValues(alpha:0.3),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.menu_book_rounded,
-                  size: 38, color: AppTheme.primary),
+              child:  Icon(Icons.menu_book_rounded,
+                  size: 38, color: context.colors.primary),
             ),
             const SizedBox(height: 14),
-            const Text('لا توجد كورسات في هذا القسم',
-                style: AppTheme.body),
+             Text('لا توجد كورسات في هذا القسم',
+                style: context.colors.body),
           ],
         ),
       );
@@ -379,7 +379,7 @@ class _EnrolledCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDone = course.progress >= 1.0;
-    final accentColor = isDone ? AppTheme.accent2 : AppTheme.primary;
+    final accentColor = isDone ? context.colors.accent2 : context.colors.primary;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -387,11 +387,11 @@ class _EnrolledCard extends StatelessWidget {
         onTap: () => _open(context),
         child: Container(
           decoration: BoxDecoration(
-            color: AppTheme.cardBg,
+            color: context.colors.cardBg,
             borderRadius: BorderRadius.circular(18),
             border: isDone
                 ? Border.all(
-                color: AppTheme.accent2.withValues(alpha:0.3),
+                color: context.colors.accent2.withValues(alpha:0.3),
                 width: 1.5)
                 : null,
             boxShadow: [
@@ -423,12 +423,12 @@ class _EnrolledCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 7, vertical: 3),
                           decoration: BoxDecoration(
-                            color: AppTheme.accent2,
+                            color: context.colors.accent2,
                             borderRadius: BorderRadius.circular(7),
                             boxShadow: [
                               BoxShadow(
                                 color:
-                                AppTheme.accent2.withValues(alpha:0.4),
+                                context.colors.accent2.withValues(alpha:0.4),
                                 blurRadius: 6,
                                 offset: const Offset(0, 2),
                               ),
@@ -464,7 +464,7 @@ class _EnrolledCard extends StatelessWidget {
                     children: [
                       Text(
                         course.title,
-                        style: AppTheme.h3.copyWith(
+                        style: context.colors.h3.copyWith(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.2,
@@ -480,9 +480,9 @@ class _EnrolledCard extends StatelessWidget {
                           if (course.categoryName != null)
                             course.categoryName!,
                         ].join('  ·  '),
-                        style: AppTheme.caption.copyWith(
+                        style: context.colors.caption.copyWith(
                           fontSize: 11,
-                          color: AppTheme.textLight,
+                          color: context.colors.textLight,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -497,7 +497,7 @@ class _EnrolledCard extends StatelessWidget {
                 ),
 
                 Icon(Icons.chevron_left_rounded,
-                    color: AppTheme.textLight, size: 20),
+                    color: context.colors.textLight, size: 20),
               ],
             ),
           ),
@@ -517,7 +517,7 @@ class _ProgressDot extends StatelessWidget {
     width: 24,
     height: 24,
     decoration: BoxDecoration(
-      color: AppTheme.cardBg,
+      color: context.colors.cardBg,
       shape: BoxShape.circle,
       boxShadow: [
         BoxShadow(
@@ -532,16 +532,16 @@ class _ProgressDot extends StatelessWidget {
         CircularProgressIndicator(
           value: progress,
           strokeWidth: 2.5,
-          backgroundColor: AppTheme.primaryLight,
+          backgroundColor: context.colors.primaryLight,
           valueColor:
-          const AlwaysStoppedAnimation(AppTheme.primary),
+           AlwaysStoppedAnimation(context.colors.primary),
         ),
         Text(
           '${(progress * 100).round()}',
-          style: const TextStyle(
+          style:  TextStyle(
             fontSize: 6,
             fontWeight: FontWeight.w800,
-            color: AppTheme.primary,
+            color: context.colors.primary,
             fontFamily: 'Cairo',
           ),
         ),

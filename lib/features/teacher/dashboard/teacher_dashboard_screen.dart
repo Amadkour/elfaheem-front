@@ -1,5 +1,6 @@
 library;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../config/app_theme.dart';
@@ -42,20 +43,18 @@ class _State extends State<TeacherDashboardScreen> {
       const TeacherProfileScreen(),
     ];
 
-    return Directionality(
-      textDirection: Helpers.pageDirection,
-      child: isWide
+    return BasePage(child: isWide
           ? _WebShell(
         pages: _pages,
-        children: children,
         index: _index,
         onSelect: (i) => setState(() => _index = i),
+        children: children,
       )
           : _MobileShell(
         pages: _pages,
-        children: children,
         index: _index,
         onSelect: (i) => setState(() => _index = i),
+        children: children,
       ),
     );
   }
@@ -84,7 +83,7 @@ class _WebShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: AppTheme.background,
+    backgroundColor: context.colors.background,
     body: Row(children: [
       _Sidebar(pages: pages, index: index, onSelect: onSelect),
       Expanded(child: children[index]),
@@ -145,7 +144,7 @@ class _Sidebar extends StatelessWidget {
                       borderRadius: BorderRadius.circular(11),
                       boxShadow: [
                         BoxShadow(
-                            color: AppTheme.primary.withValues(alpha: 0.42),
+                            color: context.colors.primary.withValues(alpha: 0.42),
                             blurRadius: 12,
                             offset: const Offset(0, 4)),
                       ],
@@ -169,7 +168,7 @@ class _Sidebar extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AppTheme.primary.withValues(alpha: 0.22),
+                            color: context.colors.primary.withValues(alpha: 0.22),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child:  Text((context.read<AuthProvider>().isTeacher?'teacher':'student').tr,
@@ -214,7 +213,7 @@ class _Sidebar extends StatelessWidget {
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      gradient: AppTheme.primaryGradient,
+                      gradient: context.colors.primaryGradient,
                       shape: BoxShape.circle,
                     ),
                     alignment: Alignment.center,
@@ -275,7 +274,7 @@ class _SideItem extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
         decoration: BoxDecoration(
           color: active
-              ? AppTheme.primary.withValues(alpha:0.20)
+              ? context.colors.primary.withValues(alpha:0.20)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
@@ -285,13 +284,13 @@ class _SideItem extends StatelessWidget {
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              gradient: active ? AppTheme.primaryGradient : null,
+              gradient: active ? context.colors.primaryGradient : null,
               color: active ? null : Colors.white.withValues(alpha:0.06),
               borderRadius: BorderRadius.circular(10),
               boxShadow: active
                   ? [
                 BoxShadow(
-                    color: AppTheme.primary.withValues(alpha:0.35),
+                    color: context.colors.primary.withValues(alpha:0.35),
                     blurRadius: 8,
                     offset: const Offset(0, 3))
               ]
@@ -337,7 +336,7 @@ class _MobileShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: AppTheme.background,
+    backgroundColor: context.colors.background,
     body: IndexedStack(index: index, children: children),
     bottomNavigationBar: _BottomNav(
         pages: pages, index: index, onSelect: onSelect),
@@ -355,7 +354,7 @@ class _BottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     decoration: BoxDecoration(
-      color: AppTheme.cardBg,
+      color: context.colors.cardBg,
       border: Border(
           top: BorderSide(
               color: Colors.black.withValues(alpha:0.07), width: 0.5)),
@@ -388,13 +387,13 @@ class _BottomNav extends StatelessWidget {
                       height: 30,
                       decoration: BoxDecoration(
                         gradient: active
-                            ? AppTheme.primaryGradient
+                            ? context.colors.primaryGradient
                             : null,
                         borderRadius: BorderRadius.circular(10),
                         boxShadow: active
                             ? [
                           BoxShadow(
-                              color: AppTheme.primaryBlue
+                              color: context.colors.primaryBlue
                                   .withValues(alpha:0.3),
                               blurRadius: 8,
                               offset: const Offset(0, 2))
@@ -406,7 +405,7 @@ class _BottomNav extends StatelessWidget {
                         size: 20,
                         color: active
                             ? Colors.white
-                            : AppTheme.textLight,
+                            : context.colors.textLight,
                       ),
                     ),
                     const SizedBox(height: 3),
@@ -418,8 +417,8 @@ class _BottomNav extends StatelessWidget {
                             ? FontWeight.w700
                             : FontWeight.w500,
                         color: active
-                            ? AppTheme.primaryBlue
-                            : AppTheme.textLight,
+                            ? context.colors.primaryBlue
+                            : context.colors.textLight,
                         fontFamily: 'Cairo',
                       ),
                     ),

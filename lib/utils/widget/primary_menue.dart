@@ -24,7 +24,7 @@ class MyPrimaryMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       shadowColor: const Color.fromRGBO(0, 0, 0, 0.25),
-      color: AppTheme.textFieldBackground,
+      color: context.colors.inputBg,
       borderRadius: BorderRadius.circular(10),
       elevation: 4,
       clipBehavior: Clip.antiAliasWithSaveLayer,
@@ -33,11 +33,11 @@ class MyPrimaryMenu extends StatelessWidget {
         shape: Border.all(style: BorderStyle.none),
         title: Text(
           initValue == null ? label : initValue!['text'].toString().tr,
-          style: const TextStyle(
+          style:  TextStyle(
             fontFamily: 'Tajawal',
             fontWeight: FontWeight.w100,
             fontSize: 17,
-            color: AppTheme.textMedium,
+            color: context.colors.textMedium,
           ),
         ),
         children: List.generate(
@@ -57,11 +57,11 @@ class MyPrimaryMenu extends StatelessWidget {
                             : null,
                         title: Text(
                           options[i]['text'].toString().tr,
-                          style: const TextStyle(
+                          style:  TextStyle(
                             fontFamily: 'Tajawal',
                             fontWeight: FontWeight.w100,
                             fontSize: 17,
-                            color: AppTheme.textMedium,
+                            color: context.colors.textMedium,
                           ),
                         ),
                         onTap: () => onChange(i),

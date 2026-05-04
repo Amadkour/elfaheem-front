@@ -32,7 +32,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: SafeArea(
           child: Column(
             children: [
@@ -71,11 +71,11 @@ class _CategoryGrid extends StatelessWidget {
     final categories = provider.categories;
 
     if (provider.isLoading && categories.isEmpty) {
-      return const Center(
+      return  Center(
         child: Padding(
           padding: EdgeInsets.all(32),
           child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation(AppTheme.primary),
+            valueColor: AlwaysStoppedAnimation(context.colors.primary),
           ),
         ),
       );
@@ -106,29 +106,29 @@ class _CategoryGrid extends StatelessWidget {
                 height: 65,
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? AppTheme.primary.withValues(alpha: 0.12)
-                      : AppTheme.cardBg,
+                      ? context.colors.primary.withValues(alpha: 0.12)
+                      : context.colors.cardBg,
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: isSelected ? AppTheme.primary : Colors.transparent,
+                    color: isSelected ? context.colors.primary : Colors.transparent,
                     width: 2,
                   ),
                   boxShadow:
-                      isSelected ? AppTheme.primaryShadow : AppTheme.cardShadow,
+                      isSelected ? context.colors.primaryShadow : context.colors.cardShadow,
                 ),
                 child: AppNetworkImage(
                   url: cat.imageUrl,
                   height: 40,
                   width: 40,
                   padding: const EdgeInsets.all(8),
-                  color: isSelected ? AppTheme.primary : AppTheme.cardBg,
+                  color: isSelected ? context.colors.primary : context.colors.cardBg,
                   borderRadius: BorderRadius.circular(30),
                 ),
               ),
               Expanded(
                 child: Text(cat.name,
-                    style: AppTheme.caption.copyWith(
-                      color: isSelected ? AppTheme.primary : AppTheme.textDark,
+                    style: context.colors.caption.copyWith(
+                      color: isSelected ? context.colors.primary : context.colors.textDark,
                       fontFamily: 'Tajawal',
                       overflow: TextOverflow.ellipsis,
                       fontWeight:
@@ -162,13 +162,13 @@ class _FilteredCoursesSection extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('الكورسات المتعلقة', style: AppTheme.h2),
+             Text('الكورسات المتعلقة', style: context.colors.h2),
             if (provider.selectedCategoryId != null)
               GestureDetector(
                 onTap: () => context.read<CategoriesProvider>().clearFilter(),
                 child: Text(
                   'عرض الكل',
-                  style: AppTheme.label.copyWith(color: AppTheme.primary),
+                  style: context.colors.label.copyWith(color: context.colors.primary),
                 ),
               ),
           ],
@@ -207,9 +207,9 @@ class _SmallCourseCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AppTheme.cardBg,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-          boxShadow: AppTheme.cardShadow,
+          color: context.colors.cardBg,
+          borderRadius: BorderRadius.circular(context.colors.radiusMedium),
+          boxShadow: context.colors.cardShadow,
         ),
         child: Row(
           children: [
@@ -226,22 +226,22 @@ class _SmallCourseCard extends StatelessWidget {
                 children: [
                   Text(
                     course.title,
-                    style: AppTheme.h3,
+                    style: context.colors.h3,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
-                  Text(course.instructorName, style: AppTheme.caption),
+                  Text(course.instructorName, style: context.colors.caption),
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      const Icon(Icons.star_rounded,
-                          color: AppTheme.accent, size: 14),
+                       Icon(Icons.star_rounded,
+                          color: context.colors.accent, size: 14),
                       const SizedBox(width: 3),
                       Text(
                         course.rating.toStringAsFixed(1),
                         style:
-                            AppTheme.caption.copyWith(color: AppTheme.textDark),
+                            context.colors.caption.copyWith(color: context.colors.textDark),
                       ),
                     ],
                   ),
@@ -251,7 +251,7 @@ class _SmallCourseCard extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               '\$ ${course.price.toStringAsFixed(2)}',
-              style: AppTheme.h3.copyWith(color: AppTheme.accent),
+              style: context.colors.h3.copyWith(color: context.colors.accent),
             ),
           ],
         ),

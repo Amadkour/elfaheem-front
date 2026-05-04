@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/auth/verified_screen.dart';
@@ -17,7 +16,6 @@ import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:path/path.dart' as p;
 
-import '../models/user.dart';
 
 // ── Exception ─────────────────────────────────────────────────────────────────
 
@@ -253,7 +251,7 @@ class ApiClient {
     }
 
     if (statusCode >= 200 && statusCode < 300) {
-      log('=================[${requestPath}]====================');
+      log('=================[$requestPath]====================');
       log(body?.toString() ?? 'null');
       log('====================================');
       return body;

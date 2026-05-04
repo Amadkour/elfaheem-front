@@ -53,7 +53,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: NestedScrollView(
           headerSliverBuilder: (ctx, _) => [_buildAppBar(ctx)],
           body: _buildBody(prov, isWide),
@@ -66,7 +66,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
   Widget _buildAppBar(BuildContext ctx) => SliverAppBar(
     expandedHeight: 140,
     pinned: true,
-    backgroundColor: AppTheme.primary,
+    backgroundColor: context.colors.primary,
     leading: IconButton(
       icon: const Icon(Icons.arrow_forward_ios,
           color: Colors.white, size: 20),
@@ -79,8 +79,8 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
             begin: Alignment.topRight,
             end: Alignment.bottomLeft,
             colors: [
-              AppTheme.primary,
-              AppTheme.primary.withValues(alpha: 0.7)
+              context.colors.primary,
+              context.colors.primary.withValues(alpha: 0.7)
             ],
           ),
         ),
@@ -157,7 +157,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
         label: const Text('إعادة المحاولة',
             style: TextStyle(fontFamily: 'Cairo')),
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppTheme.primary,
+          backgroundColor: context.colors.primary,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12)),
@@ -199,11 +199,11 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: sel ? AppTheme.success : Colors.transparent,
+                  color: sel ? context.colors.success : Colors.transparent,
                   borderRadius: BorderRadius.circular(21),
                   border: Border.all(
                       color: sel
-                          ? AppTheme.success
+                          ? context.colors.success
                           : Colors.grey.shade300),
                 ),
                 child: Text(s.name,
@@ -230,13 +230,13 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
           label: 'إجمالي الطلاب',
           value: '${prov.allStudents.length}',
           icon: Icons.people_rounded,
-          color: AppTheme.primary),
+          color: context.colors.primary),
       const SizedBox(width: 10),
       _StatCard(
           label: 'حاضر',
           value: '${prov.presentCount}',
           icon: Icons.check_circle_rounded,
-          color: AppTheme.success),
+          color: context.colors.success),
       const SizedBox(width: 10),
       _StatCard(
           label: 'غائب',
@@ -337,7 +337,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
                   style:
                   const TextStyle(fontFamily: 'Cairo')),
               backgroundColor:
-              ok ? AppTheme.success : Colors.redAccent,
+              ok ? context.colors.success : Colors.redAccent,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
@@ -357,7 +357,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
                   fontSize: 15,
                   fontWeight: FontWeight.w700)),
           style: ElevatedButton.styleFrom(
-            backgroundColor:  AppTheme.success,
+            backgroundColor:  context.colors.success,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 14),
             shape: RoundedRectangleBorder(
@@ -376,15 +376,15 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
                 style:
                 const TextStyle(fontFamily: 'Cairo')),
             backgroundColor:
-            ok ? AppTheme.success : Colors.redAccent,
+            ok ? context.colors.success : Colors.redAccent,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12)),
           ));
         },
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppTheme.success,
-          side: BorderSide(color: AppTheme.success),
+          foregroundColor: context.colors.success,
+          side: BorderSide(color: context.colors.success),
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14)),
           padding:
@@ -469,7 +469,7 @@ class _StudentTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final present = student.isPresent;
     final statusColor =
-    present ? AppTheme.success : Colors.redAccent;
+    present ? context.colors.success : Colors.redAccent;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
@@ -521,7 +521,7 @@ class _StudentTile extends StatelessWidget {
                 color: statusColor)),
         trailing: Switch.adaptive(
           value: present,
-          activeColor: AppTheme.success,
+          activeColor: context.colors.success,
           inactiveThumbColor: Colors.redAccent,
           onChanged: onToggle,
         ),

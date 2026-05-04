@@ -67,14 +67,14 @@ class _StudentExamResultScreenState extends State<StudentExamResultScreen>
   bool get _passed =>
       s.result?.passed ?? (_pct >= (s.exam.passingScore ?? 60));
 
-  Color get _color => _passed ? AppTheme.success : Colors.redAccent;
+  Color get _color => _passed ? context.colors.success : Colors.redAccent;
 
   @override
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         appBar: AppBar(
           backgroundColor: _color,
           automaticallyImplyLeading: false,
@@ -325,7 +325,7 @@ class _QuestionBreakdownTile extends StatelessWidget {
       color = Colors.grey;
       icon = Icons.remove_circle_outline_rounded;
     } else if (isCorrect == true) {
-      color = AppTheme.success;
+      color = context.colors.success;
       icon = Icons.check_circle_rounded;
     } else {
       color = Colors.redAccent;

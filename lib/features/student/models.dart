@@ -146,7 +146,6 @@ class TeacherSessionItem {
       recordingStatus == 'uploaded' && recordingUrl != null;
 
   String get scheduledLabel {
-    if (scheduledAt == null) return '';
     try {
       final dt = scheduledAt.toLocal();
       return '${dt.day}/${dt.month}  ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
@@ -324,7 +323,7 @@ class CourseModel {
           schedules: schedules,
           certificates: certificates,
           tools: tools,
-          prerequisites: prerequisites, isEnrolled: this.isEnrolled);
+          prerequisites: prerequisites, isEnrolled: isEnrolled);
 }
 
 class AttendanceRecord {

@@ -73,7 +73,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     return Directionality(
       textDirection: pageDirection,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         appBar: AppBar(
           title: Text('reset_password'.tr),
         ),
@@ -86,9 +86,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 child: Card(
                   elevation: 0,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusXL),
+                    borderRadius: BorderRadius.circular(context.colors.radiusXL),
                   ),
-                  color: AppTheme.cardBg,
+                  color: context.colors.cardBg,
                   child: Padding(
                     padding: const EdgeInsets.all(32),
                     child: Form(
@@ -98,12 +98,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                         children: [
                           Text(
                             'reset_password_welcome'.tr,
-                            style: AppTheme.h1,
+                            style: context.colors.h1,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             'choose_new_password'.tr,
-                            style: AppTheme.body,
+                            style: context.colors.body,
                           ),
                           const SizedBox(height: 32),
                           MyPasswordTextField(

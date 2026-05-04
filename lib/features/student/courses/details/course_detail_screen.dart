@@ -40,7 +40,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: provider.isLoadingSession
             ? Center(
                 child: const SizedBox(
@@ -71,7 +71,7 @@ class _MobileDetail extends StatelessWidget {
         children: [
           Expanded(
             child: RefreshIndicator(
-              color: AppTheme.primary,
+              color: context.colors.primary,
               onRefresh: () => provider.refresh(),
               child: CustomScrollView(
                 physics: const BouncingScrollPhysics(),
@@ -122,7 +122,7 @@ class _WebDetail extends StatelessWidget {
                     Expanded(
                       flex: 3,
                       child: RefreshIndicator(
-                        color: AppTheme.primary,
+                        color: context.colors.primary,
                         onRefresh: () =>
                             context.read<CourseDetailProvider>().refresh(),
                         child: CustomScrollView(
@@ -166,7 +166,7 @@ class _WebDetail extends StatelessWidget {
 class _WebTopBar extends StatelessWidget {
   final CourseModel course;
 
-  const _WebTopBar({super.key, required this.course});
+  const _WebTopBar({required this.course});
 
   @override
   Widget build(BuildContext context) {
@@ -174,7 +174,7 @@ class _WebTopBar extends StatelessWidget {
       height: 56,
       padding: const EdgeInsets.symmetric(horizontal: 24),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: context.colors.cardBg,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -191,19 +191,19 @@ class _WebTopBar extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppTheme.background,
+                color: context.colors.background,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: Colors.black.withValues(alpha: 0.08)),
               ),
-              child: const Icon(Icons.arrow_forward_rounded,
-                  size: 18, color: AppTheme.textDark),
+              child:  Icon(Icons.arrow_forward_rounded,
+                  size: 18, color: context.colors.textDark),
             ),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Text(
               course.name,
-              style: AppTheme.h3.copyWith(fontSize: 15),
+              style: context.colors.h3.copyWith(fontSize: 15),
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
             ),
@@ -218,7 +218,7 @@ class _WebTopBar extends StatelessWidget {
 class _WebSidebar extends StatelessWidget {
   final CourseDetailProvider provider;
 
-  const _WebSidebar({super.key, required this.provider});
+  const _WebSidebar({required this.provider});
 
   @override
   Widget build(BuildContext context) {
@@ -234,7 +234,7 @@ class _WebSidebar extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: AppTheme.cardBg,
+              color: context.colors.cardBg,
               borderRadius: BorderRadius.circular(18),
               boxShadow: [
                 BoxShadow(
@@ -256,7 +256,7 @@ class _WebSidebar extends StatelessWidget {
                     fontWeight: FontWeight.w900,
                     color: c.price == 0
                         ? const Color(0xFF0F6E56)
-                        : AppTheme.primary,
+                        : context.colors.primary,
                     fontFamily: 'Cairo',
                   ),
                 ),
@@ -285,7 +285,7 @@ class _WebCourseFacts extends StatelessWidget {
         _Fact(
             icon: Icons.people_alt_rounded,
             label: '${course.studentsCount} طالب مسجّل',
-            color: AppTheme.primary),
+            color: context.colors.primary),
         _Fact(
             icon: Icons.video_library_rounded,
             label: '${course.sessionsCount} محاضرة',
@@ -298,17 +298,17 @@ class _WebCourseFacts extends StatelessWidget {
           _Fact(
               icon: Icons.workspace_premium_rounded,
               label: 'شهادة إتمام معتمدة',
-              color: AppTheme.accent),
+              color: context.colors.accent),
         if (course.type == 'live')
           _Fact(
               icon: Icons.sensors_rounded,
               label: 'بث مباشر',
-              color: AppTheme.danger)
+              color: context.colors.danger)
         else
           _Fact(
               icon: Icons.play_circle_outline_rounded,
               label: 'كورس مسجّل',
-              color: AppTheme.primary),
+              color: context.colors.primary),
       ],
     );
   }
@@ -337,7 +337,7 @@ class _Fact extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Text(label,
-                style: AppTheme.body
+                style: context.colors.body
                     .copyWith(fontSize: 13, fontWeight: FontWeight.w600)),
           ],
         ),
@@ -471,7 +471,7 @@ class _FavButton extends StatelessWidget {
     final isFav = context.watch<CourseDetailProvider>().course.isFavorite;
     return _CircleIconBtn(
       icon: isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-      iconColor: isFav ? AppTheme.danger : null,
+      iconColor: isFav ? context.colors.danger : null,
       onTap: () => context.read<CourseDetailProvider>().toggleFavorite(),
     );
   }
@@ -502,7 +502,7 @@ class _CircleIconBtn extends StatelessWidget {
               ),
             ],
           ),
-          child: Icon(icon, size: 20, color: iconColor ?? AppTheme.textDark),
+          child: Icon(icon, size: 20, color: iconColor ?? context.colors.textDark),
         ),
       );
 }
@@ -524,23 +524,23 @@ class _CourseMeta extends StatelessWidget {
             children: [
               ...List.generate(5, (i) {
                 if (i < c.averageRating.floor()) {
-                  return const Icon(Icons.star_rounded,
-                      color: AppTheme.accent, size: 17);
+                  return  Icon(Icons.star_rounded,
+                      color: context.colors.accent, size: 17);
                 } else if (i < c.averageRating) {
-                  return const Icon(Icons.star_half_rounded,
-                      color: AppTheme.accent, size: 17);
+                  return  Icon(Icons.star_half_rounded,
+                      color: context.colors.accent, size: 17);
                 }
-                return const Icon(Icons.star_outline_rounded,
-                    color: AppTheme.accent, size: 17);
+                return  Icon(Icons.star_outline_rounded,
+                    color: context.colors.accent, size: 17);
               }),
               const SizedBox(width: 8),
               Text(
                 c.averageRating.toStringAsFixed(1),
-                style: AppTheme.label
+                style: context.colors.label
                     .copyWith(fontWeight: FontWeight.w800, fontSize: 15),
               ),
               const SizedBox(width: 6),
-              Text('(${c.studentsCount} طالب)', style: AppTheme.caption),
+              Text('(${c.studentsCount} طالب)', style: context.colors.caption),
             ],
           ),
           const SizedBox(height: 18),
@@ -557,7 +557,7 @@ class _CourseMeta extends StatelessWidget {
               StatChip(
                 icon: Icons.people_alt_rounded,
                 label: '${c.studentsCount}\nطالب',
-                iconColor: AppTheme.primary,
+                iconColor: context.colors.primary,
               ),
               StatChip(
                 icon: Icons.video_library_rounded,
@@ -572,10 +572,10 @@ class _CourseMeta extends StatelessWidget {
                 iconBg: const Color(0xFFFAEEDA),
               ),
               if (c.certificates.isNotEmpty)
-                const StatChip(
+                 StatChip(
                   icon: Icons.workspace_premium_rounded,
                   label: 'شهادة\nإتمام',
-                  iconColor: AppTheme.accent,
+                  iconColor: context.colors.accent,
                   iconBg: Color(0xFFFAEEDA),
                 )
               else
@@ -585,7 +585,7 @@ class _CourseMeta extends StatelessWidget {
                       : Icons.play_circle_outline_rounded,
                   label: c.type == 'live' ? 'مباشر' : 'مسجّل',
                   iconColor:
-                      c.type == 'live' ? AppTheme.danger : AppTheme.primary,
+                      c.type == 'live' ? context.colors.danger : context.colors.primary,
                 ),
             ],
           ),
@@ -613,7 +613,7 @@ class _TabBarWidget extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: AppTheme.cardBg,
+          color: context.colors.cardBg,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
@@ -636,12 +636,12 @@ class _TabBarWidget extends StatelessWidget {
                   curve: Curves.easeOut,
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   decoration: BoxDecoration(
-                    gradient: isActive ? AppTheme.primaryGradient : null,
+                    gradient: isActive ? context.colors.primaryGradient : null,
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: isActive
                         ? [
                             BoxShadow(
-                              color: AppTheme.primary.withValues(alpha: 0.3),
+                              color: context.colors.primary.withValues(alpha: 0.3),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -654,13 +654,13 @@ class _TabBarWidget extends StatelessWidget {
                       Icon(
                         icon,
                         size: 14,
-                        color: isActive ? Colors.white : AppTheme.textLight,
+                        color: isActive ? Colors.white : context.colors.textLight,
                       ),
                       const SizedBox(width: 5),
                       Text(
                         label,
-                        style: AppTheme.label.copyWith(
-                          color: isActive ? Colors.white : AppTheme.textLight,
+                        style: context.colors.label.copyWith(
+                          color: isActive ? Colors.white : context.colors.textLight,
                           fontWeight:
                               isActive ? FontWeight.w700 : FontWeight.w500,
                           fontSize: 12,
@@ -692,20 +692,20 @@ class _EnrollButton extends StatelessWidget {
         child: Container(
           height: 52,
           decoration: BoxDecoration(
-            color: AppTheme.accent2.withValues(alpha: 0.1),
+            color: context.colors.accent2.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(32),
-            border: Border.all(color: AppTheme.accent2),
+            border: Border.all(color: context.colors.accent2),
           ),
-          child: const Row(
+          child:  Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.check_circle_rounded,
-                  color: AppTheme.accent2, size: 20),
+                  color: context.colors.accent2, size: 20),
               SizedBox(width: 8),
               Text(
                 'تم الاشتراك بنجاح',
                 style: TextStyle(
-                  color: AppTheme.accent2,
+                  color: context.colors.accent2,
                   fontWeight: FontWeight.w800,
                   fontSize: 15,
                   fontFamily: 'Cairo',
@@ -737,11 +737,11 @@ class _EnrollButton extends StatelessWidget {
         child: Container(
           height: 52,
           decoration: BoxDecoration(
-            gradient: AppTheme.primaryGradient,
+            gradient: context.colors.primaryGradient,
             borderRadius: BorderRadius.circular(32),
             boxShadow: [
               BoxShadow(
-                color: AppTheme.primary.withValues(alpha: 0.42),
+                color: context.colors.primary.withValues(alpha: 0.42),
                 blurRadius: 22,
                 offset: const Offset(0, 7),
               ),

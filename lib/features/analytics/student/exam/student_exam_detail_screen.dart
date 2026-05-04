@@ -81,9 +81,9 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         appBar: AppBar(
-          backgroundColor: AppTheme.primary,
+          backgroundColor: context.colors.primary,
           foregroundColor: Colors.white,
           elevation: 0,
           title: Text(
@@ -140,7 +140,7 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
             // ── Info card ────────────────────────────────────────────────────
             _InfoCard(children: [
               _InfoRow(Icons.help_outline_rounded, 'عدد الأسئلة',
-                  '${exam.questionCount} سؤال', AppTheme.primary),
+                  '${exam.questionCount} سؤال', context.colors.primary),
               _InfoRow(Icons.timer_outlined, 'المدة',
                   '${exam.duration ?? 0} دقيقة', Colors.teal),
               if (exam.passingScore != null)
@@ -248,8 +248,8 @@ class _HeroIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color col = isDone
-        ? (passed == true ? AppTheme.success : Colors.redAccent)
-        : AppTheme.primary;
+        ? (passed == true ? context.colors.success : Colors.redAccent)
+        : context.colors.primary;
     final IconData ico = isDone
         ? (passed == true ? Icons.emoji_events_rounded : Icons.cancel_rounded)
         : Icons.quiz_rounded;
@@ -404,7 +404,7 @@ class _StartButton extends StatelessWidget {
         child: ElevatedButton(
           onPressed: loading ? null : onPressed,
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.primary,
+            backgroundColor: context.colors.primary,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 16),
             shape: RoundedRectangleBorder(

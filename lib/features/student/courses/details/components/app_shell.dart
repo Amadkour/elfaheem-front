@@ -70,7 +70,7 @@ class _WebLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: context.colors.background,
       body: Row(
         children: [
           // ── Sidebar ──────────────────────────────────────────────────
@@ -117,11 +117,11 @@ class _Sidebar extends StatelessWidget {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
+                    gradient: context.colors.primaryGradient,
                     borderRadius: BorderRadius.circular(11),
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.primary.withValues(alpha:0.4),
+                        color: context.colors.primary.withValues(alpha:0.4),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
@@ -172,7 +172,7 @@ class _Sidebar extends StatelessWidget {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
+                    gradient: context.colors.primaryGradient,
                     shape: BoxShape.circle,
                   ),
                   alignment: Alignment.center,
@@ -245,7 +245,7 @@ class _SideNavItem extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           decoration: BoxDecoration(
             color: active
-                ? AppTheme.primary.withValues(alpha:0.22)
+                ? context.colors.primary.withValues(alpha:0.22)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
@@ -256,13 +256,13 @@ class _SideNavItem extends StatelessWidget {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  gradient: active ? AppTheme.primaryGradient : null,
+                  gradient: active ? context.colors.primaryGradient : null,
                   color: active ? null : Colors.white.withValues(alpha:0.07),
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: active
                       ? [
                           BoxShadow(
-                            color: AppTheme.primary.withValues(alpha:0.35),
+                            color: context.colors.primary.withValues(alpha:0.35),
                             blurRadius: 8,
                             offset: const Offset(0, 3),
                           ),
@@ -309,7 +309,7 @@ class _MobileLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: context.colors.background,
       body: pages[idx].child,
       bottomNavigationBar: _BottomNav(
         pages: pages,
@@ -332,7 +332,7 @@ class _BottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: context.colors.cardBg,
         border: Border(
           top: BorderSide(
             color: Colors.black.withValues(alpha:0.07),
@@ -370,7 +370,7 @@ class _BottomNav extends StatelessWidget {
                         height: 30,
                         decoration: BoxDecoration(
                           gradient:
-                              active ? AppTheme.primaryGradient : null,
+                              active ? context.colors.primaryGradient : null,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(
@@ -378,7 +378,7 @@ class _BottomNav extends StatelessWidget {
                           size: 20,
                           color: active
                               ? Colors.white
-                              : AppTheme.textLight,
+                              : context.colors.textLight,
                         ),
                       ),
                       const SizedBox(height: 3),
@@ -390,8 +390,8 @@ class _BottomNav extends StatelessWidget {
                               ? FontWeight.w700
                               : FontWeight.w500,
                           color: active
-                              ? AppTheme.primary
-                              : AppTheme.textLight,
+                              ? context.colors.primary
+                              : context.colors.textLight,
                           fontFamily: 'Cairo',
                         ),
                       ),

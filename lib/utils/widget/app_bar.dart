@@ -30,13 +30,13 @@ class ScreenAppBar extends StatelessWidget {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: AppTheme.cardBg,
+                    color: context.colors.cardBg,
                     borderRadius: BorderRadius.circular(14),
-                    boxShadow: AppTheme.cardShadow,
+                    boxShadow: context.colors.cardShadow,
                   ),
-                  child: const Icon(
+                  child:  Icon(
                     Icons.arrow_back,
-                    color: AppTheme.textDark,
+                    color: context.colors.textDark,
                     size: 22,
                   ),
                 ),
@@ -45,7 +45,7 @@ class ScreenAppBar extends StatelessWidget {
             Expanded(
               child: Text(
                 title,
-                style: AppTheme.h2,
+                style: context.colors.h2,
                 textAlign: showBack ? TextAlign.right : TextAlign.right,
               ),
             ),

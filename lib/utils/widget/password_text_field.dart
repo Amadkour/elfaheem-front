@@ -22,7 +22,7 @@ class MyPasswordTextField extends StatelessWidget {
   ) {
     return Material(
       shadowColor: Color.fromRGBO(0, 0, 0, 0.25),
-      color: AppTheme.textFieldBackground,
+      color: context.colors.inputBg,
       borderRadius: BorderRadius.circular(10),
       elevation: 4,
       clipBehavior: Clip.antiAliasWithSaveLayer,
@@ -31,21 +31,21 @@ class MyPasswordTextField extends StatelessWidget {
         controller: controller,
         textInputAction: TextInputAction.next,
         obscureText: obscurePassword,
-        style: const TextStyle(
+        style:  TextStyle(
             fontFamily: 'Tajawal',
             fontWeight: FontWeight.w500,
             fontSize: 15,
-            color: AppTheme.textDark),
+            color: context.colors.textDark),
         decoration: InputDecoration(
           hintTextDirection: TextDirection.rtl,
           floatingLabelBehavior: FloatingLabelBehavior.never,
-          fillColor: AppTheme.textFieldBackground,
+          fillColor: context.colors.inputBg,
           hint: Text(
             label,
-            style: const TextStyle(
+            style:  TextStyle(
                 fontFamily: 'Tajawal',
                 fontWeight: FontWeight.w600,
-                color: AppTheme.textMedium),
+                color: context.colors.textMedium),
             textDirection: TextDirection.rtl,
           ),
           suffixIcon: IconButton(

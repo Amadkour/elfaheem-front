@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_theme.dart';
 import 'package:provider/provider.dart';
 import '../../../../auth/auth_provider.dart';
-import '../../../../teacher/home/teacher_provider.dart';
 import '../../../../teacher/sessions/live/prejoin.dart';
 import '../../../../teacher/sessions/model/live_response_model.dart';
 import '../../../models.dart';
@@ -38,10 +37,10 @@ class StudentSessionCard extends StatelessWidget {
         Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5);
     double borderWidth = 0.5;
     if (session.isCompleted) {
-      borderColor = AppTheme.success;
+      borderColor = context.colors.success;
       borderWidth = 1.0;
     } else if (session.isLive && isCheckedIn) {
-      borderColor = AppTheme.danger;
+      borderColor = context.colors.danger;
       borderWidth = 1.0;
     }
 
@@ -156,7 +155,6 @@ class StudentSessionCard extends StatelessWidget {
     await provider.trackView(session.id);
 
     if (session.hasRecording && context.mounted) {
-      // TODO: launch(session.recordingUrl!) with url_launcher
       _snack(context, 'فتح التسجيل…', const Color(0xFF185FA5));
       return;
     }
@@ -168,7 +166,7 @@ class StudentSessionCard extends StatelessWidget {
       );
       if (ok == true && context.mounted) {
         await provider.markComplete(session.id);
-        _snack(context, 'تم تحديد الدرس كمكتمل ✓', AppTheme.accent);
+        _snack(context, 'تم تحديد الدرس كمكتمل ✓', context.colors.accent);
       }
     }
   }
@@ -523,21 +521,21 @@ class SessionsTab extends StatelessWidget {
     final provider = context.watch<CourseDetailProvider>();
     final sessions = provider.course.sessions;
     if (provider.isLoadingSession) {
-      return const Padding(
+      return  Padding(
           padding: EdgeInsets.all(40),
           child: Center(
               child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation(AppTheme.primary))));
+                  valueColor: AlwaysStoppedAnimation(context.colors.primary))));
     }
     if (sessions.isEmpty) {
-      return const Padding(
+      return  Padding(
           padding: EdgeInsets.all(40),
           child: Center(
               child: Column(mainAxisSize: MainAxisSize.min, children: [
             Icon(Icons.video_library_outlined,
-                size: 64, color: AppTheme.textLight),
+                size: 64, color: context.colors.textLight),
             SizedBox(height: 12),
-            Text('لا توجد دروس بعد', style: AppTheme.body)
+            Text('لا توجد دروس بعد', style: context.colors.body)
           ])));
     }
     return Column(children: [

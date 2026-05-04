@@ -197,13 +197,13 @@ class _CourseFormInnerState extends State<_CourseFormInner>
 
       _showSnack(
         _isEdit ? 'تم تحديث الدورة بنجاح ✓' : 'تم إنشاء الدورة بنجاح ✓',
-        AppTheme.success,
+        context.colors.success,
       );
       Navigator.pop(context, result);
     } else {
       _showSnack(
         formProvider.errorMessage ?? 'حدث خطأ، يرجى المحاولة مجدداً',
-        AppTheme.danger,
+        context.colors.danger,
       );
     }
   }
@@ -230,7 +230,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     return Directionality(
       textDirection: pageDirection,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: FadeTransition(
           opacity: _fadeAnim,
           child: Column(children: [
@@ -419,8 +419,9 @@ class _HeroHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final top = MediaQuery.of(context).padding.top;
+    final unit=context.height/12;
     return SizedBox(
-      height: context.width/2 + top,
+      height: 3*unit + top,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -430,7 +431,7 @@ class _HeroHeader extends StatelessWidget {
             right: 0,
             left: 0,
             child: Container(
-              height: context.width/4,
+              height: unit*2,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
@@ -449,8 +450,8 @@ class _HeroHeader extends StatelessWidget {
             right: 0,
             left: 0,
             child: Container(
-              height: context.width/4,
-              color: Colors.white,
+              height: unit,
+              color: context.colors.background,
 
             ),
           ),
@@ -538,7 +539,7 @@ class _HeroHeader extends StatelessWidget {
 
           // Image picker — overlaps bottom of header
           Positioned(
-            bottom: context.width / 8,
+            bottom: 10,
             left: 0,
             right: 0,
             child: Center(
@@ -568,8 +569,8 @@ class _HeroHeader extends StatelessWidget {
           ),
           if (logoBytes != null || imageUrl != null)
             Positioned(
-              bottom: context.width / 8,
-              right: context.width * 3 / 8,
+              bottom:0,
+              right: context.width*3 /8 -10,
               child: InkWell(
                 borderRadius: const BorderRadius.all(Radius.circular(10)),
                 onTap: onPickImage,
@@ -577,12 +578,12 @@ class _HeroHeader extends StatelessWidget {
                   width: 34,
                   height: 34,
                   decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
+                    gradient: context.colors.primaryGradient,
                     borderRadius: const BorderRadius.all(Radius.circular(10)),
                     border: Border.all(color: Colors.white, width: 2),
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.primary.withValues(alpha: 0.4),
+                        color: context.colors.primary.withValues(alpha: 0.4),
                         blurRadius: 8,
                         offset: const Offset(0, 3),
                       ),
@@ -646,7 +647,7 @@ class _FormCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         decoration: BoxDecoration(
-          color: AppTheme.cardBg,
+          color: context.colors.cardBg,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
@@ -667,7 +668,7 @@ class _FormCard extends StatelessWidget {
                   width: 34,
                   height: 34,
                   decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
+                    gradient: context.colors.primaryGradient,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(icon, size: 17, color: Colors.white),
@@ -746,7 +747,7 @@ class _StickyFooter extends StatelessWidget {
     return Container(
       padding: EdgeInsets.fromLTRB(20, 14, 20, 14 + bottom),
       decoration: BoxDecoration(
-        color: AppTheme.cardBg,
+        color: context.colors.cardBg,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.08),
@@ -765,11 +766,11 @@ class _StickyFooter extends StatelessWidget {
               height: 52,
               decoration: BoxDecoration(
                 gradient: canSave
-                    ? AppTheme.primaryGradient
+                    ? context.colors.primaryGradient
                     : const LinearGradient(
                         colors: [Color(0xFFCDD5E0), Color(0xFFCDD5E0)]),
                 borderRadius: BorderRadius.circular(14),
-                boxShadow: canSave ? AppTheme.primaryShadow : null,
+                boxShadow: canSave ? context.colors.primaryShadow : null,
               ),
               child: Center(
                 child: isLoading
@@ -806,13 +807,13 @@ class _StickyFooter extends StatelessWidget {
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color: AppTheme.primary.withValues(alpha: 0.1),
+                color: context.colors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(14),
                 border:
-                    Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
+                    Border.all(color: context.colors.primary.withValues(alpha: 0.3)),
               ),
-              child: const Icon(Icons.calendar_month_rounded,
-                  size: 22, color: AppTheme.primary),
+              child:  Icon(Icons.calendar_month_rounded,
+                  size: 22, color: context.colors.primary),
             ),
           ),
         ],
@@ -830,7 +831,7 @@ class _ImageSourceSheet extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         margin: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppTheme.cardBg,
+          color: context.colors.cardBg,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
@@ -851,7 +852,7 @@ class _ImageSourceSheet extends StatelessWidget {
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     fontFamily: 'Cairo',
-                    color: AppTheme.textDark)),
+                    color: context.colors.textDark)),
             const SizedBox(height: 16),
             _SheetTile(
               icon: Icons.photo_library_rounded,

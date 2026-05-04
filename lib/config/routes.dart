@@ -5,7 +5,6 @@ import '../features/auth/register_screen.dart';
 import '../features/student/dashboard/dashboard_screen.dart';
 import '../features/student/courses/details/course_detail_screen.dart';
 import '../features/student/courses/list/courses_list_screen.dart';
-import '../features/teacher/courses/add_course_screen.dart';
 
 class AppRoutes {
   // Route names

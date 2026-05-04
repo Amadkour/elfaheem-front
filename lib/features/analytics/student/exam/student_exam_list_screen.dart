@@ -40,7 +40,7 @@ class _StudentExamListScreenState extends State<StudentExamListScreen>
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: SafeArea(
           child: Column(children: [
             _buildHeader(),
@@ -60,14 +60,14 @@ class _StudentExamListScreenState extends State<StudentExamListScreen>
         child: Row(children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('اختباراتي', style: AppTheme.h1),
+               Text('اختباراتي', style: context.colors.h1),
               const SizedBox(height: 2),
               Consumer<StudentExamProvider>(builder: (_, p, __) {
                 final total = p.myExams.length;
                 final done = p.myExams.where((e) => e.isSubmitted).length;
                 return Text(
                   '$done / $total مكتمل',
-                  style: AppTheme.body,
+                  style: context.colors.body,
                 );
               }),
             ]),
@@ -93,10 +93,10 @@ class _StudentExamListScreenState extends State<StudentExamListScreen>
                 margin: const EdgeInsets.only(left: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: selected ? AppTheme.primary : Colors.white,
+                  color: selected ? context.colors.primary : Colors.white,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                      color: selected ? AppTheme.primary : Colors.grey.shade200),
+                      color: selected ? context.colors.primary : Colors.grey.shade200),
                 ),
                 child: Text(
                   f.label,
@@ -197,11 +197,11 @@ class _ExamCard extends StatelessWidget {
 
   const _ExamCard({required this.item, required this.onTap});
 
-  Color get _statusColor => item.isSubmitted
+  Color? get _statusColor => item.isSubmitted
       ? (item.passed == true ? AppTheme.success : Colors.redAccent)
       : (item.status == ExamStatusExt.scheduled
           ? Colors.orange
-          : AppTheme.primary);
+          :null);
 
   @override
   Widget build(BuildContext context) {
@@ -226,7 +226,7 @@ class _ExamCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
             decoration: BoxDecoration(
-              color: _statusColor.withValues(alpha: 0.06),
+              color: (_statusColor?? context.colors.primary).withValues(alpha: 0.06),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
             ),
             child: Row(children: [
@@ -234,7 +234,7 @@ class _ExamCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: _statusColor.withValues(alpha: 0.1),
+                  color: (_statusColor?? context.colors.primary).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -269,7 +269,7 @@ class _ExamCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              _StatusBadge(_statusLabel, _statusColor),
+              _StatusBadge(_statusLabel, _statusColor?? context.colors.primary),
             ]),
           ),
 
@@ -283,7 +283,7 @@ class _ExamCard extends StatelessWidget {
                     '${item.duration ?? 0} دقيقة', Colors.teal),
                 const SizedBox(width: 12),
                 _Chip(Icons.help_outline_rounded,
-                    '${item.questionCount} سؤال', AppTheme.primary),
+                    '${item.questionCount} سؤال', context.colors.primary),
                 if (item.passingScore != null) ...[
                   const SizedBox(width: 12),
                   _Chip(Icons.star_outline_rounded,
@@ -342,23 +342,23 @@ class _ExamCard extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   decoration: BoxDecoration(
-                    color: AppTheme.primary.withValues(alpha: 0.07),
+                    color: context.colors.primary.withValues(alpha: 0.07),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                        color: AppTheme.primary.withValues(alpha: 0.25)),
+                        color: context.colors.primary.withValues(alpha: 0.25)),
                   ),
                   child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                     Icon(Icons.play_arrow_rounded,
-                        color: AppTheme.primary, size: 18),
+                        color: context.colors.primary, size: 18),
                     const SizedBox(width: 6),
                     Text('ابدأ الاختبار',
                         style: TextStyle(
                             fontFamily: 'Cairo',
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
-                            color: AppTheme.primary)),
+                            color: context.colors.primary)),
                   ]),
                 ),
               ],
@@ -446,7 +446,7 @@ class _ErrorRetry extends StatelessWidget {
               label: const Text('إعادة المحاولة',
                   style: TextStyle(fontFamily: 'Cairo')),
               style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary,
+                  backgroundColor: context.colors.primary,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12))),

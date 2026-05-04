@@ -49,7 +49,7 @@ class _TeacherEditAccountScreenState extends State<TeacherEditAccountScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: const Text('تم حفظ التغييرات',
             style: TextStyle(fontFamily: 'Cairo', color: Colors.white)),
-        backgroundColor: AppTheme.success,
+        backgroundColor: context.colors.success,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ));
@@ -64,7 +64,7 @@ class _TeacherEditAccountScreenState extends State<TeacherEditAccountScreen> {
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Scaffold(
-        backgroundColor: AppTheme.background,
+        backgroundColor: context.colors.background,
         body: SafeArea(
           child: Column(
             children: [
@@ -75,7 +75,7 @@ class _TeacherEditAccountScreenState extends State<TeacherEditAccountScreen> {
                   child: Column(
                     children: [
                       // Phone display
-                      Text(provider.phone, style: AppTheme.caption),
+                      Text(provider.phone, style: context.colors.caption),
                       const SizedBox(height: 24),
                       MyTextField(controller: _nameCtrl, label: 'الاسم'),
                       const SizedBox(height: 16),

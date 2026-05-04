@@ -108,7 +108,7 @@
 //     if (!mounted) return;
 //     if (created == null) {
 //       _snack(
-//           provider.errorMessage ?? 'حدث خطأ، حاول مرة أخرى', AppTheme.danger);
+//           provider.errorMessage ?? 'حدث خطأ، حاول مرة أخرى', context.colors.danger);
 //     }
 //   }
 //
@@ -117,7 +117,7 @@
 //   Future<void> _submitStep2() async {
 //     await context.read<TeacherProvider>().submitAddCourseStep2();
 //     if (!mounted) return;
-//     _snack('تم حفظ الدورة بنجاح 🎉', AppTheme.success);
+//     _snack('تم حفظ الدورة بنجاح 🎉', context.colors.success);
 //     Navigator.of(context).pop();
 //   }
 //
@@ -139,7 +139,7 @@
 //     return Directionality(
 //       textDirection: Helpers.pageDirection,
 //       child: Scaffold(
-//         backgroundColor: AppTheme.background,
+//         backgroundColor: context.colors.background,
 //         body: SafeArea(
 //           child: Column(
 //             children: [
@@ -291,7 +291,7 @@
 //         Container(
 //           padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
 //           decoration: BoxDecoration(
-//               color: AppTheme.cardBg, boxShadow: AppTheme.bottomNavShadow),
+//               color: context.colors.cardBg, boxShadow: context.colors.bottomNavShadow),
 //           child: Row(
 //             children: [
 //               Expanded(
@@ -300,7 +300,7 @@
 //                   onTap: provider.isLoading
 //                       ? null
 //                       : () {
-//                     _snack('تم حفظ الدورة', AppTheme.primary);
+//                     _snack('تم حفظ الدورة', context.colors.primary);
 //                     Navigator.of(context).pop();
 //                   },
 //                 ),
@@ -361,17 +361,17 @@
 //               height: 120,
 //               decoration: BoxDecoration(
 //                 shape: BoxShape.circle,
-//                 color: AppTheme.primary.withValues(alpha: 0.08),
+//                 color: context.colors.primary.withValues(alpha: 0.08),
 //                 border: Border.all(
 //                   color: _hasImage
-//                       ? AppTheme.primary
-//                       : AppTheme.primary.withValues(alpha: 0.3),
+//                       ? context.colors.primary
+//                       : context.colors.primary.withValues(alpha: 0.3),
 //                   width: _hasImage ? 3 : 1.5,
 //                 ),
 //                 boxShadow: _hasImage
 //                     ? [
 //                   BoxShadow(
-//                     color: AppTheme.primary.withValues(alpha: 0.25),
+//                     color: context.colors.primary.withValues(alpha: 0.25),
 //                     blurRadius: 16,
 //                     offset: const Offset(0, 6),
 //                   )
@@ -388,11 +388,11 @@
 //                 height: 34,
 //                 decoration: BoxDecoration(
 //                   shape: BoxShape.circle,
-//                   gradient: AppTheme.primaryGradient,
+//                   gradient: context.colors.primaryGradient,
 //                   border: Border.all(color: Colors.white, width: 2),
 //                   boxShadow: [
 //                     BoxShadow(
-//                       color: AppTheme.primary.withValues(alpha: 0.4),
+//                       color: context.colors.primary.withValues(alpha: 0.4),
 //                       blurRadius: 8,
 //                       offset: const Offset(0, 3),
 //                     )
@@ -433,14 +433,14 @@
 //     mainAxisAlignment: MainAxisAlignment.center,
 //     children: [
 //       Icon(Icons.add_photo_alternate_rounded,
-//           size: 36, color: AppTheme.primary.withValues(alpha: 0.55)),
+//           size: 36, color: context.colors.primary.withValues(alpha: 0.55)),
 //       const SizedBox(height: 4),
 //       Text(
 //         'صورة الدورة',
 //         style: TextStyle(
 //           fontSize: 11,
 //           fontFamily: 'Cairo',
-//           color: AppTheme.primary.withValues(alpha: 0.7),
+//           color: context.colors.primary.withValues(alpha: 0.7),
 //           fontWeight: FontWeight.w600,
 //         ),
 //       ),
@@ -460,8 +460,8 @@
 //     return Container(
 //       margin: const EdgeInsets.all(16),
 //       decoration: BoxDecoration(
-//         color: AppTheme.cardBg,
-//         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+//         color: context.colors.cardBg,
+//         borderRadius: BorderRadius.circular(context.colors.radiusMedium),
 //       ),
 //       child: Column(
 //         mainAxisSize: MainAxisSize.min,
@@ -471,7 +471,7 @@
 //             width: 40,
 //             height: 4,
 //             decoration: BoxDecoration(
-//                 color: AppTheme.divider,
+//                 color: context.colors.divider,
 //                 borderRadius: BorderRadius.circular(2)),
 //           ),
 //           const SizedBox(height: 16),
@@ -486,10 +486,10 @@
 //               width: 42,
 //               height: 42,
 //               decoration: BoxDecoration(
-//                   color: AppTheme.primary.withValues(alpha: 0.1),
+//                   color: context.colors.primary.withValues(alpha: 0.1),
 //                   borderRadius: BorderRadius.circular(12)),
 //               child: const Icon(Icons.photo_library_rounded,
-//                   color: AppTheme.primary),
+//                   color: context.colors.primary),
 //             ),
 //             title: const Text('من المعرض',
 //                 style: TextStyle(
@@ -501,10 +501,10 @@
 //               width: 42,
 //               height: 42,
 //               decoration: BoxDecoration(
-//                   color: AppTheme.primary.withValues(alpha: 0.1),
+//                   color: context.colors.primary.withValues(alpha: 0.1),
 //                   borderRadius: BorderRadius.circular(12)),
 //               child: const Icon(Icons.camera_alt_rounded,
-//                   color: AppTheme.primary),
+//                   color: context.colors.primary),
 //             ),
 //             title: const Text('من الكاميرا',
 //                 style: TextStyle(
@@ -536,8 +536,8 @@
 //           child: Container(
 //               height: 2,
 //               color: currentStep > 1
-//                   ? AppTheme.primary
-//                   : AppTheme.divider),
+//                   ? context.colors.primary
+//                   : context.colors.divider),
 //         ),
 //         _Dot(label: '٢', active: currentStep >= 2, done: false),
 //       ],
@@ -558,7 +558,7 @@
 //     height: 32,
 //     decoration: BoxDecoration(
 //         shape: BoxShape.circle,
-//         color: active ? AppTheme.primary : AppTheme.divider),
+//         color: active ? context.colors.primary : context.colors.divider),
 //     child: Center(
 //       child: done
 //           ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
@@ -583,14 +583,14 @@
 //     child: Container(
 //       height: 50,
 //       decoration: BoxDecoration(
-//         color: AppTheme.background,
+//         color: context.colors.background,
 //         borderRadius: BorderRadius.circular(30),
-//         border: Border.all(color: AppTheme.primary, width: 1.5),
+//         border: Border.all(color: context.colors.primary, width: 1.5),
 //       ),
 //       child: Center(
 //         child: Text(label,
 //             style: const TextStyle(
-//                 color: AppTheme.primary,
+//                 color: context.colors.primary,
 //                 fontWeight: FontWeight.w700,
 //                 fontSize: 14,
 //                 fontFamily: 'Cairo')),
@@ -612,7 +612,7 @@
 //   Widget build(BuildContext context) => Container(
 //     padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
 //     decoration: BoxDecoration(
-//         color: AppTheme.cardBg, boxShadow: AppTheme.bottomNavShadow),
+//         color: context.colors.cardBg, boxShadow: context.colors.bottomNavShadow),
 //     child: Row(children: [
 //       Expanded(
 //           child: _OutlineButton(
