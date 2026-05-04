@@ -1,13 +1,16 @@
+import 'dart:developer';
 import 'dart:typed_data';
 
 import 'package:cross_file/cross_file.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
-import 'dart:convert';
+import 'package:http/http.dart' hide MultipartFile;
 import '../../auth/login_screen.dart';
 import '../../student/models.dart';
+import 'package:path/path.dart' as p;
 
 enum AppLanguage { arabic, english }
 
@@ -82,20 +85,6 @@ class ProfileProvider extends BaseProvider {
 
   AppLanguage get language => _language;
 
-  // ── Initialise from the decoded token/me response ───────────────────────
-  void setFromJson(Map<String, dynamic> json) {
-    id = json['id'] ?? 0;
-    name = json['name'] ?? '';
-    email = json['gmail'] ?? '';
-    phone = json['phone'] ?? '';
-    dob = json['dob'] ?? ''; // ISO date string or ''
-    bio = json['bio'] ?? '';
-    country = json['country'] ?? '';
-    imageUrl = json['image_url'] ?? '';
-    role = json['role'] ?? '';
-    notifyListeners();
-  }
-
   PasswordStep _passwordStep = PasswordStep.form;
 
   PasswordStep get passwordStep => _passwordStep;
@@ -105,6 +94,40 @@ class ProfileProvider extends BaseProvider {
     notifyListeners();
   }
 
+  Future<UserModel?> uploadImage() async {
+    try {
+      final ext =
+      p.extension(imageFile!.path).replaceFirst('.', '').toLowerCase();
+      final mimeType = switch (ext) {
+        'png' => 'image/png',
+        'webp' => 'image/webp',
+        'gif' => 'image/gif',
+        _ => 'image/jpeg',
+      };
+      final bytes = await imageFile!.readAsBytes();
+      final filename = p.basename(imageFile!.path).isNotEmpty
+          ? p.basename(imageFile!.path)
+          : 'image.${ext.isEmpty ? 'jpg' : ext}';
+
+      final formData = FormData.fromMap({
+        'file': MultipartFile.fromBytes(
+          bytes,
+          filename: filename,
+          contentType: MediaType.parse(mimeType),
+        ),
+      });
+      final response = await _api.dio
+          .post('/api/v1/auth/me/image', data: formData);
+      if (response.statusCode != 200) return null;
+      return UserModel.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      log('uploadImage ❌ ${e.response?.statusCode}: ${e.response?.data}');
+      return null;
+    } catch (e) {
+      log('uploadImage ❌ unexpected: $e');
+      return null;
+    }
+  }
   Future<bool> resendOtp(String email) async {
     final result = await run(
       () => _api.post('/api/v1/auth/resend-otp2',
@@ -114,7 +137,7 @@ class ProfileProvider extends BaseProvider {
   }
 
   // ── Update account (name, phone, dob, bio, country) ────────────────────
-  Future<void> updateProfile({
+  Future<UserModel?> updateProfile({
     String? name,
     String? phone,
     String? dob,
@@ -131,47 +154,48 @@ class ProfileProvider extends BaseProvider {
       if (country != null && country.isNotEmpty) body['country'] = country;
 
       final r = await run(
-        () => ApiClient().put(
-          '/api/v1/auth/me',
-          body: jsonEncode(body),
-        ),
+            () =>
+            ApiClient().put(
+              '/api/v1/auth/me',
+              body: body,
+            ),
       );
 
-      if (r.statusCode == 200) {
-        setFromJson(jsonDecode(r.body));
-      } else {
-        throw Exception('فشل تحديث البيانات (${r.statusCode})');
+      if (r != null && r is Map) {
+        _setLoading(false);
+        return UserModel.fromJson(r as Map<String, dynamic>);
       }
-    } finally {
-      _setLoading(false);
+      else {
+        return null;
+      }
+    }catch(e){
+      return null;
     }
-  }
+    }
 
   // ── Change password ─────────────────────────────────────────────────────
-  Future<void> changePassword({
+  Future<String?> changePassword({
     required String oldPassword,
     required String newPassword,
   }) async {
     _setLoading(true);
     try {
       final r = await run(
-        () => ApiClient().put(
-          '/api/v1/auth/change-password',
-          body:{
-            'gmail': email,
-            'old_password': oldPassword,
-            'new_password': newPassword,
-          }),
+        () => ApiClient().put('/api/v1/auth/change-password', body: {
+          'gmail': email,
+          'old_password': oldPassword,
+          'new_password': newPassword,
+        }),
       );
-      print(r.body);
-
-      if (r.statusCode != 200) {
-        final msg = jsonDecode(r.body)['detail'] ?? 'فشل تغيير كلمة المرور';
-        throw Exception(msg);
+      if (r != null && r is Map) {
+        _setLoading(false);
+        return r['message'] as String;
       }
-    } finally {
+    } catch (e) {
       _setLoading(false);
+      return null;
     }
+    return null;
   }
 
   void _setLoading(bool v) {

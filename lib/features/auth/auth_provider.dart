@@ -118,9 +118,6 @@ class AuthProvider extends BaseProvider {
 
   // ── Cold-start restore ────────────────────────────────────────────────────────
 
-  /// Reads the user JSON saved during login / OTP verification.
-  /// Called synchronously in the constructor so the user is available
-  /// before the widget tree is built.
   void _loadCachedUser() {
     final saved = _storage.savedUser;
     if (saved != null) {
@@ -240,7 +237,7 @@ class AuthProvider extends BaseProvider {
   }) async {
     isLoadingLogin = true;
     notifyListeners();
-    _currentUser=UserModel(id: 0, name: '', gmail: gmail, role: 'student');
+    _currentUser = UserModel(id: 0, name: '', gmail: gmail, role: 'student');
     final result = await run(() => _api.post(
           '/api/v1/auth/login',
           body: {'gmail': gmail, 'password': password},
@@ -287,11 +284,15 @@ class AuthProvider extends BaseProvider {
   Future<UserModel?> getMe() async {
     final result = await run(() => _api.get('/api/v1/auth/me'));
     if (result != null && result is Map<String, dynamic>) {
-      _currentUser = UserModel.fromJson(result);
-      await _storage.saveUser(result); // keep cache in sync
-      notifyListeners();
+      saveUserLocally(UserModel.fromJson(result));
     }
     return _currentUser;
+  }
+
+  Future<void> saveUserLocally(UserModel user) async {
+    _currentUser = user;
+    await _storage.saveUser(user.toJson());
+    notifyListeners();
   }
 
   // ── Change Password ───────────────────────────────────────────────────────────

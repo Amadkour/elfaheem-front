@@ -75,8 +75,17 @@ class AppTheme {
     begin: Alignment.topCenter, end: Alignment.bottomCenter,
   );
   static const LinearGradient darkBackgroundGradient = LinearGradient(
-    colors: [Color(0xFF0B1120), Color(0xFF111827)],
+    colors: [Color(0xFA0B1120), Color(0xFA111827)],
     begin: Alignment.topCenter, end: Alignment.bottomCenter,
+  );
+  static const LinearGradient darkSlideBarGradient = LinearGradient(
+    colors: [Color(0xFA0B1120), Color(0xFA111827)],
+    begin: Alignment.topCenter, end: Alignment.bottomCenter,
+  );
+  static const LinearGradient lightSlideBarGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF0F3A8F), Color(0xFF1A56C4), Color(0xFF2563EB)],
   );
   static const LinearGradient accentGradient = LinearGradient(
     colors: [Color(0xFFFF9500), Color(0xFFFFBD55)],
@@ -392,6 +401,11 @@ class AppColors {
   LinearGradient get backgroundGradient => isDark
       ? AppTheme.darkBackgroundGradient
       : AppTheme.backgroundGradient;
+
+  /// Background gradient adapts to mode
+  LinearGradient get slideBarGradient => isDark
+      ? AppTheme.darkSlideBarGradient
+      : AppTheme.lightSlideBarGradient;
 
   // ══════════════════════════════════════════════════════════════════════════
   // SHADOWS

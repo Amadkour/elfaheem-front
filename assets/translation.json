@@ -877,13 +877,63 @@
     "ar": "المشاهدات"
   },
   "student_rate": {
-
     "en": "rate",
     "ar": "التقييم"
   },
   "update_account": {
     "en": "Update Account",
     "ar": "تعديل الحساب"
+  },
+  "current_password": {
+    "en": "Current Password",
+    "ar": "كلمة المرور الحالية"
+  },
+  "fill_all_fields": {
+    "en": "Please fill in all fields",
+    "ar": "يرجى تعبئة جميع الحقول"
+  },
+  "password_min_length": {
+    "en": "New password must be at least 6 characters",
+    "ar": "كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل"
+  },
+  "password_same_as_old": {
+    "en": "New password must be different from the current password",
+    "ar": "كلمة المرور الجديدة يجب أن تختلف عن كلمة المرور الحالية"
+  },
+  "new_password_mismatch": {
+    "en": "New password does not match confirmation",
+    "ar": "كلمة المرور الجديدة غير متطابقة"
+  },
+  "change_password_success": {
+    "en": "Password changed successfully",
+    "ar": "تم تغيير كلمة المرور بنجاح"
+  },
+  "change_password_error": {
+    "en": "An error occurred while changing the password",
+    "ar": "حدث خطأ أثناء تغيير كلمة المرور"
+  },
+  "name_label": {
+    "en": "Name",
+    "ar": "الاسم"
+  },
+  "email_label": {
+    "en": "Email",
+    "ar": "الإيميل"
+  },
+  "phone_label": {
+    "en": "Phone Number",
+    "ar": "رقم الهاتف"
+  },
+  "dob_label": {
+    "en": "Date of Birth",
+    "ar": "تاريخ الميلاد"
+  },
+  "bio_label": {
+    "en": "About You",
+    "ar": "نبذة عنك"
+  },
+  "changes_saved": {
+    "en": "Changes saved successfully",
+    "ar": "تم حفظ التغييرات"
   }
-
 }

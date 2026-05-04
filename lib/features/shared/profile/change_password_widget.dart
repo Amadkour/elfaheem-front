@@ -25,6 +25,31 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
   bool _obscureConf = true;
 
   @override
+  void initState() {
+    super.initState();
+    _oldCtrl.addListener(_onFieldChanged);
+    _newCtrl.addListener(_onFieldChanged);
+    _confCtrl.addListener(_onFieldChanged);
+  }
+
+  void _onFieldChanged() => setState(() {});
+
+  /// Button is enabled only when:
+  /// - All fields are non-empty
+  /// - New password != old password
+  /// - New password == confirm password
+  bool get _canSubmit {
+    final old = _oldCtrl.text.trim();
+    final nw = _newCtrl.text.trim();
+    final conf = _confCtrl.text.trim();
+    return old.isNotEmpty &&
+        nw.isNotEmpty &&
+        conf.isNotEmpty &&
+        nw != old &&
+        nw == conf;
+  }
+
+  @override
   void dispose() {
     _oldCtrl.dispose();
     _newCtrl.dispose();
@@ -38,30 +63,35 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
     final conf = _confCtrl.text.trim();
 
     if (old.isEmpty || nw.isEmpty || conf.isEmpty) {
-      _showSnack('يرجى تعبئة جميع الحقول', Colors.orange);
+      _showSnack('fill_all_fields'.tr, Colors.orange);
       return;
     }
     if (nw.length < 6) {
-      _showSnack(
-          'كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل', Colors.orange);
+      _showSnack('password_min_length'.tr, Colors.orange);
+      return;
+    }
+    if (nw == old) {
+      _showSnack('password_same_as_old'.tr, Colors.orange);
       return;
     }
     if (nw != conf) {
-      _showSnack('كلمة المرور الجديدة غير متطابقة', Colors.orange);
+      _showSnack('new_password_mismatch'.tr, Colors.orange);
       return;
     }
 
     try {
-      await context.read<ProfileProvider>().changePassword(
-            oldPassword: old,
-            newPassword: nw,
-          );
-      if (mounted) {
-        _showSnack('تم تغيير كلمة المرور بنجاح', context.colors.success);
+      String? result = await context.read<ProfileProvider>().changePassword(
+        oldPassword: old,
+        newPassword: nw,
+      );
+      if (mounted && result != null) {
+        _showSnack('change_password_success'.tr, context.colors.success);
         Navigator.of(context).pop();
+      } else {
+        if (mounted) _showSnack('change_password_error'.tr, Colors.red);
       }
     } catch (e) {
-      if (mounted) _showSnack(e.toString(), Colors.red);
+      if (mounted) _showSnack('change_password_error'.tr, Colors.red);
     }
   }
 
@@ -95,15 +125,17 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
                       // Old password
                       MyPasswordTextField(
                         controller: _oldCtrl,
-                        label: 'كلمة المرور الحالية',
+                        label: 'current_password'.tr,
                         obscurePassword: _obscureOld,
+                        onPressed: () =>
+                            setState(() => _obscureOld = !_obscureOld),
                       ),
                       const SizedBox(height: 16),
 
                       // New password
                       MyPasswordTextField(
                         controller: _newCtrl,
-                        label: 'كلمة المرور الجديدة',
+                        label: 'new_password'.tr,
                         obscurePassword: _obscureNew,
                         onPressed: () =>
                             setState(() => _obscureNew = !_obscureNew),
@@ -113,7 +145,7 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
                       // Confirm new password
                       MyPasswordTextField(
                         controller: _confCtrl,
-                        label: 'تأكيد كلمة المرور الجديدة',
+                        label: 'confirm_new_password'.tr,
                         obscurePassword: _obscureConf,
                         onPressed: () =>
                             setState(() => _obscureConf = !_obscureConf),
@@ -121,9 +153,9 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
                       const SizedBox(height: 32),
 
                       MyPrimaryButton(
-                        label: 'تغيير كلمة المرور',
+                        label: 'change_password'.tr,
                         isLoading: provider.isLoading,
-                        onPressed: _submit,
+                        onPressed: _canSubmit ? _submit : null,
                       ),
                     ],
                   ),
