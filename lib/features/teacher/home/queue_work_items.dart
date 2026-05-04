@@ -261,14 +261,14 @@ class _SessionCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             // Accent top bar
-            Container(
-              height: 3,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [_accent, _accent.withValues(alpha: 0.3)],
-                ),
-              ),
-            ),
+            // Container(
+            //   height: 3,
+            //   decoration: BoxDecoration(
+            //     gradient: LinearGradient(
+            //       colors: [_accent, _accent.withValues(alpha: 0.3)],
+            //     ),
+            //   ),
+            // ),
 
             // Main row
             IntrinsicHeight(
@@ -278,13 +278,13 @@ class _SessionCard extends StatelessWidget {
                   Expanded(
                     flex: 8,
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 10, 0, 10),
+                      padding: const EdgeInsets.fromLTRB(14, 15, 10, 10),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           _TimeBlock(session: session, accent: _accent),
                           const SizedBox(width: 10),
-                          _CourseImage(session: session),
+                          //_CourseImage(session: session),
                           const SizedBox(width: 10),
                           Expanded(
                             child: _CourseInfo(
@@ -298,7 +298,7 @@ class _SessionCard extends StatelessWidget {
                     ),
                   ),
                   Expanded(
-                    flex: 1,
+                    flex: 2,
                     child: _InlineStartButton(
                       session: session,
                       accent: _accent,
@@ -691,13 +691,17 @@ class _CourseInfo extends StatelessWidget {
             _LiveDot(),
           ],
         ]),
-        Spacer(),
+        const SizedBox(height: 8),
+
         Row(children: [
           _MetaChip(Icons.timer_rounded, dur),
-          const SizedBox(width: 8),
+          const SizedBox(width: 5),
+          Text("|"),
+          const SizedBox(width: 5),
+
           _MetaChip(Icons.group_rounded, students),
         ]),
-        Spacer(),
+        Divider(),
         _StatusBadge(session: session, accent: accent, isOngoing: isOngoing),
       ],
     );
