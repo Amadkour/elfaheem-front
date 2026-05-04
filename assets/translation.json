@@ -877,6 +877,7 @@
     "ar": "المشاهدات"
   },
   "student_rate": {
+
     "en": "rate",
     "ar": "التقييم"
   },
@@ -935,5 +936,15 @@
   "changes_saved": {
     "en": "Changes saved successfully",
     "ar": "تم حفظ التغييرات"
+  },
+  "cost": {
+    "en": "Cost",
+    "ar": "التكلفه"
+  },
+  "duration": {
+    "en": "Duration",
+    "ar": "المده"
   }
+
+
 }

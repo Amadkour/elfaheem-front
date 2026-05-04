@@ -444,7 +444,7 @@ class _CoursesRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget content = SizedBox(
-        height: context.height/5,
+        height: context.height/3.5,
       child: ListView.separated(
         controller: _controller,
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -508,7 +508,7 @@ class _TeacherCourseCard extends StatelessWidget {
                 url: course.imageUrl,
                 fit: BoxFit.cover,
                 height: 100,
-                width: context.width/3,
+                width: context.width/2,
               ),
             ),
             Divider(),

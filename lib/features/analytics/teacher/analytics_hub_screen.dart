@@ -90,11 +90,11 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen>
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: context.colors.primary.withValues(alpha: 0.08),
+              color: context.colors.primaryBlue.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(Icons.analytics_rounded,
-                color: context.colors.primary, size: 24),
+                color: context.colors.primaryBlue, size: 24),
           ),
         ]),
       );
@@ -166,7 +166,7 @@ class _CourseAnalyticsCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
+              color: Colors.grey.withValues(alpha: 0.3),
               blurRadius: 14,
               offset: const Offset(0, 4))
         ],
@@ -176,14 +176,14 @@ class _CourseAnalyticsCard extends StatelessWidget {
         Container(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topRight,
-              end: Alignment.bottomLeft,
-              colors: [
-                context.colors.primary.withValues(alpha: 0.06),
-                Colors.transparent
-              ],
-            ),
+            // gradient: LinearGradient(
+            //   begin: Alignment.topRight,
+            //   end: Alignment.bottomLeft,
+            //   colors: [
+            //     context.colors.primaryBlue.withValues(alpha: 0.06),
+            //     Colors.transparent
+            //   ],
+            // ),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
           ),
           child: Row(children: [
@@ -191,11 +191,11 @@ class _CourseAnalyticsCard extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: context.colors.primary.withValues(alpha: 0.1),
+                color: context.colors.primaryBlue.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(Icons.menu_book_rounded,
-                  color: context.colors.primary, size: 22),
+                  color: context.colors.primaryBlue, size: 22),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -209,7 +209,7 @@ class _CourseAnalyticsCard extends StatelessWidget {
                           fontWeight: FontWeight.w700),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 5),
                   Row(children: [
                     const Icon(Icons.people_rounded,
                         size: 13, color: Colors.grey),
@@ -219,7 +219,15 @@ class _CourseAnalyticsCard extends StatelessWidget {
                             fontFamily: 'Cairo',
                             fontSize: 12,
                             color: Colors.grey)),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 5),
+                    Text("|",
+                        style: const TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 12,
+                        color: Colors.grey)
+                    ),
+                    const SizedBox(width: 5),
+
                     const Icon(Icons.video_library_outlined,
                         size: 13, color: Colors.grey),
                     const SizedBox(width: 3),
@@ -233,9 +241,14 @@ class _CourseAnalyticsCard extends StatelessWidget {
           ]),
         ),
 
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 0, 10, 0),
+          child: Divider(),
+        ),
+
         // Action buttons
         Padding(
-          padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
           child: Row(children: [
             // Attendance
             Expanded(
@@ -262,7 +275,7 @@ class _CourseAnalyticsCard extends StatelessWidget {
                 icon: Icons.quiz_rounded,
                 label: 'الاختبارات',
                 sublabel: 'إنشاء وإدارة',
-                color: context.colors.primary,
+                color: context.colors.primaryBlue,
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
