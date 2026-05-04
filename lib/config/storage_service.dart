@@ -19,9 +19,9 @@ class StorageService {
   final SharedPreferences _prefs;
 
   // ── Keys ──────────────────────────────────────────────────────────────────────
-  static const _accessKey  = 'access_token';
+  static const _accessKey = 'access_token';
   static const _refreshKey = 'refresh_token';
-  static const _userKey    = 'current_user'; // JSON-encoded UserModel
+  static const _userKey = 'current_user'; // JSON-encoded UserModel
 
   // ── Singleton ─────────────────────────────────────────────────────────────────
 
@@ -34,14 +34,15 @@ class StorageService {
 
   // ── Tokens ────────────────────────────────────────────────────────────────────
 
-  String? get accessToken  => _prefs.getString(_accessKey);
+  String? get accessToken => _prefs.getString(_accessKey);
+
   String? get refreshToken => _prefs.getString(_refreshKey);
 
   Future<void> saveTokens({
     required String accessToken,
     required String refreshToken,
   }) async {
-    await _prefs.setString(_accessKey,  accessToken);
+    await _prefs.setString(_accessKey, accessToken);
     await _prefs.setString(_refreshKey, refreshToken);
   }
 
@@ -57,6 +58,14 @@ class StorageService {
       return null;
     }
   }
+
+  bool? get loadMode => _prefs.getBool('is_dark');
+
+  Future<void> saveMode(bool isDark) async =>await _prefs.setBool('is_dark', isDark);
+
+  String? get loadLanguage => _prefs.getString('lang');
+
+  Future<void> saveLanguage(String lang) => _prefs.setString('lang', lang);
 
   /// Call after login or OTP verification to persist the user object.
   Future<void> saveUser(Map<String, dynamic> userJson) =>

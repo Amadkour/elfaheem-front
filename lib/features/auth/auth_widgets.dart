@@ -700,7 +700,7 @@ class LangRow extends StatelessWidget {
     LangProvider provider=context.watch<LangProvider>();
     return Row(
       children: provider.languages.map<Widget>((l) {
-        final isActive = lang == l;
+        final isActive = AppConfig.lang == l;
         return Padding(
           padding: const EdgeInsets.only(right: 8),
           child: GestureDetector(
@@ -800,7 +800,7 @@ class LangDropdown extends StatelessWidget {
           const SizedBox(width: 5), // 👈 تحكمي فيها (0 لو عايزة تلزقيهم)
 
           Text(
-            lang.tr,
+            AppConfig.lang.tr,
             style: const TextStyle(fontSize: 13),
           ),
 

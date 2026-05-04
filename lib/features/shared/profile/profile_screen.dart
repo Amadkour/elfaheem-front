@@ -115,13 +115,13 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: SettingsGroup(
-                      title: 'الضبط',
+                      title: 'settings'.tr,
                       children: [
                         SettingsTile(
                           icon: Icons.notifications_rounded,
                           iconBg: c.successTint,
                           iconColor: c.success,
-                          label: 'الاشعارات',
+                          label: 'notifications'.tr,
                           trailing: Switch.adaptive(
                             value: p.notificationsEnabled,
                             onChanged: p.toggleNotifications,
@@ -134,17 +134,19 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                           icon: Icons.language_rounded,
                           iconBg: c.purpleTint,
                           iconColor: const Color(0xFF8B6FFF),
-                          label: 'تغيير اللغة',
+                          label: 'change_language'.tr,
                           onTap: () => _push(const ChangeLanguageScreen()),
                         ),
                         SettingsTile(
                           icon: Icons.dark_mode_rounded,
                           iconBg: c.darkIconBg,
                           iconColor: c.textDark,
-                          label: 'الوضع الليلي',
+                          label: 'dark_mode'.tr,
                           trailing: Switch.adaptive(
                             value: p.darkMode,
-                            onChanged: p.toggleDarkMode,
+                            onChanged:(b) async {
+                              await p.changeMode(b);
+                            },
                             activeColor: context.colors.primaryBlue,
                             thumbColor:
                                 const WidgetStatePropertyAll(Colors.white),
@@ -159,27 +161,27 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: SettingsGroup(
-                      title: 'المساعدة',
+                      title: 'help'.tr,
                       children: [
                         SettingsTile(
                           icon: Icons.headset_mic_rounded,
                           iconBg: c.primaryTint,
                           iconColor: c.primary,
-                          label: 'مركز المساعدة',
+                          label: 'help_center'.tr,
                           onTap: () => _push(const SupportScreen()),
                         ),
                         SettingsTile(
                           icon: Icons.privacy_tip_rounded,
                           iconBg: c.successTint,
                           iconColor: c.success,
-                          label: 'الخصوصية',
+                          label: 'privacy'.tr,
                           onTap: () => _push(const PrivacyScreen()),
                         ),
                         SettingsTile(
                           icon: Icons.info_rounded,
                           iconBg: c.accentTint,
                           iconColor: c.accent,
-                          label: 'عنا',
+                          label: 'about_us'.tr,
                           onTap: () => _push(const AboutScreen()),
                         ),
                       ],
@@ -263,86 +265,6 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
           Text('account'.tr, style: c.h2.copyWith(fontSize: 16)),
         ]),
       );
-}
-
-// ── Profile header card — redesigned, same data ───────────────────────────────
-
-class _ProfileHeaderCard extends StatelessWidget {
-  final ProfileProvider provider;
-
-  const _ProfileHeaderCard({required this.provider});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
-      decoration: BoxDecoration(
-        gradient: context.colors.primaryGradient,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: context.colors.primaryShadow,
-      ),
-      child: Row(
-        children: [
-          // Avatar
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: 0.15),
-              border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.5), width: 2.5),
-            ),
-            child: provider.imageUrl.isNotEmpty
-                ? ClipOval(child: AppNetworkImage(url: provider.imageUrl))
-                : const Icon(Icons.person_rounded,
-                size: 44, color: Colors.white),
-          ),
-          const SizedBox(width: 18),
-          // Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(provider.name,
-                    style: const TextStyle(
-                        fontFamily: 'Cairo',
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 18)),
-                const SizedBox(height: 4),
-                Text(provider.email,
-                    style: TextStyle(
-                        fontFamily: 'Cairo',
-                        color: Colors.white.withValues(alpha: 0.7),
-                        fontSize: 12),
-                    overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 12),
-                Container(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.school_rounded, color: Colors.white, size: 13),
-                    SizedBox(width: 5),
-                    Text('طالب',
-                        style: TextStyle(
-                            fontFamily: 'Cairo',
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12)),
-                  ]),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _OtpPasswordScreen extends StatefulWidget {
@@ -468,24 +390,26 @@ class ChangeLanguageScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<ProfileProvider>();
+    final provider = context.watch<LangProvider>();
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Scaffold(
         backgroundColor: context.colors.background,
         body: SafeArea(
           child: Column(children: [
-            ScreenAppBar(title: 'تغيير اللغه'),
+            ScreenAppBar(title: 'change_language'.tr),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
               child: Column(
-                children: AppLanguage.values.map((lang) {
-                  final isSelected = provider.language == lang;
+                children: provider.languages.map((l) {
+                  final isSelected = AppConfig.lang == l;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: GestureDetector(
-                      onTap: () =>
-                          context.read<ProfileProvider>().setLanguage(lang),
+                      onTap: () async {
+                       await provider.changeLang(l);
+                        Navigator.pop(context);
+                      },
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         padding: const EdgeInsets.all(16),
@@ -505,7 +429,7 @@ class ChangeLanguageScreen extends StatelessWidget {
                         child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(lang.label,
+                              Text(l.tr,
                                   style: context.colors.label.copyWith(
                                       color: isSelected
                                           ? context.colors.primary
@@ -521,13 +445,6 @@ class ChangeLanguageScreen extends StatelessWidget {
                   );
                 }).toList(),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: MyPrimaryButton(
-                  label: 'تأكيد',
-                  isLoading: false,
-                  onPressed: () async => Navigator.of(context).pop()),
             ),
           ]),
         ),

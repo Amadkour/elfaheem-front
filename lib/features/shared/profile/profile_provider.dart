@@ -8,20 +8,35 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:http/http.dart' hide MultipartFile;
+import '../../../config/storage_service.dart';
 import '../../auth/login_screen.dart';
 import '../../student/models.dart';
 import 'package:path/path.dart' as p;
 
-enum AppLanguage { arabic, english }
-
 enum PasswordStep { form, otp }
 
-extension AppLanguageX on AppLanguage {
-  String get label => this == AppLanguage.arabic ? 'العربية' : 'English';
-}
-
 class ProfileProvider extends BaseProvider {
-  ProfileProvider({ApiClient? api}) : _api = api ?? ApiClient();
+  final StorageService _storage;
+
+  ProfileProvider({required StorageService storage, ApiClient? api})
+      : _api = api ?? ApiClient(),
+        _storage = storage {
+    _loadCachedMode();
+  }
+
+  void _loadCachedMode() {
+    bool? saved = _storage.loadMode;
+    if (saved != null) {
+      darkMode = saved;
+    }
+  }
+  Future<void> changeMode(bool isDark) async {
+    await _storage.saveMode(isDark);
+    darkMode=isDark;
+    notifyListeners();
+  }
+
+  // ProfileProvider({ApiClient? api}) : _api = api ?? ApiClient();
 
   void initData(UserModel? u) {
     isLoading = true;
@@ -61,29 +76,11 @@ class ProfileProvider extends BaseProvider {
     notifyListeners();
   }
 
-  bool _darkMode = false;
-
-  bool get darkMode => _darkMode;
-
-  void toggleDarkMode(bool value) {
-    _darkMode = value;
-    notifyListeners();
-  }
-
-  void setLanguage(AppLanguage lang) {
-    _language = lang;
-    notifyListeners();
-  }
-
   Future<void> changeImage(XFile file) async {
     imageFile = file;
     imageByte = await file.readAsBytes();
     notifyListeners();
   }
-
-  AppLanguage _language = AppLanguage.arabic;
-
-  AppLanguage get language => _language;
 
   PasswordStep _passwordStep = PasswordStep.form;
 
@@ -97,7 +94,7 @@ class ProfileProvider extends BaseProvider {
   Future<UserModel?> uploadImage() async {
     try {
       final ext =
-      p.extension(imageFile!.path).replaceFirst('.', '').toLowerCase();
+          p.extension(imageFile!.path).replaceFirst('.', '').toLowerCase();
       final mimeType = switch (ext) {
         'png' => 'image/png',
         'webp' => 'image/webp',
@@ -116,8 +113,8 @@ class ProfileProvider extends BaseProvider {
           contentType: MediaType.parse(mimeType),
         ),
       });
-      final response = await _api.dio
-          .post('/api/v1/auth/me/image', data: formData);
+      final response =
+          await _api.dio.post('/api/v1/auth/me/image', data: formData);
       if (response.statusCode != 200) return null;
       return UserModel.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
@@ -128,6 +125,7 @@ class ProfileProvider extends BaseProvider {
       return null;
     }
   }
+
   Future<bool> resendOtp(String email) async {
     final result = await run(
       () => _api.post('/api/v1/auth/resend-otp2',
@@ -154,24 +152,22 @@ class ProfileProvider extends BaseProvider {
       if (country != null && country.isNotEmpty) body['country'] = country;
 
       final r = await run(
-            () =>
-            ApiClient().put(
-              '/api/v1/auth/me',
-              body: body,
-            ),
+        () => ApiClient().put(
+          '/api/v1/auth/me',
+          body: body,
+        ),
       );
 
       if (r != null && r is Map) {
         _setLoading(false);
         return UserModel.fromJson(r as Map<String, dynamic>);
-      }
-      else {
+      } else {
         return null;
       }
-    }catch(e){
+    } catch (e) {
       return null;
     }
-    }
+  }
 
   // ── Change password ─────────────────────────────────────────────────────
   Future<String?> changePassword({
@@ -207,6 +203,8 @@ class ProfileProvider extends BaseProvider {
 
   // ── Favourites ────────────────────────────────────────────────────────────────
   List<CourseModel> _favourites = [];
+
+  bool darkMode = false;
 
   List<CourseModel> get favourites => List.unmodifiable(_favourites);
 

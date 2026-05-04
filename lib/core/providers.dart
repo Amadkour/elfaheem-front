@@ -1,4 +1,5 @@
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/student/attendance/attendance_provider.dart';
 import 'package:flutter_education_app/features/student/courses/details/course_detail_provider.dart';
 import 'package:flutter_education_app/features/shared/exams_provider.dart';
@@ -24,8 +25,11 @@ import '../features/teacher/home/teacher_provider.dart';
 import '../features/teacher/schedules/schedules_provider.dart';
 import '../features/teacher/sessions/sessions_provider.dart';
 
-List<SingleChildWidget> appProviders({required StorageService storage}) => [
+List<SingleChildWidget> appProviders(
+        {required StorageService storage, required ApiClient api}) =>
+    [
 // Storage — shared singleton
+      Provider<StorageService>.value(value: storage),
       Provider<StorageService>.value(value: storage),
 
 // Auth — receives the shared storage instance so it can restore
@@ -35,7 +39,8 @@ List<SingleChildWidget> appProviders({required StorageService storage}) => [
       ),
 
 // Language (keep however your app initialises this)
-      ChangeNotifierProvider<LangProvider>(create: (_) => LangProvider()),
+      ChangeNotifierProvider<LangProvider>(
+          create: (_) => LangProvider(storage: storage)),
 
 // ── Auth (root — all others may read auth state via context.read) ────────
 
@@ -61,7 +66,7 @@ List<SingleChildWidget> appProviders({required StorageService storage}) => [
         create: (_) => TeacherProvider(),
       ),
       ChangeNotifierProvider<ProfileProvider>(
-        create: (_) => ProfileProvider(),
+        create: (_) => ProfileProvider(storage: storage, api: api),
       ),
       ChangeNotifierProvider<CoursesProvider>(
         create: (_) => CoursesProvider(),
@@ -71,9 +76,6 @@ List<SingleChildWidget> appProviders({required StorageService storage}) => [
       ),
       ChangeNotifierProvider<HomeProvider>(
         create: (_) => HomeProvider(),
-      ),
-      ChangeNotifierProvider<LangProvider>(
-        create: (_) => LangProvider(),
       ),
       ChangeNotifierProvider<ModulesProvider>(
         create: (_) => ModulesProvider(),
@@ -95,9 +97,6 @@ List<SingleChildWidget> appProviders({required StorageService storage}) => [
       ),
       ChangeNotifierProvider<RatingsProvider>(
         create: (_) => RatingsProvider(),
-      ),
-      ChangeNotifierProvider<TeacherProvider>(
-        create: (_) => TeacherProvider(),
       ),
       ChangeNotifierProvider<StudentAttendanceProvider>(
         create: (_) => StudentAttendanceProvider(),

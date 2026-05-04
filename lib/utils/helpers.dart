@@ -68,7 +68,7 @@ class Helpers {
     );
   }
 
-  static TextDirection get pageDirection => lang=='ar'? TextDirection.rtl:TextDirection.ltr;
+  static TextDirection get pageDirection => AppConfig.lang=='ar'? TextDirection.rtl:TextDirection.ltr;
 
   static Future<bool?> confirmLogout(BuildContext context) => showDialog<bool>(
     context: context,

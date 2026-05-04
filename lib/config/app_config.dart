@@ -2,11 +2,14 @@
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_education_app/config/storage_service.dart';
 
 /// Application configuration and context.colors.
 class AppConfig {
 // For Android Emulator
   static const String baseUrl = 'https://warcraft-continued-gasoline-pest.trycloudflare.com';
+ static String lang = 'ar';
+
 }
 
 Map<String, dynamic> translation = {};
@@ -15,23 +18,38 @@ Future<void> readLanguage() async {
   final String response =
       await rootBundle.loadString('assets/translation.json');
   translation = await json.decode(response);
+
 }
 
-String lang = 'ar';
 
 String translate(String key) {
-  return translation[key]?[lang] ?? key;
+  return translation[key]?[AppConfig.lang] ?? key;
 }
 
 TextDirection get pageDirection {
-  return lang == 'ar' ? TextDirection.rtl : TextDirection.ltr;
+  return AppConfig.lang == 'ar' ? TextDirection.rtl : TextDirection.ltr;
 }
 
 class LangProvider with ChangeNotifier {
+  final StorageService _storage;
+
+  LangProvider({  required StorageService storage}) : _storage = storage
+        {
+    // Restore the user from disk immediately so role/isTeacher are ready
+    // before the first frame is drawn — no async gap, no null user.
+    _loadCachedLang();
+  }
+  void _loadCachedLang() {
+    String?  saved = _storage.loadLanguage;
+    if (saved != null) {
+      AppConfig.lang =saved;
+    }
+  }
   List<String> languages = ['ar', 'en'];
 
-  void changeLang(String? newLang) {
-    lang = newLang ?? languages.first;
+  Future<void> changeLang(String? newLang) async {
+    AppConfig.lang = newLang ?? languages.first;
+   await _storage.saveLanguage(AppConfig.lang);
     notifyListeners();
   }
 }

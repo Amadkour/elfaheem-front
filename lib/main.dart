@@ -34,11 +34,12 @@ late StorageService _storage;
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   _storage = await StorageService.getInstance();
+ ApiClient _api=ApiClient();
   await readLanguage();
 
   runApp(
     MultiProvider(
-      providers: appProviders(storage: _storage),
+      providers: appProviders(storage: _storage,api:_api),
       child: const ElFaheemApp(),
     ),
   );
