@@ -18,7 +18,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../config/app_theme.dart';
 import '../../../utils/widget/app_bar.dart';
-import '../shared/exams_provider.dart';
+import '../../shared/exams_provider.dart';
 import '../../../../core/api_client.dart';
 
 // ── Local models for new fields ───────────────────────────────────────────────

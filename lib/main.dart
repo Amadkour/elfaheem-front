@@ -23,12 +23,11 @@ import 'features/auth/login_screen.dart';
 import 'features/auth/register_screen.dart';
 import 'features/auth/verified_screen.dart';
 import 'features/notification/notifications_screen.dart';
-import 'features/student/profile/profile_provider.dart';         // ← added
 import 'package:flutter_localizations/flutter_localizations.dart';
-
 import 'features/student/courses/details/course_detail_screen.dart';
 import 'features/student/courses/list/courses_list_screen.dart';
 import 'features/teacher/dashboard/teacher_dashboard_screen.dart';
+import 'features/shared/profile/profile_provider.dart';
 
 late StorageService _storage;
 

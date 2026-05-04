@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/app_theme.dart';
 import '../../../utils/widget/app_bar.dart';
-import '../shared/attendance_provider.dart';
-import '../shared/live_models.dart';
+import '../../shared/attendance_provider.dart';
+import '../../shared/live_models.dart';
 
 class TeacherAttendanceScreen extends StatefulWidget {
   final int sessionId;

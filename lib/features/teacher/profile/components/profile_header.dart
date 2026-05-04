@@ -3,15 +3,13 @@ import 'package:flutter/material.dart' show Icons, Colors;
 
 import '../../../../config/app_theme.dart';
 import '../../../../utils/widget/app_network_image.dart';
-import '../../../student/profile/profile_provider.dart';
+import '../../../shared/profile/profile_provider.dart' show ProfileProvider;
 
 class ProfileHeader extends StatelessWidget {
   final ProfileProvider provider;
-  final VoidCallback onImageTap;
 
   const ProfileHeader({super.key, 
     required this.provider,
-    required this.onImageTap,
   });
 
   @override
@@ -29,21 +27,10 @@ class ProfileHeader extends StatelessWidget {
                 color: context.colors.primary.withValues(alpha: 0.1),
                 border: Border.all(color: context.colors.primaryBlue, width: 2.5),
               ),
-              child: provider.avatarUrl != null
-                  ? ClipOval(child: AppNetworkImage(url: provider.avatarUrl!))
+              child: provider.imageUrl.isNotEmpty
+                  ? ClipOval(child: AppNetworkImage(url: provider.imageUrl))
                   :  Icon(Icons.person_rounded,
                   size: 52, color: context.colors.primaryBlue),
-            ),
-            GestureDetector(
-              onTap: onImageTap,
-              child: Container(
-                width: 32,
-                height: 32,
-                decoration:  BoxDecoration(
-                    color: context.colors.primaryBlue, shape: BoxShape.circle),
-                child: const Icon(Icons.camera_alt_rounded,
-                    size: 16, color: Colors.white),
-              ),
             ),
           ],
         ),

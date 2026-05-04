@@ -6,8 +6,8 @@
 ///   POST /api/v1/attendance/check-out?session_id={}    student
 ///   GET  /api/v1/sessions/{id}/attendance              teacher: per-session list
 library;
-import '../../../core/api_client.dart';
-import '../../../core/base_provider.dart';
+import '../../core/api_client.dart';
+import '../../core/base_provider.dart';
 import 'live_models.dart';
 
 class AttendanceProvider extends BaseProvider {

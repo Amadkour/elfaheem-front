@@ -1,7 +1,7 @@
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/student/attendance/attendance_provider.dart';
 import 'package:flutter_education_app/features/student/courses/details/course_detail_provider.dart';
-import 'package:flutter_education_app/features/teacher/shared/exams_provider.dart';
+import 'package:flutter_education_app/features/shared/exams_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../config/storage_service.dart' show StorageService;
@@ -11,10 +11,11 @@ import '../features/material/materials_provider.dart';
 import '../features/module/modules_provider.dart';
 import '../features/notification/notifications_provider.dart';
 import '../features/payment/payments_provider.dart';
+import '../features/shared/attendance_provider.dart';
+import '../features/shared/profile/profile_provider.dart';
 import '../features/student/courses/list/courses_provider.dart';
 import '../features/student/courses/my_courses/my_courses_provider.dart';
 import '../features/student/home/home_provider.dart';
-import '../features/student/profile/profile_provider.dart';
 import '../features/rating/ratings_provider.dart';
 import 'package:nested/nested.dart';
 import '../features/student/reward/rewards_provider.dart';
@@ -22,7 +23,6 @@ import '../features/student/sessions/sessions_provider.dart';
 import '../features/teacher/home/teacher_provider.dart';
 import '../features/teacher/schedules/schedules_provider.dart';
 import '../features/teacher/sessions/sessions_provider.dart';
-import '../features/teacher/shared/attendance_provider.dart';
 
 List<SingleChildWidget> appProviders({required StorageService storage}) => [
 // Storage — shared singleton

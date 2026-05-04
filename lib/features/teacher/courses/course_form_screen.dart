@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/utils/widget/editable_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
@@ -108,32 +109,6 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     super.dispose();
   }
 
-  // ── Image picking ──────────────────────────────────────────────────────────
-
-  Future<void> _pickImage() async {
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _ImageSourceSheet(),
-    );
-    if (source == null) return;
-
-    final xFile = await ImagePicker().pickImage(
-      source: source,
-      maxWidth: 800,
-      maxHeight: 800,
-      imageQuality: 85,
-    );
-    if (xFile == null) return;
-
-    final bytes = await xFile.readAsBytes();
-    if (!mounted) return;
-    setState(() {
-      _logoFile = xFile;
-      _logoBytes = bytes;
-    });
-  }
-
   // ── Dirty check — enable Save button ─────────────────────────────────────
 
   bool get _hasChanges {
@@ -144,8 +119,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     final c = widget.course!;
     final newPrice = double.tryParse(_priceCtrl.text) ?? c.price;
     final newHours = double.tryParse(_hoursCtrl.text) ?? c.totalHours;
-    return _logoBytes != null ||
-        _titleCtrl.text.trim() != c.title ||
+    return _titleCtrl.text.trim() != c.title ||
         _descCtrl.text.trim() != (c.description ?? '') ||
         newPrice != c.price ||
         newHours != c.totalHours;
@@ -239,7 +213,13 @@ class _CourseFormInnerState extends State<_CourseFormInner>
               isEdit: _isEdit,
               logoBytes: _logoBytes,
               imageUrl: widget.course?.imageUrl,
-              onPickImage: _pickImage,
+              logoFile: _logoFile,
+              onChange: (XFile file) async {
+                _logoBytes = await file.readAsBytes();
+                setState(() {
+                  _logoFile = file;
+                });
+              },
             ),
             // ── Scrollable form ────────────────────────────────────────────
             Expanded(
@@ -406,22 +386,24 @@ class _CourseFormInnerState extends State<_CourseFormInner>
 class _HeroHeader extends StatelessWidget {
   final bool isEdit;
   final Uint8List? logoBytes;
+  final XFile? logoFile;
   final String? imageUrl;
-  final VoidCallback onPickImage;
+  final Future<void> Function(XFile file) onChange;
 
   const _HeroHeader({
     required this.isEdit,
     required this.logoBytes,
     required this.imageUrl,
-    required this.onPickImage,
+    this.logoFile,
+    required this.onChange,
   });
 
   @override
   Widget build(BuildContext context) {
     final top = MediaQuery.of(context).padding.top;
-    final unit=context.height/12;
+    final unit = context.height / 12;
     return SizedBox(
-      height: 3*unit + top,
+      height: 3 * unit + top,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -431,7 +413,7 @@ class _HeroHeader extends StatelessWidget {
             right: 0,
             left: 0,
             child: Container(
-              height: unit*2,
+              height: unit * 2,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
@@ -452,7 +434,6 @@ class _HeroHeader extends StatelessWidget {
             child: Container(
               height: unit,
               color: context.colors.background,
-
             ),
           ),
           // Decorative circles
@@ -537,99 +518,17 @@ class _HeroHeader extends StatelessWidget {
             ),
           ),
 
-          // Image picker — overlaps bottom of header
-          Positioned(
-            bottom: 10,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: GestureDetector(
-                onTap: onPickImage,
-                child: Container(
-                  width: context.width / 4,
-                  height: context.width / 4,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white, width: 3),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.2),
-                        blurRadius: 20,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(17),
-                    child: _imageChild(logoBytes, imageUrl),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          if (logoBytes != null || imageUrl != null)
-            Positioned(
-              bottom:0,
-              right: context.width*3 /8 -10,
-              child: InkWell(
-                borderRadius: const BorderRadius.all(Radius.circular(10)),
-                onTap: onPickImage,
-                child: Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    gradient: context.colors.primaryGradient,
-                    borderRadius: const BorderRadius.all(Radius.circular(10)),
-                    border: Border.all(color: Colors.white, width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: context.colors.primary.withValues(alpha: 0.4),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.camera_alt_rounded,
-                    size: 16,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
+          EditableImage(
+            onChange: onChange,
+            imageUrl: imageUrl,
+            imageByte: logoBytes,
+            imageFile: logoFile,
+            size: context.height / 6,
+          )
         ],
       ),
     );
   }
-
-  Widget _imageChild(Uint8List? bytes, String? url) {
-    if (bytes != null) {
-      return Image.memory(bytes, fit: BoxFit.cover);
-    }
-    if (url != null && url.isNotEmpty) {
-      return Image.network(url,
-          fit: BoxFit.cover, errorBuilder: (_, __, ___) => _placeholder());
-    }
-    return _placeholder();
-  }
-
-  Widget _placeholder() => Container(
-        color: const Color(0xFFE8F0FE),
-        child: const Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.add_photo_alternate_rounded,
-                size: 26, color: Color(0xFF0D6EFD)),
-            SizedBox(height: 4),
-            Text('صورة',
-                style: TextStyle(
-                    fontSize: 9,
-                    color: Color(0xFF0D6EFD),
-                    fontFamily: 'Cairo',
-                    fontWeight: FontWeight.w600)),
-          ],
-        ),
-      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -809,10 +708,10 @@ class _StickyFooter extends StatelessWidget {
               decoration: BoxDecoration(
                 color: context.colors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(14),
-                border:
-                    Border.all(color: context.colors.primary.withValues(alpha: 0.3)),
+                border: Border.all(
+                    color: context.colors.primary.withValues(alpha: 0.3)),
               ),
-              child:  Icon(Icons.calendar_month_rounded,
+              child: Icon(Icons.calendar_month_rounded,
                   size: 22, color: context.colors.primary),
             ),
           ),
@@ -820,83 +719,4 @@ class _StickyFooter extends StatelessWidget {
       ]),
     );
   }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Image source bottom sheet
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ImageSourceSheet extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: context.colors.cardBg,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.black12,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text('اختر مصدر الصورة',
-                style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'Cairo',
-                    color: context.colors.textDark)),
-            const SizedBox(height: 16),
-            _SheetTile(
-              icon: Icons.photo_library_rounded,
-              label: 'من المعرض',
-              color: const Color(0xFF0D6EFD),
-              onTap: () => Navigator.pop(context, ImageSource.gallery),
-            ),
-            _SheetTile(
-              icon: Icons.camera_alt_rounded,
-              label: 'الكاميرا',
-              color: const Color(0xFF198754),
-              onTap: () => Navigator.pop(context, ImageSource.camera),
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      );
-}
-
-class _SheetTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _SheetTile(
-      {required this.icon,
-      required this.label,
-      required this.color,
-      required this.onTap});
-
-  @override
-  Widget build(BuildContext context) => ListTile(
-        onTap: onTap,
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, color: color, size: 20),
-        ),
-        title: Text(label,
-            style: const TextStyle(fontFamily: 'Cairo', fontSize: 14)),
-      );
 }

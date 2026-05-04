@@ -10,7 +10,7 @@ import '../../auth/auth_widgets.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import '../courses/courses_screen.dart';
 import '../home/home_screen.dart';
-import '../profile/profile_screen.dart';
+import '../../shared/profile/profile_screen.dart';
 import '../schedules/schedules_provider.dart';
 import '../schedules/schedules_screen.dart';
 
@@ -40,7 +40,7 @@ class _State extends State<TeacherDashboardScreen> {
       const TeacherCoursesScreen(),
       _TeacherScheduleTab(),
        TeacherAnalyticsHubScreen(),
-      const TeacherProfileScreen(),
+      const ProfileScreen(),
     ];
 
     return BasePage(child: isWide
