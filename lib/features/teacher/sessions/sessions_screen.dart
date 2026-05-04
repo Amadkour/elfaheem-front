@@ -10,6 +10,7 @@ import '../../teacher/exam/teacher_exam_screen.dart';
 import '../../teacher/home/teacher_models.dart';
 import '../../teacher/sessions/components/session_form_sheet.dart';
 import '../../teacher/sessions/sessions_provider.dart';
+import '../home/teacher_provider.dart';
 
 class TeacherSessionsScreen extends StatefulWidget {
   final TeacherCourse course;
@@ -34,11 +35,11 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
   }
 
   Future<void> _refreshCourse() async {
-    // final updated =
-    // await context.read<TeacherProvider>().fetchCourseDetail(widget.course.id);
-    // if (updated != null && mounted) {
-    //   setState(() => _course = updated);
-    // }
+    final updated =
+    await context.read<TeacherProvider>().fetchCourseById(widget.course.id);
+    if (updated != null && mounted) {
+      setState(() => _course = updated);
+    }
   }
 
   void _openAddSheet() => _openSheet(context);

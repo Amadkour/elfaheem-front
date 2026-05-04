@@ -444,7 +444,7 @@ class _CoursesRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget content = SizedBox(
-        height: context.height/3.5,
+        height: context.height/(context.isMobile? 3.5:5),
       child: ListView.separated(
         controller: _controller,
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -483,11 +483,17 @@ class _TeacherCourseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: () => Navigator.push(
+        onTap: () async {
+
+          // print(c!.prerequisites.map((e)=>e.title));
+          // print(c.certificates.map((e)=>e.title));
+          // print(c.tools.map((e)=>e.name));
+          Navigator.push(
           context,
           MaterialPageRoute(
               builder: (_) => TeacherSessionsScreen(course: course)),
-        ),
+        );
+        },
         child: Container(
           decoration: BoxDecoration(
             color: context.colors.cardBg,
@@ -508,7 +514,7 @@ class _TeacherCourseCard extends StatelessWidget {
                 url: course.imageUrl,
                 fit: BoxFit.cover,
                 height: 100,
-                width: context.width/2,
+                width: context.width/(context.isMobile? 2:3),
               ),
             ),
             Divider(),
