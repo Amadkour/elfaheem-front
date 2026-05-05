@@ -7,7 +7,7 @@ import 'package:flutter_education_app/config/storage_service.dart';
 /// Application configuration and context.colors.
 class AppConfig {
 // For Android Emulator
-  static const String baseUrl = 'https://warcraft-continued-gasoline-pest.trycloudflare.com';
+  static const String baseUrl = 'https://bench-dvds-rabbit-waiting.trycloudflare.com';
  static String lang = 'ar';
 
 }
