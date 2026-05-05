@@ -19,7 +19,7 @@ import '../../auth/auth_provider.dart';
 import '../../student/courses/details/course_detail_screen.dart';
 import '../../student/models.dart';
 import 'change_password_widget.dart'
-    show UpdatePasswordScreen;
+    show UpdatePasswordScreen, ChangePasswordScreen;
 import '../../student/courses/details/components/app_responsive.dart';
 import 'setting_title.dart';
 import 'profile_provider.dart' show ProfileProvider, AppLanguage, AppLanguageX;
@@ -97,7 +97,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                           iconBg: c.accentTint,
                           iconColor: c.accent,
                           label: 'change_password'.tr,
-                          onTap: () => _push(const UpdatePasswordScreen()),
+                          onTap: () => _push(const ChangePasswordScreen()),
                         ),
                         SettingsTile(
                           icon: Icons.account_balance_wallet_rounded,
