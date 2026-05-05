@@ -64,7 +64,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
 
   // ── App bar ─────────────────────────────────────────────────────────────────
   Widget _buildAppBar(BuildContext ctx) => SliverAppBar(
-    expandedHeight: 140,
+    expandedHeight: 180,
     pinned: true,
     backgroundColor: context.colors.primary,
     leading: IconButton(
@@ -74,41 +74,52 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
     ),
     flexibleSpace: FlexibleSpaceBar(
       background: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-            colors: [
-              context.colors.primary,
-              context.colors.primary.withValues(alpha: 0.7)
+        decoration: const BoxDecoration(
+          borderRadius: BorderRadius.only(
+            bottomLeft: Radius.circular(34),
+            bottomRight: Radius.circular(34),
+          ),
+          image: DecorationImage(
+            image: AssetImage('assets/images/attendence.png'),
+            fit: BoxFit.cover,
+          ),
+      ),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+          decoration: BoxDecoration(
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(34),
+              bottomRight: Radius.circular(34),
+            ),
+            color: const Color(0xFF158CEA).withOpacity(.72),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+
+              const Spacer(),
+              const Text(
+                'سجل الحضور',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 34,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                widget.courseTitle,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(.9),
+                  fontSize: 18,
+                ),
+              ),
             ],
           ),
         ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 60, 20, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                const Text('سجل الحضور',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        fontFamily: 'Cairo')),
-                Text(widget.courseTitle,
-                    style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 13,
-                        fontFamily: 'Cairo')),
-              ],
-            ),
-          ),
-        ),
+
       ),
-    ),
-  );
+  ));
 
   // ── Body ────────────────────────────────────────────────────────────────────
   Widget _buildBody(TeacherAttendanceProvider prov, bool isWide) {
@@ -168,16 +179,23 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
 
   // ── Session chip bar ────────────────────────────────────────────────────────
   Widget _buildSessionSelector(TeacherAttendanceProvider prov) => Container(
-    color: Colors.white,
+    color: AppTheme.background,
     padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('اختر المحاضرة',
-          style: TextStyle(
-              fontFamily: 'Cairo',
-              fontSize: 13,
-              color: Colors.grey,
-              fontWeight: FontWeight.w600)),
-      const SizedBox(height: 8),
+      Row(
+        children: [
+          Icon(Icons.calendar_today,size: 13,
+            color: AppTheme.textMedium,),
+          SizedBox(width: 5,),
+          const Text('اختر المحاضرة',
+              style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: 13,
+                  color: AppTheme.textMedium,
+                  fontWeight: FontWeight.w600)),
+        ],
+      ),
+      const SizedBox(height: 10),
       SizedBox(
         height: 42,
         child: prov.sessions.isEmpty
@@ -199,11 +217,11 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: sel ? context.colors.success : Colors.transparent,
-                  borderRadius: BorderRadius.circular(21),
+                  color: sel ? context.colors.primaryBlue : Colors.transparent,
+                  borderRadius: BorderRadius.circular(15),
                   border: Border.all(
                       color: sel
-                          ? context.colors.success
+                          ? context.colors.primaryBlue
                           : Colors.grey.shade300),
                 ),
                 child: Text(s.name,
@@ -219,6 +237,8 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
           },
         ),
       ),
+      SizedBox(height: 10,),
+      Divider(color: AppTheme.textLight.withAlpha(100),),
     ]),
   );
 
@@ -248,7 +268,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
 
   // ── Search bar ──────────────────────────────────────────────────────────────
   Widget _buildSearchBar(TeacherAttendanceProvider prov) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+    padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
     child: TextField(
       controller: _searchCtrl,
       textDirection: TextDirection.rtl,
@@ -431,26 +451,42 @@ class _StatCard extends StatelessWidget {
       const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+
+    border: Border(
+      top: BorderSide(
+        color: color,
+        width: 3,
       ),
-      child: Row(children: [
-        Icon(icon, color: color, size: 22),
-        const SizedBox(width: 8),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    ),
+      ),
+      child:
+
+        Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+
           Text(value,
               style: TextStyle(
                   fontFamily: 'Cairo',
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   color: color)),
-          Text(label,
-              style: const TextStyle(
-                  fontFamily: 'Cairo',
-                  fontSize: 11,
-                  color: Colors.grey)),
+
+          SizedBox(height: 5,),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 11),
+              SizedBox(width: 5,),
+              Text(label,
+                  style: const TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 11,
+                      color: AppTheme.textMedium)),
+            ],
+          ),
         ]),
-      ]),
+
     ),
   );
 }
