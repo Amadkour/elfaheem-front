@@ -1,32 +1,62 @@
-// ── Enums ─────────────────────────────────────────────────────────────────────
+/// enrollment_provider.dart
+/// ─────────────────────────────────────────────────────────────────────────────
+/// Handles the full enrollment + payment flow.
+/// For FREE courses  → POST /courses/{id}/enroll  (instant)
+/// For PAID courses  → POST /payments/bank-transfer (manual verification)
+/// ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter_education_app/features/student/models.dart' show CourseModel;
 
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
-import '../../payment/payments_provider.dart';
 
-enum EnrollStep { method, bankDetails, success }
+// ── BankTransferInfo ──────────────────────────────────────────────────────────
 
-enum PaymentMethod { mada, visa, bankTransfer }
+class BankTransferInfo {
+  final int    paymentId;
+  final double amount;
+  final String currency;
+  final String currencySymbol;
+  final String bankName;
+  final String accountName;
+  final String accountNumber;
+  final String iban;
+  final String swiftCode;
+  final String reference;
 
-extension PaymentMethodX on PaymentMethod {
-  String get label {
-    switch (this) {
-      case PaymentMethod.mada:         return 'بطاقة مدى';
-      case PaymentMethod.visa:         return 'بطاقة فيزا / ماستركارد';
-      case PaymentMethod.bankTransfer: return 'تحويل بنكي';
-    }
-  }
+  const BankTransferInfo({
+    required this.paymentId,
+    required this.amount,
+    required this.currency,
+    required this.currencySymbol,
+    required this.bankName,
+    required this.accountName,
+    required this.accountNumber,
+    required this.iban,
+    required this.swiftCode,
+    required this.reference,
+  });
 
-  String get apiKey {
-    switch (this) {
-      case PaymentMethod.mada:         return 'mada';
-      case PaymentMethod.visa:         return 'visa';
-      case PaymentMethod.bankTransfer: return 'bank_transfer';
-    }
+  factory BankTransferInfo.fromJson(Map<String, dynamic> json) {
+    final instr = (json['instructions'] as Map<String, dynamic>?) ?? {};
+    return BankTransferInfo(
+      paymentId:     (json['payment_id']      as num?)?.toInt() ?? 0,
+      amount:        (json['amount']          as num?)?.toDouble() ?? 0,
+      currency:      json['currency']         as String? ?? 'EGP',
+      currencySymbol: json['currency_symbol'] as String? ?? 'ج.م',
+      bankName:      instr['bank_name']       as String? ?? '',
+      accountName:   instr['account_name']    as String? ?? '',
+      accountNumber: instr['account_number']  as String? ?? '',
+      iban:          instr['iban']            as String? ?? '',
+      swiftCode:     instr['swift_code']      as String? ?? '',
+      reference:     instr['reference']       as String? ?? '',
+    );
   }
 }
+
+// ── Enums ─────────────────────────────────────────────────────────────────────
+
+enum EnrollStep { method, bankDetails, success }
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
@@ -37,67 +67,57 @@ class EnrollmentProvider extends BaseProvider {
   EnrollmentProvider(this.course, {ApiClient? api})
       : _api = api ?? ApiClient();
 
-  // ── State ────────────────────────────────────────────────────────────────────
+  // ── State ─────────────────────────────────────────────────────────────────
 
-  EnrollStep        _step           = EnrollStep.method;
-  PaymentMethod?    _selectedMethod;
+  EnrollStep        _step              = EnrollStep.method;
   BankTransferInfo? _bankInfo;
+  bool              _paidViaBankTransfer = false;
 
-  EnrollStep        get step           => _step;
-  PaymentMethod?    get selectedMethod => _selectedMethod;
-  BankTransferInfo? get bankInfo       => _bankInfo;
+  EnrollStep        get step              => _step;
+  BankTransferInfo? get bankInfo          => _bankInfo;
+  bool              get paidViaBankTransfer => _paidViaBankTransfer;
 
+  /// true when course.price == 0
   bool get isFree => course.price == 0;
 
-  static const double _vatRate = 0.15;
+  // No VAT for Egyptian educational services
   double get subtotal => course.price;
-  double get vat      => isFree ? 0 : course.price * _vatRate;
-  double get total    => subtotal + vat;
+  double get total    => subtotal;
 
-  // ── Select method ─────────────────────────────────────────────────────────────
+  // ── Confirm ───────────────────────────────────────────────────────────────
 
-  void selectMethod(PaymentMethod method) {
-    _selectedMethod = method;
-    notifyListeners();
-  }
-
-  // ── Confirm ───────────────────────────────────────────────────────────────────
-
+  /// Called when the student taps the main action button.
   Future<void> confirm() async {
-    if (!isFree) {
+    if (isFree) {
+      // ✅ FIXED: was `!isFree` which called _enrollFree() for PAID courses
       await _enrollFree();
     } else {
-      if (_selectedMethod == null) return;
-      if (_selectedMethod == PaymentMethod.bankTransfer) {
-        await _initBankTransfer();
-      } else {
-        await _initCardPayment();
-      }
+      await _initBankTransfer();
     }
   }
 
-  // ── Free enrollment ───────────────────────────────────────────────────────────
+  // ── Free enrollment ───────────────────────────────────────────────────────
 
   Future<void> _enrollFree() async {
-    // POST /api/v1/courses/{id}/enroll  — no body needed
     final result = await run(
-      () => _api.post('/api/v1/courses/${course.id}/enroll'),
+          () => _api.post('/api/v1/courses/${course.id}/enroll'),
     );
     if (result != null) {
+      _paidViaBankTransfer = false;
       _step = EnrollStep.success;
       notifyListeners();
     }
   }
 
-  // ── Bank transfer ─────────────────────────────────────────────────────────────
+  // ── Bank transfer ─────────────────────────────────────────────────────────
 
   Future<void> _initBankTransfer() async {
-    // POST /api/v1/payments/bank-transfer?course_id={id}
-    final result = await run(() => _api.post(
-      '/api/v1/payments/bank-transfer',
-      queryParams: {'course_id': course.id},
-    ));
-
+    final result = await run(
+          () => _api.post(
+        '/api/v1/payments/bank-transfer',
+        queryParams: {'course_id': course.id},
+      ),
+    );
     if (result is Map<String, dynamic>) {
       _bankInfo = BankTransferInfo.fromJson(result);
       _step     = EnrollStep.bankDetails;
@@ -105,27 +125,7 @@ class EnrollmentProvider extends BaseProvider {
     }
   }
 
-  // ── Card payment ──────────────────────────────────────────────────────────────
-
-  Future<void> _initCardPayment() async {
-    // POST /api/v1/payments?course_id={id}&payment_method={method}
-    // API uses query params for this endpoint (Form-based POST)
-    final result = await run(() => _api.post(
-      '/api/v1/payments',
-      queryParams: {
-        'course_id':      course.id,
-        'payment_method': _selectedMethod!.apiKey,
-      },
-    ));
-
-    if (result is Map<String, dynamic>) {
-      // TODO: launch checkout URL: result['checkout_url']
-      _step = EnrollStep.success;
-      notifyListeners();
-    }
-  }
-
-  // ── Bank transfer helpers ─────────────────────────────────────────────────────
+  // ── Navigation helpers ────────────────────────────────────────────────────
 
   void backToMethod() {
     _step     = EnrollStep.method;
@@ -133,7 +133,9 @@ class EnrollmentProvider extends BaseProvider {
     notifyListeners();
   }
 
+  /// Called after student taps "تم التحويل" (Transfer Done).
   void confirmBankTransfer() {
+    _paidViaBankTransfer = true;
     _step = EnrollStep.success;
     notifyListeners();
   }

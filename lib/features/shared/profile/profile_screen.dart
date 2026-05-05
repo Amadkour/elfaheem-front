@@ -16,6 +16,7 @@ import '../../../utils/widget/app_network_image.dart';
 import '../../../utils/widget/primary_button.dart';
 import '../../../utils/widget/text_field.dart';
 import '../../auth/auth_provider.dart';
+import '../../payment/payment_methods_screen.dart';
 import '../../student/courses/details/course_detail_screen.dart';
 import '../../student/models.dart';
 import 'change_password_widget.dart'
@@ -23,8 +24,6 @@ import 'change_password_widget.dart'
 import '../../student/courses/details/components/app_responsive.dart';
 import 'setting_title.dart';
 import 'profile_provider.dart' show ProfileProvider, AppLanguage, AppLanguageX;
-import '../../teacher/profile/components/payment_bank_info.dart';
-import '../../teacher/profile/components/profile_header.dart';
 import 'update_account_widget.dart';
 import '../../../utils/helpers.dart';
 
@@ -807,7 +806,43 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
     );
   }
 }
+class ProfileHeader extends StatelessWidget {
+  final ProfileProvider provider;
 
+  const ProfileHeader({super.key,
+    required this.provider,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Stack(
+          alignment: Alignment.bottomLeft,
+          children: [
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: context.colors.primary.withValues(alpha: 0.1),
+                border: Border.all(color: context.colors.primaryBlue, width: 2.5),
+              ),
+              child: provider.imageUrl.isNotEmpty
+                  ? ClipOval(child: AppNetworkImage(url: provider.imageUrl))
+                  :  Icon(Icons.person_rounded,
+                  size: 52, color: context.colors.primaryBlue),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Text(provider.name, style: context.colors.h2.copyWith(fontSize: 20)),
+        const SizedBox(height: 4),
+        Text(provider.email, style: context.colors.caption),
+      ],
+    );
+  }
+}
 // ── Shared snackbar ───────────────────────────────────────────────────────────
 
 SnackBar _snack(String msg, Color color) => SnackBar(
