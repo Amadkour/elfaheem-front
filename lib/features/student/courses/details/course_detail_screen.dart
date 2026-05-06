@@ -730,7 +730,7 @@ class _EnrollButton extends StatelessWidget {
                   MaterialPageRoute(
                     builder: (_) => ChangeNotifierProvider(
                       create: (_) => EnrollmentProvider(p.course),
-                      child: const EnrollmentScreen(),
+                      child:  EnrollmentScreen(course: p.course,),
                     ),
                   ),
                 ),

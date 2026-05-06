@@ -126,7 +126,7 @@ class ElFaheemApp extends StatelessWidget {
       case '/course-detail':
         final course = settings.arguments as CourseModel;
         return _fade(_Guard(child: CourseDetailScreen(course: course)));
-      case '/my-enrollments':   return _fade(const _Guard(child: EnrollmentScreen()));
+      // case '/my-enrollments':   return _fade(const _Guard(child: EnrollmentScreen(course: null,)));
       case '/notifications':    return _fade(const _Guard(child: NotificationsScreen()));
       default:                  return _fade(const _NotFoundScreen());
     }

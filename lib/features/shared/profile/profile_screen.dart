@@ -16,12 +16,12 @@ import '../../../utils/widget/app_network_image.dart';
 import '../../../utils/widget/primary_button.dart';
 import '../../../utils/widget/text_field.dart';
 import '../../auth/auth_provider.dart';
-import '../../payment/payment_methods_screen.dart';
 import '../../student/courses/details/course_detail_screen.dart';
 import '../../student/models.dart';
-import 'change_password_widget.dart'
-    show UpdatePasswordScreen, ChangePasswordScreen;
 import '../../student/courses/details/components/app_responsive.dart';
+import '../payment/student_saved_methods_screen.dart';
+import '../payment/teacher_payout_screen.dart';
+import 'change_password_widget.dart';
 import 'setting_title.dart';
 import 'profile_provider.dart' show ProfileProvider, AppLanguage, AppLanguageX;
 import 'update_account_widget.dart';
@@ -102,8 +102,14 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                           icon: Icons.account_balance_wallet_rounded,
                           iconBg: c.successTint,
                           iconColor: c.success,
-                          label: 'payment_method'.tr,
-                          onTap: () => _push(const PaymentMethodsScreen()),
+                          label: context.read<AuthProvider>().isTeacher
+                              ? 'حسابات الاستلام'
+                              : 'طرق الدفع المحفوظة',
+                          onTap: () => _push(
+                            context.read<AuthProvider>().isTeacher
+                                ? const TeacherPayoutScreen()
+                                : const StudentSavedMethodsScreen(),
+                          ),
                         ),
                       ],
                     ),
@@ -143,7 +149,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                           label: 'dark_mode'.tr,
                           trailing: Switch.adaptive(
                             value: p.darkMode,
-                            onChanged:(b) async {
+                            onChanged: (b) async {
                               await p.changeMode(b);
                             },
                             activeColor: context.colors.primaryBlue,
@@ -324,41 +330,42 @@ class _OtpPasswordScreenState extends State<_OtpPasswordScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(
                           4,
-                              (i) => Container(
-                            width: 66,
-                            height: 66,
-                            margin:
-                            const EdgeInsets.symmetric(horizontal: 6),
-                            decoration: BoxDecoration(
-                              color: context.colors.cardBg,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                  color: _focusNodes[i].hasFocus
-                                      ? context.colors.primary
-                                      : context.colors.divider,
-                                  width: _focusNodes[i].hasFocus ? 2 : 1.5),
-                              boxShadow: context.colors.cardShadow,
-                            ),
-                            child: TextField(
-                              controller: _controllers[i],
-                              focusNode: _focusNodes[i],
-                              textAlign: TextAlign.center,
-                              keyboardType: TextInputType.number,
-                              maxLength: 1,
-                              style: context.colors.h2.copyWith(fontSize: 24),
-                              decoration: const InputDecoration(
-                                  counterText: '',
-                                  border: InputBorder.none),
-                              onChanged: (v) {
-                                if (v.isNotEmpty && i < 3) {
-                                  _focusNodes[i + 1].requestFocus();
-                                }
-                                if (v.isEmpty && i > 0) {
-                                  _focusNodes[i - 1].requestFocus();
-                                }
-                              },
-                            ),
-                          )),
+                          (i) => Container(
+                                width: 66,
+                                height: 66,
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 6),
+                                decoration: BoxDecoration(
+                                  color: context.colors.cardBg,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                      color: _focusNodes[i].hasFocus
+                                          ? context.colors.primary
+                                          : context.colors.divider,
+                                      width: _focusNodes[i].hasFocus ? 2 : 1.5),
+                                  boxShadow: context.colors.cardShadow,
+                                ),
+                                child: TextField(
+                                  controller: _controllers[i],
+                                  focusNode: _focusNodes[i],
+                                  textAlign: TextAlign.center,
+                                  keyboardType: TextInputType.number,
+                                  maxLength: 1,
+                                  style:
+                                      context.colors.h2.copyWith(fontSize: 24),
+                                  decoration: const InputDecoration(
+                                      counterText: '',
+                                      border: InputBorder.none),
+                                  onChanged: (v) {
+                                    if (v.isNotEmpty && i < 3) {
+                                      _focusNodes[i + 1].requestFocus();
+                                    }
+                                    if (v.isEmpty && i > 0) {
+                                      _focusNodes[i - 1].requestFocus();
+                                    }
+                                  },
+                                ),
+                              )),
                     ),
                     const SizedBox(height: 28),
                     // TextButton(
@@ -406,7 +413,7 @@ class ChangeLanguageScreen extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 12),
                     child: GestureDetector(
                       onTap: () async {
-                       await provider.changeLang(l);
+                        await provider.changeLang(l);
                         Navigator.pop(context);
                       },
                       child: AnimatedContainer(
@@ -416,8 +423,8 @@ class ChangeLanguageScreen extends StatelessWidget {
                           color: isSelected
                               ? context.colors.primary.withValues(alpha: 0.08)
                               : context.colors.cardBg,
-                          borderRadius:
-                          BorderRadius.circular(context.colors.radiusMedium),
+                          borderRadius: BorderRadius.circular(
+                              context.colors.radiusMedium),
                           border: Border.all(
                               color: isSelected
                                   ? context.colors.primary
@@ -470,28 +477,29 @@ class FavouriteCoursesScreen extends StatelessWidget {
             const SizedBox(height: 8),
             Expanded(
               child: favourites.isEmpty
-                  ?  Center(
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.favorite_border_rounded,
-                        size: 64, color: context.colors.textLight),
-                    SizedBox(height: 12),
-                    Text('لا توجد كورسات مفضّلة بعد',
-                        style: TextStyle(
-                            fontFamily: 'Cairo', color: context.colors.textMedium)),
-                  ]))
+                  ? Center(
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.favorite_border_rounded,
+                          size: 64, color: context.colors.textLight),
+                      SizedBox(height: 12),
+                      Text('لا توجد كورسات مفضّلة بعد',
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
+                              color: context.colors.textMedium)),
+                    ]))
                   : GridView.builder(
-                padding: const EdgeInsets.all(20),
-                gridDelegate:
-                const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 14,
-                  mainAxisSpacing: 14,
-                  childAspectRatio: 0.75,
-                ),
-                itemCount: favourites.length,
-                itemBuilder: (_, i) =>
-                    _FavCourseCard(course: favourites[i]),
-              ),
+                      padding: const EdgeInsets.all(20),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 14,
+                        mainAxisSpacing: 14,
+                        childAspectRatio: 0.75,
+                      ),
+                      itemCount: favourites.length,
+                      itemBuilder: (_, i) =>
+                          _FavCourseCard(course: favourites[i]),
+                    ),
             ),
           ]),
         ),
@@ -500,65 +508,76 @@ class FavouriteCoursesScreen extends StatelessWidget {
   }
 }
 
+
 class _FavCourseCard extends StatelessWidget {
   final CourseModel course;
 
-  const _FavCourseCard({required this.course});
+  const _FavCourseCard({super.key, required this.course});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => CourseDetailScreen(course: course))),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+            builder: (_) => CourseDetailScreen(course: course)),
+      ),
       child: Container(
         decoration: BoxDecoration(
-            color: context.colors.cardBg,
-            borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-            boxShadow: context.colors.cardShadow),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Stack(children: [
-            AppNetworkImage(
-                url: course.imageUrl,
-                height: 110,
-                borderRadius:  BorderRadius.only(
-                    topLeft: Radius.circular(context.colors.radiusMedium),
-                    topRight: Radius.circular(context.colors.radiusMedium))),
-            // Positioned(
-            //   top: 8,
-            //   left: 8,
-            //   child: GestureDetector(
-            //     onTap: () =>
-            //         context.read<ProfileProvider>().removeFavourite(course.id),
-            //     child: Container(
-            //         width: 30,
-            //         height: 30,
-            //         decoration: BoxDecoration(
-            //             color: Colors.white.withValues(alpha: 0.9),
-            //             shape: BoxShape.circle),
-            //         child:  Icon(Icons.favorite_rounded,
-            //             color: context.colors.danger, size: 16)),
-            //   ),
-            // ),
-          ]),
-          Padding(
-            padding: const EdgeInsets.all(10),
-            child:
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(course.title,
-                  style: context.colors.h3.copyWith(fontSize: 13),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 4),
-              Text(course.instructorName, style: context.colors.caption, maxLines: 1),
-              const SizedBox(height: 6),
-              Text(
-                  course.price == 0
-                      ? 'مجاني'
-                      : '\$ ${course.price.toStringAsFixed(2)}',
-                  style: context.colors.label.copyWith(color: context.colors.accent)),
-            ]),
-          ),
-        ]),
+          color:        context.colors.cardBg,
+          borderRadius: BorderRadius.circular(context.colors.radiusMedium),
+          boxShadow:    context.colors.cardShadow,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Thumbnail
+            Stack(
+              children: [
+                AppNetworkImage(
+                  url:    course.imageUrl,
+                  height: 110,
+                  borderRadius: BorderRadius.only(
+                    topLeft:  Radius.circular(context.colors.radiusMedium),
+                    topRight: Radius.circular(context.colors.radiusMedium),
+                  ),
+                ),
+              ],
+            ),
+
+            // Info
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    course.title,
+                    style:    context.colors.h3.copyWith(fontSize: 13),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    course.instructorName,
+                    style:    context.colors.caption,
+                    maxLines: 1,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    // ✅ FIXED: was '\$ ${course.price.toStringAsFixed(2)}'
+                    course.price == 0
+                        ? 'مجاني'
+                        : '${course.price.toStringAsFixed(2)} ر.س',
+                    style: context.colors.label.copyWith(
+                        color: course.price == 0
+                            ? context.colors.success
+                            : context.colors.accent),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -602,8 +621,8 @@ class _SupportScreenState extends State<SupportScreen> {
     await Future.delayed(const Duration(seconds: 1));
     if (mounted) {
       setState(() => _sending = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(_snack('تم إرسال رسالتك بنجاح', context.colors.success));
+      ScaffoldMessenger.of(context).showSnackBar(
+          _snack('تم إرسال رسالتك بنجاح', context.colors.success));
       _messageCtrl.clear();
     }
   }
@@ -637,7 +656,7 @@ class _SupportScreenState extends State<SupportScreen> {
                             label: 'المساعده',
                             maxLine: 5,
                             validator: (v) =>
-                            (v?.isEmpty ?? true) ? 'أدخل رسالتك' : null),
+                                (v?.isEmpty ?? true) ? 'أدخل رسالتك' : null),
                         const SizedBox(height: 32),
                         MyPrimaryButton(
                             label: 'إرسال',
@@ -694,9 +713,9 @@ class AboutScreen extends StatelessWidget {
                     decoration: BoxDecoration(
                         color: context.colors.cardBg,
                         borderRadius:
-                        BorderRadius.circular(context.colors.radiusMedium),
+                            BorderRadius.circular(context.colors.radiusMedium),
                         boxShadow: context.colors.cardShadow),
-                    child:  Text(
+                    child: Text(
                       'مركز الفهيم يحرص على تقديم احسن الكورسات بأحسن المدرسين ليكون عندنا احسن جيل متقدم',
                       style: TextStyle(
                           fontFamily: 'Cairo',
@@ -728,16 +747,16 @@ class PrivacyScreen extends StatefulWidget {
 class _PrivacyScreenState extends State<PrivacyScreen> {
   static const _items = [
     (
-    'Lorem Ipsum Dolor',
-    'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.'
+      'Lorem Ipsum Dolor',
+      'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.'
     ),
     (
-    'Lorem Ipsum Dolor',
-    'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.'
+      'Lorem Ipsum Dolor',
+      'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.'
     ),
     (
-    'Lorem Ipsum Dolor',
-    'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.'
+      'Lorem Ipsum Dolor',
+      'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.'
     ),
   ];
 
@@ -765,7 +784,7 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
                     decoration: BoxDecoration(
                         color: context.colors.cardBg,
                         borderRadius:
-                        BorderRadius.circular(context.colors.radiusMedium),
+                            BorderRadius.circular(context.colors.radiusMedium),
                         boxShadow: context.colors.cardShadow),
                     child: Column(children: [
                       GestureDetector(
@@ -806,10 +825,12 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
     );
   }
 }
+
 class ProfileHeader extends StatelessWidget {
   final ProfileProvider provider;
 
-  const ProfileHeader({super.key,
+  const ProfileHeader({
+    super.key,
     required this.provider,
   });
 
@@ -826,12 +847,13 @@ class ProfileHeader extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: context.colors.primary.withValues(alpha: 0.1),
-                border: Border.all(color: context.colors.primaryBlue, width: 2.5),
+                border:
+                    Border.all(color: context.colors.primaryBlue, width: 2.5),
               ),
               child: provider.imageUrl.isNotEmpty
                   ? ClipOval(child: AppNetworkImage(url: provider.imageUrl))
-                  :  Icon(Icons.person_rounded,
-                  size: 52, color: context.colors.primaryBlue),
+                  : Icon(Icons.person_rounded,
+                      size: 52, color: context.colors.primaryBlue),
             ),
           ],
         ),
@@ -846,9 +868,9 @@ class ProfileHeader extends StatelessWidget {
 // ── Shared snackbar ───────────────────────────────────────────────────────────
 
 SnackBar _snack(String msg, Color color) => SnackBar(
-  content: Text(msg,
-      style: const TextStyle(fontFamily: 'Cairo', color: Colors.white)),
-  backgroundColor: color,
-  behavior: SnackBarBehavior.floating,
-  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-);
+      content: Text(msg,
+          style: const TextStyle(fontFamily: 'Cairo', color: Colors.white)),
+      backgroundColor: color,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    );

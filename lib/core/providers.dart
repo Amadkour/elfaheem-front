@@ -11,7 +11,6 @@ import '../features/category/categories_provider.dart';
 import '../features/material/materials_provider.dart';
 import '../features/module/modules_provider.dart';
 import '../features/notification/notifications_provider.dart';
-import '../features/payment/payments_provider.dart';
 import '../features/shared/attendance_provider.dart';
 import '../features/shared/profile/profile_provider.dart';
 import '../features/student/courses/list/courses_provider.dart';
@@ -85,9 +84,6 @@ List<SingleChildWidget> appProviders(
       ),
       ChangeNotifierProvider<StudentSessionsProvider>(
         create: (_) => StudentSessionsProvider(),
-      ),
-      ChangeNotifierProvider<PaymentsProvider>(
-        create: (_) => PaymentsProvider(),
       ),
       ChangeNotifierProvider<ExamsProvider>(
         create: (_) => ExamsProvider(),

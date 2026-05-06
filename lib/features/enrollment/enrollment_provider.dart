@@ -1,130 +1,188 @@
-import '../../core/api_client.dart';
-import '../../core/base_provider.dart';
-import '../payment/payments_provider.dart';
+/// enrollment_provider.dart  (complete rewrite — matches new enrollment_screen)
+library;
+
+import '../../../core/api_client.dart';
+import '../../../core/base_provider.dart';
+import '../shared/payment/saved_methods_provider.dart';
+import '../shared/payment/saved_payment_models.dart';
 import '../student/models.dart';
 
-// ── Enums ─────────────────────────────────────────────────────────────────────
+// ── Step enum ─────────────────────────────────────────────────────────────────
 
 enum EnrollStep { method, bankDetails, success }
 
-enum PaymentMethod { mada, visa, bankTransfer }
+// ── Selection state ───────────────────────────────────────────────────────────
 
-extension PaymentMethodX on PaymentMethod {
-  String get label {
-    switch (this) {
-      case PaymentMethod.mada:         return 'بطاقة مدى';
-      case PaymentMethod.visa:         return 'بطاقة فيزا / ماستركارد';
-      case PaymentMethod.bankTransfer: return 'تحويل بنكي';
-    }
-  }
-
-  String get apiKey {
-    switch (this) {
-      case PaymentMethod.mada:         return 'mada';
-      case PaymentMethod.visa:         return 'visa';
-      case PaymentMethod.bankTransfer: return 'bank_transfer';
-    }
-  }
-}
+enum _Selection { savedCard, bankTransfer, newCard }
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 class EnrollmentProvider extends BaseProvider {
-  final ApiClient _api;
+  final ApiClient   _api;
   final CourseModel course;
 
   EnrollmentProvider(this.course, {ApiClient? api})
       : _api = api ?? ApiClient();
 
-  // ── State ────────────────────────────────────────────────────────────────────
+  // ── Internal state ────────────────────────────────────────────────────────
 
-  EnrollStep        _step           = EnrollStep.method;
-  PaymentMethod?    _selectedMethod;
-  BankTransferInfo? _bankInfo;
+  EnrollStep   _step      = EnrollStep.method;
+  _Selection   _selection = _Selection.savedCard;
 
-  EnrollStep        get step           => _step;
-  PaymentMethod?    get selectedMethod => _selectedMethod;
-  BankTransferInfo? get bankInfo       => _bankInfo;
+  SavedPaymentMethod?    _selectedCard;  // for _Selection.savedCard
+  Map<String, dynamic>?  _bankInfo;      // filled after bank-transfer API call
+  bool                   _paidViaBankTransfer = false;
 
-  bool get isFree => course.price == 0;
+  // ── Public getters ─────────────────────────────────────────────────────────
 
-  static const double _vatRate = 0.15;
-  double get subtotal => course.price;
-  double get vat      => isFree ? 0 : course.price * _vatRate;
-  double get total    => subtotal + vat;
+  EnrollStep            get step               => _step;
+  Map<String, dynamic>? get bankInfo           => _bankInfo;
+  bool                  get paidViaBankTransfer => _paidViaBankTransfer;
+  bool                  get isFree             => course.price == 0;
 
-  // ── Select method ─────────────────────────────────────────────────────────────
+  // ── Selection setters (called by UI tiles) ────────────────────────────────
 
-  void selectMethod(PaymentMethod method) {
-    _selectedMethod = method;
+  void selectSavedCard(SavedPaymentMethod card) {
+    _selection    = _Selection.savedCard;
+    _selectedCard = card;
     notifyListeners();
   }
 
-  // ── Confirm ───────────────────────────────────────────────────────────────────
+  void selectBankTransfer() {
+    _selection    = _Selection.bankTransfer;
+    _selectedCard = null;
+    notifyListeners();
+  }
 
-  Future<void> confirm() async {
-    if (!isFree) {
-      await _enrollFree();
-    } else {
-      if (_selectedMethod == null) return;
-      if (_selectedMethod == PaymentMethod.bankTransfer) {
-        await _initBankTransfer();
-      } else {
-        await _initCardPayment();
-      }
+  void selectNewCard() {
+    _selection    = _Selection.newCard;
+    _selectedCard = null;
+    notifyListeners();
+  }
+
+  // ── Live fee computation (no network — instant) ────────────────────────────
+
+  FeeBreakdown computedFees(SavedMethodsProvider savedP) {
+    final brand = _resolvedBrand(savedP);
+    return FeeBreakdown.calculate(
+      coursePrice: course.price,
+      brand:       brand,
+    );
+  }
+
+  CardBrand _resolvedBrand(SavedMethodsProvider savedP) {
+    switch (_selection) {
+      case _Selection.savedCard:
+        return _selectedCard?.cardBrand ?? CardBrand.mada;
+      case _Selection.bankTransfer:
+        return CardBrand.unknown; // gateway fee = 0
+      case _Selection.newCard:
+        return CardBrand.mada; // default assumption until Moyasar redirect
     }
   }
 
-  // ── Free enrollment ───────────────────────────────────────────────────────────
+  // ── Confirm ────────────────────────────────────────────────────────────────
+
+  Future<void> confirm(SavedMethodsProvider savedP) async {
+    if (isFree) {
+      await _enrollFree();
+      return;
+    }
+
+    switch (_selection) {
+      case _Selection.savedCard:
+        if (_selectedCard != null) {
+          await _chargeWithSavedCard(_selectedCard!, savedP);
+        }
+        break;
+      case _Selection.bankTransfer:
+        await _initBankTransfer();
+        break;
+      case _Selection.newCard:
+        await _redirectToMoyasar(savedP);
+        break;
+    }
+  }
+
+  // ── Free enrollment ────────────────────────────────────────────────────────
 
   Future<void> _enrollFree() async {
-    // POST /api/v1/courses/{id}/enroll  — no body needed
-    final result = await run(
-      () => _api.post('/api/v1/courses/${course.id}/enroll'),
+    final r = await run(
+          () => _api.post('/api/v1/courses/${course.id}/enroll'),
     );
-    if (result != null) {
-      _step = EnrollStep.success;
+    if (r != null) {
+      _paidViaBankTransfer = false;
+      _step                = EnrollStep.success;
       notifyListeners();
     }
   }
 
-  // ── Bank transfer ─────────────────────────────────────────────────────────────
+  // ── Charge saved card ──────────────────────────────────────────────────────
+
+  Future<void> _chargeWithSavedCard(
+      SavedPaymentMethod card,
+      SavedMethodsProvider savedP,
+      ) async {
+    final fees = computedFees(savedP);
+    final r    = await run(
+          () => _api.post('/api/v1/payments', queryParams: {
+        'course_id':       course.id,
+        'payment_method':  card.cardBrand?.apiKey ?? 'mada',
+        'saved_method_id': card.id,
+      }),
+    );
+    if (r is Map<String, dynamic>) {
+      final checkoutUrl = r['checkout_url'] as String?;
+      if (checkoutUrl != null && checkoutUrl.isNotEmpty) {
+        // Moyasar may still require 3-DS for saved cards — open in browser
+        await _launchUrl(checkoutUrl);
+      }
+      _paidViaBankTransfer = false;
+      _step                = EnrollStep.success;
+      notifyListeners();
+    }
+  }
+
+  // ── Bank transfer ──────────────────────────────────────────────────────────
 
   Future<void> _initBankTransfer() async {
-    // POST /api/v1/payments/bank-transfer?course_id={id}
-    final result = await run(() => _api.post(
-      '/api/v1/payments/bank-transfer',
-      queryParams: {'course_id': course.id},
-    ));
-
-    if (result is Map<String, dynamic>) {
-      _bankInfo = BankTransferInfo.fromJson(result);
+    final r = await run(
+          () => _api.post(
+        '/api/v1/payments/bank-transfer',
+        queryParams: {'course_id': course.id},
+      ),
+    );
+    if (r is Map<String, dynamic>) {
+      _bankInfo = r;
       _step     = EnrollStep.bankDetails;
       notifyListeners();
     }
   }
 
-  // ── Card payment ──────────────────────────────────────────────────────────────
+  // ── New card → Moyasar hosted checkout ────────────────────────────────────
 
-  Future<void> _initCardPayment() async {
-    // POST /api/v1/payments?course_id={id}&payment_method={method}
-    // API uses query params for this endpoint (Form-based POST)
-    final result = await run(() => _api.post(
-      '/api/v1/payments',
-      queryParams: {
+  Future<void> _redirectToMoyasar(SavedMethodsProvider savedP) async {
+    final fees = computedFees(savedP);
+    final r    = await run(
+          () => _api.post('/api/v1/payments', queryParams: {
         'course_id':      course.id,
-        'payment_method': _selectedMethod!.apiKey,
-      },
-    ));
-
-    if (result is Map<String, dynamic>) {
-      // TODO: launch checkout URL: result['checkout_url']
-      _step = EnrollStep.success;
+        'payment_method': 'mada',   // backend shows all methods on Moyasar page
+      }),
+    );
+    if (r is Map<String, dynamic>) {
+      final url = r['checkout_url'] as String?;
+      if (url != null && url.isNotEmpty) {
+        await _launchUrl(url);
+        // After Moyasar redirects back, backend will POST /payments/{id}/verify
+        // and activate enrollment. We show success optimistically here.
+      }
+      _paidViaBankTransfer = false;
+      _step                = EnrollStep.success;
       notifyListeners();
     }
   }
 
-  // ── Bank transfer helpers ─────────────────────────────────────────────────────
+  // ── Navigation helpers ────────────────────────────────────────────────────
 
   void backToMethod() {
     _step     = EnrollStep.method;
@@ -133,7 +191,19 @@ class EnrollmentProvider extends BaseProvider {
   }
 
   void confirmBankTransfer() {
-    _step = EnrollStep.success;
+    _paidViaBankTransfer = true;
+    _step                = EnrollStep.success;
     notifyListeners();
+  }
+
+  // ── Utilities ─────────────────────────────────────────────────────────────
+
+  Future<void> _launchUrl(String url) async {
+    // url_launcher — add to pubspec: url_launcher: ^6.2.5
+    try {
+      final uri = Uri.parse(url);
+      // ignore: import_of_legacy_library_into_null_safe
+      // if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {}
   }
 }

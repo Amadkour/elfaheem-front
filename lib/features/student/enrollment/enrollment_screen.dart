@@ -1,3 +1,11 @@
+/// enrollment_screen.dart  (complete rewrite)
+/// Premium Saudi enrollment flow:
+///  Free → instant enroll
+///  Paid → pick saved card / bank transfer → full fee breakdown → confirm
+library;
+
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -5,10 +13,31 @@ import '../../../config/app_config.dart' as Helpers;
 import '../../../config/app_theme.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/app_network_image.dart';
+import '../../shared/payment/saved_methods_provider.dart';
+import '../../shared/payment/saved_payment_models.dart';
+import '../../student/models.dart';
 import 'enrollment_provider.dart';
 
+// ── Entry point ───────────────────────────────────────────────────────────────
+
 class EnrollmentScreen extends StatelessWidget {
-  const EnrollmentScreen({super.key});
+  final CourseModel course;
+  const EnrollmentScreen({super.key, required this.course});
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => EnrollmentProvider(course)),
+        ChangeNotifierProvider(create: (_) => SavedMethodsProvider()..fetch()),
+      ],
+      child: const _EnrollView(),
+    );
+  }
+}
+
+class _EnrollView extends StatelessWidget {
+  const _EnrollView();
 
   @override
   Widget build(BuildContext context) {
@@ -18,26 +47,23 @@ class EnrollmentScreen extends StatelessWidget {
         backgroundColor: context.colors.background,
         body: SafeArea(
           child: Consumer<EnrollmentProvider>(
-            builder: (context, provider, _) {
-              return AnimatedSwitcher(
-                duration: const Duration(milliseconds: 350),
-                transitionBuilder: (child, anim) => FadeTransition(
-                  opacity: anim,
-                  child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0.04, 0),
-                      end:   Offset.zero,
-                    ).animate(anim),
-                    child: child,
-                  ),
+            builder: (_, enroll, __) => AnimatedSwitcher(
+              duration: const Duration(milliseconds: 350),
+              transitionBuilder: (child, anim) => FadeTransition(
+                opacity: anim,
+                child:   SlideTransition(
+                  position: Tween(
+                      begin: const Offset(.04, 0), end: Offset.zero)
+                      .animate(anim),
+                  child: child,
                 ),
-                child: switch (provider.step) {
-                  EnrollStep.method      => const _MethodStep(key: ValueKey('method')),
-                  EnrollStep.bankDetails => const _BankStep(key: ValueKey('bank')),
-                  EnrollStep.success     => const _SuccessStep(key: ValueKey('success')),
-                },
-              );
-            },
+              ),
+              child: switch (enroll.step) {
+                EnrollStep.method      => const _MethodStep(key: ValueKey('m')),
+                EnrollStep.bankDetails => const _BankStep(key: ValueKey('b')),
+                EnrollStep.success     => const _SuccessStep(key: ValueKey('s')),
+              },
+            ),
           ),
         ),
       ),
@@ -46,7 +72,7 @@ class EnrollmentScreen extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STEP 1: Confirm / Method
+// STEP 1 — Method picker + fee breakdown
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _MethodStep extends StatelessWidget {
@@ -54,95 +80,82 @@ class _MethodStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<EnrollmentProvider>();
-    final isFree   = provider.isFree;
+    final enroll = context.watch<EnrollmentProvider>();
+    final isFree = enroll.isFree;
 
     return Column(
       children: [
-        ScreenAppBar(title: isFree ? 'تسجيل في الكورس' : 'الدفع والاشتراك'),
+        ScreenAppBar(title: isFree ? 'تسجيل في الكورس' : 'إتمام الدفع'),
         Expanded(
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _CourseSummaryCard(course: provider.course),
-                const SizedBox(height: 24),
-                _PriceBreakdown(provider: provider),
-                if (!isFree) ...[
-                  const SizedBox(height: 24),
-                  Text('طريقة الدفع', style: context.colors.h2),
-                  const SizedBox(height: 14),
-                  // ── Bank Transfer (only low-cost method) ──────────────────
-                  _BankTransferMethodCard(),
-                  const SizedBox(height: 12),
-                  _BankTransferNote(),
+                _CourseSummaryCard(course: enroll.course),
+                const SizedBox(height: 22),
+
+                if (isFree) ...[
+                  _FreeCourseBanner(),
+                ] else ...[
+                  // ── Saved method picker ──────────────────────────────────
+                  _SavedMethodPicker(),
+                  const SizedBox(height: 20),
+                  // ── Fee breakdown (updates live with selected method) ────
+                  _FeeBreakdownCard(),
                 ],
               ],
             ),
           ),
         ),
-        _ConfirmBar(provider: provider),
+        _ConfirmBar(),
       ],
     );
   }
 }
 
-// ── Course Summary Card ───────────────────────────────────────────────────────
+// ── Course Summary ────────────────────────────────────────────────────────────
 
 class _CourseSummaryCard extends StatelessWidget {
-  final dynamic course; // CourseModel
-
+  final CourseModel course;
   const _CourseSummaryCard({required this.course});
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Container(
       padding:    const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color:        context.colors.cardBg,
-        borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-        boxShadow:    context.colors.cardShadow,
+        color:        c.cardBg,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow:    c.cardShadow,
       ),
       child: Row(
         children: [
           AppNetworkImage(
-            url:          course.imageUrl as String,
-            width:        80,
-            height:       80,
-            borderRadius: BorderRadius.circular(12),
-          ),
+              url:          course.imageUrl,
+              width:        80,
+              height:       80,
+              borderRadius: BorderRadius.circular(12)),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  course.name as String,
-                  style:    context.colors.h3,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                Text(course.name,
+                    style:    c.h3,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 4),
-                if ((course.teacherName as String?) != null &&
-                    (course.teacherName as String).isNotEmpty)
-                  Text(course.teacherName as String, style: context.colors.caption),
-                const SizedBox(height: 6),
+                if ((course.teacherName ?? '').isNotEmpty)
+                  Text(course.teacherName!, style: c.caption),
+                const SizedBox(height: 8),
                 Row(
                   children: [
-                    if ((course.rate as double?) != null) ...[
-                      Icon(Icons.star_rounded,
-                          color: context.colors.accent, size: 14),
-                      const SizedBox(width: 3),
-                      Text(
-                        (course.rate as double).toStringAsFixed(1),
-                        style: context.colors.caption
-                            .copyWith(color: context.colors.textDark),
-                      ),
-                      const SizedBox(width: 10),
-                    ],
-                    _TypeBadge(type: course.type as String),
+                    _PriceBadge(price: course.price),
+                    const SizedBox(width: 8),
+                    _TypeTag(type: course.type ?? ''),
                   ],
                 ),
               ],
@@ -154,68 +167,349 @@ class _CourseSummaryCard extends StatelessWidget {
   }
 }
 
-// ── Price Breakdown ───────────────────────────────────────────────────────────
-
-class _PriceBreakdown extends StatelessWidget {
-  final EnrollmentProvider provider;
-
-  const _PriceBreakdown({required this.provider});
+class _PriceBadge extends StatelessWidget {
+  final double price;
+  const _PriceBadge({required this.price});
 
   @override
   Widget build(BuildContext context) {
-    if (provider.isFree) {
-      return Container(
-        padding:    const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color:        context.colors.success.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-          border: Border.all(
-            color: context.colors.success.withValues(alpha: 0.3),
+    final isFree = price == 0;
+    final c = context.colors;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: isFree
+            ? c.success.withValues(alpha: .1)
+            : c.accent.withValues(alpha: .1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        isFree ? 'مجاني' : '${price.toStringAsFixed(2)} ر.س',
+        style: c.label.copyWith(
+          color:      isFree ? c.success : c.accent,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _TypeTag extends StatelessWidget {
+  final String type;
+  const _TypeTag({required this.type});
+
+  @override
+  Widget build(BuildContext context) {
+    final isLive = type == 'live';
+    final c      = context.colors;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color:        (isLive ? c.danger : c.primary).withValues(alpha: .1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        isLive ? '🔴 مباشر' : '▶ مسجّل',
+        style: c.caption.copyWith(
+          color:      isLive ? c.danger : c.primary,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Free banner ───────────────────────────────────────────────────────────────
+
+class _FreeCourseBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color:        c.success.withValues(alpha: .08),
+        borderRadius: BorderRadius.circular(18),
+        border:       Border.all(color: c.success.withValues(alpha: .3)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.card_giftcard_rounded, color: c.success, size: 32),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('هذا الكورس مجاني! 🎉',
+                    style: c.h3.copyWith(color: c.success)),
+                const SizedBox(height: 4),
+                Text('اضغط "سجّل الآن" للحصول على وصول فوري.',
+                    style: c.caption),
+              ],
+            ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Saved Method Picker ───────────────────────────────────────────────────────
+
+class _SavedMethodPicker extends StatefulWidget {
+  const _SavedMethodPicker();
+
+  @override
+  State<_SavedMethodPicker> createState() => _SavedMethodPickerState();
+}
+
+class _SavedMethodPickerState extends State<_SavedMethodPicker> {
+  // 0..n-1 = saved card index, -1 = bank transfer, -2 = new card
+  int _selected = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final savedP  = context.watch<SavedMethodsProvider>();
+    final enrollP = context.read<EnrollmentProvider>();
+    final c       = context.colors;
+    final cards   = savedP.cards;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width:  34, height: 34,
+              decoration: BoxDecoration(
+                  color: c.primaryTint,
+                  borderRadius: BorderRadius.circular(10)),
+              child: Icon(Icons.payment_rounded, size: 18, color: c.primary),
+            ),
+            const SizedBox(width: 10),
+            Text('طريقة الدفع', style: c.h3.copyWith(fontSize: 15)),
+          ],
+        ),
+        const SizedBox(height: 14),
+
+        // ── Saved cards ──────────────────────────────────────────────────
+        ...cards.asMap().entries.map((e) {
+          final i = e.key;
+          final m = e.value;
+          return _MethodTile(
+            selected:    _selected == i,
+            icon:        Icons.credit_card_rounded,
+            iconColor:   _brandColor(m.cardBrand),
+            title:       m.displayTitle,
+            subtitle:    '${m.cardBrand?.feeLabel ?? ''} رسوم المعالجة',
+            badge:       m.isDefault ? 'افتراضية' : null,
+            onTap: () {
+              setState(() => _selected = i);
+              enrollP.selectSavedCard(m);
+            },
+          );
+        }),
+
+        // ── Bank transfer ────────────────────────────────────────────────
+        _MethodTile(
+          selected:  _selected == -1,
+          icon:      Icons.account_balance_rounded,
+          iconColor: const Color(0xFF2D6A4F),
+          title:     'تحويل بنكي',
+          subtitle:  'بدون رسوم معالجة — يتطلب تحقق يدوي (24 ساعة)',
+          onTap: () {
+            setState(() => _selected = -1);
+            enrollP.selectBankTransfer();
+          },
+        ),
+
+        // ── New card (via Moyasar) ────────────────────────────────────────
+        _MethodTile(
+          selected:  _selected == -2,
+          icon:      Icons.add_card_rounded,
+          iconColor: c.accent,
+          title:     'إضافة بطاقة جديدة',
+          subtitle:  'مدى / فيزا / ماستركارد / Apple Pay / STC Pay',
+          onTap: () {
+            setState(() => _selected = -2);
+            enrollP.selectNewCard();
+          },
+        ),
+      ],
+    );
+  }
+
+  Color _brandColor(CardBrand? b) {
+    switch (b) {
+      case CardBrand.mada:        return const Color(0xFF1B4332);
+      case CardBrand.visa:        return const Color(0xFF1A237E);
+      case CardBrand.mastercard:  return const Color(0xFFB71C1C);
+      case CardBrand.stcPay:      return const Color(0xFF4A148C);
+      default:                    return const Color(0xFF263238);
+    }
+  }
+}
+
+class _MethodTile extends StatelessWidget {
+  final bool       selected;
+  final IconData   icon;
+  final Color      iconColor;
+  final String     title, subtitle;
+  final String?    badge;
+  final VoidCallback onTap;
+
+  const _MethodTile({
+    required this.selected,
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.badge,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color:        selected
+              ? c.primary.withValues(alpha: .05)
+              : c.cardBg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+              color: selected ? c.primary : c.divider,
+              width: selected ? 2       : 1),
+          boxShadow: selected ? c.primaryShadow : c.cardShadow,
         ),
         child: Row(
           children: [
-            Icon(Icons.card_giftcard_rounded,
-                color: context.colors.success, size: 28),
+            Container(
+              width:  42, height: 42,
+              decoration: BoxDecoration(
+                  color:        iconColor.withValues(alpha: .1),
+                  borderRadius: BorderRadius.circular(12)),
+              child: Icon(icon, color: iconColor, size: 22),
+            ),
             const SizedBox(width: 12),
-            Text(
-              'هذا الكورس مجاني تماماً!',
-              style: context.colors.h3.copyWith(color: context.colors.success),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(title,
+                          style: c.label.copyWith(
+                              color:      selected ? c.primary : c.textDark,
+                              fontWeight: FontWeight.w700,
+                              fontSize:   14)),
+                      if (badge != null) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color:        Colors.amber.withValues(alpha: .15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(badge!,
+                              style: c.caption.copyWith(
+                                  color: Colors.amber[800], fontSize: 10)),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(subtitle, style: c.caption.copyWith(fontSize: 11)),
+                ],
+              ),
+            ),
+            // Radio dot
+            Container(
+              width:  20, height: 20,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: selected ? c.primary : Colors.transparent,
+                border: Border.all(
+                    color: selected ? c.primary : c.divider, width: 2),
+              ),
+              child: selected
+                  ? const Icon(Icons.check_rounded,
+                      size: 12, color: Colors.white)
+                  : null,
             ),
           ],
         ),
-      );
-    }
+      ),
+    );
+  }
+}
 
-    return Container(
-      padding:    const EdgeInsets.all(16),
+// ── Fee Breakdown Card ────────────────────────────────────────────────────────
+
+class _FeeBreakdownCard extends StatelessWidget {
+  const _FeeBreakdownCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final enroll  = context.watch<EnrollmentProvider>();
+    final savedP  = context.watch<SavedMethodsProvider>();
+    final fees    = enroll.computedFees(savedP);
+    final c       = context.colors;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color:        context.colors.cardBg,
-        borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-        boxShadow:    context.colors.cardShadow,
+        color:        c.cardBg,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow:    c.cardShadow,
+        border:       Border.all(color: c.divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('ملخص الطلب', style: context.colors.h3),
-          const SizedBox(height: 14),
-          Divider(color: context.colors.divider, height: 1),
-          const SizedBox(height: 14),
-          _PriceRow(
-            label: 'سعر الكورس',
-            value: '${provider.subtotal.toStringAsFixed(2)} ج.م',
+          Row(
+            children: [
+              Icon(Icons.receipt_long_rounded, color: c.primary, size: 20),
+              const SizedBox(width: 8),
+              Text('تفاصيل الفاتورة', style: c.h3.copyWith(fontSize: 14)),
+            ],
           ),
-          // No VAT — Egyptian educational services are VAT-exempt
           const SizedBox(height: 14),
-          Divider(color: context.colors.divider, height: 1),
-          const SizedBox(height: 14),
+          Divider(color: c.divider, height: 1),
+          const SizedBox(height: 12),
+
+          _FeeRow(label: 'سعر الكورس',
+              value: fees.fmt(fees.coursePrice)),
+          _FeeRow(label: 'رسوم المنصة (10%)',
+              value: fees.fmt(fees.platformFee)),
+          _FeeRow(label: 'ضريبة القيمة المضافة (15%) على الرسوم',
+              value: fees.fmt(fees.vatOnPlatform)),
+          _FeeRow(
+            label:    'رسوم المعالجة',
+            value:    fees.fmt(fees.gatewayFee),
+            subLabel: fees.gatewayLabel,
+            isGreen:  fees.gatewayFee == 0,
+          ),
+
+          const SizedBox(height: 10),
+          Divider(color: c.divider, height: 1),
+          const SizedBox(height: 12),
+
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('الإجمالي', style: context.colors.h2),
+              Text('الإجمالي', style: c.h2.copyWith(fontSize: 17)),
               Text(
-                '${provider.total.toStringAsFixed(2)} ج.م',
-                style: context.colors.h2.copyWith(color: context.colors.primary),
+                fees.fmt(fees.total),
+                style: c.h2.copyWith(
+                    color: c.primary, fontSize: 19),
               ),
             ],
           ),
@@ -225,113 +519,40 @@ class _PriceBreakdown extends StatelessWidget {
   }
 }
 
-class _PriceRow extends StatelessWidget {
-  final String label;
-  final String value;
+class _FeeRow extends StatelessWidget {
+  final String  label, value;
+  final String? subLabel;
+  final bool    isGreen;
 
-  const _PriceRow({required this.label, required this.value});
+  const _FeeRow({
+    required this.label,
+    required this.value,
+    this.subLabel,
+    this.isGreen = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: context.colors.body.copyWith(height: 1)),
-        Text(value,
-            style: context.colors.label.copyWith(color: context.colors.textDark)),
-      ],
-    );
-  }
-}
-
-// ── Bank Transfer Method Card (only payment option) ───────────────────────────
-
-class _BankTransferMethodCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
-      padding:  const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color:        context.colors.primary.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-        border: Border.all(color: context.colors.primary, width: 2),
-        boxShadow:    context.colors.primaryShadow,
-      ),
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 9),
       child: Row(
         children: [
-          Container(
-            width:  46,
-            height: 46,
-            decoration: BoxDecoration(
-              color:        context.colors.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(Icons.account_balance_rounded,
-                size: 24, color: context.colors.primary),
-          ),
-          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'تحويل بنكي',
-                  style: context.colors.label.copyWith(
-                    color:      context.colors.primary,
-                    fontWeight: FontWeight.w700,
-                    fontSize:   14,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'QNB — بنك قطر الوطني مصر',
-                  style: context.colors.caption.copyWith(fontSize: 11),
-                ),
+                Text(label, style: c.body.copyWith(fontSize: 13)),
+                if (subLabel != null)
+                  Text(subLabel!, style: c.caption.copyWith(fontSize: 10)),
               ],
             ),
           ),
-          Container(
-            width:  22,
-            height: 22,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: context.colors.primary,
-              border: Border.all(color: context.colors.primary, width: 2),
-            ),
-            child: const Icon(Icons.check_rounded, color: Colors.white, size: 14),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Bank Transfer Note ────────────────────────────────────────────────────────
-
-class _BankTransferNote extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color:        context.colors.accent.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: context.colors.accent.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.info_outline_rounded,
-              size: 16, color: context.colors.accent),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'سيتم تفعيل الكورس بعد التحقق من التحويل البنكي خلال 24 ساعة.',
-              style: context.colors.caption.copyWith(
-                color: context.colors.accent,
-                height: 1.5,
-              ),
+          Text(
+            value,
+            style: c.label.copyWith(
+              color:      isGreen ? c.success : c.textDark,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -343,17 +564,20 @@ class _BankTransferNote extends StatelessWidget {
 // ── Confirm Bar ───────────────────────────────────────────────────────────────
 
 class _ConfirmBar extends StatelessWidget {
-  final EnrollmentProvider provider;
-
-  const _ConfirmBar({required this.provider});
-
-  String get _label {
-    if (provider.isFree) return 'سجّل مجاناً';
-    return 'متابعة للدفع — ${provider.total.toStringAsFixed(2)} ج.م';
-  }
+  const _ConfirmBar();
 
   @override
   Widget build(BuildContext context) {
+    final enroll = context.watch<EnrollmentProvider>();
+    final savedP = context.watch<SavedMethodsProvider>();
+    final fees   = enroll.isFree ? null : enroll.computedFees(savedP);
+
+    final label = enroll.isFree
+        ? 'سجّل مجاناً الآن'
+        : fees == null
+            ? 'متابعة'
+            : 'ادفع ${fees.fmt(fees.total)}';
+
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
       decoration: BoxDecoration(
@@ -361,32 +585,27 @@ class _ConfirmBar extends StatelessWidget {
         boxShadow: context.colors.bottomNavShadow,
       ),
       child: GestureDetector(
-        onTap: !provider.isLoading ? () => provider.confirm() : null,
+        onTap: enroll.isLoading ? null : () => enroll.confirm(savedP),
         child: Container(
-          height: 54,
+          height: 56,
           decoration: BoxDecoration(
             gradient:     context.colors.primaryGradient,
             borderRadius: BorderRadius.circular(30),
             boxShadow:    context.colors.primaryShadow,
           ),
           child: Center(
-            child: provider.isLoading
+            child: enroll.isLoading
                 ? const SizedBox(
-              width:  24,
-              height: 24,
-              child: CircularProgressIndicator(
-                color: Colors.white, strokeWidth: 2.5,
-              ),
-            )
-                : Text(
-              _label,
-              style: const TextStyle(
-                color:      Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize:   16,
-                fontFamily: 'Cairo',
-              ),
-            ),
+                    width: 24, height: 24,
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2.5))
+                : Text(label,
+                    style: const TextStyle(
+                      color:      Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize:   16,
+                      fontFamily: 'Cairo',
+                    )),
           ),
         ),
       ),
@@ -395,7 +614,7 @@ class _ConfirmBar extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STEP 2: Bank Transfer Details
+// STEP 2 — Bank transfer details
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _BankStep extends StatelessWidget {
@@ -403,146 +622,127 @@ class _BankStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<EnrollmentProvider>();
-    final info     = provider.bankInfo;
+    final enroll = context.watch<EnrollmentProvider>();
+    final info   = enroll.bankInfo;
+    final c      = context.colors;
 
     return Column(
       children: [
-        ScreenAppBar(title: 'بيانات التحويل البنكي'),
+        ScreenAppBar(title: 'بيانات التحويل'),
         Expanded(
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // ── Instruction banner ─────────────────────────────────────
+                // Top notice
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color:        context.colors.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(context.colors.radiusMedium),
+                    gradient: LinearGradient(
+                      colors: [
+                        c.primary.withValues(alpha: .08),
+                        c.primary.withValues(alpha: .03),
+                      ],
+                      begin: Alignment.topLeft,
+                      end:   Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                        color: context.colors.primary.withValues(alpha: 0.25)),
+                        color: c.primary.withValues(alpha: .2)),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Icon(Icons.info_outline_rounded,
-                          color: context.colors.primary, size: 22),
+                          color: c.primary, size: 22),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'حوّل المبلغ إلى الحساب أدناه ثم اضغط "تم التحويل". سيتم تفعيل الكورس بعد التحقق خلال 24 ساعة.',
-                          style: context.colors.body.copyWith(
-                              height: 1.6, color: context.colors.primary),
+                          'حوّل المبلغ المبيّن أدناه ثم اضغط "تم التحويل". سيتم مراجعة التحويل وتفعيل كورسك خلال 24 ساعة.',
+                          style: c.body.copyWith(
+                              color: c.primary, height: 1.6),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
 
-                // ── Amount ─────────────────────────────────────────────────
-                _BankDetailTile(
-                  label:     'المبلغ المطلوب',
-                  value:     '${provider.total.toStringAsFixed(2)} ج.م',
-                  highlight: true,
-                ),
-                const SizedBox(height: 12),
-
+                // Fee summary
                 if (info != null) ...[
-                  // ── Reference (most important — used for verification) ──
-                  _BankDetailTile(
-                    label:    'رقم المرجع (اكتبه في بيان التحويل)',
-                    value:    info.reference.isNotEmpty ? info.reference : '—',
-                    copyable: true,
-                    highlightBorder: true,
+                  _BankTile(
+                    label:     'المبلغ الإجمالي',
+                    value:     '${info['fees']?['total']?.toStringAsFixed(2) ?? '—'} ر.س',
+                    highlight: true,
                   ),
-                  const SizedBox(height: 12),
-
-                  // ── Bank name ──────────────────────────────────────────
-                  _BankDetailTile(
-                    label:    'اسم البنك',
-                    value:    info.bankName.isNotEmpty ? info.bankName : '—',
-                    copyable: false,
+                  const SizedBox(height: 10),
+                  _BankTile(
+                    label:     'رقم المرجع (اكتبه في بيان التحويل)',
+                    value:     info['instructions']['reference'] as String? ?? '—',
+                    copyable:  true,
+                    golden:    true,
                   ),
-                  const SizedBox(height: 12),
-
-                  // ── Account name ───────────────────────────────────────
-                  _BankDetailTile(
-                    label:    'اسم صاحب الحساب',
-                    value:    info.accountName.isNotEmpty ? info.accountName : '—',
-                    copyable: true,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // ── Account number ─────────────────────────────────────
-                  _BankDetailTile(
-                    label:    'رقم الحساب',
-                    value:    info.accountNumber.isNotEmpty ? info.accountNumber : '—',
-                    copyable: true,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // ── IBAN ───────────────────────────────────────────────
-                  _BankDetailTile(
-                    label:    'رقم الآيبان (IBAN)',
-                    value:    info.iban.isNotEmpty ? info.iban : '—',
-                    copyable: true,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // ── SWIFT ──────────────────────────────────────────────
-                  _BankDetailTile(
-                    label:    'كود السويفت (SWIFT / BIC)',
-                    value:    info.swiftCode.isNotEmpty ? info.swiftCode : '—',
-                    copyable: true,
-                  ),
+                  const SizedBox(height: 10),
+                  _BankTile(label: 'اسم البنك',
+                      value: info['instructions']['bank_name'] as String? ?? '—'),
+                  const SizedBox(height: 10),
+                  _BankTile(label: 'صاحب الحساب',
+                      value:    info['instructions']['account_name'] as String? ?? '—',
+                      copyable: true),
+                  const SizedBox(height: 10),
+                  _BankTile(label: 'رقم الحساب',
+                      value:    info['instructions']['account_number'] as String? ?? '—',
+                      copyable: true),
+                  const SizedBox(height: 10),
+                  _BankTile(label: 'الآيبان IBAN',
+                      value:    info['instructions']['iban'] as String? ?? '—',
+                      copyable: true,
+                      mono:     true),
+                  const SizedBox(height: 10),
+                  _BankTile(label: 'SWIFT / BIC',
+                      value:    info['instructions']['swift_code'] as String? ?? '—',
+                      copyable: true,
+                      mono:     true),
                 ],
-                const SizedBox(height: 32),
 
-                // ── Confirm transfer button ────────────────────────────────
+                const SizedBox(height: 28),
+
+                // Confirm button
                 GestureDetector(
-                  onTap: provider.confirmBankTransfer,
+                  onTap: context.read<EnrollmentProvider>().confirmBankTransfer,
                   child: Container(
                     height: 54,
                     decoration: BoxDecoration(
-                      gradient:     context.colors.primaryGradient,
+                      gradient:     c.primaryGradient,
                       borderRadius: BorderRadius.circular(30),
-                      boxShadow:    context.colors.primaryShadow,
+                      boxShadow:    c.primaryShadow,
                     ),
                     child: const Center(
-                      child: Text(
-                        'تم التحويل ✓',
-                        style: TextStyle(
-                          color:      Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize:   16,
-                          fontFamily: 'Cairo',
-                        ),
-                      ),
+                      child: Text('تم التحويل ✓',
+                          style: TextStyle(
+                            color:      Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize:   16,
+                            fontFamily: 'Cairo',
+                          )),
                     ),
                   ),
                 ),
-                const SizedBox(height: 14),
-
-                // ── Back button ────────────────────────────────────────────
+                const SizedBox(height: 12),
                 GestureDetector(
-                  onTap: provider.backToMethod,
+                  onTap: context.read<EnrollmentProvider>().backToMethod,
                   child: Container(
                     height: 48,
                     decoration: BoxDecoration(
-                      color:        context.colors.background,
+                      color:        c.background,
                       borderRadius: BorderRadius.circular(30),
-                      border:       Border.all(color: context.colors.divider),
+                      border:       Border.all(color: c.divider),
                     ),
                     child: Center(
-                      child: Text(
-                        'العودة',
-                        style: context.colors.label
-                            .copyWith(color: context.colors.textMedium),
-                      ),
+                      child: Text('العودة',
+                          style: c.label.copyWith(
+                              color: c.textMedium)),
                     ),
                   ),
                 ),
@@ -555,41 +755,52 @@ class _BankStep extends StatelessWidget {
   }
 }
 
-// ── Bank Detail Tile ──────────────────────────────────────────────────────────
-
-class _BankDetailTile extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool   copyable;
-  final bool   highlight;
-  final bool   highlightBorder;
-
-  const _BankDetailTile({
+class _BankTile extends StatefulWidget {
+  final String label, value;
+  final bool   copyable, highlight, golden, mono;
+  const _BankTile({
     required this.label,
     required this.value,
-    this.copyable       = false,
-    this.highlight      = false,
-    this.highlightBorder = false,
+    this.copyable  = false,
+    this.highlight = false,
+    this.golden    = false,
+    this.mono      = false,
   });
 
   @override
+  State<_BankTile> createState() => _BankTileState();
+}
+
+class _BankTileState extends State<_BankTile> {
+  bool _copied = false;
+
+  Future<void> _copy() async {
+    await Clipboard.setData(ClipboardData(text: widget.value));
+    setState(() => _copied = true);
+    await Future.delayed(const Duration(seconds: 2));
+    if (mounted) setState(() => _copied = false);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final c = context.colors;
+    final bgColor = widget.golden
+        ? Colors.amber.withValues(alpha: .07)
+        : widget.highlight
+            ? c.primary.withValues(alpha: .06)
+            : c.cardBg;
+    final borderColor = widget.golden
+        ? Colors.amber.withValues(alpha: .35)
+        : widget.highlight
+            ? c.primary.withValues(alpha: .25)
+            : c.divider;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: highlight
-            ? context.colors.accent.withValues(alpha: 0.08)
-            : context.colors.cardBg,
-        borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-        border: Border.all(
-          color: highlight
-              ? context.colors.accent.withValues(alpha: 0.3)
-              : highlightBorder
-              ? context.colors.primary.withValues(alpha: 0.4)
-              : context.colors.divider,
-          width: highlightBorder ? 1.5 : 1,
-        ),
-        boxShadow: highlight || highlightBorder ? [] : context.colors.cardShadow,
+        color:        bgColor,
+        borderRadius: BorderRadius.circular(14),
+        border:       Border.all(color: borderColor),
+        boxShadow: widget.highlight || widget.golden ? [] : c.cardShadow,
       ),
       child: Row(
         children: [
@@ -597,49 +808,41 @@ class _BankDetailTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: context.colors.caption
-                      .copyWith(color: context.colors.textMedium),
-                ),
+                Text(widget.label,
+                    style: c.caption.copyWith(fontSize: 10)),
                 const SizedBox(height: 4),
                 Text(
-                  value,
-                  style: highlight
-                      ? context.colors.h2
-                      .copyWith(color: context.colors.accent)
-                      : context.colors.h3.copyWith(
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.5,
-                  ),
+                  widget.value,
+                  style: widget.highlight
+                      ? c.h2.copyWith(color: c.primary)
+                      : widget.golden
+                          ? c.h3.copyWith(
+                              color:       Colors.amber[800],
+                              letterSpacing: 1.4)
+                          : c.label.copyWith(
+                              fontWeight:  FontWeight.w600,
+                              letterSpacing: widget.mono ? 1.5 : 0),
                 ),
               ],
             ),
           ),
-          if (copyable)
+          if (widget.copyable)
             GestureDetector(
-              onTap: () {
-                Clipboard.setData(ClipboardData(text: value));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('تم النسخ: $value',
-                        style: const TextStyle(fontFamily: 'Cairo')),
-                    backgroundColor: context.colors.success,
-                    behavior:        SnackBarBehavior.floating,
-                    duration:        const Duration(seconds: 2),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                );
-              },
-              child: Container(
+              onTap: _copy,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color:        context.colors.primary.withValues(alpha: 0.1),
+                  color: _copied
+                      ? c.success.withValues(alpha: .12)
+                      : c.primary.withValues(alpha: .08),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(Icons.copy_rounded,
-                    color: context.colors.primary, size: 18),
+                child: Icon(
+                  _copied ? Icons.check_rounded : Icons.copy_rounded,
+                  size:  16,
+                  color: _copied ? c.success : c.primary,
+                ),
               ),
             ),
         ],
@@ -649,7 +852,7 @@ class _BankDetailTile extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STEP 3: Success / Pending Verification
+// STEP 3 — Success
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SuccessStep extends StatefulWidget {
@@ -662,16 +865,14 @@ class _SuccessStep extends StatefulWidget {
 class _SuccessStepState extends State<_SuccessStep>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
-  late Animation<double>   _scale;
-  late Animation<double>   _fade;
+  late Animation<double>   _scale, _fade;
 
   @override
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-      vsync:    this,
-      duration: const Duration(milliseconds: 700),
-    )..forward();
+        vsync: this, duration: const Duration(milliseconds: 800))
+      ..forward();
     _scale = CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut);
     _fade  = CurvedAnimation(parent: _ctrl, curve: Curves.easeIn);
   }
@@ -684,24 +885,12 @@ class _SuccessStepState extends State<_SuccessStep>
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.read<EnrollmentProvider>();
-    final isPending = provider.paidViaBankTransfer; // bank transfer = pending
+    final enroll = context.read<EnrollmentProvider>();
+    final isPending = enroll.paidViaBankTransfer;
+    final c = context.colors;
 
-    // Colors & content differ between free enrollment and bank transfer
-    final iconColor1 = isPending
-        ? context.colors.accent
-        : context.colors.success;
-    final iconColor2 = isPending
-        ? const Color(0xFFF39C12)
-        : const Color(0xFF2ECC71);
-    final icon = isPending ? Icons.hourglass_top_rounded : Icons.check_rounded;
-    final headline = isPending
-        ? 'في انتظار التحقق ⏳'
-        : 'تم الاشتراك بنجاح! 🎉';
-    final body = isPending
-        ? 'تم إرسال طلب التسجيل في "${provider.course.name}". سيتم تفعيل الكورس خلال 24 ساعة بعد التحقق من التحويل البنكي.'
-        : 'أنت الآن مسجّل في كورس "${provider.course.name}". يمكنك الوصول إليه من قسم "كورساتي".';
-    final buttonLabel = isPending ? 'العودة للرئيسية' : 'الذهاب إلى كورساتي';
+    final color1 = isPending ? c.accent : c.success;
+    final color2 = isPending ? const Color(0xFFF39C12) : const Color(0xFF2ECC71);
 
     return FadeTransition(
       opacity: _fade,
@@ -716,77 +905,80 @@ class _SuccessStepState extends State<_SuccessStep>
               scale: _scale,
               child: Center(
                 child: Container(
-                  width:  120,
-                  height: 120,
+                  width: 120, height: 120,
                   margin: const EdgeInsets.only(bottom: 32),
-                  alignment: Alignment.center,
                   decoration: BoxDecoration(
                     shape:    BoxShape.circle,
                     gradient: LinearGradient(
-                      colors: [iconColor1, iconColor2],
-                      begin:  Alignment.topLeft,
-                      end:    Alignment.bottomRight,
-                    ),
+                        colors: [color1, color2],
+                        begin:  Alignment.topLeft,
+                        end:    Alignment.bottomRight),
                     boxShadow: [
                       BoxShadow(
-                        color:      iconColor1.withValues(alpha: 0.40),
-                        blurRadius: 28,
-                        offset:     const Offset(0, 10),
-                      ),
+                          color:      color1.withValues(alpha: .4),
+                          blurRadius: 28,
+                          offset:     const Offset(0, 10)),
                     ],
                   ),
-                  child: Icon(icon, color: Colors.white, size: 60),
+                  child: Icon(
+                    isPending
+                        ? Icons.hourglass_top_rounded
+                        : Icons.check_rounded,
+                    color: Colors.white, size: 60,
+                  ),
                 ),
               ),
             ),
 
-            Text(headline,
-                style:     context.colors.h1.copyWith(fontSize: 26),
-                textAlign: TextAlign.center),
+            Text(
+              isPending ? 'في انتظار التحقق ⏳' : 'تم الاشتراك بنجاح! 🎉',
+              style:     c.h1.copyWith(fontSize: 24),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 12),
-            Text(body,
-                style:     context.colors.body.copyWith(height: 1.7),
-                textAlign: TextAlign.center),
+            Text(
+              isPending
+                  ? 'سيتم تفعيل الكورس خلال 24 ساعة بعد التحقق من التحويل البنكي.'
+                  : 'يمكنك الوصول إلى كورسك الآن من قسم "كورساتي".',
+              style:     c.body.copyWith(height: 1.7),
+              textAlign: TextAlign.center,
+            ),
 
-            // ── Reference reminder for bank transfer ───────────────────────
-            if (isPending && provider.bankInfo != null) ...[
+            // Reference reminder
+            if (isPending && enroll.bankInfo != null) ...[
               const SizedBox(height: 20),
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color:        context.colors.accent.withValues(alpha: 0.08),
+                  color:        Colors.amber.withValues(alpha: .08),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                      color: context.colors.accent.withValues(alpha: 0.3)),
+                      color: Colors.amber.withValues(alpha: .35)),
                 ),
                 child: Column(
                   children: [
-                    Text('رقم المرجع الخاص بك',
-                        style: context.colors.caption),
+                    Text('رقم المرجع', style: c.caption),
                     const SizedBox(height: 6),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          provider.bankInfo!.reference,
-                          style: context.colors.h2.copyWith(
-                              color: context.colors.accent,
-                              letterSpacing: 1.2),
+                          enroll.bankInfo!['instructions']['reference']
+                                  as String? ??
+                              '—',
+                          style: c.h2.copyWith(
+                              color:         Colors.amber[800],
+                              letterSpacing: 1.5),
                         ),
                         const SizedBox(width: 8),
                         GestureDetector(
-                          onTap: () => Clipboard.setData(
-                              ClipboardData(text: provider.bankInfo!.reference)),
+                          onTap: () => Clipboard.setData(ClipboardData(
+                              text: enroll.bankInfo!['instructions']
+                                  ['reference'] as String? ?? '')),
                           child: Icon(Icons.copy_rounded,
-                              size: 18, color: context.colors.accent),
+                              size: 18, color: Colors.amber[800]),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'احتفظ بهذا الرقم — سيُستخدم للتحقق من تحويلك',
-                      style: context.colors.caption.copyWith(fontSize: 11),
-                      textAlign: TextAlign.center,
                     ),
                   ],
                 ),
@@ -795,19 +987,18 @@ class _SuccessStepState extends State<_SuccessStep>
 
             const SizedBox(height: 40),
 
-            // ── Primary button ─────────────────────────────────────────────
             GestureDetector(
               onTap: () => Navigator.of(context).popUntil((r) => r.isFirst),
               child: Container(
                 height: 54,
                 decoration: BoxDecoration(
-                  gradient:     context.colors.primaryGradient,
+                  gradient:     c.primaryGradient,
                   borderRadius: BorderRadius.circular(30),
-                  boxShadow:    context.colors.primaryShadow,
+                  boxShadow:    c.primaryShadow,
                 ),
                 child: Center(
                   child: Text(
-                    buttonLabel,
+                    isPending ? 'العودة للرئيسية' : 'ابدأ التعلم الآن',
                     style: const TextStyle(
                       color:      Colors.white,
                       fontWeight: FontWeight.w800,
@@ -818,57 +1009,7 @@ class _SuccessStepState extends State<_SuccessStep>
                 ),
               ),
             ),
-            const SizedBox(height: 14),
-
-            // ── Secondary button ───────────────────────────────────────────
-            GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
-              child: Container(
-                height: 48,
-                decoration: BoxDecoration(
-                  color:        context.colors.background,
-                  borderRadius: BorderRadius.circular(30),
-                  border:       Border.all(color: context.colors.divider),
-                ),
-                child: Center(
-                  child: Text(
-                    'متابعة التصفح',
-                    style: context.colors.label
-                        .copyWith(color: context.colors.textMedium),
-                  ),
-                ),
-              ),
-            ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-class _TypeBadge extends StatelessWidget {
-  final String type;
-
-  const _TypeBadge({required this.type});
-
-  @override
-  Widget build(BuildContext context) {
-    final isLive = type == 'live';
-    final color  = isLive ? context.colors.danger : context.colors.primary;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color:        color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        isLive ? '🔴 مباشر' : '▶ مسجّل',
-        style: context.colors.caption.copyWith(
-          color:      color,
-          fontWeight: FontWeight.w700,
         ),
       ),
     );
