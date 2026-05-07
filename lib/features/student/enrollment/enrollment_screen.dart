@@ -62,6 +62,12 @@ class _EnrollView extends StatelessWidget {
                 EnrollStep.method      => const _MethodStep(key: ValueKey('m')),
                 EnrollStep.bankDetails => const _BankStep(key: ValueKey('b')),
                 EnrollStep.success     => const _SuccessStep(key: ValueKey('s')),
+                // TODO: Handle this case.
+                EnrollStep.waitingCard => throw UnimplementedError(),
+                // TODO: Handle this case.
+                EnrollStep.verifying => throw UnimplementedError(),
+                // TODO: Handle this case.
+                EnrollStep.failed => throw UnimplementedError(),
               },
             ),
           ),

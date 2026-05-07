@@ -10,7 +10,6 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/auth/forget_screen.dart';
 import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart';
-import 'package:flutter_education_app/features/enrollment/enrollment_screen.dart';
 import 'package:flutter_education_app/features/student/home/home_screen.dart';
 import 'package:flutter_education_app/features/student/models.dart';
 import 'package:provider/provider.dart';

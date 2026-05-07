@@ -944,7 +944,18 @@
   "duration": {
     "en": "Duration",
     "ar": "المده"
+  },
+  "change_language": {
+    "en": "Change Language",
+    "ar": "تغير اللفة"
+  },
+  "dark_mode": {
+    "en": "Dark Mode",
+    "ar": "الوضع الليلي"
+  },
+  "privacy": {
+    "en": "Privacy and Conditions",
+    "ar": "سياية الخصوصية"
   }
-
 
 }

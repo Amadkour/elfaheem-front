@@ -186,7 +186,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                           icon: Icons.info_rounded,
                           iconBg: c.accentTint,
                           iconColor: c.accent,
-                          label: 'about_us'.tr,
+                          label: 'about'.tr,
                           onTap: () => _push(const AboutScreen()),
                         ),
                       ],
