@@ -66,8 +66,7 @@ class _HubViewState extends State<_HubView>
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: context.colors.background,
-        body: NestedScrollView(
-          headerSliverBuilder: (ctx, _) => [_buildAppBar(ctx)],
+        body: NestedScrollView(headerSliverBuilder: (ctx, _) => [SliverToBoxAdapter(child: _buildAppBar(ctx))],
           body: TabBarView(
             controller: _tab,
             children: [_buildExamsTab(prov), _buildResultsTab(prov)],
@@ -90,63 +89,105 @@ class _HubViewState extends State<_HubView>
   }
 
   // ── App bar ─────────────────────────────────────────────────────────────────
-  Widget _buildAppBar(BuildContext ctx) => SliverAppBar(
-    expandedHeight: 148,
-    pinned: true,
-    backgroundColor: context.colors.primary,
-    leading: IconButton(
-      icon: const Icon(Icons.arrow_forward_ios,
-          color: Colors.white, size: 20),
-      onPressed: () => Navigator.pop(ctx),
-    ),
-    flexibleSpace: FlexibleSpaceBar(
-      background: Container(
-        decoration:  BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-            colors: [context.colors.primary, Colors.deepPurple],
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 56, 20, 16),
+  Widget _buildAppBar(BuildContext ctx) =>
+      Column(
+        children: [
+          Container(
+            height: 250,
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+            decoration:  BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xff2E67F8),
+                  Color(0xff3E84FF),
+                ],
+              ),
+              image: DecorationImage(
+                image: AssetImage('assets/images/test_background.png'),
+                fit: BoxFit.cover,),
+              borderRadius: BorderRadius.vertical(
+                bottom: Radius.circular(34),
+              ),
+            ),
             child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  const Text('إدارة الاختبارات',
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    IconButton(
+                      icon:  const Icon(Icons.arrow_back_ios,
+                          color: Colors.white, size: 20),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                    const Spacer(),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'الاختبارات',
                       style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          fontFamily: 'Cairo')),
-                  Text(widget.courseTitle,
-                      style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 13,
-                          fontFamily: 'Cairo')),
-                ]),
+                        color: Colors.white,
+                        fontSize: 34,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'تابع تقدم طلابك ✨',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                Expanded(
+                  child: Container(
+
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(28),
+                      ),
+                    ),
+                    child: TabBar(
+                      controller: _tab,
+                      indicatorSize: TabBarIndicatorSize.label,
+                      indicatorWeight: 4,
+                      indicatorColor: Color(0xff2E67F8),
+                      labelColor: Color(0xff2E67F8),
+                      unselectedLabelColor: Color(0xff8B94B0),
+                      labelStyle: const TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      unselectedLabelStyle: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      tabs: const [
+                        Tab(text: 'الاختبارات'),
+                        Tab(text: 'نتائج الطلاب'),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      ),
-    ),
-    bottom: TabBar(
-      controller: _tab,
-      labelStyle: const TextStyle(
-          fontFamily: 'Cairo', fontWeight: FontWeight.w700, fontSize: 14),
-      unselectedLabelStyle:
-      const TextStyle(fontFamily: 'Cairo', fontSize: 13),
-      labelColor: Colors.white,
-      unselectedLabelColor: Colors.white60,
-      indicatorColor: Colors.white,
-      indicatorWeight: 3,
-      tabs: const [
-        Tab(text: 'الاختبارات'),
-        Tab(text: 'نتائج الطلاب'),
-      ],
-    ),
-  );
+        ],
+      );
 
   // ══════════════════════════════════════════════════════════════════════════
   // Tab 1 — Exams list
@@ -408,194 +449,262 @@ class _ExamCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.only(bottom: 14),
+    margin: const EdgeInsets.only(bottom: 16),
     decoration: BoxDecoration(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(22),
+      border: Border(
+
+      ),
       boxShadow: [
         BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 3))
+          color: Colors.grey.withOpacity(.3),
+          blurRadius: 20,
+          offset: const Offset(0, 8),
+        ),
       ],
     ),
-    child: Column(children: [
-      // ── Header ─────────────────────────────────────────────────────────
-      Container(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-        decoration: BoxDecoration(
-          color: _statusColor.withValues(alpha: 0.06),
-          borderRadius:
-          const BorderRadius.vertical(top: Radius.circular(16)),
-        ),
-        child: Row(children: [
-          Expanded(
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(exam.name,
-                      style: const TextStyle(
+    child: Padding(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+
+          /// HEADER
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+
+              /// Left Icon
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: context.colors.primary.withOpacity(.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  Icons.quiz_rounded,
+                  color: context.colors.primary,
+                  size: 28,
+                ),
+              ),
+
+              const SizedBox(width: 14),
+
+              /// Title + Desc
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+
+                    Row(
+                      children: [
+
+                        Expanded(
+                          child: Text(
+                            exam.name,
+                            style: const TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: exam.isPublished
+                                ? Colors.green.withOpacity(.1)
+                                : Colors.orange.withOpacity(.1),
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          child: Text(
+                            exam.isPublished ? 'منشور' : 'غير منشور',
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: exam.isPublished
+                                  ? Colors.green
+                                  : Colors.orange,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 6),
+
+                    if (exam.description != null)
+                      Text(
+                        exam.description!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
                           fontFamily: 'Cairo',
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700)),
-                  if (exam.description != null) ...[
-                    const SizedBox(height: 2),
-                    Text(exam.description!,
-                        style: const TextStyle(
-                            fontFamily: 'Cairo',
-                            fontSize: 12,
-                            color: Colors.grey),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
+                          fontSize: 13,
+                          height: 1.5,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
                   ],
-                ]),
-          ),
-          const SizedBox(width: 10),
-          _StatusBadge(_statusLabel, _statusColor),
-        ]),
-      ),
-
-      // ── Info chips ──────────────────────────────────────────────────────
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-        child: Row(children: [
-          _Chip(Icons.help_outline_rounded,
-              '${exam.questionCount} سؤال', Colors.blueGrey),
-          const SizedBox(width: 12),
-          _Chip(Icons.timer_outlined,
-              '${exam.duration ?? 0} دقيقة', Colors.teal),
-          if (exam.passcode != null) ...[
-            const SizedBox(width: 12),
-            _Chip(Icons.lock_outline_rounded, exam.passcode!,
-                Colors.purple),
-          ],
-        ]),
-      ),
-      if (exam.startDate != null)
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-          child: Row(children: [
-            _Chip(Icons.schedule_rounded, _fmtDate(exam.startDate!),
-                Colors.orange),
-          ]),
-        ),
-
-      // ── Action row ──────────────────────────────────────────────────────
-      Padding(
-        padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
-        child: Row(children: [
-          // Publish / Unpublish
-          Expanded(
-            child: _ActionBtn(
-              onTap: onToggle,
-              color: exam.isPublished ? context.colors.success : Colors.grey,
-              filled: exam.isPublished,
-              icon: exam.isPublished
-                  ? Icons.visibility_rounded
-                  : Icons.visibility_off_rounded,
-              label: exam.isPublished ? 'منشور' : 'نشر',
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Manage questions
-          Expanded(
-            child: _ActionBtn(
-              onTap: onManageQuestions,
-              color: Colors.deepOrange,
-              filled: false,
-              icon: Icons.edit_note_rounded,
-              label: 'الأسئلة',
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Results
-          Expanded(
-            child: _ActionBtn(
-              onTap: onResults,
-              color: context.colors.primary,
-              filled: false,
-              icon: Icons.bar_chart_rounded,
-              label: 'النتائج',
-            ),
-          ),
-          const SizedBox(width: 8),
-          // More (delete)
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert_rounded,
-                color: Colors.grey, size: 20),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
-            onSelected: (v) {
-              if (v == 'delete') onDelete();
-            },
-            itemBuilder: (_) => [
-              const PopupMenuItem(
-                value: 'delete',
-                child: ListTile(
-                  leading: Icon(Icons.delete_outline,
-                      color: Colors.red),
-                  title: Text('حذف الاختبار',
-                      style: TextStyle(
-                          fontFamily: 'Cairo', color: Colors.red)),
                 ),
               ),
             ],
           ),
-        ]),
+
+          const SizedBox(height: 18),
+
+          /// INFO CHIPS
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+
+              _InfoChip(
+                icon: Icons.help_outline_rounded,
+                label: '${exam.questionCount} سؤال',
+                color: Colors.blueGrey,
+              ),
+
+              _InfoChip(
+                icon: Icons.timer_outlined,
+                label: '${exam.duration ?? 0} دقيقة',
+                color: Colors.teal,
+              ),
+
+              if (exam.passcode != null)
+                _InfoChip(
+                  icon: Icons.lock_outline_rounded,
+                  label: exam.passcode!,
+                  color: Colors.purple,
+                ),
+
+              if (exam.startDate != null)
+                _InfoChip(
+                  icon: Icons.schedule_rounded,
+                  label: _fmtDate(exam.startDate!),
+                  color: Colors.orange,
+                ),
+            ],
+          ),
+
+          const SizedBox(height: 22),
+           Divider(color: AppTheme.textLight.withAlpha(100)),
+          /// ACTION BUTTONS
+          Row(
+            children: [
+
+              Expanded(
+                child: _ModernActionBtn(
+                  title: exam.isPublished ? 'إخفاء' : 'نشر',
+                  icon: exam.isPublished
+                      ? Icons.visibility_off_rounded
+                      : Icons.visibility_rounded,
+                  color: exam.isPublished
+                      ? Colors.grey
+                      : context.colors.success,
+                  onTap: onToggle,
+                ),
+              ),
+
+              Padding(
+                padding: const EdgeInsets.all(5),
+                child: Text("|",
+                  style:TextStyle(
+                    fontSize: 18,
+                    color: AppTheme.textLight.withAlpha(100)
+                  ),
+                ),
+              ),
+              Expanded(
+                child: _ModernActionBtn(
+                  title: 'الأسئلة',
+                  icon: Icons.edit_note_rounded,
+                  color: Colors.deepOrange,
+                  onTap: onManageQuestions,
+                ),
+              ),
+
+              Padding(
+                padding: const EdgeInsets.all(5),
+                child: Text("|",
+                  style:TextStyle(
+                      fontSize: 18,
+                      color: AppTheme.textLight.withAlpha(100)
+                  ),
+                ),
+              ),
+              Expanded(
+                child: _ModernActionBtn(
+                  title: 'النتائج',
+                  icon: Icons.bar_chart_rounded,
+                  color: context.colors.primary,
+                  onTap: onResults,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(5),
+                child: Text("|",
+                  style:TextStyle(
+                      fontSize: 18,
+                      color: AppTheme.textLight.withAlpha(100)
+                  ),
+                ),
+              ),
+
+              IconButton(
+                icon: const Icon(
+                  Icons.delete_outline,
+                  color: Colors.red,
+                  size: 22,
+                ),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: const Text('تأكيد الحذف'),
+                      content: const Text('هل تريد حذف الاختبار؟'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('إلغاء'),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            onDelete();
+                          },
+                          child: const Text(
+                            'حذف',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              )
+            ],
+          ),
+        ],
       ),
-    ]),
+    ),
   );
+
+  //////
+
 
   String _fmtDate(DateTime d) =>
       '${d.day}/${d.month}/${d.year}  ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 }
 
-// ── Small action button ───────────────────────────────────────────────────────
-class _ActionBtn extends StatelessWidget {
-  final VoidCallback onTap;
-  final Color color;
-  final bool filled;
-  final IconData icon;
-  final String label;
-  const _ActionBtn({
-    required this.onTap,
-    required this.color,
-    required this.filled,
-    required this.icon,
-    required this.label,
-  });
 
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.symmetric(vertical: 9),
-      decoration: BoxDecoration(
-        color: filled
-            ? color.withValues(alpha: 0.1)
-            : Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-            color: filled
-                ? color.withValues(alpha: 0.4)
-                : Colors.grey.shade200),
-      ),
-      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(icon,
-            size: 15,
-            color: filled ? color : Colors.grey.shade600),
-        const SizedBox(width: 5),
-        Text(label,
-            style: TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: filled ? color : Colors.grey.shade600)),
-      ]),
-    ),
-  );
-}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // _ManageQuestionsSheet  — lists questions + add / edit / delete
@@ -1956,6 +2065,7 @@ class _Toggle extends StatelessWidget {
   );
 }
 
+
 class _ErrorView extends StatelessWidget {
   final String? message;
   final VoidCallback onRetry;
@@ -1981,4 +2091,98 @@ class _ErrorView extends StatelessWidget {
                   fontFamily: 'Cairo', color: Colors.white))),
     ]),
   );
+
+
+}
+
+
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _InfoChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 10,
+      ),
+      decoration: BoxDecoration(
+        color: color.withOpacity(.08),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+
+          Icon(icon, size: 18, color: color),
+
+          const SizedBox(width: 8),
+
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ModernActionBtn extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ModernActionBtn({
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Ink(
+        height: 52,
+        decoration: BoxDecoration(
+          color: color.withOpacity(.1),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+
+            Icon(icon, color: color, size: 20),
+
+            const SizedBox(width: 8),
+
+            Text(
+              title,
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
