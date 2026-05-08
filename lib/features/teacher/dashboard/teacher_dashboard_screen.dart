@@ -26,15 +26,14 @@ class TeacherDashboardScreen extends StatefulWidget {
 class _State extends State<TeacherDashboardScreen> {
   int _index = 0;
 
-  static const _pages = [
-    _PageDef('الرئيسية', Icons.home_outlined, Icons.home_rounded),
-    _PageDef('كورساتي', Icons.menu_book_outlined, Icons.menu_book_rounded),
-    _PageDef(
-        'الجدول', Icons.calendar_today_outlined, Icons.calendar_month_rounded),
-    _PageDef('تحليلات', Icons.analytics_outlined, Icons.analytics_rounded),
-    _PageDef('ملفي', Icons.person_outline_rounded, Icons.person_rounded),
-  ];
 
+  static final List<_PageDef> _pages = [
+    _PageDef('home'.tr, Icons.home_outlined, Icons.home_rounded),
+    _PageDef('my-courses'.tr, Icons.menu_book_outlined, Icons.menu_book_rounded),
+    _PageDef('schedule'.tr, Icons.calendar_today_outlined, Icons.calendar_month_rounded),
+    _PageDef('analytics'.tr, Icons.analytics_outlined, Icons.analytics_rounded),
+    _PageDef('profile'.tr, Icons.person_outline_rounded, Icons.person_rounded),
+  ];
   @override
   Widget build(BuildContext context) {
     final isWide = context.showSidebar;

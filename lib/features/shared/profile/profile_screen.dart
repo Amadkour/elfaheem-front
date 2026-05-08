@@ -103,8 +103,8 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                           iconBg: c.successTint,
                           iconColor: c.success,
                           label: context.read<AuthProvider>().isTeacher
-                              ? 'حسابات الاستلام'
-                              : 'طرق الدفع المحفوظة',
+                              ? 'receiving-account'.tr
+                              : 'payment-method'.tr,
                           onTap: () => _push(
                             context.read<AuthProvider>().isTeacher
                                 ? const TeacherPayoutScreen()
@@ -227,7 +227,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                             ),
                             const SizedBox(width: 12),
                             Text(
-                              'تسجيل الخروج',
+                              'log-out'.tr,
                               style: TextStyle(
                                 fontFamily: 'Cairo',
                                 fontWeight: FontWeight.w700,
@@ -421,13 +421,13 @@ class ChangeLanguageScreen extends StatelessWidget {
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? context.colors.primary.withValues(alpha: 0.08)
+                              ? Colors.white
                               : context.colors.cardBg,
                           borderRadius: BorderRadius.circular(
                               context.colors.radiusMedium),
                           border: Border.all(
                               color: isSelected
-                                  ? context.colors.primary
+                                  ? context.colors.primaryBlue
                                   : context.colors.divider,
                               width: isSelected ? 2 : 1),
                           boxShadow: context.colors.cardShadow,
@@ -438,13 +438,13 @@ class ChangeLanguageScreen extends StatelessWidget {
                               Text(l.tr,
                                   style: context.colors.label.copyWith(
                                       color: isSelected
-                                          ? context.colors.primary
+                                          ? context.colors.primaryBlue
                                           : context.colors.textDark,
                                       fontWeight: FontWeight.w700,
                                       fontSize: 15)),
                               if (isSelected)
                                 Icon(Icons.check_circle_rounded,
-                                    color: context.colors.primary, size: 22),
+                                    color: context.colors.primaryBlue, size: 22),
                             ]),
                       ),
                     ),

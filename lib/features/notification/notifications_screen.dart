@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
@@ -132,10 +132,10 @@ class _NotifTile extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isRead ? context.colors.cardBg : context.colors.primary.withValues(alpha: 0.05),
+          color: isRead ? context.colors.cardBg : context.colors.primaryBlue.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(context.colors.radiusMedium),
           border: Border.all(
-            color: isRead ? Colors.transparent : context.colors.primary.withValues(alpha:0.2),
+            color: isRead ? Colors.transparent : context.colors.primaryBlue.withValues(alpha:0.2),
           ),
           boxShadow: context.colors.cardShadow,
         ),
@@ -164,7 +164,7 @@ class _NotifTile extends StatelessWidget {
                           width: 8,
                           height: 8,
                           decoration:  BoxDecoration(
-                            color: context.colors.primary,
+                            color: context.colors.primaryBlue,
                             shape: BoxShape.circle,
                           ),
                         ),

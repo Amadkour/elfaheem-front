@@ -1097,6 +1097,42 @@
   "start-now": {
     "en": "Start Now",
     "ar": "بدأت للتو"
+  },
+  "receiving-account": {
+    "en": "Receiving accounts",
+    "ar": "حسابات الاستلام"
+  },
+  "payment-method": {
+    "en": "Saved payment methods",
+    "ar": "طرق الدفع المحفوظة"
+  },
+  "help_center": {
+    "en": "Help Center",
+    "ar": "مركز المساعدة"
+  },
+  "log-out": {
+    "en": "Logout",
+    "ar": "تسجيل الخروج"
+  },
+  "home": {
+    "en": "Home",
+    "ar": "الرئيسية"
+  },
+  "my-courses": {
+    "en": "My Courses",
+    "ar": "كورساتي"
+  },
+  "schedule": {
+    "en": "Schedule",
+    "ar": "الجدول"
+  },
+  "analytics": {
+    "en": "Analytics",
+    "ar": "تحليلات"
+  },
+  "profile": {
+    "en": "Profile",
+    "ar": "ملفي"
   }
 
 
