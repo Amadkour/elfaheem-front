@@ -4,6 +4,7 @@ library;
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart'
     show TeacherCourse, CourseSchedule;
 
+import '../../../config/app_config.dart';
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
 
@@ -123,14 +124,14 @@ class ScheduleSlot {
 
   String countdownLabel(int liveSecondsLeft) {
     if (isOngoing) {
-      if (liveSecondsLeft <= 0) return 'انتهت للتو';
+      if (liveSecondsLeft <= 0) return 'end-now'.tr;
       final m = liveSecondsLeft ~/ 60;
       final s = liveSecondsLeft % 60;
       return 'تنتهي ${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
     }
     if (!isToday) return dayLabelStr;
     final mu = minutesUntilStart ?? 0;
-    if (mu <= 0) return 'بدأت للتو';
+    if (mu <= 0) return 'start-now'.tr;
     if (mu < 60) return 'بعد $muد';
     final h = mu ~/ 60;
     final m = mu % 60;

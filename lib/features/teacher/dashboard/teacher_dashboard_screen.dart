@@ -492,8 +492,8 @@ class _TeacherScheduleTabState extends State<_TeacherScheduleTab>
       provider: _prov,
       getData: () => _prov.data,
       onRefresh: _prov.fetch,
-      title: 'جدولي الأسبوعي',
-      emptyMessage: 'لا توجد مواعيد مضافة للكورسات بعد',
+      title: "time-table".tr,
+      emptyMessage: 'no-time-table'.tr,
       getLastFetched: () => _prov.lastFetched,
     );
   }

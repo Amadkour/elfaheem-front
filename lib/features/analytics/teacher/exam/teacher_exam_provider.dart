@@ -86,8 +86,12 @@ class TeacherExamProvider extends ChangeNotifier {
       _examsError = e.toString();
     } finally {
       _loadingExams = false;
+      if(exams.isNotEmpty){
+        await loadResults(null);
+      }
       notifyListeners();
     }
+
   }
 
   Future<bool> createExam({
@@ -162,15 +166,21 @@ class TeacherExamProvider extends ChangeNotifier {
   // Results
   // ══════════════════════════════════════════════════════════════════════════
 
-  Future<void> loadResults(ExamModel exam) async {
-    _selectedExam = exam;
+  Future<void> loadResults(ExamModel? exam) async {
     _results = [];
     _resultsError = null;
     _loadingResults = true;
-    _tab = 1;
+    if(exam!=null) {
+      _tab = 1;
+      _selectedExam = exam;
+    }else{
+      _tab = 0;
+      _selectedExam = exams.first;
+
+    }
     notifyListeners();
     try {
-      _results = await _api.fetchExamResults(exam.id);
+      _results = await _api.fetchExamResults(exam?.id??exams[0].id);
     } on ApiException catch (e) {
       _resultsError = e.message;
     } catch (e) {

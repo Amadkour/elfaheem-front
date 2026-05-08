@@ -956,6 +956,150 @@
   "privacy": {
     "en": "Privacy and Conditions",
     "ar": "سياية الخصوصية"
+  },
+  "time-table": {
+    "en": "My Weekly table",
+    "ar": "جدولي الأسبوعي"
+  },
+  "no-time-table": {
+    "en": "no appointment add for courses yet",
+    "ar": "لا توجد مواعيد مضافة للكورسات بعد"
+  },
+  "not-refreshed": {
+    "en": "not Refreshed yet",
+    "ar": "لم يُحدَّث بعد"
+  },
+
+  "moments-ago": {
+    "en": "Moments ago",
+    "ar": "منذ لحظات"
+  },
+  "since": {
+    "en": "since",
+    "ar": "من "
+  },
+    "m": {
+    "en": "m",
+     "ar": "د"
+  },
+  "day": {
+    "en": "m",
+     "ar": "د"
+  },
+  "refresh": {
+    "en": "Refresh",
+     "ar": "تحديث"
+  },
+  "refreshing": {
+    "en": "Refreshing",
+     "ar": "جاري التحديث…"
+  },
+  "play-now": {
+    "en": "playing now",
+     "ar": " جارية الآن"
+  },
+
+  "next-lesson": {
+    "en": "Upcoming Lesson",
+     "ar": " الحصة القادمة"
+  } ,
+  "completed": {
+    "en": "Completed",
+     "ar": "مكتمل"
+  } ,
+  "no-lessons-today": {
+    "en": "No Sessions Today",
+     "ar": "لا توجد حصص اليوم"
+  },
+  "no-lessons": {
+    "en": "No Sessions for ",
+     "ar": "لا توجد حصص يوم"
+  },
+  "loading-schedule": {
+    "en": "Loading the schedule…",
+     "ar": "جاري تحميل الجدول…"
+  },
+  "rest-follow": {
+    "en": "Rest and follow the schedule day by day.",
+     "ar": "استرح وتابع الجدول يوماً بيوم"
+  },
+  "retry": {
+    "en": "Retry",
+     "ar": "إعادة المحاولة"
+  },
+  "appointment": {
+    "en": "appointment —",
+     "ar": "المواعيد —"
+  },
+  "appointment-repeat": {
+    "en": "The appointments are automatically repeated weekly • students will see them on their schedules.",
+     "ar": "المواعيد تتكرر أسبوعياً تلقائياً  •  الطلاب يرونها في جدولهم"
+  },
+  "appointment-delete": {
+    "en": "Delete Appointment",
+     "ar": "حذف الموعد"
+  },
+  "appointment-delete2": {
+    "en": "Delete Appointment for",
+     "ar": "حذف موعد"
+  },
+  "no-appointment": {
+    "en": "No Appointment yet",
+     "ar": "لا توجد مواعيد بعد"
+  },
+  "add-weekly-appointment-for-student": {
+    "en": "Add weekly appointments for your students to see in their schedule.",
+     "ar": "أضف مواعيد أسبوعية ليراها طلابك في جدولهم"
+  },
+  "add-weekly-appointment": {
+    "en": "Add weekly appointments +",
+     "ar": "+ إضافة موعد أسبوعي"
+  },
+
+  "duplicate-schedule": {
+    "en": "Duplicate appointment",
+    "ar": "موعد مكرر"
+  },
+  "same-day-schedule-exists": {
+    "en": "There is already an appointment on the same day. Add another one?",
+    "ar": "يوجد موعد بنفس اليوم. إضافة موعد آخر؟"
+  },
+
+  "appointment-added-successfully": {
+    "en": "Appointment added successfully ✓",
+    "ar": "تم إضافة الموعد ✓"
+  },
+  "something-went-wrong": {
+    "en": "Something went wrong",
+    "ar": "حدث خطأ"
+  },
+
+  "start-time": {
+    "en": "Start time",
+    "ar": "وقت البداية"
+  },
+  "end-time": {
+    "en": "End time",
+    "ar": "وقت النهاية"
+  },
+  "end-time-must-be-after-start-time": {
+    "en": "End time must be after start time",
+    "ar": "وقت النهاية يجب أن يكون بعد وقت البداية"
+  },
+  "add-appointment": {
+    "en": "Add appointment",
+    "ar": "إضافة الموعد"
+  },
+  "end-now": {
+    "en": "End Now",
+    "ar": "انتهت للتو"
+  },
+  "start-now": {
+    "en": "Start Now",
+    "ar": "بدأت للتو"
   }
+
+
+
 
 }
