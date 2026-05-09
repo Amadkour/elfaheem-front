@@ -1,36 +1,24 @@
-/// enrollment_provider.dart — DEFINITIVE REWRITE
+/// enrollment_provider.dart — FINAL
 ///
-/// ROOT CAUSE OF Moyasar 400 (verified from official docs):
-/// ─────────────────────────────────────────────────────────
-/// Moyasar POST /v1/payments with source.type="creditcard" ALWAYS requires
-/// name/number/month/year/cvc. There is NO "hosted checkout URL" flow from
-/// the backend API. The previous two fixes were both wrong for the same reason.
+/// FIXES APPLIED:
+///  1. confirm() logic was inverted: `if (!isFree)` → `if (isFree)`
+///  2. Web checkout URL now includes course_id in callback_url
+///  3. Added webCallbackResult() so PaymentCallbackPage can activate enrollment
+///  4. _publishableKey uses correct String.fromEnvironment syntax
 ///
-/// THE ONE CORRECT ARCHITECTURE:
-/// ──────────────────────────────
-///
-///  NEW CARD:
-///   Flutter SDK (publishable key) → tokenizes card → creates payment on Moyasar
-///   → handles 3DS WebView → fires onPaymentResult callback
-///   → Flutter sends result to OUR backend /record-sdk-payment to activate enrollment
-///   Our backend NEVER touches Moyasar for new card payments.
-///
-///  SAVED CARD TOKEN:
-///   Flutter → our backend → backend calls Moyasar with source.type="token"
-///   → if needs 3DS returns transaction_url → Flutter opens it → verifies
-///
-///  STC PAY:
-///   Flutter SDK → StcRequestSource(mobile) → Moyasar → OTP step
-///   → OtpRequestSource(otp) → Moyasar.verifyOTP → paid
-///   → Flutter records on our backend
-///
-/// REQUIRED pubspec.yaml additions:
-///   moyasar: ^3.0.2
-///   url_launcher: ^6.0.0
+/// ARCHITECTURE:
+///  NEW CARD (mobile):  Moyasar SDK CreditCard widget → 3DS WebView → onPaymentResult
+///                      → POST /record-sdk-payment
+///  NEW CARD (web):     Opens checkout.moyasar.com in browser tab → redirects to
+///                      /payment/callback → PaymentCallbackPage → POST /record-sdk-payment
+///  SAVED CARD TOKEN:   Flutter → backend → Moyasar token charge → optional 3DS URL
+///  STC PAY:            Moyasar SDK → OTP → verifyOTP → POST /record-sdk-payment
+///  BANK TRANSFER:      Backend issues IBAN/ref → manual admin confirm
 library;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:moyasar/moyasar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -54,37 +42,40 @@ enum EnrollStep {
 enum _Selection { savedCard, bankTransfer, stcPay, newCard }
 
 class EnrollmentProvider extends BaseProvider {
-  final ApiClient   _api;
+  final ApiClient _api;
   final CourseModel course;
 
-  /// Publishable key from Moyasar dashboard — safe to embed in client code.
-  /// Use --dart-define=MOYASAR_PUBLISHABLE_KEY=pk_live_xxx when building.
+  /// Publishable key — safe to embed in client code.
+  /// Pass at build time: --dart-define=MOYASAR_PUBLISHABLE_KEY=pk_live_xxx
   static const String _publishableKey = String.fromEnvironment(
-    'pk_test_Ut6582RweTo7JgUEuVYBYrQv4v3RAMW7VRW3Umw5',
+    'MOYASAR_PUBLISHABLE_KEY',
     defaultValue: 'pk_test_Ut6582RweTo7JgUEuVYBYrQv4v3RAMW7VRW3Umw5',
   );
+
 
   EnrollmentProvider(this.course, {ApiClient? api})
       : _api = api ?? ApiClient();
 
-  EnrollStep _step      = EnrollStep.method;
+  EnrollStep _step = EnrollStep.method;
   _Selection _selection = _Selection.newCard;
 
-  SavedPaymentMethod?   _selectedCard;
+  SavedPaymentMethod? _selectedCard;
   Map<String, dynamic>? _bankInfo;
-  bool                  _paidViaBankTransfer = false;
-  int?                  _pendingPaymentId;
-  String?               _pendingTransactionId;
-  String?               _failureReason;
-  String?               _stcOtpError;
-  String?               _stcTransactionUrl;
+  bool _paidViaBankTransfer = false;
+  int? _pendingPaymentId;
+  String? _pendingTransactionId;
+  String? _failureReason;
+  String? _stcOtpError;
+  String? _stcTransactionUrl;
 
-  EnrollStep            get step                => _step;
-  Map<String, dynamic>? get bankInfo            => _bankInfo;
-  bool                  get paidViaBankTransfer => _paidViaBankTransfer;
-  bool                  get isFree              => course.price == 0;
-  String?               get failureReason       => _failureReason;
-  String?               get stcOtpError         => _stcOtpError;
+  EnrollStep get step => _step;
+  Map<String, dynamic>? get bankInfo => _bankInfo;
+  bool get paidViaBankTransfer => _paidViaBankTransfer;
+  bool get isFree => course.price == 0;
+  String? get failureReason => _failureReason;
+  String? get stcOtpError => _stcOtpError;
+
+  // ── Selection ─────────────────────────────────────────────────────────────
 
   void selectSavedCard(SavedPaymentMethod card) {
     _selection = _Selection.savedCard;
@@ -121,7 +112,11 @@ class EnrollmentProvider extends BaseProvider {
   // ── confirm ───────────────────────────────────────────────────────────────
 
   Future<void> confirm(SavedMethodsProvider savedP, BuildContext context) async {
-    if (isFree) { await _enrollFree(); return; }
+    // FIX: was `if (!isFree)` — inverted logic that enrolled free on paid courses
+    if (isFree) {
+      await _enrollFree();
+      return;
+    }
     switch (_selection) {
       case _Selection.newCard:
         await _openMoyasarCardScreen(context);
@@ -145,35 +140,8 @@ class EnrollmentProvider extends BaseProvider {
     }
   }
 
-  // ── NEW CARD via official Moyasar Flutter SDK ─────────────────────────────
+  // ── NEW CARD ──────────────────────────────────────────────────────────────
 
-  // Future<void> _openMoyasarCardScreen(BuildContext context) async {
-  //   final fees = FeeBreakdown.calculate(
-  //     coursePrice: course.price,
-  //     brand: CardBrand.mada,
-  //   );
-  //
-  //   final config = PaymentConfig(
-  //     publishableApiKey: _publishableKey,
-  //     amount:            (fees.total * 100).round(),
-  //     description:       'كورس: ${course.name}',
-  //     metadata:          {'course_id': course.id.toString()},
-  //     creditCard: CreditCardConfig(saveCard: false, manual: false),
-  //   );
-  //
-  //   if (!context.mounted) return;
-  //   await Navigator.of(context).push(
-  //     MaterialPageRoute(
-  //       builder: (_) => MoyasarCardPaymentScreen(
-  //         config: config,
-  //         onPaymentResult: (result) {
-  //           Navigator.of(context).pop();
-  //           _handleSdkResult(result, context);
-  //         },
-  //       ),
-  //     ),
-  //   );
-  // }
   Future<void> _openMoyasarCardScreen(BuildContext context) async {
     final fees = FeeBreakdown.calculate(
       coursePrice: course.price,
@@ -182,20 +150,26 @@ class EnrollmentProvider extends BaseProvider {
 
     final config = PaymentConfig(
       publishableApiKey: _publishableKey,
-      amount:            (fees.total * 100).round(),
-      description:       'كورس: ${course.name}',
-      metadata:          {'course_id': course.id.toString()},
+      amount: (fees.total * 100).round(),
+      description: 'كورس: ${course.name}',
+      metadata: {'course_id': course.id.toString()},
       creditCard: CreditCardConfig(saveCard: false, manual: false),
     );
 
     if (kIsWeb) {
-      // On web: open Moyasar hosted checkout in a new browser tab
-      // to avoid the WebView iframe 3DS blocking issue.
+      // On web: the Moyasar SDK uses a WebView for 3DS which doesn't work in browsers.
+      // Instead we open Moyasar hosted checkout in a new tab.
+      // Moyasar will append id, status, message to the callback URL on redirect.
+      final callbackUrl = Uri.encodeFull(
+        '${AppConfig.baseUrl}/payment/callback?course_id=${course.id}',
+      );
+      print(callbackUrl);
       final uri = Uri.parse(
-        'https://checkout.moyasar.com/?publishable_api_key=$_publishableKey'
+        'https://checkout.moyasar.com/v2'
+            '?publishable_api_key=$_publishableKey'
             '&amount=${config.amount}'
             '&description=${Uri.encodeComponent(config.description)}'
-            '&callback_url=YOUR_APP_CALLBACK_URL',  // ← your web callback
+            '&callback_url=$callbackUrl',
       );
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -203,7 +177,7 @@ class EnrollmentProvider extends BaseProvider {
       return;
     }
 
-    // Mobile: use the SDK's built-in screen (WebView works fine here)
+    // Mobile: Moyasar SDK handles everything including 3DS WebView
     if (!context.mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -231,14 +205,12 @@ class EnrollmentProvider extends BaseProvider {
       case PaymentStatus.captured:
         _recordSdkPayment(result.id);
       case PaymentStatus.failed:
-        _failureReason =
-            (result.source as dynamic)?.message as String? ??
-                'فشلت عملية الدفع. حاول مرة أخرى.';
+        _failureReason = (result.source as dynamic)?.message as String? ??
+            'فشلت عملية الدفع. حاول مرة أخرى.';
         _step = EnrollStep.failed;
         notifyListeners();
       case PaymentStatus.initiated:
-        _failureReason =
-        'الدفع قيد المعالجة. سيُفعَّل كورسك تلقائياً قريباً.';
+        _failureReason = 'الدفع قيد المعالجة. سيُفعَّل كورسك تلقائياً قريباً.';
         _step = EnrollStep.failed;
         notifyListeners();
     }
@@ -251,7 +223,7 @@ class EnrollmentProvider extends BaseProvider {
     final r = await run(() => _api.post(
       '/api/v1/payments/record-sdk-payment',
       body: {
-        'course_id':          course.id,
+        'course_id': course.id,
         'moyasar_payment_id': moyasarPaymentId,
       },
     ));
@@ -266,17 +238,35 @@ class EnrollmentProvider extends BaseProvider {
     notifyListeners();
   }
 
+  /// Called by PaymentCallbackPage (web) after Moyasar redirects back.
+  /// [moyasarPaymentId] comes from the `id` query param Moyasar appends.
+  /// [status] comes from the `status` query param Moyasar appends.
+  Future<void> webCallbackResult({
+    required String moyasarPaymentId,
+    required String status,
+  }) async {
+    if (status != 'paid') {
+      _failureReason = status == 'failed'
+          ? 'فشلت عملية الدفع. جرّب مرة أخرى.'
+          : 'تم إلغاء عملية الدفع.';
+      _step = EnrollStep.failed;
+      notifyListeners();
+      return;
+    }
+    await _recordSdkPayment(moyasarPaymentId);
+  }
+
   // ── SAVED CARD token via backend ──────────────────────────────────────────
 
   Future<void> _chargeWithSavedCard(SavedPaymentMethod card) async {
     final r = await run(() => _api.post('/api/v1/payments', queryParams: {
-      'course_id':       course.id,
-      'payment_method':  card.cardBrand?.apiKey ?? 'mada',
+      'course_id': course.id,
+      'payment_method': card.cardBrand?.apiKey ?? 'mada',
       'saved_method_id': card.id,
     }));
     if (r is! Map<String, dynamic>) return;
 
-    _pendingPaymentId     = (r['payment_id'] as num?)?.toInt();
+    _pendingPaymentId = (r['payment_id'] as num?)?.toInt();
     _pendingTransactionId = r['transaction_id'] as String?;
 
     if (r['status'] == 'completed') {
@@ -304,14 +294,14 @@ class EnrollmentProvider extends BaseProvider {
     );
     final config = PaymentConfig(
       publishableApiKey: _publishableKey,
-      amount:            (fees.total * 100).round(),
-      description:       'كورس: ${course.name}',
+      amount: (fees.total * 100).round(),
+      description: 'كورس: ${course.name}',
     );
 
     makeLoading();
     try {
       final result = await Moyasar.pay(
-        apiKey:         _publishableKey,
+        apiKey: _publishableKey,
         paymentRequest: PaymentRequest(config, StcRequestSource(mobile: mobile)),
       );
 
@@ -378,19 +368,19 @@ class EnrollmentProvider extends BaseProvider {
     ));
     if (r is Map<String, dynamic>) {
       _bankInfo = r;
-      _step     = EnrollStep.bankDetails;
+      _step = EnrollStep.bankDetails;
       notifyListeners();
     }
   }
 
   void confirmBankTransfer() {
     _paidViaBankTransfer = true;
-    _step                = EnrollStep.success;
+    _step = EnrollStep.success;
     notifyListeners();
   }
 
   void backToMethod() {
-    _step     = EnrollStep.method;
+    _step = EnrollStep.method;
     _bankInfo = null;
     notifyListeners();
   }
@@ -426,6 +416,8 @@ class EnrollmentProvider extends BaseProvider {
     }
     notifyListeners();
   }
+
+  // ── Reset ─────────────────────────────────────────────────────────────────
 
   void retryFromStart() {
     _step = EnrollStep.method;

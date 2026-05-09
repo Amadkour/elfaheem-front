@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import '../../../../../config/app_theme.dart';
 
 class StatChip extends StatelessWidget {
@@ -6,13 +7,13 @@ class StatChip extends StatelessWidget {
   final String label;
   final Color? iconColor;
   final Color? iconBg;
-
+  final double maxHeight;
   const StatChip({
     super.key,
     required this.icon,
     required this.label,
     this.iconColor,
-    this.iconBg,
+    this.iconBg, required this.maxHeight,
   });
 
   @override
@@ -20,44 +21,51 @@ class StatChip extends StatelessWidget {
     final fg = iconColor ?? context.colors.primary;
     final bg = iconBg ?? fg.withValues(alpha:0.12);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-      decoration: BoxDecoration(
-        color: context.colors.cardBg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: fg.withValues(alpha:0.12)),
-        boxShadow: [
-          BoxShadow(
-            color: fg.withValues(alpha:0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
-            child: Icon(icon, size: 20, color: fg),
-          ),
-          const SizedBox(height: 7),
-          Text(
-            label,
-            style: context.colors.caption.copyWith(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: context.colors.textDark,
-              height: 1.35,
+    return Expanded(
+      child: Container(
+        height: maxHeight,
+        width: maxHeight,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        decoration: BoxDecoration(
+          color: context.colors.cardBg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: fg.withValues(alpha:0.12)),
+          boxShadow: [
+            BoxShadow(
+              color: fg.withValues(alpha:0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 3),
             ),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Spacer(flex: 2,),
+            Container(
+              width: maxHeight/3,
+              height: maxHeight/3,
+              decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
+              child: Icon(icon, size: 20, color: fg),
+            ),
+            Spacer(),
+            Text(
+              label,
+              style: context.colors.caption.copyWith(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: context.colors.textDark,
+                height: 1.35,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            Spacer(flex: 2,),
+
+          ],
+        ),
       ),
     );
   }

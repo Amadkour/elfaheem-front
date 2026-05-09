@@ -1,7 +1,10 @@
 /// courses/details/course_detail_screen.dart
 library;
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/features/analytics/student/exam/student_exam_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../config/app_theme.dart';
@@ -66,31 +69,37 @@ class _MobileDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Column(
-        children: [
-          Expanded(
-            child: RefreshIndicator(
-              color: context.colors.primary,
-              onRefresh: () => provider.refresh(),
-              child: CustomScrollView(
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                  SliverToBoxAdapter(child: _CourseHero()),
-                  SliverToBoxAdapter(child: _CourseMeta()),
-                  SliverToBoxAdapter(child: _TabBarWidget()),
-                  const SliverToBoxAdapter(child: SizedBox(height: 4)),
-                  SliverToBoxAdapter(
-                      child: TabContent(
-                    activeTab: provider.activeTab,
-                  )),
-                ],
+    return ChangeNotifierProvider(
+      create: (BuildContext context) {
+        return StudentExamProvider();
+      },
+      child:SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: RefreshIndicator(
+                  color: context.colors.primary,
+                  onRefresh: () => provider.refresh(),
+                  child: CustomScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    slivers: [
+                      SliverToBoxAdapter(child: _CourseHero()),
+                      SliverToBoxAdapter(child: _CourseMeta()),
+                      SliverToBoxAdapter(child: _TabBarWidget()),
+                      const SliverToBoxAdapter(child: SizedBox(height: 4)),
+                      SliverToBoxAdapter(
+                          child: TabContent(
+                        activeTab: provider.activeTab, courseId: provider.course.id,
+
+                      )),
+                    ],
+                  ),
+                ),
               ),
-            ),
+              _EnrollButton(),
+            ],
           ),
-          _EnrollButton(),
-        ],
-      ),
+        )
     );
   }
 }
@@ -135,7 +144,7 @@ class _WebDetail extends StatelessWidget {
                                 child: SizedBox(height: 4)),
                             SliverToBoxAdapter(
                                 child: TabContent(
-                              activeTab: provider.activeTab,
+                              activeTab: provider.activeTab, courseId: provider.course.id,
                             )),
                             const SliverToBoxAdapter(
                                 child: SizedBox(height: 32)),
@@ -546,48 +555,45 @@ class _CourseMeta extends StatelessWidget {
           const SizedBox(height: 18),
 
           // Stat chips — 4-col grid
-          GridView.count(
-            crossAxisCount: 4,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            childAspectRatio: 0.95,
-            children: [
-              StatChip(
-                icon: Icons.people_alt_rounded,
-                label: '${c.studentsCount}\nطالب',
-                iconColor: context.colors.primary,
-              ),
-              StatChip(
-                icon: Icons.video_library_rounded,
-                label: '${c.sessionsCount}\nمحاضرة',
-                iconColor: const Color(0xFF185FA5),
-                iconBg: const Color(0xFFE6F1FB),
-              ),
-              StatChip(
-                icon: Icons.access_time_rounded,
-                label: '${c.totalHours.toStringAsFixed(0)}\nساعة',
-                iconColor: const Color(0xFFBA7517),
-                iconBg: const Color(0xFFFAEEDA),
-              ),
-              if (c.certificates.isNotEmpty)
-                 StatChip(
-                  icon: Icons.workspace_premium_rounded,
-                  label: 'شهادة\nإتمام',
-                  iconColor: context.colors.accent,
-                  iconBg: Color(0xFFFAEEDA),
-                )
-              else
+          SizedBox(
+            height: context.height/9,
+            child: Row(
+              children: [
                 StatChip(
-                  icon: c.type == 'live'
-                      ? Icons.sensors_rounded
-                      : Icons.play_circle_outline_rounded,
-                  label: c.type == 'live' ? 'مباشر' : 'مسجّل',
-                  iconColor:
-                      c.type == 'live' ? context.colors.danger : context.colors.primary,
+                  icon: Icons.people_alt_rounded,
+                  label: '${c.studentsCount}\nطالب',
+                  iconColor: context.colors.primary, maxHeight: context.height/9,
                 ),
-            ],
+                StatChip(
+                  icon: Icons.video_library_rounded,
+                  label: '${c.sessionsCount}\nمحاضرة',
+                  iconColor: const Color(0xFF185FA5),
+                  iconBg: const Color(0xFFE6F1FB), maxHeight: context.height/9,
+                ),
+                StatChip(
+                  icon: Icons.access_time_rounded,
+                  label: '${c.totalHours.toStringAsFixed(0)}\nساعة',
+                  iconColor: const Color(0xFFBA7517),
+                  iconBg: const Color(0xFFFAEEDA), maxHeight: context.height/9,
+                ),
+                if (c.certificates.isNotEmpty)
+                   StatChip(
+                    icon: Icons.workspace_premium_rounded,
+                    label: 'شهادة\nإتمام',
+                    iconColor: context.colors.accent,
+                    iconBg: Color(0xFFFAEEDA), maxHeight: context.height/9,
+                  )
+                else
+                  StatChip(
+                    icon: c.type == 'live'
+                        ? Icons.sensors_rounded
+                        : Icons.play_circle_outline_rounded,
+                    label: c.type == 'live' ? 'مباشر' : 'مسجّل',
+                    iconColor:
+                        c.type == 'live' ? context.colors.danger : context.colors.primary, maxHeight: context.height/9,
+                  ),
+              ],
+            ),
           ),
         ],
       ),
@@ -598,10 +604,11 @@ class _CourseMeta extends StatelessWidget {
 // ── Tab bar ───────────────────────────────────────────────────────────────────
 
 class _TabBarWidget extends StatelessWidget {
-  static const _tabs = [
+  static const  _tabs = const [
     (CourseDetailTab.lessons, 'الدروس', Icons.play_lesson_rounded),
     (CourseDetailTab.about, 'نبذة عن', Icons.info_outline_rounded),
     (CourseDetailTab.live, 'مباشر', Icons.sensors_rounded),
+    (CourseDetailTab.exam, 'exams', Icons.assignment),
   ];
 
   @override
