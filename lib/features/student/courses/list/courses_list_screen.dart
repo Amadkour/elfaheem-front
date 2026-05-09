@@ -220,6 +220,7 @@ class _CourseList extends StatelessWidget {
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: Breakpoints.contentMax),
+            // child: isGrid
             child: isGrid
                 ? GridView.builder(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
@@ -309,6 +310,7 @@ class _CourseCard extends StatelessWidget {
               // Thumbnail column
               SizedBox(
                 width: 104,
+                height: context.height/7,
                 child: Stack(
                   fit: StackFit.passthrough,
                   children: [

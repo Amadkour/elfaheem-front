@@ -47,9 +47,11 @@ dependencies:
   mime: any
   responsive_framework: ^1.5.1
   flutter_displaymode: ^0.6.0
+  moyasar: ^3.0.2
 
   path: any
   cross_file: any
+  webview_flutter_web: ^0.2.3+4
 dependency_overrides:
   # Pin packages that use Apple APIs unavailable on CI runner's Xcode version.
   connectivity_plus: '>=7.0.0 <7.1.0' # NWPath.isUltraConstrained

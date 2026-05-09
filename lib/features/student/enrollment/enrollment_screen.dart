@@ -1,17 +1,9 @@
-/// enrollment_screen.dart — FIXED
-///
-/// Changes vs previous version
-/// ────────────────────────────
-/// 1. EnrollStep.stcMobile handled: shows an inline step (_StcMobileStep)
-///    that collects the mobile number and calls provider.initStcPay().
-/// 2. EnrollStep.waitingCard (was missing) wired to _WaitingCardStep.
-/// 3. All EnrollStep cases covered in the switch — no more missing-case errors.
-/// 4. _SavedMethodPicker calls enrollP.selectNewCard() (now exists in provider).
+/// enrollment_screen.dart — uses official Moyasar Flutter SDK
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_education_app/features/student/enrollment/stc_otp_step.dart';
+import 'package:moyasar/moyasar.dart';
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart' as Helpers;
@@ -23,7 +15,7 @@ import '../../shared/payment/saved_payment_models.dart';
 import '../../student/models.dart';
 import 'enrollment_provider.dart';
 
-// ── Entry point ───────────────────────────────────────────────────────────────
+// ── Entry ─────────────────────────────────────────────────────────────────────
 
 class EnrollmentScreen extends StatelessWidget {
   final CourseModel course;
@@ -45,7 +37,6 @@ class EnrollmentScreen extends StatelessWidget {
 
 class _EnrollView extends StatelessWidget {
   const _EnrollView();
-
   @override
   Widget build(BuildContext context) {
     return Directionality(
@@ -56,25 +47,22 @@ class _EnrollView extends StatelessWidget {
           child: Consumer<EnrollmentProvider>(
             builder: (_, enroll, __) => AnimatedSwitcher(
               duration: const Duration(milliseconds: 350),
-              transitionBuilder: (child, anim) => FadeTransition(
-                opacity: anim,
+              transitionBuilder: (c, a) => FadeTransition(
+                opacity: a,
                 child: SlideTransition(
-                  position: Tween(
-                    begin: const Offset(.04, 0),
-                    end:   Offset.zero,
-                  ).animate(anim),
-                  child: child,
+                  position: Tween(begin: const Offset(.04, 0), end: Offset.zero)
+                      .animate(a),
+                  child: c,
                 ),
               ),
               child: switch (enroll.step) {
-                EnrollStep.method      => const _MethodStep(key:      ValueKey('method')),
-                EnrollStep.stcMobile   => const _StcMobileStep(key:   ValueKey('stcMobile')),
-                EnrollStep.bankDetails => const _BankStep(key:        ValueKey('bank')),
-                EnrollStep.stcOtp      => const StcOtpStep(key:       ValueKey('stcOtp')),
-                EnrollStep.waitingCard => const _WaitingCardStep(key:  ValueKey('waiting')),
-                EnrollStep.verifying   => const _VerifyingStep(key:    ValueKey('verifying')),
-                EnrollStep.success     => const _SuccessStep(key:      ValueKey('success')),
-                EnrollStep.failed      => const _FailedStep(key:       ValueKey('failed')),
+                EnrollStep.method      => const _MethodStep(key:    ValueKey('m')),
+                EnrollStep.stcMobile   => const _StcMobileStep(key: ValueKey('sm')),
+                EnrollStep.stcOtp      => const _StcOtpStep(key:    ValueKey('so')),
+                EnrollStep.bankDetails => const _BankStep(key:      ValueKey('b')),
+                EnrollStep.verifying   => const _VerifyingStep(key: ValueKey('v')),
+                EnrollStep.success     => const _SuccessStep(key:   ValueKey('ok')),
+                EnrollStep.failed      => const _FailedStep(key:    ValueKey('f')),
               },
             ),
           ),
@@ -84,21 +72,44 @@ class _EnrollView extends StatelessWidget {
   }
 }
 
+// ── Moyasar card payment screen ───────────────────────────────────────────────
+// Exposed so enrollment_provider can push it
+
+class MoyasarCardPaymentScreen extends StatelessWidget {
+  final PaymentConfig config;
+  final void Function(dynamic) onPaymentResult;
+  const MoyasarCardPaymentScreen(
+      {super.key, required this.config, required this.onPaymentResult});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('بيانات البطاقة',
+            style: TextStyle(fontFamily: 'Cairo')),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        elevation: 0,
+      ),
+      // CreditCard is the official Moyasar SDK widget.
+      // It renders the card form, tokenizes, creates payment, handles 3DS.
+      body: CreditCard(config: config, onPaymentResult: onPaymentResult),
+    );
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-// STEP 1 — Method picker + fee breakdown
+// STEP 1 — Method picker
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _MethodStep extends StatelessWidget {
   const _MethodStep({super.key});
-
   @override
   Widget build(BuildContext context) {
     final enroll = context.watch<EnrollmentProvider>();
-    final isFree = enroll.isFree;
-
     return Column(
       children: [
-        ScreenAppBar(title: isFree ? 'تسجيل في الكورس' : 'إتمام الدفع'),
+        ScreenAppBar(title: enroll.isFree ? 'تسجيل في الكورس' : 'إتمام الدفع'),
         Expanded(
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
@@ -108,7 +119,7 @@ class _MethodStep extends StatelessWidget {
               children: [
                 _CourseSummaryCard(course: enroll.course),
                 const SizedBox(height: 22),
-                if (isFree)
+                if (enroll.isFree)
                   _FreeCourseBanner()
                 else ...[
                   const _SavedMethodPicker(),
@@ -125,53 +136,41 @@ class _MethodStep extends StatelessWidget {
   }
 }
 
-// ── Course summary ────────────────────────────────────────────────────────────
-
 class _CourseSummaryCard extends StatelessWidget {
   final CourseModel course;
   const _CourseSummaryCard({required this.course});
-
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color:        c.cardBg,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow:    c.cardShadow,
-      ),
-      child: Row(
-        children: [
-          AppNetworkImage(
-            url:          course.imageUrl,
-            width:        80,
-            height:       80,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(course.name,
-                    style:    c.h3,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 4),
-                if ((course.teacherName ?? '').isNotEmpty)
-                  Text(course.teacherName!, style: c.caption),
-                const SizedBox(height: 8),
-                Row(children: [
-                  _PriceBadge(price: course.price),
-                  const SizedBox(width: 8),
-                  _TypeTag(type: course.type ?? ''),
-                ]),
-              ],
-            ),
-          ),
-        ],
-      ),
+          color: c.cardBg,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: c.cardShadow),
+      child: Row(children: [
+        AppNetworkImage(
+            url: course.imageUrl,
+            width: 80,
+            height: 80,
+            borderRadius: BorderRadius.circular(12)),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(course.name,
+                style: c.h3, maxLines: 2, overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 4),
+            if ((course.teacherName ?? '').isNotEmpty)
+              Text(course.teacherName!, style: c.caption),
+            const SizedBox(height: 8),
+            Row(children: [
+              _PriceBadge(price: course.price),
+              const SizedBox(width: 8),
+              _TypeTag(type: course.type ?? ''),
+            ]),
+          ]),
+        ),
+      ]),
     );
   }
 }
@@ -186,16 +185,12 @@ class _PriceBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color:        (isFree ? c.success : c.accent).withValues(alpha: .1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        isFree ? 'مجاني' : '${price.toStringAsFixed(2)} ر.س',
-        style: c.label.copyWith(
-          color:      isFree ? c.success : c.accent,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
+          color: (isFree ? c.success : c.accent).withValues(alpha: .1),
+          borderRadius: BorderRadius.circular(8)),
+      child: Text(isFree ? 'مجاني' : '${price.toStringAsFixed(2)} ر.س',
+          style: c.label.copyWith(
+              color: isFree ? c.success : c.accent,
+              fontWeight: FontWeight.w800)),
     );
   }
 }
@@ -210,16 +205,12 @@ class _TypeTag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color:        (isLive ? c.danger : c.primary).withValues(alpha: .1),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        isLive ? '🔴 مباشر' : '▶ مسجّل',
-        style: c.caption.copyWith(
-          color:      isLive ? c.danger : c.primary,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
+          color: (isLive ? c.danger : c.primary).withValues(alpha: .1),
+          borderRadius: BorderRadius.circular(6)),
+      child: Text(isLive ? '🔴 مباشر' : '▶ مسجّل',
+          style: c.caption.copyWith(
+              color: isLive ? c.danger : c.primary,
+              fontWeight: FontWeight.w700)),
     );
   }
 }
@@ -231,31 +222,27 @@ class _FreeCourseBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color:        c.success.withValues(alpha: .08),
-        borderRadius: BorderRadius.circular(18),
-        border:       Border.all(color: c.success.withValues(alpha: .3)),
-      ),
+          color: c.success.withValues(alpha: .08),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: c.success.withValues(alpha: .3))),
       child: Row(children: [
         Icon(Icons.card_giftcard_rounded, color: c.success, size: 32),
         const SizedBox(width: 14),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('هذا الكورس مجاني! 🎉',
-                  style: c.h3.copyWith(color: c.success)),
-              const SizedBox(height: 4),
-              Text('اضغط \"سجّل الآن\" للحصول على وصول فوري.',
-                  style: c.caption),
-            ],
-          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('هذا الكورس مجاني! 🎉',
+                style: c.h3.copyWith(color: c.success)),
+            const SizedBox(height: 4),
+            Text('اضغط "سجّل الآن" للحصول على وصول فوري.',
+                style: c.caption),
+          ]),
         ),
       ]),
     );
   }
 }
 
-// ── Saved method picker ───────────────────────────────────────────────────────
+// ── Method picker tiles ───────────────────────────────────────────────────────
 
 class _SavedMethodPicker extends StatefulWidget {
   const _SavedMethodPicker();
@@ -264,7 +251,7 @@ class _SavedMethodPicker extends StatefulWidget {
 }
 
 class _SavedMethodPickerState extends State<_SavedMethodPicker> {
-  int _selected = -2; // -2 = new card, -1 = bank transfer, 0..n = saved card index
+  int _sel = -2; // -2=newCard -1=bank -3=stc 0..n=saved
 
   @override
   Widget build(BuildContext context) {
@@ -273,6 +260,15 @@ class _SavedMethodPickerState extends State<_SavedMethodPicker> {
     final c       = context.colors;
     final cards   = savedP.cards;
 
+    Color brandColor(CardBrand? b) {
+      switch (b) {
+        case CardBrand.mada:       return const Color(0xFF1B4332);
+        case CardBrand.visa:       return const Color(0xFF1A237E);
+        case CardBrand.mastercard: return const Color(0xFFB71C1C);
+        default:                   return const Color(0xFF263238);
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -280,9 +276,8 @@ class _SavedMethodPickerState extends State<_SavedMethodPicker> {
           Container(
             width: 34, height: 34,
             decoration: BoxDecoration(
-              color:        c.primaryTint,
-              borderRadius: BorderRadius.circular(10),
-            ),
+                color: c.primaryTint,
+                borderRadius: BorderRadius.circular(10)),
             child: Icon(Icons.payment_rounded, size: 18, color: c.primary),
           ),
           const SizedBox(width: 10),
@@ -290,95 +285,62 @@ class _SavedMethodPickerState extends State<_SavedMethodPicker> {
         ]),
         const SizedBox(height: 14),
 
-        // ── Saved cards ───────────────────────────────────────────────────
-        ...cards.asMap().entries.map((e) {
-          final i = e.key;
-          final m = e.value;
-          return _MethodTile(
-            selected:  _selected == i,
-            icon:      Icons.credit_card_rounded,
-            iconColor: _brandColor(m.cardBrand),
-            title:     m.displayTitle,
-            subtitle:  '${m.cardBrand?.feeLabel ?? ''} رسوم المعالجة',
-            badge:     m.isDefault ? 'افتراضية' : null,
-            onTap: () {
-              setState(() => _selected = i);
-              enrollP.selectSavedCard(m);
-            },
-          );
-        }),
+        // Saved cards
+        ...cards.asMap().entries.map((e) => _MethodTile(
+          selected: _sel == e.key,
+          icon: Icons.credit_card_rounded,
+          iconColor: brandColor(e.value.cardBrand),
+          title: e.value.displayTitle,
+          subtitle: '${e.value.cardBrand?.feeLabel ?? ''} رسوم المعالجة',
+          badge: e.value.isDefault ? 'افتراضية' : null,
+          onTap: () { setState(() => _sel = e.key); enrollP.selectSavedCard(e.value); },
+        )),
 
-        // ── STC Pay ───────────────────────────────────────────────────────
+        // STC Pay
         _MethodTile(
-          selected:  _selected == -3,
-          icon:      Icons.sim_card_rounded,
+          selected: _sel == -3,
+          icon: Icons.sim_card_rounded,
           iconColor: const Color(0xFF4A148C),
-          title:     'STC Pay',
-          subtitle:  '2.5% + 1 ر.س رسوم المعالجة',
-          onTap: () {
-            setState(() => _selected = -3);
-            enrollP.selectStcPay();
-          },
+          title: 'STC Pay',
+          subtitle: '2.5% + 1 ر.س رسوم المعالجة',
+          onTap: () { setState(() => _sel = -3); enrollP.selectStcPay(); },
         ),
 
-        // ── Bank transfer ─────────────────────────────────────────────────
+        // Bank transfer
         _MethodTile(
-          selected:  _selected == -1,
-          icon:      Icons.account_balance_rounded,
+          selected: _sel == -1,
+          icon: Icons.account_balance_rounded,
           iconColor: const Color(0xFF2D6A4F),
-          title:     'تحويل بنكي',
-          subtitle:  'بدون رسوم معالجة — يتطلب مراجعة يدوية (24 ساعة)',
-          onTap: () {
-            setState(() => _selected = -1);
-            enrollP.selectBankTransfer();
-          },
+          title: 'تحويل بنكي',
+          subtitle: 'بدون رسوم — مراجعة يدوية (24 ساعة)',
+          onTap: () { setState(() => _sel = -1); enrollP.selectBankTransfer(); },
         ),
 
-        // ── New card (hosted checkout) ─────────────────────────────────────
+        // New card — uses official Moyasar SDK (no raw card fields to server)
         _MethodTile(
-          selected:  _selected == -2,
-          icon:      Icons.add_card_rounded,
+          selected: _sel == -2,
+          icon: Icons.add_card_rounded,
           iconColor: c.accent,
-          title:     'إضافة بطاقة جديدة',
-          subtitle:  'مدى · فيزا · ماستركارد · Apple Pay',
-          onTap: () {
-            setState(() => _selected = -2);
-            enrollP.selectNewCard();
-          },
+          title: 'بطاقة ائتمانية / مدى جديدة',
+          subtitle: 'مدى · فيزا · ماستركارد — آمن PCI-DSS عبر Moyasar SDK',
+          onTap: () { setState(() => _sel = -2); enrollP.selectNewCard(); },
         ),
       ],
     );
   }
-
-  Color _brandColor(CardBrand? b) {
-    switch (b) {
-      case CardBrand.mada:       return const Color(0xFF1B4332);
-      case CardBrand.visa:       return const Color(0xFF1A237E);
-      case CardBrand.mastercard: return const Color(0xFFB71C1C);
-      case CardBrand.stcPay:     return const Color(0xFF4A148C);
-      default:                   return const Color(0xFF263238);
-    }
-  }
 }
 
 class _MethodTile extends StatelessWidget {
-  final bool     selected;
+  final bool selected;
   final IconData icon;
-  final Color    iconColor;
-  final String   title, subtitle;
-  final String?  badge;
+  final Color iconColor;
+  final String title, subtitle;
+  final String? badge;
   final VoidCallback onTap;
-
   const _MethodTile({
-    required this.selected,
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-    this.badge,
+    required this.selected, required this.icon, required this.iconColor,
+    required this.title, required this.subtitle, required this.onTap, this.badge,
   });
-
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -389,70 +351,50 @@ class _MethodTile extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color:        selected ? c.primary.withValues(alpha: .05) : c.cardBg,
+          color: selected ? c.primary.withValues(alpha: .05) : c.cardBg,
           borderRadius: BorderRadius.circular(16),
-          border:       Border.all(
-            color: selected ? c.primary : c.divider,
-            width: selected ? 2 : 1,
-          ),
+          border: Border.all(color: selected ? c.primary : c.divider, width: selected ? 2 : 1),
           boxShadow: selected ? c.primaryShadow : c.cardShadow,
         ),
         child: Row(children: [
           Container(
             width: 42, height: 42,
             decoration: BoxDecoration(
-              color:        iconColor.withValues(alpha: .1),
-              borderRadius: BorderRadius.circular(12),
-            ),
+                color: iconColor.withValues(alpha: .1),
+                borderRadius: BorderRadius.circular(12)),
             child: Icon(icon, color: iconColor, size: 22),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [
-                  Text(title,
-                      style: c.label.copyWith(
-                        color:      selected ? c.primary : c.textDark,
-                        fontWeight: FontWeight.w700,
-                        fontSize:   14,
-                      )),
-                  if (badge != null) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 7, vertical: 2),
-                      decoration: BoxDecoration(
-                        color:        Colors.amber.withValues(alpha: .15),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(badge!,
-                          style: c.caption.copyWith(
-                            color:      Colors.amber[800],
-                            fontSize:   10,
-                          )),
-                    ),
-                  ],
-                ]),
-                const SizedBox(height: 2),
-                Text(subtitle, style: c.caption.copyWith(fontSize: 11)),
-              ],
-            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Text(title, style: c.label.copyWith(
+                    color: selected ? c.primary : c.textDark,
+                    fontWeight: FontWeight.w700, fontSize: 14)),
+                if (badge != null) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                        color: Colors.amber.withValues(alpha: .15),
+                        borderRadius: BorderRadius.circular(6)),
+                    child: Text(badge!,
+                        style: c.caption.copyWith(color: Colors.amber[800], fontSize: 10)),
+                  ),
+                ],
+              ]),
+              const SizedBox(height: 2),
+              Text(subtitle, style: c.caption.copyWith(fontSize: 11)),
+            ]),
           ),
           Container(
             width: 20, height: 20,
             decoration: BoxDecoration(
-              shape:  BoxShape.circle,
-              color:  selected ? c.primary : Colors.transparent,
-              border: Border.all(
-                color: selected ? c.primary : c.divider, width: 2,
-              ),
+              shape: BoxShape.circle,
+              color: selected ? c.primary : Colors.transparent,
+              border: Border.all(color: selected ? c.primary : c.divider, width: 2),
             ),
-            child: selected
-                ? const Icon(Icons.check_rounded,
-                size: 12, color: Colors.white)
-                : null,
+            child: selected ? const Icon(Icons.check_rounded, size: 12, color: Colors.white) : null,
           ),
         ]),
       ),
@@ -464,94 +406,57 @@ class _MethodTile extends StatelessWidget {
 
 class _FeeBreakdownCard extends StatelessWidget {
   const _FeeBreakdownCard();
-
   @override
   Widget build(BuildContext context) {
     final enroll = context.watch<EnrollmentProvider>();
     final savedP = context.watch<SavedMethodsProvider>();
     final fees   = enroll.computedFees(savedP);
     final c      = context.colors;
-
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color:        c.cardBg,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow:    c.cardShadow,
-        border:       Border.all(color: c.divider),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(children: [
-            Icon(Icons.receipt_long_rounded, color: c.primary, size: 20),
-            const SizedBox(width: 8),
-            Text('تفاصيل الفاتورة', style: c.h3.copyWith(fontSize: 14)),
-          ]),
-          const SizedBox(height: 14),
-          Divider(color: c.divider, height: 1),
-          const SizedBox(height: 12),
-          _FeeRow(label: 'سعر الكورس',
-              value: fees.fmt(fees.coursePrice)),
-          _FeeRow(label: 'رسوم المنصة (10%)',
-              value: fees.fmt(fees.platformFee)),
-          _FeeRow(label: 'ضريبة القيمة المضافة (15%) على رسوم المنصة',
-              value: fees.fmt(fees.vatOnPlatform)),
-          _FeeRow(
-            label:    'رسوم بوابة الدفع',
-            value:    fees.fmt(fees.gatewayFee),
-            subLabel: fees.gatewayLabel,
-            isGreen:  fees.gatewayFee == 0,
-          ),
-          const SizedBox(height: 10),
-          Divider(color: c.divider, height: 1),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('الإجمالي', style: c.h2.copyWith(fontSize: 17)),
-              Text(fees.fmt(fees.total),
-                  style: c.h2.copyWith(color: c.primary, fontSize: 19)),
-            ],
-          ),
-        ],
-      ),
+          color: c.cardBg, borderRadius: BorderRadius.circular(18),
+          boxShadow: c.cardShadow, border: Border.all(color: c.divider)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Icon(Icons.receipt_long_rounded, color: c.primary, size: 20),
+          const SizedBox(width: 8),
+          Text('تفاصيل الفاتورة', style: c.h3.copyWith(fontSize: 14)),
+        ]),
+        const SizedBox(height: 14),
+        Divider(color: c.divider, height: 1),
+        const SizedBox(height: 12),
+        _FeeRow(label: 'سعر الكورس', value: fees.fmt(fees.coursePrice)),
+        _FeeRow(label: 'رسوم المنصة (10%)', value: fees.fmt(fees.platformFee)),
+        _FeeRow(label: 'ضريبة القيمة المضافة (15%)', value: fees.fmt(fees.vatOnPlatform)),
+        _FeeRow(label: 'رسوم بوابة الدفع', value: fees.fmt(fees.gatewayFee), sub: fees.gatewayLabel),
+        const SizedBox(height: 10),
+        Divider(color: c.divider, height: 1),
+        const SizedBox(height: 12),
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Text('الإجمالي', style: c.h2.copyWith(fontSize: 17)),
+          Text(fees.fmt(fees.total), style: c.h2.copyWith(color: c.primary, fontSize: 19)),
+        ]),
+      ]),
     );
   }
 }
 
 class _FeeRow extends StatelessWidget {
-  final String  label, value;
-  final String? subLabel;
-  final bool    isGreen;
-  const _FeeRow({
-    required this.label,
-    required this.value,
-    this.subLabel,
-    this.isGreen = false,
-  });
-
+  final String label, value;
+  final String? sub;
+  const _FeeRow({required this.label, required this.value, this.sub});
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
       padding: const EdgeInsets.only(bottom: 9),
       child: Row(children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: c.body.copyWith(fontSize: 13)),
-              if (subLabel != null)
-                Text(subLabel!, style: c.caption.copyWith(fontSize: 10)),
-            ],
-          ),
-        ),
-        Text(value,
-            style: c.label.copyWith(
-              color:      isGreen ? c.success : c.textDark,
-              fontWeight: FontWeight.w600,
-            )),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label, style: c.body.copyWith(fontSize: 13)),
+          if (sub != null) Text(sub!, style: c.caption.copyWith(fontSize: 10)),
+        ])),
+        Text(value, style: c.label.copyWith(fontWeight: FontWeight.w600)),
       ]),
     );
   }
@@ -561,47 +466,32 @@ class _FeeRow extends StatelessWidget {
 
 class _ConfirmBar extends StatelessWidget {
   const _ConfirmBar();
-
   @override
   Widget build(BuildContext context) {
     final enroll = context.watch<EnrollmentProvider>();
     final savedP = context.watch<SavedMethodsProvider>();
     final fees   = enroll.isFree ? null : enroll.computedFees(savedP);
-    final label  = enroll.isFree
-        ? 'سجّل مجاناً الآن'
-        : fees == null
-        ? 'متابعة'
-        : 'ادفع ${fees.fmt(fees.total)}';
-
+    final label  = enroll.isFree ? 'سجّل مجاناً الآن'
+        : fees == null ? 'متابعة' : 'ادفع ${fees.fmt(fees.total)}';
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
       decoration: BoxDecoration(
-        color:     context.colors.cardBg,
-        boxShadow: context.colors.bottomNavShadow,
-      ),
+          color: context.colors.cardBg, boxShadow: context.colors.bottomNavShadow),
       child: GestureDetector(
-        onTap: enroll.isLoading ? null : () => enroll.confirm(savedP),
+        onTap: enroll.isLoading ? null : () => enroll.confirm(savedP, context),
         child: Container(
           height: 56,
           decoration: BoxDecoration(
-            gradient:     context.colors.primaryGradient,
-            borderRadius: BorderRadius.circular(30),
-            boxShadow:    context.colors.primaryShadow,
-          ),
+              gradient: context.colors.primaryGradient,
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: context.colors.primaryShadow),
           child: Center(
             child: enroll.isLoading
-                ? const SizedBox(
-              width: 24, height: 24,
-              child: CircularProgressIndicator(
-                  color: Colors.white, strokeWidth: 2.5),
-            )
-                : Text(label,
-                style: const TextStyle(
-                  color:      Colors.white,
-                  fontWeight: FontWeight.w800,
-                  fontSize:   16,
-                  fontFamily: 'Cairo',
-                )),
+                ? const SizedBox(width: 24, height: 24,
+                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                : Text(label, style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.w800,
+                fontSize: 16, fontFamily: 'Cairo')),
           ),
         ),
       ),
@@ -610,7 +500,7 @@ class _ConfirmBar extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STEP — STC Pay mobile number entry
+// STEP — STC Mobile number entry
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _StcMobileStep extends StatefulWidget {
@@ -621,334 +511,199 @@ class _StcMobileStep extends StatefulWidget {
 
 class _StcMobileStepState extends State<_StcMobileStep> {
   final _ctrl = TextEditingController();
-  String? _error;
-
+  String? _err;
   @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _ctrl.dispose(); super.dispose(); }
 
   Future<void> _submit() async {
-    final mobile = _ctrl.text.trim();
-    if (mobile.length < 9) {
-      setState(() => _error = 'أدخل رقم جوال صحيح');
-      return;
-    }
-    setState(() => _error = null);
-    await context.read<EnrollmentProvider>().initStcPay(mobile);
+    final m = _ctrl.text.trim();
+    if (m.length < 9) { setState(() => _err = 'أدخل رقم جوال صحيح'); return; }
+    setState(() => _err = null);
+    await context.read<EnrollmentProvider>().initStcPay(m, context);
   }
 
   @override
   Widget build(BuildContext context) {
     final enroll = context.watch<EnrollmentProvider>();
-    final c      = context.colors;
-
-    return Column(
-      children: [
-        Container(
-          height: 56,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Row(children: [
-            IconButton(
-              icon: Icon(Icons.arrow_back_ios_new_rounded,
-                  color: c.textDark, size: 20),
-              onPressed: enroll.retryFromStart,
+    final c = context.colors;
+    return Column(children: [
+      _BackBar(title: 'STC Pay', onBack: enroll.retryFromStart),
+      Expanded(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Center(child: Container(
+              width: 88, height: 88,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                    colors: [Color(0xFF4A148C), Color(0xFF7B1FA2)],
+                    begin: Alignment.topLeft, end: Alignment.bottomRight),
+                boxShadow: [BoxShadow(color: const Color(0xFF4A148C).withValues(alpha: .35),
+                    blurRadius: 20, offset: const Offset(0, 8))],
+              ),
+              child: const Icon(Icons.sim_card_rounded, color: Colors.white, size: 44),
+            )),
+            const SizedBox(height: 20),
+            Text('أدخل رقم جوالك المسجّل في STC Pay',
+                style: c.h2.copyWith(fontSize: 18), textAlign: TextAlign.center),
+            const SizedBox(height: 8),
+            Text('سيصلك رمز تحقق SMS لإتمام الدفع.',
+                style: c.body.copyWith(height: 1.7), textAlign: TextAlign.center),
+            const SizedBox(height: 32),
+            Container(
+              decoration: BoxDecoration(
+                  color: c.cardBg, borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: _err != null ? c.danger : c.divider),
+                  boxShadow: c.cardShadow),
+              child: TextField(
+                controller: _ctrl,
+                keyboardType: TextInputType.phone,
+                textDirection: TextDirection.ltr,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                style: c.label.copyWith(fontSize: 18, letterSpacing: 2),
+                decoration: InputDecoration(
+                  hintText: '05XXXXXXXX', hintStyle: c.caption,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                  border: InputBorder.none,
+                  prefixIcon: Icon(Icons.phone_android_rounded, color: c.primary),
+                ),
+                onSubmitted: (_) => _submit(),
+              ),
             ),
-            Expanded(
-              child: Text('STC Pay',
-                  style:     c.h2.copyWith(fontSize: 17),
-                  textAlign: TextAlign.center),
+            if (_err != null) ...[
+              const SizedBox(height: 8),
+              Text(_err!, style: c.caption.copyWith(color: c.danger), textAlign: TextAlign.center),
+            ],
+            const SizedBox(height: 28),
+            _PrimaryBtn(
+              label: 'إرسال رمز التحقق',
+              color1: const Color(0xFF4A148C), color2: const Color(0xFF7B1FA2),
+              loading: enroll.isLoading, onTap: _submit,
             ),
-            const SizedBox(width: 44),
           ]),
         ),
-
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 88, height: 88,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF4A148C), Color(0xFF7B1FA2)],
-                        begin:  Alignment.topLeft,
-                        end:    Alignment.bottomRight,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color:      const Color(0xFF4A148C).withValues(alpha: .35),
-                          blurRadius: 20,
-                          offset:     const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(Icons.sim_card_rounded,
-                        color: Colors.white, size: 44),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                Text(
-                  'أدخل رقم جوالك المسجّل في STC Pay',
-                  style:     c.h2.copyWith(fontSize: 18),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'سيصلك رمز تحقق SMS لإتمام الدفع.',
-                  style:     c.body.copyWith(height: 1.7),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 32),
-
-                // ── Mobile input ──────────────────────────────────────────
-                Container(
-                  decoration: BoxDecoration(
-                    color:        c.cardBg,
-                    borderRadius: BorderRadius.circular(16),
-                    border:       Border.all(
-                      color: _error != null ? c.danger : c.divider,
-                    ),
-                    boxShadow: c.cardShadow,
-                  ),
-                  child: TextField(
-                    controller:     _ctrl,
-                    keyboardType:   TextInputType.phone,
-                    textDirection:  TextDirection.ltr,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    style: c.label.copyWith(
-                        fontSize: 18, letterSpacing: 2),
-                    decoration: InputDecoration(
-                      hintText:        '05XXXXXXXX',
-                      hintStyle:       c.caption,
-                      contentPadding:  const EdgeInsets.symmetric(
-                          horizontal: 18, vertical: 16),
-                      border:          InputBorder.none,
-                      prefixIcon:      Icon(Icons.phone_android_rounded,
-                          color: c.primary),
-                    ),
-                    onSubmitted: (_) => _submit(),
-                  ),
-                ),
-                if (_error != null) ...[
-                  const SizedBox(height: 8),
-                  Text(_error!,
-                      style: c.caption.copyWith(color: c.danger),
-                      textAlign: TextAlign.center),
-                ],
-                const SizedBox(height: 28),
-
-                GestureDetector(
-                  onTap: enroll.isLoading ? null : _submit,
-                  child: Container(
-                    height: 54,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF4A148C), Color(0xFF7B1FA2)],
-                        begin:  Alignment.topLeft,
-                        end:    Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color:      const Color(0xFF4A148C).withValues(alpha: .35),
-                          blurRadius: 16,
-                          offset:     const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: enroll.isLoading
-                          ? const SizedBox(
-                        width: 22, height: 22,
-                        child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2.5),
-                      )
-                          : const Text(
-                        'إرسال رمز التحقق',
-                        style: TextStyle(
-                          color:      Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize:   16,
-                          fontFamily: 'Cairo',
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
+      ),
+    ]);
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STEP — Bank transfer details
+// STEP — STC OTP
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _StcOtpStep extends StatefulWidget {
+  const _StcOtpStep({super.key});
+  @override
+  State<_StcOtpStep> createState() => _StcOtpStepState();
+}
+
+class _StcOtpStepState extends State<_StcOtpStep> {
+  final _ctrl = TextEditingController();
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) {
+    final enroll = context.watch<EnrollmentProvider>();
+    final c = context.colors;
+    return Column(children: [
+      _BackBar(title: 'رمز التحقق OTP', onBack: enroll.retryFromStart),
+      Expanded(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text('أدخل رمز التحقق المُرسَل إلى جوالك',
+                style: c.h2.copyWith(fontSize: 18), textAlign: TextAlign.center),
+            const SizedBox(height: 24),
+            TextField(
+              controller: _ctrl,
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              style: c.h1.copyWith(letterSpacing: 8, fontSize: 28),
+              decoration: InputDecoration(
+                hintText: '------',
+                contentPadding: const EdgeInsets.symmetric(vertical: 18),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+            ),
+            if (enroll.stcOtpError != null) ...[
+              const SizedBox(height: 10),
+              Text(enroll.stcOtpError!, style: c.caption.copyWith(color: c.danger),
+                  textAlign: TextAlign.center),
+            ],
+            const SizedBox(height: 28),
+            _PrimaryBtn(
+              label: 'تأكيد الدفع',
+              loading: enroll.isLoading,
+              onTap: () => enroll.submitStcOtp(_ctrl.text.trim()),
+            ),
+          ]),
+        ),
+      ),
+    ]);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STEP — Bank transfer
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _BankStep extends StatelessWidget {
   const _BankStep({super.key});
-
   @override
   Widget build(BuildContext context) {
     final enroll = context.watch<EnrollmentProvider>();
     final info   = enroll.bankInfo;
     final c      = context.colors;
-
-    return Column(
-      children: [
-        ScreenAppBar(title: 'بيانات التحويل'),
-        Expanded(
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-            child: Column(children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color:        c.primary.withValues(alpha: .07),
+    return Column(children: [
+      ScreenAppBar(title: 'بيانات التحويل'),
+      Expanded(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                  color: c.primary.withValues(alpha: .07),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: c.primary.withValues(alpha: .2)),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.info_outline_rounded,
-                        color: c.primary, size: 22),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'حوّل المبلغ المبيّن أدناه، ثم اضغط \"تم التحويل\". سيتم مراجعة التحويل وتفعيل كورسك خلال 24 ساعة.',
-                        style: c.body.copyWith(color: c.primary, height: 1.6),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              if (info != null) ...[
-                _BankTile(
-                  label:     'المبلغ الإجمالي',
-                  value:     '${(info['fees']?['total'] as num?)?.toStringAsFixed(2) ?? '—'} ر.س',
-                  highlight: true,
-                ),
-                const SizedBox(height: 10),
-                _BankTile(
-                  label:    'رقم المرجع (اكتبه في بيان التحويل)',
-                  value:    info['instructions']?['reference'] as String? ?? '—',
-                  copyable: true,
-                  golden:   true,
-                ),
-                const SizedBox(height: 10),
-                _BankTile(label: 'اسم البنك',
-                    value: info['instructions']?['bank_name'] as String? ?? '—'),
-                const SizedBox(height: 10),
-                _BankTile(label: 'صاحب الحساب',
-                    value: info['instructions']?['account_name'] as String? ?? '—',
-                    copyable: true),
-                const SizedBox(height: 10),
-                _BankTile(label: 'رقم الحساب',
-                    value: info['instructions']?['account_number'] as String? ?? '—',
-                    copyable: true),
-                const SizedBox(height: 10),
-                _BankTile(label: 'الآيبان IBAN',
-                    value: info['instructions']?['iban'] as String? ?? '—',
-                    copyable: true, mono: true),
-                const SizedBox(height: 10),
-                _BankTile(label: 'SWIFT / BIC',
-                    value: info['instructions']?['swift_code'] as String? ?? '—',
-                    copyable: true, mono: true),
-              ],
-
-              const SizedBox(height: 28),
-              _PrimaryBtn(label: 'تم التحويل ✓', onTap: enroll.confirmBankTransfer),
-              const SizedBox(height: 12),
-              _SecondaryBtn(label: 'العودة', onTap: enroll.backToMethod),
-            ]),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// STEP — Waiting for card (browser opened)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _WaitingCardStep extends StatelessWidget {
-  const _WaitingCardStep({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final enroll = context.watch<EnrollmentProvider>();
-    final c      = context.colors;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 28),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _PulseIcon(icon: Icons.open_in_browser_rounded,
-              color1: c.primary, color2: c.primaryLight),
-          const SizedBox(height: 28),
-
-          Text('أكمل الدفع في المتصفح',
-              style: c.h1.copyWith(fontSize: 22),
-              textAlign: TextAlign.center),
-          const SizedBox(height: 12),
-          Text(
-            'تم فتح صفحة الدفع في المتصفح.\nأدخل بيانات بطاقتك هناك،\nثم عد هنا واضغط "تحقق من الدفع".',
-            style:     c.body.copyWith(height: 1.8),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 32),
-
-          _PrimaryBtn(
-            label: 'تحقق من الدفع ✓',
-            onTap: () => enroll.verifyAfterReturn(),
-          ),
-          const SizedBox(height: 14),
-          _SecondaryBtn(
-            label: 'العودة وتغيير طريقة الدفع',
-            onTap: enroll.retryFromStart,
-          ),
-          const SizedBox(height: 24),
-
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color:        c.primaryTint,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.shield_rounded, color: c.primary, size: 18),
+                  border: Border.all(color: c.primary.withValues(alpha: .2))),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Icon(Icons.info_outline_rounded, color: c.primary, size: 22),
                 const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'صفحة الدفع محمية بمعايير PCI-DSS عبر Moyasar. بياناتك البنكية لا تمر أبداً عبر خوادمنا.',
-                    style: c.caption.copyWith(height: 1.5),
-                  ),
-                ),
-              ],
+                Expanded(child: Text(
+                  'حوّل المبلغ مع ذكر رقم المرجع. سيتم تفعيل كورسك خلال 24 ساعة.',
+                  style: c.body.copyWith(color: c.primary, height: 1.6),
+                )),
+              ]),
             ),
-          ),
-        ],
+            const SizedBox(height: 20),
+            if (info != null) ...[
+              _BankTile(label: 'المبلغ', value:
+              '${(info['fees']?['total'] as num?)?.toStringAsFixed(2) ?? '—'} ر.س',
+                  highlight: true),
+              const SizedBox(height: 10),
+              _BankTile(label: 'رقم المرجع', copyable: true, golden: true,
+                  value: info['instructions']?['reference'] as String? ?? '—'),
+              const SizedBox(height: 10),
+              _BankTile(label: 'اسم البنك',
+                  value: info['instructions']?['bank_name'] as String? ?? '—'),
+              const SizedBox(height: 10),
+              _BankTile(label: 'صاحب الحساب', copyable: true,
+                  value: info['instructions']?['account_name'] as String? ?? '—'),
+              const SizedBox(height: 10),
+              _BankTile(label: 'الآيبان IBAN', copyable: true, mono: true,
+                  value: info['instructions']?['iban'] as String? ?? '—'),
+            ],
+            const SizedBox(height: 28),
+            _PrimaryBtn(label: 'تم التحويل ✓', onTap: enroll.confirmBankTransfer),
+            const SizedBox(height: 12),
+            _SecondaryBtn(label: 'العودة', onTap: enroll.backToMethod),
+          ]),
+        ),
       ),
-    );
+    ]);
   }
 }
 
@@ -958,25 +713,16 @@ class _WaitingCardStep extends StatelessWidget {
 
 class _VerifyingStep extends StatelessWidget {
   const _VerifyingStep({super.key});
-
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        SizedBox(
-          width: 72, height: 72,
-          child: CircularProgressIndicator(color: c.primary, strokeWidth: 3),
-        ),
-        const SizedBox(height: 28),
-        Text('جارٍ التحقق من الدفع...',
-            style: c.h2.copyWith(fontSize: 18), textAlign: TextAlign.center),
-        const SizedBox(height: 10),
-        Text('الرجاء الانتظار لحظة',
-            style: c.caption, textAlign: TextAlign.center),
-      ],
-    );
+    return Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      SizedBox(width: 72, height: 72,
+          child: CircularProgressIndicator(color: c.primary, strokeWidth: 3)),
+      const SizedBox(height: 28),
+      Text('جارٍ تأكيد الدفع...', style: c.h2.copyWith(fontSize: 18),
+          textAlign: TextAlign.center),
+    ]);
   }
 }
 
@@ -993,32 +739,22 @@ class _SuccessStep extends StatefulWidget {
 class _SuccessStepState extends State<_SuccessStep>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
-  late Animation<double>   _scale, _fade;
-
+  late Animation<double> _scale, _fade;
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 800))
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 800))
       ..forward();
     _scale = CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut);
     _fade  = CurvedAnimation(parent: _ctrl, curve: Curves.easeIn);
   }
-
   @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
+  void dispose() { _ctrl.dispose(); super.dispose(); }
   @override
   Widget build(BuildContext context) {
-    final enroll    = context.read<EnrollmentProvider>();
-    final isPending = enroll.paidViaBankTransfer;
-    final c         = context.colors;
-    final color1    = isPending ? c.accent : c.success;
-    final color2    = isPending ? const Color(0xFFF39C12) : const Color(0xFF2ECC71);
-
+    final enroll = context.read<EnrollmentProvider>();
+    final pending = enroll.paidViaBankTransfer;
+    final c = context.colors;
     return FadeTransition(
       opacity: _fade,
       child: Padding(
@@ -1027,91 +763,38 @@ class _SuccessStepState extends State<_SuccessStep>
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ScaleTransition(
-              scale: _scale,
-              child: Center(
-                child: Container(
-                  width: 120, height: 120,
-                  margin: const EdgeInsets.only(bottom: 32),
-                  decoration: BoxDecoration(
-                    shape:    BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [color1, color2],
-                      begin:  Alignment.topLeft,
-                      end:    Alignment.bottomRight,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color:      color1.withValues(alpha: .4),
-                        blurRadius: 28,
-                        offset:     const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    isPending
-                        ? Icons.hourglass_top_rounded
-                        : Icons.check_rounded,
-                    color: Colors.white, size: 60,
-                  ),
+            ScaleTransition(scale: _scale, child: Center(child: Container(
+              width: 120, height: 120,
+              margin: const EdgeInsets.only(bottom: 32),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: pending
+                      ? [c.accent, const Color(0xFFF39C12)]
+                      : [c.success, const Color(0xFF2ECC71)],
+                  begin: Alignment.topLeft, end: Alignment.bottomRight,
                 ),
+                boxShadow: [BoxShadow(
+                    color: (pending ? c.accent : c.success).withValues(alpha: .4),
+                    blurRadius: 28, offset: const Offset(0, 10))],
               ),
-            ),
-            Text(
-              isPending ? 'في انتظار التحقق ⏳' : 'تم الدفع بنجاح! 🎉',
-              style:     c.h1.copyWith(fontSize: 24),
-              textAlign: TextAlign.center,
-            ),
+              child: Icon(
+                pending ? Icons.hourglass_top_rounded : Icons.check_rounded,
+                color: Colors.white, size: 60,
+              ),
+            ))),
+            Text(pending ? 'في انتظار التحقق ⏳' : 'تم الدفع بنجاح! 🎉',
+                style: c.h1.copyWith(fontSize: 24), textAlign: TextAlign.center),
             const SizedBox(height: 12),
             Text(
-              isPending
-                  ? 'سيتم تفعيل الكورس خلال 24 ساعة بعد التحقق من التحويل البنكي.'
+              pending
+                  ? 'سيتم تفعيل الكورس خلال 24 ساعة بعد التحقق من التحويل.'
                   : 'تم تأكيد دفعتك وتفعيل الكورس. يمكنك البدء الآن!',
-              style:     c.body.copyWith(height: 1.7),
-              textAlign: TextAlign.center,
+              style: c.body.copyWith(height: 1.7), textAlign: TextAlign.center,
             ),
-
-            if (isPending && enroll.bankInfo != null) ...[
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color:        Colors.amber.withValues(alpha: .08),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.amber.withValues(alpha: .35)),
-                ),
-                child: Column(children: [
-                  Text('رقم المرجع', style: c.caption),
-                  const SizedBox(height: 6),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        enroll.bankInfo!['instructions']?['reference']
-                        as String? ?? '—',
-                        style: c.h2.copyWith(
-                          color:         Colors.amber[800],
-                          letterSpacing: 1.5,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () => Clipboard.setData(ClipboardData(
-                          text: enroll.bankInfo!['instructions']?['reference']
-                          as String? ?? '',
-                        )),
-                        child: Icon(Icons.copy_rounded,
-                            size: 18, color: Colors.amber[800]),
-                      ),
-                    ],
-                  ),
-                ]),
-              ),
-            ],
-
             const SizedBox(height: 40),
             _PrimaryBtn(
-              label: isPending ? 'العودة للرئيسية' : 'ابدأ التعلم الآن',
+              label: pending ? 'العودة للرئيسية' : 'ابدأ التعلم الآن',
               onTap: () => Navigator.of(context).popUntil((r) => r.isFirst),
             ),
           ],
@@ -1125,103 +808,54 @@ class _SuccessStepState extends State<_SuccessStep>
 // STEP — Failed
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _FailedStep extends StatefulWidget {
+class _FailedStep extends StatelessWidget {
   const _FailedStep({super.key});
-  @override
-  State<_FailedStep> createState() => _FailedStepState();
-}
-
-class _FailedStepState extends State<_FailedStep>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double>   _scale, _fade;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 600))
-      ..forward();
-    _scale = CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut);
-    _fade  = CurvedAnimation(parent: _ctrl, curve: Curves.easeIn);
-  }
-
-  @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
-
   @override
   Widget build(BuildContext context) {
     final enroll = context.read<EnrollmentProvider>();
-    final c      = context.colors;
-    final reason = enroll.failureReason ??
-        'حدث خطأ أثناء معالجة الدفع. الرجاء المحاولة مرة أخرى.';
-    final isSoftPending =
-        reason.contains('قيد المعالجة') || reason.contains('سيُفعَّل');
-
-    return FadeTransition(
-      opacity: _fade,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 28),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ScaleTransition(
-              scale: _scale,
-              child: Center(
-                child: Container(
-                  width: 110, height: 110,
-                  margin: const EdgeInsets.only(bottom: 28),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: isSoftPending
-                          ? [c.accent, const Color(0xFFF39C12)]
-                          : [c.danger,  const Color(0xFFE74C3C)],
-                      begin: Alignment.topLeft,
-                      end:   Alignment.bottomRight,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color:      (isSoftPending ? c.accent : c.danger)
-                            .withValues(alpha: .35),
-                        blurRadius: 24,
-                        offset:     const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    isSoftPending
-                        ? Icons.hourglass_top_rounded
-                        : Icons.error_outline_rounded,
-                    color: Colors.white, size: 54,
-                  ),
-                ),
+    final c = context.colors;
+    final reason = enroll.failureReason ?? 'حدث خطأ. الرجاء المحاولة مرة أخرى.';
+    final isSoft = reason.contains('قيد المعالجة') || reason.contains('سيُفعَّل') || reason.contains('تم الدفع');
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 28),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(child: Container(
+            width: 110, height: 110,
+            margin: const EdgeInsets.only(bottom: 28),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: isSoft
+                    ? [c.accent, const Color(0xFFF39C12)]
+                    : [c.danger,  const Color(0xFFE74C3C)],
+                begin: Alignment.topLeft, end: Alignment.bottomRight,
               ),
             ),
-            Text(
-              isSoftPending ? 'الدفع قيد المعالجة' : 'فشلت عملية الدفع',
-              style:     c.h1.copyWith(fontSize: 22),
-              textAlign: TextAlign.center,
+            child: Icon(
+              isSoft ? Icons.hourglass_top_rounded : Icons.error_outline_rounded,
+              color: Colors.white, size: 54,
             ),
-            const SizedBox(height: 12),
-            Text(reason,
-                style: c.body.copyWith(height: 1.7),
-                textAlign: TextAlign.center),
-            const SizedBox(height: 40),
-            _PrimaryBtn(
-              label: isSoftPending ? 'العودة للرئيسية' : 'حاول مرة أخرى',
-              onTap: isSoftPending
-                  ? () => Navigator.of(context).popUntil((r) => r.isFirst)
-                  : enroll.retryFromStart,
-            ),
-            const SizedBox(height: 14),
-            _SecondaryBtn(
-              label: 'العودة للرئيسية',
-              onTap: () => Navigator.of(context).popUntil((r) => r.isFirst),
-            ),
-          ],
-        ),
+          )),
+          Text(isSoft ? 'الدفع قيد المعالجة' : 'فشلت عملية الدفع',
+              style: c.h1.copyWith(fontSize: 22), textAlign: TextAlign.center),
+          const SizedBox(height: 12),
+          Text(reason, style: c.body.copyWith(height: 1.7), textAlign: TextAlign.center),
+          const SizedBox(height: 40),
+          _PrimaryBtn(
+            label: isSoft ? 'العودة للرئيسية' : 'حاول مرة أخرى',
+            onTap: isSoft
+                ? () => Navigator.of(context).popUntil((r) => r.isFirst)
+                : enroll.retryFromStart,
+          ),
+          const SizedBox(height: 14),
+          _SecondaryBtn(
+            label: 'العودة للرئيسية',
+            onTap: () => Navigator.of(context).popUntil((r) => r.isFirst),
+          ),
+        ],
       ),
     );
   }
@@ -1231,31 +865,62 @@ class _FailedStepState extends State<_FailedStep>
 // Shared widgets
 // ─────────────────────────────────────────────────────────────────────────────
 
+class _BackBar extends StatelessWidget {
+  final String title;
+  final VoidCallback onBack;
+  const _BackBar({required this.title, required this.onBack});
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      height: 56, padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Row(children: [
+        IconButton(
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: c.textDark, size: 20),
+          onPressed: onBack,
+        ),
+        Expanded(child: Text(title, style: c.h2.copyWith(fontSize: 17),
+            textAlign: TextAlign.center)),
+        const SizedBox(width: 44),
+      ]),
+    );
+  }
+}
+
 class _PrimaryBtn extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
-  const _PrimaryBtn({required this.label, required this.onTap});
+  final bool loading;
+  final Color? color1, color2;
+  const _PrimaryBtn({
+    required this.label, required this.onTap,
+    this.loading = false, this.color1, this.color2,
+  });
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      height: 54,
-      decoration: BoxDecoration(
-        gradient:     context.colors.primaryGradient,
-        borderRadius: BorderRadius.circular(30),
-        boxShadow:    context.colors.primaryShadow,
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final g = color1 != null
+        ? LinearGradient(colors: [color1!, color2 ?? color1!],
+        begin: Alignment.topLeft, end: Alignment.bottomRight)
+        : c.primaryGradient;
+    return GestureDetector(
+      onTap: loading ? null : onTap,
+      child: Container(
+        height: 54,
+        decoration: BoxDecoration(
+            gradient: g, borderRadius: BorderRadius.circular(30),
+            boxShadow: c.primaryShadow),
+        child: Center(
+          child: loading
+              ? const SizedBox(width: 22, height: 22,
+              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+              : Text(label, style: const TextStyle(
+              color: Colors.white, fontWeight: FontWeight.w800,
+              fontSize: 16, fontFamily: 'Cairo')),
+        ),
       ),
-      child: Center(
-        child: Text(label,
-            style: const TextStyle(
-              color:      Colors.white,
-              fontWeight: FontWeight.w800,
-              fontSize:   16,
-              fontFamily: 'Cairo',
-            )),
-      ),
-    ),
-  );
+    );
+  }
 }
 
 class _SecondaryBtn extends StatelessWidget {
@@ -1268,30 +933,19 @@ class _SecondaryBtn extends StatelessWidget {
     child: Container(
       height: 48,
       decoration: BoxDecoration(
-        color:        context.colors.background,
-        borderRadius: BorderRadius.circular(30),
-        border:       Border.all(color: context.colors.divider),
-      ),
-      child: Center(
-        child: Text(label,
-            style: context.colors.label.copyWith(
-                color: context.colors.textMedium)),
-      ),
+          color: context.colors.background, borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: context.colors.divider)),
+      child: Center(child: Text(label,
+          style: context.colors.label.copyWith(color: context.colors.textMedium))),
     ),
   );
 }
 
 class _BankTile extends StatefulWidget {
   final String label, value;
-  final bool   copyable, highlight, golden, mono;
-  const _BankTile({
-    required this.label,
-    required this.value,
-    this.copyable  = false,
-    this.highlight = false,
-    this.golden    = false,
-    this.mono      = false,
-  });
+  final bool copyable, highlight, golden, mono;
+  const _BankTile({required this.label, required this.value,
+    this.copyable = false, this.highlight = false, this.golden = false, this.mono = false});
   @override
   State<_BankTile> createState() => _BankTileState();
 }
@@ -1307,121 +961,41 @@ class _BankTileState extends State<_BankTile> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final bgColor = widget.golden
-        ? Colors.amber.withValues(alpha: .07)
-        : widget.highlight
-        ? c.primary.withValues(alpha: .06)
-        : c.cardBg;
-    final borderColor = widget.golden
-        ? Colors.amber.withValues(alpha: .35)
-        : widget.highlight
-        ? c.primary.withValues(alpha: .25)
-        : c.divider;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color:        bgColor,
+        color: widget.golden ? Colors.amber.withValues(alpha: .07)
+            : widget.highlight ? c.primary.withValues(alpha: .06) : c.cardBg,
         borderRadius: BorderRadius.circular(14),
-        border:       Border.all(color: borderColor),
-        boxShadow:    widget.highlight || widget.golden ? [] : c.cardShadow,
+        border: Border.all(color: widget.golden
+            ? Colors.amber.withValues(alpha: .35)
+            : widget.highlight ? c.primary.withValues(alpha: .25) : c.divider),
       ),
       child: Row(children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(widget.label, style: c.caption.copyWith(fontSize: 10)),
-              const SizedBox(height: 4),
-              Text(
-                widget.value,
-                style: widget.highlight
-                    ? c.h2.copyWith(color: c.primary)
-                    : widget.golden
-                    ? c.h3.copyWith(
-                    color: Colors.amber[800], letterSpacing: 1.4)
-                    : c.label.copyWith(
-                    fontWeight:    FontWeight.w600,
-                    letterSpacing: widget.mono ? 1.5 : 0),
-              ),
-            ],
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(widget.label, style: c.caption.copyWith(fontSize: 10)),
+          const SizedBox(height: 4),
+          Text(widget.value, style: widget.highlight
+              ? c.h2.copyWith(color: c.primary)
+              : widget.golden
+              ? c.h3.copyWith(color: Colors.amber[800], letterSpacing: 1.4)
+              : c.label.copyWith(fontWeight: FontWeight.w600,
+              letterSpacing: widget.mono ? 1.5 : 0)),
+        ])),
+        if (widget.copyable) GestureDetector(
+          onTap: _copy,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _copied ? c.success.withValues(alpha: .12) : c.primary.withValues(alpha: .08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(_copied ? Icons.check_rounded : Icons.copy_rounded,
+                size: 16, color: _copied ? c.success : c.primary),
           ),
         ),
-        if (widget.copyable)
-          GestureDetector(
-            onTap: _copy,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: _copied
-                    ? c.success.withValues(alpha: .12)
-                    : c.primary.withValues(alpha: .08),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                _copied ? Icons.check_rounded : Icons.copy_rounded,
-                size: 16, color: _copied ? c.success : c.primary,
-              ),
-            ),
-          ),
       ]),
     );
   }
-}
-
-class _PulseIcon extends StatefulWidget {
-  final IconData icon;
-  final Color    color1, color2;
-  const _PulseIcon({
-    required this.icon,
-    required this.color1,
-    required this.color2,
-  });
-  @override
-  State<_PulseIcon> createState() => _PulseIconState();
-}
-
-class _PulseIconState extends State<_PulseIcon>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double>   _pulse;
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1200))
-      ..repeat(reverse: true);
-    _pulse = Tween<double>(begin: .85, end: 1.0)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
-  }
-  @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
-  @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: _pulse,
-    builder: (_, __) => Center(
-      child: Transform.scale(
-        scale: _pulse.value,
-        child: Container(
-          width: 110, height: 110,
-          decoration: BoxDecoration(
-            shape:    BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [widget.color1, widget.color2],
-              begin:  Alignment.topLeft,
-              end:    Alignment.bottomRight,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color:      widget.color1.withValues(alpha: .4 * _pulse.value),
-                blurRadius: 28,
-                offset:     const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Icon(widget.icon, color: Colors.white, size: 52),
-        ),
-      ),
-    ),
-  );
 }

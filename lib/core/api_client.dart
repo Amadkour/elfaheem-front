@@ -6,6 +6,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:flutter_education_app/features/auth/login_screen.dart';
 import 'package:flutter_education_app/features/auth/verified_screen.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -247,6 +248,12 @@ class ApiClient {
           email: u?.gmail ?? '',
           role: u?.role ?? '',
         );
+      }));
+    }
+
+    if (statusCode == 401 && context != null) {
+      Navigator.of(context!).push(MaterialPageRoute(builder: (c) {
+        return LoginScreen();
       }));
     }
 
