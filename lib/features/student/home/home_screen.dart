@@ -9,6 +9,7 @@ import '../../../config/app_config.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../config/app_theme.dart';
 import '../courses/list/courses_list_screen.dart';
+import '../courses/my_courses/my_courses_provider.dart';
 import 'component/category_row.dart';
 import 'component/course_row.dart';
 import 'component/home_section_header.dart';
@@ -36,6 +37,7 @@ class _HomeScreenState extends State<HomeScreen>
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await context.read<HomeProvider>().init(context);
+
     });
   }
 
@@ -80,6 +82,20 @@ class _HomeScreenState extends State<HomeScreen>
                   const SliverToBoxAdapter(child: CategoriesRow()),
                   const SliverToBoxAdapter(child: SizedBox(height: 28)),
 
+                  // ── my courses ──────────────────────────────────────────────
+                  SliverToBoxAdapter(
+                    child: SectionHeader(
+                      title: 'my_courses'.tr,
+                      actionLabel: 'show_more'.tr,
+                      onAction: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const CoursesListScreen()),
+                      ),
+                    ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                  const SliverToBoxAdapter(child: MyCoursesRow(showMyCourses: true,)),
+                  const SliverToBoxAdapter(child: SizedBox(height: 28)),
                   // ── Courses ──────────────────────────────────────────────
                   SliverToBoxAdapter(
                     child: SectionHeader(
@@ -92,7 +108,7 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                   ),
                   const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                  const SliverToBoxAdapter(child: CoursesRow()),
+                  const SliverToBoxAdapter(child: MyCoursesRow(showMyCourses: false,)),
                   const SliverToBoxAdapter(child: SizedBox(height: 28)),
 
                   // ── Best teachers ────────────────────────────────────────

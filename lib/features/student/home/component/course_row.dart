@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/student/courses/my_courses/my_courses_provider.dart';
 import 'package:flutter_education_app/features/student/models.dart'
     show CourseModel;
 import 'package:provider/provider.dart';
@@ -8,9 +9,9 @@ import '../../../../utils/widget/app_network_image.dart';
 import '../../courses/details/course_detail_screen.dart';
 import '../../courses/list/courses_provider.dart';
 
-class CoursesRow extends StatelessWidget {
-  const CoursesRow({super.key});
-
+class MyCoursesRow extends StatelessWidget {
+  const MyCoursesRow({super.key, required this.showMyCourses});
+  final bool showMyCourses;
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<CoursesProvider>();
@@ -28,14 +29,14 @@ class CoursesRow extends StatelessWidget {
       );
     }
 
-    if (provider.courses.isEmpty) {
+    if (showMyCourses && provider.explorHomecourses.isEmpty ||provider.myCourses.isEmpty  ) {
       return  SizedBox(
         height: 100,
         child: Center(child: Text('لا توجد كورسات', style: context.colors.body)),
       );
     }
 
-    final display = provider.courses.take(6).toList();
+    final display = showMyCourses? provider.myCourses.take(6).toList():provider.explorHomecourses.take(6).toList();
 
     // ── Wide: 3-column grid ─────────────────────────────────────────────────
     if (isWide) {
@@ -51,7 +52,7 @@ class CoursesRow extends StatelessWidget {
             childAspectRatio: 0.68,
           ),
           itemCount: display.length,
-          itemBuilder: (_, i) => _CourseCard(course: display[i]),
+          itemBuilder: (_, i) => _CourseCard(course: display[i],showMyCourses: showMyCourses,),
         ),
       );
     }
@@ -65,7 +66,7 @@ class CoursesRow extends StatelessWidget {
         itemCount: display.length,
         separatorBuilder: (_, __) => const SizedBox(width: 14),
         itemBuilder: (_, i) =>
-            _CourseCard(course: display[i], fixedWidth: 188),
+            _CourseCard(course: display[i], fixedWidth: 188,showMyCourses: showMyCourses,),
       ),
     );
   }
@@ -77,8 +78,9 @@ class CoursesRow extends StatelessWidget {
 class _CourseCard extends StatelessWidget {
   final CourseModel course;
   final double? fixedWidth;
+  final bool showMyCourses;
 
-  const _CourseCard({required this.course, this.fixedWidth});
+  const _CourseCard({required this.course, this.fixedWidth, required this.showMyCourses});
 
   Color? get _accentColor {
     final name = course.categoryName?.toLowerCase() ?? '';
@@ -90,7 +92,7 @@ class _CourseCard extends StatelessWidget {
   }
 
   bool get _isLive => course.type == 'live';
-  bool get _hasProgress => course.progress > 0;
+  bool get _hasProgress => course.progress >= 0;
 
   @override
   Widget build(BuildContext context) {
@@ -159,12 +161,12 @@ class _CourseCard extends StatelessWidget {
                     accentColor: _accentColor??context.colors.primary,
                     accentLight: (_accentColor??context.colors.primary)..withValues(alpha:0.12),
                   ),
-
-                  // Progress bar — only when enrolled
-                  if (_hasProgress) ...[
+// Progress bar — only when enrolled
+                  if (_hasProgress && showMyCourses) ...[
                     const SizedBox(height: 9),
                     _ProgressBar(progress: course.progress),
                   ],
+                  //],
                 ],
               ),
             ),
@@ -451,7 +453,7 @@ class _BottomRow extends StatelessWidget {
             child: Text(
               course.categoryName!,
               style: context.colors.caption.copyWith(
-                color: accentColor,
+                color: Colors.white,
                 fontWeight: FontWeight.w700,
                 fontSize: 10,
               ),
@@ -466,7 +468,7 @@ class _BottomRow extends StatelessWidget {
           style: TextStyle(
             color: course.price == 0
                 ? const Color(0xFF0F6E56)
-                : context.colors.primary,
+                : context.colors.accent,
             fontWeight: FontWeight.w800,
             fontSize: 13,
             fontFamily: 'Cairo',

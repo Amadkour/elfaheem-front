@@ -22,9 +22,6 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<MyCoursesProvider>().fetchMyEnrollments();
-    });
   }
 
   @override

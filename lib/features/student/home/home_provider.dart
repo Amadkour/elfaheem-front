@@ -13,6 +13,7 @@ import 'package:provider/provider.dart';
 
 import '../../category/categories_provider.dart';
 import '../courses/list/courses_provider.dart';
+import '../courses/my_courses/my_courses_provider.dart';
 
 class HomeUser {
   final String name;
@@ -37,6 +38,7 @@ class HomeProvider extends ChangeNotifier {
     await Future.value([
       context.read<CategoriesProvider>().fetchCategories(),
       context.read<CoursesProvider>().fetchCourses(),
+
     ]);
   }
   List<InstructorData> instructors = [

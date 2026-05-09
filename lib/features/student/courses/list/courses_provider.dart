@@ -13,6 +13,8 @@ class CoursesProvider extends BaseProvider {
   static const _pageSize = 20;
 
   List<CourseModel> get courses => List.unmodifiable(_courses);
+  List<CourseModel> get explorHomecourses => List.unmodifiable(_courses.where((e)=>!e.isEnrolled));
+  List<CourseModel> get myCourses => List.unmodifiable(_courses.where((e)=>e.isEnrolled));
 
   bool get hasMore => _hasMore;
 

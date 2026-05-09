@@ -17,7 +17,7 @@ class AppTheme {
   AppTheme._();
 
   // ── Brand palette ─────────────────────────────────────────────────────────
-  static const Color primary      = Color(0xFF4F7FFF);
+  static const Color primary      = Color(0xFF158CEA);
   static const Color primaryBlue  = Color(0xFF158CEA);
   static const Color primaryDark  = Color(0xFF2D5CE8);
   static const Color primaryLight = Color(0xFFEEF3FF);

@@ -31,6 +31,7 @@ class MyCoursesProvider extends BaseProvider {
   }
 
   Future<void> fetchMyEnrollments() async {
+    print("-----my-enrollments-------");
     final r=await run(()=>_api.get('/api/v1/my-enrollments'));
     if(r is List){
       _all=r.map((e){
