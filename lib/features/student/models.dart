@@ -6,7 +6,7 @@ import '../teacher/home/teacher_models.dart';
 
 enum CourseStatus { all, inProgress, completed }
 
-enum CourseDetailTab { lessons, about, live }
+enum CourseDetailTab { lessons, about, live,exam }
 
 // class CourseSchedule {
 //   final int id, courseId;

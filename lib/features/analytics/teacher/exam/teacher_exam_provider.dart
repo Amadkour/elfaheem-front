@@ -98,10 +98,12 @@ class TeacherExamProvider extends ChangeNotifier {
     required String name,
     String? description,
     DateTime? startDate,
+    DateTime? endDate,
     int? duration,
     double? passingScore,
     double? totalMarks,
     String? passcode,
+    int? maxSubmissions,
   }) async {
     _saving = true;
     notifyListeners();
@@ -111,10 +113,12 @@ class TeacherExamProvider extends ChangeNotifier {
         description: description,
         courseId: courseId,
         startDate: startDate,
+        endDate: endDate,
         duration: duration,
         passingScore: passingScore,
         totalMarks: totalMarks,
         passcode: passcode,
+        maxSubmissions: maxSubmissions,
       );
       _exams.insert(0, created);
       return true;

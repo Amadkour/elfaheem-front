@@ -3,6 +3,7 @@ import 'exam_model.dart';
 
 class TeacherExamApi {
   final ApiClient _api;
+
   TeacherExamApi({ApiClient? api}) : _api = api ?? ApiClient();
 
   // ── Exams ───────────────────────────────────────────────────────────────────
@@ -11,10 +12,7 @@ class TeacherExamApi {
   Future<List<ExamModel>> fetchCourseExams(int courseId) async {
     final data = await _api.get('/api/v1/courses/$courseId/exams/all');
     if (data is! List) return [];
-    return (data)
-        .cast<Map<String, dynamic>>()
-        .map(ExamModel.fromJson)
-        .toList();
+    return (data).cast<Map<String, dynamic>>().map(ExamModel.fromJson).toList();
   }
 
   /// POST /api/v1/exams
@@ -23,7 +21,9 @@ class TeacherExamApi {
     String? description,
     required int courseId,
     DateTime? startDate,
+    DateTime? endDate,
     int? duration,
+    int? maxSubmissions,
     double? passingScore,
     double? totalMarks,
     String? passcode,
@@ -33,7 +33,9 @@ class TeacherExamApi {
       'course_id': courseId,
       if (description != null) 'description': description,
       if (startDate != null) 'start_date': startDate.toUtc().toIso8601String(),
+      if (endDate != null) 'end_date': endDate.toUtc().toIso8601String(),
       if (duration != null) 'duration': duration,
+      if (maxSubmissions != null) 'max_submissions': maxSubmissions,
       if (passingScore != null) 'passing_score': passingScore,
       if (totalMarks != null) 'total_marks': totalMarks,
       if (passcode != null) 'passcode': passcode,
@@ -64,10 +66,7 @@ class TeacherExamApi {
   Future<List<Question>> fetchQuestions(int examId) async {
     final data = await _api.get('/api/v1/exams/$examId/questions');
     if (data is! List) return [];
-    return (data)
-        .cast<Map<String, dynamic>>()
-        .map(Question.fromJson)
-        .toList();
+    return (data).cast<Map<String, dynamic>>().map(Question.fromJson).toList();
   }
 
   /// POST /api/v1/questions — QuestionCreate schema

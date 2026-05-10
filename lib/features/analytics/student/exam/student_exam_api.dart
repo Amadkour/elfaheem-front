@@ -25,6 +25,9 @@ class StudentExamListItem {
   final bool isSubmitted;
   final int answeredCount;
   final int questionCount;
+  final int? maxSubmissions;
+  final int submissionCount;
+  final DateTime? endDate;
 
   // score fields (null if not submitted)
   final double? marksObtained;
@@ -44,13 +47,18 @@ class StudentExamListItem {
     required this.isSubmitted,
     required this.answeredCount,
     required this.questionCount,
+    this.maxSubmissions,
+    this.submissionCount = 0,
+    this.endDate,
     this.marksObtained,
     this.percentage,
     this.passed,
   });
 
-  factory StudentExamListItem.fromJson(Map<String, dynamic> j) =>
-      StudentExamListItem(
+  factory StudentExamListItem.fromJson(Map<String, dynamic> j) {
+    print(j);
+    print(j.keys);
+    return StudentExamListItem(
         id: j['id'] as int,
         name: j['name'] as String,
         description: j['description'] as String?,
@@ -65,10 +73,16 @@ class StudentExamListItem {
         isSubmitted: j['is_submitted'] as bool? ?? false,
         answeredCount: j['answered_count'] as int? ?? 0,
         questionCount: j['question_count'] as int? ?? 0,
+        maxSubmissions: j['max_submissions'] as int?,
+        submissionCount: j['submission_count'] as int? ?? 0,
+        endDate: j['end_date'] != null
+            ? DateTime.tryParse(j['end_date'].toString())
+            : null,
         marksObtained: (j['marks_obtained'] as num?)?.toDouble(),
         percentage: (j['percentage'] as num?)?.toDouble(),
         passed: j['passed'] as bool?,
       );
+  }
 
   ExamStatus get status {
     if (isSubmitted) return ExamStatus.ended;
@@ -78,6 +92,25 @@ class StudentExamListItem {
     final end = startDate!.add(Duration(minutes: duration ?? 60));
     if (now.isAfter(end)) return ExamStatus.ended;
     return ExamStatus.active;
+  }
+
+  /// True when the deadline (end_date) has passed.
+  bool get isDeadlineFrozen =>
+      endDate != null && DateTime.now().isAfter(endDate!);
+
+  /// True when the student has used all allowed submission attempts.
+  bool get isSubmissionsFrozen =>
+      maxSubmissions != null &&
+          maxSubmissions! > 0 &&
+          submissionCount >= maxSubmissions!;
+
+  /// True when student cannot submit any more answers.
+  bool get isFrozen => isDeadlineFrozen || isSubmissionsFrozen;
+
+  /// How many more times the student can re-submit (null = unlimited).
+  int? get remainingSubmissions {
+    if (maxSubmissions == null || maxSubmissions! <= 0) return null;
+    return (maxSubmissions! - submissionCount).clamp(0, maxSubmissions!);
   }
 }
 
@@ -166,5 +199,16 @@ class StudentExamApi {
   Future<StudentMyResult> fetchMyResult(int examId) async {
     final data = await _api.get('/api/v1/exams/$examId/results');
     return StudentMyResult.fromJson(data as Map<String, dynamic>, examId);
+  }
+
+  /// GET /api/v1/courses/{courseId}/exams/student
+  /// Exams for a specific course (used in course profile widget).
+  Future<List<StudentExamListItem>> fetchCourseExams(String courseId) async {
+    final data = await _api.get('/api/v1/courses/$courseId/exams/student');
+    if (data is! List) return [];
+    return (data)
+        .cast<Map<String, dynamic>>()
+        .map(StudentExamListItem.fromJson)
+        .toList();
   }
 }

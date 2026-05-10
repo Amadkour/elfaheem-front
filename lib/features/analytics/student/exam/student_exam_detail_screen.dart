@@ -1,11 +1,13 @@
 // features/student/exam/student_exam_detail_screen.dart
 //
 // Entry gate: shows exam info, optional passcode field, then launches the quiz.
+// Automatically redirects to StudentExamFrozenScreen when exam is frozen.
 
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/config/app_theme.dart';
+import 'student_exam_frozen_screen.dart';
 import 'student_exam_api.dart';
 import 'student_exam_provider.dart';
 import 'student_exam_quiz_screen.dart';
@@ -74,6 +76,15 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final exam = widget.exam;
+
+    // ── Frozen redirect ───────────────────────────────────────────────────────
+    if (exam.isFrozen) {
+      return StudentExamFrozenScreen(
+        exam: exam,
+        onBack: () => Navigator.pop(context),
+      );
+    }
+
     final isDone = exam.isSubmitted;
     final isScheduled =
         exam.startDate != null && exam.startDate!.isAfter(DateTime.now());
@@ -152,6 +163,22 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
               if (exam.startDate != null)
                 _InfoRow(Icons.schedule_rounded, 'وقت البدء',
                     _fmtDate(exam.startDate!), Colors.orange),
+              // ── New: max submissions ───────────────────────────────────────
+              if (exam.maxSubmissions != null && exam.maxSubmissions! > 0)
+                _InfoRow(
+                  Icons.repeat_rounded,
+                  'المحاولات المتبقية',
+                  '${exam.remainingSubmissions ?? 0} / ${exam.maxSubmissions}',
+                  Colors.purple,
+                ),
+              // ── New: deadline ──────────────────────────────────────────────
+              if (exam.endDate != null)
+                _InfoRow(
+                  Icons.hourglass_bottom_rounded,
+                  'الموعد النهائي',
+                  _fmtDate(exam.endDate!),
+                  exam.isDeadlineFrozen ? Colors.redAccent : Colors.orange,
+                ),
             ]),
 
             const SizedBox(height: 16),
@@ -217,7 +244,7 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
                   Expanded(
                     child: Text(
                       'بمجرد بدء الاختبار لا يمكن إيقافه مؤقتاً. '
-                      'تأكد من اتصالك بالإنترنت قبل البدء.',
+                          'تأكد من اتصالك بالإنترنت قبل البدء.',
                       style: TextStyle(
                           fontFamily: 'Cairo',
                           fontSize: 12,
@@ -234,8 +261,8 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
 
   String _fmtDate(DateTime d) =>
       '${d.day}/${d.month}/${d.year}  '
-      '${d.hour.toString().padLeft(2, '0')}:'
-      '${d.minute.toString().padLeft(2, '0')}';
+          '${d.hour.toString().padLeft(2, '0')}:'
+          '${d.minute.toString().padLeft(2, '0')}';
 }
 
 // ── Sub-widgets ──────────────────────────────────────────────────────────────
@@ -282,23 +309,23 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 10)
-            ]),
-        child: Column(
-          children: children.map((c) => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: c,
-          )).toList(),
-        ),
-      );
+    width: double.infinity,
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10)
+        ]),
+    child: Column(
+      children: children.map((c) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: c,
+      )).toList(),
+    ),
+  );
 }
 
 class _InfoRow extends StatelessWidget {
@@ -309,19 +336,19 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(children: [
-        Icon(icon, color: color, size: 18),
-        const SizedBox(width: 10),
-        Text(label,
-            style: const TextStyle(
-                fontFamily: 'Cairo', fontSize: 13, color: Colors.grey)),
-        const Spacer(),
-        Text(value,
-            style: TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: color)),
-      ]);
+    Icon(icon, color: color, size: 18),
+    const SizedBox(width: 10),
+    Text(label,
+        style: const TextStyle(
+            fontFamily: 'Cairo', fontSize: 13, color: Colors.grey)),
+    const Spacer(),
+    Text(value,
+        style: TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: color)),
+  ]);
 }
 
 class _ScoreCard extends StatelessWidget {
@@ -333,45 +360,45 @@ class _ScoreCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-            colors: [
-              _color.withValues(alpha: 0.12),
-              _color.withValues(alpha: 0.04)
-            ],
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _color.withValues(alpha: 0.3)),
-        ),
-        child: Column(children: [
-          Text(
-            exam.passed == true ? 'مبروك! اجتزت الاختبار ✓' : 'لم تجتز الاختبار هذه المرة',
-            style: TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: _color),
-          ),
-          const SizedBox(height: 16),
-          Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-            _ScoreStat('${exam.percentage?.toStringAsFixed(1) ?? 0}%',
-                'النسبة', _color),
-            _ScoreStat(
-                '${exam.marksObtained?.toStringAsFixed(0) ?? 0} / '
+    width: double.infinity,
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topRight,
+        end: Alignment.bottomLeft,
+        colors: [
+          _color.withValues(alpha: 0.12),
+          _color.withValues(alpha: 0.04)
+        ],
+      ),
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: _color.withValues(alpha: 0.3)),
+    ),
+    child: Column(children: [
+      Text(
+        exam.passed == true ? 'مبروك! اجتزت الاختبار ✓' : 'لم تجتز الاختبار هذه المرة',
+        style: TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: _color),
+      ),
+      const SizedBox(height: 16),
+      Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
+        _ScoreStat('${exam.percentage?.toStringAsFixed(1) ?? 0}%',
+            'النسبة', _color),
+        _ScoreStat(
+            '${exam.marksObtained?.toStringAsFixed(0) ?? 0} / '
                 '${exam.totalMarks?.toStringAsFixed(0) ?? 0}',
-                'الدرجة',
-                _color),
-            _ScoreStat(
-                '${exam.answeredCount} / ${exam.questionCount}',
-                'أجبت',
-                Colors.grey),
-          ]),
-        ]),
-      );
+            'الدرجة',
+            _color),
+        _ScoreStat(
+            '${exam.answeredCount} / ${exam.questionCount}',
+            'أجبت',
+            Colors.grey),
+      ]),
+    ]),
+  );
 }
 
 class _ScoreStat extends StatelessWidget {
@@ -381,16 +408,16 @@ class _ScoreStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(children: [
-        Text(value,
-            style: TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: color)),
-        Text(label,
-            style: const TextStyle(
-                fontFamily: 'Cairo', fontSize: 12, color: Colors.grey)),
-      ]);
+    Text(value,
+        style: TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: color)),
+    Text(label,
+        style: const TextStyle(
+            fontFamily: 'Cairo', fontSize: 12, color: Colors.grey)),
+  ]);
 }
 
 class _StartButton extends StatelessWidget {
@@ -400,37 +427,37 @@ class _StartButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        width: double.infinity,
-        child: ElevatedButton(
-          onPressed: loading ? null : onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: context.colors.primary,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16)),
-            elevation: 0,
-          ),
-          child: loading
-              ? const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white))
-              : const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.play_arrow_rounded, size: 22),
-                    SizedBox(width: 8),
-                    Text('ابدأ الاختبار الآن',
-                        style: TextStyle(
-                            fontFamily: 'Cairo',
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700)),
-                  ],
-                ),
-        ),
-      );
+    width: double.infinity,
+    child: ElevatedButton(
+      onPressed: loading ? null : onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: context.colors.primary,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16)),
+        elevation: 0,
+      ),
+      child: loading
+          ? const SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(
+              strokeWidth: 2, color: Colors.white))
+          : const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.play_arrow_rounded, size: 22),
+          SizedBox(width: 8),
+          Text('ابدأ الاختبار الآن',
+              style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700)),
+        ],
+      ),
+    ),
+  );
 }
 
 class _DoneButton extends StatelessWidget {
@@ -439,23 +466,23 @@ class _DoneButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        width: double.infinity,
-        child: OutlinedButton(
-          onPressed: onPressed,
-          style: OutlinedButton.styleFrom(
-            foregroundColor: Colors.grey,
-            side: BorderSide(color: Colors.grey.shade300),
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16)),
-          ),
-          child: const Text('العودة',
-              style: TextStyle(
-                  fontFamily: 'Cairo',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700)),
-        ),
-      );
+    width: double.infinity,
+    child: OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Colors.grey,
+        side: BorderSide(color: Colors.grey.shade300),
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16)),
+      ),
+      child: const Text('العودة',
+          style: TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 15,
+              fontWeight: FontWeight.w700)),
+    ),
+  );
 }
 
 // ── Countdown card ────────────────────────────────────────────────────────────
@@ -493,34 +520,34 @@ class _CountdownCardState extends State<_CountdownCard> {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-            color: Colors.orange.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.orange.withValues(alpha: 0.3))),
-        child: Column(children: [
-          const Text('يبدأ الاختبار خلال',
-              style: TextStyle(
-                  fontFamily: 'Cairo',
-                  fontSize: 14,
-                  color: Colors.orange,
-                  fontWeight: FontWeight.w600)),
-          const SizedBox(height: 12),
-          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            _TimeBox(
-                _remaining.inHours.toString().padLeft(2, '0'), 'ساعة'),
-            _Colon(),
-            _TimeBox(
-                (_remaining.inMinutes % 60).toString().padLeft(2, '0'),
-                'دقيقة'),
-            _Colon(),
-            _TimeBox(
-                (_remaining.inSeconds % 60).toString().padLeft(2, '0'),
-                'ثانية'),
-          ]),
-        ]),
-      );
+    width: double.infinity,
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+        color: Colors.orange.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.orange.withValues(alpha: 0.3))),
+    child: Column(children: [
+      const Text('يبدأ الاختبار خلال',
+          style: TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 14,
+              color: Colors.orange,
+              fontWeight: FontWeight.w600)),
+      const SizedBox(height: 12),
+      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        _TimeBox(
+            _remaining.inHours.toString().padLeft(2, '0'), 'ساعة'),
+        _Colon(),
+        _TimeBox(
+            (_remaining.inMinutes % 60).toString().padLeft(2, '0'),
+            'دقيقة'),
+        _Colon(),
+        _TimeBox(
+            (_remaining.inSeconds % 60).toString().padLeft(2, '0'),
+            'ثانية'),
+      ]),
+    ]),
+  );
 }
 
 class _TimeBox extends StatelessWidget {
@@ -529,35 +556,35 @@ class _TimeBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(children: [
-        Container(
-          width: 54,
-          height: 54,
-          decoration: BoxDecoration(
-              color: Colors.orange.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12)),
-          child: Center(
-              child: Text(value,
-                  style: const TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.orange))),
-        ),
-        const SizedBox(height: 4),
-        Text(label,
-            style: const TextStyle(
-                fontFamily: 'Cairo', fontSize: 11, color: Colors.grey)),
-      ]);
+    Container(
+      width: 54,
+      height: 54,
+      decoration: BoxDecoration(
+          color: Colors.orange.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(12)),
+      child: Center(
+          child: Text(value,
+              style: const TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.orange))),
+    ),
+    const SizedBox(height: 4),
+    Text(label,
+        style: const TextStyle(
+            fontFamily: 'Cairo', fontSize: 11, color: Colors.grey)),
+  ]);
 }
 
 class _Colon extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 8),
-        child: Text(':',
-            style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                color: Colors.orange)),
-      );
+    padding: EdgeInsets.symmetric(horizontal: 8),
+    child: Text(':',
+        style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            color: Colors.orange)),
+  );
 }

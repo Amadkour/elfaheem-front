@@ -598,7 +598,7 @@ class _ExamCard extends StatelessWidget {
           ),
 
           const SizedBox(height: 22),
-           Divider(color: AppTheme.textLight.withAlpha(100)),
+          Divider(color: AppTheme.textLight.withAlpha(100)),
           /// ACTION BUTTONS
           Row(
             children: [
@@ -620,8 +620,8 @@ class _ExamCard extends StatelessWidget {
                 padding: const EdgeInsets.all(5),
                 child: Text("|",
                   style:TextStyle(
-                    fontSize: 18,
-                    color: AppTheme.textLight.withAlpha(100)
+                      fontSize: 18,
+                      color: AppTheme.textLight.withAlpha(100)
                   ),
                 ),
               ),
@@ -989,7 +989,7 @@ class _QuestionTile extends StatelessWidget {
                   if (v == 'delete') onDelete();
                 },
                 itemBuilder: (_) => [
-                   PopupMenuItem(
+                  PopupMenuItem(
                     value: 'edit',
                     child: ListTile(
                       dense: true,
@@ -1449,9 +1449,13 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
   final _totalMarksCtrl = TextEditingController(text: '100');
   final _passingCtrl = TextEditingController(text: '60');
   final _durationCtrl = TextEditingController(text: '60');
+  final _maxSubmissionsCtrl = TextEditingController(text: '1');
   bool _hasPasscode = false;
   bool _hasSchedule = false;
+  bool _hasDeadline = false;
+  bool _hasMaxSubmissions = false;
   DateTime? _scheduleDate;
+  DateTime? _deadlineDate;
 
   @override
   void dispose() {
@@ -1461,6 +1465,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
     _totalMarksCtrl.dispose();
     _passingCtrl.dispose();
     _durationCtrl.dispose();
+    _maxSubmissionsCtrl.dispose();
     super.dispose();
   }
 
@@ -1478,19 +1483,48 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
     _scheduleDate = DateTime(d.year, d.month, d.day, t.hour, t.minute));
   }
 
+  Future<void> _pickDeadline() async {
+    final d = await showDatePicker(
+        context: context,
+        initialDate: DateTime.now().add(const Duration(days: 7)),
+        firstDate: DateTime.now(),
+        lastDate: DateTime.now().add(const Duration(days: 365)));
+    if (d == null || !context.mounted) return;
+    final t = await showTimePicker(
+        context: context,
+        initialTime: const TimeOfDay(hour: 23, minute: 59));
+    if (t == null) return;
+    setState(() =>
+    _deadlineDate = DateTime(d.year, d.month, d.day, t.hour, t.minute));
+  }
+
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
+    if (_hasSchedule && _scheduleDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('يرجى تحديد تاريخ ووقت البدء')));
+      return;
+    }
+    if (_hasDeadline && _deadlineDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('يرجى تحديد الموعد النهائي')));
+      return;
+    }
     final ok = await widget.provider.createExam(
       name: _nameCtrl.text.trim(),
       description:
       _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
       startDate: _hasSchedule ? _scheduleDate : null,
+      endDate: _hasDeadline ? _deadlineDate : null,
       duration: int.tryParse(_durationCtrl.text),
       totalMarks: double.tryParse(_totalMarksCtrl.text),
       passingScore: double.tryParse(_passingCtrl.text),
       passcode:
       _hasPasscode && _passcodeCtrl.text.trim().isNotEmpty
           ? _passcodeCtrl.text.trim()
+          : null,
+      maxSubmissions: _hasMaxSubmissions
+          ? (int.tryParse(_maxSubmissionsCtrl.text) ?? 1)
           : null,
     );
     if (ok && context.mounted) Navigator.pop(context);
@@ -1514,7 +1548,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
             decoration: BoxDecoration(
                 color: Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(2))),
-         Padding(
+        Padding(
           padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
           child: Row(children: [
             Icon(Icons.add_circle_outline_rounded,
@@ -1614,7 +1648,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                           _scheduleDate != null
                               ? '${_scheduleDate!.day}/${_scheduleDate!.month}/${_scheduleDate!.year}  '
                               '${_scheduleDate!.hour.toString().padLeft(2, '0')}:${_scheduleDate!.minute.toString().padLeft(2, '0')}'
-                              : 'اختر التاريخ والوقت',
+                              : 'اختر تاريخ ووقت البدء',
                           style: TextStyle(
                               fontFamily: 'Cairo',
                               fontSize: 14,
@@ -1624,6 +1658,66 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                         ),
                       ]),
                     ),
+                  )
+                      : null,
+                ),
+                const SizedBox(height: 10),
+                // ── Deadline (end_date) ────────────────────────────────────
+                _Toggle(
+                  icon: Icons.hourglass_bottom_rounded,
+                  label: 'موعد نهائي للتسليم',
+                  value: _hasDeadline,
+                  onChanged: (v) => setState(() => _hasDeadline = v),
+                  child: _hasDeadline
+                      ? GestureDetector(
+                    onTap: _pickDeadline,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                          border: Border.all(
+                              color: Colors.orange.shade300),
+                          borderRadius: BorderRadius.circular(10)),
+                      child: Row(children: [
+                        Icon(Icons.event_busy_rounded,
+                            size: 18,
+                            color: Colors.orange.shade600),
+                        const SizedBox(width: 8),
+                        Text(
+                          _deadlineDate != null
+                              ? '${_deadlineDate!.day}/${_deadlineDate!.month}/${_deadlineDate!.year}  '
+                              '${_deadlineDate!.hour.toString().padLeft(2, '0')}:${_deadlineDate!.minute.toString().padLeft(2, '0')}'
+                              : 'اختر الموعد النهائي',
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 14,
+                              color: _deadlineDate != null
+                                  ? Colors.black87
+                                  : Colors.grey),
+                        ),
+                      ]),
+                    ),
+                  )
+                      : null,
+                ),
+                const SizedBox(height: 10),
+                // ── Max submissions ────────────────────────────────────────
+                _Toggle(
+                  icon: Icons.repeat_rounded,
+                  label: 'تحديد عدد مرات التقديم',
+                  value: _hasMaxSubmissions,
+                  onChanged: (v) => setState(() => _hasMaxSubmissions = v),
+                  child: _hasMaxSubmissions
+                      ? _Field(
+                    ctrl: _maxSubmissionsCtrl,
+                    label: 'عدد المحاولات المسموح بها',
+                    hint: '1',
+                    keyboardType: TextInputType.number,
+                    validator: (v) {
+                      final n = int.tryParse(v ?? '');
+                      if (n == null || n < 1) return 'أدخل رقماً أكبر من 0';
+                      return null;
+                    },
                   )
                       : null,
                 ),

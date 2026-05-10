@@ -58,6 +58,17 @@ class StudentExamProvider extends ChangeNotifier {
   String? _questionsError;
   String? get questionsError => _questionsError;
 
+  // ── Course-specific exam lists (for course profile widget) ─────────────────
+  final Map<String, List<StudentExamListItem>> _courseExams = {};
+  final Map<String, bool> _loadingCourseExams = {};
+  final Map<String, String?> _courseExamsError = {};
+
+  List<StudentExamListItem> courseExamsFor(String courseId) =>
+      _courseExams[courseId] ?? [];
+  bool loadingCourseExamsFor(String courseId) =>
+      _loadingCourseExams[courseId] ?? false;
+  String? courseExamsErrorFor(String courseId) => _courseExamsError[courseId];
+
   // ── Timer ──────────────────────────────────────────────────────────────────
   int _secondsLeft = 0;
   int get secondsLeft => _secondsLeft;
@@ -93,10 +104,38 @@ class StudentExamProvider extends ChangeNotifier {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
+  // Course-specific exams  (for course profile widget)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Future<void> loadCourseExams(String courseId) async {
+    _loadingCourseExams[courseId] = true;
+    _courseExamsError[courseId] = null;
+    notifyListeners();
+    try {
+      _courseExams[courseId] = await _api.fetchCourseExams(courseId);
+    } on ApiException catch (e) {
+      _courseExamsError[courseId] = e.message;
+    } catch (e) {
+      _courseExamsError[courseId] = e.toString();
+    } finally {
+      _loadingCourseExams[courseId] = false;
+      notifyListeners();
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
   // Start a quiz — load questions then open session
   // ══════════════════════════════════════════════════════════════════════════
 
   Future<bool> startExam(StudentExamListItem exam) async {
+    // Guard: do not allow starting a frozen exam
+    if (exam.isFrozen) {
+      _questionsError = exam.isDeadlineFrozen
+          ? 'انتهى الموعد النهائي لهذا الاختبار'
+          : 'لقد استنفدت جميع محاولاتك المسموح بها';
+      notifyListeners();
+      return false;
+    }
     _loadingQuestions = true;
     _questionsError = null;
     notifyListeners();
@@ -246,9 +285,12 @@ class StudentExamProvider extends ChangeNotifier {
       courseId: old.courseId,
       courseName: old.courseName,
       startDate: old.startDate,
+      endDate: old.endDate,
       duration: old.duration,
       totalMarks: old.totalMarks,
       passingScore: old.passingScore,
+      maxSubmissions: old.maxSubmissions,
+      submissionCount: old.submissionCount + 1,
       isSubmitted: true,
       answeredCount: result?.answeredCount ?? old.answeredCount,
       questionCount: old.questionCount,

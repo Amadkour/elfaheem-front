@@ -1,14 +1,15 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_education_app/features/analytics/student/exam/student_course_exams_widget.dart';
 
 import '../../../models.dart';
 import 'about.dart';
 import 'session.dart'; // uses the SessionsTab defined above
 
 class TabContent extends StatelessWidget {
-  const TabContent({super.key, required this.activeTab});
+  const TabContent({super.key, required this.activeTab, required this.courseId});
 
   final CourseDetailTab activeTab;
-
+  final String courseId;
   @override
   Widget build(BuildContext context) {
     return AnimatedSwitcher(
@@ -17,7 +18,8 @@ class TabContent extends StatelessWidget {
       child: switch (activeTab) {
         CourseDetailTab.about => const AboutTab(key: ValueKey('about')),
         CourseDetailTab.live => const AboutTab(key: ValueKey('live')),
-        CourseDetailTab.lessons => const SessionsTab(key: ValueKey('sessions'))
+        CourseDetailTab.lessons => const SessionsTab(key: ValueKey('sessions')),
+        CourseDetailTab.exam =>  StudentCourseExamsWidget(courseId:courseId ,),
       },
     );
   }
