@@ -1,6 +1,7 @@
 // ignore_for_file: depend_on_referenced_packages, use_build_context_synchronously
 library;
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart'
     show TeacherCourseStatus, TeacherCourse;
@@ -981,7 +982,7 @@ class _ExtRow extends StatelessWidget {
                   ),
                 ),
                 if (onTap != null)
-                   Icon(Icons.chevron_left_rounded,
+                   Icon(CupertinoIcons.settings,
                       size: 16, color: context.colors.primary),
               ],
             ),

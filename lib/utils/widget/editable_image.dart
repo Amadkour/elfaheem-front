@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:cross_file/cross_file.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../config/app_config.dart';
@@ -25,6 +26,7 @@ class EditableImage extends StatelessWidget {
   final bool isCircle;
   @override
   Widget build(BuildContext context) {
+    print(context.height/10);
     return Container(
       height: size,
       width: size,
@@ -34,9 +36,6 @@ class EditableImage extends StatelessWidget {
       children: [
         // Image picker — overlaps bottom of header
         Positioned(
-          bottom: 10,
-          left: 0,
-          right: 0,
           child: Center(
             child: GestureDetector(
               onTap: () => _pickImage(context,onChange),
@@ -68,8 +67,8 @@ class EditableImage extends StatelessWidget {
         ),
         if (imageByte != null || imageUrl != null)
           Positioned(
-            bottom: isCircle? 30: 0,
-            right:isCircle? 20: - 10,
+            bottom: isCircle?0 :0,
+            left:isCircle? (size/1.7): - 10,
             child: InkWell(
               borderRadius: const BorderRadius.all(Radius.circular(10)),
               onTap: () => _pickImage(context,onChange),
@@ -106,8 +105,7 @@ class EditableImage extends StatelessWidget {
       return Image.memory(bytes, fit: BoxFit.cover);
     }
     if (url != null && url.isNotEmpty) {
-      return Image.network(url,
-          fit: BoxFit.cover, errorBuilder: (_, __, ___) => _placeholder());
+      return AppNetworkImage( url: url,);
     }
     return _placeholder();
   }

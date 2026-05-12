@@ -1,16 +1,16 @@
-// features/student/exam/student_exam_list_screen.dart
+// student_exam_list_screen.dart — Premium redesign
 //
-// Tab shown inside the student dashboard — lists all published exams across
-// every course the student is enrolled in, with score chips for submitted ones.
-// Tapping an exam navigates to StudentExamDetailScreen (entry gate + quiz).
+// Shows all student exams grouped by: Upcoming / Active / Submitted / Frozen.
+// Each card shows best score, remaining attempts, and deadline countdown.
+library;
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/config/app_theme.dart';
-import '../../teacher/exam/exam_model.dart';
 import 'student_exam_api.dart';
-import 'student_exam_provider.dart';
 import 'student_exam_detail_screen.dart';
+import 'student_exam_provider.dart';
 
 class StudentExamListScreen extends StatefulWidget {
   const StudentExamListScreen({super.key});
@@ -20,556 +20,488 @@ class StudentExamListScreen extends StatefulWidget {
 }
 
 class _StudentExamListScreenState extends State<StudentExamListScreen>
-    with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
+    with SingleTickerProviderStateMixin {
+  late TabController _tabCtrl;
 
   @override
   void initState() {
     super.initState();
+    _tabCtrl = TabController(length: 4, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<StudentExamProvider>().loadMyExams();
     });
   }
 
   @override
+  void dispose() { _tabCtrl.dispose(); super.dispose(); }
+
+  @override
   Widget build(BuildContext context) {
-    super.build(context);
     final prov = context.watch<StudentExamProvider>();
+    final c = context.colors;
+
+    final all = prov.myExams;
+    final now = DateTime.now();
+
+    final upcoming  = all.where((e) => !e.isSubmitted && e.startDate != null && e.startDate!.isAfter(now)).toList();
+    final active    = all.where((e) => !e.isSubmitted && !e.isFrozen && (e.startDate == null || e.startDate!.isBefore(now))).toList();
+    final submitted = all.where((e) => e.isSubmitted).toList();
+    final frozen    = all.where((e) => e.isFrozen && !e.isSubmitted).toList();
 
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: context.colors.background,
-        body: SafeArea(
-          child: Column(children: [
-            _buildHeader(),
-            _buildFilterRow(prov),
-            Expanded(child: _buildBody(prov)),
-          ]),
+        backgroundColor: c.background,
+        body: NestedScrollView(
+          physics: const BouncingScrollPhysics(),
+          headerSliverBuilder: (_, __) => [
+            SliverAppBar(
+              expandedHeight: 160,
+              pinned: true,
+              backgroundColor: c.primary,
+              flexibleSpace: FlexibleSpaceBar(
+                background: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [c.primary, c.primary.withValues(alpha: .75)],
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                    ),
+                  ),
+                  child: SafeArea(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.quiz_rounded, color: Colors.white, size: 36),
+                        const SizedBox(height: 8),
+                        const Text('اختباراتي', style: TextStyle(
+                          fontFamily: 'Cairo', fontSize: 22,
+                          fontWeight: FontWeight.w800, color: Colors.white,
+                        )),
+                        const SizedBox(height: 4),
+                        Text('${all.length} اختبار في ${all.map((e) => e.courseId).toSet().length} مادة',
+                            style: const TextStyle(fontFamily: 'Cairo', fontSize: 13, color: Colors.white70)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              bottom: TabBar(
+                controller: _tabCtrl,
+                indicatorColor: Colors.white,
+                indicatorWeight: 3,
+                labelStyle: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700, fontSize: 12),
+                unselectedLabelStyle: const TextStyle(fontFamily: 'Cairo', fontSize: 12),
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white60,
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                tabs: [
+                  Tab(text: 'نشطة (${active.length})'),
+                  Tab(text: 'قادمة (${upcoming.length})'),
+                  Tab(text: 'مقدّمة (${submitted.length})'),
+                  Tab(text: 'مغلقة (${frozen.length})'),
+                ],
+              ),
+            ),
+          ],
+          body: prov.loadingList
+              ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+              : prov.listError != null
+              ? _ErrorState(
+            message: prov.listError!,
+            onRetry: () => prov.loadMyExams(),
+          )
+              : TabBarView(
+            controller: _tabCtrl,
+            children: [
+              _ExamList(exams: active,    emptyMsg: 'لا توجد اختبارات نشطة الآن'),
+              _ExamList(exams: upcoming,  emptyMsg: 'لا توجد اختبارات قادمة'),
+              _ExamList(exams: submitted, emptyMsg: 'لم تُقدّم أي اختبار بعد'),
+              _ExamList(exams: frozen,    emptyMsg: 'لا توجد اختبارات مغلقة'),
+            ],
+          ),
         ),
       ),
     );
   }
+}
 
-  // ── Filter state ───────────────────────────────────────────────────────────
-  _Filter _filter = _Filter.all;
+// ── Exam list ──────────────────────────────────────────────────────────────────
 
-  Widget _buildHeader() => Padding(
-    padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
-    child: Row(children: [
-      Expanded(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('اختباراتي', style: context.colors.h1),
-          const SizedBox(height: 2),
-          Consumer<StudentExamProvider>(builder: (_, p, __) {
-            final total = p.myExams.length;
-            final done = p.myExams.where((e) => e.isSubmitted).length;
-            return Text(
-              '$done / $total مكتمل',
-              style: context.colors.body,
-            );
-          }),
-        ]),
-      ),
-      Consumer<StudentExamProvider>(builder: (_, p, __) => IconButton(
-        icon: const Icon(Icons.refresh_rounded, color: Colors.grey),
-        onPressed: p.loadingList ? null : p.loadMyExams,
-      )),
-    ]),
-  );
+class _ExamList extends StatelessWidget {
+  final List<StudentExamListItem> exams;
+  final String emptyMsg;
+  const _ExamList({required this.exams, required this.emptyMsg});
 
-  Widget _buildFilterRow(StudentExamProvider prov) => SizedBox(
-    height: 42,
-    child: ListView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      children: _Filter.values.map((f) {
-        final selected = _filter == f;
-        return GestureDetector(
-          onTap: () => setState(() => _filter = f),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            margin: const EdgeInsets.only(left: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: selected ? context.colors.primary : Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                  color: selected ? context.colors.primary : Colors.grey.shade200),
-            ),
-            child: Text(
-              f.label,
-              style: TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: selected ? Colors.white : Colors.grey.shade700,
-              ),
+  @override
+  Widget build(BuildContext context) {
+    if (exams.isEmpty) return _EmptyState(message: emptyMsg);
+    return ListView.separated(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+      itemCount: exams.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (_, i) => _ExamCard(exam: exams[i]),
+    );
+  }
+}
+
+// ── Exam card ──────────────────────────────────────────────────────────────────
+
+class _ExamCard extends StatelessWidget {
+  final StudentExamListItem exam;
+  const _ExamCard({required this.exam});
+
+  Color get _accent {
+    if (exam.isFrozen && !exam.isSubmitted) return Colors.blueGrey;
+    if (exam.isSubmitted) return exam.passed == true ? AppTheme.success : Colors.redAccent;
+    if (exam.startDate != null && exam.startDate!.isAfter(DateTime.now())) return Colors.orange;
+    return const Color(0xFF0F4C81);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final prov = context.read<StudentExamProvider>();
+    final c = context.colors;
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ChangeNotifierProvider.value(
+              value: prov,
+              child: StudentExamDetailScreen(exam: exam),
             ),
           ),
         );
-      }).toList(),
-    ),
-  );
-
-  Widget _buildBody(StudentExamProvider prov) {
-    if (prov.loadingList && prov.myExams.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (prov.listError != null && prov.myExams.isEmpty) {
-      return _ErrorRetry(
-        message: prov.listError!,
-        onRetry: prov.loadMyExams,
-      );
-    }
-
-    final items = _filtered(prov.myExams);
-
-    if (items.isEmpty) {
-      return Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.quiz_outlined, size: 72, color: Colors.grey.shade300),
-          const SizedBox(height: 16),
-          Text(
-            prov.myExams.isEmpty ? 'لا توجد اختبارات حتى الآن' : 'لا توجد نتائج',
-            style: const TextStyle(
-                fontFamily: 'Cairo', fontSize: 16, color: Colors.grey),
-          ),
-        ]),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: prov.loadMyExams,
-      child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-        physics: const BouncingScrollPhysics(),
-        itemCount: items.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (_, i) => _ExamCard(
-          item: items[i],
-          onTap: () => _openExam(context, items[i]),
+      },
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: c.cardBg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _accent.withValues(alpha: .18)),
+          boxShadow: c.cardShadow,
         ),
-      ),
-    );
-  }
-
-  List<StudentExamListItem> _filtered(List<StudentExamListItem> all) {
-    return switch (_filter) {
-      _Filter.all => all,
-      _Filter.pending => all.where((e) => !e.isSubmitted).toList(),
-      _Filter.submitted => all.where((e) => e.isSubmitted).toList(),
-      _Filter.passed =>
-          all.where((e) => e.isSubmitted && e.passed == true).toList(),
-    };
-  }
-
-  void _openExam(BuildContext context, StudentExamListItem item) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ChangeNotifierProvider.value(
-          value: context.read<StudentExamProvider>(),
-          child: StudentExamDetailScreen(exam: item),
-        ),
-      ),
-    );
-  }
-}
-
-enum _Filter { all, pending, submitted, passed }
-
-extension _FilterLabel on _Filter {
-  String get label => switch (this) {
-    _Filter.all => 'الكل',
-    _Filter.pending => 'لم يُؤدَّ',
-    _Filter.submitted => 'مكتمل',
-    _Filter.passed => 'ناجح',
-  };
-}
-
-// ── Exam card ─────────────────────────────────────────────────────────────────
-
-class _ExamCard extends StatelessWidget {
-  final StudentExamListItem item;
-  final VoidCallback onTap;
-
-  const _ExamCard({required this.item, required this.onTap});
-
-  Color _cardColor(BuildContext context) {
-    if (item.isFrozen) return Colors.grey;
-    if (item.isSubmitted) {
-      return item.passed == true ? AppTheme.success : Colors.redAccent;
-    }
-    if (item.startDate != null && item.startDate!.isAfter(DateTime.now())) {
-      return Colors.orange;
-    }
-    return context.colors.primary;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final pct = item.percentage;
-    final isDone = item.isSubmitted;
-    final isFrozen = item.isFrozen;
-    final accent = _cardColor(context);
-
-    return GestureDetector(
-      onTap: isFrozen ? null : onTap,
-      child: Opacity(
-        opacity: isFrozen && !isDone ? 0.72 : 1.0,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 12,
-                  offset: const Offset(0, 3))
-            ],
-          ),
-          child: Column(children: [
-            // ── Header ───────────────────────────────────────────────────────
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // ── Header row ───────────────────────────────────────────────────
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Container(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+              width: 46, height: 46,
               decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.06),
-                borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(18)),
+                gradient: LinearGradient(
+                  colors: [_accent, _accent.withValues(alpha: .7)],
+                  begin: Alignment.topLeft, end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(13),
+                boxShadow: [BoxShadow(
+                  color: _accent.withValues(alpha: .3), blurRadius: 8, offset: const Offset(0, 3),
+                )],
+              ),
+              child: Icon(_statusIcon, color: Colors.white, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(exam.name,
+                    style: c.h3.copyWith(fontSize: 14),
+                    maxLines: 2, overflow: TextOverflow.ellipsis),
+                if (exam.courseName != null) ...[
+                  const SizedBox(height: 3),
+                  Text(exam.courseName!,
+                      style: c.caption.copyWith(fontSize: 11),
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                ],
+              ]),
+            ),
+            const SizedBox(width: 8),
+
+            // Score or status badge
+            if (exam.isSubmitted && exam.percentage != null)
+              _ScoreBadge(pct: exam.percentage!, passed: exam.passed ?? false)
+            else
+              _StatusBadge(exam: exam, accent: _accent),
+          ]),
+
+          const SizedBox(height: 14),
+
+          // ── Meta chips ───────────────────────────────────────────────────
+          Wrap(spacing: 8, runSpacing: 6, children: [
+            _MetaChip(Icons.timer_outlined, '${exam.duration ?? 0}د', Colors.teal),
+            _MetaChip(Icons.help_outline_rounded, '${exam.questionCount}س', _accent),
+            if (exam.maxSubmissions != null && exam.maxSubmissions! > 0) ...[
+              _MetaChip(
+                Icons.repeat_rounded,
+                '${exam.submissionCount}/${exam.maxSubmissions} محاولة',
+                Colors.purple,
+              ),
+              if (!exam.isFrozen)
+                _MetaChip(
+                  Icons.replay_rounded,
+                  '${exam.computedRemainingSubmissions ?? 0} متبقية',
+                  (exam.computedRemainingSubmissions ?? 0) > 0 ? Colors.green : Colors.redAccent,
+                ),
+            ],
+            if (exam.endDate != null)
+              _DeadlineChip(endDate: exam.endDate!, frozen: exam.isDeadlineFrozen),
+          ]),
+
+          // ── Best score bar ───────────────────────────────────────────────
+          if (exam.isSubmitted && exam.percentage != null) ...[
+            const SizedBox(height: 12),
+            _ScoreBar(pct: exam.percentage!, passed: exam.passed ?? false, accent: _accent),
+          ],
+
+          // ── Retry hint ───────────────────────────────────────────────────
+          if (exam.isSubmitted && exam.canRetry) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                color: const Color(0xFF6C5CE7).withValues(alpha: .08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFF6C5CE7).withValues(alpha: .2)),
               ),
               child: Row(children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    isFrozen
-                        ? Icons.lock_clock_rounded
-                        : isDone
-                        ? Icons.check_circle_rounded
-                        : Icons.quiz_rounded,
-                    color: accent,
-                    size: 22,
+                const Icon(Icons.replay_rounded, size: 14, color: Color(0xFF6C5CE7)),
+                const SizedBox(width: 6),
+                Text(
+                  'يمكنك المحاولة مرة أخرى (${exam.computedRemainingSubmissions} محاولة متبقية)',
+                  style: const TextStyle(
+                    fontFamily: 'Cairo', fontSize: 11,
+                    fontWeight: FontWeight.w700, color: Color(0xFF6C5CE7),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(item.name,
-                          style: const TextStyle(
-                              fontFamily: 'Cairo',
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
-                      if (item.courseName != null) ...[
-                        const SizedBox(height: 2),
-                        Text(item.courseName!,
-                            style: const TextStyle(
-                                fontFamily: 'Cairo',
-                                fontSize: 12,
-                                color: Colors.grey),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _StatusBadge(_statusLabel(context), accent),
               ]),
             ),
-
-            // ── Body ─────────────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-              child: Column(children: [
-                // Info chips row
-                Wrap(spacing: 10, runSpacing: 6, children: [
-                  _Chip(Icons.timer_outlined,
-                      '${item.duration ?? 0} دقيقة', Colors.teal),
-                  _Chip(Icons.help_outline_rounded,
-                      '${item.questionCount} سؤال', context.colors.primary),
-                  if (item.passingScore != null)
-                    _Chip(Icons.star_outline_rounded,
-                        '${item.passingScore!.toInt()}% للنجاح',
-                        Colors.amber.shade700),
-                  // Remaining submissions chip
-                  if (item.maxSubmissions != null && item.maxSubmissions! > 0)
-                    _Chip(
-                      Icons.repeat_rounded,
-                      item.isFrozen && !isDone
-                          ? 'نفدت المحاولات'
-                          : isDone
-                          ? '${item.submissionCount}/${item.maxSubmissions} محاولة'
-                          : '${item.remainingSubmissions ?? 0} محاولة متبقية',
-                      item.isSubmissionsFrozen
-                          ? Colors.redAccent
-                          : Colors.purple,
-                    ),
-                ]),
-
-                // Deadline row
-                if (item.endDate != null) ...[
-                  const SizedBox(height: 8),
-                  _DeadlineRow(endDate: item.endDate!, isFrozen: item.isDeadlineFrozen),
-                ],
-
-                // Score bar (only when submitted)
-                if (isDone && pct != null) ...[
-                  const SizedBox(height: 12),
-                  Row(children: [
-                    Expanded(
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'الدرجة: ${item.marksObtained?.toStringAsFixed(0)} / '
-                                        '${item.totalMarks?.toStringAsFixed(0)}',
-                                    style: const TextStyle(
-                                        fontFamily: 'Cairo',
-                                        fontSize: 12,
-                                        color: Colors.grey),
-                                  ),
-                                  Text(
-                                    '${pct.toStringAsFixed(1)}%',
-                                    style: TextStyle(
-                                        fontFamily: 'Cairo',
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w800,
-                                        color: accent),
-                                  ),
-                                ]),
-                            const SizedBox(height: 6),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(6),
-                              child: LinearProgressIndicator(
-                                value: pct / 100,
-                                backgroundColor: Colors.grey.shade100,
-                                color: accent,
-                                minHeight: 7,
-                              ),
-                            ),
-                          ]),
-                    ),
-                  ]),
-                ],
-
-                // CTA — start / frozen notice
-                if (!isDone) ...[
-                  const SizedBox(height: 12),
-                  isFrozen
-                      ? _FrozenBanner(item: item)
-                      : GestureDetector(
-                    onTap: onTap,
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: context.colors.primary.withValues(alpha: 0.07),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: context.colors.primary
-                                .withValues(alpha: 0.25)),
-                      ),
-                      child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.play_arrow_rounded,
-                                color: context.colors.primary, size: 18),
-                            const SizedBox(width: 6),
-                            Text('ابدأ الاختبار',
-                                style: TextStyle(
-                                    fontFamily: 'Cairo',
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: context.colors.primary)),
-                          ]),
-                    ),
-                  ),
-                ],
-              ]),
-            ),
-          ]),
-        ),
+          ],
+        ]),
       ),
     );
   }
 
-  String _statusLabel(BuildContext context) {
-    if (item.isDeadlineFrozen) return 'انتهى الموعد';
-    if (item.isSubmissionsFrozen) return 'نفدت المحاولات';
-    if (item.isSubmitted) return item.passed == true ? 'ناجح ✓' : 'راسب ✗';
-    if (item.startDate != null && item.startDate!.isAfter(DateTime.now())) {
-      return 'مجدول';
-    }
-    return 'متاح';
+  IconData get _statusIcon {
+    if (exam.isFrozen && !exam.isSubmitted) return Icons.lock_clock_rounded;
+    if (exam.isSubmitted) return exam.passed == true ? Icons.emoji_events_rounded : Icons.replay_rounded;
+    if (exam.startDate != null && exam.startDate!.isAfter(DateTime.now())) return Icons.schedule_rounded;
+    return Icons.quiz_rounded;
   }
 }
 
-// ── Frozen banner ─────────────────────────────────────────────────────────────
+// ── Score badge ───────────────────────────────────────────────────────────────
 
-class _FrozenBanner extends StatelessWidget {
-  final StudentExamListItem item;
-  const _FrozenBanner({required this.item});
+class _ScoreBadge extends StatelessWidget {
+  final double pct;
+  final bool passed;
+  const _ScoreBadge({required this.pct, required this.passed});
 
   @override
   Widget build(BuildContext context) {
-    final msg = item.isDeadlineFrozen
-        ? 'انتهى الموعد النهائي لهذا الاختبار'
-        : 'لقد استنفدت جميع محاولاتك (${item.maxSubmissions})';
+    final color = passed ? AppTheme.success : Colors.redAccent;
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        gradient: LinearGradient(colors: [color, color.withValues(alpha: .7)],
+            begin: Alignment.topLeft, end: Alignment.bottomRight),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: color.withValues(alpha: .3), blurRadius: 8)],
       ),
-      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(Icons.lock_outline_rounded, color: Colors.grey.shade500, size: 16),
-        const SizedBox(width: 6),
-        Flexible(
-          child: Text(msg,
-              style: TextStyle(
-                  fontFamily: 'Cairo',
-                  fontSize: 12,
-                  color: Colors.grey.shade600),
-              textAlign: TextAlign.center),
+      child: Text('${pct.toStringAsFixed(0)}%',
+          style: const TextStyle(
+            fontFamily: 'Cairo', fontSize: 13,
+            fontWeight: FontWeight.w900, color: Colors.white,
+          )),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  final StudentExamListItem exam;
+  final Color accent;
+  const _StatusBadge({required this.exam, required this.accent});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+    decoration: BoxDecoration(
+      color: accent.withValues(alpha: .10),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: accent.withValues(alpha: .3)),
+    ),
+    child: Text(
+      exam.isFrozen ? 'مغلق' : 'نشط',
+      style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.w700, color: accent),
+    ),
+  );
+}
+
+// ── Score bar ─────────────────────────────────────────────────────────────────
+
+class _ScoreBar extends StatelessWidget {
+  final double pct;
+  final bool passed;
+  final Color accent;
+  const _ScoreBar({required this.pct, required this.passed, required this.accent});
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(children: [
+        const Icon(Icons.emoji_events_rounded, size: 12, color: Colors.amber),
+        const SizedBox(width: 4),
+        Text('أفضل نتيجة',
+            style: const TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey)),
+        const Spacer(),
+        Text('${pct.toStringAsFixed(1)}%',
+            style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.w800, color: accent)),
+      ]),
+      const SizedBox(height: 5),
+      ClipRRect(
+        borderRadius: BorderRadius.circular(6),
+        child: LinearProgressIndicator(
+          value: pct / 100,
+          minHeight: 6,
+          backgroundColor: accent.withValues(alpha: .12),
+          valueColor: AlwaysStoppedAnimation(accent),
         ),
+      ),
+    ],
+  );
+}
+
+// ── Meta chip ─────────────────────────────────────────────────────────────────
+
+class _MetaChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  const _MetaChip(this.icon, this.label, this.color);
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: .08),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, size: 12, color: color),
+      const SizedBox(width: 4),
+      Text(label, style: TextStyle(
+        fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.w600, color: color,
+      )),
+    ]),
+  );
+}
+
+// ── Deadline chip with live countdown ─────────────────────────────────────────
+
+class _DeadlineChip extends StatefulWidget {
+  final DateTime endDate;
+  final bool frozen;
+  const _DeadlineChip({required this.endDate, required this.frozen});
+
+  @override
+  State<_DeadlineChip> createState() => _DeadlineChipState();
+}
+
+class _DeadlineChipState extends State<_DeadlineChip> {
+  late Timer _timer;
+  late Duration _remaining;
+
+  @override
+  void initState() {
+    super.initState();
+    _remaining = widget.endDate.difference(DateTime.now());
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() => _remaining = widget.endDate.difference(DateTime.now()));
+    });
+  }
+
+  @override
+  void dispose() { _timer.cancel(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDead = widget.frozen || _remaining.isNegative;
+    final isUrgent = !isDead && _remaining.inHours < 3;
+    final color = isDead ? Colors.redAccent : isUrgent ? Colors.orange : Colors.grey;
+    final label = isDead
+        ? 'انتهى الموعد'
+        : _remaining.inHours >= 24
+        ? '${widget.endDate.day}/${widget.endDate.month}'
+        : isUrgent
+        ? '${_remaining.inHours}س ${_remaining.inMinutes % 60}د'
+        : 'ينتهي ${_remaining.inHours}س';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .08),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.hourglass_bottom_rounded, size: 12, color: color),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(
+          fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.w600, color: color,
+        )),
       ]),
     );
   }
 }
 
-// ── Deadline row ──────────────────────────────────────────────────────────────
+// ── Empty / Error states ──────────────────────────────────────────────────────
 
-class _DeadlineRow extends StatelessWidget {
-  final DateTime endDate;
-  final bool isFrozen;
-  const _DeadlineRow({required this.endDate, required this.isFrozen});
-
-  @override
-  Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final diff = endDate.difference(now);
-    String label;
-    Color color;
-
-    if (isFrozen) {
-      label = 'انتهى الموعد النهائي';
-      color = Colors.redAccent;
-    } else if (diff.inHours < 24) {
-      final h = diff.inHours;
-      final m = diff.inMinutes % 60;
-      label = 'ينتهي خلال ${h}س ${m}د';
-      color = diff.inHours < 3 ? Colors.redAccent : Colors.orange;
-    } else {
-      label =
-      'الموعد النهائي: ${endDate.day}/${endDate.month}/${endDate.year}';
-      color = Colors.grey.shade600;
-    }
-
-    return Row(children: [
-      Icon(Icons.hourglass_bottom_rounded, size: 13, color: color),
-      const SizedBox(width: 4),
-      Text(label,
-          style: TextStyle(
-              fontFamily: 'Cairo', fontSize: 11, color: color)),
-    ]);
-  }
-}
-
-// ── Shared micro-widgets ──────────────────────────────────────────────────────
-
-class _StatusBadge extends StatelessWidget {
-  final String label;
-  final Color color;
-  const _StatusBadge(this.label, this.color);
+class _EmptyState extends StatelessWidget {
+  final String message;
+  const _EmptyState({required this.message});
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding:
-    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-    decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20)),
-    child: Text(label,
-        style: TextStyle(
-            fontFamily: 'Cairo',
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: color)),
+  Widget build(BuildContext context) => Center(
+    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      Icon(Icons.inbox_rounded, size: 56, color: Colors.grey.shade300),
+      const SizedBox(height: 14),
+      Text(message, style: TextStyle(
+        fontFamily: 'Cairo', fontSize: 14, color: Colors.grey.shade500,
+      )),
+    ]),
   );
 }
 
-class _Chip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  const _Chip(this.icon, this.label, this.color);
-
-  @override
-  Widget build(BuildContext context) =>
-      Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 14, color: color),
-        const SizedBox(width: 4),
-        Text(label,
-            style: TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 12,
-                color: Colors.grey.shade700)),
-      ]);
-}
-
-class _ErrorRetry extends StatelessWidget {
+class _ErrorState extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
-  const _ErrorRetry({required this.message, required this.onRetry});
+  const _ErrorState({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) => Center(
     child: Padding(
       padding: const EdgeInsets.all(32),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.wifi_off_rounded,
-            size: 64, color: Colors.grey.shade300),
-        const SizedBox(height: 12),
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.redAccent),
+        const SizedBox(height: 14),
         Text(message,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 14,
-                color: Colors.grey)),
-        const SizedBox(height: 16),
+            style: const TextStyle(fontFamily: 'Cairo', fontSize: 14, color: Colors.grey),
+            textAlign: TextAlign.center),
+        const SizedBox(height: 20),
         ElevatedButton.icon(
           onPressed: onRetry,
-          icon: const Icon(Icons.refresh_rounded),
-          label: const Text('إعادة المحاولة',
-              style: TextStyle(fontFamily: 'Cairo')),
+          icon: const Icon(Icons.refresh_rounded, size: 18),
+          label: const Text('إعادة المحاولة', style: TextStyle(fontFamily: 'Cairo')),
           style: ElevatedButton.styleFrom(
-              backgroundColor: context.colors.primary,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12))),
+            backgroundColor: context.colors.primary,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            elevation: 0,
+          ),
         ),
       ]),
     ),
   );
-}
-
-// Small extension so ExamStatus can be used in the card without importing
-// the teacher model directly in the switch expression.
-extension ExamStatusExt on ExamStatus {
-  static const scheduled = 'scheduled';
 }

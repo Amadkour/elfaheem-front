@@ -6,19 +6,16 @@
 //   import 'checkout_web_impl.dart'
 //       if (dart.library.io) 'checkout_stub_impl.dart';
 //
-// On mobile the web checkout path (kIsWeb == false) is never taken, so
-// _IFrameCheckoutPage is never constructed. This stub just needs to exist
-// so the Dart compiler doesn't complain about the missing export.
+// On mobile the kIsWeb branch in _openWebCheckout is never taken, so
+// IFrameCheckoutPage is never constructed. This stub exists only so the
+// Dart compiler finds the public symbol used in that dead-code branch.
 
 import 'package:flutter/material.dart';
 
 /// Stub — never instantiated on mobile (kIsWeb is always false there).
-// ignore: unused_element
-class _IFrameCheckoutPage extends StatelessWidget {
-  // ignore: unused_element
+class IFrameCheckoutPage extends StatelessWidget {
   final String url;
-  // ignore: unused_element
-  const _IFrameCheckoutPage({required this.url});
+  const IFrameCheckoutPage({super.key, required this.url});
 
   @override
   Widget build(BuildContext context) =>

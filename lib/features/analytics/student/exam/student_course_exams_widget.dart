@@ -256,7 +256,7 @@ class _MetaRow extends StatelessWidget {
 
     // Remaining submissions
     if (exam.maxSubmissions != null && exam.maxSubmissions! > 0) {
-      final rem = exam.remainingSubmissions ?? 0;
+      final rem = exam.submissionCount ;
       parts.add(_MetaChip(
           icon: Icons.repeat_rounded,
           label: exam.isFrozen && !exam.isSubmitted

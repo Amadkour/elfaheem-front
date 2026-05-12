@@ -123,7 +123,7 @@ class TeacherSessionItem {
       recordingUrl,
       recordingStatus;
   final bool isLiveActive;
-  final DateTime scheduledAt;
+  final DateTime? scheduledAt;
 
   const TeacherSessionItem({
     required this.id,
@@ -145,12 +145,13 @@ class TeacherSessionItem {
   bool get hasRecording =>
       recordingStatus == 'uploaded' && recordingUrl != null;
 
-  String get scheduledLabel {
+  String? get scheduledLabel {
     try {
-      final dt = scheduledAt.toLocal();
+      if(scheduledAt==null) return null;
+      final dt = scheduledAt!.toLocal();
       return '${dt.day}/${dt.month}  ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     } catch (_) {
-      return scheduledAt.toIso8601String();
+      return scheduledAt!.toIso8601String();
     }
   }
 
@@ -161,7 +162,7 @@ class TeacherSessionItem {
           name: j['name'] as String? ?? '',
           description: j['description'] as String?,
           type: j['type'] as String?,
-          scheduledAt: DateTime.parse(j['scheduled_at'] as String),
+          scheduledAt:j['scheduled_at']!=null? DateTime.parse(j['scheduled_at'] as String):null,
           durationMinutes: j['duration_minutes'] as int? ?? 0,
           order: j['order'] as int? ?? 0,
           isLiveActive: j['is_live_active'] as bool? ?? false,

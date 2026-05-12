@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../config/app_theme.dart';
 import '../../../../auth/auth_provider.dart';
@@ -15,13 +16,13 @@ class SessionsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider  = context.watch<CourseDetailProvider>();
-    final sessions  = provider.course.sessions;
+    final provider = context.watch<CourseDetailProvider>();
+    final sessions = provider.course.sessions;
     final completed = sessions.where((s) => s.isCompleted).length;
-    final total     = sessions.length;
+    final total = sessions.length;
 
-    if (provider.isLoadingSession) {
-      return  Padding(
+    if (provider.isLoading) {
+      return Padding(
         padding: EdgeInsets.all(48),
         child: Center(
           child: CircularProgressIndicator(
@@ -43,14 +44,14 @@ class SessionsTab extends StatelessWidget {
                 width: 72,
                 height: 72,
                 decoration: BoxDecoration(
-                  color: context.colors.primaryLight.withValues(alpha:0.3),
+                  color: context.colors.primaryLight.withValues(alpha: 0.3),
                   shape: BoxShape.circle,
                 ),
-                child:  Icon(Icons.video_library_outlined,
+                child: Icon(Icons.video_library_outlined,
                     size: 36, color: context.colors.primary),
               ),
               const SizedBox(height: 14),
-               Text('لا توجد دروس بعد', style: context.colors.body),
+              Text('لا توجد دروس بعد', style: context.colors.body),
             ],
           ),
         ),
@@ -69,8 +70,7 @@ class SessionsTab extends StatelessWidget {
         ),
 
         ListView.builder(
-          padding:
-          const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           physics: const NeverScrollableScrollPhysics(),
           shrinkWrap: true,
           itemCount: sessions.length,
@@ -101,86 +101,84 @@ class _ProgressBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
-    decoration: BoxDecoration(
-      gradient: context.colors.primaryGradient,
-      borderRadius: BorderRadius.circular(18),
-      boxShadow: [
-        BoxShadow(
-          color: context.colors.primary.withValues(alpha:0.32),
-          blurRadius: 18,
-          offset: const Offset(0, 5),
-        ),
-      ],
-    ),
-    child: Row(
-      children: [
-        // Circular progress
-        Stack(
-          alignment: Alignment.center,
-          children: [
-            SizedBox(
-              width: 54,
-              height: 54,
-              child: CircularProgressIndicator(
-                value: progress,
-                strokeWidth: 5,
-                backgroundColor: Colors.white.withValues(alpha:0.25),
-                valueColor:
-                const AlwaysStoppedAnimation(Colors.white),
-              ),
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+        decoration: BoxDecoration(
+          gradient: context.colors.primaryGradient,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: context.colors.primary.withValues(alpha: 0.32),
+              blurRadius: 18,
+              offset: const Offset(0, 5),
             ),
-            Text(
-              '${(progress * 100).round()}%',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                fontFamily: 'Cairo',
+          ],
+        ),
+        child: Row(
+          children: [
+            // Circular progress
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  width: 54,
+                  height: 54,
+                  child: CircularProgressIndicator(
+                    value: progress,
+                    strokeWidth: 5,
+                    backgroundColor: Colors.white.withValues(alpha: 0.25),
+                    valueColor: const AlwaysStoppedAnimation(Colors.white),
+                  ),
+                ),
+                Text(
+                  '${(progress * 100).round()}%',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    fontFamily: 'Cairo',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'تقدمك في الكورس',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      fontFamily: 'Cairo',
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'أكملت $completed من $total محاضرة',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontSize: 12,
+                      fontFamily: 'Cairo',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 6,
+                      backgroundColor: Colors.white.withValues(alpha: 0.25),
+                      valueColor: const AlwaysStoppedAnimation(Colors.white),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
         ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'تقدمك في الكورس',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  fontFamily: 'Cairo',
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'أكملت $completed من $total محاضرة',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha:0.8),
-                  fontSize: 12,
-                  fontFamily: 'Cairo',
-                ),
-              ),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 6,
-                  backgroundColor: Colors.white.withValues(alpha:0.25),
-                  valueColor:
-                  const AlwaysStoppedAnimation(Colors.white),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    ),
-  );
+      );
 }
 
 // ── Student session card ──────────────────────────────────────────────────────
@@ -205,9 +203,9 @@ class StudentSessionCard extends StatelessWidget {
 
     Color? borderColor;
     if (isDone) {
-      borderColor = context.colors.accent2.withValues(alpha:0.35);
+      borderColor = context.colors.accent2.withValues(alpha: 0.35);
     } else if (isLive && isCheckedIn) {
-      borderColor = context.colors.danger.withValues(alpha:0.4);
+      borderColor = context.colors.danger.withValues(alpha: 0.4);
     }
 
     return GestureDetector(
@@ -222,7 +220,7 @@ class StudentSessionCard extends StatelessWidget {
               : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha:0.06),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 12,
               offset: const Offset(0, 3),
             ),
@@ -279,8 +277,7 @@ class StudentSessionCard extends StatelessWidget {
     if (session.isLive) {
       final resp = await provider.joinLive(session.id);
       if (resp == null || !context.mounted) return;
-      _snack(context, 'جاري فتح الحصة المباشرة…',
-          const Color(0xFF185FA5));
+      _snack(context, 'جاري فتح الحصة المباشرة…', const Color(0xFF185FA5));
       final user = context.read<AuthProvider>().currentUser;
       Navigator.push(
         context,
@@ -307,7 +304,8 @@ class StudentSessionCard extends StatelessWidget {
     await provider.trackView(session.id);
     if (session.hasRecording && context.mounted) {
       _snack(context, 'فتح التسجيل…', context.colors.primary);
-      return;
+      print(session.recordingUrl);
+      await launchUrl(Uri.file(session.recordingUrl ?? ''));
     }
     if (!session.isCompleted && context.mounted) {
       final ok = await showDialog<bool>(
@@ -324,12 +322,10 @@ class StudentSessionCard extends StatelessWidget {
   void _snack(BuildContext ctx, String msg, Color color) {
     ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
       content: Text(msg,
-          style: const TextStyle(
-              fontFamily: 'Cairo', color: Colors.white)),
+          style: const TextStyle(fontFamily: 'Cairo', color: Colors.white)),
       backgroundColor: color,
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ));
   }
 }
@@ -338,6 +334,7 @@ class StudentSessionCard extends StatelessWidget {
 
 class _Thumbnail extends StatelessWidget {
   final SessionModel session;
+
   const _Thumbnail({required this.session});
 
   @override
@@ -346,17 +343,16 @@ class _Thumbnail extends StatelessWidget {
     final isDone = session.isCompleted;
     final gradient = isLive
         ? const LinearGradient(
-      colors: [Color(0xFF7A1010), Color(0xFFC43030)],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    )
+            colors: [Color(0xFF7A1010), Color(0xFFC43030)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          )
         : const LinearGradient(
-      colors: [Color(0xFF1E1B5E), Color(0xFF3B3399)],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    );
-    final badgeBg =
-    isLive ? const Color(0xFFD85A30) : context.colors.primary;
+            colors: [Color(0xFF1E1B5E), Color(0xFF3B3399)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          );
+    final badgeBg = isLive ? const Color(0xFFD85A30) : context.colors.primary;
 
     return SizedBox(
       width: 92,
@@ -399,7 +395,7 @@ class _Thumbnail extends StatelessWidget {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: badgeBg.withValues(alpha:0.4),
+                    color: badgeBg.withValues(alpha: 0.4),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
@@ -433,7 +429,7 @@ class _Thumbnail extends StatelessWidget {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: context.colors.accent2.withValues(alpha:0.4),
+                      color: context.colors.accent2.withValues(alpha: 0.4),
                       blurRadius: 6,
                       offset: const Offset(0, 2),
                     ),
@@ -453,61 +449,64 @@ class _Thumbnail extends StatelessWidget {
 
 class _MetaRow extends StatelessWidget {
   final SessionModel session;
+
   const _MetaRow({required this.session});
 
   @override
   Widget build(BuildContext context) => Wrap(
-    spacing: 12,
-    runSpacing: 4,
-    children: [
-      _MetaItem(
-        icon: Icons.access_time_rounded,
-        label: '${session.durationMinutes} دقيقة',
-        bg: const Color(0xFFFAEEDA),
-        color: const Color(0xFFBA7517),
-      ),
-      if ((session.scheduledAt ?? '').isNotEmpty)
-        _MetaItem(
-          icon: Icons.calendar_month_rounded,
-          label: session.scheduledLabel,
-          bg: const Color(0xFFE6F1FB),
-          color: const Color(0xFF185FA5),
-        ),
-    ],
-  );
+        spacing: 12,
+        runSpacing: 4,
+        children: [
+          _MetaItem(
+            icon: Icons.access_time_rounded,
+            label: '${session.durationMinutes} دقيقة',
+            bg: const Color(0xFFFAEEDA),
+            color: const Color(0xFFBA7517),
+          ),
+          if ((session.scheduledAt ?? '').isNotEmpty)
+            _MetaItem(
+              icon: Icons.calendar_month_rounded,
+              label: session.scheduledLabel,
+              bg: const Color(0xFFE6F1FB),
+              color: const Color(0xFF185FA5),
+            ),
+        ],
+      );
 }
 
 class _MetaItem extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color bg, color;
+
   const _MetaItem(
       {required this.icon,
-        required this.label,
-        required this.bg,
-        required this.color});
+      required this.label,
+      required this.bg,
+      required this.color});
 
   @override
   Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Container(
-        width: 18,
-        height: 18,
-        decoration:
-        BoxDecoration(color: bg, borderRadius: BorderRadius.circular(5)),
-        child: Icon(icon, size: 11, color: color),
-      ),
-      const SizedBox(width: 5),
-      Text(label, style: context.colors.caption.copyWith(fontSize: 11)),
-    ],
-  );
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 18,
+            height: 18,
+            decoration: BoxDecoration(
+                color: bg, borderRadius: BorderRadius.circular(5)),
+            child: Icon(icon, size: 11, color: color),
+          ),
+          const SizedBox(width: 5),
+          Text(label, style: context.colors.caption.copyWith(fontSize: 11)),
+        ],
+      );
 }
 
 // ── Pill row ──────────────────────────────────────────────────────────────────
 
 class _PillRow extends StatelessWidget {
   final bool isLive, isCompleted, hasRecording, isCheckedIn;
+
   const _PillRow({
     required this.isLive,
     required this.isCompleted,
@@ -517,77 +516,73 @@ class _PillRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Wrap(
-    spacing: 6,
-    runSpacing: 5,
-    children: [
-      _Pill(
-        icon: isLive ? Icons.sensors_rounded : Icons.play_arrow_rounded,
-        label: isLive ? 'مباشر' : 'مسجّل',
-        bg: isLive
-            ? const Color(0xFFFAECE7)
-            : const Color(0xFFE6F1FB),
-        fg: isLive
-            ? const Color(0xFF993C1D)
-            : const Color(0xFF185FA5),
-      ),
-      if (isCompleted)
-        const _Pill(
-          icon: Icons.check_circle_rounded,
-          label: 'مكتمل',
-          bg: Color(0xFFEAF3DE),
-          fg: Color(0xFF3B6D11),
-        ),
-      if (isLive && isCheckedIn && !isCompleted)
-        const _Pill(
-          icon: Icons.circle,
-          label: 'حضور',
-          bg: Color(0xFFFAECE7),
-          fg: Color(0xFF993C1D),
-        ),
-      if (hasRecording && !isCompleted)
-        const _Pill(
-          icon: Icons.fiber_manual_record_rounded,
-          label: 'تسجيل متاح',
-          bg: Color(0xFFFAEEDA),
-          fg: Color(0xFF854F0B),
-        ),
-    ],
-  );
+        spacing: 6,
+        runSpacing: 5,
+        children: [
+          _Pill(
+            icon: isLive ? Icons.sensors_rounded : Icons.play_arrow_rounded,
+            label: isLive ? 'مباشر' : 'مسجّل',
+            bg: isLive ? const Color(0xFFFAECE7) : const Color(0xFFE6F1FB),
+            fg: isLive ? const Color(0xFF993C1D) : const Color(0xFF185FA5),
+          ),
+          if (isCompleted)
+            const _Pill(
+              icon: Icons.check_circle_rounded,
+              label: 'مكتمل',
+              bg: Color(0xFFEAF3DE),
+              fg: Color(0xFF3B6D11),
+            ),
+          if (isLive && isCheckedIn && !isCompleted)
+            const _Pill(
+              icon: Icons.circle,
+              label: 'حضور',
+              bg: Color(0xFFFAECE7),
+              fg: Color(0xFF993C1D),
+            ),
+          if (hasRecording && !isCompleted)
+            const _Pill(
+              icon: Icons.fiber_manual_record_rounded,
+              label: 'تسجيل متاح',
+              bg: Color(0xFFFAEEDA),
+              fg: Color(0xFF854F0B),
+            ),
+        ],
+      );
 }
 
 class _Pill extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color bg, fg;
+
   const _Pill(
       {required this.icon,
-        required this.label,
-        required this.bg,
-        required this.fg});
+      required this.label,
+      required this.bg,
+      required this.fg});
 
   @override
   Widget build(BuildContext context) => Container(
-    padding:
-    const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-    decoration: BoxDecoration(
-        color: bg, borderRadius: BorderRadius.circular(8)),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 11, color: fg),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: fg,
-            fontFamily: 'Cairo',
-          ),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        decoration:
+            BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 11, color: fg),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: fg,
+                fontFamily: 'Cairo',
+              ),
+            ),
+          ],
         ),
-      ],
-    ),
-  );
+      );
 }
 
 // ── Attendance row ────────────────────────────────────────────────────────────
@@ -595,6 +590,7 @@ class _Pill extends StatelessWidget {
 class _AttendanceRow extends StatelessWidget {
   final bool isCheckedIn;
   final VoidCallback onCheckIn, onCheckOut;
+
   const _AttendanceRow({
     required this.isCheckedIn,
     required this.onCheckIn,
@@ -604,21 +600,21 @@ class _AttendanceRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => isCheckedIn
       ? _AttendBtn(
-    label: 'تسجيل المغادرة',
-    icon: Icons.logout_rounded,
-    fg: context.colors.danger,
-    bg: context.colors.danger.withValues(alpha:0.09),
-    border: context.colors.danger.withValues(alpha:0.35),
-    onTap: onCheckOut,
-  )
+          label: 'تسجيل المغادرة',
+          icon: Icons.logout_rounded,
+          fg: context.colors.danger,
+          bg: context.colors.danger.withValues(alpha: 0.09),
+          border: context.colors.danger.withValues(alpha: 0.35),
+          onTap: onCheckOut,
+        )
       : _AttendBtn(
-    label: 'تسجيل الحضور',
-    icon: Icons.login_rounded,
-    fg: context.colors.accent2,
-    bg: context.colors.accent2.withValues(alpha:0.09),
-    border: context.colors.accent2.withValues(alpha:0.35),
-    onTap: onCheckIn,
-  );
+          label: 'تسجيل الحضور',
+          icon: Icons.login_rounded,
+          fg: context.colors.accent2,
+          bg: context.colors.accent2.withValues(alpha: 0.09),
+          border: context.colors.accent2.withValues(alpha: 0.35),
+          onTap: onCheckIn,
+        );
 }
 
 class _AttendBtn extends StatelessWidget {
@@ -626,6 +622,7 @@ class _AttendBtn extends StatelessWidget {
   final IconData icon;
   final Color fg, bg, border;
   final VoidCallback onTap;
+
   const _AttendBtn({
     required this.label,
     required this.icon,
@@ -637,87 +634,86 @@ class _AttendBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      padding:
-      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: fg),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: fg,
-              fontFamily: 'Cairo',
-            ),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: border),
           ),
-        ],
-      ),
-    ),
-  );
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: fg),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: fg,
+                  fontFamily: 'Cairo',
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
 }
 
 // ── Mark complete dialog ──────────────────────────────────────────────────────
 
 class _MarkCompleteDialog extends StatelessWidget {
   final String sessionName;
+
   const _MarkCompleteDialog({required this.sessionName});
 
   @override
   Widget build(BuildContext context) => Directionality(
-    textDirection: TextDirection.rtl,
-    child: AlertDialog(
-      backgroundColor: context.colors.cardBg,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(22)),
-      title:  Text(
-        'هل شاهدت هذا الدرس؟',
-        style: TextStyle(
-          fontFamily: 'Cairo',
-          fontWeight: FontWeight.w800,
-          color: context.colors.textDark,
-        ),
-      ),
-      content: Text(
-        'هل تريد تحديد "$sessionName" كمكتمل؟',
-        style:  TextStyle(
-            fontFamily: 'Cairo', color: context.colors.textMedium),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: Text('لاحقاً',
-              style: TextStyle(
-                  fontFamily: 'Cairo',
-                  color: context.colors.textLight)),
-        ),
-        Container(
-          decoration: BoxDecoration(
-            color: context.colors.accent2,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text(
-              'نعم، مكتمل ✓',
-              style: TextStyle(
-                fontFamily: 'Cairo',
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-              ),
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: context.colors.cardBg,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+          title: Text(
+            'هل شاهدت هذا الدرس؟',
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              fontWeight: FontWeight.w800,
+              color: context.colors.textDark,
             ),
           ),
+          content: Text(
+            'هل تريد تحديد "$sessionName" كمكتمل؟',
+            style: TextStyle(
+                fontFamily: 'Cairo', color: context.colors.textMedium),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('لاحقاً',
+                  style: TextStyle(
+                      fontFamily: 'Cairo', color: context.colors.textLight)),
+            ),
+            Container(
+              decoration: BoxDecoration(
+                color: context.colors.accent2,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text(
+                  'نعم، مكتمل ✓',
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-      ],
-    ),
-  );
+      );
 }

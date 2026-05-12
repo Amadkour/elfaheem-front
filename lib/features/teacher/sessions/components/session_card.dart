@@ -229,9 +229,10 @@ class _MetaRow extends StatelessWidget {
           color: const Color(0xFFE8881A),
           bgColor: const Color(0xFFFFF3E0),
         ),
+        if(session.scheduledLabel!=null)
         _MetaChip(
           icon: Icons.event_rounded,
-          label: session.scheduledLabel,
+          label: session.scheduledLabel!,
           color: context.colors.primary,
           bgColor: context.colors.primaryLight,
         ),

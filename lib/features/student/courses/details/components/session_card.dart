@@ -520,7 +520,7 @@ class SessionsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<CourseDetailProvider>();
     final sessions = provider.course.sessions;
-    if (provider.isLoadingSession) {
+    if (provider.isLoading) {
       return  Padding(
           padding: EdgeInsets.all(40),
           child: Center(

@@ -8,7 +8,9 @@ import 'package:flutter_education_app/features/analytics/student/exam/student_ex
 import 'package:provider/provider.dart';
 
 import '../../../../config/app_theme.dart';
+import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/app_network_image.dart';
+import '../../../../utils/widget/base_page.dart';
 import '../../enrollment/enrollment_provider.dart';
 import '../../enrollment/enrollment_screen.dart';
 import '../../models.dart';
@@ -29,6 +31,7 @@ class CourseDetailScreen extends StatefulWidget {
 class _CourseDetailScreenState extends State<CourseDetailScreen> {
   @override
   void initState() {
+    context.read<CourseDetailProvider>().course=widget.course;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       context.read<CourseDetailProvider>().init(widget.course);
     });
@@ -40,22 +43,17 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     CourseDetailProvider provider = context.watch<CourseDetailProvider>();
     final isWide = context.showSidebar;
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: context.colors.background,
-        body: provider.isLoadingSession
+    return  BasePage(child: provider.isLoading
             ? Center(
-                child: const SizedBox(
-                width: 24,
-                height: 24,
+                child:  SizedBox(
+                width: context.width/5,
+                height: context.width/5,
                 child: CircularProgressIndicator(
-                    color: Colors.white, strokeWidth: 2.5),
+                    color: context.colors.primary, strokeWidth: context.width/80),
               ))
             : isWide
                 ? _WebDetail(provider)
                 : _MobileDetail(provider),
-      ),
     );
   }
 }
@@ -179,48 +177,7 @@ class _WebTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      decoration: BoxDecoration(
-        color: context.colors.cardBg,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.of(context).maybePop(),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: context.colors.background,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.black.withValues(alpha: 0.08)),
-              ),
-              child:  Icon(Icons.arrow_forward_rounded,
-                  size: 18, color: context.colors.textDark),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              course.name,
-              style: context.colors.h3.copyWith(fontSize: 15),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-            ),
-          ),
-          _FavButton(),
-        ],
-      ),
-    );
+    return ScreenAppBar(title: course.title,actions: [ _FavButton()],);
   }
 }
 
@@ -604,11 +561,11 @@ class _CourseMeta extends StatelessWidget {
 // ── Tab bar ───────────────────────────────────────────────────────────────────
 
 class _TabBarWidget extends StatelessWidget {
-  static const  _tabs = const [
-    (CourseDetailTab.lessons, 'الدروس', Icons.play_lesson_rounded),
-    (CourseDetailTab.about, 'نبذة عن', Icons.info_outline_rounded),
-    (CourseDetailTab.live, 'مباشر', Icons.sensors_rounded),
-    (CourseDetailTab.exam, 'exams', Icons.assignment),
+  static   final _tabs =  [
+    (CourseDetailTab.lessons, 'sessions'.tr, Icons.play_lesson_rounded),
+    (CourseDetailTab.about, 'course_details'.tr, Icons.info_outline_rounded),
+    (CourseDetailTab.live, 'live'.tr, Icons.sensors_rounded),
+    (CourseDetailTab.exam, 'exams'.tr, Icons.assignment),
   ];
 
   @override

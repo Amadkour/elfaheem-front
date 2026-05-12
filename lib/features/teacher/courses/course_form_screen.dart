@@ -113,16 +113,19 @@ class _CourseFormInnerState extends State<_CourseFormInner>
 
   bool get _hasChanges {
     if (!_isEdit) {
-      // Create mode: save enabled as soon as title is filled
+      /// create new course
       return _titleCtrl.text.trim().isNotEmpty;
     }
+
+    /// update
     final c = widget.course!;
     final newPrice = double.tryParse(_priceCtrl.text) ?? c.price;
     final newHours = double.tryParse(_hoursCtrl.text) ?? c.totalHours;
     return _titleCtrl.text.trim() != c.title ||
         _descCtrl.text.trim() != (c.description ?? '') ||
         newPrice != c.price ||
-        newHours != c.totalHours;
+        newHours != c.totalHours ||
+        _logoFile != null;
   }
 
   // ── Submit ────────────────────────────────────────────────────────────────
@@ -403,7 +406,8 @@ class _HeroHeader extends StatelessWidget {
     final top = MediaQuery.of(context).padding.top;
     final unit = context.height / 12;
     return SizedBox(
-      height: 3 * unit + top,
+      height: (3 * unit) + top,
+      width: double.infinity,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -414,6 +418,7 @@ class _HeroHeader extends StatelessWidget {
             left: 0,
             child: Container(
               height: unit * 2,
+              width: double.infinity,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
@@ -518,12 +523,15 @@ class _HeroHeader extends StatelessWidget {
             ),
           ),
 
-          EditableImage(
-            onChange: onChange,
-            imageUrl: imageUrl,
-            imageByte: logoBytes,
-            imageFile: logoFile,
-            size: context.height / 6,
+          Align(
+            alignment: AlignmentGeometry.bottomCenter,
+            child: EditableImage(
+              onChange: onChange,
+              imageUrl: imageUrl,
+              imageByte: logoBytes,
+              imageFile: logoFile,
+              size: context.height / 6,
+            ),
           )
         ],
       ),

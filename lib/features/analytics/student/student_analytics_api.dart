@@ -13,7 +13,7 @@ class StudentAnalyticsApi {
   // Response item shape:
   //   { "progress": float, "course": { CourseModel fields } }
   Future<List<EnrolledCourse>> fetchMyEnrollments() async {
-    final r = await _api.get('/api/v1/my-enrollments');
+    final r = await _api.get('/api/v1/my-enrolled-courses');
     if (r is! List) return [];
     return (r).map((e) {
       final j = e as Map<String, dynamic>;

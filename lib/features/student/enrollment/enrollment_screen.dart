@@ -1,9 +1,8 @@
-/// enrollment_screen.dart — FINAL
+/// enrollment_screen.dart — Premium redesign
 ///
-/// FIXES APPLIED:
-///  1. _StcOtpStep replaced by the premium StcOtpStep from stc_otp_step.dart
-///     (shake animation, 6-box input, auto-focus, paste, resend timer)
-///  2. Removed the old dead _StcOtpStep class
+/// Works on both Flutter Mobile and Flutter Web.
+/// Mobile : full-screen with gradient hero header
+/// Web    : centered card (max 560 px) with same premium design
 library;
 
 import 'package:flutter/material.dart';
@@ -11,7 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:moyasar/moyasar.dart';
 import 'package:provider/provider.dart';
 
-import '../../../config/app_config.dart' as Helpers;
+import '../../../config/app_config.dart' as helpers;
 import '../../../config/app_theme.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/app_network_image.dart';
@@ -19,7 +18,16 @@ import '../../shared/payment/saved_methods_provider.dart';
 import '../../shared/payment/saved_payment_models.dart';
 import '../../student/models.dart';
 import 'enrollment_provider.dart';
-import 'stc_otp_step.dart'; // premium OTP widget
+import 'stc_otp_step.dart';
+
+// ── Colours shared across this file ──────────────────────────────────────────
+
+const _kStcColor    = Color(0xFF6A0DAD);
+const _kBankColor   = Color(0xFF1B5E20);
+const _kMadaColor   = Color(0xFF0D47A1);
+const _kVisaColor   = Color(0xFF1A237E);
+const _kMcColor     = Color(0xFFB71C1C);
+const _kNewCardColor = Color(0xFF0F4C81);
 
 // ── Entry ─────────────────────────────────────────────────────────────────────
 
@@ -43,34 +51,35 @@ class EnrollmentScreen extends StatelessWidget {
 
 class _EnrollView extends StatelessWidget {
   const _EnrollView();
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: Helpers.pageDirection,
+      textDirection: helpers.pageDirection,
       child: Scaffold(
         backgroundColor: context.colors.background,
         body: SafeArea(
           child: Consumer<EnrollmentProvider>(
             builder: (_, enroll, __) => AnimatedSwitcher(
-              duration: const Duration(milliseconds: 350),
-              transitionBuilder: (c, a) => FadeTransition(
-                opacity: a,
+              duration: const Duration(milliseconds: 380),
+              transitionBuilder: (child, anim) => FadeTransition(
+                opacity: anim,
                 child: SlideTransition(
                   position: Tween(
-                    begin: const Offset(.04, 0),
+                    begin: const Offset(.03, 0),
                     end: Offset.zero,
-                  ).animate(a),
-                  child: c,
+                  ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+                  child: child,
                 ),
               ),
               child: switch (enroll.step) {
-                EnrollStep.method    => const _MethodStep(key:    ValueKey('m')),
-                EnrollStep.stcMobile => const _StcMobileStep(key: ValueKey('sm')),
-                EnrollStep.stcOtp    => const StcOtpStep(key:     ValueKey('so')), // ← premium widget
-                EnrollStep.bankDetails => const _BankStep(key:    ValueKey('b')),
-                EnrollStep.verifying => const _VerifyingStep(key: ValueKey('v')),
-                EnrollStep.success   => const _SuccessStep(key:   ValueKey('ok')),
-                EnrollStep.failed    => const _FailedStep(key:    ValueKey('f')),
+                EnrollStep.method     => const _MethodStep(key:    ValueKey('m')),
+                EnrollStep.stcMobile  => const _StcMobileStep(key: ValueKey('sm')),
+                EnrollStep.stcOtp     => const StcOtpStep(key:     ValueKey('so')),
+                EnrollStep.bankDetails => const _BankStep(key:     ValueKey('b')),
+                EnrollStep.verifying  => const _VerifyingStep(key: ValueKey('v')),
+                EnrollStep.success    => const _SuccessStep(key:   ValueKey('ok')),
+                EnrollStep.failed     => const _FailedStep(key:    ValueKey('f')),
               },
             ),
           ),
@@ -80,53 +89,64 @@ class _EnrollView extends StatelessWidget {
   }
 }
 
-// ── Moyasar card payment screen ───────────────────────────────────────────────
-// Pushed by enrollment_provider for the mobile new-card flow
+// ── Moyasar card payment screen (mobile) ──────────────────────────────────────
 
 class MoyasarCardPaymentScreen extends StatelessWidget {
   final PaymentConfig config;
   final void Function(dynamic) onPaymentResult;
-  const MoyasarCardPaymentScreen(
-      {super.key, required this.config, required this.onPaymentResult});
+  const MoyasarCardPaymentScreen({
+    super.key,
+    required this.config,
+    required this.onPaymentResult,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('بيانات البطاقة',
-            style: TextStyle(fontFamily: 'Cairo')),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        elevation: 0,
+    final c = context.colors;
+    return Directionality(
+      textDirection: helpers.pageDirection,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('بيانات البطاقة',
+              style: TextStyle(fontFamily: 'Cairo', color: c.textDark, fontWeight: FontWeight.w700)),
+          backgroundColor: c.cardBg,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          iconTheme: IconThemeData(color: c.textDark),
+        ),
+        backgroundColor: c.background,
+        body: CreditCard(config: config, onPaymentResult: onPaymentResult),
       ),
-      body: CreditCard(config: config, onPaymentResult: onPaymentResult),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
 // STEP 1 — Method picker
-// ─────────────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
 
 class _MethodStep extends StatelessWidget {
   const _MethodStep({super.key});
+
   @override
   Widget build(BuildContext context) {
     final enroll = context.watch<EnrollmentProvider>();
-    return Column(
+    final isWeb  = MediaQuery.of(context).size.width > 600;
+
+    final body = Column(
       children: [
         ScreenAppBar(title: enroll.isFree ? 'تسجيل في الكورس' : 'إتمام الدفع'),
         Expanded(
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            padding: EdgeInsets.fromLTRB(isWeb ? 32 : 20, 12, isWeb ? 32 : 20, 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _CourseSummaryCard(course: enroll.course),
-                const SizedBox(height: 22),
+                const SizedBox(height: 24),
                 if (enroll.isFree)
-                  _FreeCourseBanner()
+                  const _FreeCourseBanner()
                 else ...[
                   const _SavedMethodPicker(),
                   const SizedBox(height: 20),
@@ -139,45 +159,78 @@ class _MethodStep extends StatelessWidget {
         const _ConfirmBar(),
       ],
     );
+
+    if (!isWeb) return body;
+
+    // Web: center in a max-width container
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: body,
+      ),
+    );
   }
 }
+
+// ── Course summary card ───────────────────────────────────────────────────────
 
 class _CourseSummaryCard extends StatelessWidget {
   final CourseModel course;
   const _CourseSummaryCard({required this.course});
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-          color: c.cardBg,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: c.cardShadow),
-      child: Row(children: [
-        AppNetworkImage(
-            url: course.imageUrl,
-            width: 80,
-            height: 80,
-            borderRadius: BorderRadius.circular(12)),
-        const SizedBox(width: 14),
-        Expanded(
-          child:
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(course.name,
-                style: c.h3, maxLines: 2, overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 4),
-            if ((course.teacherName ?? '').isNotEmpty)
-              Text(course.teacherName!, style: c.caption),
-            const SizedBox(height: 8),
-            Row(children: [
-              _PriceBadge(price: course.price),
-              const SizedBox(width: 8),
-              _TypeTag(type: course.type ?? ''),
-            ]),
-          ]),
+        gradient: LinearGradient(
+          colors: [c.primary.withValues(alpha: .04), c.cardBg],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-      ]),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: c.primary.withValues(alpha: .12)),
+        boxShadow: c.cardShadow,
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: AppNetworkImage(
+              url: course.imageUrl,
+              width: 76,
+              height: 76,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(course.name,
+                    style: c.h3.copyWith(fontSize: 15),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis),
+                if ((course.teacherName ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Row(children: [
+                    Icon(Icons.person_rounded, size: 13, color: c.textLight),
+                    const SizedBox(width: 4),
+                    Text(course.teacherName!, style: c.caption),
+                  ]),
+                ],
+                const SizedBox(height: 10),
+                Row(children: [
+                  _PriceBadge(price: course.price),
+                  const SizedBox(width: 8),
+                  _TypeTag(type: course.type ?? ''),
+                ]),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -185,19 +238,32 @@ class _CourseSummaryCard extends StatelessWidget {
 class _PriceBadge extends StatelessWidget {
   final double price;
   const _PriceBadge({required this.price});
+
   @override
   Widget build(BuildContext context) {
     final isFree = price == 0;
     final c = context.colors;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-          color: (isFree ? c.success : c.accent).withValues(alpha: .1),
-          borderRadius: BorderRadius.circular(8)),
-      child: Text(isFree ? 'مجاني' : '${price.toStringAsFixed(2)} ر.س',
-          style: c.label.copyWith(
-              color: isFree ? c.success : c.accent,
-              fontWeight: FontWeight.w800)),
+        gradient: LinearGradient(
+          colors: isFree
+              ? [c.success.withValues(alpha: .15), c.success.withValues(alpha: .08)]
+              : [c.primary.withValues(alpha: .15), c.primary.withValues(alpha: .06)],
+        ),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: (isFree ? c.success : c.primary).withValues(alpha: .3),
+        ),
+      ),
+      child: Text(
+        isFree ? 'مجاني' : '${price.toStringAsFixed(2)} ر.س',
+        style: c.label.copyWith(
+          color: isFree ? c.success : c.primary,
+          fontWeight: FontWeight.w800,
+          fontSize: 12,
+        ),
+      ),
     );
   }
 }
@@ -205,43 +271,63 @@ class _PriceBadge extends StatelessWidget {
 class _TypeTag extends StatelessWidget {
   final String type;
   const _TypeTag({required this.type});
+
   @override
   Widget build(BuildContext context) {
     final isLive = type == 'live';
     final c = context.colors;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-          color: (isLive ? c.danger : c.primary).withValues(alpha: .1),
-          borderRadius: BorderRadius.circular(6)),
-      child: Text(isLive ? '🔴 مباشر' : '▶ مسجّل',
-          style: c.caption.copyWith(
-              color: isLive ? c.danger : c.primary,
-              fontWeight: FontWeight.w700)),
+        color: (isLive ? c.danger : c.primary).withValues(alpha: .08),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        isLive ? '🔴 مباشر' : '▶ مسجّل',
+        style: c.caption.copyWith(
+          color: isLive ? c.danger : c.primary,
+          fontWeight: FontWeight.w700,
+          fontSize: 11,
+        ),
+      ),
     );
   }
 }
 
 class _FreeCourseBanner extends StatelessWidget {
+  const _FreeCourseBanner();
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-          color: c.success.withValues(alpha: .08),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: c.success.withValues(alpha: .3))),
+        gradient: LinearGradient(
+          colors: [c.success.withValues(alpha: .10), c.success.withValues(alpha: .04)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: c.success.withValues(alpha: .3)),
+      ),
       child: Row(children: [
-        Icon(Icons.card_giftcard_rounded, color: c.success, size: 32),
-        const SizedBox(width: 14),
+        Container(
+          width: 52, height: 52,
+          decoration: BoxDecoration(
+            color: c.success.withValues(alpha: .12),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(Icons.card_giftcard_rounded, color: c.success, size: 28),
+        ),
+        const SizedBox(width: 16),
         Expanded(
-          child:
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('هذا الكورس مجاني! 🎉',
                 style: c.h3.copyWith(color: c.success)),
             const SizedBox(height: 4),
-            Text('اضغط "سجّل الآن" للحصول على وصول فوري.', style: c.caption),
+            Text('اضغط "سجّل الآن" للحصول على وصول فوري.',
+                style: c.caption),
           ]),
         ),
       ]),
@@ -249,41 +335,46 @@ class _FreeCourseBanner extends StatelessWidget {
   }
 }
 
-// ── Method picker tiles ───────────────────────────────────────────────────────
+// ── Payment method picker ─────────────────────────────────────────────────────
 
 class _SavedMethodPicker extends StatefulWidget {
   const _SavedMethodPicker();
+
   @override
   State<_SavedMethodPicker> createState() => _SavedMethodPickerState();
 }
 
 class _SavedMethodPickerState extends State<_SavedMethodPicker> {
-  int _sel = -2; // -2=newCard  -1=bank  -3=stc  0..n=saved card index
+  int _sel = -2; // -2=newCard, -1=bank, -3=stc, 0..n=saved card index
+
+  Color _brandColor(CardBrand? b) => switch (b) {
+    CardBrand.mada       => _kMadaColor,
+    CardBrand.visa       => _kVisaColor,
+    CardBrand.mastercard => _kMcColor,
+    _                    => const Color(0xFF263238),
+  };
 
   @override
   Widget build(BuildContext context) {
-    final savedP = context.watch<SavedMethodsProvider>();
+    final savedP  = context.watch<SavedMethodsProvider>();
     final enrollP = context.read<EnrollmentProvider>();
-    final c = context.colors;
-    final cards = savedP.cards;
-
-    Color brandColor(CardBrand? b) => switch (b) {
-      CardBrand.mada => const Color(0xFF1B4332),
-      CardBrand.visa => const Color(0xFF1A237E),
-      CardBrand.mastercard => const Color(0xFFB71C1C),
-      _ => const Color(0xFF263238),
-    };
+    final c       = context.colors;
+    final cards   = savedP.cards;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Section header
         Row(children: [
           Container(
-            width: 34,
-            height: 34,
+            width: 36, height: 36,
             decoration: BoxDecoration(
-                color: c.primaryTint, borderRadius: BorderRadius.circular(10)),
-            child: Icon(Icons.payment_rounded, size: 18, color: c.primary),
+              gradient: LinearGradient(
+                colors: [c.primary, c.primary.withValues(alpha: .7)],
+              ),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.payment_rounded, size: 18, color: Colors.white),
           ),
           const SizedBox(width: 10),
           Text('طريقة الدفع', style: c.h3.copyWith(fontSize: 15)),
@@ -294,58 +385,86 @@ class _SavedMethodPickerState extends State<_SavedMethodPicker> {
         ...cards.asMap().entries.map((e) => _MethodTile(
           selected: _sel == e.key,
           icon: Icons.credit_card_rounded,
-          iconColor: brandColor(e.value.cardBrand),
+          iconColor: _brandColor(e.value.cardBrand),
           title: e.value.displayTitle,
           subtitle: '${e.value.cardBrand?.feeLabel ?? ''} رسوم المعالجة',
           badge: e.value.isDefault ? 'افتراضية' : null,
-          onTap: () {
-            setState(() => _sel = e.key);
-            enrollP.selectSavedCard(e.value);
-          },
+          onTap: () { setState(() => _sel = e.key); enrollP.selectSavedCard(e.value); },
         )),
 
         // STC Pay
         _MethodTile(
           selected: _sel == -3,
           icon: Icons.sim_card_rounded,
-          iconColor: const Color(0xFF4A148C),
+          iconColor: _kStcColor,
           title: 'STC Pay',
-          subtitle: '2.5% + 1 ر.س رسوم المعالجة',
-          onTap: () {
-            setState(() => _sel = -3);
-            enrollP.selectStcPay();
-          },
+          subtitle: '2.5% + 1 ر.س رسوم',
+          onTap: () { setState(() => _sel = -3); enrollP.selectStcPay(); },
+          customBadge: _StcBadge(),
         ),
 
         // Bank transfer
         _MethodTile(
           selected: _sel == -1,
           icon: Icons.account_balance_rounded,
-          iconColor: const Color(0xFF2D6A4F),
+          iconColor: _kBankColor,
           title: 'تحويل بنكي',
-          subtitle: 'بدون رسوم — مراجعة يدوية (24 ساعة)',
-          onTap: () {
-            setState(() => _sel = -1);
-            enrollP.selectBankTransfer();
-          },
+          subtitle: 'بدون رسوم · مراجعة خلال 24 ساعة',
+          onTap: () { setState(() => _sel = -1); enrollP.selectBankTransfer(); },
         ),
 
-        // New card via Moyasar SDK
+        // New card
         _MethodTile(
           selected: _sel == -2,
           icon: Icons.add_card_rounded,
-          iconColor: c.accent,
+          iconColor: _kNewCardColor,
           title: 'بطاقة ائتمانية / مدى جديدة',
-          subtitle: 'مدى · فيزا · ماستركارد — آمن PCI-DSS عبر Moyasar SDK',
-          onTap: () {
-            setState(() => _sel = -2);
-            enrollP.selectNewCard();
-          },
+          subtitle: 'مدى · فيزا · ماستركارد · PCI-DSS',
+          onTap: () { setState(() => _sel = -2); enrollP.selectNewCard(); },
+          customBadge: _SecureBadge(),
         ),
       ],
     );
   }
 }
+
+class _StcBadge extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+    decoration: BoxDecoration(
+      color: _kStcColor.withValues(alpha: .12),
+      borderRadius: BorderRadius.circular(6),
+      border: Border.all(color: _kStcColor.withValues(alpha: .3)),
+    ),
+    child: const Text('STC Pay',
+        style: TextStyle(
+          fontSize: 10, fontWeight: FontWeight.w700,
+          color: _kStcColor, fontFamily: 'Cairo',
+        )),
+  );
+}
+
+class _SecureBadge extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+    decoration: BoxDecoration(
+      color: Colors.green.withValues(alpha: .10),
+      borderRadius: BorderRadius.circular(6),
+    ),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [
+      const Icon(Icons.lock_rounded, size: 9, color: Colors.green),
+      const SizedBox(width: 3),
+      Text('آمن', style: TextStyle(
+        fontSize: 10, fontWeight: FontWeight.w700,
+        color: Colors.green.shade700, fontFamily: 'Cairo',
+      )),
+    ]),
+  );
+}
+
+// ── Method tile ───────────────────────────────────────────────────────────────
 
 class _MethodTile extends StatelessWidget {
   final bool selected;
@@ -353,7 +472,9 @@ class _MethodTile extends StatelessWidget {
   final Color iconColor;
   final String title, subtitle;
   final String? badge;
+  final Widget? customBadge;
   final VoidCallback onTap;
+
   const _MethodTile({
     required this.selected,
     required this.icon,
@@ -362,73 +483,109 @@ class _MethodTile extends StatelessWidget {
     required this.subtitle,
     required this.onTap,
     this.badge,
+    this.customBadge,
   });
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: selected ? c.primary.withValues(alpha: .05) : c.cardBg,
+          color: selected
+              ? c.primary.withValues(alpha: .05)
+              : c.cardBg,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-              color: selected ? c.primary : c.divider,
-              width: selected ? 2 : 1),
-          boxShadow: selected ? c.primaryShadow : c.cardShadow,
+            color: selected ? c.primary : c.divider,
+            width: selected ? 2 : 1,
+          ),
+          boxShadow: selected
+              ? [
+            BoxShadow(
+              color: c.primary.withValues(alpha: .14),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            )
+          ]
+              : c.cardShadow,
         ),
         child: Row(children: [
-          Container(
-            width: 42,
-            height: 42,
+          // Icon container
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            width: 44, height: 44,
             decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: .1),
-                borderRadius: BorderRadius.circular(12)),
+              color: selected
+                  ? iconColor.withValues(alpha: .18)
+                  : iconColor.withValues(alpha: .09),
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Icon(icon, color: iconColor, size: 22),
           ),
           const SizedBox(width: 12),
+
+          // Text
           Expanded(
-            child:
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Text(title,
-                    style: c.label.copyWith(
+                Flexible(
+                  child: Text(title,
+                      style: c.label.copyWith(
                         color: selected ? c.primary : c.textDark,
                         fontWeight: FontWeight.w700,
-                        fontSize: 14)),
+                        fontSize: 14,
+                      )),
+                ),
                 if (badge != null) ...[
                   const SizedBox(width: 6),
                   Container(
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                     decoration: BoxDecoration(
-                        color: Colors.amber.withValues(alpha: .15),
-                        borderRadius: BorderRadius.circular(6)),
+                      color: Colors.amber.withValues(alpha: .15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
                     child: Text(badge!,
-                        style: c.caption
-                            .copyWith(color: Colors.amber[800], fontSize: 10)),
+                        style: c.caption.copyWith(
+                          color: Colors.amber.shade800, fontSize: 10,
+                        )),
                   ),
                 ],
+                if (customBadge != null) ...[
+                  const SizedBox(width: 6),
+                  customBadge!,
+                ],
               ]),
-              const SizedBox(height: 2),
+              const SizedBox(height: 3),
               Text(subtitle, style: c.caption.copyWith(fontSize: 11)),
             ]),
           ),
-          Container(
-            width: 20,
-            height: 20,
+
+          // Radio indicator
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            width: 22, height: 22,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: selected ? c.primary : Colors.transparent,
               border: Border.all(
-                  color: selected ? c.primary : c.divider, width: 2),
+                color: selected ? c.primary : c.divider,
+                width: 2,
+              ),
+              boxShadow: selected
+                  ? [BoxShadow(color: c.primary.withValues(alpha: .3), blurRadius: 6)]
+                  : [],
             ),
             child: selected
-                ? const Icon(Icons.check_rounded,
-                size: 12, color: Colors.white)
+                ? const Icon(Icons.check_rounded, size: 13, color: Colors.white)
                 : null,
           ),
         ]),
@@ -437,72 +594,148 @@ class _MethodTile extends StatelessWidget {
   }
 }
 
-// ── Fee breakdown ─────────────────────────────────────────────────────────────
+// ── Fee breakdown card ────────────────────────────────────────────────────────
 
-class _FeeBreakdownCard extends StatelessWidget {
+class _FeeBreakdownCard extends StatefulWidget {
   const _FeeBreakdownCard();
+
+  @override
+  State<_FeeBreakdownCard> createState() => _FeeBreakdownCardState();
+}
+
+class _FeeBreakdownCardState extends State<_FeeBreakdownCard> {
+  bool _expanded = true;
+
   @override
   Widget build(BuildContext context) {
     final enroll = context.watch<EnrollmentProvider>();
     final savedP = context.watch<SavedMethodsProvider>();
-    final fees = enroll.computedFees(savedP);
-    final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.all(18),
+    final fees   = enroll.computedFees(savedP);
+    final c      = context.colors;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
       decoration: BoxDecoration(
-          color: c.cardBg,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: c.cardShadow,
-          border: Border.all(color: c.divider)),
-      child:
-      Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Row(children: [
-          Icon(Icons.receipt_long_rounded, color: c.primary, size: 20),
-          const SizedBox(width: 8),
-          Text('تفاصيل الفاتورة', style: c.h3.copyWith(fontSize: 14)),
-        ]),
-        const SizedBox(height: 14),
-        Divider(color: c.divider, height: 1),
-        const SizedBox(height: 12),
-        _FeeRow(label: 'سعر الكورس', value: fees.fmt(fees.coursePrice)),
-        _FeeRow(
-            label: 'رسوم المنصة (10%)', value: fees.fmt(fees.platformFee)),
-        _FeeRow(
-            label: 'ضريبة القيمة المضافة (15%)',
-            value: fees.fmt(fees.vatOnPlatform)),
-        _FeeRow(
-            label: 'رسوم بوابة الدفع',
-            value: fees.fmt(fees.gatewayFee),
-            sub: fees.gatewayLabel),
-        const SizedBox(height: 10),
-        Divider(color: c.divider, height: 1),
-        const SizedBox(height: 12),
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text('الإجمالي', style: c.h2.copyWith(fontSize: 17)),
-          Text(fees.fmt(fees.total),
-              style: c.h2.copyWith(color: c.primary, fontSize: 19)),
-        ]),
-      ]),
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: c.divider),
+        boxShadow: c.cardShadow,
+      ),
+      child: Column(
+        children: [
+          // Header / toggle
+          InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              child: Row(children: [
+                Container(
+                  width: 34, height: 34,
+                  decoration: BoxDecoration(
+                    color: c.primaryTint,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.receipt_long_rounded, color: c.primary, size: 18),
+                ),
+                const SizedBox(width: 10),
+                Expanded(child: Text('تفاصيل الفاتورة',
+                    style: c.h3.copyWith(fontSize: 14))),
+                // Total preview (always visible)
+                Text(fees.fmt(fees.total),
+                    style: c.h3.copyWith(color: c.primary, fontSize: 16)),
+                const SizedBox(width: 8),
+                AnimatedRotation(
+                  duration: const Duration(milliseconds: 250),
+                  turns: _expanded ? 0.5 : 0,
+                  child: Icon(Icons.keyboard_arrow_down_rounded,
+                      color: c.textLight, size: 22),
+                ),
+              ]),
+            ),
+          ),
+
+          // Collapsible body
+          AnimatedCrossFade(
+            duration: const Duration(milliseconds: 260),
+            crossFadeState: _expanded
+                ? CrossFadeState.showFirst
+                : CrossFadeState.showSecond,
+            firstChild: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+              child: Column(children: [
+                Divider(color: c.divider, height: 1),
+                const SizedBox(height: 14),
+                _FeeRow(label: 'سعر الكورس',
+                    value: fees.fmt(fees.coursePrice),
+                    icon: Icons.school_rounded),
+                _FeeRow(label: 'رسوم المنصة (10%)',
+                    value: fees.fmt(fees.platformFee),
+                    icon: Icons.store_rounded),
+                _FeeRow(label: 'ضريبة القيمة المضافة (15%)',
+                    value: fees.fmt(fees.vatOnPlatform),
+                    icon: Icons.receipt_rounded),
+                _FeeRow(label: 'رسوم بوابة الدفع',
+                    value: fees.fmt(fees.gatewayFee),
+                    icon: Icons.credit_card_rounded,
+                    sub: fees.gatewayLabel),
+                const SizedBox(height: 10),
+                Divider(color: c.divider, height: 1),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('الإجمالي', style: c.h2.copyWith(fontSize: 16)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [c.primary, c.primary.withValues(alpha: .8)],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(fees.fmt(fees.total),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                            fontFamily: 'Cairo',
+                          )),
+                    ),
+                  ],
+                ),
+              ]),
+            ),
+            secondChild: const SizedBox.shrink(),
+          ),
+        ],
+      ),
     );
   }
 }
 
 class _FeeRow extends StatelessWidget {
   final String label, value;
+  final IconData icon;
   final String? sub;
-  const _FeeRow({required this.label, required this.value, this.sub});
+  const _FeeRow({required this.label, required this.value, required this.icon, this.sub});
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 9),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Row(children: [
+        Icon(icon, size: 15, color: c.textLight),
+        const SizedBox(width: 8),
         Expanded(
-            child:
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(label, style: c.body.copyWith(fontSize: 13)),
-              if (sub != null) Text(sub!, style: c.caption.copyWith(fontSize: 10)),
-            ])),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(label, style: c.body.copyWith(fontSize: 13)),
+            if (sub != null)
+              Text(sub!, style: c.caption.copyWith(fontSize: 10)),
+          ]),
+        ),
         Text(value, style: c.label.copyWith(fontWeight: FontWeight.w600)),
       ]),
     );
@@ -513,43 +746,53 @@ class _FeeRow extends StatelessWidget {
 
 class _ConfirmBar extends StatelessWidget {
   const _ConfirmBar();
+
   @override
   Widget build(BuildContext context) {
     final enroll = context.watch<EnrollmentProvider>();
     final savedP = context.watch<SavedMethodsProvider>();
-    final fees = enroll.isFree ? null : enroll.computedFees(savedP);
-    final label = enroll.isFree
+    final fees   = enroll.isFree ? null : enroll.computedFees(savedP);
+    final label  = enroll.isFree
         ? 'سجّل مجاناً الآن'
-        : fees == null
-        ? 'متابعة'
-        : 'ادفع ${fees.fmt(fees.total)}';
+        : fees == null ? 'متابعة' : 'ادفع ${fees.fmt(fees.total)}';
+    final c = context.colors;
+
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
       decoration: BoxDecoration(
-          color: context.colors.cardBg,
-          boxShadow: context.colors.bottomNavShadow),
+        color: c.cardBg,
+        boxShadow: c.bottomNavShadow,
+      ),
       child: GestureDetector(
-        onTap:
-        enroll.isLoading ? null : () => enroll.confirm(savedP, context),
+        onTap: enroll.isLoading
+            ? null
+            : () => enroll.confirm(savedP, context),
         child: Container(
-          height: 56,
+          height: 58,
           decoration: BoxDecoration(
-              gradient: context.colors.primaryGradient,
-              borderRadius: BorderRadius.circular(30),
-              boxShadow: context.colors.primaryShadow),
+            gradient: c.primaryGradient,
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: c.primary.withValues(alpha: .35),
+                blurRadius: 18,
+                offset: const Offset(0, 7),
+              ),
+            ],
+          ),
           child: Center(
             child: enroll.isLoading
                 ? const SizedBox(
-                width: 24,
-                height: 24,
+                width: 24, height: 24,
                 child: CircularProgressIndicator(
                     color: Colors.white, strokeWidth: 2.5))
                 : Text(label,
                 style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                    fontFamily: 'Cairo')),
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 17,
+                  fontFamily: 'Cairo',
+                )),
           ),
         ),
       ),
@@ -557,12 +800,13 @@ class _ConfirmBar extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
 // STEP — STC Mobile number entry
-// ─────────────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
 
 class _StcMobileStep extends StatefulWidget {
   const _StcMobileStep({super.key});
+
   @override
   State<_StcMobileStep> createState() => _StcMobileStepState();
 }
@@ -570,18 +814,13 @@ class _StcMobileStep extends StatefulWidget {
 class _StcMobileStepState extends State<_StcMobileStep> {
   final _ctrl = TextEditingController();
   String? _err;
+
   @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _ctrl.dispose(); super.dispose(); }
 
   Future<void> _submit() async {
     final m = _ctrl.text.trim();
-    if (m.length < 9) {
-      setState(() => _err = 'أدخل رقم جوال صحيح');
-      return;
-    }
+    if (m.length < 9) { setState(() => _err = 'أدخل رقم جوال صحيح'); return; }
     setState(() => _err = null);
     await context.read<EnrollmentProvider>().initStcPay(m, context);
   }
@@ -590,168 +829,83 @@ class _StcMobileStepState extends State<_StcMobileStep> {
   Widget build(BuildContext context) {
     final enroll = context.watch<EnrollmentProvider>();
     final c = context.colors;
+
     return Column(children: [
       _BackBar(title: 'STC Pay', onBack: enroll.retryFromStart),
       Expanded(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(28, 24, 28, 40),
-          child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                    child: Container(
-                      width: 88,
-                      height: 88,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: const LinearGradient(
-                            colors: [Color(0xFF4A148C), Color(0xFF7B1FA2)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight),
-                        boxShadow: [
-                          BoxShadow(
-                              color:
-                              const Color(0xFF4A148C).withValues(alpha: .35),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8))
-                        ],
-                      ),
-                      child: const Icon(Icons.sim_card_rounded,
-                          color: Colors.white, size: 44),
-                    )),
-                const SizedBox(height: 20),
-                Text('أدخل رقم جوالك المسجّل في STC Pay',
-                    style: c.h2.copyWith(fontSize: 18),
-                    textAlign: TextAlign.center),
-                const SizedBox(height: 8),
-                Text('سيصلك رمز تحقق SMS لإتمام الدفع.',
-                    style: c.body.copyWith(height: 1.7),
-                    textAlign: TextAlign.center),
-                const SizedBox(height: 32),
-                Container(
-                  decoration: BoxDecoration(
-                      color: c.cardBg,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                          color: _err != null ? c.danger : c.divider),
-                      boxShadow: c.cardShadow),
-                  child: TextField(
-                    controller: _ctrl,
-                    keyboardType: TextInputType.phone,
-                    textDirection: TextDirection.ltr,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly
-                    ],
-                    style: c.label.copyWith(fontSize: 18, letterSpacing: 2),
-                    decoration: InputDecoration(
-                      hintText: '05XXXXXXXX',
-                      hintStyle: c.caption,
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 18, vertical: 16),
-                      border: InputBorder.none,
-                      prefixIcon: Icon(Icons.phone_android_rounded,
-                          color: c.primary),
-                    ),
-                    onSubmitted: (_) => _submit(),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+
+            // Brand circle
+            Center(
+              child: Container(
+                width: 90, height: 90,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [_kStcColor, Color(0xFF9C27B0)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
+                  shape: BoxShape.circle,
+                  boxShadow: [BoxShadow(
+                    color: _kStcColor.withValues(alpha: .4),
+                    blurRadius: 22, offset: const Offset(0, 8),
+                  )],
                 ),
-                if (_err != null) ...[
-                  const SizedBox(height: 8),
-                  Text(_err!,
-                      style: c.caption.copyWith(color: c.danger),
-                      textAlign: TextAlign.center),
-                ],
-                const SizedBox(height: 28),
-                _PrimaryBtn(
-                  label: 'إرسال رمز التحقق',
-                  color1: const Color(0xFF4A148C),
-                  color2: const Color(0xFF7B1FA2),
-                  loading: enroll.isLoading,
-                  onTap: _submit,
-                ),
-              ]),
-        ),
-      ),
-    ]);
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// STEP — Bank transfer
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _BankStep extends StatelessWidget {
-  const _BankStep({super.key});
-  @override
-  Widget build(BuildContext context) {
-    final enroll = context.watch<EnrollmentProvider>();
-    final info = enroll.bankInfo;
-    final c = context.colors;
-    return Column(children: [
-      ScreenAppBar(title: 'بيانات التحويل'),
-      Expanded(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          child: Column(children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                  color: c.primary.withValues(alpha: .07),
-                  borderRadius: BorderRadius.circular(16),
-                  border:
-                  Border.all(color: c.primary.withValues(alpha: .2))),
-              child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.info_outline_rounded,
-                        color: c.primary, size: 22),
-                    const SizedBox(width: 10),
-                    Expanded(
-                        child: Text(
-                          'حوّل المبلغ مع ذكر رقم المرجع. سيتم تفعيل كورسك خلال 24 ساعة.',
-                          style: c.body.copyWith(color: c.primary, height: 1.6),
-                        )),
-                  ]),
+                child: const Icon(Icons.sim_card_rounded,
+                    color: Colors.white, size: 44),
+              ),
             ),
-            const SizedBox(height: 20),
-            if (info != null) ...[
-              _BankTile(
-                  label: 'المبلغ',
-                  value:
-                  '${(info['fees']?['total'] as num?)?.toStringAsFixed(2) ?? '—'} ر.س',
-                  highlight: true),
-              const SizedBox(height: 10),
-              _BankTile(
-                  label: 'رقم المرجع',
-                  copyable: true,
-                  golden: true,
-                  value:
-                  info['instructions']?['reference'] as String? ?? '—'),
-              const SizedBox(height: 10),
-              _BankTile(
-                  label: 'اسم البنك',
-                  value:
-                  info['instructions']?['bank_name'] as String? ?? '—'),
-              const SizedBox(height: 10),
-              _BankTile(
-                  label: 'صاحب الحساب',
-                  copyable: true,
-                  value: info['instructions']?['account_name'] as String? ??
-                      '—'),
-              const SizedBox(height: 10),
-              _BankTile(
-                  label: 'الآيبان IBAN',
-                  copyable: true,
-                  mono: true,
-                  value: info['instructions']?['iban'] as String? ?? '—'),
+            const SizedBox(height: 22),
+
+            Text('أدخل رقم جوالك المسجّل في STC Pay',
+                style: c.h2.copyWith(fontSize: 18), textAlign: TextAlign.center),
+            const SizedBox(height: 8),
+            Text('سيصلك رمز تحقق SMS لإتمام الدفع.',
+                style: c.body.copyWith(height: 1.7), textAlign: TextAlign.center),
+            const SizedBox(height: 32),
+
+            // Phone input
+            Container(
+              decoration: BoxDecoration(
+                color: c.cardBg,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: _err != null ? c.danger : c.divider),
+                boxShadow: c.cardShadow,
+              ),
+              child: TextField(
+                controller: _ctrl,
+                keyboardType: TextInputType.phone,
+                textDirection: TextDirection.ltr,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                style: c.label.copyWith(fontSize: 18, letterSpacing: 2),
+                decoration: InputDecoration(
+                  hintText: '05XXXXXXXX',
+                  hintStyle: c.caption,
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 18, vertical: 16),
+                  border: InputBorder.none,
+                  prefixIcon: Icon(Icons.phone_android_rounded, color: _kStcColor),
+                ),
+                onSubmitted: (_) => _submit(),
+              ),
+            ),
+
+            if (_err != null) ...[
+              const SizedBox(height: 8),
+              Text(_err!,
+                  style: c.caption.copyWith(color: c.danger),
+                  textAlign: TextAlign.center),
             ],
             const SizedBox(height: 28),
-            _PrimaryBtn(
-                label: 'تم التحويل ✓',
-                onTap: enroll.confirmBankTransfer),
-            const SizedBox(height: 12),
-            _SecondaryBtn(label: 'العودة', onTap: enroll.backToMethod),
+
+            _GradientBtn(
+              label: 'إرسال رمز التحقق',
+              colors: [_kStcColor, const Color(0xFF9C27B0)],
+              loading: enroll.isLoading,
+              onTap: _submit,
+            ),
           ]),
         ),
       ),
@@ -759,63 +913,168 @@ class _BankStep extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STEP — Verifying
-// ─────────────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+// STEP — Bank transfer details
+// ═════════════════════════════════════════════════════════════════════════════
 
-class _VerifyingStep extends StatelessWidget {
-  const _VerifyingStep({super.key});
+class _BankStep extends StatelessWidget {
+  const _BankStep({super.key});
+
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    return Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      SizedBox(
-          width: 72,
-          height: 72,
-          child:
-          CircularProgressIndicator(color: c.primary, strokeWidth: 3)),
-      const SizedBox(height: 28),
-      Text('جارٍ تأكيد الدفع...',
-          style: c.h2.copyWith(fontSize: 18), textAlign: TextAlign.center),
+    final enroll = context.watch<EnrollmentProvider>();
+    final info   = enroll.bankInfo;
+    final c      = context.colors;
+
+    return Column(children: [
+      ScreenAppBar(title: 'بيانات التحويل'),
+      Expanded(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(children: [
+            // Info banner
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: c.primary.withValues(alpha: .06),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: c.primary.withValues(alpha: .2)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline_rounded, color: c.primary, size: 22),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'حوّل المبلغ مع ذكر رقم المرجع. سيتم تفعيل كورسك خلال 24 ساعة.',
+                      style: c.body.copyWith(color: c.primary, height: 1.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            if (info != null) ...[
+              _BankTile(
+                label: 'المبلغ',
+                value: '${(info['fees']?['total'] as num?)?.toStringAsFixed(2) ?? '—'} ر.س',
+                highlight: true,
+              ),
+              const SizedBox(height: 10),
+              _BankTile(
+                label: 'رقم المرجع',
+                value: info['instructions']?['reference'] as String? ?? '—',
+                copyable: true,
+                golden: true,
+              ),
+              const SizedBox(height: 10),
+              _BankTile(
+                label: 'اسم البنك',
+                value: info['instructions']?['bank_name'] as String? ?? '—',
+              ),
+              const SizedBox(height: 10),
+              _BankTile(
+                label: 'صاحب الحساب',
+                value: info['instructions']?['account_name'] as String? ?? '—',
+                copyable: true,
+              ),
+              const SizedBox(height: 10),
+              _BankTile(
+                label: 'الآيبان IBAN',
+                value: info['instructions']?['iban'] as String? ?? '—',
+                copyable: true,
+                mono: true,
+              ),
+            ],
+
+            const SizedBox(height: 28),
+            _GradientBtn(
+              label: 'تم التحويل ✓',
+              onTap: enroll.confirmBankTransfer,
+            ),
+            const SizedBox(height: 12),
+            _OutlineBtn(label: 'العودة', onTap: enroll.backToMethod),
+          ]),
+        ),
+      ),
     ]);
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+// STEP — Verifying
+// ═════════════════════════════════════════════════════════════════════════════
+
+class _VerifyingStep extends StatelessWidget {
+  const _VerifyingStep({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Center(
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        SizedBox(
+          width: 64, height: 64,
+          child: CircularProgressIndicator(
+            color: c.primary, strokeWidth: 3,
+            backgroundColor: c.primaryTint,
+          ),
+        ),
+        const SizedBox(height: 24),
+        Text('جارٍ تأكيد الدفع…',
+            style: c.h2.copyWith(fontSize: 18), textAlign: TextAlign.center),
+        const SizedBox(height: 8),
+        Text('الرجاء الانتظار قليلاً.',
+            style: c.caption, textAlign: TextAlign.center),
+      ]),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // STEP — Success
-// ─────────────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
 
 class _SuccessStep extends StatefulWidget {
   const _SuccessStep({super.key});
+
   @override
   State<_SuccessStep> createState() => _SuccessStepState();
 }
 
 class _SuccessStepState extends State<_SuccessStep>
     with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _scale, _fade;
+  late final AnimationController _ctrl;
+  late final Animation<double> _scale, _fade;
+
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 800))
-      ..forward();
+    _ctrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 800))..forward();
     _scale = CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut);
-    _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeIn);
+    _fade  = CurvedAnimation(parent: _ctrl, curve: Curves.easeIn);
   }
 
   @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _ctrl.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
-    final enroll = context.read<EnrollmentProvider>();
+    final enroll  = context.read<EnrollmentProvider>();
     final pending = enroll.paidViaBankTransfer;
     final c = context.colors;
+
+    final Color col1 = pending ? c.accent  : c.success;
+    final Color col2 = pending ? const Color(0xFFF39C12) : const Color(0xFF2ECC71);
+    final IconData ico = pending ? Icons.hourglass_top_rounded : Icons.check_rounded;
+    final String title = pending ? 'في انتظار التحقق ⏳' : 'تم الدفع بنجاح! 🎉';
+    final String msg = pending
+        ? 'سيتم تفعيل الكورس خلال 24 ساعة بعد التحقق من التحويل.'
+        : 'تم تأكيد دفعتك وتفعيل الكورس. يمكنك البدء الآن!';
+
     return FadeTransition(
       opacity: _fade,
       child: Padding(
@@ -825,54 +1084,35 @@ class _SuccessStepState extends State<_SuccessStep>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             ScaleTransition(
-                scale: _scale,
-                child: Center(
-                    child: Container(
-                      width: 120,
-                      height: 120,
-                      margin: const EdgeInsets.only(bottom: 32),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: pending
-                              ? [c.accent, const Color(0xFFF39C12)]
-                              : [c.success, const Color(0xFF2ECC71)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                              color: (pending ? c.accent : c.success)
-                                  .withValues(alpha: .4),
-                              blurRadius: 28,
-                              offset: const Offset(0, 10))
-                        ],
-                      ),
-                      child: Icon(
-                        pending
-                            ? Icons.hourglass_top_rounded
-                            : Icons.check_rounded,
-                        color: Colors.white,
-                        size: 60,
-                      ),
-                    ))),
-            Text(
-                pending ? 'في انتظار التحقق ⏳' : 'تم الدفع بنجاح! 🎉',
-                style: c.h1.copyWith(fontSize: 24),
-                textAlign: TextAlign.center),
-            const SizedBox(height: 12),
-            Text(
-              pending
-                  ? 'سيتم تفعيل الكورس خلال 24 ساعة بعد التحقق من التحويل.'
-                  : 'تم تأكيد دفعتك وتفعيل الكورس. يمكنك البدء الآن!',
-              style: c.body.copyWith(height: 1.7),
-              textAlign: TextAlign.center,
+              scale: _scale,
+              child: Center(
+                child: Container(
+                  width: 120, height: 120,
+                  margin: const EdgeInsets.only(bottom: 32),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [col1, col2],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    boxShadow: [BoxShadow(
+                      color: col1.withValues(alpha: .45),
+                      blurRadius: 32, offset: const Offset(0, 12),
+                    )],
+                  ),
+                  child: Icon(ico, color: Colors.white, size: 60),
+                ),
+              ),
             ),
-            const SizedBox(height: 40),
-            _PrimaryBtn(
+            Text(title, style: c.h1.copyWith(fontSize: 24), textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            Text(msg, style: c.body.copyWith(height: 1.8), textAlign: TextAlign.center),
+            const SizedBox(height: 44),
+            _GradientBtn(
               label: pending ? 'العودة للرئيسية' : 'ابدأ التعلم الآن',
-              onTap: () =>
-                  Navigator.of(context).popUntil((r) => r.isFirst),
+              colors: [col1, col2],
+              onTap: () => Navigator.of(context).popUntil((r) => r.isFirst),
             ),
           ],
         ),
@@ -881,21 +1121,25 @@ class _SuccessStepState extends State<_SuccessStep>
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
 // STEP — Failed
-// ─────────────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
 
 class _FailedStep extends StatelessWidget {
   const _FailedStep({super.key});
+
   @override
   Widget build(BuildContext context) {
     final enroll = context.read<EnrollmentProvider>();
     final c = context.colors;
-    final reason =
-        enroll.failureReason ?? 'حدث خطأ. الرجاء المحاولة مرة أخرى.';
+    final reason = enroll.failureReason ?? 'حدث خطأ. الرجاء المحاولة مرة أخرى.';
     final isSoft = reason.contains('قيد المعالجة') ||
         reason.contains('سيُفعَّل') ||
         reason.contains('تم الدفع');
+
+    final Color col1 = isSoft ? c.accent  : c.danger;
+    final Color col2 = isSoft ? const Color(0xFFF39C12) : const Color(0xFFE74C3C);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 28),
       child: Column(
@@ -903,48 +1147,43 @@ class _FailedStep extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Center(
-              child: Container(
-                width: 110,
-                height: 110,
-                margin: const EdgeInsets.only(bottom: 28),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: isSoft
-                        ? [c.accent, const Color(0xFFF39C12)]
-                        : [c.danger, const Color(0xFFE74C3C)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+            child: Container(
+              width: 110, height: 110,
+              margin: const EdgeInsets.only(bottom: 28),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [col1, col2],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                child: Icon(
-                  isSoft
-                      ? Icons.hourglass_top_rounded
-                      : Icons.error_outline_rounded,
-                  color: Colors.white,
-                  size: 54,
-                ),
-              )),
+                boxShadow: [BoxShadow(
+                  color: col1.withValues(alpha: .4),
+                  blurRadius: 28, offset: const Offset(0, 10),
+                )],
+              ),
+              child: Icon(
+                isSoft ? Icons.hourglass_top_rounded : Icons.error_outline_rounded,
+                color: Colors.white, size: 54,
+              ),
+            ),
+          ),
           Text(isSoft ? 'الدفع قيد المعالجة' : 'فشلت عملية الدفع',
-              style: c.h1.copyWith(fontSize: 22),
-              textAlign: TextAlign.center),
+              style: c.h1.copyWith(fontSize: 22), textAlign: TextAlign.center),
           const SizedBox(height: 12),
-          Text(reason,
-              style: c.body.copyWith(height: 1.7),
-              textAlign: TextAlign.center),
+          Text(reason, style: c.body.copyWith(height: 1.7), textAlign: TextAlign.center),
           const SizedBox(height: 40),
-          _PrimaryBtn(
+          _GradientBtn(
             label: isSoft ? 'العودة للرئيسية' : 'حاول مرة أخرى',
+            colors: [col1, col2],
             onTap: isSoft
-                ? () =>
-                Navigator.of(context).popUntil((r) => r.isFirst)
+                ? () => Navigator.of(context).popUntil((r) => r.isFirst)
                 : enroll.retryFromStart,
           ),
           const SizedBox(height: 14),
-          _SecondaryBtn(
+          _OutlineBtn(
             label: 'العودة للرئيسية',
-            onTap: () =>
-                Navigator.of(context).popUntil((r) => r.isFirst),
+            onTap: () => Navigator.of(context).popUntil((r) => r.isFirst),
           ),
         ],
       ),
@@ -952,14 +1191,15 @@ class _FailedStep extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
 // Shared widgets
-// ─────────────────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
 
 class _BackBar extends StatelessWidget {
   final String title;
   final VoidCallback onBack;
   const _BackBar({required this.title, required this.onBack});
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -968,107 +1208,121 @@ class _BackBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Row(children: [
         IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: c.textDark, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: c.textDark, size: 20),
           onPressed: onBack,
         ),
         Expanded(
-            child: Text(title,
-                style: c.h2.copyWith(fontSize: 17),
-                textAlign: TextAlign.center)),
+          child: Text(title,
+              style: c.h2.copyWith(fontSize: 17), textAlign: TextAlign.center),
+        ),
         const SizedBox(width: 44),
       ]),
     );
   }
 }
 
-class _PrimaryBtn extends StatelessWidget {
+class _GradientBtn extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   final bool loading;
-  final Color? color1, color2;
-  const _PrimaryBtn({
+  final List<Color>? colors;
+
+  const _GradientBtn({
     required this.label,
     required this.onTap,
     this.loading = false,
-    this.color1,
-    this.color2,
+    this.colors,
   });
+
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final g = color1 != null
-        ? LinearGradient(
-        colors: [color1!, color2 ?? color1!],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight)
+    final c  = context.colors;
+    final g  = colors != null
+        ? LinearGradient(colors: colors!, begin: Alignment.topLeft, end: Alignment.bottomRight)
         : c.primaryGradient;
+
     return GestureDetector(
       onTap: loading ? null : onTap,
       child: Container(
-        height: 54,
+        height: 56,
         decoration: BoxDecoration(
-            gradient: g,
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: c.primaryShadow),
+          gradient: g,
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: (colors?.first ?? c.primary).withValues(alpha: .38),
+              blurRadius: 18, offset: const Offset(0, 7),
+            ),
+          ],
+        ),
         child: Center(
           child: loading
               ? const SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(
-                  color: Colors.white, strokeWidth: 2.5))
+              width: 22, height: 22,
+              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
               : Text(label,
               style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                  fontFamily: 'Cairo')),
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+                fontFamily: 'Cairo',
+              )),
         ),
       ),
     );
   }
 }
 
-class _SecondaryBtn extends StatelessWidget {
+class _OutlineBtn extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
-  const _SecondaryBtn({required this.label, required this.onTap});
+  const _OutlineBtn({required this.label, required this.onTap});
+
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      height: 48,
-      decoration: BoxDecoration(
-          color: context.colors.background,
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 50,
+        decoration: BoxDecoration(
+          color: c.background,
           borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: context.colors.divider)),
-      child: Center(
+          border: Border.all(color: c.divider),
+        ),
+        child: Center(
           child: Text(label,
-              style: context.colors.label
-                  .copyWith(color: context.colors.textMedium))),
-    ),
-  );
+              style: c.label.copyWith(color: c.textMedium)),
+        ),
+      ),
+    );
+  }
 }
+
+// ── Bank detail tile ──────────────────────────────────────────────────────────
 
 class _BankTile extends StatefulWidget {
   final String label, value;
   final bool copyable, highlight, golden, mono;
-  const _BankTile(
-      {required this.label,
-        required this.value,
-        this.copyable = false,
-        this.highlight = false,
-        this.golden = false,
-        this.mono = false});
+  const _BankTile({
+    required this.label,
+    required this.value,
+    this.copyable = false,
+    this.highlight = false,
+    this.golden = false,
+    this.mono = false,
+  });
+
   @override
   State<_BankTile> createState() => _BankTileState();
 }
 
 class _BankTileState extends State<_BankTile> {
   bool _copied = false;
+
   Future<void> _copy() async {
     await Clipboard.setData(ClipboardData(text: widget.value));
+    HapticFeedback.lightImpact();
     setState(() => _copied = true);
     await Future.delayed(const Duration(seconds: 2));
     if (mounted) setState(() => _copied = false);
@@ -1083,40 +1337,40 @@ class _BankTileState extends State<_BankTile> {
         color: widget.golden
             ? Colors.amber.withValues(alpha: .07)
             : widget.highlight
-            ? c.primary.withValues(alpha: .06)
+            ? c.primary.withValues(alpha: .05)
             : c.cardBg,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-            color: widget.golden
-                ? Colors.amber.withValues(alpha: .35)
-                : widget.highlight
-                ? c.primary.withValues(alpha: .25)
-                : c.divider),
+          color: widget.golden
+              ? Colors.amber.withValues(alpha: .35)
+              : widget.highlight
+              ? c.primary.withValues(alpha: .25)
+              : c.divider,
+        ),
       ),
       child: Row(children: [
         Expanded(
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(widget.label, style: c.caption.copyWith(fontSize: 10)),
-                  const SizedBox(height: 4),
-                  Text(
-                      widget.value,
-                      style: widget.highlight
-                          ? c.h2.copyWith(color: c.primary)
-                          : widget.golden
-                          ? c.h3.copyWith(
-                          color: Colors.amber[800], letterSpacing: 1.4)
-                          : c.label.copyWith(
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: widget.mono ? 1.5 : 0)),
-                ])),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(widget.label, style: c.caption.copyWith(fontSize: 10)),
+            const SizedBox(height: 4),
+            Text(
+              widget.value,
+              style: widget.highlight
+                  ? c.h2.copyWith(color: c.primary)
+                  : widget.golden
+                  ? c.h3.copyWith(color: Colors.amber.shade800, letterSpacing: 1.4)
+                  : c.label.copyWith(
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: widget.mono ? 1.5 : 0),
+            ),
+          ]),
+        ),
         if (widget.copyable)
           GestureDetector(
             onTap: _copy,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(9),
               decoration: BoxDecoration(
                 color: _copied
                     ? c.success.withValues(alpha: .12)
@@ -1124,9 +1378,10 @@ class _BankTileState extends State<_BankTile> {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
-                  _copied ? Icons.check_rounded : Icons.copy_rounded,
-                  size: 16,
-                  color: _copied ? c.success : c.primary),
+                _copied ? Icons.check_rounded : Icons.copy_rounded,
+                size: 16,
+                color: _copied ? c.success : c.primary,
+              ),
             ),
           ),
       ]),

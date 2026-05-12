@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 
@@ -7,19 +8,20 @@ class ScreenAppBar extends StatelessWidget {
   final String title;
   final List<Widget>? actions;
   final bool showBack;
-
+  final Color? background;
   const ScreenAppBar({
     super.key,
     required this.title,
     this.actions,
-    this.showBack = true,
+    this.showBack = true,  this.background,
   });
 
   @override
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: Helpers.pageDirection,
-      child: Padding(
+      child: Container(
+        color: background,
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
         child: Row(
           children: [
@@ -35,7 +37,7 @@ class ScreenAppBar extends StatelessWidget {
                     boxShadow: context.colors.cardShadow,
                   ),
                   child:  Icon(
-                    Icons.arrow_back,
+                    CupertinoIcons.back,
                     color: context.colors.textDark,
                     size: 22,
                   ),
@@ -45,7 +47,7 @@ class ScreenAppBar extends StatelessWidget {
             Expanded(
               child: Text(
                 title,
-                style: context.colors.h2,
+                style: context.colors.h2.copyWith(fontFamily: 'bahji'),
                 textAlign: showBack ? TextAlign.right : TextAlign.right,
               ),
             ),

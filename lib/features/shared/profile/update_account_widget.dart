@@ -18,8 +18,10 @@ library;
 
 
 import 'package:cross_file/cross_file.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
+import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../config/app_config.dart' as Helpers;
@@ -149,12 +151,11 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
 
     return Directionality(
       textDirection: Helpers.pageDirection,
-      child: Scaffold(
-        backgroundColor: c.background,
-        body: SafeArea(
+      child: BasePage(child: SafeArea(
           child: Column(
             children: [
               // ── App bar ────────────────────────────────────────────────────
+              if(isWide)
               ScreenAppBar(title: 'update_account'.tr),
 
               // ── Body ───────────────────────────────────────────────────────
@@ -424,38 +425,35 @@ class _MobileHero extends StatelessWidget {
       child: Column(
         children: [
           // ── Tappable avatar ────────────────────────────────────────────
-          GestureDetector(
-            onTap: () async {
-              // use EditableImage logic or just file picker
-            },
-            child: Stack(
-              alignment: Alignment.bottomRight,
-              children: [
-                // Outer ring
-                Container(
-                  width: 96,
-                  height: 96,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.25),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(3),
-                    child: _AvatarCircle(p: p, c: c, size: 90),
-                  ),
+          Align(
+            alignment: Alignment.topRight  ,
+            child:  GestureDetector(
+              onTap: () => Navigator.of(context).maybePop(),
+              child: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: context.colors.cardBg,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: context.colors.cardShadow,
                 ),
-                // Camera badge
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(Icons.camera_alt_rounded,
-                      size: 15, color: c.primary),
+                child:  Icon(
+                  CupertinoIcons.back,
+                  color: context.colors.textDark,
+                  size: 22,
                 ),
-              ],
+              ),
+            ),
+                ),
+
+          Center(
+            child: EditableImage(
+              onChange: onImageChange,
+              imageFile: p.imageFile,
+              imageByte: p.imageByte,
+              imageUrl:  p.imageUrl,
+              size:      context.height/8,
+              isCircle:  true,
             ),
           ),
           const SizedBox(height: 14),
@@ -582,7 +580,7 @@ class _FormCard extends StatelessWidget {
                 imageFile: p.imageFile,
                 imageByte: p.imageByte,
                 imageUrl:  p.imageUrl,
-                size:      88,
+                size:      context.height/8,
                 isCircle:  true,
               ),
             ),

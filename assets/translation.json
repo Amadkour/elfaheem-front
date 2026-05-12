@@ -59,7 +59,6 @@
     "en": "Login",
     "ar": " سجّل الدخول"
   },
-
   "login_welcome": {
     "en": "to continue your learning journey",
     "ar": "لمتابعة رحلتك التعليمية"
@@ -877,7 +876,6 @@
     "ar": "المشاهدات"
   },
   "student_rate": {
-
     "en": "rate",
     "ar": "التقييم"
   },
@@ -969,7 +967,6 @@
     "en": "not Refreshed yet",
     "ar": "لم يُحدَّث بعد"
   },
-
   "moments-ago": {
     "en": "Moments ago",
     "ar": "منذ لحظات"
@@ -978,84 +975,82 @@
     "en": "since",
     "ar": "من "
   },
-    "m": {
+  "m": {
     "en": "m",
-     "ar": "د"
+    "ar": "د"
   },
   "day": {
     "en": "m",
-     "ar": "د"
+    "ar": "د"
   },
   "refresh": {
     "en": "Refresh",
-     "ar": "تحديث"
+    "ar": "تحديث"
   },
   "refreshing": {
     "en": "Refreshing",
-     "ar": "جاري التحديث…"
+    "ar": "جاري التحديث…"
   },
   "play-now": {
     "en": "playing now",
-     "ar": " جارية الآن"
+    "ar": " جارية الآن"
   },
-
   "next-lesson": {
     "en": "Upcoming Lesson",
-     "ar": " الحصة القادمة"
-  } ,
+    "ar": " الحصة القادمة"
+  },
   "completed": {
     "en": "Completed",
-     "ar": "مكتمل"
-  } ,
+    "ar": "مكتمل"
+  },
   "no-lessons-today": {
     "en": "No Sessions Today",
-     "ar": "لا توجد حصص اليوم"
+    "ar": "لا توجد حصص اليوم"
   },
   "no-lessons": {
     "en": "No Sessions for ",
-     "ar": "لا توجد حصص يوم"
+    "ar": "لا توجد حصص يوم"
   },
   "loading-schedule": {
     "en": "Loading the schedule…",
-     "ar": "جاري تحميل الجدول…"
+    "ar": "جاري تحميل الجدول…"
   },
   "rest-follow": {
     "en": "Rest and follow the schedule day by day.",
-     "ar": "استرح وتابع الجدول يوماً بيوم"
+    "ar": "استرح وتابع الجدول يوماً بيوم"
   },
   "retry": {
     "en": "Retry",
-     "ar": "إعادة المحاولة"
+    "ar": "إعادة المحاولة"
   },
   "appointment": {
     "en": "appointment —",
-     "ar": "المواعيد —"
+    "ar": "المواعيد —"
   },
   "appointment-repeat": {
     "en": "The appointments are automatically repeated weekly • students will see them on their schedules.",
-     "ar": "المواعيد تتكرر أسبوعياً تلقائياً  •  الطلاب يرونها في جدولهم"
+    "ar": "المواعيد تتكرر أسبوعياً تلقائياً  •  الطلاب يرونها في جدولهم"
   },
   "appointment-delete": {
     "en": "Delete Appointment",
-     "ar": "حذف الموعد"
+    "ar": "حذف الموعد"
   },
   "appointment-delete2": {
     "en": "Delete Appointment for",
-     "ar": "حذف موعد"
+    "ar": "حذف موعد"
   },
   "no-appointment": {
     "en": "No Appointment yet",
-     "ar": "لا توجد مواعيد بعد"
+    "ar": "لا توجد مواعيد بعد"
   },
   "add-weekly-appointment-for-student": {
     "en": "Add weekly appointments for your students to see in their schedule.",
-     "ar": "أضف مواعيد أسبوعية ليراها طلابك في جدولهم"
+    "ar": "أضف مواعيد أسبوعية ليراها طلابك في جدولهم"
   },
   "add-weekly-appointment": {
     "en": "Add weekly appointments +",
-     "ar": "+ إضافة موعد أسبوعي"
+    "ar": "+ إضافة موعد أسبوعي"
   },
-
   "duplicate-schedule": {
     "en": "Duplicate appointment",
     "ar": "موعد مكرر"
@@ -1064,7 +1059,6 @@
     "en": "There is already an appointment on the same day. Add another one?",
     "ar": "يوجد موعد بنفس اليوم. إضافة موعد آخر؟"
   },
-
   "appointment-added-successfully": {
     "en": "Appointment added successfully ✓",
     "ar": "تم إضافة الموعد ✓"
@@ -1073,7 +1067,6 @@
     "en": "Something went wrong",
     "ar": "حدث خطأ"
   },
-
   "start-time": {
     "en": "Start time",
     "ar": "وقت البداية"
@@ -1132,10 +1125,34 @@
   },
   "profile": {
     "en": "Profile",
-    "ar": "ملفي"
+    "ar": "حسابي"
+  },
+  "loading_attendance": {
+    "en": "Loading attendance…",
+    "ar": "جارٍ تحميل الحضور…"
+  },
+  "select_session_hint_sub": {
+    "en": "Tap a session card above to get started",
+    "ar": "اضغط على إحدى بطاقات الحصص أعلاه للبدء"
+  },
+  "no_sessions_available": {
+    "en": "No sessions available",
+    "ar": "لا توجد حصص متاحة"
+  },
+  "save_failed": {
+    "en": "Save failed, please try again",
+    "ar": "فشل الحفظ، يرجى المحاولة مرة أخرى"
+  },
+  "session_number": {
+    "en": "Session {number}",
+    "ar": "الحصة {number}"
+  },
+  "explorer_courses": {
+    "en": "Explorer Courses",
+    "ar": "استكشف دورات اخري"
+  },
+  "course_details": {
+    "en": "Course Details",
+    "ar": "تفاصيل الدورة"
   }
-
-
-
-
 }

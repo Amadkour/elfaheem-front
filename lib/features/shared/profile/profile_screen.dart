@@ -19,6 +19,7 @@ import '../../auth/auth_provider.dart';
 import '../../student/courses/details/course_detail_screen.dart';
 import '../../student/models.dart';
 import '../../student/courses/details/components/app_responsive.dart';
+import '../../teacher/profile/teacher_earnings_screen.dart';
 import '../payment/student_saved_methods_screen.dart';
 import '../payment/teacher_payout_screen.dart';
 import 'change_password_widget.dart';
@@ -35,17 +36,18 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _TeacherProfileScreenState extends State<ProfileScreen> {
-  void _push(Widget screen) =>
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+  Future<void> _push(Widget screen) async =>
+      await Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
 
   @override
   void initState() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context
-          .read<ProfileProvider>()
-          .initData(context.read<AuthProvider>().currentUser);
+      _refresh(context);
     });
     super.initState();
+  }
+  void _refresh(BuildContext context){
+     context.read<ProfileProvider>().initData(context.read<AuthProvider>().currentUser);
   }
 
   @override
@@ -89,7 +91,12 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                           iconBg: c.primaryTint,
                           iconColor: c.primary,
                           label: 'update_account'.tr,
-                          onTap: () => _push(const EditAccountScreen()),
+                          onTap: () async {
+                          await  _push(const EditAccountScreen());
+                          if(context.mounted) {
+                            _refresh(context);
+                          }
+                          },
                         ),
                         SettingsTile(
                           icon: Icons.lock_rounded,
@@ -97,6 +104,14 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                           iconColor: c.accent,
                           label: 'change_password'.tr,
                           onTap: () => _push(const ChangePasswordScreen()),
+                        ),
+                        if (context.read<AuthProvider>().isTeacher)
+                        SettingsTile(
+                          icon: Icons.lock_rounded,
+                          iconBg: c.accentTint,
+                          iconColor: c.accent,
+                          label: 'payments'.tr,
+                          onTap: () => _push(const TeacherEarningsScreen()),
                         ),
                         SettingsTile(
                           icon: Icons.account_balance_wallet_rounded,
@@ -195,9 +210,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 28),
 
                   // ── Logout ───────────────────────────────────────────────
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: GestureDetector(
+                  GestureDetector(
                       onTap: () async {
                         final ok = await Helpers.confirmLogout(context);
                         if (ok == true && context.mounted) {
@@ -242,7 +255,6 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                     ),
-                  ),
                   const SizedBox(height: 40),
                 ],
               ),
@@ -842,8 +854,8 @@ class ProfileHeader extends StatelessWidget {
           alignment: Alignment.bottomLeft,
           children: [
             Container(
-              width: 100,
-              height: 100,
+              width: context.height/8,
+              height: context.height/8,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: context.colors.primary.withValues(alpha: 0.1),

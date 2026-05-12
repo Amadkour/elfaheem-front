@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/teacher/attendance/teacher_attendance_screen.dart';
 import 'package:flutter_education_app/features/teacher/courses/course_form_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../config/app_theme.dart';
+import '../../analytics/teacher/exam/teacher_exam_hub_screen.dart';
+import '../../analytics/teacher/teacher_attendance_screen.dart';
 import '../../student/models.dart';
-import '../../teacher/exam/teacher_exam_screen.dart';
 import '../../teacher/home/teacher_models.dart';
 import '../../teacher/sessions/components/session_form_sheet.dart';
 import '../../teacher/sessions/sessions_provider.dart';
@@ -36,7 +36,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
 
   Future<void> _refreshCourse() async {
     final updated =
-    await context.read<TeacherProvider>().fetchCourseById(widget.course.id);
+        await context.read<TeacherProvider>().fetchCourseById(widget.course.id);
     if (updated != null && mounted) {
       setState(() => _course = updated);
     }
@@ -57,11 +57,12 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
     );
   }
 
-  void _openEditCourse() {
-    Navigator.push(
+  Future<void> _openEditCourse() async {
+    await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => CourseFormScreen(course: _course)),
     );
+    _refreshCourse();
   }
 
   @override
@@ -97,7 +98,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
           child: TeacherAttendanceScreen(
             sessionId: session.id,
             courseId: session.courseId,
-            sessionName: session.name,
+            courseTitle: _course.title,
           ),
         ),
       ),
@@ -108,11 +109,11 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
     Navigator.push(
       ctx,
       MaterialPageRoute(
-        builder: (_) => TeacherExamScreen(
+        builder: (_) => TeacherExamHubScreen(
           courseId: session.courseId,
           courseTitle: _course.title,
-          sessionId: session.id,
-          sessionName: session.name,
+          // sessionId: session.id,
+          // sessionName: session.name,
         ),
       ),
     );
@@ -216,6 +217,7 @@ class _SessionsList extends StatelessWidget {
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemCount: provider.sessions.length,
                 itemBuilder: (ctx, i) => _SessionTile(
+                  course: course,
                   session: provider.sessions[i],
                   onEdit: () => onEdit(provider.sessions[i]),
                   onAttend: () => onAttend(provider.sessions[i]),
@@ -241,9 +243,9 @@ class _CourseDetailsSection extends StatelessWidget {
 
   bool get _hasAny =>
       course.schedules.isNotEmpty ||
-          course.prerequisites.isNotEmpty ||
-          course.tools.isNotEmpty ||
-          course.certificates.isNotEmpty;
+      course.prerequisites.isNotEmpty ||
+      course.tools.isNotEmpty ||
+      course.certificates.isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -267,7 +269,7 @@ class _CourseDetailsSection extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Text(
-                'تفاصيل الدورة',
+                ' course_details'.tr,
                 style: context.colors.h3.copyWith(fontSize: 14),
               ),
             ],
@@ -278,7 +280,7 @@ class _CourseDetailsSection extends StatelessWidget {
           if (course.schedules.isNotEmpty)
             _DetailCard(
               icon: Icons.calendar_month_rounded,
-              title: 'الجدول الأسبوعي',
+              title: 'weekly_schedule'.tr,
               color: const Color(0xFF4DA6FF),
               children: course.schedules
                   .map((s) => _ScheduleRow(schedule: s))
@@ -289,7 +291,7 @@ class _CourseDetailsSection extends StatelessWidget {
             const SizedBox(height: 10),
             _DetailCard(
               icon: Icons.checklist_rounded,
-              title: 'المتطلبات السابقة',
+              title: 'prerequisites'.tr,
               color: const Color(0xFFFF9F43),
               children: course.prerequisites
                   .map((p) => _BulletRow(text: p.title))
@@ -301,11 +303,10 @@ class _CourseDetailsSection extends StatelessWidget {
             const SizedBox(height: 10),
             _DetailCard(
               icon: Icons.build_rounded,
-              title: 'الأدوات المطلوبة',
+              title: 'required_tools'.tr,
               color: const Color(0xFF1DB954),
-              children: course.tools
-                  .map((t) => _BulletRow(text: t.name))
-                  .toList(),
+              children:
+                  course.tools.map((t) => _BulletRow(text: t.name)).toList(),
             ),
           ],
 
@@ -313,7 +314,7 @@ class _CourseDetailsSection extends StatelessWidget {
             const SizedBox(height: 10),
             _DetailCard(
               icon: Icons.workspace_premium_rounded,
-              title: 'الشهادات',
+              title: 'certificates'.tr,
               color: const Color(0xFFFFD700),
               children: course.certificates
                   .map((c) => _CertificateRow(cert: c))
@@ -432,8 +433,8 @@ class _DetailCardState extends State<_DetailCard>
                   ),
                   // Item count badge
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: widget.color.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(20),
@@ -480,10 +481,9 @@ class _DetailCardState extends State<_DetailCard>
                   child: Column(
                     children: widget.children
                         .map((child) => Padding(
-                      padding:
-                      const EdgeInsets.symmetric(vertical: 4),
-                      child: child,
-                    ))
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: child,
+                            ))
                         .toList(),
                   ),
                 ),
@@ -503,6 +503,7 @@ class _DetailCardState extends State<_DetailCard>
 /// Schedule row: day name + time range chip
 class _ScheduleRow extends StatelessWidget {
   final CourseSchedule schedule;
+
   const _ScheduleRow({required this.schedule});
 
   @override
@@ -528,12 +529,12 @@ class _ScheduleRow extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         // Time range
-         Icon(Icons.access_time_rounded,
+        Icon(Icons.access_time_rounded,
             size: 13, color: context.colors.textMedium),
         const SizedBox(width: 4),
         Text(
           '${schedule.startTime} – ${schedule.endTime}',
-          style:  TextStyle(
+          style: TextStyle(
             fontFamily: 'Tajawal',
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -548,6 +549,7 @@ class _ScheduleRow extends StatelessWidget {
 /// Bullet row: simple dot + text (prerequisites & tools)
 class _BulletRow extends StatelessWidget {
   final String text;
+
   const _BulletRow({required this.text});
 
   @override
@@ -555,7 +557,7 @@ class _BulletRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-         Padding(
+        Padding(
           padding: EdgeInsets.only(top: 5),
           child: Icon(Icons.circle, size: 6, color: context.colors.textMedium),
         ),
@@ -563,7 +565,7 @@ class _BulletRow extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style:  TextStyle(
+            style: TextStyle(
               fontFamily: 'Tajawal',
               fontSize: 13,
               color: context.colors.textDark,
@@ -579,6 +581,7 @@ class _BulletRow extends StatelessWidget {
 /// Certificate row: star icon + title + optional description
 class _CertificateRow extends StatelessWidget {
   final CourseCertificate cert;
+
   const _CertificateRow({required this.cert});
 
   @override
@@ -594,19 +597,18 @@ class _CertificateRow extends StatelessWidget {
             children: [
               Text(
                 cert.title,
-                style:  TextStyle(
+                style: TextStyle(
                   fontFamily: 'Tajawal',
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: context.colors.textDark,
                 ),
               ),
-              if (cert.description != null &&
-                  cert.description!.isNotEmpty) ...[
+              if (cert.description != null && cert.description!.isNotEmpty) ...[
                 const SizedBox(height: 2),
                 Text(
                   cert.description!,
-                  style:  TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Tajawal',
                     fontSize: 11,
                     color: context.colors.textMedium,
@@ -646,20 +648,6 @@ class _CourseHero extends StatelessWidget {
           width: double.infinity,
           child: _buildBackground(),
         ),
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withValues(alpha: 0.25),
-                  Colors.black.withValues(alpha: 0.75),
-                ],
-              ),
-            ),
-          ),
-        ),
         Positioned(
           top: 12,
           left: 16,
@@ -688,7 +676,7 @@ class _CourseHero extends StatelessWidget {
                 Container(
                   margin: const EdgeInsets.only(bottom: 8),
                   padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: context.colors.primary.withValues(alpha: 0.85),
                     borderRadius: BorderRadius.circular(20),
@@ -748,10 +736,22 @@ class _CourseHero extends StatelessWidget {
             colors: [Color(0xFF1A1F3A), Color(0xFF2D3461)],
           ),
         ),
-        child: Image.network(
-          imageUrl,
-          fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => _GradientBackground(),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withValues(alpha: 0.25),
+                Colors.black.withValues(alpha: 0.75),
+              ],
+            ),
+          ),
+          child: Image.network(
+            imageUrl,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => _GradientBackground(),
+          ),
         ),
       );
     }
@@ -762,21 +762,21 @@ class _CourseHero extends StatelessWidget {
 class _GradientBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
-    decoration: const BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [Color(0xFF1A1F3A), Color(0xFF2D3461)],
-      ),
-    ),
-    child: Center(
-      child: Icon(
-        Icons.school_rounded,
-        size: 72,
-        color: Colors.white.withValues(alpha: 0.12),
-      ),
-    ),
-  );
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF1A1F3A), Color(0xFF2D3461)],
+          ),
+        ),
+        child: Center(
+          child: Icon(
+            Icons.school_rounded,
+            size: 72,
+            color: Colors.white.withValues(alpha: 0.12),
+          ),
+        ),
+      );
 }
 
 class _CircleBtn extends StatelessWidget {
@@ -795,8 +795,8 @@ class _CircleBtn extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.40),
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-              color: Colors.white.withValues(alpha: 0.20), width: 1),
+          border:
+              Border.all(color: Colors.white.withValues(alpha: 0.20), width: 1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -844,20 +844,20 @@ class _StatsRow extends StatelessWidget {
         value: '$sessionCount',
         color: context.colors.primary,
       ),
-    //  if (course.price > 0)
-        _StatItem(
-          icon: Icons.sell_rounded,
-          label: 'cost'.tr,
-          value: course.price == 0 ? 'free'.tr : '${course.price} ج',
-          color: const Color(0xFF1DB954),
-        ),
-     // if (course.totalHours > 0)
-        _StatItem(
-          icon: Icons.timer_rounded,
-          label: 'duration'.tr,
-          value: '${course.totalHours} ${'h'.tr}',
-          color: const Color(0xFFFF9F43),
-        ),
+      //  if (course.price > 0)
+      _StatItem(
+        icon: Icons.sell_rounded,
+        label: 'cost'.tr,
+        value: course.price == 0 ? 'free'.tr : '${course.price} ج',
+        color: const Color(0xFF1DB954),
+      ),
+      // if (course.totalHours > 0)
+      _StatItem(
+        icon: Icons.timer_rounded,
+        label: 'duration'.tr,
+        value: '${course.totalHours} ${'h'.tr}',
+        color: const Color(0xFFFF9F43),
+      ),
     ];
 
     return Container(
@@ -878,7 +878,7 @@ class _StatsRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children:
-        stats.map((s) => Expanded(child: _StatChip(item: s))).toList(),
+            stats.map((s) => Expanded(child: _StatChip(item: s))).toList(),
       ),
     );
   }
@@ -889,51 +889,53 @@ class _StatItem {
   final String label;
   final String value;
   final Color color;
+
   const _StatItem(
       {required this.icon,
-        required this.label,
-        required this.value,
-        required this.color});
+      required this.label,
+      required this.value,
+      required this.color});
 }
 
 class _StatChip extends StatelessWidget {
   final _StatItem item;
+
   const _StatChip({required this.item});
 
   @override
   Widget build(BuildContext context) => Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color: item.color.withValues(alpha: 0.12),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(item.icon, size: 18, color: item.color),
-      ),
-      const SizedBox(height: 6),
-      Text(
-        item.value,
-        style: TextStyle(
-          fontFamily: 'Tajawal',
-          fontSize: 14,
-          fontWeight: FontWeight.w800,
-          color: context.colors.textDark,
-        ),
-      ),
-      const SizedBox(height: 2),
-      Text(
-        item.label,
-        style:  TextStyle(
-          fontFamily: 'Tajawal',
-          fontSize: 10,
-          color: context.colors.textMedium,
-        ),
-      ),
-    ],
-  );
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: item.color.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(item.icon, size: 18, color: item.color),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            item.value,
+            style: TextStyle(
+              fontFamily: 'Tajawal',
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: context.colors.textDark,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            item.label,
+            style: TextStyle(
+              fontFamily: 'Tajawal',
+              fontSize: 10,
+              color: context.colors.textMedium,
+            ),
+          ),
+        ],
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -942,29 +944,31 @@ class _StatChip extends StatelessWidget {
 
 class _SectionHeader extends StatelessWidget {
   final VoidCallback onAdd;
+
   const _SectionHeader({required this.onAdd});
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-    child: Row(
-      children: [
-        Container(
-          width: 4,
-          height: 20,
-          decoration: BoxDecoration(
-            gradient: context.colors.primaryGradient,
-            borderRadius: BorderRadius.circular(2),
-          ),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+        child: Row(
+          children: [
+            Container(
+              width: 4,
+              height: 20,
+              decoration: BoxDecoration(
+                gradient: context.colors.primaryGradient,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text('sessions'.tr,
+                  style: context.colors.h3.copyWith(fontSize: 15)),
+            ),
+            _AddButton(onTap: onAdd),
+          ],
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text('sessions'.tr, style: context.colors.h3.copyWith(fontSize: 15)),
-        ),
-        _AddButton(onTap: onAdd),
-      ],
-    ),
-  );
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -977,6 +981,7 @@ class _SessionTile extends StatelessWidget {
   final VoidCallback onAttend;
   final VoidCallback onExam;
   final bool isWide;
+  final TeacherCourse course;
 
   const _SessionTile({
     required this.session,
@@ -984,6 +989,7 @@ class _SessionTile extends StatelessWidget {
     required this.onAttend,
     required this.onExam,
     required this.isWide,
+    required this.course,
   });
 
   @override
@@ -996,12 +1002,15 @@ class _SessionTile extends StatelessWidget {
       onStartLive: () => _handleStart(context, session),
       onEndLive: () => _handleEnd(context, session),
       onRecording: () => _handleRecording(context, session),
-      onAttend: onAttend,
+      // onAttend: onAttend,
       onExam: onExam,
+      courseId: course.id,
+      courseTitle: course.title,
     );
   }
 
-  Future<void> _confirmDelete(BuildContext context, TeacherSessionItem s) async {
+  Future<void> _confirmDelete(
+      BuildContext context, TeacherSessionItem s) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) => Directionality(
@@ -1017,7 +1026,7 @@ class _SessionTile extends StatelessWidget {
               decoration: BoxDecoration(
                   color: context.colors.danger.withValues(alpha: 0.1),
                   shape: BoxShape.circle),
-              child:  Icon(Icons.delete_rounded,
+              child: Icon(Icons.delete_rounded,
                   color: context.colors.danger, size: 18),
             ),
             const SizedBox(width: 12),
@@ -1026,12 +1035,12 @@ class _SessionTile extends StatelessWidget {
                     fontFamily: 'Tajawal', fontWeight: FontWeight.w700)),
           ]),
           content: Text('هل تريد حذف "${s.name}"؟',
-              style:  TextStyle(
+              style: TextStyle(
                   fontFamily: 'Tajawal', color: context.colors.textMedium)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child:  Text('إلغاء',
+              child: Text('إلغاء',
                   style: TextStyle(
                       fontFamily: 'Tajawal', color: context.colors.textMedium)),
             ),
@@ -1053,7 +1062,7 @@ class _SessionTile extends StatelessWidget {
     );
     if (ok == true && context.mounted) {
       final deleted =
-      await context.read<TeacherSessionsProvider>().deleteSession(s.id);
+          await context.read<TeacherSessionsProvider>().deleteSession(s.id);
       if (context.mounted) {
         _snack(context, deleted ? 'تم الحذف' : 'فشل الحذف',
             deleted ? context.colors.success : context.colors.danger);
@@ -1074,9 +1083,11 @@ class _SessionTile extends StatelessWidget {
             Container(
               width: 36,
               height: 36,
-              decoration:  BoxDecoration(
-                  gradient: LinearGradient(
-                      colors: [context.colors.primary, context.colors.primaryDark]),
+              decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [
+                    context.colors.primary,
+                    context.colors.primaryDark
+                  ]),
                   shape: BoxShape.circle),
               child: const Icon(Icons.play_circle_rounded,
                   color: Colors.white, size: 20),
@@ -1090,13 +1101,13 @@ class _SessionTile extends StatelessWidget {
           ]),
           content: Text(
               'سيتم إنشاء غرفة مباشرة لـ "${s.name}". هل تريد المتابعة؟',
-              style:  TextStyle(
+              style: TextStyle(
                   fontFamily: 'Tajawal', color: context.colors.textMedium)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
               child: Text('cancel'.tr,
-                  style:  TextStyle(
+                  style: TextStyle(
                       fontFamily: 'Tajawal', color: context.colors.textMedium)),
             ),
             ElevatedButton(
@@ -1116,7 +1127,9 @@ class _SessionTile extends StatelessWidget {
       ),
     );
     if (confirmed != true || !context.mounted) return;
-    context.read<TeacherSessionsProvider>().joinLive(context, s.id, s.courseId, 5);
+    context
+        .read<TeacherSessionsProvider>()
+        .joinLive(context, s.id, s.courseId, 5);
   }
 
   Future<void> _handleEnd(BuildContext context, TeacherSessionItem s) async {
@@ -1129,7 +1142,8 @@ class _SessionTile extends StatelessWidget {
           child: AlertDialog(
             backgroundColor: context.colors.surface,
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(context.colors.radiusLarge)),
+                borderRadius:
+                    BorderRadius.circular(context.colors.radiusLarge)),
             title: Row(children: [
               Container(
                 width: 36,
@@ -1137,7 +1151,7 @@ class _SessionTile extends StatelessWidget {
                 decoration: BoxDecoration(
                     color: context.colors.danger.withValues(alpha: 0.1),
                     shape: BoxShape.circle),
-                child:  Icon(Icons.stop_circle_rounded,
+                child: Icon(Icons.stop_circle_rounded,
                     color: context.colors.danger, size: 20),
               ),
               const SizedBox(width: 12),
@@ -1146,7 +1160,7 @@ class _SessionTile extends StatelessWidget {
                       fontFamily: 'Tajawal', fontWeight: FontWeight.w700)),
             ]),
             content: Column(mainAxisSize: MainAxisSize.min, children: [
-               Text('هل تريد إنهاء الحصة للجميع؟',
+              Text('هل تريد إنهاء الحصة للجميع؟',
                   style: TextStyle(
                       fontFamily: 'Tajawal', color: context.colors.textMedium)),
               const SizedBox(height: 14),
@@ -1177,11 +1191,11 @@ class _SessionTile extends StatelessWidget {
                       ),
                       child: saveRecording
                           ? const Icon(Icons.check_rounded,
-                          size: 14, color: Colors.white)
+                              size: 14, color: Colors.white)
                           : null,
                     ),
                     const SizedBox(width: 10),
-                     Text('حفظ التسجيل تلقائياً',
+                    Text('حفظ التسجيل تلقائياً',
                         style: TextStyle(
                             fontFamily: 'Tajawal',
                             fontWeight: FontWeight.w600,
@@ -1193,9 +1207,10 @@ class _SessionTile extends StatelessWidget {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dCtx, false),
-                child:  Text('إلغاء',
+                child: Text('إلغاء',
                     style: TextStyle(
-                        fontFamily: 'Tajawal', color: context.colors.textMedium)),
+                        fontFamily: 'Tajawal',
+                        color: context.colors.textMedium)),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -1235,7 +1250,7 @@ class _SessionTile extends StatelessWidget {
     }
     _snack(context, 'جاري البحث عن التسجيل...', context.colors.primary);
     final url =
-    await context.read<TeacherSessionsProvider>().fetchRecordingUrl(s.id);
+        await context.read<TeacherSessionsProvider>().fetchRecordingUrl(s.id);
     if (!context.mounted) return;
     if (url != null) {
       final uri = Uri.parse(url);
@@ -1243,7 +1258,8 @@ class _SessionTile extends StatelessWidget {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
     } else {
-      _snack(context, 'التسجيل لم يكتمل بعد، حاول لاحقاً', context.colors.accent);
+      _snack(
+          context, 'التسجيل لم يكتمل بعد، حاول لاحقاً', context.colors.accent);
     }
   }
 
@@ -1254,8 +1270,8 @@ class _SessionTile extends StatelessWidget {
               color == context.colors.success
                   ? Icons.check_circle_rounded
                   : color == context.colors.danger
-                  ? Icons.error_rounded
-                  : Icons.info_rounded,
+                      ? Icons.error_rounded
+                      : Icons.info_rounded,
               color: Colors.white,
               size: 18,
             ),
@@ -1271,8 +1287,8 @@ class _SessionTile extends StatelessWidget {
           backgroundColor: color,
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.all(16),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14))));
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1284,102 +1300,105 @@ class _LoadingState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-    child: Column(mainAxisSize: MainAxisSize.min, children: [
-      SizedBox(
-        width: 40,
-        height: 40,
-        child: CircularProgressIndicator(
-          valueColor:  AlwaysStoppedAnimation(context.colors.primary),
-          strokeWidth: 3,
-          backgroundColor: context.colors.primaryLight,
-        ),
-      ),
-      const SizedBox(height: 16),
-      Text('جاري تحميل الدروس...', style: context.colors.body),
-    ]),
-  );
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          SizedBox(
+            width: 40,
+            height: 40,
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation(context.colors.primary),
+              strokeWidth: 3,
+              backgroundColor: context.colors.primaryLight,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text('جاري تحميل الدروس...', style: context.colors.body),
+        ]),
+      );
 }
 
 class _EmptyState extends StatelessWidget {
   final VoidCallback onAdd;
+
   const _EmptyState({required this.onAdd});
 
   @override
   Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(40),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(
-          width: 90,
-          height: 90,
-          decoration: BoxDecoration(
-            gradient: context.colors.primaryGradient,
-            shape: BoxShape.circle,
-            boxShadow: context.colors.primaryShadow,
-          ),
-          child: const Icon(Icons.video_library_rounded,
-              size: 40, color: Colors.white),
-        ),
-        const SizedBox(height: 20),
-        Text('لا توجد دروس بعد',
-            style: context.colors.h3.copyWith(color: context.colors.textDark)),
-        const SizedBox(height: 8),
-        Text('أضف أول درس لتبدأ في تنظيم مواد الكورس',
-            style: context.colors.body, textAlign: TextAlign.center),
-        const SizedBox(height: 28),
-        GestureDetector(
-          onTap: onAdd,
-          child: Container(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-            decoration: BoxDecoration(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              width: 90,
+              height: 90,
+              decoration: BoxDecoration(
                 gradient: context.colors.primaryGradient,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: context.colors.primaryShadow),
-            child: const Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.add_rounded, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Text('أضف أول درس',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Tajawal',
-                      fontSize: 15)),
-            ]),
-          ),
+                shape: BoxShape.circle,
+                boxShadow: context.colors.primaryShadow,
+              ),
+              child: const Icon(Icons.video_library_rounded,
+                  size: 40, color: Colors.white),
+            ),
+            const SizedBox(height: 20),
+            Text('لا توجد دروس بعد',
+                style:
+                    context.colors.h3.copyWith(color: context.colors.textDark)),
+            const SizedBox(height: 8),
+            Text('أضف أول درس لتبدأ في تنظيم مواد الكورس',
+                style: context.colors.body, textAlign: TextAlign.center),
+            const SizedBox(height: 28),
+            GestureDetector(
+              onTap: onAdd,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                decoration: BoxDecoration(
+                    gradient: context.colors.primaryGradient,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: context.colors.primaryShadow),
+                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.add_rounded, color: Colors.white, size: 20),
+                  SizedBox(width: 8),
+                  Text('أضف أول درس',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'Tajawal',
+                          fontSize: 15)),
+                ]),
+              ),
+            ),
+          ]),
         ),
-      ]),
-    ),
-  );
+      );
 }
 
 class _AddButton extends StatelessWidget {
   final VoidCallback onTap;
+
   const _AddButton({required this.onTap});
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      height: 36,
-      padding:  EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        gradient: context.colors.primaryGradient,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: context.colors.primaryShadow,
-      ),
-      child: const Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.add_rounded, color: Colors.white, size: 18),
-        SizedBox(width: 6),
-        Text('إضافة درس',
-            style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Tajawal',
-                fontSize: 12)),
-      ]),
-    ),
-  );
+        onTap: onTap,
+        child: Container(
+          height: 36,
+          padding: EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            gradient: context.colors.primaryGradient,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: context.colors.primaryShadow,
+          ),
+          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.add_rounded, color: Colors.white, size: 18),
+            SizedBox(width: 6),
+            Text('إضافة درس',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'Tajawal',
+                    fontSize: 12)),
+          ]),
+        ),
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1390,177 +1409,168 @@ class _AddButton extends StatelessWidget {
 // SessionCard — drop-in replacement, identical public API
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Model — update your existing model or use this reference
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Expected fields on TeacherSessionItem (add any that are missing):
+//   String  name
+//   String  type           // 'live' | 'recorded'
+//   bool    isLive
+//   bool    hasRecording
+//   String? videoUrl       // ← NEW: direct video / meeting link
+//   DateTime? scheduledAt
+//   int?    durationMinutes
+//   int?    order
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Premium SessionCard
+// ─────────────────────────────────────────────────────────────────────────────
+
 class SessionCard extends StatelessWidget {
   final TeacherSessionItem session;
+  final int courseId;
+  final String courseTitle;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onStartLive;
   final VoidCallback onEndLive;
   final VoidCallback onRecording;
-  final VoidCallback onAttend;
   final VoidCallback onExam;
 
   const SessionCard({
     super.key,
     required this.session,
+    required this.courseId,
+    required this.courseTitle,
     required this.onEdit,
     required this.onDelete,
     required this.onStartLive,
     required this.onEndLive,
     required this.onRecording,
-    required this.onAttend,
     required this.onExam,
   });
 
-  // ── Derived state helpers ─────────────────────────────────────────────────
+  // ── Derived helpers ────────────────────────────────────────────────────────
 
   bool get _isLive => session.isLive;
+
   bool get _isRecorded => session.type == 'recorded';
+
   bool get _hasRecording => session.hasRecording;
 
-  /// Left-edge accent color per session state / type
-  Color? get _accentColor {
+  bool get _hasVideoLink =>
+      session.recordingUrl != null && session.recordingUrl!.isNotEmpty;
+
+  Color get _accentColor {
     if (_isLive) return const Color(0xFFFF4E4E);
-    if (_hasRecording) return const Color(0xFF1DB954);
+    if (_hasRecording) return const Color(0xFF00C875);
     if (_isRecorded) return const Color(0xFF4DA6FF);
-    return null;
+    return const Color(0xFF6C63FF);
   }
 
-  /// Human-readable status label
   String _statusLabel(BuildContext ctx) {
     if (_isLive) return 'مباشر الآن';
     if (_hasRecording) return 'مسجّل';
-    return _isRecorded ? 'مسجّل'.tr : 'live'.tr;
+    return _isRecorded ? 'تسجيل' : 'بث مباشر';
   }
 
   IconData get _statusIcon {
     if (_isLive) return Icons.sensors_rounded;
-    if (_hasRecording) return Icons.play_circle_rounded;
+    if (_hasRecording) return Icons.play_circle_filled_rounded;
     if (_isRecorded) return Icons.video_library_rounded;
     return Icons.live_tv_rounded;
   }
 
+  // ── Open attendance screen ─────────────────────────────────────────────────
+
+  void _openAttendance(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TeacherAttendanceScreen(
+          courseId: courseId,
+          sessionId: session.id,
+          courseTitle: courseTitle,
+        ),
+      ),
+    );
+  }
+
+  // ── Open video link ────────────────────────────────────────────────────────
+
+  Future<void> _openVideoLink() async {
+    if (!_hasVideoLink) return;
+    final uri = Uri.parse(session.recordingUrl!);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: context.colors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: _isLive
-              ? const Color(0xFFFF4E4E).withValues(alpha: 0.35)
-              : context.colors.divider,
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: _isLive
-                ? const Color(0xFFFF4E4E).withValues(alpha: 0.12)
-                : Colors.black.withValues(alpha: 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ── Left accent bar ─────────────────────────────────────────
-              _AccentBar(color: _accentColor??context.colors.primary, isLive: _isLive),
+    final bool isWeb = MediaQuery.of(context).size.width > 700;
 
-              // ── Card body ───────────────────────────────────────────────
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // ── Top row: title + menu ─────────────────────────
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Session type icon bubble
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: (_accentColor??context.colors.primary).withValues(alpha: 0.10),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(_statusIcon,
-                                size: 20, color: _accentColor??context.colors.primary),
-                          ),
-                          const SizedBox(width: 12),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: _PremiumCard(
+        accentColor: _accentColor,
+        isLive: _isLive,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Header ────────────────────────────────────────────────────
+            _CardHeader(
+              session: session,
+              accentColor: _accentColor,
+              statusIcon: _statusIcon,
+              statusLabel: _statusLabel(context),
+              isLive: _isLive,
+              onEdit: onEdit,
+              onDelete: onDelete,
+            ),
 
-                          // Title + session number
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  session.name,
-                                  style:  TextStyle(
-                                    fontFamily: 'Tajawal',
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w800,
-                                    color: context.colors.textDark,
-                                    height: 1.3,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                _StatusBadge(
-                                  label: _statusLabel(context),
-                                  color: _accentColor??context.colors.primary,
-                                  isLive: _isLive,
-                                ),
-                              ],
-                            ),
-                          ),
+            const SizedBox(height: 14),
 
-                          // 3-dot menu
-                          _ContextMenu(
-                            onEdit: onEdit,
-                            onDelete: onDelete,
-                          ),
-                        ],
-                      ),
-
-                      // ── Meta row: date / duration / order ─────────────
-                      if (_hasMetaRow) ...[
-                        const SizedBox(height: 10),
-                        _MetaRow(session: session),
-                      ],
-
-                      // ── Divider ───────────────────────────────────────
-                      const SizedBox(height: 12),
-                      Divider(
-                        height: 1,
-                        color: context.colors.divider.withValues(alpha: 0.6),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // ── Action buttons ────────────────────────────────
-                      _ActionRow(
-                        session: session,
-                        isLive: _isLive,
-                        hasRecording: _hasRecording,
-                        onStartLive: onStartLive,
-                        onEndLive: onEndLive,
-                        onRecording: onRecording,
-                        onAttend: onAttend,
-                        onExam: onExam,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+            // ── Meta chips ────────────────────────────────────────────────
+            if (_hasMetaRow) ...[
+              _MetaRow(session: session),
+              const SizedBox(height: 14),
             ],
-          ),
+
+            // ── Divider ───────────────────────────────────────────────────
+            _GradientDivider(color: _accentColor),
+
+            const SizedBox(height: 14),
+
+            // ── Action buttons ────────────────────────────────────────────
+            isWeb
+                ? _ActionRowWeb(
+                    session: session,
+                    isLive: _isLive,
+                    hasRecording: _hasRecording,
+                    hasVideoLink: _hasVideoLink,
+                    accentColor: _accentColor,
+                    onStartLive: onStartLive,
+                    onEndLive: onEndLive,
+                    onRecording: onRecording,
+                    onAttend: () => _openAttendance(context),
+                    onExam: onExam,
+                    onOpenVideo: _openVideoLink,
+                  )
+                : _ActionRowMobile(
+                    session: session,
+                    isLive: _isLive,
+                    hasRecording: _hasRecording,
+                    hasVideoLink: _hasVideoLink,
+                    accentColor: _accentColor,
+                    onStartLive: onStartLive,
+                    onEndLive: onEndLive,
+                    onRecording: onRecording,
+                    onAttend: () => _openAttendance(context),
+                    onExam: onExam,
+                    onOpenVideo: _openVideoLink,
+                  ),
+          ],
         ),
       ),
     );
@@ -1568,81 +1578,239 @@ class SessionCard extends StatelessWidget {
 
   bool get _hasMetaRow =>
       session.scheduledAt != null ||
-          session.durationMinutes != null ||
-          session.order != null;
+      session.durationMinutes != null ||
+      session.order != null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Animated left accent bar — pulses when live
+// Premium card shell with glass-morphism + glow
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _AccentBar extends StatefulWidget {
-  final Color color;
+class _PremiumCard extends StatefulWidget {
+  final Color accentColor;
   final bool isLive;
+  final Widget child;
 
-  const _AccentBar({required this.color, required this.isLive});
+  const _PremiumCard({
+    required this.accentColor,
+    required this.isLive,
+    required this.child,
+  });
 
   @override
-  State<_AccentBar> createState() => _AccentBarState();
+  State<_PremiumCard> createState() => _PremiumCardState();
 }
 
-class _AccentBarState extends State<_AccentBar>
+class _PremiumCardState extends State<_PremiumCard>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _anim;
+  late final AnimationController _glowCtrl;
+  late final Animation<double> _glowAnim;
+  bool _hovered = false;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
+    _glowCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
+      duration: const Duration(milliseconds: 1100),
     );
-    _anim = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    _glowAnim = Tween<double>(begin: 0.6, end: 1.0).animate(
+      CurvedAnimation(parent: _glowCtrl, curve: Curves.easeInOut),
     );
-    if (widget.isLive) _ctrl.repeat(reverse: true);
+    if (widget.isLive) _glowCtrl.repeat(reverse: true);
   }
 
   @override
   void dispose() {
-    _ctrl.dispose();
+    _glowCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.isLive) {
-      return Container(
-        width: 5,
-        decoration: BoxDecoration(
-          color: widget.color,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(18),
-            bottomLeft: Radius.circular(18),
-          ),
-        ),
-      );
-    }
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return AnimatedBuilder(
-      animation: _anim,
-      builder: (_, __) => Container(
-        width: 5,
-        decoration: BoxDecoration(
-          color: widget.color.withValues(alpha: _anim.value),
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(18),
-            bottomLeft: Radius.circular(18),
-          ),
-        ),
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedBuilder(
+        animation: _glowAnim,
+        builder: (_, child) {
+          final glowOpacity = widget.isLive
+              ? 0.18 * _glowAnim.value
+              : _hovered
+                  ? 0.10
+                  : 0.0;
+
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: isDark ? const Color(0xFF1A1D27) : Colors.white,
+              border: Border.all(
+                color: widget.accentColor.withOpacity(
+                  widget.isLive
+                      ? 0.45 * _glowAnim.value
+                      : (_hovered ? 0.25 : 0.12),
+                ),
+                width: 1.5,
+              ),
+              boxShadow: [
+                // Ambient
+                BoxShadow(
+                  color: Colors.black.withOpacity(isDark ? 0.35 : 0.07),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+                // Accent glow
+                BoxShadow(
+                  color: widget.accentColor.withOpacity(glowOpacity),
+                  blurRadius: 32,
+                  spreadRadius: -4,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Stack(
+                children: [
+                  // Subtle top-left corner accent
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    child: Container(
+                      width: 5,
+                      // height: double.infinity,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            widget.accentColor,
+                            widget.accentColor.withOpacity(0.3),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Card content with left padding for the bar
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 16, 14, 14),
+                    child: child!,
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+        child: widget.child,
       ),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Status badge — "مباشر الآن" with live dot, or type label
+// Card header
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CardHeader extends StatelessWidget {
+  final TeacherSessionItem session;
+  final Color accentColor;
+  final IconData statusIcon;
+  final String statusLabel;
+  final bool isLive;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _CardHeader({
+    required this.session,
+    required this.accentColor,
+    required this.statusIcon,
+    required this.statusLabel,
+    required this.isLive,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textDark = isDark ? Colors.white : const Color(0xFF0F1623);
+    final textMed = isDark ? const Color(0xFF8892A4) : const Color(0xFF6B7280);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Icon bubble
+        _IconBubble(icon: statusIcon, color: accentColor),
+
+        const SizedBox(width: 12),
+
+        // Title + badge
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                session.name,
+                style: TextStyle(
+                  fontFamily: 'Tajawal',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: textDark,
+                  height: 1.35,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 6),
+              _StatusBadge(
+                label: statusLabel,
+                color: accentColor,
+                isLive: isLive,
+              ),
+            ],
+          ),
+        ),
+
+        // 3-dot menu
+        _ContextMenu(onEdit: onEdit, onDelete: onDelete),
+      ],
+    );
+  }
+}
+
+class _IconBubble extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+
+  const _IconBubble({required this.icon, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 46,
+      height: 46,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            color.withOpacity(0.20),
+            color.withOpacity(0.08),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withOpacity(0.2), width: 1),
+      ),
+      child: Icon(icon, size: 22, color: color),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Status badge with animated live dot
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _StatusBadge extends StatefulWidget {
@@ -1650,8 +1818,11 @@ class _StatusBadge extends StatefulWidget {
   final Color color;
   final bool isLive;
 
-  const _StatusBadge(
-      {required this.label, required this.color, required this.isLive});
+  const _StatusBadge({
+    required this.label,
+    required this.color,
+    required this.isLive,
+  });
 
   @override
   State<_StatusBadge> createState() => _StatusBadgeState();
@@ -1680,12 +1851,11 @@ class _StatusBadgeState extends State<_StatusBadge>
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
-        color: widget.color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-            color: widget.color.withValues(alpha: 0.25), width: 0.8),
+        color: widget.color.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: widget.color.withOpacity(0.25), width: 0.8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1698,8 +1868,13 @@ class _StatusBadgeState extends State<_StatusBadge>
                 height: 6,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: widget.color
-                      .withValues(alpha: 0.4 + _ctrl.value * 0.6),
+                  color: widget.color.withOpacity(0.4 + _ctrl.value * 0.6),
+                  boxShadow: [
+                    BoxShadow(
+                      color: widget.color.withOpacity(0.5 * _ctrl.value),
+                      blurRadius: 4,
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -1712,6 +1887,7 @@ class _StatusBadgeState extends State<_StatusBadge>
               fontSize: 10,
               fontWeight: FontWeight.w700,
               color: widget.color,
+              letterSpacing: 0.3,
             ),
           ),
         ],
@@ -1721,7 +1897,7 @@ class _StatusBadgeState extends State<_StatusBadge>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Meta row: scheduled date · duration · order
+// Meta row
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _MetaRow extends StatelessWidget {
@@ -1731,62 +1907,109 @@ class _MetaRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final chips = <_MetaChip>[];
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final chips = <Widget>[];
 
-    final dt = session.scheduledAt;
-    chips.add(_MetaChip(
-      icon: Icons.event_rounded,
-      label:
-      '${dt.day}/${dt.month}/${dt.year}  ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}',
-    ));
-  
-    chips.add(_MetaChip(
-      icon: Icons.timer_outlined,
-      label: '${session.durationMinutes} دقيقة',
-    ));
-  
-    chips.add(_MetaChip(
-      icon: Icons.format_list_numbered_rounded,
-      label: 'درس ${session.order}',
-    ));
-  
+    final DateTime? dt = session.scheduledAt;
+    if (dt != null) {
+      chips.add(_MetaChip(
+        icon: Icons.event_rounded,
+        label:
+            '${dt.day}/${dt.month}/${dt.year}  ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}',
+        isDark: isDark,
+      ));
+    }
+    if (session.durationMinutes != null) {
+      chips.add(_MetaChip(
+        icon: Icons.timer_outlined,
+        label: '${session.durationMinutes} دقيقة',
+        isDark: isDark,
+      ));
+    }
+    if (session.order != null) {
+      chips.add(_MetaChip(
+        icon: Icons.format_list_numbered_rounded,
+        label: 'درس ${session.order}',
+        isDark: isDark,
+      ));
+    }
+
     if (chips.isEmpty) return const SizedBox.shrink();
 
-    return Wrap(
-      spacing: 8,
-      runSpacing: 6,
-      children: chips,
-    );
+    return Wrap(spacing: 8, runSpacing: 6, children: chips);
   }
 }
 
 class _MetaChip extends StatelessWidget {
   final IconData icon;
   final String label;
+  final bool isDark;
 
-  const _MetaChip({required this.icon, required this.label});
+  const _MetaChip({
+    required this.icon,
+    required this.label,
+    required this.isDark,
+  });
 
   @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Icon(icon, size: 12, color: context.colors.textMedium),
-      const SizedBox(width: 4),
-      Text(
-        label,
-        style:  TextStyle(
-          fontFamily: 'Tajawal',
-          fontSize: 11,
-          color: context.colors.textMedium,
-          fontWeight: FontWeight.w500,
-        ),
+  Widget build(BuildContext context) {
+    final bg = isDark ? const Color(0xFF252836) : const Color(0xFFF3F4F8);
+    final text = isDark ? const Color(0xFF8892A4) : const Color(0xFF6B7280);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
       ),
-    ],
-  );
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: text),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Tajawal',
+              fontSize: 11,
+              color: text,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3-dot context menu: edit + delete
+// Gradient divider
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _GradientDivider extends StatelessWidget {
+  final Color color;
+
+  const _GradientDivider({required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 1,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            color.withOpacity(0.0),
+            color.withOpacity(0.3),
+            color.withOpacity(0.0),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 3-dot context menu
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ContextMenu extends StatelessWidget {
@@ -1797,102 +2020,239 @@ class _ContextMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return PopupMenuButton<String>(
       onSelected: (v) {
         if (v == 'edit') onEdit();
         if (v == 'delete') onDelete();
       },
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      color: context.colors.surface,
-      elevation: 8,
-      shadowColor: Colors.black.withValues(alpha: 0.15),
+      color: isDark ? const Color(0xFF1E2233) : Colors.white,
+      elevation: 12,
+      shadowColor: Colors.black.withOpacity(0.18),
       icon: Container(
-        width: 32,
-        height: 32,
+        width: 34,
+        height: 34,
         decoration: BoxDecoration(
-          color: context.colors.background,
+          color: isDark ? const Color(0xFF252836) : const Color(0xFFF3F4F8),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: context.colors.divider, width: 1),
         ),
-        child:  Icon(Icons.more_vert_rounded,
-            size: 16, color: context.colors.textMedium),
+        child: Icon(
+          Icons.more_vert_rounded,
+          size: 16,
+          color: isDark ? const Color(0xFF8892A4) : const Color(0xFF6B7280),
+        ),
       ),
       itemBuilder: (_) => [
-        PopupMenuItem(
+        _menuItem(
+          context,
           value: 'edit',
-          child: Row(children: [
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                color: context.colors.primary.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child:  Icon(Icons.edit_rounded,
-                  size: 15, color: context.colors.primary),
-            ),
-            const SizedBox(width: 10),
-            const Text('تعديل',
-                style: TextStyle(
-                    fontFamily: 'Tajawal', fontWeight: FontWeight.w600)),
-          ]),
+          icon: Icons.edit_rounded,
+          label: 'تعديل',
+          color: const Color(0xFF6C63FF),
+          isDark: isDark,
         ),
-        PopupMenuItem(
+        _menuItem(
+          context,
           value: 'delete',
-          child: Row(children: [
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                color: context.colors.danger.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child:  Icon(Icons.delete_rounded,
-                  size: 15, color: context.colors.danger),
+          icon: Icons.delete_rounded,
+          label: 'حذف',
+          color: const Color(0xFFFF4E4E),
+          isDark: isDark,
+        ),
+      ],
+    );
+  }
+
+  PopupMenuItem<String> _menuItem(
+    BuildContext context, {
+    required String value,
+    required IconData icon,
+    required String label,
+    required Color color,
+    required bool isDark,
+  }) {
+    return PopupMenuItem(
+      value: value,
+      child: Row(children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.10),
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: Icon(icon, size: 15, color: color),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Tajawal',
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Action rows — Mobile layout (wrap) & Web layout (single row)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ActionRowMobile extends StatelessWidget {
+  final TeacherSessionItem session;
+  final bool isLive;
+  final bool hasRecording;
+  final bool hasVideoLink;
+  final Color accentColor;
+  final VoidCallback onStartLive;
+  final VoidCallback onEndLive;
+  final VoidCallback onRecording;
+  final VoidCallback onAttend;
+  final VoidCallback onExam;
+  final VoidCallback onOpenVideo;
+
+  const _ActionRowMobile({
+    required this.session,
+    required this.isLive,
+    required this.hasRecording,
+    required this.hasVideoLink,
+    required this.accentColor,
+    required this.onStartLive,
+    required this.onEndLive,
+    required this.onRecording,
+    required this.onAttend,
+    required this.onExam,
+    required this.onOpenVideo,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Top row: fixed utility buttons
+        Row(
+          children: [
+            _ActionBtn(
+              icon: Icons.how_to_reg_rounded,
+              label: 'الحضور',
+              color: const Color(0xFF4DA6FF),
+              onTap: onAttend,
+              outlined: true,
             ),
-            const SizedBox(width: 10),
-             Text('حذف',
-                style: TextStyle(
-                    fontFamily: 'Tajawal',
-                    fontWeight: FontWeight.w600,
-                    color: context.colors.danger)),
-          ]),
+            const SizedBox(width: 8),
+            _ActionBtn(
+              icon: Icons.quiz_rounded,
+              label: 'الامتحانات',
+              color: const Color(0xFF7B5FFF),
+              onTap: onExam,
+              outlined: true,
+            ),
+            if (hasVideoLink) ...[
+              const SizedBox(width: 8),
+              _ActionBtn(
+                icon: Icons.open_in_new_rounded,
+                label: 'فتح الفيديو',
+                color: const Color(0xFFFF9500),
+                onTap: onOpenVideo,
+                outlined: true,
+              ),
+            ],
+          ],
+        ),
+
+        const SizedBox(height: 8),
+
+        // Bottom row: primary live/recording action
+        Row(
+          children: [
+            if (isLive)
+              Expanded(
+                child: _ActionBtn(
+                  icon: Icons.stop_circle_rounded,
+                  label: 'إنهاء البث',
+                  color: const Color(0xFFFF4E4E),
+                  onTap: onEndLive,
+                  filled: true,
+                ),
+              )
+            else ...[
+              if (session.type != 'recorded')
+                Expanded(
+                  child: _ActionBtn(
+                    icon: Icons.play_circle_rounded,
+                    label: 'بدء البث',
+                    color: accentColor,
+                    onTap: onStartLive,
+                    filled: true,
+                  ),
+                ),
+              if (session.type != 'recorded' &&
+                  (hasRecording || session.type == 'recorded'))
+                const SizedBox(width: 8),
+              if (hasRecording)
+                Expanded(
+                  child: _ActionBtn(
+                    icon: Icons.smart_display_rounded,
+                    label: 'مشاهدة التسجيل',
+                    color: const Color(0xFF00C875),
+                    onTap: onRecording,
+                    filled: true,
+                  ),
+                )
+              else if (session.type == 'recorded')
+                Expanded(
+                  child: _ActionBtn(
+                    icon: Icons.upload_file_rounded,
+                    label: 'رفع التسجيل',
+                    color: const Color(0xFF00C875),
+                    onTap: onRecording,
+                    outlined: true,
+                  ),
+                ),
+            ],
+          ],
         ),
       ],
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Action row: contextual buttons based on session state
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ActionRow extends StatelessWidget {
+class _ActionRowWeb extends StatelessWidget {
   final TeacherSessionItem session;
   final bool isLive;
   final bool hasRecording;
+  final bool hasVideoLink;
+  final Color accentColor;
   final VoidCallback onStartLive;
   final VoidCallback onEndLive;
   final VoidCallback onRecording;
   final VoidCallback onAttend;
   final VoidCallback onExam;
+  final VoidCallback onOpenVideo;
 
-  const _ActionRow({
+  const _ActionRowWeb({
     required this.session,
     required this.isLive,
     required this.hasRecording,
+    required this.hasVideoLink,
+    required this.accentColor,
     required this.onStartLive,
     required this.onEndLive,
     required this.onRecording,
     required this.onAttend,
     required this.onExam,
+    required this.onOpenVideo,
   });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        // ── Attendance button — always present ──────────────────────────
         _ActionBtn(
           icon: Icons.how_to_reg_rounded,
           label: 'الحضور',
@@ -1900,68 +2260,61 @@ class _ActionRow extends StatelessWidget {
           onTap: onAttend,
           outlined: true,
         ),
-
         const SizedBox(width: 8),
-
-        const SizedBox(width: 8),
-
-        // ── Exams shortcut ──────────────────────────────────────────────
         _ActionBtn(
           icon: Icons.quiz_rounded,
-          label: 'exams'.tr,
+          label: 'الامتحانات',
           color: const Color(0xFF7B5FFF),
           onTap: onExam,
           outlined: true,
         ),
-
-        const SizedBox(width: 8),
-
-        // ── Live controls ───────────────────────────────────────────────
-        if (isLive) ...[
-          Expanded(
-            child: _ActionBtn(
-              icon: Icons.stop_circle_rounded,
-              label: 'إنهاء البث',
-              color: context.colors.danger,
-              onTap: onEndLive,
+        if (hasVideoLink) ...[
+          const SizedBox(width: 8),
+          _ActionBtn(
+            icon: Icons.open_in_new_rounded,
+            label: 'فتح الفيديو',
+            color: const Color(0xFFFF9500),
+            onTap: onOpenVideo,
+            outlined: true,
+          ),
+        ],
+        const Spacer(),
+        if (isLive)
+          _ActionBtn(
+            icon: Icons.stop_circle_rounded,
+            label: 'إنهاء البث',
+            color: const Color(0xFFFF4E4E),
+            onTap: onEndLive,
+            filled: true,
+          )
+        else ...[
+          if (session.type != 'recorded')
+            _ActionBtn(
+              icon: Icons.play_circle_rounded,
+              label: 'بدء البث',
+              color: accentColor,
+              onTap: onStartLive,
               filled: true,
             ),
-          ),
-        ] else ...[
-          if (session.type != 'recorded') ...[
-            Expanded(
-              child: _ActionBtn(
-                icon: Icons.play_circle_rounded,
-                label: 'بدء البث',
-                color: context.colors.primary,
-                onTap: onStartLive,
-                filled: true,
-              ),
-            ),
+          if (hasRecording) ...[
             const SizedBox(width: 8),
-          ],
-
-          // Recording button
-          if (hasRecording)
-            Expanded(
-              child: _ActionBtn(
-                icon: Icons.smart_display_rounded,
-                label: 'التسجيل',
-                color: const Color(0xFF1DB954),
-                onTap: onRecording,
-                filled: true,
-              ),
-            )
-          else if (session.type == 'recorded')
-            Expanded(
-              child: _ActionBtn(
-                icon: Icons.upload_file_rounded,
-                label: 'رفع التسجيل',
-                color: const Color(0xFF1DB954),
-                onTap: onRecording,
-                outlined: true,
-              ),
+            _ActionBtn(
+              icon: Icons.smart_display_rounded,
+              label: 'مشاهدة التسجيل',
+              color: const Color(0xFF00C875),
+              onTap: onRecording,
+              filled: true,
             ),
+          ] else if (session.type == 'recorded') ...[
+            const SizedBox(width: 8),
+            _ActionBtn(
+              icon: Icons.upload_file_rounded,
+              label: 'رفع التسجيل',
+              color: const Color(0xFF00C875),
+              onTap: onRecording,
+              outlined: true,
+            ),
+          ],
         ],
       ],
     );
@@ -1969,10 +2322,10 @@ class _ActionRow extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Reusable action button — filled or outlined style
+// Reusable premium action button
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _ActionBtn extends StatelessWidget {
+class _ActionBtn extends StatefulWidget {
   final IconData icon;
   final String label;
   final Color color;
@@ -1990,59 +2343,138 @@ class _ActionBtn extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final bg = filled
-        ? color
-        : outlined
-        ? Colors.transparent
-        : color.withValues(alpha: 0.09);
+  State<_ActionBtn> createState() => _ActionBtnState();
+}
 
-    final border = outlined
-        ? Border.all(color: color.withValues(alpha: 0.4), width: 1)
-        : filled
-        ? null
+class _ActionBtnState extends State<_ActionBtn>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _scaleAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+      lowerBound: 0.0,
+      upperBound: 1.0,
+    );
+    _scaleAnim = Tween<double>(begin: 1.0, end: 0.94).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = widget.filled
+        ? widget.color
+        : widget.outlined
+            ? Colors.transparent
+            : widget.color.withOpacity(0.09);
+
+    final border = widget.outlined
+        ? Border.all(color: widget.color.withOpacity(0.40), width: 1.2)
         : null;
 
-    final textColor = filled ? Colors.white : color;
+    final textColor = widget.filled ? Colors.white : widget.color;
 
     return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        height: 36,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(10),
-          border: border,
-          boxShadow: filled
-              ? [
-            BoxShadow(
-              color: color.withValues(alpha: 0.28),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            )
-          ]
-              : null,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: textColor),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'Tajawal',
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: textColor,
+      onTapDown: (_) => _ctrl.forward(),
+      onTapUp: (_) {
+        _ctrl.reverse();
+        widget.onTap();
+      },
+      onTapCancel: () => _ctrl.reverse(),
+      child: ScaleTransition(
+        scale: _scaleAnim,
+        child: Container(
+          height: 38,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(11),
+            border: border,
+            boxShadow: widget.filled
+                ? [
+                    BoxShadow(
+                      color: widget.color.withOpacity(0.30),
+                      blurRadius: 12,
+                      offset: const Offset(0, 5),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(widget.icon, size: 15, color: textColor),
+              const SizedBox(width: 6),
+              Text(
+                widget.label,
+                style: TextStyle(
+                  fontFamily: 'Tajawal',
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: textColor,
+                  letterSpacing: 0.2,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// USAGE EXAMPLE — how to call SessionCard in your list/page
+// ─────────────────────────────────────────────────────────────────────────────
+
+/*
+SessionCard(
+  session: sessionItem,
+  courseId: 15,
+  courseTitle: 'q1',
+  onEdit:       () => _editSession(session),
+  onDelete:     () => _deleteSession(session),
+  onStartLive:  () => _startLive(session),
+  onEndLive:    () => _endLive(session),
+  onRecording:  () => _manageRecording(session),
+  onExam:       () => Get.to(() => TeacherExamHubScreen(
+                      courseId: 15,
+                      courseTitle: 'q1',
+                    )),
+)
+*/
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Add to your TeacherSessionItem model (if not already present):
+// ─────────────────────────────────────────────────────────────────────────────
+
+/*
+class TeacherSessionItem {
+  // ... existing fields ...
+  final String? videoUrl; // ← Add this field
+
+  TeacherSessionItem({
+    // ... existing params ...
+    this.videoUrl,
+  });
+
+  factory TeacherSessionItem.fromJson(Map<String, dynamic> json) {
+    return TeacherSessionItem(
+      // ... existing mappings ...
+      videoUrl: json['video_url'] as String?,
+    );
+  }
+}
+*/

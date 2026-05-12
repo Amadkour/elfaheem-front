@@ -1,5 +1,6 @@
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/features/analytics/student/exam/student_exam_provider.dart';
 import 'package:flutter_education_app/features/student/attendance/attendance_provider.dart';
 import 'package:flutter_education_app/features/student/courses/details/course_detail_provider.dart';
 import 'package:flutter_education_app/features/shared/exams_provider.dart';
@@ -57,6 +58,9 @@ List<SingleChildWidget> appProviders(
       ),
       ChangeNotifierProvider<MyCoursesProvider>(
         create: (_) => MyCoursesProvider(),
+      ),
+      ChangeNotifierProvider<StudentExamProvider>(
+        create: (_) => StudentExamProvider(),
       ),
       ChangeNotifierProvider<CourseDetailProvider>(
         create: (_) => CourseDetailProvider(),
