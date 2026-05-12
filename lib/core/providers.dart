@@ -9,7 +9,6 @@ import 'package:provider/provider.dart';
 import '../config/storage_service.dart' show StorageService;
 import '../features/auth/auth_provider.dart';
 import '../features/category/categories_provider.dart';
-import '../features/material/materials_provider.dart';
 import '../features/module/modules_provider.dart';
 import '../features/notification/notifications_provider.dart';
 import '../features/shared/attendance_provider.dart';
@@ -82,9 +81,6 @@ List<SingleChildWidget> appProviders(
       ),
       ChangeNotifierProvider<ModulesProvider>(
         create: (_) => ModulesProvider(),
-      ),
-      ChangeNotifierProvider<MaterialsProvider>(
-        create: (_) => MaterialsProvider(),
       ),
       ChangeNotifierProvider<StudentSessionsProvider>(
         create: (_) => StudentSessionsProvider(),

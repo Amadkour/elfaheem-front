@@ -1,9 +1,11 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/courses/course_form_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../config/app_theme.dart';
+import '../../../utils/widget/app_bar.dart';
 import '../../analytics/teacher/exam/teacher_exam_hub_screen.dart';
 import '../../analytics/teacher/teacher_attendance_screen.dart';
 import '../../student/models.dart';
@@ -11,6 +13,7 @@ import '../../teacher/home/teacher_models.dart';
 import '../../teacher/sessions/components/session_form_sheet.dart';
 import '../../teacher/sessions/sessions_provider.dart';
 import '../home/teacher_provider.dart';
+import 'model/session_material_model.dart';
 
 class TeacherSessionsScreen extends StatefulWidget {
   final TeacherCourse course;
@@ -213,19 +216,12 @@ class _SessionsList extends StatelessWidget {
           if (provider.sessions.isNotEmpty)
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
-              sliver: SliverList.separated(
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
+              sliver: SliverList.builder(
                 itemCount: provider.sessions.length,
-                itemBuilder: (ctx, i) => _SessionTile(
-                  course: course,
-                  session: provider.sessions[i],
-                  onEdit: () => onEdit(provider.sessions[i]),
-                  onAttend: () => onAttend(provider.sessions[i]),
-                  onExam: () => onExam(provider.sessions[i]),
-                  isWide: isWide,
-                ),
+                itemBuilder: (_, i) =>
+                    _TeacherSessionCard(session: provider.sessions[i]),
               ),
-            ),
+            )
         ],
       ),
     );
@@ -1401,32 +1397,6 @@ class _AddButton extends StatelessWidget {
       );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// session_card.dart  — premium redesign
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SessionCard — drop-in replacement, identical public API
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Model — update your existing model or use this reference
-// ─────────────────────────────────────────────────────────────────────────────
-
-// Expected fields on TeacherSessionItem (add any that are missing):
-//   String  name
-//   String  type           // 'live' | 'recorded'
-//   bool    isLive
-//   bool    hasRecording
-//   String? videoUrl       // ← NEW: direct video / meeting link
-//   DateTime? scheduledAt
-//   int?    durationMinutes
-//   int?    order
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Premium SessionCard
-// ─────────────────────────────────────────────────────────────────────────────
-
 class SessionCard extends StatelessWidget {
   final TeacherSessionItem session;
   final int courseId;
@@ -2478,3 +2448,1542 @@ class TeacherSessionItem {
   }
 }
 */
+
+// lib/features/teacher/sessions/teacher_sessions_screen.dart
+// ──────────────────────────────────────────────────────────
+// Teacher sessions screen — premium RTL design with full material management.
+// Responsive: adapts for mobile and web (wide layout).
+
+class TeacherSessionsScreen2 extends StatefulWidget {
+  final TeacherCourse course;
+
+  const TeacherSessionsScreen2({super.key, required this.course});
+
+  @override
+  State<TeacherSessionsScreen2> createState() => _TeacherSessionsScreenState2();
+}
+
+class _TeacherSessionsScreenState2 extends State<TeacherSessionsScreen2> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<TeacherSessionsProvider>().fetchSessions(widget.course.id);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width > 800;
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: context.colors.background,
+        floatingActionButton: _AddSessionFab(courseId: widget.course.id),
+        body: SafeArea(
+          child: Column(children: [
+            ScreenAppBar(title: 'الدروس — ${widget.course.title}'),
+            Expanded(
+              child: isWide
+                  ? _WideSessionList(course: widget.course)
+                  : _NarrowSessionList(courseId: widget.course.id),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// NARROW LAYOUT (mobile)
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _NarrowSessionList extends StatelessWidget {
+  final int courseId;
+
+  const _NarrowSessionList({required this.courseId});
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<TeacherSessionsProvider>();
+
+    if (provider.isLoading && provider.sessions.isEmpty) {
+      return Center(
+          child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation(context.colors.primary)));
+    }
+
+    if (provider.sessions.isEmpty) {
+      return SizedBox();
+    }
+
+    return RefreshIndicator(
+      color: context.colors.primary,
+      onRefresh: () => provider.fetchSessions(courseId),
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+        physics: const BouncingScrollPhysics(),
+        itemCount: provider.sessions.length,
+        itemBuilder: (_, i) =>
+            _TeacherSessionCard(session: provider.sessions[i]),
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// WIDE LAYOUT (web / tablet) — two-column master-detail
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _WideSessionList extends StatefulWidget {
+  final TeacherCourse course;
+
+  const _WideSessionList({required this.course});
+
+  @override
+  State<_WideSessionList> createState() => _WideSessionListState();
+}
+
+class _WideSessionListState extends State<_WideSessionList> {
+  int? _selectedId;
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<TeacherSessionsProvider>();
+
+    if (provider.isLoading && provider.sessions.isEmpty) {
+      return Center(
+          child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation(context.colors.primary)));
+    }
+
+    if (provider.sessions.isEmpty) return SizedBox();
+
+    final selected = _selectedId != null
+        ? provider.sessions.firstWhere((s) => s.id == _selectedId,
+            orElse: () => provider.sessions.first)
+        : provider.sessions.first;
+
+    return Row(children: [
+      // ── Left sidebar: session list ─────────────────────────────────────────
+      Container(
+        width: 320,
+        decoration: BoxDecoration(
+          border: Border(
+              left: BorderSide(
+                  color: context.colors.textLight.withValues(alpha: 0.12))),
+        ),
+        child: RefreshIndicator(
+          color: context.colors.primary,
+          onRefresh: () => provider.fetchSessions(widget.course.id),
+          child: ListView.builder(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 100),
+            physics: const BouncingScrollPhysics(),
+            itemCount: provider.sessions.length,
+            itemBuilder: (_, i) {
+              final s = provider.sessions[i];
+              final isSelected = s.id == selected.id;
+              return GestureDetector(
+                onTap: () {
+                  setState(() => _selectedId = s.id);
+                  if (provider.materialsFor(s.id).isEmpty) {
+                    provider.fetchMaterials(s.id);
+                  }
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? context.colors.primary.withValues(alpha: 0.1)
+                        : context.colors.cardBg,
+                    borderRadius:
+                        BorderRadius.circular(context.colors.radiusMedium),
+                    border: isSelected
+                        ? Border.all(
+                            color:
+                                context.colors.primary.withValues(alpha: 0.5))
+                        : Border.all(color: Colors.transparent),
+                    boxShadow: isSelected ? [] : context.colors.cardShadow,
+                  ),
+                  child: Row(children: [
+                    // Type indicator strip
+                    Container(
+                      width: 4,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: s.isLiveActive
+                            ? context.colors.danger
+                            : context.colors.primary,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(s.name,
+                                style: context.colors.body.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: isSelected
+                                        ? context.colors.primary
+                                        : null),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis),
+                            const SizedBox(height: 3),
+                            Text(s.type == 'live' ? '🔴 مباشر' : '▶ مسجّل',
+                                style: context.colors.caption),
+                          ]),
+                    ),
+                    Text('${s.order}',
+                        style: context.colors.caption
+                            .copyWith(color: context.colors.textLight)),
+                  ]),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+
+      // ── Right panel: session detail + materials ────────────────────────────
+      Expanded(
+        child: _SessionDetailPanel(
+          session: selected,
+          course: widget.course,
+        ),
+      ),
+    ]);
+  }
+}
+
+// ── Session detail panel (web right pane) ─────────────────────────────────────
+
+class _SessionDetailPanel extends StatefulWidget {
+  final TeacherSessionItem session; // TeacherSessionItem
+  final TeacherCourse course;
+
+  const _SessionDetailPanel({required this.session, required this.course});
+
+  @override
+  State<_SessionDetailPanel> createState() => _SessionDetailPanelState();
+}
+
+class _SessionDetailPanelState extends State<_SessionDetailPanel> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<TeacherSessionsProvider>();
+      if (provider.materialsFor(widget.session.id).isEmpty) {
+        provider.fetchMaterials(widget.session.id);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<TeacherSessionsProvider>();
+    final s = widget.session;
+    final materials = provider.materialsFor(s.id);
+    final uploading = provider.isUploadingMaterial(s.id);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // Header
+        Row(children: [
+          Expanded(
+            child: Text(s.name,
+                style: context.colors.h2,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis),
+          ),
+          const SizedBox(width: 12),
+          _SessionActionButtons(session: s),
+        ]),
+        if (s.description != null && s.description!.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(s.description!, style: context.colors.body),
+        ],
+        const SizedBox(height: 20),
+
+        // Stats row
+        _StatsRow(
+          course: widget.course,
+          sessionCount: widget.course.sessionsCount,
+        ),
+        const SizedBox(height: 24),
+
+        // Materials section header
+        Row(children: [
+          Text('المرفقات',
+              style: context.colors.h3.copyWith(color: context.colors.primary)),
+          const Spacer(),
+          _AddMaterialButton(sessionId: s.id),
+        ]),
+        const SizedBox(height: 12),
+
+        // Upload progress indicator
+        if (uploading)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: LinearProgressIndicator(
+                color: context.colors.primary,
+                backgroundColor: context.colors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(4)),
+          ),
+
+        // Material grid (web: 2-column; mobile: 1-column)
+        LayoutBuilder(builder: (_, constraints) {
+          final cols = constraints.maxWidth > 600 ? 2 : 1;
+          return _MaterialGrid(
+            sessionId: s.id,
+            materials: materials,
+            columns: cols,
+            isTeacher: true,
+          );
+        }),
+      ]),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// NARROW TEACHER SESSION CARD (mobile)
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _TeacherSessionCard extends StatefulWidget {
+  final dynamic session; // TeacherSessionItem
+  const _TeacherSessionCard({required this.session});
+
+  @override
+  State<_TeacherSessionCard> createState() => _TeacherSessionCardState();
+}
+
+class _TeacherSessionCardState extends State<_TeacherSessionCard>
+    with SingleTickerProviderStateMixin {
+  bool _expanded = false;
+  late AnimationController _ctrl;
+  late Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 280));
+    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOutCubic);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _toggle() {
+    setState(() => _expanded = !_expanded);
+    if (_expanded) {
+      _ctrl.forward();
+      final prov = context.read<TeacherSessionsProvider>();
+      if (prov.materialsFor(widget.session.id).isEmpty) {
+        prov.fetchMaterials(widget.session.id);
+      }
+    } else {
+      _ctrl.reverse();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.session;
+    final prov = context.watch<TeacherSessionsProvider>();
+    final materials = prov.materialsFor(s.id);
+    final uploading = prov.isUploadingMaterial(s.id);
+    final isLive = s.isLiveActive as bool? ?? false;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: context.colors.cardBg,
+        borderRadius: BorderRadius.circular(context.colors.radiusMedium),
+        boxShadow: context.colors.cardShadow,
+        border: isLive
+            ? Border.all(color: context.colors.danger.withValues(alpha: 0.5))
+            : null,
+      ),
+      child: Column(children: [
+        // ── Card header ──────────────────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          child: Row(children: [
+            // Color strip
+            Container(
+              width: 5,
+              height: 48,
+              decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: isLive
+                          ? [
+                              context.colors.danger,
+                              context.colors.danger.withValues(alpha: 0.4)
+                            ]
+                          : [
+                              context.colors.primary,
+                              context.colors.primary.withValues(alpha: 0.4)
+                            ]),
+                  borderRadius: BorderRadius.circular(4)),
+            ),
+            const SizedBox(width: 12),
+
+            Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(s.name,
+                        style: context.colors.h3,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 4),
+                    Row(children: [
+                      _TypePill(isLive: isLive),
+                      const SizedBox(width: 8),
+                      Icon(Icons.access_time_rounded,
+                          size: 12, color: context.colors.textLight),
+                      const SizedBox(width: 3),
+                      Text('${s.durationMinutes ?? 60} د',
+                          style: context.colors.caption),
+                    ]),
+                  ]),
+            ),
+
+            // Actions
+            _SessionActionButtons(session: s),
+
+            // Expand
+            GestureDetector(
+              onTap: _toggle,
+              child: AnimatedRotation(
+                turns: _expanded ? 0.5 : 0,
+                duration: const Duration(milliseconds: 280),
+                child: Icon(Icons.keyboard_arrow_down_rounded,
+                    color: context.colors.textMedium),
+              ),
+            ),
+          ]),
+        ),
+
+        // Upload progress
+        if (uploading)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+            child: LinearProgressIndicator(
+                color: context.colors.primary,
+                backgroundColor: context.colors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(4)),
+          ),
+
+        // ── Expandable materials panel ────────────────────────────────────────
+        SizeTransition(
+          sizeFactor: _anim,
+          child: Container(
+            decoration: BoxDecoration(
+              color: context.colors.background.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.only(
+                bottomRight: Radius.circular(context.colors.radiusMedium),
+                bottomLeft: Radius.circular(context.colors.radiusMedium),
+              ),
+              border: Border(
+                  top: BorderSide(
+                      color: context.colors.textLight.withValues(alpha: 0.1))),
+            ),
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Icon(Icons.attach_file_rounded,
+                    size: 14, color: context.colors.primary),
+                const SizedBox(width: 6),
+                Text('المرفقات',
+                    style: context.colors.caption.copyWith(
+                        color: context.colors.primary,
+                        fontWeight: FontWeight.w700)),
+                const Spacer(),
+                _AddMaterialButton(sessionId: s.id),
+              ]),
+              const SizedBox(height: 10),
+              _MaterialGrid(
+                sessionId: s.id,
+                materials: materials,
+                columns: 1,
+                isTeacher: true,
+              ),
+            ]),
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MATERIAL GRID
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _MaterialGrid extends StatelessWidget {
+  final int sessionId;
+  final List<SessionMaterialModel> materials;
+  final int columns;
+  final bool isTeacher;
+
+  const _MaterialGrid({
+    required this.sessionId,
+    required this.materials,
+    required this.columns,
+    required this.isTeacher,
+  });
+
+  static const _typeIcons = {
+    SessionMaterialType.image: Icons.image_rounded,
+    SessionMaterialType.video: Icons.play_circle_rounded,
+    SessionMaterialType.pdf: Icons.picture_as_pdf_rounded,
+    SessionMaterialType.document: Icons.description_rounded,
+    SessionMaterialType.link: Icons.link_rounded,
+  };
+
+  static const _typeColors = {
+    SessionMaterialType.image: Color(0xFF4CAF50),
+    SessionMaterialType.video: Color(0xFF2196F3),
+    SessionMaterialType.pdf: Color(0xFFF44336),
+    SessionMaterialType.document: Color(0xFFFF9800),
+    SessionMaterialType.link: Color(0xFF9C27B0),
+  };
+
+  static const _typeLabels = {
+    SessionMaterialType.image: 'صورة',
+    SessionMaterialType.video: 'فيديو',
+    SessionMaterialType.pdf: 'PDF',
+    SessionMaterialType.document: 'مستند',
+    SessionMaterialType.link: 'رابط',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    if (materials.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(children: [
+          Icon(Icons.folder_open_rounded,
+              size: 18, color: context.colors.textLight),
+          const SizedBox(width: 8),
+          Text('لا توجد مرفقات بعد',
+              style: context.colors.caption
+                  .copyWith(color: context.colors.textLight)),
+        ]),
+      );
+    }
+
+    if (columns == 1) {
+      return Column(
+          children:
+              materials.map((m) => _buildMaterialTile(context, m)).toList());
+    }
+
+    // Multi-column grid for wide screens
+    final rows = <Widget>[];
+    for (int i = 0; i < materials.length; i += columns) {
+      final rowItems = materials.sublist(
+          i, (i + columns) > materials.length ? materials.length : i + columns);
+      rows.add(Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (int j = 0; j < rowItems.length; j++) ...[
+            if (j > 0) const SizedBox(width: 12),
+            Expanded(child: _buildMaterialTile(context, rowItems[j])),
+          ],
+          if (rowItems.length < columns) ...[
+            const SizedBox(width: 12),
+            Expanded(child: const SizedBox.shrink()),
+          ],
+        ],
+      ));
+      if (i + columns < materials.length) rows.add(const SizedBox(height: 10));
+    }
+    return Column(children: rows);
+  }
+
+  Widget _buildMaterialTile(BuildContext context, SessionMaterialModel m) {
+    final icon = _typeIcons[m.type] ?? Icons.attach_file_rounded;
+    final color = _typeColors[m.type] ?? context.colors.primary;
+    final label = _typeLabels[m.type] ?? '';
+
+    return GestureDetector(
+      onTap: () async {
+        final uri = Uri.parse(m.url);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: context.colors.cardBg,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+          boxShadow: [
+            BoxShadow(
+                color: color.withValues(alpha: 0.06),
+                blurRadius: 6,
+                offset: const Offset(0, 2)),
+          ],
+        ),
+        child: Row(children: [
+          // Icon
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(9)),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 10),
+
+          // Info
+          Expanded(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(m.name,
+                  style: context.colors.body
+                      .copyWith(fontWeight: FontWeight.w600, fontSize: 13),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 3),
+              Row(children: [
+                _Pill(label, color),
+                if (m.fileSize != null) ...[
+                  const SizedBox(width: 6),
+                  Text(m.sizeLabel,
+                      style: context.colors.caption.copyWith(fontSize: 10)),
+                ],
+              ]),
+            ]),
+          ),
+
+          // Teacher controls
+          if (isTeacher) ...[
+            _iconBtn(
+              icon: Icons.edit_rounded,
+              color: context.colors.textMedium,
+              onTap: () => _showEditDialog(context, m),
+            ),
+            _iconBtn(
+              icon: Icons.delete_rounded,
+              color: context.colors.danger,
+              onTap: () => _confirmDelete(context, m),
+            ),
+          ] else
+            Icon(Icons.open_in_new_rounded,
+                size: 16, color: context.colors.textLight),
+        ]),
+      ),
+    );
+  }
+
+  Widget _iconBtn(
+          {required IconData icon,
+          required Color color,
+          required VoidCallback onTap}) =>
+      GestureDetector(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Icon(icon, size: 17, color: color),
+        ),
+      );
+
+  void _showEditDialog(BuildContext context, SessionMaterialModel m) {
+    final nameCtrl = TextEditingController(text: m.name);
+    final descCtrl = TextEditingController(text: m.description ?? '');
+    final urlCtrl = TextEditingController(text: m.url);
+    showDialog(
+      context: context,
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: context.colors.cardBg,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('تعديل المرفق', style: context.colors.h3),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              _Field(ctrl: nameCtrl, label: 'الاسم', context: context),
+              const SizedBox(height: 12),
+              _Field(
+                  ctrl: descCtrl, label: 'الوصف (اختياري)', context: context),
+              if (m.type == SessionMaterialType.link) ...[
+                const SizedBox(height: 12),
+                _Field(ctrl: urlCtrl, label: 'الرابط', context: context),
+              ],
+            ]),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('إلغاء',
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
+                        color: context.colors.textMedium))),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: context.colors.primary,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10))),
+              onPressed: () async {
+                Navigator.pop(context);
+                await context.read<TeacherSessionsProvider>().updateMaterial(
+                      sessionId,
+                      m.id,
+                      name: nameCtrl.text.trim(),
+                      description: descCtrl.text.trim().isEmpty
+                          ? null
+                          : descCtrl.text.trim(),
+                      url: m.type == SessionMaterialType.link
+                          ? urlCtrl.text.trim()
+                          : null,
+                    );
+              },
+              child: const Text('حفظ',
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, SessionMaterialModel m) {
+    showDialog(
+      context: context,
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: context.colors.cardBg,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('حذف المرفق', style: context.colors.h3),
+          content: Text('هل تريد حذف "${m.name}"؟ لا يمكن التراجع.',
+              style: context.colors.body),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('إلغاء',
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
+                        color: context.colors.textMedium))),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: context.colors.danger,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10))),
+              onPressed: () async {
+                Navigator.pop(context);
+                await context
+                    .read<TeacherSessionsProvider>()
+                    .deleteMaterial(sessionId, m.id);
+              },
+              child: const Text('حذف',
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ADD MATERIAL BUTTON + BOTTOM SHEET
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _AddMaterialButton extends StatelessWidget {
+  final int sessionId;
+
+  const _AddMaterialButton({required this.sessionId});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _showAddSheet(context),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: context.colors.primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+          border:
+              Border.all(color: context.colors.primary.withValues(alpha: 0.3)),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.add_rounded, size: 14, color: context.colors.primary),
+          const SizedBox(width: 4),
+          Text('إضافة مرفق',
+              style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: 11,
+                  color: context.colors.primary,
+                  fontWeight: FontWeight.w700)),
+        ]),
+      ),
+    );
+  }
+
+  void _showAddSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _AddMaterialSheet(sessionId: sessionId),
+    );
+  }
+}
+
+class _AddMaterialSheet extends StatefulWidget {
+  final int sessionId;
+
+  const _AddMaterialSheet({required this.sessionId});
+
+  @override
+  State<_AddMaterialSheet> createState() => _AddMaterialSheetState();
+}
+
+class _AddMaterialSheetState extends State<_AddMaterialSheet> {
+  // 0 = file, 1 = link
+  int _mode = 0;
+  PlatformFile? _pickedFile;
+  final _nameCtrl = TextEditingController();
+  final _descCtrl = TextEditingController();
+  final _urlCtrl = TextEditingController();
+  bool _saving = false;
+
+  static const _fileTypes = [
+    _FileTypeOption(
+        'صورة', Icons.image_rounded, FileType.image, Color(0xFF4CAF50)),
+    _FileTypeOption(
+        'فيديو', Icons.play_circle_rounded, FileType.video, Color(0xFF2196F3)),
+    _FileTypeOption('PDF / مستند', Icons.description_rounded, FileType.custom,
+        Color(0xFFF44336)),
+  ];
+
+  int _fileTypeIdx = 0;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _descCtrl.dispose();
+    _urlCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottom),
+      decoration: BoxDecoration(
+        color: context.colors.cardBg,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          // Handle
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                  color: context.colors.textLight.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(4)),
+            ),
+          ),
+
+          Text('إضافة مرفق', style: context.colors.h3),
+          const SizedBox(height: 16),
+
+          // Mode toggle
+          _ModeToggle(
+            selected: _mode,
+            onChanged: (v) => setState(() => _mode = v),
+          ),
+          const SizedBox(height: 16),
+
+          if (_mode == 0) ...[
+            // File type selector
+            Row(
+                children: List.generate(_fileTypes.length, (i) {
+              final opt = _fileTypes[i];
+              final sel = i == _fileTypeIdx;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _fileTypeIdx = i),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    margin: EdgeInsets.only(
+                        left: i < _fileTypes.length - 1 ? 8 : 0),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: sel
+                          ? opt.color.withValues(alpha: 0.15)
+                          : context.colors.background,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                          color: sel
+                              ? opt.color
+                              : context.colors.textLight
+                                  .withValues(alpha: 0.2)),
+                    ),
+                    child: Column(children: [
+                      Icon(opt.icon,
+                          color: sel ? opt.color : context.colors.textLight,
+                          size: 22),
+                      const SizedBox(height: 4),
+                      Text(opt.label,
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color:
+                                  sel ? opt.color : context.colors.textLight)),
+                    ]),
+                  ),
+                ),
+              );
+            })),
+            const SizedBox(height: 14),
+
+            // Pick file button
+            GestureDetector(
+              onTap: _pickFile,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: _pickedFile != null
+                      ? context.colors.success.withValues(alpha: 0.08)
+                      : context.colors.background,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: _pickedFile != null
+                          ? context.colors.success.withValues(alpha: 0.4)
+                          : context.colors.textLight.withValues(alpha: 0.2),
+                      width: 1.5),
+                ),
+                child: Column(children: [
+                  Icon(
+                      _pickedFile != null
+                          ? Icons.check_circle_rounded
+                          : Icons.upload_file_rounded,
+                      size: 28,
+                      color: _pickedFile != null
+                          ? context.colors.success
+                          : context.colors.textMedium),
+                  const SizedBox(height: 6),
+                  Text(
+                      _pickedFile != null
+                          ? _pickedFile!.name
+                          : 'اضغط لاختيار الملف',
+                      style: context.colors.body.copyWith(
+                          fontSize: 13,
+                          color: _pickedFile != null
+                              ? context.colors.success
+                              : context.colors.textMedium),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                ]),
+              ),
+            ),
+          ] else ...[
+            // Link URL field
+            _Field(ctrl: _urlCtrl, label: 'الرابط (URL)', context: context),
+          ],
+          const SizedBox(height: 12),
+
+          // Name
+          _Field(ctrl: _nameCtrl, label: 'الاسم', context: context),
+          const SizedBox(height: 10),
+
+          // Description
+          _Field(ctrl: _descCtrl, label: 'الوصف (اختياري)', context: context),
+          const SizedBox(height: 20),
+
+          // Submit
+          SizedBox(
+            width: double.infinity,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: _saving
+                  ? const Center(child: CircularProgressIndicator())
+                  : ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: context.colors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: _submit,
+                      child: const Text('إضافة المرفق',
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 14,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700)),
+                    ),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Future<void> _pickFile() async {
+    final opt = _fileTypes[_fileTypeIdx];
+    List<String>? allowedExts;
+    if (opt.fileType == FileType.custom) {
+      allowedExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'];
+    }
+    final result = await FilePicker.pickFiles(
+      type: opt.fileType,
+      allowedExtensions: allowedExts,
+      withData: true,
+    );
+    if (result != null && result.files.isNotEmpty) {
+      setState(() => _pickedFile = result.files.first);
+      if (_nameCtrl.text.isEmpty) {
+        _nameCtrl.text = _pickedFile!.name.replaceAll(RegExp(r'\.[^.]+$'), '');
+      }
+    }
+  }
+
+  Future<void> _submit() async {
+    final name = _nameCtrl.text.trim();
+    if (name.isEmpty) {
+      _toast('يرجى إدخال الاسم');
+      return;
+    }
+
+    final prov = context.read<TeacherSessionsProvider>();
+    setState(() => _saving = true);
+
+    try {
+      if (_mode == 0) {
+        if (_pickedFile == null) {
+          _toast('يرجى اختيار ملف');
+          return;
+        }else {
+          final bytes = _pickedFile?.bytes;
+          if (bytes == null) {
+            _toast('فشل تحميل الملف، حاول مرة أخرى');
+            return;
+          }
+          await prov.uploadFileMaterial(
+            sessionId: widget.sessionId,
+            fileName: _pickedFile!.name,
+            fileBytes:  bytes,
+            name: name,
+            description:
+            _descCtrl.text
+                .trim()
+                .isEmpty ? null : _descCtrl.text.trim(),
+          );
+        }
+      } else {
+        final url = _urlCtrl.text.trim();
+        if (url.isEmpty) {
+          _toast('يرجى إدخال الرابط');
+          return;
+        }
+        await prov.addLinkMaterial(
+          sessionId: widget.sessionId,
+          name: name,
+          url: url,
+          description:
+              _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+        );
+      }
+      if (mounted) Navigator.pop(context);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  void _toast(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(msg,
+            style: const TextStyle(fontFamily: 'Cairo', color: Colors.white)),
+        backgroundColor: context.colors.danger,
+        behavior: SnackBarBehavior.floating,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))));
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SESSION ACTION BUTTONS (edit / delete / live)
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _SessionActionButtons extends StatelessWidget {
+  final dynamic session;
+
+  const _SessionActionButtons({required this.session});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      // Start / End live
+      if (session.type == 'live')
+        _iconAction(
+          context,
+          icon: session.isLiveActive
+              ? Icons.stop_circle_rounded
+              : Icons.play_arrow_rounded,
+          color: session.isLiveActive
+              ? context.colors.danger
+              : context.colors.success,
+          tooltip: session.isLiveActive ? 'إنهاء البث' : 'بدء البث',
+          onTap: () async {
+            final prov = context.read<TeacherSessionsProvider>();
+            if (session.isLiveActive) {
+              await prov.endLive(session.id);
+            } else {
+              await prov.startLive(session.id);
+            }
+          },
+        ),
+      _iconAction(
+        context,
+        icon: Icons.edit_rounded,
+        color: context.colors.textMedium,
+        tooltip: 'تعديل',
+        onTap: () => _showEditSessionDialog(context),
+      ),
+      _iconAction(
+        context,
+        icon: Icons.delete_rounded,
+        color: context.colors.danger,
+        tooltip: 'حذف',
+        onTap: () => _confirmDeleteSession(context),
+      ),
+    ]);
+  }
+
+  Widget _iconAction(
+    BuildContext context, {
+    required IconData icon,
+    required Color color,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) =>
+      Tooltip(
+        message: tooltip,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            child: Icon(icon, size: 20, color: color),
+          ),
+        ),
+      );
+
+  void _showEditSessionDialog(BuildContext context) {
+    final nameCtrl = TextEditingController(text: session.name);
+    final descCtrl = TextEditingController(text: session.description ?? '');
+    showDialog(
+      context: context,
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: context.colors.cardBg,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('تعديل الدرس', style: context.colors.h3),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            _Field(ctrl: nameCtrl, label: 'الاسم', context: context),
+            const SizedBox(height: 12),
+            _Field(ctrl: descCtrl, label: 'الوصف', context: context),
+          ]),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('إلغاء',
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
+                        color: context.colors.textMedium))),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: context.colors.primary,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10))),
+              onPressed: () async {
+                Navigator.pop(context);
+                await context.read<TeacherSessionsProvider>().updateSession(
+                      session.id,
+                      name: nameCtrl.text.trim(),
+                      description: descCtrl.text.trim().isEmpty
+                          ? null
+                          : descCtrl.text.trim(),
+                    );
+              },
+              child: const Text('حفظ',
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteSession(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: context.colors.cardBg,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('حذف الدرس', style: context.colors.h3),
+          content: Text('هل تريد حذف "${session.name}"؟ لا يمكن التراجع.',
+              style: context.colors.body),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('إلغاء',
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
+                        color: context.colors.textMedium))),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: context.colors.danger,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10))),
+              onPressed: () async {
+                Navigator.pop(context);
+                await context
+                    .read<TeacherSessionsProvider>()
+                    .deleteSession(session.id);
+              },
+              child: const Text('حذف',
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ADD SESSION FAB
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _AddSessionFab extends StatelessWidget {
+  final int courseId;
+
+  const _AddSessionFab({required this.courseId});
+
+  @override
+  Widget build(BuildContext context) {
+    return FloatingActionButton.extended(
+      backgroundColor: context.colors.primary,
+      onPressed: () => _showCreateDialog(context),
+      icon: const Icon(Icons.add_rounded, color: Colors.white),
+      label: const Text('درس جديد',
+          style: TextStyle(
+              fontFamily: 'Cairo',
+              color: Colors.white,
+              fontWeight: FontWeight.w700)),
+    );
+  }
+
+  void _showCreateDialog(BuildContext context) {
+    final nameCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    String type = 'live';
+
+    showDialog(
+      context: context,
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: StatefulBuilder(builder: (ctx, setS) {
+          return AlertDialog(
+            backgroundColor: context.colors.cardBg,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Text('درس جديد', style: context.colors.h3),
+            content: Column(mainAxisSize: MainAxisSize.min, children: [
+              _Field(ctrl: nameCtrl, label: 'اسم الدرس', context: context),
+              const SizedBox(height: 12),
+              _Field(
+                  ctrl: descCtrl, label: 'الوصف (اختياري)', context: context),
+              const SizedBox(height: 12),
+              // Type
+              Row(children: [
+                _TypeRadio(
+                    label: 'مباشر',
+                    value: 'live',
+                    group: type,
+                    color: context.colors.danger,
+                    onChanged: (v) => setS(() => type = v)),
+                const SizedBox(width: 12),
+                _TypeRadio(
+                    label: 'مسجّل',
+                    value: 'pre-recorded',
+                    group: type,
+                    color: context.colors.primary,
+                    onChanged: (v) => setS(() => type = v)),
+              ]),
+            ]),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('إلغاء',
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
+                          color: context.colors.textMedium))),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: context.colors.primary,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10))),
+                onPressed: () async {
+                  Navigator.pop(context);
+                  await context.read<TeacherSessionsProvider>().createSession(
+                        courseId: courseId,
+                        name: nameCtrl.text.trim(),
+                        type: type,
+                        description: descCtrl.text.trim().isEmpty
+                            ? null
+                            : descCtrl.text.trim(),
+                      );
+                },
+                child: const Text('إنشاء',
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700)),
+              ),
+            ],
+          );
+        }),
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SMALL REUSABLE WIDGETS
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _ModeToggle extends StatelessWidget {
+  final int selected;
+  final ValueChanged<int> onChanged;
+
+  const _ModeToggle({required this.selected, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+          color: context.colors.background,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+              color: context.colors.textLight.withValues(alpha: 0.15))),
+      child: Row(children: [
+        _Segment('ملف', 0, Icons.upload_file_rounded, context),
+        _Segment('رابط', 1, Icons.link_rounded, context),
+      ]),
+    );
+  }
+
+  Widget _Segment(
+      String label, int index, IconData icon, BuildContext context) {
+    final sel = selected == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => onChanged(index),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: sel ? context.colors.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(icon,
+                size: 15,
+                color: sel ? Colors.white : context.colors.textMedium),
+            const SizedBox(width: 5),
+            Text(label,
+                style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: sel ? Colors.white : context.colors.textMedium)),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _TypeRadio extends StatelessWidget {
+  final String label;
+  final String value;
+  final String group;
+  final Color color;
+  final ValueChanged<String> onChanged;
+
+  const _TypeRadio({
+    required this.label,
+    required this.value,
+    required this.group,
+    required this.color,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final sel = value == group;
+    return GestureDetector(
+      onTap: () => onChanged(value),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          width: 18,
+          height: 18,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+                color: sel ? color : context.colors.textLight, width: 2),
+            color: sel ? color : Colors.transparent,
+          ),
+          child: sel
+              ? const Icon(Icons.check_rounded, size: 10, color: Colors.white)
+              : null,
+        ),
+        const SizedBox(width: 6),
+        Text(label,
+            style: context.colors.body.copyWith(
+                color: sel ? color : context.colors.textMedium,
+                fontWeight: sel ? FontWeight.w700 : FontWeight.w500)),
+      ]),
+    );
+  }
+}
+
+class _TypePill extends StatelessWidget {
+  final bool isLive;
+
+  const _TypePill({required this.isLive});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = isLive ? context.colors.danger : context.colors.primary;
+    return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        decoration: BoxDecoration(
+            color: c.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(6)),
+        child: Text(isLive ? '🔴 مباشر' : '▶ مسجّل',
+            style: context.colors.caption
+                .copyWith(color: c, fontWeight: FontWeight.w700)));
+  }
+}
+
+class _Pill extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _Pill(this.label, this.color);
+
+  @override
+  Widget build(BuildContext context) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+      decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(4)),
+      child: Text(label,
+          style: TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 9,
+              color: color,
+              fontWeight: FontWeight.w700)));
+}
+
+class _Field extends StatelessWidget {
+  final TextEditingController ctrl;
+  final String label;
+  final BuildContext context;
+
+  const _Field(
+      {required this.ctrl, required this.label, required this.context});
+
+  @override
+  Widget build(BuildContext ctx) => TextField(
+        controller: ctrl,
+        style: ctx.colors.body,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: ctx.colors.caption,
+          filled: true,
+          fillColor: ctx.colors.background,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide:
+                BorderSide(color: ctx.colors.textLight.withValues(alpha: 0.2)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide:
+                BorderSide(color: ctx.colors.textLight.withValues(alpha: 0.2)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: ctx.colors.primary),
+          ),
+        ),
+      );
+}
+
+// ── Data classes ──────────────────────────────────────────────────────────────
+
+class _FileTypeOption {
+  final String label;
+  final IconData icon;
+  final FileType fileType;
+  final Color color;
+
+  const _FileTypeOption(this.label, this.icon, this.fileType, this.color);
+}

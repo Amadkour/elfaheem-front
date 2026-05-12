@@ -3,6 +3,7 @@ library;
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
@@ -16,7 +17,6 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:path/path.dart' as p;
-
 
 // ── Exception ─────────────────────────────────────────────────────────────────
 
@@ -67,6 +67,7 @@ class TokenStorage {
 
 class ApiClient {
   ApiClient._internal();
+
   BuildContext? context;
   static final ApiClient instance = ApiClient._internal();
 
@@ -151,8 +152,8 @@ class ApiClient {
   // ── package:http transport ────────────────────────────────────────────────
 
   Future<http.Response> _send(
-      Future<http.Response> Function(http.Client) fn,
-      ) async {
+    Future<http.Response> Function(http.Client) fn,
+  ) async {
     for (int attempt = 1; attempt <= _sendMaxTries; attempt++) {
       final client = http.Client();
       try {
@@ -163,7 +164,7 @@ class ApiClient {
         final isLast = attempt >= _sendMaxTries;
         debugPrint(
           '🔌 _send attempt $attempt/$_sendMaxTries: $e'
-              '${isLast ? " → giving up" : " → retrying…"}',
+          '${isLast ? " → giving up" : " → retrying…"}',
         );
         if (isLast) rethrow;
         await Future.delayed(_sendDelays[attempt - 1]);
@@ -196,10 +197,10 @@ class ApiClient {
     if (refresh == null) return false;
 
     final uri =
-    Uri.parse('$baseUrl/api/v1/auth/refresh?refresh_token=$refresh');
+        Uri.parse('$baseUrl/api/v1/auth/refresh?refresh_token=$refresh');
 
     final res = await _send(
-          (c) async =>
+      (c) async =>
           c.post(uri, headers: await _headers(auth: false)).timeout(_timeout),
     );
 
@@ -278,19 +279,19 @@ class ApiClient {
   // ── GET ───────────────────────────────────────────────────────────────────
 
   Future<dynamic> get(
-      String path, {
-        Map<String, dynamic>? queryParams,
-        bool auth = true,
-      }) async {
+    String path, {
+    Map<String, dynamic>? queryParams,
+    bool auth = true,
+  }) async {
     final uri = _buildUri(path, queryParams);
     var res = await _send(
-          (c) async =>
+      (c) async =>
           c.get(uri, headers: await _headers(auth: auth)).timeout(_timeout),
     );
     if (res.statusCode == 401 && auth) {
       if (await _refreshToken()) {
         res = await _send(
-              (c) async => c.get(uri, headers: await _headers()).timeout(_timeout),
+          (c) async => c.get(uri, headers: await _headers()).timeout(_timeout),
         );
       }
     }
@@ -300,26 +301,26 @@ class ApiClient {
   // ── POST ──────────────────────────────────────────────────────────────────
 
   Future<dynamic> post(
-      String path, {
-        dynamic body,
-        Map<String, dynamic>? queryParams,
-        bool auth = true,
-      }) async {
+    String path, {
+    dynamic body,
+    Map<String, dynamic>? queryParams,
+    bool auth = true,
+  }) async {
     final uri = _buildUri(path, queryParams);
     var res = await _send(
-          (c) async => c
+      (c) async => c
           .post(uri,
-          headers: await _headers(auth: auth),
-          body: body != null ? jsonEncode(body) : null)
+              headers: await _headers(auth: auth),
+              body: body != null ? jsonEncode(body) : null)
           .timeout(_timeout),
     );
     if (res.statusCode == 401 && auth) {
       if (await _refreshToken()) {
         res = await _send(
-              (c) async => c
+          (c) async => c
               .post(uri,
-              headers: await _headers(),
-              body: body != null ? jsonEncode(body) : null)
+                  headers: await _headers(),
+                  body: body != null ? jsonEncode(body) : null)
               .timeout(_timeout),
         );
       }
@@ -330,26 +331,26 @@ class ApiClient {
   // ── PUT ───────────────────────────────────────────────────────────────────
 
   Future<dynamic> put(
-      String path, {
-        dynamic body,
-        Map<String, dynamic>? queryParams,
-        bool auth = true,
-      }) async {
+    String path, {
+    dynamic body,
+    Map<String, dynamic>? queryParams,
+    bool auth = true,
+  }) async {
     final uri = _buildUri(path, queryParams);
     var res = await _send(
-          (c) async => c
+      (c) async => c
           .put(uri,
-          headers: await _headers(auth: auth),
-          body: body != null ? jsonEncode(body) : null)
+              headers: await _headers(auth: auth),
+              body: body != null ? jsonEncode(body) : null)
           .timeout(_timeout),
     );
     if (res.statusCode == 401 && auth) {
       if (await _refreshToken()) {
         res = await _send(
-              (c) async => c
+          (c) async => c
               .put(uri,
-              headers: await _headers(),
-              body: body != null ? jsonEncode(body) : null)
+                  headers: await _headers(),
+                  body: body != null ? jsonEncode(body) : null)
               .timeout(_timeout),
         );
       }
@@ -360,20 +361,19 @@ class ApiClient {
   // ── DELETE ────────────────────────────────────────────────────────────────
 
   Future<dynamic> delete(
-      String path, {
-        Map<String, dynamic>? queryParams,
-        bool auth = true,
-      }) async {
+    String path, {
+    Map<String, dynamic>? queryParams,
+    bool auth = true,
+  }) async {
     final uri = _buildUri(path, queryParams);
     var res = await _send(
-          (c) async => c
-          .delete(uri, headers: await _headers(auth: auth))
-          .timeout(_timeout),
+      (c) async =>
+          c.delete(uri, headers: await _headers(auth: auth)).timeout(_timeout),
     );
     if (res.statusCode == 401 && auth) {
       if (await _refreshToken()) {
         res = await _send(
-              (c) async =>
+          (c) async =>
               c.delete(uri, headers: await _headers()).timeout(_timeout),
         );
       }
@@ -387,11 +387,11 @@ class ApiClient {
   // _applyDioAuth() call needed.
 
   Future<dynamic> uploadImage(
-      String path, {
-        required XFile file,
-        String fieldName = 'file',
-        bool auth = true,
-      }) async {
+    String path, {
+    required XFile file,
+    String fieldName = 'file',
+    bool auth = true,
+  }) async {
     final ext = p.extension(file.path).replaceFirst('.', '').toLowerCase();
     final mime = switch (ext) {
       'png' => 'image/png',
@@ -418,9 +418,9 @@ class ApiClient {
 
     final response = await _dio
         .post(
-      uri.toString(),
-      data: formData,
-    )
+          uri.toString(),
+          data: formData,
+        )
         .timeout(_timeout);
 
     return _handleResponse(response);
@@ -434,69 +434,53 @@ class ApiClient {
   Future<dynamic> postMultipart(
       String path, {
         required Map<String, String> fields,
-        XFile? imageFile,
-        String imageFieldName = 'logo',
         bool auth = true,
+        required String fileField,
+        required String fileName,
+        required Uint8List fileBytes,    // non‑nullable
       }) async {
-    final formMap = <String, dynamic>{...fields};
+    final ext = p.extension(fileName).replaceFirst('.', '').toLowerCase();
+    final mime = switch (ext) {
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      'gif' => 'image/gif',
+      'jpg' || 'jpeg' => 'image/jpeg',
+      'pdf' => 'application/pdf',
+      'doc' => 'application/msword',
+      'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'xls' => 'application/vnd.ms-excel',
+      'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'ppt' => 'application/vnd.ms-powerpoint',
+      'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'txt' => 'text/plain',
+      _ => 'application/octet-stream',
+    };
 
-    if (imageFile != null) {
-      final ext =
-      p.extension(imageFile.path).replaceFirst('.', '').toLowerCase();
-      final mime = switch (ext) {
-        'png' => 'image/png',
-        'webp' => 'image/webp',
-        _ => 'image/jpeg',
-      };
+    print(fields);
+    print(fileName);
+    print(mime);
 
-      final bytes = await imageFile.readAsBytes();
-      final filename = p.basename(imageFile.path).isNotEmpty
-          ? p.basename(imageFile.path)
-          : 'upload.${ext.isEmpty ? 'jpg' : ext}';
-
-      formMap[imageFieldName] = MultipartFile.fromBytes(
-        bytes,
-        filename: filename,
+    final formData = FormData.fromMap({
+      ...fields,                     // add text fields
+      fileField: MultipartFile.fromBytes(
+        fileBytes,
+        filename: fileName,
         contentType: MediaType.parse(mime),
-      );
-    }
+      ),
+    });
 
-    final formData = FormData.fromMap(formMap);
     final uri = _buildUri(path, null);
-
-    final response =
-    await _dio.post(uri.toString(), data: formData).timeout(_timeout);
+    final response = await _dio
+        .post(uri.toString(), data: formData)
+        .timeout(_timeout);
 
     return _handleResponse(response);
   }
-
-  // ── Legacy uploadFile (kept for backward compat, mobile only) ────────────
-
-  Future<dynamic> uploadFile(
-      String path, {
-        required File file,
-        required Map<String, String> fields,
-        bool auth = true,
-      }) async {
-    final uri = _buildUri(path, null);
-    final headers = await _headers(auth: auth)
-      ..remove(HttpHeaders.contentTypeHeader);
-
-    final request = http.MultipartRequest('POST', uri)
-      ..headers.addAll(headers)
-      ..fields.addAll(fields)
-      ..files.add(await http.MultipartFile.fromPath('file', file.path));
-
-    final streamed = await request.send().timeout(_timeout);
-    final res = await http.Response.fromStream(streamed);
-    return _handleResponse(res);
-  }
-
   // ── URI builder ───────────────────────────────────────────────────────────
 
   Uri _buildUri(String path, Map<String, dynamic>? queryParams) {
     final params = queryParams?.map(
-          (k, v) => MapEntry(k, v?.toString() ?? ''),
+      (k, v) => MapEntry(k, v?.toString() ?? ''),
     );
     return Uri.parse('$baseUrl$path').replace(
       queryParameters: (params?.isEmpty ?? true) ? null : params,
@@ -511,6 +495,5 @@ class ApiClient {
     required String accessToken,
     required String refreshToken,
   }) =>
-      _storage.saveTokens(
-          accessToken: accessToken, refreshToken: refreshToken);
+      _storage.saveTokens(accessToken: accessToken, refreshToken: refreshToken);
 }

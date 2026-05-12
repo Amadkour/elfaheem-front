@@ -1,7 +1,16 @@
+// lib/features/student/sessions/sessions_provider.dart
+// ─────────────────────────────────────────────────────
+// Student sessions provider — now includes material fetching.
+
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
+import '../../auth/auth_provider.dart';
 import '../../teacher/sessions/model/live_response_model.dart';
+import '../../teacher/sessions/model/session_material_model.dart';
 import '../models.dart';
 
 class StudentSessionsProvider extends BaseProvider {
@@ -10,23 +19,22 @@ class StudentSessionsProvider extends BaseProvider {
   StudentSessionsProvider({ApiClient? api}) : _api = api ?? ApiClient();
 
   List<SessionModel> _sessions = [];
-  final Map<int, bool> _checkedIn = {}; // sessionId → isCheckedIn
+  final Map<int, bool> _checkedIn = {};
+  // materials per session (loaded on expand / detail open)
+  final Map<int, List<SessionMaterialModel>> _materials = {};
 
   List<SessionModel> get sessions => List.unmodifiable(_sessions);
-
-  List<SessionModel> get liveSessions =>
-      _sessions.where((s) => s.isLive).toList();
-
-  List<SessionModel> get recordedSessions =>
-      _sessions.where((s) => !s.isLive).toList();
+  List<SessionModel> get liveSessions     => _sessions.where((s) => s.isLive).toList();
+  List<SessionModel> get recordedSessions => _sessions.where((s) => !s.isLive).toList();
 
   bool isCheckedIn(int sessionId) => _checkedIn[sessionId] ?? false;
+  List<SessionMaterialModel> materialsFor(int sessionId) =>
+      List.unmodifiable(_materials[sessionId] ?? []);
 
-  // ── Fetch ─────────────────────────────────────────────────────────────────
+  // ── Fetch sessions ────────────────────────────────────────────────────────
 
   Future<void> fetchSessions(int courseId) async {
-    final r = await run(
-        () => _api.get('/api/v1/courses/$courseId/sessions', auth: true));
+    final r = await run(() => _api.get('/api/v1/courses/$courseId/sessions', auth: true));
     if (r is List) {
       _sessions = r
           .map((e) => SessionModel.fromJson(e as Map<String, dynamic>))
@@ -36,22 +44,28 @@ class StudentSessionsProvider extends BaseProvider {
     }
   }
 
+  // ── Materials ─────────────────────────────────────────────────────────────
+
+  Future<void> fetchMaterials(int sessionId) async {
+    final r = await run(() => _api.get('/api/v1/sessions/$sessionId/materials', auth: true));
+    if (r is List) {
+      _materials[sessionId] = r
+          .map((e) => SessionMaterialModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+      notifyListeners();
+    }
+  }
+
   // ── Join live ─────────────────────────────────────────────────────────────
 
-  /// Returns the personalised Daily.co meeting URL.
   Future<LiveResponseModel?> joinLive(int sessionId) async {
-    final r =
-        await run(() => _api.get('/api/v1/live-sessions/$sessionId/join'));
+    final r = await run(() => _api.get('/api/v1/live-sessions/$sessionId/join'));
     if (r is Map<String, dynamic>) {
-      final LiveResponseModel url = LiveResponseModel(
-          sessionId: sessionId,
-          url: r['ws_url'] as String? ?? '',
-          token: r['token'] as String? ?? '');
-      print("--------------------------------------------------------");
-      print(url.toJson);
-      print("--------------------------------------------------------");
-
-      return url ;
+      return LiveResponseModel(
+        sessionId: sessionId,
+        url:   r['ws_url']  as String? ?? '',
+        token: r['token']   as String? ?? '',
+      );
     }
     return null;
   }
@@ -59,15 +73,12 @@ class StudentSessionsProvider extends BaseProvider {
   // ── Recording ─────────────────────────────────────────────────────────────
 
   Future<String?> fetchRecordingUrl(int sessionId) async {
-    final r =
-        await run(() => _api.get('/api/v1/live-sessions/$sessionId/recording'));
+    final r = await run(() => _api.get('/api/v1/live-sessions/$sessionId/recording'));
     if (r is Map<String, dynamic>) {
       final url = r['recording_url'] as String?;
       if (url != null) {
         _sessions = _sessions
-            .map((s) => s.id == sessionId
-                ? (s..recordingUrl = url) // update local
-                : s)
+            .map((s) => s.id == sessionId ? (s..recordingUrl = url) : s)
             .toList();
         notifyListeners();
       }
@@ -76,7 +87,7 @@ class StudentSessionsProvider extends BaseProvider {
     return null;
   }
 
-  // ── Progress tracking ─────────────────────────────────────────────────────
+  // ── Progress ──────────────────────────────────────────────────────────────
 
   Future<void> trackView(int sessionId, {int lastPosition = 0}) async {
     await run(() => _api.post('/api/v1/views',
@@ -98,24 +109,16 @@ class StudentSessionsProvider extends BaseProvider {
   // ── Attendance ────────────────────────────────────────────────────────────
 
   Future<bool> checkIn(int sessionId) async {
-    final r = await run(() => _api.post('/api/v1/attendance/check-in',
-        queryParams: {'session_id': sessionId}));
-    if (r != null) {
-      _checkedIn[sessionId] = true;
-      notifyListeners();
-      return true;
-    }
+    final r = await run(() =>
+        _api.post('/api/v1/attendance/check-in', queryParams: {'session_id': sessionId}));
+    if (r != null) { _checkedIn[sessionId] = true; notifyListeners(); return true; }
     return false;
   }
 
   Future<bool> checkOut(int sessionId) async {
-    final r = await run(() => _api.post('/api/v1/attendance/check-out',
-        queryParams: {'session_id': sessionId}));
-    if (r != null) {
-      _checkedIn[sessionId] = false;
-      notifyListeners();
-      return true;
-    }
+    final r = await run(() =>
+        _api.post('/api/v1/attendance/check-out', queryParams: {'session_id': sessionId}));
+    if (r != null) { _checkedIn[sessionId] = false; notifyListeners(); return true; }
     return false;
   }
 
@@ -123,11 +126,11 @@ class StudentSessionsProvider extends BaseProvider {
 
   Future<bool> rateSession(int sessionId, int value, {String? review}) async {
     final r = await run(() => _api.post('/api/v1/rates', body: {
-          'source_id': sessionId,
-          'type': 'session',
-          'value': value,
-          if (review != null) 'review': review
-        }));
+      'source_id': sessionId,
+      'type': 'session',
+      'value': value,
+      if (review != null) 'review': review,
+    }));
     return r != null;
   }
 }

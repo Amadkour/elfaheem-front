@@ -155,8 +155,9 @@ class TeacherSessionItem {
     }
   }
 
-  factory TeacherSessionItem.fromJson(Map<String, dynamic> j) =>
-      TeacherSessionItem(
+  factory TeacherSessionItem.fromJson(Map<String, dynamic> j) {
+    print(j);
+    return TeacherSessionItem(
           id: j['id'] as int,
           courseId: j['course_id'] as int? ?? 0,
           name: j['name'] as String? ?? '',
@@ -169,6 +170,7 @@ class TeacherSessionItem {
           roomUrl: j['room_url'] as String?,
           recordingUrl: j['recording_url'] as String?,
           recordingStatus: j['recording_status'] as String?);
+  }
 
   TeacherSessionItem copyWith(
       {String? name,
