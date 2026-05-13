@@ -219,7 +219,7 @@ class _SessionsList extends StatelessWidget {
               sliver: SliverList.builder(
                 itemCount: provider.sessions.length,
                 itemBuilder: (_, i) =>
-                    _TeacherSessionCard(session: provider.sessions[i]),
+                    _TeacherSessionCard(session: provider.sessions[i],course:course),
               ),
             )
         ],
@@ -2365,7 +2365,7 @@ class _ActionBtnState extends State<_ActionBtn>
       child: ScaleTransition(
         scale: _scaleAnim,
         child: Container(
-          height: 38,
+          height: 30,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
             color: bg,
@@ -2454,212 +2454,212 @@ class TeacherSessionItem {
 // Teacher sessions screen — premium RTL design with full material management.
 // Responsive: adapts for mobile and web (wide layout).
 
-class TeacherSessionsScreen2 extends StatefulWidget {
-  final TeacherCourse course;
-
-  const TeacherSessionsScreen2({super.key, required this.course});
-
-  @override
-  State<TeacherSessionsScreen2> createState() => _TeacherSessionsScreenState2();
-}
-
-class _TeacherSessionsScreenState2 extends State<TeacherSessionsScreen2> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<TeacherSessionsProvider>().fetchSessions(widget.course.id);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width > 800;
-
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: context.colors.background,
-        floatingActionButton: _AddSessionFab(courseId: widget.course.id),
-        body: SafeArea(
-          child: Column(children: [
-            ScreenAppBar(title: 'الدروس — ${widget.course.title}'),
-            Expanded(
-              child: isWide
-                  ? _WideSessionList(course: widget.course)
-                  : _NarrowSessionList(courseId: widget.course.id),
-            ),
-          ]),
-        ),
-      ),
-    );
-  }
-}
+// class TeacherSessionsScreen2 extends StatefulWidget {
+//   final TeacherCourse course;
+//
+//   const TeacherSessionsScreen2({super.key, required this.course});
+//
+//   @override
+//   State<TeacherSessionsScreen2> createState() => _TeacherSessionsScreenState2();
+// }
+//
+// class _TeacherSessionsScreenState2 extends State<TeacherSessionsScreen2> {
+//   @override
+//   void initState() {
+//     super.initState();
+//     WidgetsBinding.instance.addPostFrameCallback((_) {
+//       context.read<TeacherSessionsProvider>().fetchSessions(widget.course.id);
+//     });
+//   }
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     final isWide = MediaQuery.of(context).size.width > 800;
+//
+//     return Directionality(
+//       textDirection: TextDirection.rtl,
+//       child: Scaffold(
+//         backgroundColor: context.colors.background,
+//         floatingActionButton: _AddSessionFab(courseId: widget.course.id),
+//         body: SafeArea(
+//           child: Column(children: [
+//             ScreenAppBar(title: 'الدروس — ${widget.course.title}'),
+//             Expanded(
+//               child: isWide
+//                   ? _WideSessionList(course: widget.course)
+//                   : _NarrowSessionList(courseId: widget.course.id),
+//             ),
+//           ]),
+//         ),
+//       ),
+//     );
+//   }
+// }
 
 // ══════════════════════════════════════════════════════════════════════════════
 // NARROW LAYOUT (mobile)
 // ══════════════════════════════════════════════════════════════════════════════
 
-class _NarrowSessionList extends StatelessWidget {
-  final int courseId;
-
-  const _NarrowSessionList({required this.courseId});
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<TeacherSessionsProvider>();
-
-    if (provider.isLoading && provider.sessions.isEmpty) {
-      return Center(
-          child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation(context.colors.primary)));
-    }
-
-    if (provider.sessions.isEmpty) {
-      return SizedBox();
-    }
-
-    return RefreshIndicator(
-      color: context.colors.primary,
-      onRefresh: () => provider.fetchSessions(courseId),
-      child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-        physics: const BouncingScrollPhysics(),
-        itemCount: provider.sessions.length,
-        itemBuilder: (_, i) =>
-            _TeacherSessionCard(session: provider.sessions[i]),
-      ),
-    );
-  }
-}
+// class _NarrowSessionList extends StatelessWidget {
+//   final int courseId;
+//
+//   const _NarrowSessionList({required this.courseId});
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     final provider = context.watch<TeacherSessionsProvider>();
+//
+//     if (provider.isLoading && provider.sessions.isEmpty) {
+//       return Center(
+//           child: CircularProgressIndicator(
+//               valueColor: AlwaysStoppedAnimation(context.colors.primary)));
+//     }
+//
+//     if (provider.sessions.isEmpty) {
+//       return SizedBox();
+//     }
+//
+//     return RefreshIndicator(
+//       color: context.colors.primary,
+//       onRefresh: () => provider.fetchSessions(courseId),
+//       child: ListView.builder(
+//         padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+//         physics: const BouncingScrollPhysics(),
+//         itemCount: provider.sessions.length,
+//         itemBuilder: (_, i) =>
+//             _TeacherSessionCard(session: provider.sessions[i],course: ,),
+//       ),
+//     );
+//   }
+// }
 
 // ══════════════════════════════════════════════════════════════════════════════
 // WIDE LAYOUT (web / tablet) — two-column master-detail
 // ══════════════════════════════════════════════════════════════════════════════
-
-class _WideSessionList extends StatefulWidget {
-  final TeacherCourse course;
-
-  const _WideSessionList({required this.course});
-
-  @override
-  State<_WideSessionList> createState() => _WideSessionListState();
-}
-
-class _WideSessionListState extends State<_WideSessionList> {
-  int? _selectedId;
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<TeacherSessionsProvider>();
-
-    if (provider.isLoading && provider.sessions.isEmpty) {
-      return Center(
-          child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation(context.colors.primary)));
-    }
-
-    if (provider.sessions.isEmpty) return SizedBox();
-
-    final selected = _selectedId != null
-        ? provider.sessions.firstWhere((s) => s.id == _selectedId,
-            orElse: () => provider.sessions.first)
-        : provider.sessions.first;
-
-    return Row(children: [
-      // ── Left sidebar: session list ─────────────────────────────────────────
-      Container(
-        width: 320,
-        decoration: BoxDecoration(
-          border: Border(
-              left: BorderSide(
-                  color: context.colors.textLight.withValues(alpha: 0.12))),
-        ),
-        child: RefreshIndicator(
-          color: context.colors.primary,
-          onRefresh: () => provider.fetchSessions(widget.course.id),
-          child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 100),
-            physics: const BouncingScrollPhysics(),
-            itemCount: provider.sessions.length,
-            itemBuilder: (_, i) {
-              final s = provider.sessions[i];
-              final isSelected = s.id == selected.id;
-              return GestureDetector(
-                onTap: () {
-                  setState(() => _selectedId = s.id);
-                  if (provider.materialsFor(s.id).isEmpty) {
-                    provider.fetchMaterials(s.id);
-                  }
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? context.colors.primary.withValues(alpha: 0.1)
-                        : context.colors.cardBg,
-                    borderRadius:
-                        BorderRadius.circular(context.colors.radiusMedium),
-                    border: isSelected
-                        ? Border.all(
-                            color:
-                                context.colors.primary.withValues(alpha: 0.5))
-                        : Border.all(color: Colors.transparent),
-                    boxShadow: isSelected ? [] : context.colors.cardShadow,
-                  ),
-                  child: Row(children: [
-                    // Type indicator strip
-                    Container(
-                      width: 4,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: s.isLiveActive
-                            ? context.colors.danger
-                            : context.colors.primary,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(s.name,
-                                style: context.colors.body.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: isSelected
-                                        ? context.colors.primary
-                                        : null),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis),
-                            const SizedBox(height: 3),
-                            Text(s.type == 'live' ? '🔴 مباشر' : '▶ مسجّل',
-                                style: context.colors.caption),
-                          ]),
-                    ),
-                    Text('${s.order}',
-                        style: context.colors.caption
-                            .copyWith(color: context.colors.textLight)),
-                  ]),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
-
-      // ── Right panel: session detail + materials ────────────────────────────
-      Expanded(
-        child: _SessionDetailPanel(
-          session: selected,
-          course: widget.course,
-        ),
-      ),
-    ]);
-  }
-}
+//
+// class _WideSessionList extends StatefulWidget {
+//   final TeacherCourse course;
+//
+//   const _WideSessionList({required this.course});
+//
+//   @override
+//   State<_WideSessionList> createState() => _WideSessionListState();
+// }
+//
+// class _WideSessionListState extends State<_WideSessionList> {
+//   int? _selectedId;
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     final provider = context.watch<TeacherSessionsProvider>();
+//
+//     if (provider.isLoading && provider.sessions.isEmpty) {
+//       return Center(
+//           child: CircularProgressIndicator(
+//               valueColor: AlwaysStoppedAnimation(context.colors.primary)));
+//     }
+//
+//     if (provider.sessions.isEmpty) return SizedBox();
+//
+//     final selected = _selectedId != null
+//         ? provider.sessions.firstWhere((s) => s.id == _selectedId,
+//             orElse: () => provider.sessions.first)
+//         : provider.sessions.first;
+//
+//     return Row(children: [
+//       // ── Left sidebar: session list ─────────────────────────────────────────
+//       Container(
+//         width: 320,
+//         decoration: BoxDecoration(
+//           border: Border(
+//               left: BorderSide(
+//                   color: context.colors.textLight.withValues(alpha: 0.12))),
+//         ),
+//         child: RefreshIndicator(
+//           color: context.colors.primary,
+//           onRefresh: () => provider.fetchSessions(widget.course.id),
+//           child: ListView.builder(
+//             padding: const EdgeInsets.fromLTRB(12, 8, 12, 100),
+//             physics: const BouncingScrollPhysics(),
+//             itemCount: provider.sessions.length,
+//             itemBuilder: (_, i) {
+//               final s = provider.sessions[i];
+//               final isSelected = s.id == selected.id;
+//               return GestureDetector(
+//                 onTap: () {
+//                   setState(() => _selectedId = s.id);
+//                   if (provider.materialsFor(s.id).isEmpty) {
+//                     provider.fetchMaterials(s.id);
+//                   }
+//                 },
+//                 child: AnimatedContainer(
+//                   duration: const Duration(milliseconds: 200),
+//                   margin: const EdgeInsets.only(bottom: 8),
+//                   padding: const EdgeInsets.all(12),
+//                   decoration: BoxDecoration(
+//                     color: isSelected
+//                         ? context.colors.primary.withValues(alpha: 0.1)
+//                         : context.colors.cardBg,
+//                     borderRadius:
+//                         BorderRadius.circular(context.colors.radiusMedium),
+//                     border: isSelected
+//                         ? Border.all(
+//                             color:
+//                                 context.colors.primary.withValues(alpha: 0.5))
+//                         : Border.all(color: Colors.transparent),
+//                     boxShadow: isSelected ? [] : context.colors.cardShadow,
+//                   ),
+//                   child: Row(children: [
+//                     // Type indicator strip
+//                     Container(
+//                       width: 4,
+//                       height: 40,
+//                       decoration: BoxDecoration(
+//                         color: s.isLiveActive
+//                             ? context.colors.danger
+//                             : context.colors.primary,
+//                         borderRadius: BorderRadius.circular(4),
+//                       ),
+//                     ),
+//                     const SizedBox(width: 10),
+//                     Expanded(
+//                       child: Column(
+//                           crossAxisAlignment: CrossAxisAlignment.start,
+//                           children: [
+//                             Text(s.name,
+//                                 style: context.colors.body.copyWith(
+//                                     fontWeight: FontWeight.w700,
+//                                     color: isSelected
+//                                         ? context.colors.primary
+//                                         : null),
+//                                 maxLines: 1,
+//                                 overflow: TextOverflow.ellipsis),
+//                             const SizedBox(height: 3),
+//                             Text(s.type == 'live' ? '🔴 مباشر' : '▶ مسجّل',
+//                                 style: context.colors.caption),
+//                           ]),
+//                     ),
+//                     Text('${s.order}',
+//                         style: context.colors.caption
+//                             .copyWith(color: context.colors.textLight)),
+//                   ]),
+//                 ),
+//               );
+//             },
+//           ),
+//         ),
+//       ),
+//
+//       // ── Right panel: session detail + materials ────────────────────────────
+//       Expanded(
+//         child: _SessionDetailPanel(
+//           session: selected,
+//           course: widget.course,
+//         ),
+//       ),
+//     ]);
+//   }
+// }
 
 // ── Session detail panel (web right pane) ─────────────────────────────────────
 
@@ -2759,7 +2759,8 @@ class _SessionDetailPanelState extends State<_SessionDetailPanel> {
 
 class _TeacherSessionCard extends StatefulWidget {
   final dynamic session; // TeacherSessionItem
-  const _TeacherSessionCard({required this.session});
+  final TeacherCourse course;
+  const _TeacherSessionCard({required this.session, required this.course});
 
   @override
   State<_TeacherSessionCard> createState() => _TeacherSessionCardState();
@@ -2797,7 +2798,35 @@ class _TeacherSessionCardState extends State<_TeacherSessionCard>
       _ctrl.reverse();
     }
   }
+  void _openAttendance(BuildContext ctx, TeacherSessionItem session) {
+    Navigator.push(
+      ctx,
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider.value(
+          value: ctx.read<TeacherSessionsProvider>(),
+          child: TeacherAttendanceScreen(
+            sessionId: session.id,
+            courseId: session.courseId,
+            courseTitle: widget.course.title,
+          ),
+        ),
+      ),
+    );
+  }
 
+  void _openExams(BuildContext ctx, TeacherSessionItem session) {
+    Navigator.push(
+      ctx,
+      MaterialPageRoute(
+        builder: (_) => TeacherExamHubScreen(
+          courseId: session.courseId,
+          courseTitle: widget.course.title,
+          // sessionId: session.id,
+          // sessionName: session.name,
+        ),
+      ),
+    );
+  }
   @override
   Widget build(BuildContext context) {
     final s = widget.session;
@@ -2824,7 +2853,7 @@ class _TeacherSessionCardState extends State<_TeacherSessionCard>
             // Color strip
             Container(
               width: 5,
-              height: 48,
+              height: 80,
               decoration: BoxDecoration(
                   gradient: LinearGradient(
                       begin: Alignment.topCenter,
@@ -2860,6 +2889,26 @@ class _TeacherSessionCardState extends State<_TeacherSessionCard>
                       Text('${s.durationMinutes ?? 60} د',
                           style: context.colors.caption),
                     ]),
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Row(children: [
+                        _ActionBtn(
+                          icon: Icons.how_to_reg_rounded,
+                          label: 'الحضور',
+                          color: const Color(0xFF4DA6FF),
+                          onTap:()=> _openAttendance(context, s),
+                          outlined: true,
+                        ),
+                        const SizedBox(width: 8),
+                        _ActionBtn(
+                          icon: Icons.quiz_rounded,
+                          label: 'الامتحانات',
+                          color: const Color(0xFF7B5FFF),
+                          onTap: ()=> _openExams(context, s),
+                          outlined: true,
+                        ),
+                      ],),
+                    ),
                   ]),
             ),
 
