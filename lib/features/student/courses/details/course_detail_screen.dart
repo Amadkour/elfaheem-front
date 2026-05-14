@@ -11,6 +11,7 @@ import '../../../../config/app_theme.dart';
 import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/app_network_image.dart';
 import '../../../../utils/widget/base_page.dart';
+import '../../../../utils/widget/rating_widget.dart';
 import '../../enrollment/enrollment_provider.dart';
 import '../../enrollment/enrollment_screen.dart';
 import '../../models.dart';
@@ -486,29 +487,7 @@ class _CourseMeta extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Stars row
-          Row(
-            children: [
-              ...List.generate(5, (i) {
-                if (i < c.averageRating.floor()) {
-                  return  Icon(Icons.star_rounded,
-                      color: context.colors.accent, size: 17);
-                } else if (i < c.averageRating) {
-                  return  Icon(Icons.star_half_rounded,
-                      color: context.colors.accent, size: 17);
-                }
-                return  Icon(Icons.star_outline_rounded,
-                    color: context.colors.accent, size: 17);
-              }),
-              const SizedBox(width: 8),
-              Text(
-                c.averageRating.toStringAsFixed(1),
-                style: context.colors.label
-                    .copyWith(fontWeight: FontWeight.w800, fontSize: 15),
-              ),
-              const SizedBox(width: 6),
-              Text('(${c.studentsCount} طالب)', style: context.colors.caption),
-            ],
-          ),
+          RatingWidget(type: RateType.course, sourceId: c.id, canEdit: true,),
           const SizedBox(height: 18),
 
           // Stat chips — 4-col grid

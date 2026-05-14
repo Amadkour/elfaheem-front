@@ -6,7 +6,7 @@ import '../teacher/home/teacher_models.dart';
 
 enum CourseStatus { all, inProgress, completed }
 
-enum CourseDetailTab { lessons, about, live,exam }
+enum CourseDetailTab { lessons, about, live, exam }
 
 // class CourseSchedule {
 //   final int id, courseId;
@@ -56,9 +56,12 @@ class CourseInfoItem {
 class SessionModel {
   final int id, courseId, durationMinutes, order;
   final String name, type;
-  final String? description, scheduledAt, recordingStatus;
+  final String? description, recordingStatus;
+  final DateTime? scheduledAt;
+  final DateTime createdAt;
   String? recordingUrl;
   bool isCompleted;
+
   SessionModel(
       {required this.id,
       required this.courseId,
@@ -70,7 +73,7 @@ class SessionModel {
       this.scheduledAt,
       this.recordingUrl,
       this.recordingStatus,
-      this.isCompleted = false});
+      this.isCompleted = false, required this.createdAt});
 
   bool get isLive => type == 'live';
 
@@ -80,10 +83,10 @@ class SessionModel {
   String get scheduledLabel {
     if (scheduledAt == null) return '';
     try {
-      final dt = DateTime.parse(scheduledAt!).toLocal();
+      final dt = scheduledAt??DateTime.now();
       return '${dt.day}/${dt.month}  ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     } catch (_) {
-      return scheduledAt!;
+      return scheduledAt!.timeZoneName;
     }
   }
 
@@ -95,9 +98,16 @@ class SessionModel {
       type: j['type'] as String? ?? 'pre-recorded',
       durationMinutes: j['duration_minutes'] as int? ?? 0,
       order: j['order'] as int? ?? 0,
-      scheduledAt: j['scheduled_at'] as String? ?? '',
+      scheduledAt: j['scheduled_at'] != null
+          ? DateTime.parse(j['scheduled_at'] as String)
+          : null,
+      createdAt: j['created_at'] != null
+          ? DateTime.parse(j['created_at'] as String)
+          : DateTime.now(),
       recordingUrl: j['recording_url'] as String? ?? '',
       recordingStatus: j['recording_status'] as String? ?? '');
+
+  TeacherSessionItem get toTeacher => TeacherSessionItem(id: id, courseId: courseId, name: name,description: description, durationMinutes: durationMinutes, order: order, scheduledAt: scheduledAt, createdAt: createdAt);
 
   SessionModel copyWith({bool? isCompleted, String? type}) => SessionModel(
       id: id,
@@ -108,8 +118,10 @@ class SessionModel {
       order: order,
       description: description,
       scheduledAt: scheduledAt,
+      createdAt: createdAt,
       recordingUrl: recordingUrl,
       recordingStatus: recordingStatus,
+
       isCompleted: isCompleted ?? this.isCompleted);
 }
 
@@ -117,13 +129,10 @@ class SessionModel {
 class TeacherSessionItem {
   final int id, courseId, durationMinutes, order;
   final String name;
-  final String? description,
-      type,
-      roomUrl,
-      recordingUrl,
-      recordingStatus;
+  final String? description, type, roomUrl, recordingUrl, recordingStatus;
   final bool isLiveActive;
   final DateTime? scheduledAt;
+  final DateTime  createdAt;
 
   const TeacherSessionItem({
     required this.id,
@@ -138,6 +147,7 @@ class TeacherSessionItem {
     this.roomUrl,
     this.recordingUrl,
     this.recordingStatus,
+    required this.createdAt,
   });
 
   bool get isLive => type == 'live';
@@ -147,7 +157,7 @@ class TeacherSessionItem {
 
   String? get scheduledLabel {
     try {
-      if(scheduledAt==null) return null;
+      if (scheduledAt == null) return null;
       final dt = scheduledAt!.toLocal();
       return '${dt.day}/${dt.month}  ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     } catch (_) {
@@ -158,30 +168,36 @@ class TeacherSessionItem {
   factory TeacherSessionItem.fromJson(Map<String, dynamic> j) {
     print(j);
     return TeacherSessionItem(
-          id: j['id'] as int,
-          courseId: j['course_id'] as int? ?? 0,
-          name: j['name'] as String? ?? '',
-          description: j['description'] as String?,
-          type: j['type'] as String?,
-          scheduledAt:j['scheduled_at']!=null? DateTime.parse(j['scheduled_at'] as String):null,
-          durationMinutes: j['duration_minutes'] as int? ?? 0,
-          order: j['order'] as int? ?? 0,
-          isLiveActive: j['is_live_active'] as bool? ?? false,
-          roomUrl: j['room_url'] as String?,
-          recordingUrl: j['recording_url'] as String?,
-          recordingStatus: j['recording_status'] as String?);
+        id: j['id'] as int,
+        courseId: j['course_id'] as int? ?? 0,
+        name: j['name'] as String? ?? '',
+        description: j['description'] as String?,
+        type: j['type'] as String?,
+        scheduledAt: j['scheduled_at'] != null
+            ? DateTime.parse(j['scheduled_at'] as String)
+            : null,
+        createdAt: j['created_at'] != null
+            ? DateTime.parse(j['created_at'] as String)
+            : DateTime.now(),
+        durationMinutes: j['duration_minutes'] as int? ?? 0,
+        order: j['order'] as int? ?? 0,
+        isLiveActive: j['is_live_active'] as bool? ?? false,
+        roomUrl: j['room_url'] as String?,
+        recordingUrl: j['recording_url'] as String?,
+        recordingStatus: j['recording_status'] as String?);
   }
 
   TeacherSessionItem copyWith(
-      {String? name,
-        String? description,
-        DateTime? scheduledAt,
-        int? durationMinutes,
-        int? order,
-        bool? isLiveActive,
-        String? roomUrl,
-        String? recordingUrl,
-        String? recordingStatus}) =>
+          {String? name,
+          String? description,
+          DateTime? scheduledAt,
+          DateTime? createdAt,
+          int? durationMinutes,
+          int? order,
+          bool? isLiveActive,
+          String? roomUrl,
+          String? recordingUrl,
+          String? recordingStatus}) =>
       TeacherSessionItem(
           id: id,
           courseId: courseId,
@@ -194,7 +210,8 @@ class TeacherSessionItem {
           isLiveActive: isLiveActive ?? this.isLiveActive,
           roomUrl: roomUrl ?? this.roomUrl,
           recordingUrl: recordingUrl ?? this.recordingUrl,
-          recordingStatus: recordingStatus ?? this.recordingStatus);
+          recordingStatus: recordingStatus ?? this.recordingStatus,
+          createdAt: createdAt??this.createdAt);
 }
 
 class CourseModel {
@@ -202,7 +219,7 @@ class CourseModel {
   final String? categoryId, categoryName, teacherName, description;
   final double price, averageRating, totalHours;
   final int studentsCount, sessionsCount;
-   bool isEnrolled;
+  bool isEnrolled;
   bool isFavorite;
   bool isSubscribed;
   double progress;
@@ -231,7 +248,8 @@ class CourseModel {
       this.schedules = const [],
       this.certificates = const [],
       this.tools = const [],
-      this.prerequisites = const [], required this.isEnrolled});
+      this.prerequisites = const [],
+      required this.isEnrolled});
 
   String get title => name;
 
@@ -253,8 +271,8 @@ class CourseModel {
         certificates: [],
         tools: [],
         schedules: [],
-        prerequisites: [], 
-    isEnrolled: false,
+        prerequisites: [],
+        isEnrolled: false,
       );
 
   factory CourseModel.fromJson(Map<String, dynamic> j) => CourseModel(
@@ -297,7 +315,10 @@ class CourseModel {
           .toList(),
       prerequisites: (j['prerequisites'] as List? ?? [])
           .map((e) => CourseInfoItem.fromJson(e as Map<String, dynamic>))
-          .toList(), isEnrolled: j['is_enrolled']);
+          .toList(),
+      isEnrolled: j['is_enrolled']);
+
+  TeacherCourse get toTeacherModel => TeacherCourse(id: int.parse(id), title: title, imageUrl: imageUrl, totalHours: totalHours, type: type);
 
   CourseModel copyWith(
           {bool? isFavorite,
@@ -326,7 +347,8 @@ class CourseModel {
           schedules: schedules,
           certificates: certificates,
           tools: tools,
-          prerequisites: prerequisites, isEnrolled: isEnrolled);
+          prerequisites: prerequisites,
+          isEnrolled: isEnrolled);
 }
 
 class AttendanceRecord {

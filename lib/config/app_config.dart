@@ -3,11 +3,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 /// Application configuration and context.colors.
 class AppConfig {
 // For Android Emulator
-  static const String baseUrl = 'https://jun-brings-destiny-audio.trycloudflare.com';
+  static const String baseUrl = 'https://bold-factory-nextel-westminster.trycloudflare.com';
  static String lang = 'ar';
 
 }
@@ -62,4 +63,8 @@ extension PageSize on BuildContext {
   double get width => MediaQuery.of(this).size.width;
 
   double get height => MediaQuery.of(this).size.height;
+}
+
+extension DateTimeAge on DateTime{
+  String get age=>timeago.format(this, locale: AppConfig.lang);
 }

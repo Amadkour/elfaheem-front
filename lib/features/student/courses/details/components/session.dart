@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/shared/session/session_material_widget.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -76,12 +77,15 @@ class SessionsTab extends StatelessWidget {
           itemCount: sessions.length,
           itemBuilder: (_, i) => Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: StudentSessionCard(
-              session: sessions[i],
-              isCheckedIn: false,
-              onCheckIn: () {},
-              onCheckOut: () {},
-            ),
+            child:
+            SessionMaterialCard(session: sessions[i].toTeacher, course: provider.course.toTeacherModel,isTeacher: false,)
+
+            // StudentSessionCard(
+            //   session: sessions[i],
+            //   isCheckedIn: false,
+            //   onCheckIn: () {},
+            //   onCheckOut: () {},
+            // ),
           ),
         ),
       ],
@@ -463,7 +467,7 @@ class _MetaRow extends StatelessWidget {
             bg: const Color(0xFFFAEEDA),
             color: const Color(0xFFBA7517),
           ),
-          if ((session.scheduledAt ?? '').isNotEmpty)
+          if (session.scheduledAt !=null)
             _MetaItem(
               icon: Icons.calendar_month_rounded,
               label: session.scheduledLabel,

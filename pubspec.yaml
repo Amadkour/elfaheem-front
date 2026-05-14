@@ -49,6 +49,7 @@ dependencies:
   moyasar: ^3.0.2
   path: any
   cross_file: any
+  timeago: ^3.7.1
 dependency_overrides:
   # Pin packages that use Apple APIs unavailable on CI runner's Xcode version.
   connectivity_plus: '>=7.0.0 <7.1.0' # NWPath.isUltraConstrained
