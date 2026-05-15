@@ -10,6 +10,7 @@ import '../../../utils/widget/app_network_image.dart';
 import '../../analytics/teacher/analytics_hub_screen.dart';
 import '../../auth/auth_widgets.dart';
 import '../../student/courses/details/components/app_responsive.dart';
+import '../../student/dashboard/dashboard_screen.dart';
 import '../courses/courses_screen.dart';
 import '../home/home_screen.dart';
 import '../../shared/profile/profile_screen.dart';
@@ -24,15 +25,29 @@ class TeacherDashboardScreen extends StatefulWidget {
 }
 
 class _State extends State<TeacherDashboardScreen> {
-  int _index = 0;
+  int _currentIndex = 0;
 
-
-  static final List<_PageDef> _pages = [
-    _PageDef('home'.tr, Icons.home_outlined, Icons.home_rounded),
-    _PageDef('my-courses'.tr, Icons.menu_book_outlined, Icons.menu_book_rounded),
-    _PageDef('schedule'.tr, Icons.calendar_today_outlined, Icons.calendar_month_rounded),
-    _PageDef('analytics'.tr, Icons.analytics_outlined, Icons.analytics_rounded),
-    _PageDef('profile'.tr, Icons.person_outline_rounded, Icons.person_rounded),
+  static const _labels = ['الرئيسية', 'كورساتي', 'جدولي', 'اختباراتي', 'حسابي'];
+  static const _icons = [
+    Icons.home_outlined,
+    Icons.menu_book_outlined,
+    Icons.calendar_month_outlined,
+    Icons.quiz_outlined,
+    Icons.person_outline_rounded,
+  ];
+  static const _selectedIcons = [
+    Icons.home_rounded,
+    Icons.menu_book_rounded,
+    Icons.calendar_month_rounded,
+    Icons.quiz_rounded,
+    Icons.person_rounded,
+  ];
+  static final List<Widget> _screens = [
+    const TeacherHomeScreen(),
+    const TeacherCoursesScreen(),
+    TeacherScheduleTab(),
+    const TeacherAnalyticsHubScreen(),
+    const ProfileScreen(),
   ];
   @override
   Widget build(BuildContext context) {
@@ -40,26 +55,60 @@ class _State extends State<TeacherDashboardScreen> {
     final children = <Widget>[
       const TeacherHomeScreen(),
       const TeacherCoursesScreen(),
-      _TeacherScheduleTab(),
+      TeacherScheduleTab(),
       TeacherAnalyticsHubScreen(),
       const ProfileScreen(),
     ];
 
-    return BasePage(
-      child: isWide
-          ? _WebShell(
-              pages: _pages,
-              index: _index,
-              onSelect: (i) => setState(() => _index = i),
-              children: children,
-            )
-          : _MobileShell(
-              pages: _pages,
-              index: _index,
-              onSelect: (i) => setState(() => _index = i),
-              children: children,
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        if (w >= 900) {
+          return WideShell(
+            currentIndex: _currentIndex,
+            onTap: (i) => setState(() => _currentIndex = i),
+            screens: _screens,
+            labels: _labels,
+            icons: _icons,
+            selectedIcons: _selectedIcons,
+          );
+        }
+        if (w >= 600) {
+          return RailShell(
+            currentIndex: _currentIndex,
+            onTap: (i) => setState(() => _currentIndex = i),
+            screens: _screens,
+            icons: _icons,
+            selectedIcons: _selectedIcons,
+            labels: _labels,
+          );
+        }
+        return   MobileShell(
+          currentIndex: _currentIndex,
+          onTap: (i) => setState(() => _currentIndex = i),
+          screens: _screens,
+          icons: _icons,
+          selectedIcons: _selectedIcons,
+          labels: _labels,
+        );
+      },
     );
+    //   BasePage(
+    //   child:
+    //   child: isWide
+    //       ? _WebShell(
+    //           pages: _pages,
+    //           index: _index,
+    //           onSelect: (i) => setState(() => _index = i),
+    //           children: children,
+    //         )
+    //       : _MobileShell(
+    //           pages: _pages,
+    //           index: _index,
+    //           onSelect: (i) => setState(() => _index = i),
+    //           children: children,
+    //         ),
+    // );
   }
 }
 
@@ -458,12 +507,12 @@ class _BottomNav extends StatelessWidget {
 
 // ── Schedule tab ──────────────────────────────────────────────────────────────
 
-class _TeacherScheduleTab extends StatefulWidget {
+class TeacherScheduleTab extends StatefulWidget {
   @override
-  State<_TeacherScheduleTab> createState() => _TeacherScheduleTabState();
+  State<TeacherScheduleTab> createState() => _TeacherScheduleTabState();
 }
 
-class _TeacherScheduleTabState extends State<_TeacherScheduleTab>
+class _TeacherScheduleTabState extends State<TeacherScheduleTab>
     with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;

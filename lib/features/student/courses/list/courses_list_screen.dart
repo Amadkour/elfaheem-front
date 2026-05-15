@@ -9,6 +9,7 @@ import '../../../../config/app_theme.dart';
 import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/app_network_image.dart';
 import '../../../../utils/widget/base_page.dart';
+import '../../../shared/profile/course_instractor_profile.dart';
 import '../../models.dart';
 import '../details/components/app_responsive.dart';
 import '../details/course_detail_screen.dart';
@@ -341,38 +342,9 @@ class _CourseCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (course.instructorName.isNotEmpty) ...[
-                        const SizedBox(height: 3),
-                        Row(
-                          children: [
-                            Container(
-                              width: 18,
-                              height: 18,
-                              decoration: BoxDecoration(
-                                color: context.colors.primary
-                                    .withValues(alpha: 0.12),
-                                shape: BoxShape.circle,
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                course.instructorName[0],
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w800,
-                                  color: context.colors.primary,
-                                  fontFamily: 'Cairo',
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 5),
-                            Text(
-                              'أ. ${course.instructorName}',
-                              style:
-                                  context.colors.caption.copyWith(fontSize: 11),
-                            ),
-                          ],
-                        ),
-                      ],
+                      if(course.teacher!=Null)
+                        InstructorAvatar(teacher: course.teacher!, size: 50, canOpen: true,),
+
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 10,

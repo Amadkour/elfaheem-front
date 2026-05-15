@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../config/app_theme.dart';
 import '../../../../utils/widget/app_network_image.dart';
+import '../../../shared/profile/course_instractor_profile.dart';
 import '../../courses/details/course_detail_screen.dart';
 import '../../courses/list/courses_provider.dart';
 
@@ -136,12 +137,8 @@ class _CourseCard extends StatelessWidget {
                   const SizedBox(height: 6),
 
                   // Teacher
-                  if (course.instructorName.isNotEmpty)
-                    _TeacherRow(
-                      name: course.instructorName,
-                      accentColor: _accentColor??context.colors.primary,
-                      accentLight: (_accentColor??context.colors.primary).withValues(alpha:0.12),
-                    ),
+                  if(course.teacher!=Null)
+                    InstructorAvatar(teacher: course.teacher!, size: 30, canOpen: true,showTitle: true,),
 
                   const _CardDivider(),
 
@@ -282,52 +279,6 @@ class _Thumbnail extends StatelessWidget {
                 fontFamily: 'Cairo',
               ),
             ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Teacher row ──────────────────────────────────────────────────────────────
-class _TeacherRow extends StatelessWidget {
-  final String name;
-  final Color accentColor;
-  final Color accentLight;
-
-  const _TeacherRow({
-    required this.name,
-    required this.accentColor,
-    required this.accentLight,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final initial = name.isNotEmpty ? name[0] : '؟';
-    return Row(
-      children: [
-        Container(
-          width: 20,
-          height: 20,
-          decoration: BoxDecoration(color: accentLight, shape: BoxShape.circle),
-          alignment: Alignment.center,
-          child: Text(
-            initial,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: accentColor,
-              fontFamily: 'Cairo',
-            ),
-          ),
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            'أ. $name',
-            style: context.colors.caption.copyWith(fontSize: 11, color: context.colors.textLight),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
           ),
         ),
       ],

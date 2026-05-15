@@ -1154,5 +1154,85 @@
   "course_details": {
     "en": "Course Details",
     "ar": "تفاصيل الدورة"
+  },
+  "teacher_dot": {
+    "en": "Teacher",
+    "ar": "معلم"
+  },
+  "pricing": {
+    "en": "Pricing",
+    "ar": "التسعير"
+  },
+  "joined": {
+    "en": "Joined",
+    "ar": "انضم"
+  },
+  "verified": {
+    "en": "Verified",
+    "ar": "موثق"
+  },
+  "active": {
+    "en": "Active",
+    "ar": "نشط"
+  },
+  "live_and_recorded": {
+    "en": "Live & Recorded",
+    "ar": "مباشر ومسجل"
+  },
+  "live_only": {
+    "en": "Live Only",
+    "ar": "مباشر فقط"
+  },
+  "country": {
+    "en": "Country",
+    "ar": "الدولة"
+  },
+  "show_less": {
+    "en": "Show less",
+    "ar": "عرض أقل"
+  },
+  "ratings_and_reviews": {
+    "en": "Ratings & Reviews",
+    "ar": "التقييمات والمراجعات"
+  },
+  "no_bio_hint": {
+    "en": "This teacher hasn't added a bio yet. Check their courses to learn more about their teaching style and expertise.",
+    "ar": "لم يُضف هذا المعلم نبذة عنه بعد. تفقد كورساته لتعرف المزيد عن أسلوبه في التدريس."
+  },
+  "learning_platform": {
+    "en": "Learning Platform",
+    "ar": "منصة تعليمية"
+  },
+  "unlock_potential": {
+    "en": "Unlock your\nfull potential\ntoday.",
+    "ar": "اكتشف\nإمكاناتك\nالكاملة اليوم."
+  },
+  "join_students_hint": {
+    "en": "Join thousands of students and educators in a rich digital learning experience.",
+    "ar": "انضم إلى آلاف الطلاب والمعلمين في تجربة تعليمية رقمية ثرية."
+  },
+  "feature_live_sessions": {
+    "en": "Live sessions & on-demand courses",
+    "ar": "حصص مباشرة وكورسات مسجلة"
+  },
+  "feature_expert_teachers": {
+    "en": "Expert teachers across all specializations",
+    "ar": "معلمون متخصصون في جميع المجالات"
+  },
+  "feature_assessments": {
+    "en": "Interactive assessments & progress tracking",
+    "ar": "اختبارات تفاعلية ومتابعة التقدم"
+  },
+  "badge_students": {
+    "en": "10k+ Students",
+    "ar": "+10 آلاف طالب"
+  },
+  "badge_teachers": {
+    "en": "500+ Teachers",
+    "ar": "+500 معلم"
+  },
+  "badge_secure": {
+    "en": "Secure & Private",
+    "ar": "آمن وخاص"
   }
 }

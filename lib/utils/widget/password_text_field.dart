@@ -45,7 +45,7 @@ class MyPasswordTextField extends StatelessWidget {
             style:  TextStyle(
                 fontFamily: 'Tajawal',
                 fontWeight: FontWeight.w600,
-                color: context.colors.textMedium),
+                color:  context.colors.textDark),
             textDirection: TextDirection.rtl,
           ),
           suffixIcon: IconButton(

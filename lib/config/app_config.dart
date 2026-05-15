@@ -7,9 +7,8 @@ import 'package:timeago/timeago.dart' as timeago;
 
 /// Application configuration and context.colors.
 class AppConfig {
-// For Android Emulator
-  static const String baseUrl = 'https://bold-factory-nextel-westminster.trycloudflare.com';
- static String lang = 'ar';
+  static const String baseUrl = 'https://cooper-boss-sunset-courage.trycloudflare.com';
+  static String lang = 'ar';
 
 }
 

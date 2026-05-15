@@ -37,18 +37,21 @@ class MyTextField extends StatelessWidget {
             fontFamily: 'Tajawal',
             fontWeight: FontWeight.w500,
             fontSize: 15,
-            color: context.colors.textDark),
+          color: context.colors.textDark,
+        ),
         decoration: InputDecoration(
           hintTextDirection: pageDirection,
           floatingLabelBehavior: FloatingLabelBehavior.never,
           fillColor: context.colors.inputBg,
+
           alignLabelWithHint: true,
           hint: Text(
             label,
             style:  TextStyle(
                 fontFamily: 'Tajawal',
                 fontWeight: FontWeight.w600,
-                color: context.colors.textMedium),
+              color: context.colors.textDark,
+            ),
             textDirection: TextDirection.rtl,
           ),
           border: const OutlineInputBorder(borderSide: BorderSide.none),

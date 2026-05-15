@@ -27,7 +27,7 @@ class MyCoursesProvider extends BaseProvider {
     if(_q.isEmpty)return list;
     final q=_q.toLowerCase();
     return list.where((c)=>c.name.toLowerCase().contains(q)||
-        (c.teacherName?.toLowerCase().contains(q)??false)).toList();
+        (c.teacher?.name.toLowerCase().contains(q)??false)).toList();
   }
 
   Future<void> fetchMyEnrollments() async {

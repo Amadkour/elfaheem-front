@@ -31,7 +31,8 @@ class StudentExamListItem {
   final int submissionCount;
   final int? remainingSubmissions;  // ← NEW: server-computed
   final DateTime? endDate;
-
+  final bool enablePasscode;
+  final String? passcode;
   // Best score across all submissions (null if not submitted)
   final double? marksObtained;
   final double? percentage;
@@ -56,14 +57,10 @@ class StudentExamListItem {
     this.endDate,
     this.marksObtained,
     this.percentage,
-    this.passed,
+    this.passed, required this.enablePasscode, this.passcode,
   });
 
   factory StudentExamListItem.fromJson(Map<String, dynamic> j) {
-    print("--------------[ exams ]------------------");
-    print(j);
-    print("--------------[ end ]------------------");
-
     return StudentExamListItem(
         id: j['id'] as int,
         name: j['name'] as String,
@@ -88,6 +85,8 @@ class StudentExamListItem {
         marksObtained: (j['marks_obtained'] as num?)?.toDouble(),
         percentage: (j['percentage'] as num?)?.toDouble(),
         passed: j['passed'] as bool?,
+      enablePasscode: j['enable_passcode'] as bool? ?? false,
+      passcode: j['passcode'] as String?,
       );
   }
 
@@ -133,6 +132,7 @@ class StudentMyResult {
   final double totalMarks;
   final double percentage;
   final bool passed;
+
   final int answeredCount;
   final int questionCount;
   final int submissionCount;

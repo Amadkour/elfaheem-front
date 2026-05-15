@@ -35,8 +35,11 @@ class QuizSession {
   QuizSession({required this.exam, required this.questions});
 
   Question get currentQuestion => questions[currentIndex];
+
   bool get isLast => currentIndex == questions.length - 1;
+
   bool get isFirst => currentIndex == 0;
+
   int get answeredCount => answers.length;
 
   /// True when the student can retry (remaining attempts > 0 and deadline ok)
@@ -50,49 +53,65 @@ class QuizSession {
   /// Whether the current result matches the best-ever
   bool get isCurrentBest =>
       result != null &&
-          (bestPercentage == null || result!.percentage >= bestPercentage!);
+      (bestPercentage == null || result!.percentage >= bestPercentage!);
 }
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 class StudentExamProvider extends ChangeNotifier {
   final StudentExamApi _api;
+
   StudentExamProvider({StudentExamApi? api}) : _api = api ?? StudentExamApi();
 
   // ── My-exams list ──────────────────────────────────────────────────────────
   bool _loadingList = false;
+
   bool get loadingList => _loadingList;
   List<StudentExamListItem> _myExams = [];
+
   List<StudentExamListItem> get myExams => List.unmodifiable(_myExams);
   String? _listError;
+
   String? get listError => _listError;
 
   // ── Active quiz session ────────────────────────────────────────────────────
   QuizSession? _session;
+
   QuizSession? get session => _session;
   bool _loadingQuestions = false;
+
   bool get loadingQuestions => _loadingQuestions;
   String? _questionsError;
+
   String? get questionsError => _questionsError;
 
   // ── Course-specific exam lists ─────────────────────────────────────────────
   final Map<String, List<StudentExamListItem>> _courseExams = {};
   final Map<String, bool> _loadingCourseExams = {};
   final Map<String, String?> _courseExamsError = {};
-  List<StudentExamListItem> courseExamsFor(String courseId) => _courseExams[courseId] ?? [];
-  bool loadingCourseExamsFor(String courseId) => _loadingCourseExams[courseId] ?? false;
+
+  List<StudentExamListItem> courseExamsFor(String courseId) =>
+      _courseExams[courseId] ?? [];
+
+  bool loadingCourseExamsFor(String courseId) =>
+      _loadingCourseExams[courseId] ?? false;
+
   String? courseExamsErrorFor(String courseId) => _courseExamsError[courseId];
 
   // ── Timer ──────────────────────────────────────────────────────────────────
   int _secondsLeft = 0;
+
   int get secondsLeft => _secondsLeft;
   Timer? _timer;
+
   String get timerDisplay {
     final m = _secondsLeft ~/ 60;
     final s = _secondsLeft % 60;
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
+
   bool get timerCritical => _secondsLeft < 120;
+
   bool get timerWarning => _secondsLeft < 300 && !timerCritical;
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -327,6 +346,7 @@ class StudentExamProvider extends ChangeNotifier {
       marksObtained: result?.marksObtained,
       percentage: result?.percentage,
       passed: result?.passed,
+      enablePasscode: old.enablePasscode,
     );
     notifyListeners();
   }

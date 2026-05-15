@@ -54,20 +54,30 @@ class MyDatePicker extends StatelessWidget {
   }
 
   Future<void> _selectDate(BuildContext context) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: selectedDate,
-      // Refer step 1
       firstDate: DateTime(1960),
       lastDate: DateTime.now().subtract(const Duration(days: 360 * 5)),
       locale: const Locale('ar', 'AR'),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme:  ColorScheme.light(
-              primary: context.colors.accent, // Primary color
+            primaryColorDark: context.colors.inputBg,
+            colorScheme: isDark
+                ? ColorScheme.dark(
+              primary: context.colors.accent,       // Selected day circle
               onPrimary: context.colors.background, // Selected day text
-              onSurface: Colors.black, // Header background
+              surface: context.colors.cardBg,       // Picker background
+              onSurface: context.colors.textDark, // Day & header text
+            )
+                : ColorScheme.light(
+              primary: context.colors.accent,       // Selected day circle
+              onPrimary: context.colors.background, // Selected day text
+              surface: context.colors.cardBg,       // Picker background
+              onSurface: context.colors.textDark, // Day & header text
             ),
             textTheme: TextTheme.of(context).copyWith(
               displaySmall: const TextStyle(fontFamily: 'Tajawal'),
@@ -76,8 +86,9 @@ class MyDatePicker extends StatelessWidget {
           ),
           child: child!,
         );
-      }, // Set the locale to Arabic
+      },
     );
+
     if (picked != null && picked != selectedDate) {
       onChange(picked);
     }

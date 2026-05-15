@@ -74,8 +74,9 @@ class AppNetworkImage extends StatelessWidget {
     );
 
     // Wrap in Hero for smooth shared-element transition
-    img = Hero(tag: tag, child: img);
-
+    if (enableFullscreen) {
+      img = Hero(tag: tag, child: img);
+    }
     if (borderRadius != null) {
       img = Container(
         padding: padding,

@@ -23,6 +23,7 @@ import '../../teacher/profile/teacher_earnings_screen.dart';
 import '../payment/student_saved_methods_screen.dart';
 import '../payment/teacher_payout_screen.dart';
 import 'change_password_widget.dart';
+import 'course_instractor_profile.dart';
 import 'setting_title.dart';
 import 'profile_provider.dart' show ProfileProvider, AppLanguage, AppLanguageX;
 import 'update_account_widget.dart';
@@ -569,14 +570,11 @@ class _FavCourseCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    course.instructorName,
-                    style:    context.colors.caption,
-                    maxLines: 1,
-                  ),
+                  if(course.teacher!=Null)
+                  InstructorAvatar(teacher: course.teacher!, size: 50, canOpen: true,),
+
                   const SizedBox(height: 6),
                   Text(
-                    // ✅ FIXED: was '\$ ${course.price.toStringAsFixed(2)}'
                     course.price == 0
                         ? 'مجاني'
                         : '${course.price.toStringAsFixed(2)} ر.س',

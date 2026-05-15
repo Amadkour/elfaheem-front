@@ -4,11 +4,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/auth/login_screen.dart';
+import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_theme.dart';
+import '../shared/profile/change_password_widget.dart';
 import 'additional_register_screen.dart';
-import 'change_password_screen.dart';
-
+import 'auth_widgets.dart';
 enum OtpFlowEnum { registration, forget, changePassword }
 
 class OtpVerificationScreen extends StatefulWidget {
@@ -137,7 +138,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
         } else {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (_) => ChangePasswordScreen(email: widget.email),
+              builder: (_) => ChangePasswordScreen(email: widget.email,fromProfile: false,code: _fullOtp,),
             ),
           );
         }
@@ -191,66 +192,73 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: pageDirection,
-      child: Scaffold(
-        backgroundColor: context.colors.background,
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          title: Text('verification'.tr),
-        ),
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 480),
-                child: FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(context.colors.radiusXL),
-                    ),
-                    color: context.colors.cardBg,
-                    child: Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            'enter_verification_code'.tr,
-                            style: context.colors.h1,
+    return BasePage(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: Text('verification'.tr),
+      ),
+      child:  SafeArea(
+          child: Row(
+            children: [
+              if(MediaQuery.of(context).size.width > 800)
+                AuthSidebar(),
+              Expanded(
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 480),
+                      child: FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: Card(
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(context.colors.radiusXL),
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'verification_code_sent'.tr,
-                            style: context.colors.body,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            widget.email,
-                            style:  TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: context.colors.textDark,
+                          color: context.colors.cardBg,
+                          child: Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                ProgressBar(currentStep: 1, totalSteps:3),
+                                const SizedBox(height: 28),
+
+                                Text(
+                                  'enter_verification_code'.tr,
+                                  style: context.colors.h1,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'verification_code_sent'.tr,
+                                  style: context.colors.body,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  widget.email,
+                                  style:  TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: context.colors.textDark,
+                                  ),
+                                ),
+                                const SizedBox(height: 32),
+                                _buildOtpFields(),
+                                const SizedBox(height: 24),
+                                _buildResendRow(),
+                                const SizedBox(height: 32),
+                                _buildConfirmButton(),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 32),
-                          _buildOtpFields(),
-                          const SizedBox(height: 24),
-                          _buildResendRow(),
-                          const SizedBox(height: 32),
-                          _buildConfirmButton(),
-                        ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
         ),
-      ),
     );
   }
 
@@ -295,10 +303,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       bgColor = context.colors.danger.withValues(alpha: 0.05);
     } else if (isFocused) {
       borderColor = context.colors.primary;
-      bgColor = Colors.white;
+      bgColor = context.colors.background;
     } else if (isFilled) {
       borderColor = context.colors.primary.withValues(alpha: 0.5);
-      bgColor = Colors.white;
+      bgColor = context.colors.background;
     } else {
       borderColor = context.colors.divider;
       bgColor = context.colors.inputBg;
@@ -331,14 +339,31 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
           maxLength: 1,
           style:  TextStyle(
             fontSize: 28,
+            height: 2.7,
             fontWeight: FontWeight.w800,
             color: context.colors.textDark,
           ),
-          decoration: const InputDecoration(
+          decoration:  InputDecoration(
+            constraints: BoxConstraints(minHeight: 70),
+            focusColor:  context.colors.background,
             counterText: '',
             border: InputBorder.none,
+            fillColor: context.colors.background,
             contentPadding: EdgeInsets.zero,
+            focusedBorder: OutlineInputBorder(
+                borderSide: BorderSide.none,
+                borderRadius: BorderRadius.circular(context.colors.radiusMedium)
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderSide: BorderSide.none,
+              borderRadius: BorderRadius.circular(context.colors.radiusMedium)
+            ),
+            disabledBorder: OutlineInputBorder(
+                borderSide: BorderSide.none,
+                borderRadius: BorderRadius.circular(context.colors.radiusMedium)
+            ),
           ),
+
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           onChanged: (value) => _onOtpChanged(index, value),
           cursorColor: context.colors.primary,

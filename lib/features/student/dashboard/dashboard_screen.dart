@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/student/dashboard/component/student_home_tab.dart';
 import 'package:flutter_education_app/features/student/dashboard/component/student_schedule_tab.dart';
+import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/app_theme.dart';
 import '../../../config/app_config.dart' as Helpers;
+import '../../../utils/widget/app_network_image.dart';
 import '../../analytics/student/student_analytics_screen.dart';
 import '../../auth/auth_widgets.dart';
 import '../../shared/profile/profile_screen.dart';
+import '../../shared/profile/update_account_widget.dart';
 import '../courses/details/components/app_responsive.dart';
 import '../courses/my_courses/my_courses_screen.dart';
 import '../../notification/notifications_provider.dart';
@@ -24,7 +27,6 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-
   int _currentIndex = 0;
 
   // ── same 5 screens, unchanged ─────────────────────────────────────────────
@@ -54,38 +56,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: Helpers.pageDirection,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final w = constraints.maxWidth;
-          if (w >= 900) {
-            return _WideShell(
-              currentIndex: _currentIndex,
-              onTap: (i) => setState(() => _currentIndex = i),
-              screens: _screens,
-              labels: _labels,
-              icons: _icons,
-              selectedIcons: _selectedIcons,
-            );
-          }
-          if (w >= 600) {
-            return _RailShell(
-              currentIndex: _currentIndex,
-              onTap: (i) => setState(() => _currentIndex = i),
-              screens: _screens,
-              icons: _icons,
-              selectedIcons: _selectedIcons,
-              labels: _labels,
-            );
-          }
-          return _MobileShell(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        if (w >= 900) {
+          return WideShell(
             currentIndex: _currentIndex,
             onTap: (i) => setState(() => _currentIndex = i),
             screens: _screens,
+            labels: _labels,
+            icons: _icons,
+            selectedIcons: _selectedIcons,
           );
-        },
-      ),
+        }
+        if (w >= 600) {
+          return RailShell(
+            currentIndex: _currentIndex,
+            onTap: (i) => setState(() => _currentIndex = i),
+            screens: _screens,
+            icons: _icons,
+            selectedIcons: _selectedIcons,
+            labels: _labels,
+          );
+        }
+        return MobileShell(
+          currentIndex: _currentIndex,
+          onTap: (i) => setState(() => _currentIndex = i),
+          screens: _screens,
+          icons: _icons,
+          selectedIcons: _selectedIcons,
+          labels: _labels,
+        );
+      },
     );
   }
 }
@@ -94,7 +96,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 // WIDE LAYOUT (≥ 900 px) — persistent sidebar + topbar
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _WideShell extends StatelessWidget {
+class WideShell extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
   final List<Widget> screens;
@@ -102,7 +104,8 @@ class _WideShell extends StatelessWidget {
   final List<IconData> icons;
   final List<IconData> selectedIcons;
 
-  const _WideShell({
+  const WideShell({
+    super.key,
     required this.currentIndex,
     required this.onTap,
     required this.screens,
@@ -114,10 +117,9 @@ class _WideShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final unread = context.watch<NotificationsProvider>().unreadCount;
-
-    return Scaffold(
-      backgroundColor: context.colors.background,
-      body: Row(
+    final user = context.watch<AuthProvider>().currentUser;
+    return BasePage(
+      child: Row(
         children: [
           // ── Sidebar 240 px ────────────────────────────────────────────────
           SizedBox(
@@ -128,26 +130,31 @@ class _WideShell extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [Color(0xFF0F3A8F), Color(0xFF1A56C4), Color(0xFF2563EB)],
+                  colors: [
+                    Color(0xFF0F3A8F),
+                    Color(0xFF1A56C4),
+                    Color(0xFF2563EB)
+                  ],
                 ),
               ),
-              child: Stack(children: [
-                // Decorative circles
-                Positioned(
-                  top: -80,
-                  right: -80,
-                  child: Circle(size: 320, opacity: 0.06),
-                ),
-                Positioned(
-                  bottom: -100,
-                  left: -60,
-                  child: Circle(size: 280, opacity: 0.04),
-                ),
-                Positioned(
-                  top: 200,
-                  left: -40,
-                  child: Circle(size: 160, opacity: 0.05),
-                ),
+              child: Stack(
+                children: [
+                  // Decorative circles
+                  Positioned(
+                    top: -80,
+                    right: -80,
+                    child: Circle(size: 320, opacity: 0.06),
+                  ),
+                  Positioned(
+                    bottom: -100,
+                    left: -60,
+                    child: Circle(size: 280, opacity: 0.04),
+                  ),
+                  Positioned(
+                    top: 200,
+                    left: -40,
+                    child: Circle(size: 160, opacity: 0.05),
+                  ),
                   Column(
                     children: [
                       const SizedBox(height: 32),
@@ -161,7 +168,8 @@ class _WideShell extends StatelessWidget {
                               width: 42,
                               height: 42,
                               decoration: BoxDecoration(
-                                color: context.colors.primary.withValues(alpha: 0.3),
+                                color: context.colors.primary
+                                    .withValues(alpha: 0.3),
                                 borderRadius: BorderRadius.circular(13),
                               ),
                               child: const Icon(Icons.school_rounded,
@@ -180,7 +188,8 @@ class _WideShell extends StatelessWidget {
                                 Text('منصة التعلم الذكي',
                                     style: TextStyle(
                                         fontFamily: 'Tajawal',
-                                        color: Colors.white.withValues(alpha: 0.4),
+                                        color:
+                                            Colors.white.withValues(alpha: 0.4),
                                         fontSize: 10)),
                               ],
                             ),
@@ -189,7 +198,8 @@ class _WideShell extends StatelessWidget {
                       ),
                       const SizedBox(height: 28),
                       Divider(
-                          height: 1, color: Colors.white.withValues(alpha: 0.07)),
+                          height: 1,
+                          color: Colors.white.withValues(alpha: 0.07)),
                       const SizedBox(height: 10),
 
                       // Nav items
@@ -205,62 +215,14 @@ class _WideShell extends StatelessWidget {
 
                       const Spacer(),
                       Divider(
-                          height: 1, color: Colors.white.withValues(alpha: 0.07)),
+                          height: 1,
+                          color: Colors.white.withValues(alpha: 0.07)),
                       const SizedBox(height: 14),
-
-                      // User chip at bottom
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(14, 0, 14, 28),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.07),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 34,
-                                height: 34,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border:
-                                      Border.all(color: context.colors.primary, width: 2),
-                                ),
-                                child:  ClipOval(
-                                  child: Icon(Icons.person_rounded,
-                                      size: 18, color: context.colors.primary),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(context.read<AuthProvider>().currentUser?.name??'sir',
-                                    style: TextStyle(
-                                        fontFamily: 'Cairo',
-                                        color: Colors.white.withValues(alpha: 0.9),
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 13),
-                                    overflow: TextOverflow.ellipsis),
-                              ),
-                              if (unread > 0)
-                                Container(
-                                  width: 20,
-                                  height: 20,
-                                  decoration:  BoxDecoration(
-                                      color: context.colors.danger,
-                                      shape: BoxShape.circle),
-                                  child: Center(
-                                      child: Text('$unread',
-                                          style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.w800))),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
+                      if (user != null)
+                        UserChipButton(
+                          user: user,
+                          showLabel: true,
+                        )
                     ],
                   ),
                 ],
@@ -282,6 +244,92 @@ class _WideShell extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class UserChipButton extends StatelessWidget {
+  final UserModel user;
+  final bool showLabel;
+
+  const UserChipButton(
+      {super.key, required this.user, required this.showLabel});
+
+  @override
+  Widget build(BuildContext context) {
+    final name = user.name ?? 'student'.tr;
+    final initial = name.isNotEmpty ? name[0] : '؟';
+    // User chip at bottom
+    return Padding(
+      padding:showLabel?  const EdgeInsets.fromLTRB(14, 0, 14, 10):const EdgeInsets.only(bottom: 10),
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+              context, MaterialPageRoute(builder: (_) => EditAccountScreen()));
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.07),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                gradient: context.colors.primaryGradient,
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: context.read<AuthProvider>().currentUser!.imageUrl != null
+                  ? Container(
+                      width: 35,
+                      height: 35,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: context.colors.primary.withValues(alpha: 0.1),
+                        border: Border.all(
+                            color: context.colors.primaryBlue, width: 2.5),
+                      ),
+                      child: ClipOval(
+                          child: AppNetworkImage(
+                        url:
+                            context.read<AuthProvider>().currentUser!.imageUrl!,
+                        enableFullscreen: false,
+                      )))
+                  : Text(initial,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          fontFamily: 'Cairo')),
+            ),
+            if (showLabel) ...[
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'Cairo'),
+                        overflow: TextOverflow.ellipsis),
+                    Text(user.isTeacher ?? false ? 'teacher'.tr : 'student'.tr,
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.45),
+                            fontSize: 10,
+                            fontFamily: 'Cairo')),
+                  ],
+                ),
+              ),
+            ]
+          ]),
+        ),
       ),
     );
   }
@@ -394,8 +442,8 @@ class _WideTopBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.colors.cardBg,
         border: Border(
-            bottom:
-                BorderSide(color: context.colors.primary.withValues(alpha: 0.08))),
+            bottom: BorderSide(
+                color: context.colors.primary.withValues(alpha: 0.08))),
         boxShadow: [
           BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
@@ -412,7 +460,9 @@ class _WideTopBar extends StatelessWidget {
             onTap: () => Navigator.of(context).pushNamed('/notifications'),
             child: Stack(clipBehavior: Clip.none, children: [
               Icon(Icons.notifications_rounded,
-                  color: unread > 0 ? context.colors.primary : context.colors.textLight,
+                  color: unread > 0
+                      ? context.colors.primary
+                      : context.colors.textLight,
                   size: 24),
               if (unread > 0)
                 Positioned(
@@ -421,28 +471,10 @@ class _WideTopBar extends StatelessWidget {
                   child: Container(
                     width: 11,
                     height: 11,
-                    decoration:  BoxDecoration(
+                    decoration: BoxDecoration(
                         color: context.colors.danger, shape: BoxShape.circle),
                   ),
                 ),
-            ]),
-          ),
-          const SizedBox(width: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(
-              color: context.colors.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(mainAxisSize: MainAxisSize.min, children:  [
-              Icon(Icons.person_rounded, color: context.colors.primary, size: 15),
-              SizedBox(width: 6),
-              Text(context.read<AuthProvider>().currentUser?.name??'',
-                  style: TextStyle(
-                      fontFamily: 'Cairo',
-                      color: context.colors.primary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12)),
             ]),
           ),
         ],
@@ -455,7 +487,7 @@ class _WideTopBar extends StatelessWidget {
 // RAIL LAYOUT (600–899 px) — NavigationRail
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _RailShell extends StatelessWidget {
+class RailShell extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
   final List<Widget> screens;
@@ -463,7 +495,7 @@ class _RailShell extends StatelessWidget {
   final List<IconData> selectedIcons;
   final List<String> labels;
 
-  const _RailShell({
+  const RailShell({
     required this.currentIndex,
     required this.onTap,
     required this.screens,
@@ -476,40 +508,54 @@ class _RailShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final unread = context.watch<NotificationsProvider>().unreadCount;
 
-    return Scaffold(
-      backgroundColor: context.colors.background,
-      body: Row(
+    return BasePage(
+      child: Row(
         children: [
-          NavigationRail(
-            backgroundColor: context.colors.primaryDark,
-            selectedIndex: currentIndex,
-            onDestinationSelected: onTap,
-            minWidth: 66,
-            labelType: NavigationRailLabelType.none,
-            indicatorColor: context.colors.primary.withValues(alpha: 0.35),
-            selectedIconTheme:
-                const IconThemeData(color: Colors.white, size: 23),
-            unselectedIconTheme: IconThemeData(
-                color: Colors.white.withValues(alpha: 0.38), size: 22),
-            leading: Padding(
-              padding: const EdgeInsets.only(top: 24, bottom: 12),
-              child: Icon(Icons.school_rounded,
-                  color: Colors.white.withValues(alpha: 0.75), size: 26),
-            ),
-            destinations: [
-              for (int i = 0; i < labels.length; i++)
-                NavigationRailDestination(
-                  icon: i == 4 && unread > 0
-                      ? Badge(
-                          label: Text('$unread',
-                              style: const TextStyle(fontSize: 9)),
-                          child: Icon(icons[i]),
-                        )
-                      : Icon(icons[i]),
-                  selectedIcon: Icon(selectedIcons[i]),
-                  label: Text(labels[i]),
+          ColoredBox(
+            color:    context.colors.primaryDark,
+            child: Column(
+              children: [
+                Expanded(
+                  child: NavigationRail(
+                    backgroundColor: context.colors.primaryDark,
+                    selectedIndex: currentIndex,
+                    onDestinationSelected: onTap,
+                    minWidth: 66,
+                    labelType: NavigationRailLabelType.none,
+                    indicatorColor:
+                        context.colors.primary.withValues(alpha: 0.35),
+                    selectedIconTheme:
+                        const IconThemeData(color: Colors.white, size: 23),
+                    unselectedIconTheme: IconThemeData(
+                        color: Colors.white.withValues(alpha: 0.38), size: 22),
+                    leading: Padding(
+                      padding: const EdgeInsets.only(top: 24, bottom: 12),
+                      child: Icon(Icons.school_rounded,
+                          color: Colors.white.withValues(alpha: 0.75), size: 26),
+                    ),
+                    destinations: [
+                      for (int i = 0; i < labels.length; i++)
+                        NavigationRailDestination(
+                          icon: i == 4 && unread > 0
+                              ? Badge(
+                                  label: Text('$unread',
+                                      style: const TextStyle(fontSize: 9)),
+                                  child: Icon(icons[i]),
+                                )
+                              : Icon(icons[i]),
+                          selectedIcon: Icon(selectedIcons[i]),
+                          label: Text(labels[i]),
+                        ),
+                    ],
+                  ),
                 ),
-            ],
+                if (context.watch<AuthProvider>().currentUser != null)
+                  UserChipButton(
+                    user: context.watch<AuthProvider>().currentUser!,
+                    showLabel: false,
+                  )
+              ],
+            ),
           ),
           VerticalDivider(
               width: 1, color: Colors.white.withValues(alpha: 0.06)),
@@ -526,81 +572,127 @@ class _RailShell extends StatelessWidget {
 // MOBILE LAYOUT (< 600 px) — original BottomNavigationBar, zero changes
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _MobileShell extends StatelessWidget {
+class MobileShell extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
   final List<Widget> screens;
+  final List<IconData> selectedIcons;
+  final List<IconData> icons;
+  final List<String> labels;
 
-  const _MobileShell(
-      {required this.currentIndex, required this.onTap, required this.screens});
+  const MobileShell(
+      {super.key,
+      required this.currentIndex,
+      required this.onTap,
+      required this.screens,
+      required this.selectedIcons,
+      required this.icons,
+      required this.labels});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: context.colors.background,
-      body: IndexedStack(index: currentIndex, children: screens),
-      bottomNavigationBar: _NavBar(currentIndex: currentIndex, onTap: onTap),
+    return BasePage(
+      bottomNavigationBar: _BottomNav(
+        onSelect: onTap,
+        index: currentIndex,
+        selectedIcons: selectedIcons,
+        icons: icons,
+        labels: labels,
+      ),
+      child: IndexedStack(index: currentIndex, children: screens),
     );
   }
 }
 
-class _NavBar extends StatelessWidget {
-  final int currentIndex;
-  final ValueChanged<int> onTap;
+class _BottomNav extends StatelessWidget {
+  final int index;
+  final ValueChanged<int> onSelect;
+  final List<IconData> selectedIcons;
+  final List<IconData> icons;
+  final List<String> labels;
 
-  const _NavBar({required this.currentIndex, required this.onTap});
+  const _BottomNav(
+      {required this.index,
+      required this.onSelect,
+      required this.selectedIcons,
+      required this.icons,
+      required this.labels});
 
   @override
-  Widget build(BuildContext context) {
-    final unread = context.watch<NotificationsProvider>().unreadCount;
-    return Container(
-      decoration: BoxDecoration(
-          color: context.colors.cardBg, boxShadow: context.colors.bottomNavShadow),
-      child: BottomNavigationBar(
-        currentIndex: currentIndex,
-        onTap: onTap,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: context.colors.cardBg,
-        selectedItemColor: context.colors.primary,
-        unselectedItemColor: context.colors.textLight,
-        showSelectedLabels: false,
-        showUnselectedLabels: false,
-        elevation: 0,
-        items: [
-          const BottomNavigationBarItem(
-              icon: Icon(Icons.home_rounded, size: 26), label: 'الرئيسية'),
-          const BottomNavigationBarItem(
-              icon: Icon(Icons.menu_book_rounded, size: 26), label: 'كورساتي'),
-          const BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_month_rounded, size: 26),
-              label: 'جدولي'),
-          const BottomNavigationBarItem(
-              icon: Icon(Icons.quiz_rounded, size: 26), label: 'اختباراتي'),
-          BottomNavigationBarItem(
-            label: 'حسابي',
-            icon: Stack(clipBehavior: Clip.none, children: [
-              const Icon(Icons.person_rounded, size: 26),
-              if (unread > 0)
-                Positioned(
-                  right: -4,
-                  top: -4,
-                  child: Container(
-                    width: 14,
-                    height: 14,
-                    decoration:  BoxDecoration(
-                        color: context.colors.danger, shape: BoxShape.circle),
-                    child: Center(
-                        child: Text('$unread',
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 8,
-                                fontWeight: FontWeight.w800))),
+  Widget build(BuildContext context) => Container(
+        decoration: BoxDecoration(
+          color: context.colors.cardBg,
+          border: Border(
+              top: BorderSide(
+                  color: Colors.black.withValues(alpha: 0.07), width: 0.5)),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 20,
+                offset: const Offset(0, -4)),
+          ],
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: Row(
+              children: icons.asMap().entries.map((e) {
+                final i = e.key;
+                final p = e.value;
+                final active = i == index;
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () => onSelect(i),
+                    behavior: HitTestBehavior.opaque,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 220),
+                          width: 42,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            gradient:
+                                active ? context.colors.primaryGradient : null,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: active
+                                ? [
+                                    BoxShadow(
+                                        color: context.colors.primaryBlue
+                                            .withValues(alpha: 0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2))
+                                  ]
+                                : null,
+                          ),
+                          child: Icon(
+                            active ? selectedIcons[i] : p,
+                            size: 20,
+                            color: active
+                                ? Colors.white
+                                : context.colors.textLight,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          labels[i],
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight:
+                                active ? FontWeight.w700 : FontWeight.w500,
+                            color: active
+                                ? context.colors.primaryBlue
+                                : context.colors.textLight,
+                            fontFamily: 'Cairo',
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-            ]),
+                );
+              }).toList(),
+            ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      );
 }

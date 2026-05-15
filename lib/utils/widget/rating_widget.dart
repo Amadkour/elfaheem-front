@@ -888,21 +888,26 @@ class _SkeletonState extends State<_Skeleton>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(width: 80, height: 12, color: color,
-                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(6))),
+              Container(width: 80, height: 12,
+                  decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(6))),
               const SizedBox(height: 16),
               Row(
                 children: [
-                  Container(width: 64, height: 64, color: color,
-                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(8))),
+                  Container(width: 64, height: 64,
+                      decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: BorderRadius.circular(8))),
                   const SizedBox(width: 20),
                   Expanded(
                     child: Column(
                       children: List.generate(5, (_) => Padding(
                         padding: const EdgeInsets.symmetric(vertical: 3),
                         child: Container(
-                            height: 6, color: color,
+                            height: 6,
                             decoration: BoxDecoration(
+                                color: color,
                                 borderRadius: BorderRadius.circular(3))),
                       )),
                     ),

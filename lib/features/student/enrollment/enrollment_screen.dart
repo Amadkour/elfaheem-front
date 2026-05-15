@@ -16,6 +16,7 @@ import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/app_network_image.dart';
 import '../../shared/payment/saved_methods_provider.dart';
 import '../../shared/payment/saved_payment_models.dart';
+import '../../shared/profile/course_instractor_profile.dart';
 import '../../student/models.dart';
 import 'enrollment_provider.dart';
 import 'stc_otp_step.dart';
@@ -212,14 +213,8 @@ class _CourseSummaryCard extends StatelessWidget {
                     style: c.h3.copyWith(fontSize: 15),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis),
-                if ((course.teacherName ?? '').isNotEmpty) ...[
-                  const SizedBox(height: 3),
-                  Row(children: [
-                    Icon(Icons.person_rounded, size: 13, color: c.textLight),
-                    const SizedBox(width: 4),
-                    Text(course.teacherName!, style: c.caption),
-                  ]),
-                ],
+                if(course.teacher!=Null)
+                  InstructorAvatar(teacher: course.teacher!, size: 50, canOpen: true,),
                 const SizedBox(height: 10),
                 Row(children: [
                   _PriceBadge(price: course.price),
