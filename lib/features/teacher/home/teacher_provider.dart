@@ -65,7 +65,6 @@ class TeacherProvider extends BaseProvider {
           queryParams: {'skip': skip, 'limit': limit},
         ));
     if (result is List) {
-      print("111111111111111111111111111111111111111111");
 
       _allCourses = result
           .map((e) => TeacherCourse.fromJson(e as Map<String, dynamic>))

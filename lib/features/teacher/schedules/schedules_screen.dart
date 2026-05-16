@@ -1,26 +1,14 @@
-/// schedules/schedules_screen.dart
-///
-/// Provides two things:
-///  1. `ScheduleTabBody` — the full schedule tab used inside both dashboards.
-///  2. `TeacherSchedulesScreen` — manage a single course's weekly slots.
-///
-/// v2 changes:
-///  • Auto-polling removed entirely — a refresh button replaces it.
-///  • Last-updated timestamp shown in the header.
-///  • Animated refresh button with spinning icon while loading.
-///  • Pull-to-refresh still works as a fallback gesture.
-///  • Improved card, banner and empty-state visuals.
 library;
 
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/student/models.dart' show CourseSchedule;
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show TeacherCourse, CourseSchedule;
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../config/app_theme.dart';
 import '../../../utils/widget/app_bar.dart';
+import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/primary_button.dart';
 import 'schedules_provider.dart';
 
@@ -101,11 +89,9 @@ class _ScheduleTabBodyState extends State<ScheduleTabBody>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: context.colors.background,
-        body: SafeArea(child: ListenableBuilder(
+    return BasePage(
+      useWebCard: true,
+      child:  SafeArea(child: ListenableBuilder(
           listenable: widget.provider,
           builder: (_, __) {
             final data        = widget.getData();
@@ -181,7 +167,6 @@ class _ScheduleTabBodyState extends State<ScheduleTabBody>
             );
           },
         )),
-      ),
     );
   }
 }
@@ -234,8 +219,6 @@ class _Header extends StatelessWidget {
             ],
           )),
 
-          // ── Manual refresh button ──────────────────────────────
-          _RefreshButton(isRefreshing: isRefreshing, onTap: onRefresh),
         ]),
       ),
 
@@ -264,82 +247,6 @@ class _Header extends StatelessWidget {
               slot: nextSlot!, ongoingSecondsLeft: ongoingSecondsLeft),
         ),
     ]);
-  }
-}
-
-// ── Animated refresh button ───────────────────────────────────────────────────
-
-class _RefreshButton extends StatefulWidget {
-  final bool         isRefreshing;
-  final VoidCallback onTap;
-  const _RefreshButton({required this.isRefreshing, required this.onTap});
-
-  @override
-  State<_RefreshButton> createState() => _RefreshButtonState();
-}
-
-class _RefreshButtonState extends State<_RefreshButton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 700));
-  }
-
-  @override
-  void didUpdateWidget(_RefreshButton old) {
-    super.didUpdateWidget(old);
-    if (widget.isRefreshing && !_ctrl.isAnimating) {
-      _ctrl.repeat();
-    } else if (!widget.isRefreshing && _ctrl.isAnimating) {
-      _ctrl.stop();
-      _ctrl.animateTo(0, duration: const Duration(milliseconds: 200));
-    }
-  }
-
-  @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: widget.isRefreshing ? null : widget.onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          gradient: widget.isRefreshing ? null : context.colors.primaryGradient,
-          color:    widget.isRefreshing
-              ? context.colors.primary.withValues(alpha: 0.1)
-              : null,
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: widget.isRefreshing ? null : context.colors.primaryShadow,
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          RotationTransition(
-            turns: _ctrl,
-            child: Icon(
-              Icons.refresh_rounded,
-              size: 16,
-              color: widget.isRefreshing ? context.colors.primaryBlue : Colors.white,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            widget.isRefreshing ? 'refreshing'.tr : 'refresh'.tr,
-            style: TextStyle(
-              fontFamily: 'Cairo',
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: widget.isRefreshing ? context.colors.primaryBlue : Colors.white,
-            ),
-          ),
-        ]),
-      ),
-    );
   }
 }
 
@@ -1077,11 +984,10 @@ class _TeacherSchedulesScreenState extends State<TeacherSchedulesScreen> {
   Widget build(BuildContext context) {
 
     final provider = context.watch<TeacherSchedulesProvider>();
-    return Directionality(
-      textDirection: Helpers.pageDirection,
-      child: Scaffold(
-        backgroundColor: context.colors.background,
-        body: SafeArea(child: Column(children: [
+    return BasePage(
+      useWebCard: true,
+      child:
+    SafeArea(child: Column(children: [
           ScreenAppBar(
             title: '${'appointment'.tr}$widget.course.title.tr',
             actions: [_AddBtn(onTap:()=> TeacherSchedulesScreen.openAddScheduleScreenSheet(context))],
@@ -1130,7 +1036,6 @@ class _TeacherSchedulesScreenState extends State<TeacherSchedulesScreen> {
                 : _ManageList(schedules: provider.schedules),
           ),
         ])),
-      ),
     );
   }
 }

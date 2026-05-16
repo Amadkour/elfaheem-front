@@ -18,10 +18,6 @@ import '../schedules/schedules_screen.dart';
 import '../sessions/sessions_screen.dart';
 import 'course_form_screen.dart';
 
-// ═══════════════════════════════════════════════════════════════════════════════
-//  TeacherCoursesScreen
-// ═══════════════════════════════════════════════════════════════════════════════
-
 class TeacherCoursesScreen extends StatefulWidget {
   const TeacherCoursesScreen({super.key});
 
@@ -45,6 +41,7 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: BasePage(
+        useWebCard: true,
         floatingActionButton: isWide ? null : _FloatingAddBtn(),
         child: SafeArea(
           bottom: false,

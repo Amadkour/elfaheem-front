@@ -2,6 +2,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/config/app_theme.dart';
 import '../../../../config/app_config.dart';
@@ -64,18 +65,8 @@ class _HubViewState extends State<_HubView>
     final prov = context.watch<TeacherExamProvider>();
     if (_tab.index != prov.tab) _tab.animateTo(prov.tab);
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: context.colors.background,
-        body: NestedScrollView(
-          headerSliverBuilder: (ctx, _) =>
-              [SliverToBoxAdapter(child: _buildAppBar(ctx))],
-          body: TabBarView(
-            controller: _tab,
-            children: [_buildExamsTab(prov), _buildResultsTab(prov)],
-          ),
-        ),
+    return BasePage(
+      useWebCard: true,
         floatingActionButton: prov.tab == 0
             ? FloatingActionButton.extended(
                 onPressed: () => _showCreateSheet(context),
@@ -88,7 +79,14 @@ class _HubViewState extends State<_HubView>
                         fontWeight: FontWeight.w700)),
               )
             : null,
-      ),
+      child: NestedScrollView(
+          headerSliverBuilder: (ctx, _) =>
+              [SliverToBoxAdapter(child: _buildAppBar(ctx))],
+          body: TabBarView(
+            controller: _tab,
+            children: [_buildExamsTab(prov), _buildResultsTab(prov)],
+          ),
+        ),
     );
   }
 
@@ -151,8 +149,8 @@ class _HubViewState extends State<_HubView>
                 const Spacer(),
                 Expanded(
                   child: Container(
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
+                    decoration:  BoxDecoration(
+                      color: context.colors.background,
                       borderRadius: BorderRadius.vertical(
                         top: Radius.circular(28),
                       ),
@@ -267,12 +265,11 @@ class _HubViewState extends State<_HubView>
     return Column(children: [
       // Summary header
       Container(
-        color: Colors.white,
+        color: context.colors.cardBg,
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+        margin: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Icon(Icons.quiz_rounded, color: context.colors.primary, size: 18),
-            const SizedBox(width: 8),
             Expanded(
               child: Text(prov.selectedExam!.name,
                   style: const TextStyle(
@@ -422,31 +419,18 @@ class _ExamCard extends StatelessWidget {
     required this.onDelete,
     required this.onManageQuestions,
   });
-
-  Color get _statusColor => switch (exam.status) {
-        ExamStatus.active => AppTheme.success,
-        ExamStatus.scheduled => Colors.orange,
-        ExamStatus.ended => Colors.grey,
-        ExamStatus.draft => Colors.blueGrey,
-      };
-
-  String get _statusLabel => switch (exam.status) {
-        ExamStatus.active => 'نشط',
-        ExamStatus.scheduled => 'مجدول',
-        ExamStatus.ended => 'انتهى',
-        ExamStatus.draft => 'مسودة',
-      };
+  
 
   @override
   Widget build(BuildContext context) => Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.colors.cardBg,
           borderRadius: BorderRadius.circular(22),
           border: Border(),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(.3),
+              color: Colors.grey.withValues(alpha:0.3),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -466,7 +450,7 @@ class _ExamCard extends StatelessWidget {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: context.colors.primary.withOpacity(.1),
+                      color: context.colors.primary.withValues(alpha:.1),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Icon(
@@ -502,8 +486,8 @@ class _ExamCard extends StatelessWidget {
                               ),
                               decoration: BoxDecoration(
                                 color: exam.isPublished
-                                    ? Colors.green.withOpacity(.1)
-                                    : Colors.orange.withOpacity(.1),
+                                    ? Colors.green.withValues(alpha:.1)
+                                    : Colors.orange.withValues(alpha:.1),
                                 borderRadius: BorderRadius.circular(30),
                               ),
                               child: Text(
@@ -539,7 +523,7 @@ class _ExamCard extends StatelessWidget {
                 ],
               ),
 
-              const SizedBox(height: 18),
+              const Spacer(),
 
               /// INFO CHIPS
               Wrap(
@@ -571,7 +555,7 @@ class _ExamCard extends StatelessWidget {
                 ],
               ),
 
-              const SizedBox(height: 22),
+              Spacer(),
               Divider(color: AppTheme.textLight.withAlpha(100)),
 
               /// ACTION BUTTONS
@@ -1554,9 +1538,11 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                           ? _Field(
                               ctrl: _passcodeCtrl,
                               label: 'كلمة المرور',
-                              hint: 'EXAM2025',
+                              hint: '123456',
+                              maxLength: 6,
+                              keyboardType: TextInputType.number,
                               validator: _hasPasscode
-                                  ? (v) => v!.isEmpty ? 'مطلوب' : null
+                                  ? (v) => v!.isEmpty ? 'مطلوب' :!RegExp(r'^\d+$').hasMatch(v)?'must be 6 digits only': null
                                   : null)
                           : null,
                     ),
@@ -1965,27 +1951,6 @@ class _StatusBadge extends StatelessWidget {
                 color: color)),
       );
 }
-
-class _Chip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _Chip(this.icon, this.label, this.color);
-
-  @override
-  Widget build(BuildContext context) =>
-      Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 14, color: color),
-        const SizedBox(width: 4),
-        Text(label,
-            style: TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 12,
-                color: Colors.grey.shade700)),
-      ]);
-}
-
 class _MiniStat extends StatelessWidget {
   final String value, label;
   final Color color;
@@ -2012,6 +1977,7 @@ class _Field extends StatelessWidget {
   final TextEditingController ctrl;
   final String label, hint;
   final int maxLines;
+  final int? maxLength;
   final TextInputType? keyboardType;
   final String? Function(String?)? validator;
 
@@ -2020,6 +1986,7 @@ class _Field extends StatelessWidget {
     required this.label,
     required this.hint,
     this.maxLines = 1,
+    this.maxLength,
     this.keyboardType,
     this.validator,
   });
@@ -2028,6 +1995,7 @@ class _Field extends StatelessWidget {
   Widget build(BuildContext context) => TextFormField(
         controller: ctrl,
         maxLines: maxLines,
+        maxLength: maxLength,
         keyboardType: keyboardType,
         textDirection: TextDirection.rtl,
         validator: validator,
@@ -2140,7 +2108,7 @@ class _InfoChip extends StatelessWidget {
         vertical: 10,
       ),
       decoration: BoxDecoration(
-        color: color.withOpacity(.08),
+        color: color.withValues(alpha:.08),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
@@ -2183,7 +2151,7 @@ class _ModernActionBtn extends StatelessWidget {
       child: Ink(
         height: 52,
         decoration: BoxDecoration(
-          color: color.withOpacity(.1),
+          color: color.withValues(alpha:.1),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(

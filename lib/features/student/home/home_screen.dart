@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../config/app_theme.dart';
+import '../../../utils/widget/base_page.dart';
 import '../courses/list/courses_list_screen.dart';
 import 'component/category_row.dart';
 import 'component/course_row.dart';
@@ -42,11 +43,9 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Directionality(
-      textDirection: Helpers.pageDirection,
-      child: Scaffold(
-        backgroundColor: context.colors.background,
-        body: SafeArea(
+    return BasePage(
+      useWebCard: true,
+      child: SafeArea(
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: _kContentMax),
@@ -111,7 +110,6 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
         ),
-      ),
     );
   }
 }

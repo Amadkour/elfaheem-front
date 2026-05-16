@@ -241,7 +241,7 @@
   },
   "sessions": {
     "en": "Sessions",
-    "ar": "الحصص"
+    "ar": "المحاضرات"
   },
   "logout": {
     "en": "Logout",
@@ -437,11 +437,11 @@
   },
   "edit_session": {
     "en": "Edit Session",
-    "ar": "تعديل الحصة"
+    "ar": "تعديل المحاضرة"
   },
   "delete_session": {
     "en": "Delete Session",
-    "ar": "حذف الحصة"
+    "ar": "حذف المحاضرة"
   },
   "attendees": {
     "en": "Attendees",
@@ -461,15 +461,15 @@
   },
   "session_is_live": {
     "en": "Session is live now",
-    "ar": "الحصة تبث الآن"
+    "ar": "المحاضرة تبث الآن"
   },
   "start_live_session": {
     "en": "Start Live Session",
-    "ar": "بدء الحصة المباشرة"
+    "ar": "بدء المحاضرة المباشرة"
   },
   "end_session": {
     "en": "End Session",
-    "ar": "إنهاء الحصة"
+    "ar": "إنهاء المحاضرة"
   },
   "live_room": {
     "en": "Live Room",
@@ -997,7 +997,7 @@
   },
   "next-lesson": {
     "en": "Upcoming Lesson",
-    "ar": " الحصة القادمة"
+    "ar": " المحاضرة القادمة"
   },
   "completed": {
     "en": "Completed",
@@ -1133,7 +1133,7 @@
   },
   "select_session_hint_sub": {
     "en": "Tap a session card above to get started",
-    "ar": "اضغط على إحدى بطاقات الحصص أعلاه للبدء"
+    "ar": "اضغط على إحدى بطاقات المحاضرة أعلاه للبدء"
   },
   "no_sessions_available": {
     "en": "No sessions available",
@@ -1145,7 +1145,7 @@
   },
   "session_number": {
     "en": "Session {number}",
-    "ar": "الحصة {number}"
+    "ar": "المحاضرة {number}"
   },
   "explorer_courses": {
     "en": "Explorer Courses",
@@ -1234,5 +1234,21 @@
   "badge_secure": {
     "en": "Secure & Private",
     "ar": "آمن وخاص"
+  },
+  "sar": {
+    "en": "SAR",
+    "ar": "ريال"
+  },
+  "my_schedule": {
+    "en": "Schedule",
+    "ar": "جدولي"
+  },
+  "analysis": {
+    "en": "Analysis",
+    "ar": "التحليلات"
+  },
+  "my_profile": {
+    "en": "Profile",
+    "ar": "حسابي"
   }
 }

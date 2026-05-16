@@ -1137,7 +1137,7 @@ class _ActionBtnState extends State<_ActionBtn>
             : widget.color.withValues(alpha: 0.09);
 
     final border = widget.outlined
-        ? Border.all(color: widget.color.withOpacity(0.40), width: 1.2)
+        ? Border.all(color: widget.color.withValues(alpha:0.40), width: 1.2)
         : null;
 
     final textColor = widget.filled ? Colors.white : widget.color;
@@ -1161,7 +1161,7 @@ class _ActionBtnState extends State<_ActionBtn>
             boxShadow: widget.filled
                 ? [
                     BoxShadow(
-                      color: widget.color.withOpacity(0.30),
+                      color: widget.color.withValues(alpha:0.30),
                       blurRadius: 12,
                       offset: const Offset(0, 5),
                     ),

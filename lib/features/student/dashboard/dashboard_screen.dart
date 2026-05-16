@@ -1,17 +1,24 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/student/dashboard/component/student_home_tab.dart';
 import 'package:flutter_education_app/features/student/dashboard/component/student_schedule_tab.dart';
+import 'package:flutter_education_app/features/student/home/home_provider.dart';
+import 'package:flutter_education_app/features/teacher/dashboard/teacher_dashboard_screen.dart';
+import 'package:flutter_education_app/features/teacher/schedules/schedules_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/app_theme.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../utils/widget/app_network_image.dart';
+import '../../../utils/widget/refresh_button.dart';
+import '../../analytics/student/student_analytics_provider.dart';
 import '../../analytics/student/student_analytics_screen.dart';
 import '../../auth/auth_widgets.dart';
 import '../../shared/profile/profile_screen.dart';
 import '../../shared/profile/update_account_widget.dart';
 import '../courses/details/components/app_responsive.dart';
+import '../courses/my_courses/my_courses_provider.dart';
 import '../courses/my_courses/my_courses_screen.dart';
 import '../../notification/notifications_provider.dart';
 
@@ -29,31 +36,50 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
 
-  // ── same 5 screens, unchanged ─────────────────────────────────────────────
-  static const List<Widget> _screens = [
-    StudentHomeTab(),
-    MyCoursesScreen(),
-    StudentScheduleTab(),
-    StudentAnalyticsScreen(),
-    ProfileScreen(),
-  ];
+   List<DashboardItem> dashboardItems=[];
 
-  static const _labels = ['الرئيسية', 'كورساتي', 'جدولي', 'اختباراتي', 'حسابي'];
-  static const _icons = [
-    Icons.home_outlined,
-    Icons.menu_book_outlined,
-    Icons.calendar_month_outlined,
-    Icons.quiz_outlined,
-    Icons.person_outline_rounded,
-  ];
-  static const _selectedIcons = [
-    Icons.home_rounded,
-    Icons.menu_book_rounded,
-    Icons.calendar_month_rounded,
-    Icons.quiz_rounded,
-    Icons.person_rounded,
-  ];
-
+  @override
+  void initState() {
+    HomeProvider provider = context.read<HomeProvider>();
+    dashboardItems.clear();
+    dashboardItems.addAll([
+      DashboardItem(
+        CupertinoIcons.home,
+        CupertinoIcons.house_fill,
+        'home',
+      ()async=> provider.init(context),
+        const StudentHomeTab(),
+      ),
+      DashboardItem(
+          CupertinoIcons.book,
+          CupertinoIcons.book_fill,
+          'my_courses',
+          context.read<MyCoursesProvider>().fetchMyEnrollments,
+          const MyCoursesScreen()),
+      DashboardItem(
+        Icons.calendar_month_outlined,
+        Icons.calendar_month_rounded,
+        'my_schedule',
+        context.read<StudentSchedulesProvider>().fetch,
+        const StudentScheduleTab(),
+      ),
+      DashboardItem(
+        Icons.analytics_outlined,
+        Icons.analytics,
+        'analysis',
+        context.read<StudentAnalyticsProvider>().loadCourses,
+        const StudentAnalyticsScreen(),
+      ),
+      DashboardItem(
+        CupertinoIcons.person,
+        CupertinoIcons.person_alt,
+        'my_profile',
+        null,
+        const ProfileScreen(),
+      ),
+    ]);
+    super.initState();
+  }
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -63,29 +89,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
           return WideShell(
             currentIndex: _currentIndex,
             onTap: (i) => setState(() => _currentIndex = i),
-            screens: _screens,
-            labels: _labels,
-            icons: _icons,
-            selectedIcons: _selectedIcons,
+            dashboardItems: dashboardItems,
+
           );
         }
         if (w >= 600) {
           return RailShell(
             currentIndex: _currentIndex,
             onTap: (i) => setState(() => _currentIndex = i),
-            screens: _screens,
-            icons: _icons,
-            selectedIcons: _selectedIcons,
-            labels: _labels,
+            dashboardItems: dashboardItems,
           );
         }
         return MobileShell(
           currentIndex: _currentIndex,
           onTap: (i) => setState(() => _currentIndex = i),
-          screens: _screens,
-          icons: _icons,
-          selectedIcons: _selectedIcons,
-          labels: _labels,
+          dashboardItems: dashboardItems,
+
         );
       },
     );
@@ -99,19 +118,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
 class WideShell extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
-  final List<Widget> screens;
-  final List<String> labels;
-  final List<IconData> icons;
-  final List<IconData> selectedIcons;
+  final List<DashboardItem> dashboardItems;
 
   const WideShell({
     super.key,
     required this.currentIndex,
     required this.onTap,
-    required this.screens,
-    required this.labels,
-    required this.icons,
-    required this.selectedIcons,
+    required this.dashboardItems,
   });
 
   @override
@@ -203,11 +216,11 @@ class WideShell extends StatelessWidget {
                       const SizedBox(height: 10),
 
                       // Nav items
-                      for (int i = 0; i < labels.length; i++)
+                      for (int i = 0; i < dashboardItems.length; i++)
                         _SidebarTile(
-                          icon: icons[i],
-                          selectedIcon: selectedIcons[i],
-                          label: labels[i],
+                          icon: dashboardItems[i].icon,
+                          selectedIcon: dashboardItems[i].selectedIcon,
+                          label: dashboardItems[i].label.tr,
                           selected: currentIndex == i,
                           badge: i == 4 && unread > 0 ? unread : 0,
                           onTap: () => onTap(i),
@@ -235,10 +248,16 @@ class WideShell extends StatelessWidget {
             child: Column(
               children: [
                 // Topbar
-                _WideTopBar(title: labels[currentIndex], unread: unread),
+                _WideTopBar(
+                  title: dashboardItems[currentIndex].label,
+                  unread: unread,
+                  onRefresh: dashboardItems[currentIndex].onRefresh,
+                ),
                 // Screen body — IndexedStack preserves state
                 Expanded(
-                  child: IndexedStack(index: currentIndex, children: screens),
+                  child: IndexedStack(
+                      index: currentIndex,
+                      children: dashboardItems.map((e) => e.screen).toList()),
                 ),
               ],
             ),
@@ -258,11 +277,13 @@ class UserChipButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = user.name ?? 'student'.tr;
+    final name = user.name;
     final initial = name.isNotEmpty ? name[0] : '؟';
     // User chip at bottom
     return Padding(
-      padding:showLabel?  const EdgeInsets.fromLTRB(14, 0, 14, 10):const EdgeInsets.only(bottom: 10),
+      padding: showLabel
+          ? const EdgeInsets.fromLTRB(14, 0, 14, 10)
+          : const EdgeInsets.only(bottom: 10),
       child: InkWell(
         onTap: () {
           Navigator.push(
@@ -319,7 +340,7 @@ class UserChipButton extends StatelessWidget {
                             fontWeight: FontWeight.w700,
                             fontFamily: 'Cairo'),
                         overflow: TextOverflow.ellipsis),
-                    Text(user.isTeacher ?? false ? 'teacher'.tr : 'student'.tr,
+                    Text(user.isTeacher ? 'teacher'.tr : 'student'.tr,
                         style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.45),
                             fontSize: 10,
@@ -432,8 +453,11 @@ class _SidebarTile extends StatelessWidget {
 class _WideTopBar extends StatelessWidget {
   final String title;
   final int unread;
-
-  const _WideTopBar({required this.title, required this.unread});
+  final Future<void> Function()? onRefresh;
+  const _WideTopBar(
+      {required this.title,
+      required this.unread,
+      required this.onRefresh});
 
   @override
   Widget build(BuildContext context) {
@@ -456,6 +480,8 @@ class _WideTopBar extends StatelessWidget {
         children: [
           Text(title, style: context.colors.h2),
           const Spacer(),
+          if (onRefresh != null)
+            RefreshButton(onTap: onRefresh!),
           GestureDetector(
             onTap: () => Navigator.of(context).pushNamed('/notifications'),
             child: Stack(clipBehavior: Clip.none, children: [
@@ -490,29 +516,22 @@ class _WideTopBar extends StatelessWidget {
 class RailShell extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
-  final List<Widget> screens;
-  final List<IconData> icons;
-  final List<IconData> selectedIcons;
-  final List<String> labels;
+  final List<DashboardItem> dashboardItems;
 
   const RailShell({
+    super.key,
     required this.currentIndex,
     required this.onTap,
-    required this.screens,
-    required this.icons,
-    required this.selectedIcons,
-    required this.labels,
+    required this.dashboardItems,
   });
 
   @override
   Widget build(BuildContext context) {
-    final unread = context.watch<NotificationsProvider>().unreadCount;
-
     return BasePage(
       child: Row(
         children: [
           ColoredBox(
-            color:    context.colors.primaryDark,
+            color: context.colors.primaryDark,
             child: Column(
               children: [
                 Expanded(
@@ -531,20 +550,15 @@ class RailShell extends StatelessWidget {
                     leading: Padding(
                       padding: const EdgeInsets.only(top: 24, bottom: 12),
                       child: Icon(Icons.school_rounded,
-                          color: Colors.white.withValues(alpha: 0.75), size: 26),
+                          color: Colors.white.withValues(alpha: 0.75),
+                          size: 26),
                     ),
                     destinations: [
-                      for (int i = 0; i < labels.length; i++)
+                      for (int i = 0; i < dashboardItems.length; i++)
                         NavigationRailDestination(
-                          icon: i == 4 && unread > 0
-                              ? Badge(
-                                  label: Text('$unread',
-                                      style: const TextStyle(fontSize: 9)),
-                                  child: Icon(icons[i]),
-                                )
-                              : Icon(icons[i]),
-                          selectedIcon: Icon(selectedIcons[i]),
-                          label: Text(labels[i]),
+                          icon: Icon(dashboardItems[i].icon),
+                          selectedIcon: Icon(dashboardItems[i].selectedIcon),
+                          label: Text(dashboardItems[i].label.tr),
                         ),
                     ],
                   ),
@@ -560,7 +574,9 @@ class RailShell extends StatelessWidget {
           VerticalDivider(
               width: 1, color: Colors.white.withValues(alpha: 0.06)),
           Expanded(
-            child: IndexedStack(index: currentIndex, children: screens),
+            child: IndexedStack(
+                index: currentIndex,
+                children: dashboardItems.map((e) => e.screen).toList()),
           ),
         ],
       ),
@@ -575,19 +591,14 @@ class RailShell extends StatelessWidget {
 class MobileShell extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
-  final List<Widget> screens;
-  final List<IconData> selectedIcons;
-  final List<IconData> icons;
-  final List<String> labels;
+  final List<DashboardItem> dashboardItems;
 
-  const MobileShell(
-      {super.key,
-      required this.currentIndex,
-      required this.onTap,
-      required this.screens,
-      required this.selectedIcons,
-      required this.icons,
-      required this.labels});
+  const MobileShell({
+    super.key,
+    required this.currentIndex,
+    required this.onTap,
+    required this.dashboardItems,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -595,11 +606,11 @@ class MobileShell extends StatelessWidget {
       bottomNavigationBar: _BottomNav(
         onSelect: onTap,
         index: currentIndex,
-        selectedIcons: selectedIcons,
-        icons: icons,
-        labels: labels,
+        dashboardItems: dashboardItems,
       ),
-      child: IndexedStack(index: currentIndex, children: screens),
+      child: IndexedStack(
+          index: currentIndex,
+          children: dashboardItems.map((e) => e.screen).toList()),
     );
   }
 }
@@ -607,16 +618,13 @@ class MobileShell extends StatelessWidget {
 class _BottomNav extends StatelessWidget {
   final int index;
   final ValueChanged<int> onSelect;
-  final List<IconData> selectedIcons;
-  final List<IconData> icons;
-  final List<String> labels;
+  final List<DashboardItem> dashboardItems;
 
-  const _BottomNav(
-      {required this.index,
-      required this.onSelect,
-      required this.selectedIcons,
-      required this.icons,
-      required this.labels});
+  const _BottomNav({
+    required this.index,
+    required this.onSelect,
+    required this.dashboardItems,
+  });
 
   @override
   Widget build(BuildContext context) => Container(
@@ -636,9 +644,9 @@ class _BottomNav extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             child: Row(
-              children: icons.asMap().entries.map((e) {
+              children: dashboardItems.asMap().entries.map((e) {
                 final i = e.key;
-                final p = e.value;
+                final item = e.value;
                 final active = i == index;
                 return Expanded(
                   child: GestureDetector(
@@ -666,7 +674,7 @@ class _BottomNav extends StatelessWidget {
                                 : null,
                           ),
                           child: Icon(
-                            active ? selectedIcons[i] : p,
+                            active ? item.selectedIcon : item.icon,
                             size: 20,
                             color: active
                                 ? Colors.white
@@ -675,7 +683,7 @@ class _BottomNav extends StatelessWidget {
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          labels[i],
+                          dashboardItems[i].label.tr,
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight:

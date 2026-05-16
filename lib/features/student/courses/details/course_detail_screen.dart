@@ -44,7 +44,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     CourseDetailProvider provider = context.watch<CourseDetailProvider>();
     final isWide = context.showSidebar;
 
-    return  BasePage(child: provider.isLoading
+    return  BasePage(
+      useWebCard: true,
+      maxWith:1000,
+      child: provider.isLoading
             ? Center(
                 child:  SizedBox(
                 width: context.width/5,
@@ -332,6 +335,7 @@ class _CourseHero extends StatelessWidget {
             bottomLeft: Radius.circular(24),
             bottomRight: Radius.circular(24),
           ),
+          heroTag: 'hero-details',
         ),
         Positioned.fill(
           child: DecoratedBox(

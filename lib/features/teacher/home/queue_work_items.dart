@@ -155,7 +155,7 @@ class _QueueHeader extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
             decoration: BoxDecoration(
-              color: context.colors.cardBg,
+              color: context.colors.background,
               border: Border.all(color: context.colors.divider),
               borderRadius: BorderRadius.circular(20),
             ),
@@ -240,7 +240,7 @@ class _SessionCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
       child: Container(
         decoration: BoxDecoration(
-          color: context.colors.cardBg,
+          color: context.colors.background,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isOngoing

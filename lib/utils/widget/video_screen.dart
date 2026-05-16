@@ -206,7 +206,7 @@ class _LiveBadgeState extends State<_LiveBadge>
         decoration: BoxDecoration(
           color: Color.lerp(
             _AppColors.liveGlow,
-            _AppColors.live.withOpacity(0.25),
+            _AppColors.live.withValues(alpha:0.25),
             _pulse.value,
           ),
           borderRadius: BorderRadius.circular(20),
@@ -377,10 +377,10 @@ class _VideoPlayerState extends State<_VideoPlayer> {
                                 overlayRadius: 14),
                             activeTrackColor: _AppColors.accent,
                             inactiveTrackColor:
-                            Colors.white.withOpacity(0.2),
+                            Colors.white.withValues(alpha:0.2),
                             thumbColor: Colors.white,
                             overlayColor:
-                            _AppColors.accent.withOpacity(0.2),
+                            _AppColors.accent.withValues(alpha:0.2),
                           ),
                           child: Slider(
                             value: _controller.value.position.inSeconds
@@ -589,10 +589,10 @@ class _SessionHeader extends StatelessWidget {
               padding:
               const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
               decoration: BoxDecoration(
-                color: _statusColor.withOpacity(0.12),
+                color: _statusColor.withValues(alpha:0.12),
                 borderRadius: BorderRadius.circular(20),
                 border:
-                Border.all(color: _statusColor.withOpacity(0.4)),
+                Border.all(color: _statusColor.withValues(alpha:0.4)),
               ),
               child: Text(
                 _statusLabel.toUpperCase(),
@@ -613,7 +613,7 @@ class _SessionHeader extends StatelessWidget {
                   color: _AppColors.accentGlow,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                      color: _AppColors.accent.withOpacity(0.4)),
+                      color: _AppColors.accent.withValues(alpha:0.4)),
                 ),
                 child: Text(
                   session.type!.toUpperCase(),
@@ -995,12 +995,12 @@ class _PremiumButton extends StatelessWidget {
           border: Border.all(
             color: isPrimary
                 ? Colors.transparent
-                : _AppColors.accent.withOpacity(0.3),
+                : _AppColors.accent.withValues(alpha:0.3),
           ),
           boxShadow: isPrimary
               ? [
             BoxShadow(
-              color: _AppColors.accent.withOpacity(0.35),
+              color: _AppColors.accent.withValues(alpha:0.35),
               blurRadius: 20,
               offset: const Offset(0, 6),
             )

@@ -58,6 +58,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
     final isWide = context.showSidebar;
 
     return BasePage(
+      useWebCard: true,
       child: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),

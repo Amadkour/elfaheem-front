@@ -9,6 +9,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/base_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../category/categories_provider.dart';
@@ -31,7 +32,7 @@ class UpcomingCourse {
   });
 }
 
-class HomeProvider extends ChangeNotifier {
+class HomeProvider extends BaseProvider {
 
   Future<void> init(BuildContext context)async{
     await Future.value([

@@ -1,13 +1,14 @@
 // features/student/analytics/student_analytics_provider.dart
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import '../../../core/base_provider.dart';
 import '../teacher/attendance_model.dart';
 import 'student_attendance_model.dart';
 import 'student_analytics_api.dart';
 
 // ── Hub provider (enrolled courses list) ──────────────────────────────────────
 
-class StudentAnalyticsProvider extends ChangeNotifier {
+class StudentAnalyticsProvider extends BaseProvider {
   final StudentAnalyticsApi _api;
   StudentAnalyticsProvider({StudentAnalyticsApi? api})
       : _api = api ?? StudentAnalyticsApi();

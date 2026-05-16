@@ -5,6 +5,7 @@ import '../../../../config/app_config.dart' as Helpers;
 import '../../../../config/app_theme.dart';
 import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/app_network_image.dart';
+import '../../../../utils/widget/base_page.dart';
 import '../../../shared/profile/course_instractor_profile.dart';
 import '../../models.dart';
 import '../details/components/app_responsive.dart';
@@ -30,11 +31,9 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: Helpers.pageDirection,
-      child: Scaffold(
-        backgroundColor: context.colors.background,
-        body: SafeArea(
+    return BasePage(
+      useWebCard: true,
+      child:SafeArea(
           child: Column(
             children: [
               // Header — mobile uses AppBar, web uses inline title
@@ -66,7 +65,6 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
             ],
           ),
         ),
-      ),
     );
   }
 }

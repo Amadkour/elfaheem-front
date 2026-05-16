@@ -3,8 +3,10 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../../../../config/app_theme.dart';
+import '../../../utils/helpers.dart';
 import '../../teacher/home/teacher_models.dart';
 import '../../teacher/home/teacher_provider.dart';
 import 'exam/teacher_exam_hub_screen.dart';
@@ -14,7 +16,8 @@ class TeacherAnalyticsHubScreen extends StatefulWidget {
   const TeacherAnalyticsHubScreen({super.key});
 
   @override
-  State<TeacherAnalyticsHubScreen> createState() => _TeacherAnalyticsHubScreenState();
+  State<TeacherAnalyticsHubScreen> createState() =>
+      _TeacherAnalyticsHubScreenState();
 }
 
 class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen>
@@ -49,28 +52,25 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen>
             .where((c) => c.title.toLowerCase().contains(_search.toLowerCase()))
             .toList();
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: context.colors.background,
-        body: SafeArea(
-          child: Column(children: [
-            _buildHeader(),
-            _buildSearchBar(),
-            Expanded(
-              child: filtered.isEmpty
-                  ? _buildEmptyState(prov.allCourses.isEmpty)
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: filtered.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 14),
-                      itemBuilder: (_, i) =>
-                          _CourseAnalyticsCard(course: filtered[i]),
-                    ),
-            ),
-          ]),
-        ),
+    return BasePage(
+      useWebCard: true,
+      child: SafeArea(
+        child: Column(children: [
+          _buildHeader(),
+          _buildSearchBar(),
+          Expanded(
+            child: filtered.isEmpty
+                ? _buildEmptyState(prov.allCourses.isEmpty)
+                : ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 14),
+                    itemBuilder: (_, i) =>
+                        _CourseAnalyticsCard(course: filtered[i]),
+                  ),
+          ),
+        ]),
       ),
     );
   }
@@ -82,9 +82,9 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen>
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                 Text('الحضور والاختبارات', style: context.colors.h1),
+                Text('الحضور والاختبارات', style: context.colors.h1),
                 const SizedBox(height: 2),
-                 Text('اختر كورساً لإدارة الحضور أو الاختبارات',
+                Text('اختر كورساً لإدارة الحضور أو الاختبارات',
                     style: context.colors.body),
               ])),
           Container(
@@ -176,14 +176,6 @@ class _CourseAnalyticsCard extends StatelessWidget {
         Container(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
           decoration: BoxDecoration(
-            // gradient: LinearGradient(
-            //   begin: Alignment.topRight,
-            //   end: Alignment.bottomLeft,
-            //   colors: [
-            //     context.colors.primaryBlue.withValues(alpha: 0.06),
-            //     Colors.transparent
-            //   ],
-            // ),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
           ),
           child: Row(children: [
@@ -222,12 +214,10 @@ class _CourseAnalyticsCard extends StatelessWidget {
                     const SizedBox(width: 5),
                     Text("|",
                         style: const TextStyle(
-                        fontFamily: 'Cairo',
-                        fontSize: 12,
-                        color: Colors.grey)
-                    ),
+                            fontFamily: 'Cairo',
+                            fontSize: 12,
+                            color: Colors.grey)),
                     const SizedBox(width: 5),
-
                     const Icon(Icons.video_library_outlined,
                         size: 13, color: Colors.grey),
                     const SizedBox(width: 3),
@@ -279,8 +269,7 @@ class _CourseAnalyticsCard extends StatelessWidget {
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) =>
-                        TeacherExamHubScreen(
+                    builder: (_) => TeacherExamHubScreen(
                       courseId: course.id,
                       courseTitle: course.title,
                     ),

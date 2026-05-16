@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/analytics/student/exam/student_exam_list_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/config/app_theme.dart';
+import '../../../utils/widget/base_page.dart';
 import 'exam/student_exam_provider.dart';
 import 'student_attendance_model.dart';
 import 'student_analytics_provider.dart';
@@ -47,18 +48,16 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView>
     super.build(context);
     final prov = context.watch<StudentAnalyticsProvider>();
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: context.colors.background,
-        body: SafeArea(
+    return BasePage(
+      useWebCard: true,
+      child: SafeArea(
           child: Column(children: [
             _buildHeader(prov),
             _buildSearchBar(prov),
             Expanded(child: _buildBody(prov)),
           ]),
         ),
-      ),
+
     );
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/analytics/student/exam/student_exam_detail_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -32,7 +33,7 @@ class ExamPasscodeSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withOpacity(0.6),
+      barrierColor: Colors.black.withValues(alpha: 0.6),
       builder: (_) => ExamPasscodeSheet(
         exam: exam,
         correctPasscode: correctPasscode,
@@ -58,7 +59,7 @@ class _ExamPasscodeSheetState extends State<ExamPasscodeSheet>
     duration: const Duration(milliseconds: 480),
   );
   late final Animation<double> _shakeAnim =
-  Tween<double>(begin: 0, end: 1).animate(
+      Tween<double>(begin: 0, end: 1).animate(
     CurvedAnimation(parent: _shakeCtrl, curve: Curves.elasticOut),
   );
 
@@ -92,7 +93,7 @@ class _ExamPasscodeSheetState extends State<ExamPasscodeSheet>
 
   void _onDelete() {
     if (_entered.isEmpty || _isChecking) return;
-    HapticFeedback.selectionClick();
+    // HapticFeedback.selectionClick();
     setState(() => _entered = _entered.substring(0, _entered.length - 1));
   }
 
@@ -127,6 +128,8 @@ class _ExamPasscodeSheetState extends State<ExamPasscodeSheet>
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
 
     return Container(
+      width: context.width > 500 ? 500 : context.width,
+      height: context.height/1.5,
       decoration: const BoxDecoration(
         color: _surfaceColor,
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
@@ -140,7 +143,7 @@ class _ExamPasscodeSheetState extends State<ExamPasscodeSheet>
             _buildHandle(),
             _buildHeader(),
             const SizedBox(height: 32),
-            _buildDots(),
+            Expanded(child: _buildDots()),
             _buildErrorLabel(),
             const SizedBox(height: 36),
             _buildKeypad(),
@@ -152,76 +155,76 @@ class _ExamPasscodeSheetState extends State<ExamPasscodeSheet>
   }
 
   Widget _buildHandle() => Container(
-    margin: const EdgeInsets.only(top: 14, bottom: 4),
-    width: 40,
-    height: 4,
-    decoration: BoxDecoration(
-      color: const Color(0xFF3A3A4A),
-      borderRadius: BorderRadius.circular(2),
-    ),
-  );
+        margin: const EdgeInsets.only(top: 14, bottom: 4),
+        width: 40,
+        height: 4,
+        decoration: BoxDecoration(
+          color: const Color(0xFF3A3A4A),
+          borderRadius: BorderRadius.circular(2),
+        ),
+      );
 
   Widget _buildHeader() => Padding(
-    padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-    child: Column(
-      children: [
-        // Icon badge
-        Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              colors: [_accentGold, Color(0xFF8B6914)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: _accentGold.withOpacity(0.35),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+        child: Column(
+          children: [
+            // Icon badge
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  colors: [_accentGold, Color(0xFF8B6914)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: _accentGold.withValues(alpha: 0.35),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: const Icon(
-            Icons.lock_outline_rounded,
-            color: _bgColor,
-            size: 28,
-          ),
+              child: const Icon(
+                Icons.lock_outline_rounded,
+                color: _bgColor,
+                size: 28,
+              ),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'Exam Passcode',
+              style: TextStyle(
+                color: _textPrimary,
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
+                fontFamily: 'Georgia', // elegant serif fallback
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Enter the 6-digit code provided\nby your instructor to begin.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: _textSecondary,
+                fontSize: 14,
+                height: 1.55,
+                letterSpacing: 0.1,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 18),
-        const Text(
-          'Exam Passcode',
-          style: TextStyle(
-            color: _textPrimary,
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.3,
-            fontFamily: 'Georgia', // elegant serif fallback
-          ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Enter the 6-digit code provided\nby your instructor to begin.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: _textSecondary,
-            fontSize: 14,
-            height: 1.55,
-            letterSpacing: 0.1,
-          ),
-        ),
-      ],
-    ),
-  );
+      );
 
   Widget _buildDots() {
     return AnimatedBuilder(
       animation: _shakeAnim,
       builder: (context, child) {
         final dx = _hasError
-            ? 12 * (0.5 - (_shakeAnim.value % 0.25) / 0.25).abs() * 2 - 1
+            ? 5 * (0.5 - (_shakeAnim.value % 0.25) / 0.25).abs() * 2 - 1
             : 0.0;
         return Transform.translate(
           offset: Offset(dx * 8, 0),
@@ -232,9 +235,7 @@ class _ExamPasscodeSheetState extends State<ExamPasscodeSheet>
         mainAxisAlignment: MainAxisAlignment.center,
         children: List.generate(_pinLength, (i) {
           final filled = i < _entered.length;
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutBack,
+          return Container(
             margin: const EdgeInsets.symmetric(horizontal: 7),
             width: filled ? 16 : 14,
             height: filled ? 16 : 14,
@@ -243,12 +244,12 @@ class _ExamPasscodeSheetState extends State<ExamPasscodeSheet>
               color: _hasError ? _errorRed : (filled ? _dotFilled : _dotEmpty),
               boxShadow: filled && !_hasError
                   ? [
-                BoxShadow(
-                  color: _accentGold.withOpacity(0.5),
-                  blurRadius: 10,
-                  spreadRadius: 1,
-                )
-              ]
+                      BoxShadow(
+                        color: _accentGold.withValues(alpha: 0.5),
+                        blurRadius: 10,
+                        spreadRadius: 1,
+                      )
+                    ]
                   : null,
             ),
           );
@@ -281,23 +282,26 @@ class _ExamPasscodeSheetState extends State<ExamPasscodeSheet>
       ['1', '2', '3'],
       ['4', '5', '6'],
       ['7', '8', '9'],
-      ['', '0', 'del'],
+      ['x', '0', 'del'],
     ];
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32),
       child: Column(
         children: keys.map((row) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
+          return  Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: row.map((key) {
-                if (key.isEmpty) return const SizedBox(width: 80, height: 64);
-                if (key == 'del') return _buildDeleteKey();
-                return _buildDigitKey(key);
+                return Expanded(
+                    child:Padding(
+                    padding: const EdgeInsets.all(5),
+                    child: (key=='x')
+                        ? _buildCloseKey()
+                        : (key == 'del')
+                            ? _buildDeleteKey()
+                            : _buildDigitKey(key)));
               }).toList(),
-            ),
+
           );
         }).toList(),
       ),
@@ -329,15 +333,26 @@ class _ExamPasscodeSheetState extends State<ExamPasscodeSheet>
       ),
     );
   }
+  Widget _buildCloseKey() {
+    return _KeyButton(
+      onTap: ()=>Navigator.pop(context),
+      background: Colors.red.shade400,
+      child: const Icon(
+      Icons.clear,
+      color: Colors.white,
+      size: 22,
+    ),
+    );
+  }
 }
 
 // ── reusable key button ────────────────────────────────────────────────────────
 class _KeyButton extends StatefulWidget {
-  const _KeyButton({required this.child, required this.onTap});
+  const _KeyButton({required this.child, required this.onTap, this.background});
 
   final Widget child;
   final VoidCallback onTap;
-
+  final Color? background;
   @override
   State<_KeyButton> createState() => _KeyButtonState();
 }
@@ -371,10 +386,10 @@ class _KeyButtonState extends State<_KeyButton>
       child: GestureDetector(
         onTap: _press,
         child: Container(
-          width: 80,
+          width: 64,
           height: 64,
           decoration: BoxDecoration(
-            color: const Color(0xFF1E1E2C),
+            color: widget.background?? const Color(0xFF1E1E2C),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: const Color(0xFF2E2E40), width: 1),
             boxShadow: const [

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../config/app_theme.dart';
+import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/rating_widget.dart';
 import '../../shared/session/session_material_widget.dart';
 import '../../student/models.dart';
@@ -69,11 +70,9 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: Helpers.pageDirection,
-      child: Scaffold(
-        backgroundColor: context.colors.background,
-        body: SafeArea(
+    return BasePage(
+      useWebCard: true,
+      child: SafeArea(
           child: _SessionsList(
             course: _course,
             onAdd: _openAddSheet,
@@ -81,7 +80,6 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
             onRefreshCourse: _refreshCourse,
           ),
         ),
-      ),
     );
   }
 }

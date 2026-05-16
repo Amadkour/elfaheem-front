@@ -47,12 +47,10 @@ class AppNetworkImage extends StatelessWidget {
       errorBuilder: (_, __, ___) => Container(
         width: width,
         height: height,
-        color: context.colors.cardBg,
+        color:color ?? context.colors.cardBg,
         child: Center(
           child: Image.asset(
             'assets/images/logo.png',
-            height: height,
-            width: width,
             fit: fit,
           ),
         ),
@@ -280,7 +278,7 @@ class _FullscreenImageViewerState extends State<_FullscreenImageViewer>
     return AnimatedBuilder(
       animation: _bgAnimController,
       builder: (_, child) => Scaffold(
-        backgroundColor: Colors.black.withOpacity(opacity),
+        backgroundColor: Colors.black.withValues(alpha:opacity),
         body: Stack(
           children: [
             // ── Background tap to dismiss ────────────────────────
@@ -439,8 +437,8 @@ class _GlassButton extends StatelessWidget {
         height: 40,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors.black.withOpacity(0.45),
-          border: Border.all(color: Colors.white.withOpacity(0.15)),
+          color: Colors.black.withValues(alpha:0.45),
+          border: Border.all(color: Colors.white.withValues(alpha:0.15)),
         ),
         child: Center(child: child),
       ),
@@ -457,9 +455,9 @@ class _ZoomPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.5),
+        color: Colors.black.withValues(alpha:0.5),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.15)),
+        border: Border.all(color: Colors.white.withValues(alpha:0.15)),
       ),
       child: Text(
         '${scale.toStringAsFixed(1)}×',

@@ -142,17 +142,17 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
               Positioned(
                 top: -30,
                 right: -30,
-                child: _Circle(size: 160, color: Colors.white.withOpacity(.06)),
+                child: _Circle(size: 160, color: Colors.white.withValues(alpha:.06)),
               ),
               Positioned(
                 bottom: 10,
                 left: -20,
-                child: _Circle(size: 120, color: Colors.white.withOpacity(.05)),
+                child: _Circle(size: 120, color: Colors.white.withValues(alpha:.05)),
               ),
               Positioned(
                 top: 40,
                 right: 80,
-                child: _Circle(size: 60, color: _primaryLight.withOpacity(.2)),
+                child: _Circle(size: 60, color: _primaryLight.withValues(alpha:.2)),
               ),
               // Content
               Padding(
@@ -167,10 +167,10 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(.18),
+                        color: Colors.white.withValues(alpha:.18),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                            color: Colors.white.withOpacity(.3), width: 1),
+                            color: Colors.white.withValues(alpha:.3), width: 1),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -280,11 +280,11 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: _primary.withOpacity(.08),
+            color: _primary.withValues(alpha:.08),
             shape: BoxShape.circle,
           ),
           child:
-          Icon(Icons.touch_app_rounded, size: 48, color: _primary.withOpacity(.5)),
+          Icon(Icons.touch_app_rounded, size: 48, color: _primary.withValues(alpha:.5)),
         ),
         const SizedBox(height: 16),
         Text(
@@ -315,11 +315,11 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: _danger.withOpacity(.08),
+            color: _danger.withValues(alpha:.08),
             shape: BoxShape.circle,
           ),
           child: Icon(Icons.wifi_off_rounded,
-              size: 44, color: _danger.withOpacity(.7)),
+              size: 44, color: _danger.withValues(alpha:.7)),
         ),
         const SizedBox(height: 16),
         Text(
@@ -463,7 +463,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(.06),
+            color: Colors.black.withValues(alpha:.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -565,7 +565,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
         color: _cardBg,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(.08),
+            color: Colors.black.withValues(alpha:.08),
             blurRadius: 16,
             offset: const Offset(0, -4),
           ),
@@ -701,10 +701,10 @@ class _GlassButton extends StatelessWidget {
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(.2),
+            color: Colors.white.withValues(alpha:.2),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-                color: Colors.white.withOpacity(.3), width: 1),
+                color: Colors.white.withValues(alpha:.3), width: 1),
           ),
           child: Icon(icon, color: Colors.white, size: 18),
         ),
@@ -758,7 +758,7 @@ class _SessionFlag extends StatelessWidget {
           boxShadow: isSelected
               ? [
             BoxShadow(
-              color: primaryColor.withOpacity(.35),
+              color: primaryColor.withValues(alpha:.35),
               blurRadius: 12,
               offset: const Offset(0, 4),
             )
@@ -775,8 +775,8 @@ class _SessionFlag extends StatelessWidget {
               height: 28,
               decoration: BoxDecoration(
                 color: isSelected
-                    ? Colors.white.withOpacity(.25)
-                    : primaryColor.withOpacity(.1),
+                    ? Colors.white.withValues(alpha:.25)
+                    : primaryColor.withValues(alpha:.1),
                 shape: BoxShape.circle,
               ),
               child: Center(
@@ -840,7 +840,7 @@ class _PremiumStatCard extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color:
-            gradient.colors.first.withOpacity(.3),
+            gradient.colors.first.withValues(alpha:.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -852,7 +852,7 @@ class _PremiumStatCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(.2),
+              color: Colors.white.withValues(alpha:.2),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon,
@@ -873,7 +873,7 @@ class _PremiumStatCard extends StatelessWidget {
             style: TextStyle(
               fontFamily: 'Cairo',
               fontSize: 10,
-              color: Colors.white.withOpacity(.85),
+              color: Colors.white.withValues(alpha:.85),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -918,10 +918,10 @@ class _PremiumStudentTile extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-            color: statusColor.withOpacity(.2), width: 1.5),
+            color: statusColor.withValues(alpha:.2), width: 1.5),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(.04),
+              color: Colors.black.withValues(alpha:.04),
               blurRadius: 10,
               offset: const Offset(0, 3))
         ],
@@ -934,7 +934,7 @@ class _PremiumStudentTile extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 24,
-              backgroundColor: statusColor.withOpacity(.1),
+              backgroundColor: statusColor.withValues(alpha:.1),
               backgroundImage: student.imageUrl != null
                   ? NetworkImage(student.imageUrl!)
                   : null,
@@ -988,7 +988,7 @@ class _PremiumStudentTile extends StatelessWidget {
               padding: const EdgeInsets.symmetric(
                   horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: statusColor.withOpacity(.1),
+                color: statusColor.withValues(alpha:.1),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
@@ -1038,9 +1038,9 @@ class _QuickActionBtn extends StatelessWidget {
       padding: const EdgeInsets.symmetric(
           horizontal: 12, vertical: 14),
       decoration: BoxDecoration(
-        color: color.withOpacity(.08),
+        color: color.withValues(alpha:.08),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(.3)),
+        border: Border.all(color: color.withValues(alpha:.3)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

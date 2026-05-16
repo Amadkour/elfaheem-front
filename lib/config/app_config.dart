@@ -7,7 +7,7 @@ import 'package:timeago/timeago.dart' as timeago;
 
 /// Application configuration and context.colors.
 class AppConfig {
-  static const String baseUrl = 'https://cooper-boss-sunset-courage.trycloudflare.com';
+  static const String baseUrl = 'https://presented-palace-embedded-tunes.trycloudflare.com';
   static String lang = 'ar';
 
 }
