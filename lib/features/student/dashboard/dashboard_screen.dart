@@ -88,7 +88,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (w >= 900) {
           return WideShell(
             currentIndex: _currentIndex,
-            onTap: (i) => setState(() => _currentIndex = i),
+            onTap: (i) { if(mounted) setState(() => _currentIndex = i);},
             dashboardItems: dashboardItems,
 
           );
@@ -96,13 +96,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (w >= 600) {
           return RailShell(
             currentIndex: _currentIndex,
-            onTap: (i) => setState(() => _currentIndex = i),
+            onTap: (i) { if(mounted) setState(() => _currentIndex = i);},
             dashboardItems: dashboardItems,
           );
         }
         return MobileShell(
           currentIndex: _currentIndex,
-          onTap: (i) => setState(() => _currentIndex = i),
+          onTap: (i) { if(mounted) setState(() => _currentIndex = i);},
           dashboardItems: dashboardItems,
 
         );
@@ -319,7 +319,9 @@ class UserChipButton extends StatelessWidget {
                         url:
                             context.read<AuthProvider>().currentUser!.imageUrl!,
                         enableFullscreen: false,
-                      )))
+                            heroTag: "user_logo-dashboard",
+
+                          )))
                   : Text(initial,
                       style: const TextStyle(
                           color: Colors.white,

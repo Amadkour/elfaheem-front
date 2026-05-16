@@ -61,7 +61,9 @@ class CategoryModel {
 class CategoriesProvider extends BaseProvider {
   final ApiClient _api;
 
-  CategoriesProvider({ApiClient? api}) : _api = api ?? ApiClient();
+  CategoriesProvider({ApiClient? api}) : _api = api ?? ApiClient(){
+    fetchCategories();
+  }
 
   // ── State ────────────────────────────────────────────────────────────────────
 

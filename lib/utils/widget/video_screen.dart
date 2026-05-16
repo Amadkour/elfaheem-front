@@ -279,7 +279,7 @@ class _VideoPlayerState extends State<_VideoPlayer> {
   }
 
   void _toggleControls() {
-    setState(() => _showControls = !_showControls);
+    if(mounted) setState(() => _showControls = !_showControls);
   }
 
   String _formatDuration(Duration d) {
@@ -785,7 +785,7 @@ class _DescriptionCardState extends State<_DescriptionCard> {
         ),
         const SizedBox(height: 6),
         GestureDetector(
-          onTap: () => setState(() => _expanded = !_expanded),
+          onTap: () { if(mounted) setState(() => _expanded = !_expanded);},
           child: Text(
             _expanded ? 'Show less' : 'Show more',
             style: const TextStyle(

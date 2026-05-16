@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 
 import '../../../config/app_theme.dart';
 import '../../../core/api_client.dart';
+import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/primary_menue.dart';
 import '../../../utils/widget/text_field.dart';
 import '../home/teacher_models.dart';
@@ -204,11 +205,9 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     final canSave = (_hasChanges || provider.listsChanged) &&
         _titleCtrl.text.trim().isNotEmpty;
 
-    return Directionality(
-      textDirection: pageDirection,
-      child: Scaffold(
-        backgroundColor: context.colors.background,
-        body: FadeTransition(
+    return BasePage(
+      useWebCard: true,
+      child: FadeTransition(
           opacity: _fadeAnim,
           child: Column(children: [
             // ── Gradient hero header ───────────────────────────────────────
@@ -377,7 +376,6 @@ class _CourseFormInnerState extends State<_CourseFormInner>
             ),
           ]),
         ),
-      ),
     );
   }
 }

@@ -7,6 +7,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/profile/setting_group.dart';
+import 'package:flutter_education_app/features/teacher/home/teacher_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
@@ -37,8 +38,8 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _TeacherProfileScreenState extends State<ProfileScreen> {
-  Future<void> _push(Widget screen) async =>
-      await Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+  Future<void> _push(Widget screen) async => await Navigator.of(context)
+      .push(MaterialPageRoute(builder: (_) => screen));
 
   @override
   void initState() {
@@ -47,8 +48,11 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
     });
     super.initState();
   }
-  void _refresh(BuildContext context){
-     context.read<ProfileProvider>().initData(context.read<AuthProvider>().currentUser);
+
+  void _refresh(BuildContext context) {
+    context
+        .read<ProfileProvider>()
+        .initData(context.read<AuthProvider>().currentUser);
   }
 
   @override
@@ -94,10 +98,10 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                           iconColor: c.primary,
                           label: 'update_account'.tr,
                           onTap: () async {
-                          await  _push(const EditAccountScreen());
-                          if(context.mounted) {
-                            _refresh(context);
-                          }
+                            await _push(const EditAccountScreen());
+                            if (context.mounted) {
+                              _refresh(context);
+                            }
                           },
                         ),
                         SettingsTile(
@@ -108,12 +112,25 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                           onTap: () => _push(const ChangePasswordScreen()),
                         ),
                         if (context.read<AuthProvider>().isTeacher)
+                          SettingsTile(
+                            icon: Icons.lock_rounded,
+                            iconBg: c.accentTint,
+                            iconColor: c.accent,
+                            label: 'payments'.tr,
+                            onTap: () => _push(const TeacherEarningsScreen()),
+                          ),
+                        // if(context.read<TeacherProvider>().stats.teacher!=null)
                         SettingsTile(
                           icon: Icons.lock_rounded,
                           iconBg: c.accentTint,
                           iconColor: c.accent,
-                          label: 'payments'.tr,
-                          onTap: () => _push(const TeacherEarningsScreen()),
+                          label: 'teacher_profile'.tr,
+                          onTap: () => _push(InstructorProfileScreen(
+                            teacher:
+                                context.read<TeacherProvider>().stats.teacher!,
+                            studentView: false,
+                            stats: context.read<TeacherProvider>().stats,
+                          )),
                         ),
                         SettingsTile(
                           icon: Icons.account_balance_wallet_rounded,
@@ -213,50 +230,50 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
 
                   // ── Logout ───────────────────────────────────────────────
                   GestureDetector(
-                      onTap: () async {
-                        final ok = await Helpers.confirmLogout(context);
-                        if (ok == true && context.mounted) {
-                          await context.read<ProfileProvider>().logout(context);
-                        }
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 18, vertical: 16),
-                          decoration: BoxDecoration(
-                            color: c.dangerTint,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Row(children: [
-                            Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: context.colors.danger
-                                    .withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(11),
-                              ),
-                              child: Icon(Icons.logout_rounded,
-                                  size: 18, color: context.colors.danger),
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              'log-out'.tr,
-                              style: TextStyle(
-                                fontFamily: 'Cairo',
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
-                                color: context.colors.danger,
-                              ),
-                            ),
-                            const Spacer(),
-                            Icon(Icons.chevron_right_rounded,
-                                color: context.colors.danger, size: 20),
-                          ]),
+                    onTap: () async {
+                      final ok = await Helpers.confirmLogout(context);
+                      if (ok == true && context.mounted) {
+                        await context.read<ProfileProvider>().logout(context);
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 18, vertical: 16),
+                        decoration: BoxDecoration(
+                          color: c.dangerTint,
+                          borderRadius: BorderRadius.circular(16),
                         ),
+                        child: Row(children: [
+                          Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color:
+                                  context.colors.danger.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(11),
+                            ),
+                            child: Icon(Icons.logout_rounded,
+                                size: 18, color: context.colors.danger),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'log-out'.tr,
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              color: context.colors.danger,
+                            ),
+                          ),
+                          const Spacer(),
+                          Icon(Icons.chevron_right_rounded,
+                              color: context.colors.danger, size: 20),
+                        ]),
                       ),
                     ),
+                  ),
                   const SizedBox(height: 40),
                 ],
               ),
@@ -434,9 +451,8 @@ class ChangeLanguageScreen extends StatelessWidget {
                         duration: const Duration(milliseconds: 200),
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: isSelected
-                              ? Colors.white
-                              : context.colors.cardBg,
+                          color:
+                              isSelected ? Colors.white : context.colors.cardBg,
                           borderRadius: BorderRadius.circular(
                               context.colors.radiusMedium),
                           border: Border.all(
@@ -458,7 +474,8 @@ class ChangeLanguageScreen extends StatelessWidget {
                                       fontSize: 15)),
                               if (isSelected)
                                 Icon(Icons.check_circle_rounded,
-                                    color: context.colors.primaryBlue, size: 22),
+                                    color: context.colors.primaryBlue,
+                                    size: 22),
                             ]),
                       ),
                     ),
@@ -522,7 +539,6 @@ class FavouriteCoursesScreen extends StatelessWidget {
   }
 }
 
-
 class _FavCourseCard extends StatelessWidget {
   final CourseModel course;
 
@@ -532,14 +548,13 @@ class _FavCourseCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(
-            builder: (_) => CourseDetailScreen(course: course)),
+        MaterialPageRoute(builder: (_) => CourseDetailScreen(course: course)),
       ),
       child: Container(
         decoration: BoxDecoration(
-          color:        context.colors.cardBg,
+          color: context.colors.cardBg,
           borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-          boxShadow:    context.colors.cardShadow,
+          boxShadow: context.colors.cardShadow,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -548,10 +563,11 @@ class _FavCourseCard extends StatelessWidget {
             Stack(
               children: [
                 AppNetworkImage(
-                  url:    course.imageUrl,
+                  url: course.imageUrl,
+                  heroTag: "course-favorite-${course.id}",
                   height: 110,
                   borderRadius: BorderRadius.only(
-                    topLeft:  Radius.circular(context.colors.radiusMedium),
+                    topLeft: Radius.circular(context.colors.radiusMedium),
                     topRight: Radius.circular(context.colors.radiusMedium),
                   ),
                 ),
@@ -566,14 +582,17 @@ class _FavCourseCard extends StatelessWidget {
                 children: [
                   Text(
                     course.title,
-                    style:    context.colors.h3.copyWith(fontSize: 13),
+                    style: context.colors.h3.copyWith(fontSize: 13),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
-                  if(course.teacher!=Null)
-                  InstructorAvatar(teacher: course.teacher!, size: 50, canOpen: true,),
-
+                  if (course.teacher != Null)
+                    InstructorAvatar(
+                      teacher: course.teacher!,
+                      size: 50,
+                      canOpen: true,
+                    ),
                   const SizedBox(height: 6),
                   Text(
                     course.price == 0
@@ -628,10 +647,10 @@ class _SupportScreenState extends State<SupportScreen> {
 
   Future<void> _send() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _sending = true);
+    if (mounted) setState(() => _sending = true);
     await Future.delayed(const Duration(seconds: 1));
     if (mounted) {
-      setState(() => _sending = false);
+      if (mounted) setState(() => _sending = false);
       ScaffoldMessenger.of(context).showSnackBar(
           _snack('تم إرسال رسالتك بنجاح', context.colors.success));
       _messageCtrl.clear();
@@ -853,8 +872,8 @@ class ProfileHeader extends StatelessWidget {
           alignment: Alignment.bottomLeft,
           children: [
             Container(
-              width: context.height/8,
-              height: context.height/8,
+              width: context.height / 8,
+              height: context.height / 8,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: context.colors.primary.withValues(alpha: 0.1),
@@ -862,7 +881,12 @@ class ProfileHeader extends StatelessWidget {
                     Border.all(color: context.colors.primaryBlue, width: 2.5),
               ),
               child: provider.imageUrl.isNotEmpty
-                  ? ClipOval(child: AppNetworkImage(url: provider.imageUrl))
+                  ? ClipOval(
+                      child: AppNetworkImage(
+                        url: provider.imageUrl,
+                        heroTag: "profile-user-${provider.id}",
+                      ),
+                    )
                   : Icon(Icons.person_rounded,
                       size: 52, color: context.colors.primaryBlue),
             ),

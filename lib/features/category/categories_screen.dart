@@ -123,6 +123,8 @@ class _CategoryGrid extends StatelessWidget {
                   padding: const EdgeInsets.all(8),
                   color: isSelected ? context.colors.primary : context.colors.cardBg,
                   borderRadius: BorderRadius.circular(30),
+                  heroTag: "category-profile-${cat.id}",
+
                 ),
               ),
               Expanded(
@@ -218,6 +220,8 @@ class _SmallCourseCard extends StatelessWidget {
               width: 72,
               height: 72,
               borderRadius: BorderRadius.circular(12),
+              heroTag: "category-course-${course.id}",
+
             ),
             const SizedBox(width: 12),
             Expanded(

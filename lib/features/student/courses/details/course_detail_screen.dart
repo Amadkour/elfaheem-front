@@ -335,7 +335,7 @@ class _CourseHero extends StatelessWidget {
             bottomLeft: Radius.circular(24),
             bottomRight: Radius.circular(24),
           ),
-          heroTag: 'hero-details',
+          heroTag: "course-profile-${c.id}",
         ),
         Positioned.fill(
           child: DecoratedBox(

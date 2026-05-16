@@ -64,7 +64,7 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _readParams();
       _ctrl.forward();
-      setState(() => _ready = true);
+      if(mounted) setState(() => _ready = true);
     });
   }
 

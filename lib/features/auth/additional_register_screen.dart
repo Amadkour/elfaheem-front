@@ -28,10 +28,6 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
 
   @override
   void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await context.read<AuthProvider>().loadSpecialization(context);
-    });
   }
 
   @override

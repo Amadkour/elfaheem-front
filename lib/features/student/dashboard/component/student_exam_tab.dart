@@ -76,7 +76,7 @@ class _StudentExamsTabState extends State<StudentExamsTab>
         ));
         break;
       }
-      if (mounted) setState(() => _upcoming = list);
+      if (mounted) if(mounted) setState(() => _upcoming = list);
     } catch (_) {}
   }
 

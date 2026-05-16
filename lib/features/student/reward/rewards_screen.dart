@@ -173,6 +173,8 @@ class _CourseCircle extends StatelessWidget {
             child: AppNetworkImage(
               url: course.imageUrl as String,
               fit: BoxFit.cover,
+              heroTag: "reward-screen-${course.id}",
+
             ),
           ),
         ),

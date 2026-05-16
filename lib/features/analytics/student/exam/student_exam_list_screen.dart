@@ -418,7 +418,7 @@ class _DeadlineChipState extends State<_DeadlineChip> {
     _remaining = widget.endDate.difference(DateTime.now());
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
-      setState(() => _remaining = widget.endDate.difference(DateTime.now()));
+      if(mounted) setState(() => _remaining = widget.endDate.difference(DateTime.now()));
     });
   }
 

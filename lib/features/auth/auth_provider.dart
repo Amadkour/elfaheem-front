@@ -73,6 +73,7 @@ class AuthProvider extends BaseProvider {
     // Restore the user from disk immediately so role/isTeacher are ready
     // before the first frame is drawn — no async gap, no null user.
     _loadCachedUser();
+
   }
 
   Future<void> loadSpecialization(BuildContext context) async {
@@ -390,7 +391,7 @@ class AuthProvider extends BaseProvider {
     selectedSpecialization = specializations[i];
     notifyListeners();
   }
-
+  Map<String,dynamic> getSpecializationById(String id)=>specializations.firstWhere((e)=>e['id']==id);
   // ── Internal helpers ──────────────────────────────────────────────────────────
 
   Future<void> _persistTokens(Map<dynamic, dynamic> data) async {

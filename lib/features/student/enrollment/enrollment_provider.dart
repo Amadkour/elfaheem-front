@@ -500,7 +500,7 @@ class _MobileCheckoutPageState extends State<MobileCheckoutPage> {
       ..setJavaScriptMode(JavaScriptMode.unrestricted) // fine on iOS/Android
       ..setNavigationDelegate(NavigationDelegate(
         onPageFinished: (_) {
-          if (mounted) setState(() => _loading = false);
+          if (mounted) if(mounted) setState(() => _loading = false);
         },
         onNavigationRequest: (req) {
           if (req.url.contains(_callbackMarker)) {

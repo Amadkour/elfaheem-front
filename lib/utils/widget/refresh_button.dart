@@ -42,18 +42,17 @@ class _RefreshButtonState extends State<RefreshButton>
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: isRefreshing ? null :()
+      onTap:isRefreshing ? null :()
     async {
       setState(() {
         isRefreshing=true;
       });
       await widget.onTap.call();
       setState(() {
-        isRefreshing=false;
+       isRefreshing=false;
       });
       },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+      child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           gradient: isRefreshing ? null : context.colors.primaryGradient,

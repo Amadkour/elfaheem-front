@@ -881,7 +881,7 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _submitting = true);
+    if(mounted) setState(() => _submitting = true);
     final duration =
         int.tryParse(_durCtrl.text.trim()) ?? widget.session.durationMinutes;
     final sessionId = await context.read<TeacherProvider>().createSession(

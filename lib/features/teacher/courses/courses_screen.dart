@@ -537,6 +537,8 @@ class _CourseCardState extends State<_CourseCard> {
                   url: c.imageUrl,
                   width: double.infinity,
                   borderRadius: BorderRadius.zero,
+                  heroTag: "courses-screen-${c.id}",
+
                 ),
               ),
             ],
@@ -573,7 +575,7 @@ class _CourseCardState extends State<_CourseCard> {
           // ── Expand toggle ────────────────────────────────────────────
 
           InkWell(
-            onTap: () => setState(() => _expanded = !_expanded),
+            onTap: () { if(mounted) setState(() => _expanded = !_expanded);},
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               child: Row(

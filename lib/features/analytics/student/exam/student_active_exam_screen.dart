@@ -24,11 +24,11 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
 
   Future<void> _enter() async {
     if (_needsPasscode && _passcodeCtrl.text.trim().isEmpty) {
-      setState(() => _error = 'يرجى إدخال كلمة المرور');
+      if(mounted) setState(() => _error = 'يرجى إدخال كلمة المرور');
       return;
     }
     if (_needsPasscode && _passcodeCtrl.text.trim() != widget.exam.passcode) {
-      setState(() => _error = 'كلمة المرور غير صحيحة');
+      if(mounted) setState(() => _error = 'كلمة المرور غير صحيحة');
       return;
     }
 
@@ -309,7 +309,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
       if (_secondsLeft <= 0) {
         _submitExam();
       } else {
-        setState(() => _secondsLeft--);
+        if(mounted) setState(() => _secondsLeft--);
       }
     });
   }
@@ -361,11 +361,11 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
   }
 
   void _next() {
-    if (_current < widget.questions.length - 1) setState(() => _current++);
+    if (_current < widget.questions.length - 1) if(mounted) setState(() => _current++);
   }
 
   void _prev() {
-    if (_current > 0) setState(() => _current--);
+    if (_current > 0) if(mounted) setState(() => _current--);
   }
 
   String get _timerDisplay {
@@ -522,7 +522,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                         final opt = opts[i];
                         final selected = _answers[_current] == opt;
                         return GestureDetector(
-                          onTap: () => setState(() => _answers[_current] = opt),
+                          onTap: () { if(mounted) setState(() => _answers[_current] = opt);},
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 180),
                             margin: const EdgeInsets.only(bottom: 10),
@@ -617,7 +617,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                         final answered = _answers[i] != null;
                         final isCurrent = i == _current;
                         return GestureDetector(
-                          onTap: () => setState(() => _current = i),
+                          onTap: () { if(mounted) setState(() => _current = i);},
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 150),
                             width: 34,
@@ -1016,7 +1016,7 @@ class _CountdownBannerState extends State<_CountdownBanner> {
   void _update() {
     if (!mounted) return;
     final r = widget.target.difference(DateTime.now());
-    setState(() => _remaining = r.isNegative ? Duration.zero : r);
+    if(mounted) setState(() => _remaining = r.isNegative ? Duration.zero : r);
   }
 
   @override

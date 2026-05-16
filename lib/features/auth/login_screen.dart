@@ -132,6 +132,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   url: '',
                   width: 100,
                   height: 100,
+                  heroTag: "logo-login",
+
                 ),
                 LangDropdown(),
 

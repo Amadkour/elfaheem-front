@@ -91,7 +91,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
   // ── Save ──────────────────────────────────────────────────────────────────
   Future<void> _save() async {
     if (!_isChanged || _saving) return;
-    setState(() => _saving = true);
+    if(mounted) setState(() => _saving = true);
 
     try {
       // 1. Upload image first (if changed)
@@ -129,7 +129,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
     } catch (e) {
       if (mounted) _showSnack(e.toString(), context.colors.danger);
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) if(mounted) setState(() => _saving = false);
     }
   }
 

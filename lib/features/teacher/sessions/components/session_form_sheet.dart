@@ -77,7 +77,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
       ),
     );
     if (time == null || !mounted) return;
-    setState(() => _scheduled =
+    if(mounted) setState(() => _scheduled =
         DateTime(date.year, date.month, date.day, time.hour, time.minute));
   }
 
@@ -209,7 +209,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
               // Type selector
               _TypeSelector(
                 selected: _type,
-                onChanged: (t) => setState(() => _type = t),
+                onChanged: (t) { if(mounted) setState(() => _type = t);},
               ),
 
               const SizedBox(height: 14),

@@ -94,11 +94,11 @@ class _ExamPasscodeSheetState extends State<ExamPasscodeSheet>
   void _onDelete() {
     if (_entered.isEmpty || _isChecking) return;
     // HapticFeedback.selectionClick();
-    setState(() => _entered = _entered.substring(0, _entered.length - 1));
+    if(mounted) if(mounted) setState(() => _entered = _entered.substring(0, _entered.length - 1));
   }
 
   Future<void> _verify() async {
-    setState(() => _isChecking = true);
+    if(mounted) if(mounted) setState(() => _isChecking = true);
     // Slight delay so the last dot animates in before we react
     await Future.delayed(const Duration(milliseconds: 300));
 

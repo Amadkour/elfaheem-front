@@ -1069,7 +1069,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
   }
 
   void _addOption() {
-    setState(() => _optionCtrls.add(TextEditingController()));
+    if(mounted) if(mounted) setState(() => _optionCtrls.add(TextEditingController()));
   }
 
   void _removeOption(int i) {
@@ -1409,7 +1409,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
     final t =
         await showTimePicker(context: context, initialTime: TimeOfDay.now());
     if (t == null) return;
-    setState(() =>
+    if(mounted) if(mounted) setState(() =>
         _scheduleDate = DateTime(d.year, d.month, d.day, t.hour, t.minute));
   }
 
@@ -1423,7 +1423,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
     final t = await showTimePicker(
         context: context, initialTime: const TimeOfDay(hour: 23, minute: 59));
     if (t == null) return;
-    setState(() =>
+    if(mounted) if(mounted) setState(() =>
         _deadlineDate = DateTime(d.year, d.month, d.day, t.hour, t.minute));
   }
 
@@ -1533,7 +1533,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                       icon: Icons.lock_outline_rounded,
                       label: 'كلمة مرور للاختبار',
                       value: _hasPasscode,
-                      onChanged: (v) => setState(() => _hasPasscode = v),
+                      onChanged: (v) {if(mounted) if(mounted) setState(() => _hasPasscode = v);},
                       child: _hasPasscode
                           ? _Field(
                               ctrl: _passcodeCtrl,
@@ -1551,7 +1551,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                       icon: Icons.schedule_rounded,
                       label: 'جدولة وقت محدد',
                       value: _hasSchedule,
-                      onChanged: (v) => setState(() => _hasSchedule = v),
+                      onChanged: (v) { if(mounted) if(mounted) setState(() => _hasSchedule = v);},
                       child: _hasSchedule
                           ? GestureDetector(
                               onTap: _pickDate,
@@ -1589,7 +1589,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                       icon: Icons.hourglass_bottom_rounded,
                       label: 'موعد نهائي للتسليم',
                       value: _hasDeadline,
-                      onChanged: (v) => setState(() => _hasDeadline = v),
+                      onChanged: (v) { if(mounted) if(mounted) setState(() => _hasDeadline = v);},
                       child: _hasDeadline
                           ? GestureDetector(
                               onTap: _pickDeadline,
@@ -1627,7 +1627,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                       icon: Icons.repeat_rounded,
                       label: 'تحديد عدد مرات التقديم',
                       value: _hasMaxSubmissions,
-                      onChanged: (v) => setState(() => _hasMaxSubmissions = v),
+                      onChanged: (v) { if(mounted) if(mounted) setState(() => _hasMaxSubmissions = v);},
                       child: _hasMaxSubmissions
                           ? _Field(
                               ctrl: _maxSubmissionsCtrl,

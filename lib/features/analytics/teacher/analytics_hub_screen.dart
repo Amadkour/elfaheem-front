@@ -115,7 +115,7 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen>
                     icon: const Icon(Icons.close, color: Colors.grey, size: 18),
                     onPressed: () {
                       _searchCtrl.clear();
-                      setState(() => _search = '');
+                      if(mounted) setState(() => _search = '');
                     })
                 : null,
             filled: true,
@@ -126,7 +126,7 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen>
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
           ),
-          onChanged: (v) => setState(() => _search = v),
+          onChanged: (v) {if(mounted) setState(() => _search = v);},
         ),
       );
 

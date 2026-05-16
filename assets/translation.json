@@ -147,6 +147,10 @@
     "en": "Record",
     "ar": "مسجل"
   },
+  "recorded": {
+    "en": "Record",
+    "ar": "مسجل"
+  },
   "live": {
     "en": "Live",
     "ar": "بث مباشر"
@@ -1250,5 +1254,29 @@
   "my_profile": {
     "en": "Profile",
     "ar": "حسابي"
+  },
+  "materials_rate": {
+    "en": "Materials Rate",
+    "ar": "تقيم المحتوي"
+  },
+  "course_rate": {
+    "en": "Courses Rate",
+    "ar": "تقيم الدورات"
+  },
+  "teacher_rate": {
+    "en": "Teacher Rate",
+    "ar": "تقيم المدرس"
+  },
+  "course_count": {
+    "en": "Courses count",
+    "ar": "عدد الدورات"
+  },
+  "overall_rate": {
+    "en": "Overall Rate",
+    "ar": "التقيم العام"
+  },
+  "total_count": {
+    "en": "Total Count",
+    "ar": "اجمالي الاشتراكات"
   }
 }

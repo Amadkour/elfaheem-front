@@ -60,7 +60,7 @@ class _TeacherSessionCardState extends State<SessionMaterialCard>
   }
 
   void _toggle() {
-    setState(() => _expanded = !_expanded);
+    if(mounted) setState(() => _expanded = !_expanded);
     if (_expanded) {
       _ctrl.forward();
       if (context
@@ -878,7 +878,7 @@ class _AddMaterialSheetState extends State<_AddMaterialSheet> {
           const SizedBox(height: 16),
           _ModeToggle(
             selected: _mode,
-            onChanged: (v) => setState(() => _mode = v),
+            onChanged: (v) { if(mounted) setState(() => _mode = v);},
           ),
           const SizedBox(height: 16),
           if (_mode == 0) ...[
@@ -888,7 +888,7 @@ class _AddMaterialSheetState extends State<_AddMaterialSheet> {
               final sel = i == _fileTypeIdx;
               return Expanded(
                 child: GestureDetector(
-                  onTap: () => setState(() => _fileTypeIdx = i),
+                  onTap: () { if(mounted) setState(() => _fileTypeIdx = i);},
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
                     margin: EdgeInsets.only(
@@ -1011,7 +1011,7 @@ class _AddMaterialSheetState extends State<_AddMaterialSheet> {
       withData: true,
     );
     if (result != null && result.files.isNotEmpty) {
-      setState(() => _pickedFile = result.files.first);
+      if(mounted) setState(() => _pickedFile = result.files.first);
       if (_nameCtrl.text.isEmpty) {
         _nameCtrl.text = _pickedFile!.name.replaceAll(RegExp(r'\.[^.]+$'), '');
       }
@@ -1026,7 +1026,7 @@ class _AddMaterialSheetState extends State<_AddMaterialSheet> {
     }
 
     final prov = context.read<TeacherSessionsProvider>();
-    setState(() => _saving = true);
+    if(mounted) setState(() => _saving = true);
 
     try {
       if (_mode == 0) {
@@ -1063,7 +1063,7 @@ class _AddMaterialSheetState extends State<_AddMaterialSheet> {
       }
       if (mounted) Navigator.pop(context);
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) if(mounted) setState(() => _saving = false);
     }
   }
 

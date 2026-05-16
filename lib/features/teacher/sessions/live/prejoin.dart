@@ -334,7 +334,7 @@ class _PreJoinPageState extends State<PreJoinPage>
       if (!context.mounted) return;
       await context.showErrorDialog(error);
     } finally {
-      setState(() => _busy = false);
+      if(mounted) setState(() => _busy = false);
     }
   }
 

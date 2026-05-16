@@ -48,9 +48,9 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen>
     final prov = context.read<StudentExamProvider>();
     final ok = await prov.startExam(widget.exam);
     if (!mounted) return;
-    setState(() => _starting = false);
+    if(mounted) if(mounted) setState(() => _starting = false);
     if (!ok) {
-      setState(() => _entryError = prov.questionsError ?? 'تعذّر تحميل الأسئلة');
+      if(mounted) if(mounted) setState(() => _entryError = prov.questionsError ?? 'تعذّر تحميل الأسئلة');
       return;
     }
     Navigator.pushReplacement(
@@ -610,7 +610,7 @@ class _CountdownCardState extends State<_CountdownCard> {
   void _tick() {
     if (!mounted) return;
     final r = widget.target.difference(DateTime.now());
-    setState(() => _remaining = r.isNegative ? Duration.zero : r);
+    if(mounted) if(mounted) setState(() => _remaining = r.isNegative ? Duration.zero : r);
   }
 
   @override

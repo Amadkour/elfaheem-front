@@ -202,6 +202,8 @@ class _CourseSummaryCard extends StatelessWidget {
               url: course.imageUrl,
               width: 76,
               height: 76,
+              heroTag: "course-enrollment-${course.id}",
+
             ),
           ),
           const SizedBox(width: 14),
@@ -219,7 +221,7 @@ class _CourseSummaryCard extends StatelessWidget {
                 Row(children: [
                   _PriceBadge(price: course.price),
                   const SizedBox(width: 8),
-                  _TypeTag(type: course.type ?? ''),
+                  _TypeTag(type: course.type),
                 ]),
               ],
             ),
@@ -384,7 +386,7 @@ class _SavedMethodPickerState extends State<_SavedMethodPicker> {
           title: e.value.displayTitle,
           subtitle: '${e.value.cardBrand?.feeLabel ?? ''} رسوم المعالجة',
           badge: e.value.isDefault ? 'افتراضية' : null,
-          onTap: () { setState(() => _sel = e.key); enrollP.selectSavedCard(e.value); },
+          onTap: () { if(mounted) setState(() => _sel = e.key); enrollP.selectSavedCard(e.value); },
         )),
 
         // STC Pay
@@ -394,7 +396,7 @@ class _SavedMethodPickerState extends State<_SavedMethodPicker> {
           iconColor: _kStcColor,
           title: 'STC Pay',
           subtitle: '2.5% + 1 ر.س رسوم',
-          onTap: () { setState(() => _sel = -3); enrollP.selectStcPay(); },
+          onTap: () { if(mounted) setState(() => _sel = -3); enrollP.selectStcPay(); },
           customBadge: _StcBadge(),
         ),
 
@@ -405,7 +407,7 @@ class _SavedMethodPickerState extends State<_SavedMethodPicker> {
           iconColor: _kBankColor,
           title: 'تحويل بنكي',
           subtitle: 'بدون رسوم · مراجعة خلال 24 ساعة',
-          onTap: () { setState(() => _sel = -1); enrollP.selectBankTransfer(); },
+          onTap: () { if(mounted) setState(() => _sel = -1); enrollP.selectBankTransfer(); },
         ),
 
         // New card
@@ -415,7 +417,7 @@ class _SavedMethodPickerState extends State<_SavedMethodPicker> {
           iconColor: _kNewCardColor,
           title: 'بطاقة ائتمانية / مدى جديدة',
           subtitle: 'مدى · فيزا · ماستركارد · PCI-DSS',
-          onTap: () { setState(() => _sel = -2); enrollP.selectNewCard(); },
+          onTap: () { if(mounted) setState(() => _sel = -2); enrollP.selectNewCard(); },
           customBadge: _SecureBadge(),
         ),
       ],
@@ -622,7 +624,7 @@ class _FeeBreakdownCardState extends State<_FeeBreakdownCard> {
           // Header / toggle
           InkWell(
             borderRadius: BorderRadius.circular(20),
-            onTap: () => setState(() => _expanded = !_expanded),
+            onTap: () { if(mounted) setState(() => _expanded = !_expanded);},
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               child: Row(children: [
@@ -815,8 +817,8 @@ class _StcMobileStepState extends State<_StcMobileStep> {
 
   Future<void> _submit() async {
     final m = _ctrl.text.trim();
-    if (m.length < 9) { setState(() => _err = 'أدخل رقم جوال صحيح'); return; }
-    setState(() => _err = null);
+    if (m.length < 9) { if(mounted) setState(() => _err = 'أدخل رقم جوال صحيح'); return; }
+    if(mounted) setState(() => _err = null);
     await context.read<EnrollmentProvider>().initStcPay(m, context);
   }
 
@@ -1318,9 +1320,9 @@ class _BankTileState extends State<_BankTile> {
   Future<void> _copy() async {
     await Clipboard.setData(ClipboardData(text: widget.value));
     HapticFeedback.lightImpact();
-    setState(() => _copied = true);
+    if(mounted) setState(() => _copied = true);
     await Future.delayed(const Duration(seconds: 2));
-    if (mounted) setState(() => _copied = false);
+    if (mounted) if(mounted) setState(() => _copied = false);
   }
 
   @override

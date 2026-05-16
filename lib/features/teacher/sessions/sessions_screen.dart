@@ -41,7 +41,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
     final updated =
         await context.read<TeacherProvider>().fetchCourseById(widget.course.id);
     if (updated != null && mounted) {
-      setState(() => _course = updated);
+      if(mounted) setState(() => _course = updated);
     }
   }
 
@@ -313,7 +313,7 @@ class _DetailCardState extends State<_DetailCard>
   }
 
   void _toggle() {
-    setState(() => _expanded = !_expanded);
+    if(mounted) setState(() => _expanded = !_expanded);
     _expanded ? _ctrl.forward() : _ctrl.reverse();
   }
 

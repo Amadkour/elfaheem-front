@@ -1,18 +1,3 @@
-// teacher_earnings_screen.dart
-// ─────────────────────────────────────────────────────────────────────────────
-// Teacher Earnings & Withdrawal Screen
-// — Real API calls wired to all backend endpoints
-// — Fully themed via context.colors / AppTheme
-// — RTL / Arabic ready (Tajawal font, Directionality.rtl)
-//
-// DEPENDENCIES (pubspec.yaml):
-//   dio: ^5.x
-//   intl: ^0.19.x
-//
-// BASE_URL: change _ApiService.baseUrl to your server root.
-// AUTH TOKEN: call _ApiService.setToken(token) right after login.
-// ─────────────────────────────────────────────────────────────────────────────
-
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -712,9 +697,9 @@ class _EarningsTabState extends State<_EarningsTab>
   }
 
   Future<void> _loadMore() async {
-    setState(() => _loadingMore = true);
+    if(mounted) setState(() => _loadingMore = true);
     await _fetch(reset: false);
-    if (mounted) setState(() => _loadingMore = false);
+    if (mounted) if(mounted) setState(() => _loadingMore = false);
   }
 
   Future<void> _fetch({required bool reset}) async {
@@ -763,7 +748,7 @@ class _EarningsTabState extends State<_EarningsTab>
               label: f.$2,
               selected: _filter == f.$1,
               onTap: () {
-                setState(() => _filter = f.$1);
+                if(mounted) setState(() => _filter = f.$1);
                 _loadFirst();
               },
             ),
@@ -1247,7 +1232,7 @@ class _BankAccountsTabState extends State<_BankAccountsTab>
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (_) => _AddBankSheet(onAdded: (a) {
-      setState(() => _accounts.insert(0, a));
+      if(mounted) setState(() => _accounts.insert(0, a));
     }),
   );
 }
@@ -1370,7 +1355,7 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
         _loadingAccounts = false;
       });
     }).catchError((_) {
-      if (mounted) setState(() => _loadingAccounts = false);
+      if (mounted) if(mounted) setState(() => _loadingAccounts = false);
     });
   }
 
@@ -1383,7 +1368,7 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
 
   void _setAmount(double v) {
     final clamped = v.clamp(0.0, widget.maxAmount);
-    setState(() => _sliderValue = clamped);
+    if(mounted) setState(() => _sliderValue = clamped);
     _amountCtrl.text = clamped.toStringAsFixed(2);
   }
 
@@ -1393,7 +1378,7 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
       _snack('يرجى اختيار حساب بنكي', isError: true);
       return;
     }
-    setState(() => _submitting = true);
+    if(mounted) setState(() => _submitting = true);
     try {
       await _ApiService.requestWithdrawal(
         amount: double.parse(_amountCtrl.text),
@@ -1407,7 +1392,7 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
       if (!mounted) return;
       _snack(_dioMsg(e), isError: true);
     } finally {
-      if (mounted) setState(() => _submitting = false);
+      if (mounted) if(mounted) setState(() => _submitting = false);
     }
   }
 
@@ -1482,7 +1467,7 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
                 onChanged: (v) {
                   final d = double.tryParse(v) ?? 0;
                   if (d <= widget.maxAmount) {
-                    setState(() => _sliderValue = d);
+                    if(mounted) setState(() => _sliderValue = d);
                   }
                 },
               ),
@@ -1542,8 +1527,8 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
                 )
               else
                 ..._accounts.map((a) => GestureDetector(
-                  onTap: () =>
-                      setState(() => _selectedId = a.id),
+                  onTap: () {
+                      if(mounted) setState(() => _selectedId = a.id);},
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
                     margin: const EdgeInsets.only(bottom: 10),
@@ -1654,7 +1639,7 @@ class _AddBankSheetState extends State<_AddBankSheet> {
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    setState(() => _saving = true);
+    if(mounted) setState(() => _saving = true);
     try {
       final account = await _ApiService.addBankAccount(
         bankName: _bankCtrl.text.trim(),
@@ -1679,7 +1664,7 @@ class _AddBankSheetState extends State<_AddBankSheet> {
             BorderRadius.circular(AppTheme.radiusMedium)),
       ));
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) if(mounted) setState(() => _saving = false);
     }
   }
 
@@ -1752,8 +1737,8 @@ class _AddBankSheetState extends State<_AddBankSheet> {
               Row(children: [
                 Checkbox(
                     value: _isDefault,
-                    onChanged: (v) =>
-                        setState(() => _isDefault = v ?? false)),
+                    onChanged: (v) {
+                        if(mounted) setState(() => _isDefault = v ?? false);}),
                 const SizedBox(width: 8),
                 Text('تعيين كحساب افتراضي', style: c.bodyBold),
               ]),

@@ -50,13 +50,15 @@ class BasePage extends StatelessWidget {
             child: Container(
                 width:  Helpers.calculateRemainingWidth(context,maxWith: maxWith),
                 margin: EdgeInsets.symmetric(vertical: 10),
-                padding: const EdgeInsets.all(20.0),
+                padding: const EdgeInsets.all(0.0),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(context.colors.radiusXL),
                   color: context.colors.cardBg,
 
                 ),
-                child: w),
+                child: ClipRRect(
+                  borderRadius: BorderRadiusGeometry.circular(context.colors.radiusXL),
+                    child: w)),
           ),
         ],
       );

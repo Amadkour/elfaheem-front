@@ -79,12 +79,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
 
   void _startResendTimer() {
     _resendTimer?.cancel();
-    setState(() => _remainingSeconds = resendSeconds);
+    if(mounted) if(mounted) setState(() => _remainingSeconds = resendSeconds);
     _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_remainingSeconds <= 0) {
         timer.cancel();
       } else {
-        setState(() => _remainingSeconds--);
+        if(mounted) if(mounted) setState(() => _remainingSeconds--);
       }
     });
   }
@@ -100,7 +100,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   bool get _isOtpComplete => _fullOtp.length == otpLength;
 
   void _onOtpChanged(int index, String value) {
-    setState(() => _hasError = false);
+    if(mounted) if(mounted) setState(() => _hasError = false);
     if (value.isNotEmpty && index < otpLength - 1) {
       _focusNodes[index + 1].requestFocus();
     } else if (value.isEmpty && index > 0) {
@@ -120,11 +120,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
 
   Future<void> _onConfirm() async {
     if (_isOtpComplete) {
-      setState(() => _isLoading = true);
+      if(mounted) if(mounted) setState(() => _isLoading = true);
       final success = await context
           .read<AuthProvider>()
           .verifyOtp(gmail: widget.email, code: _fullOtp);
-      setState(() => _isLoading = false);
+      if(mounted) if(mounted) setState(() => _isLoading = false);
 
       if (success && mounted) {
         if (widget.flow == OtpFlowEnum.registration) {
@@ -143,7 +143,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
           );
         }
       } else if (mounted) {
-        setState(() => _hasError = true);
+        if(mounted) if(mounted) setState(() => _hasError = true);
         _shakeController.forward(from: 0);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -161,7 +161,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     for (final c in _controllers) {
       c.clear();
     }
-    setState(() => _hasError = false);
+    if(mounted) if(mounted) setState(() => _hasError = false);
     _startResendTimer();
     _focusNodes[0].requestFocus();
     final success = await context.read<AuthProvider>().resendOtp(widget.email);

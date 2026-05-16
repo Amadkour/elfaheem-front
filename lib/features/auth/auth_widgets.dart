@@ -379,7 +379,7 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
             ),
             suffixIcon: GestureDetector(
               onTap: () {
-                setState(() => _obscure = !_obscure);
+                if(mounted) if(mounted) setState(() => _obscure = !_obscure);
                 widget.onToggle?.call();
               },
               child: Icon(

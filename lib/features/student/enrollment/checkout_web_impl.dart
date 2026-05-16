@@ -54,7 +54,7 @@ class IFrameCheckoutPageState extends State<IFrameCheckoutPage> {
       ..style.height = '100%'
       ..allow = 'payment'          // required for payment APIs inside iframe
       ..onLoad.listen((_) {
-        if (mounted) setState(() => _loading = false);
+        if (mounted) if(mounted) setState(() => _loading = false);
       });
 
     // Register the iframe as a Flutter platform view (web only)

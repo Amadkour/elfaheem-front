@@ -22,14 +22,6 @@ class MyCoursesScreen extends StatefulWidget {
 
 class _MyCoursesScreenState extends State<MyCoursesScreen> {
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<MyCoursesProvider>().fetchMyEnrollments();
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     return BasePage(
       useWebCard: true,
@@ -413,6 +405,8 @@ class _EnrolledCard extends StatelessWidget {
                       width: 88,
                       height: 88,
                       borderRadius: BorderRadius.circular(14),
+                      heroTag: "my_courses-list-${course.id}",
+
                     ),
                     if (isDone)
                       Positioned(

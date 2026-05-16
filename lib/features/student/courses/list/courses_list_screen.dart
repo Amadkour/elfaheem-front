@@ -289,6 +289,8 @@ class _CourseCard extends StatelessWidget {
                       url: course.imageUrl,
                       width: 104,
                       height: double.infinity,
+                      heroTag: "course-list-${course.id}",
+
                     ),
                     Positioned.fill(
                       child: DecoratedBox(

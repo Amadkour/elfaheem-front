@@ -77,20 +77,20 @@ class _State extends State<TeacherDashboardScreen> {
         if (w >= 900) {
           return WideShell(
             currentIndex: _currentIndex,
-            onTap: (i) => setState(() => _currentIndex = i),
+            onTap: (i) { if(mounted) setState(() => _currentIndex = i);},
             dashboardItems: dashboardItems,
           );
         }
         if (w >= 600) {
           return RailShell(
             currentIndex: _currentIndex,
-            onTap: (i) => setState(() => _currentIndex = i),
+            onTap: (i) { if(mounted) setState(() => _currentIndex = i);},
             dashboardItems: dashboardItems,
           );
         }
         return MobileShell(
           currentIndex: _currentIndex,
-          onTap: (i) => setState(() => _currentIndex = i),
+          onTap: (i) { if(mounted) setState(() => _currentIndex = i);},
           dashboardItems: dashboardItems,
         );
       },
@@ -123,7 +123,6 @@ class _TeacherScheduleTabState extends State<TeacherScheduleTab>
 
   @override
   void dispose() {
-    _prov.dispose();
     super.dispose();
   }
 

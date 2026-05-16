@@ -1,19 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// rating_widget.dart
-//
-// Drop-in rating component that:
-//   • Accepts a [RateType] and [sourceId]
-//   • Fetches the current rating summary + the current user's rating
-//   • Shows an interactive star bar when [canEdit] is true
-//   • Submits/updates via POST /api/v1/rates
-//
-// Usage:
-//   RatingWidget(type: RateType.course,   sourceId: course.id,   canEdit: true)
-//   RatingWidget(type: RateType.session,  sourceId: session.id,  canEdit: false)
-//   RatingWidget(type: RateType.material, sourceId: material.id, canEdit: true)
-//   RatingWidget(type: RateType.doctor,   sourceId: doctor.id,   canEdit: true)
-// ─────────────────────────────────────────────────────────────────────────────
-
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:provider/provider.dart';
@@ -263,7 +247,7 @@ class _RatingWidgetState extends State<RatingWidget>
 
   Future<void> _submit() async {
     if (_selected == 0 || _submitting) return;
-    setState(() => _submitting = true);
+    if(mounted) setState(() => _submitting = true);
     try {
       final result = await _service.submitRate(
         sourceId: widget.sourceId,
@@ -282,7 +266,7 @@ class _RatingWidgetState extends State<RatingWidget>
       widget.onRated?.call(result);
       await _load(); // refresh summary
     } catch (e) {
-      setState(() => _submitting = false);
+      if(mounted) setState(() => _submitting = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -336,7 +320,7 @@ class _RatingWidgetState extends State<RatingWidget>
           hovered: _hovered,
           selected: _selected,
           size: 14,
-          onHover: (v) => setState(() => _hovered = v),
+          onHover: (v) { if(mounted) setState(() => _hovered = v);},
           onTap: widget.canEdit
               ? (v) {
                   setState(() {
@@ -524,8 +508,8 @@ class _RatingWidgetState extends State<RatingWidget>
                     hovered: _hovered,
                     selected: _selected,
                     size: 36,
-                    onHover: (v) => setState(() => _hovered = v),
-                    onLeave: () => setState(() => _hovered = 0),
+                    onHover: (v) { if(mounted) setState(() => _hovered = v);},
+                    onLeave: () { if(mounted) setState(() => _hovered = 0);},
                     onTap: (v) => setState(() {
                       _selected = v;
                       _showReview = true;

@@ -303,7 +303,7 @@ class _GoogleMeetScreenState extends State<GoogleMeetScreen> {
   }
 
   Future<void> _joinMeeting() async {
-    setState(() => _isLoading = true);
+    if(mounted) setState(() => _isLoading = true);
 
     try {
       final Uri meetUri = Uri.parse(widget.meetUrl);
@@ -324,13 +324,13 @@ class _GoogleMeetScreenState extends State<GoogleMeetScreen> {
       }
     } finally {
       if (mounted) {
-        setState(() => _isLoading = false);
+        if(mounted) setState(() => _isLoading = false);
       }
     }
   }
 
   Future<void> _openInBrowser() async {
-    setState(() => _isLoading = true);
+    if(mounted) setState(() => _isLoading = true);
 
     try {
       final Uri meetUri = Uri.parse(widget.meetUrl);
@@ -351,7 +351,7 @@ class _GoogleMeetScreenState extends State<GoogleMeetScreen> {
       }
     } finally {
       if (mounted) {
-        setState(() => _isLoading = false);
+        if(mounted) setState(() => _isLoading = false);
       }
     }
   }

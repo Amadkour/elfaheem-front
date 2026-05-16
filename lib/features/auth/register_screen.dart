@@ -256,7 +256,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             controller: _passwordController,
             label: 'password'.tr,
             obscure: _obscurePassword,
-            onToggle: () => setState(() => _obscurePassword = !_obscurePassword),
+            onToggle: () { if(mounted) if(mounted) setState(() => _obscurePassword = !_obscurePassword);},
           ),
           const SizedBox(height: 20),
           if (_passwordController.text.isNotEmpty) ...[
@@ -273,7 +273,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             controller: _confirmedPasswordController,
             label: 'confirmed_password'.tr,
             obscure: _obscureConfirm,
-            onToggle: () => setState(() => _obscureConfirm = !_obscureConfirm),
+            onToggle: () { if(mounted) if(mounted) setState(() => _obscureConfirm = !_obscureConfirm);},
           ),
           Container(
             padding: const EdgeInsets.all(16),

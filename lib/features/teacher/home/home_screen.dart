@@ -4,12 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/courses/course_form_screen.dart';
 import 'package:flutter_education_app/features/teacher/home/queue_work_items.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart'
-    show TeacherStats, TeacherCourse, ScheduleSession;
+    show TeacherStats, TeacherCourse;
 import 'package:flutter_education_app/features/teacher/home/teacher_provider.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
 import '../../../config/app_theme.dart';
-import '../../../utils/helpers.dart';
 import '../../../utils/widget/app_network_image.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../auth/auth_provider.dart';
@@ -38,8 +37,6 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
       context.read<TeacherProvider>().init();
     });
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -71,39 +68,39 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                   color: context.colors.cardBg,
                   child: Column(
                     children: [
-
                       ContentBox(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: loading
-                          ? const _StatsShimmer()
-                          : _StatsRow(stats: provider.stats),
-                    ),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: loading
+                            ? const _StatsShimmer()
+                            : StatsRow(stats: provider.stats, isFull: false,),
+                      ),
                       const SizedBox(height: 20),
 
                       // ── Add course button ────────────────────────────────
                       ContentBox(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: _AddCourseButton(),
-
-                      ), SizedBox(height: 24),
+                      ),
+                      SizedBox(height: 24),
 
                       // ── Courses ──────────────────────────────────────────
                       ContentBox(
                         child: SectionHeader(
                           title: 'courses'.tr,
                           actionLabel: 'show_all'.tr,
-                          onAction: () =>
-                              Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                      builder: (_) =>
+                          onAction: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                  builder: (_) =>
                                       const TeacherCoursesScreen())),
                         ),
-
-                      ), SizedBox(height: 14), ContentBox(
+                      ),
+                      SizedBox(height: 14),
+                      ContentBox(
                         child: loading
                             ? const _CoursesShimmer()
                             : _CoursesRow(courses: provider.allCourses),
-                      ), SizedBox(height: 26),
+                      ),
+                      SizedBox(height: 26),
 
                       // ── Schedule ─────────────────────────────────────────
                       ContentBox(
@@ -112,13 +109,13 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                           actionLabel: 'المواعيد القادمة',
                           onAction: () {},
                         ),
-
                       ),
-                      const SizedBox(height: 14), loading
+                      const SizedBox(height: 14),
+                      loading
                           ? const _ScheduleShimmer()
                           : ContentBox(
-                          child: ScheduleQueueList(
-                              sessions: provider.schedule)),
+                              child: ScheduleQueueList(
+                                  sessions: provider.schedule)),
                       SizedBox(height: 36),
                     ],
                   ),
@@ -135,13 +132,9 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
 // ── Web top bar ───────────────────────────────────────────────────────────────
 
 class _WebTopBar extends StatelessWidget {
-
   @override
   Widget build(BuildContext context) {
-    final name = context
-        .watch<AuthProvider>()
-        .currentUser
-        ?.name ?? 'sir'.tr;
+    final name = context.watch<AuthProvider>().currentUser?.name ?? 'sir'.tr;
     return Container(
       height: 56,
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -165,13 +158,9 @@ class _WebTopBar extends StatelessWidget {
 // ── Mobile top bar ────────────────────────────────────────────────────────────
 
 class _TopBar extends StatelessWidget {
-
   @override
   Widget build(BuildContext context) {
-    final name = context
-        .watch<AuthProvider>()
-        .currentUser
-        ?.name ?? 'sir'.tr;
+    final name = context.watch<AuthProvider>().currentUser?.name ?? 'sir'.tr;
     final initial = name.isNotEmpty ? name[0] : '؟';
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
@@ -200,7 +189,7 @@ class _TopBar extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child:
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('صباح الخير 🌟',
                 style: context.colors.caption.copyWith(fontSize: 12)),
             Text(name, style: context.colors.h2.copyWith(fontSize: 18)),
@@ -223,7 +212,6 @@ class _TopBar extends StatelessWidget {
           child: Icon(Icons.notifications_rounded,
               color: context.colors.primary, size: 22),
         ),
-
       ]),
     );
   }
@@ -262,19 +250,17 @@ class _ShimmerState extends State<_Shimmer>
   }
 
   @override
-  Widget build(BuildContext context) =>
-      AnimatedBuilder(
+  Widget build(BuildContext context) => AnimatedBuilder(
         animation: _anim,
-        builder: (_, __) =>
-            Container(
-              width: widget.width,
-              height: widget.height,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(widget.radius),
-                color: Color.lerp(context.colors.divider,
-                    context.colors.divider.withValues(alpha: 0.3), _anim.value),
-              ),
-            ),
+        builder: (_, __) => Container(
+          width: widget.width,
+          height: widget.height,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(widget.radius),
+            color: Color.lerp(context.colors.divider,
+                context.colors.divider.withValues(alpha: 0.3), _anim.value),
+          ),
+        ),
       );
 }
 
@@ -282,12 +268,10 @@ class _StatsShimmer extends StatelessWidget {
   const _StatsShimmer();
 
   @override
-  Widget build(BuildContext context) =>
-      Row(
+  Widget build(BuildContext context) => Row(
         children: List.generate(
             3,
-                (i) =>
-                Expanded(
+            (i) => Expanded(
                   child: Padding(
                     padding: EdgeInsets.only(left: i < 2 ? 12 : 0),
                     child: const _Shimmer(width: double.infinity, height: 90),
@@ -300,8 +284,7 @@ class _CoursesShimmer extends StatelessWidget {
   const _CoursesShimmer();
 
   @override
-  Widget build(BuildContext context) =>
-      SizedBox(
+  Widget build(BuildContext context) => SizedBox(
         height: 200,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
@@ -317,12 +300,10 @@ class _ScheduleShimmer extends StatelessWidget {
   const _ScheduleShimmer();
 
   @override
-  Widget build(BuildContext context) =>
-      Column(
+  Widget build(BuildContext context) => Column(
         children: List.generate(
             2,
-                (i) =>
-                Padding(
+            (i) => Padding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
                   child: const _Shimmer(width: double.infinity, height: 150),
                 )),
@@ -331,40 +312,81 @@ class _ScheduleShimmer extends StatelessWidget {
 
 // ── Stats row ─────────────────────────────────────────────────────────────────
 
-class _StatsRow extends StatelessWidget {
+class StatsRow extends StatelessWidget {
   final TeacherStats stats;
+  final bool isFull;
 
-  const _StatsRow({required this.stats});
+  const StatsRow({
+    super.key,
+    required this.stats,
+    required this.isFull,
+  });
 
   @override
-  Widget build(BuildContext context) =>
-      Row(children: [
-        _StatCard(
-          value: stats.overallRating.toStringAsFixed(1),
-          label: 'التقييم العام',
-          icon: Icons.star_rounded,
-          gradient: const LinearGradient(
-              colors: [Color(0xFFFF9500), Color(0xFFFF9500)]),
-          shadowColor: const Color(0xFFFF9500),
-        ),
-        const SizedBox(width: 12),
-        _StatCard(
-          value: '${stats.totalStudents}',
-          label: 'إجمالي الطلاب',
-          icon: Icons.people_alt_rounded,
-          gradient: const LinearGradient(
-              colors: [Color(0xFFFFD166), Color(0xFFFFD166)]),
-          shadowColor: const Color(0xFFFFD166),
-        ),
-        const SizedBox(width: 12),
-        _StatCard(
-          value: '${stats.totalCourses}',
-          label: 'الكورسات',
-          icon: Icons.library_books_rounded,
-          gradient: context.colors.tealGradient,
-          shadowColor: context.colors.accent2,
-        ),
-      ]);
+  Widget build(BuildContext context) {
+    Widget mainW = Row(
+
+        children: [
+      _StatCard(
+        value: stats.overallRating.toStringAsFixed(1),
+        label: 'overall_rate'.tr,
+        icon: Icons.star_rounded,
+        gradient: const LinearGradient(
+            colors: [Color(0xFFFF9500), Color(0xFFFF9500)]),
+        shadowColor: const Color(0xFFFF9500),
+      ),
+      const SizedBox(width: 12),
+      _StatCard(
+        value: '${stats.totalStudents}',
+        label: 'total_count'.tr,
+        icon: Icons.people_alt_rounded,
+        gradient: const LinearGradient(
+            colors: [Color(0xFFFFD166), Color(0xFFFFD166)]),
+        shadowColor: const Color(0xFFFFD166),
+      ),
+      const SizedBox(width: 12),
+      _StatCard(
+        value: '${stats.totalCourses}',
+        label: 'course_count'.tr,
+        icon: Icons.library_books_rounded,
+        gradient: context.colors.tealGradient,
+        shadowColor: context.colors.accent2,
+      ),
+    ]);
+
+    if (!isFull) return mainW;
+    return Column(
+      children: [
+        mainW,
+        SizedBox(height: 20,),
+        Row(children: [
+          _StatCard(
+            value: stats.doctorRating.toStringAsFixed(1),
+            label: 'teacher_rate'.tr,
+            icon: Icons.star_rounded,
+            gradient: context.colors.primaryGradient.withOpacity(.7),
+            shadowColor: context.colors.primary,
+          ),
+          const SizedBox(width: 12),
+          _StatCard(
+            value: stats.courseRating.toStringAsFixed(1),
+            label: 'course_rate'.tr,
+            icon: Icons.star_rounded,
+            gradient: context.colors.disableGradient,
+            shadowColor: context.colors.textMedium,
+          ),
+          const SizedBox(width: 12),
+          _StatCard(
+            value: stats.materialRating.toStringAsFixed(1),
+            label: 'materials_rate'.tr,
+            icon: Icons.star_rounded,
+            gradient: context.colors.purpleGradient,
+            shadowColor: context.colors.purple,
+          ),
+        ])
+      ],
+    );
+  }
 }
 
 class _StatCard extends StatelessWidget {
@@ -382,8 +404,7 @@ class _StatCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) =>
-      Expanded(
+  Widget build(BuildContext context) => Expanded(
         child: Container(
           padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
           decoration: BoxDecoration(
@@ -425,12 +446,9 @@ class _StatCard extends StatelessWidget {
 
 class _AddCourseButton extends StatelessWidget {
   @override
-  Widget build(BuildContext context) =>
-      GestureDetector(
-        onTap: () =>
-            Navigator.of(context)
-                .push(
-                MaterialPageRoute(builder: (_) => const CourseFormScreen())),
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: () => Navigator.of(context)
+            .push(MaterialPageRoute(builder: (_) => const CourseFormScreen())),
         child: Container(
           height: 54,
           decoration: BoxDecoration(
@@ -489,11 +507,11 @@ class _CoursesRow extends StatelessWidget {
         height: 140,
         child: Center(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.school_outlined,
-                  size: 40, color: context.colors.textLight),
-              SizedBox(height: 8),
-              Text('no_courses', style: context.colors.caption),
-            ])),
+          Icon(Icons.school_outlined,
+              size: 40, color: context.colors.textLight),
+          SizedBox(height: 8),
+          Text('no_courses', style: context.colors.caption),
+        ])),
       );
     }
     if (!kIsWeb) return content;
@@ -512,8 +530,7 @@ class _TeacherCourseCard extends StatelessWidget {
   const _TeacherCourseCard({required this.course});
 
   @override
-  Widget build(BuildContext context) =>
-      GestureDetector(
+  Widget build(BuildContext context) => GestureDetector(
         onTap: () async {
           Navigator.push(
             context,
@@ -526,8 +543,9 @@ class _TeacherCourseCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: context.colors.background,
             borderRadius: BorderRadius.circular(18),
-              border: BoxBorder.all(color: context.colors.secondText.withValues(alpha: 0.07)),
-              boxShadow: [
+            border: BoxBorder.all(
+                color: context.colors.secondText.withValues(alpha: 0.07)),
+            boxShadow: [
               BoxShadow(
                   color: context.colors.primaryDark.withValues(alpha: 0.07),
                   blurRadius: 14,
@@ -536,7 +554,7 @@ class _TeacherCourseCard extends StatelessWidget {
           ),
           clipBehavior: Clip.antiAlias,
           child:
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Align(
               alignment: AlignmentGeometry.center,
               child: AppNetworkImage(
@@ -546,6 +564,7 @@ class _TeacherCourseCard extends StatelessWidget {
                 color: context.colors.background,
                 height: 100,
                 width: context.width / (context.isMobile ? 2 : 3),
+                heroTag: "teacher-home-course-${course.id}",
               ),
             ),
             Divider(),
@@ -648,7 +667,6 @@ class _TeacherCourseCard extends StatelessWidget {
                           color: context.colors.accent,
                           hintLabel: "student_rate".tr),
                       Spacer(),
-
                     ]),
               ),
             ),
@@ -666,30 +684,29 @@ class _MetaIcon extends StatelessWidget {
   const _MetaIcon(this.icon, this.label, {required this.color, this.hintLabel});
 
   @override
-  Widget build(BuildContext context) =>
-      label == '0'
-          ? SizedBox.shrink()
-          : Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 16,
-            height: 16,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(4),
+  Widget build(BuildContext context) => label == '0'
+      ? SizedBox.shrink()
+      : Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Icon(icon, size: 10, color: color),
             ),
-            child: Icon(icon, size: 10, color: color),
-          ),
-          if (hintLabel != null)
-            Text("$hintLabel : ",
+            if (hintLabel != null)
+              Text("$hintLabel : ",
+                  style: context.colors.label.copyWith(
+                      fontSize: 10, color: context.colors.secondText)),
+            Text(label,
                 style: context.colors.label.copyWith(
-                    fontSize: 10, color: context.colors.secondText)),
-          Text(label,
-              style: context.colors.label.copyWith(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: context.colors.textDark)),
-        ],
-      );
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: context.colors.textDark)),
+          ],
+        );
 }

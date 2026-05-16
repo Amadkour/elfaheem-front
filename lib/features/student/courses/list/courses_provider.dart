@@ -17,28 +17,28 @@ class CoursesProvider extends BaseProvider {
   bool get hasMore => _hasMore;
 
   Future<void> fetchCourses(
-      {String? categoryId, int? teacherId, String? search}) async {
+      {String? categoryId, int? teacherId, String? search,int? pageSize}) async {
     _skip = 0;
     _hasMore = true;
     _courses.clear();
     await _loadPage(
-        categoryId: categoryId, teacherId: teacherId, search: search);
+        categoryId: categoryId, teacherId: teacherId, search: search,pageSize: pageSize);
     notifyListeners();
   }
 
   Future<void> loadMore(
-      {String? categoryId, int? teacherId, String? search}) async {
+      {String? categoryId, int? teacherId, String? search,int? pageSize}) async {
     if (!_hasMore || isLoading) return;
     await _loadPage(
-        categoryId: categoryId, teacherId: teacherId, search: search);
+        categoryId: categoryId, teacherId: teacherId, search: search,pageSize: pageSize);
   }
 
   Future<void> _loadPage(
-      {String? categoryId, int? teacherId, String? search}) async {
+      {String? categoryId, int? teacherId, String? search,int? pageSize}) async {
     final r = await run(() => _api.get('/api/v1/courses',
         queryParams: {
           'skip': _skip,
-          'limit': _pageSize,
+          'limit':pageSize?? _pageSize,
           if (categoryId != null) 'category_id': categoryId,
           if (teacherId != null) 'teacher_id': teacherId,
           if (search != null) 'search': search

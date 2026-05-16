@@ -81,9 +81,9 @@ class _ScheduleTabBodyState extends State<ScheduleTabBody>
 
   Future<void> _doRefresh() async {
     if (_refreshing) return;
-    setState(() => _refreshing = true);
+    if(mounted) setState(() => _refreshing = true);
     await widget.onRefresh();
-    if (mounted) setState(() => _refreshing = false);
+    if (mounted) if(mounted) setState(() => _refreshing = false);
   }
 
   @override
@@ -136,7 +136,7 @@ class _ScheduleTabBodyState extends State<ScheduleTabBody>
                     activeDays:  activeDays,
                     todayDay:    data.todayDay,
                     selectedDay: _selectedDay ?? data.todayDay,
-                    onSelect:    (d) => setState(() => _selectedDay = d),
+                    onSelect:    (d) { if(mounted) setState(() => _selectedDay = d);},
                     slotsForDay: data.slotsForDay,
                   )),
 
@@ -1254,7 +1254,7 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
     final p = await showTimePicker(
         context: context, initialTime: isStart ? _start : _end);
     if (p == null || !mounted) return;
-    setState(() => isStart ? _start = p : _end = p);
+    if(mounted) setState(() => isStart ? _start = p : _end = p);
   }
 
   Future<void> _submit() async {
@@ -1369,7 +1369,7 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
                   final (v, l) = _days[i];
                   final sel = _day == v;
                   return GestureDetector(
-                    onTap: () => setState(() => _day = v),
+                    onTap: () { if(mounted) setState(() => _day = v);},
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
                       padding: const EdgeInsets.symmetric(

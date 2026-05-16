@@ -168,7 +168,7 @@ class _FullscreenImageViewerState extends State<_FullscreenImageViewer>
     // Keep track of scale for drag-to-dismiss guard
     _transformController.addListener(() {
       final scale = _transformController.value.getMaxScaleOnAxis();
-      if (mounted) setState(() => _currentScale = scale);
+      if (mounted) if(mounted) setState(() => _currentScale = scale);
     });
 
     // Hide status bar for immersive view
