@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
 import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -111,18 +112,14 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildFormCard() {
-    return Container(
-      width: context.width > 800 ? 500 : context.width,
-      padding: const EdgeInsets.all(20.0),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(context.colors.radiusXL),
-        color: context.colors.cardBg,
-      ),
-      child: Form(
+    final provider = context.watch<ProfileProvider>();
+
+    return  Form(
         key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+
             // Lang row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -132,7 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: 100,
                   height: 100,
                   heroTag: "logo-login",
-
+                  color: context.colors.background,
                 ),
                 LangDropdown(),
 
@@ -214,9 +211,81 @@ class _LoginScreenState extends State<LoginScreen> {
                 MaterialPageRoute(builder: (_) => const RegisterScreen()),
               ),
             ),
+            SizedBox(
+              height: 10,
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    provider.changeMode(!provider.darkMode);
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 500),
+                    width: 72,
+                    height: 38,
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(40),
+                      gradient: provider.darkMode
+                          ? const LinearGradient(
+                        colors: [
+                          Color(0xff0F172A),
+                          Color(0xff1E293B),
+                        ],
+                      )
+                          : const LinearGradient(
+                        colors: [
+                          Color(0xffFFE082),
+                          Color(0xffFFB300),
+                        ],
+                      ),
+                    ),
+                    child: Stack(
+                      children: [
+                        AnimatedAlign(
+                          duration: const Duration(milliseconds: 500),
+                          curve: Curves.easeInOut,
+                          alignment: provider.darkMode
+                              ? Alignment.centerRight
+                              : Alignment.centerLeft,
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 500),
+                            transitionBuilder: (child, animation) {
+                              return RotationTransition(
+                                turns: animation,
+                                child: child,
+                              );
+                            },
+                            child: Container(
+                              key: ValueKey(provider.darkMode),
+                              width: 30,
+                              height: 30,
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                provider.darkMode
+                                    ? Icons.dark_mode_rounded
+                                    : Icons.wb_sunny_rounded,
+                                color: provider.darkMode
+                                    ? Colors.indigo
+                                    : Colors.orange,
+                                size: 18,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
-      ),
     );
   }
 }

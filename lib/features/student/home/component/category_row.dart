@@ -17,7 +17,7 @@ class CategoriesRow extends StatelessWidget {
             height: 112,
             child: Center(
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation(context.colors.primary),
+                valueColor: AlwaysStoppedAnimation(context.colors.primaryBlue),
                 strokeWidth: 2.5,
               ),
             ),
@@ -32,7 +32,7 @@ class CategoriesRow extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.category_outlined,
-                      size: 36, color: context.colors.textLight),
+                      size: 36, color: context.colors.primaryBlue),
                   SizedBox(height: 8),
                   Text('لا توجد أقسام', style: context.colors.caption),
                 ],
@@ -71,14 +71,14 @@ class CategoriesRow extends StatelessWidget {
                         shape: BoxShape.circle,
                         border: isSelected
                             ? Border.all(
-                            color: context.colors.primary, width: 2)
+                            color: context.colors.primaryBlue, width: 2)
                             : Border.all(
                             color: Colors.transparent, width: 2),
                         boxShadow: isSelected
                             ? [
                           BoxShadow(
                             color:
-                            context.colors.primary.withValues(alpha:0.28),
+                            context.colors.primaryBlue.withValues(alpha:0.28),
                             blurRadius: 14,
                             offset: const Offset(0, 4),
                           )
@@ -98,13 +98,13 @@ class CategoriesRow extends StatelessWidget {
                           child: Image.network(
                             cat.imageUrl,
                             color: isSelected
-                                ? context.colors.primary
+                                ? context.colors.primaryBlue
                                 : context.colors.accent2,
                             errorBuilder: (_, __, ___) => Icon(
                               Icons.category_rounded,
                               color: isSelected
-                                  ? context.colors.primary
-                                  : context.colors.textLight,
+                                  ? context.colors.primaryBlue
+                                  : context.colors.primaryBlue,
                               size: 28,
                             ),
                           ),
@@ -114,7 +114,7 @@ class CategoriesRow extends StatelessWidget {
                         Icons.category_rounded,
                         color: isSelected
                             ? context.colors.primary
-                            : context.colors.textLight,
+                            : context.colors.primaryBlue,
                         size: 28,
                       ),
                     ),
