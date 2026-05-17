@@ -67,7 +67,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    ApiClient().context = context;
     final isWide = MediaQuery.of(context).size.width > 800;
 
     return Consumer<LangProvider>(builder: (context, l, _) {

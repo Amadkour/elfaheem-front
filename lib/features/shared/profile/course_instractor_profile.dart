@@ -386,16 +386,7 @@ class _HeroSliverAppBar extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            (context.read<CategoriesProvider>().categories.first.name),
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.75),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0.8,
-                            ),
-                          ),
-                          Text(
-                            (teacher.teacherProfile?.specializationId.toString()??'-1'),
+                            (teacher.teacherProfile?.specialization?.name??''),
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.75),
                               fontSize: 12,

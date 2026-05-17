@@ -27,8 +27,7 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
   final _teachingController = ExpansibleController();
 
   @override
-  void initState() {
-  }
+  void initState() {}
 
   @override
   void dispose() {
@@ -74,7 +73,7 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
   }
 
   Widget _buildWideLayout(AuthProvider provider) {
-    Widget w=Center(
+    Widget w = Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
         child: Center(child: _buildForm(provider)),
@@ -85,8 +84,7 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
       children: [
         AuthSidebar(),
         Expanded(
-          child: SizedBox(width:800,child:  w
-            ),
+          child: SizedBox(width: 800, child: w),
         ),
       ],
     );
@@ -105,10 +103,10 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
 
   Widget _buildForm(AuthProvider provider) {
     return Container(
-      width: context.width>800? 500 :context.width,
+      width: context.width > 800 ? 500 : context.width,
       padding: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
-        borderRadius:  BorderRadius.circular(context.colors.radiusXL),
+        borderRadius: BorderRadius.circular(context.colors.radiusXL),
         color: context.colors.cardBg,
       ),
       child: Form(

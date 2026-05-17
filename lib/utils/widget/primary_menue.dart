@@ -27,9 +27,8 @@ class MyPrimaryMenu extends StatelessWidget {
       shadowColor: const Color.fromRGBO(0, 0, 0, 0.25),
       color: context.colors.inputBg,
       borderRadius: BorderRadius.circular(10),
-      elevation: 4,
-      clipBehavior: Clip.antiAliasWithSaveLayer,
       child: ExpansionTile(
+
         controller: controller,
         shape: Border.all(style: BorderStyle.none),
         title: Text(
@@ -48,6 +47,9 @@ class MyPrimaryMenu extends StatelessWidget {
                     DecoratedBox(
                       decoration:  BoxDecoration(color: context.colors.background),
                       child: ListTile(
+                        tileColor: context.colors.inputBg,
+                        splashColor: Colors.transparent,
+                        hoverColor: Colors.transparent,
                         leading: haveLogo
                             ? (Image.network(
                                 options[i]['logo'],
@@ -65,9 +67,9 @@ class MyPrimaryMenu extends StatelessWidget {
                             color: context.colors.textMedium,
                           ),
                         ),
-                        trailing:(initValue?['text']==options[i]['text']??false)?
+                        trailing:(initValue?['text']==options[i]['text'])?
                         Icon( CupertinoIcons.check_mark_circled_solid,color: context.colors.primary,):
-                        Icon( CupertinoIcons.circle,color: context.colors.secondText,),
+                        Icon( CupertinoIcons.circle,color: context.colors.secondText.withAlpha(100),),
                         onTap: () => onChange(i),
                       ),
                     ),
