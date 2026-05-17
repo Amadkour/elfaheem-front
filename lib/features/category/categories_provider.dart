@@ -61,7 +61,9 @@ class CategoryModel {
 class CategoriesProvider extends BaseProvider {
   final ApiClient _api;
 
-  CategoriesProvider({ApiClient? api}) : _api = api ?? ApiClient();
+  CategoriesProvider({ApiClient? api}) : _api = api ?? ApiClient(){
+    fetchCategories();
+  }
 
   // ── State ────────────────────────────────────────────────────────────────────
 
@@ -97,13 +99,9 @@ class CategoriesProvider extends BaseProvider {
   }
 
   Future<List<Map<String, dynamic>>> getSpecialization() async {
-    isLoadingCategory = true;
-    notifyListeners();
     final result = await run(
       () => _api.get('/api/v1/categories', auth: true),
     );
-    isLoadingCategory = false;
-    notifyListeners();
     if (result is List) {
       return result
           .map((e) => CategoryModel.fromJsonToSpecializationMap(

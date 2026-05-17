@@ -29,7 +29,6 @@ const _textLow = Color(0x66FFFFFF);
 const _glass10 = Color(0x1AFFFFFF);
 const _glass15 = Color(0x26FFFFFF);
 const _glassBdr = Color(0x30FFFFFF);
-const _accent = _cyan;
 const _recRed = Color(0xFFFF4F72);
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -305,7 +304,7 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
 
   Future<void> _fetchEnrolledStudents() async {
     if (_loadingStudents) return;
-    setState(() => _loadingStudents = true);
+    if(mounted) setState(() => _loadingStudents = true);
     try {
       // Use the attendance-results endpoint which returns attendance flags
       // final uri = Uri.parse(
@@ -343,7 +342,7 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
     } catch (e) {
       log('fetchEnrolledStudents error: $e');
     } finally {
-      if (mounted) setState(() => _loadingStudents = false);
+      if (mounted) if(mounted) setState(() => _loadingStudents = false);
     }
   }
 
@@ -401,14 +400,14 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
         _quizTimer?.cancel();
         _submitQuiz(autoSubmit: true);
       } else {
-        setState(() => _quizSecondsLeft--);
+        if(mounted) setState(() => _quizSecondsLeft--);
       }
     });
   }
 
   Future<void> _submitQuiz({bool autoSubmit = false}) async {
     if (_activeQuiz == null || _quizSubmitted) return;
-    setState(() => _quizSubmitted = true);
+    if(mounted) setState(() => _quizSubmitted = true);
     _quizTimer?.cancel();
 
     // Submit each answered question
@@ -429,7 +428,7 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
 
   void _dismissQuiz() {
     _quizAnim.reverse().then((_) {
-      if (mounted) setState(() => _quizVisible = false);
+      if (mounted) if(mounted) setState(() => _quizVisible = false);
     });
   }
 
@@ -444,7 +443,7 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
                 (_) => Navigator.popUntil(context, (r) => r.isFirst));
       })..on<ParticipantEvent>((_) => _sortParticipants())..on<
           RoomRecordingStatusChanged>((event) {
-        setState(() => _isRecording = event.activeRecording);
+        if(mounted) setState(() => _isRecording = event.activeRecording);
         unawaited(
             context.showRecordingStatusChangedDialog(event.activeRecording));
       })..on<RoomAttemptReconnectEvent>(
@@ -551,7 +550,7 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
         ? [...allScreen, if (localCamera != null) localCamera, ...userMedia]
         : [if (localCamera != null) localCamera, ...userMedia];
 
-    setState(() => participantTracks = ordered);
+    if(mounted) setState(() => participantTracks = ordered);
     if (ordered.length > 1) {
       _thumbBarAnim.forward();
     } else {
@@ -591,17 +590,17 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
           isDanger: true);
       if (ok != true) return;
     }
-    setState(() => _recordingLoading = true);
+    if(mounted) setState(() => _recordingLoading = true);
     try {
       await widget.onToggleRecording!(!_isRecording);
       final was = _isRecording;
       await Future.delayed(const Duration(seconds: 3));
-      if (mounted && _isRecording == was) setState(() => _isRecording = !was);
+      if (mounted && _isRecording == was) if(mounted) setState(() => _isRecording = !was);
     } catch (e) {
       log('Recording error: $e');
       _showSnack('Recording failed: $e');
     } finally {
-      if (mounted) setState(() => _recordingLoading = false);
+      if (mounted) if(mounted) setState(() => _recordingLoading = false);
     }
   }
 
@@ -703,10 +702,10 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
   Future<void> _toggleParticipantPanel() async {
     if (_showParticipants) {
       _panelAnim.reverse().then((_) {
-        if (mounted) setState(() => _showParticipants = false);
+        if (mounted) if(mounted) setState(() => _showParticipants = false);
       });
     } else {
-      setState(() => _showParticipants = true);
+      if(mounted) setState(() => _showParticipants = true);
       _panelAnim.forward();
       await _fetchEnrolledStudents();
     }
@@ -1365,7 +1364,7 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
         ...List.generate(q.options.length, (idx) {
           final selected = _selectedAnswers[q.id] == idx;
           return GestureDetector(
-            onTap: () => setState(() => _selectedAnswers[q.id] = idx),
+            onTap: () { if(mounted) setState(() => _selectedAnswers[q.id] = idx);},
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -1424,7 +1423,7 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
             if (_currentQuestionIndex > 0)
               Expanded(
                 child: GestureDetector(
-                  onTap: () => setState(() => _currentQuestionIndex--),
+                  onTap: () { if(mounted) setState(() => _currentQuestionIndex--);},
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 13),
                     decoration: BoxDecoration(
@@ -1452,7 +1451,7 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
               child: GestureDetector(
                 onTap: isLast
                     ? () => _submitQuiz()
-                    : () => setState(() => _currentQuestionIndex++),
+                    : () { if(mounted) setState(() => _currentQuestionIndex++);},
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 13),
                   decoration: BoxDecoration(

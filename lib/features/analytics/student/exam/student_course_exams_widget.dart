@@ -11,6 +11,7 @@
 // (via Provider / ChangeNotifierProvider).
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/analytics/student/exam/passcode_screen.dart';
 import 'package:flutter_education_app/features/analytics/student/exam/student_exam_api.dart';
 import 'package:flutter_education_app/features/analytics/student/exam/student_exam_detail_screen.dart';
 import 'package:flutter_education_app/features/analytics/student/exam/student_exam_provider.dart';
@@ -63,8 +64,7 @@ class _StudentCourseExamsWidgetState extends State<StudentCourseExamsWidget> {
                     fontFamily: 'Cairo', fontSize: 12, color: Colors.grey)),
           ),
           TextButton(
-            onPressed: () =>
-                prov.loadCourseExams(widget.courseId),
+            onPressed: () => prov.loadCourseExams(widget.courseId),
             child: const Text('إعادة',
                 style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
           ),
@@ -92,8 +92,7 @@ class _StudentCourseExamsWidgetState extends State<StudentCourseExamsWidget> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           child: Row(children: [
-            Icon(Icons.quiz_rounded,
-                size: 18, color: context.colors.primary),
+            Icon(Icons.quiz_rounded, size: 18, color: context.colors.primary),
             const SizedBox(width: 8),
             Text('الاختبارات',
                 style: TextStyle(
@@ -104,9 +103,7 @@ class _StudentCourseExamsWidgetState extends State<StudentCourseExamsWidget> {
             const Spacer(),
             Text('${exams.length} اختبار',
                 style: const TextStyle(
-                    fontFamily: 'Cairo',
-                    fontSize: 12,
-                    color: Colors.grey)),
+                    fontFamily: 'Cairo', fontSize: 12, color: Colors.grey)),
           ]),
         ),
 
@@ -115,16 +112,26 @@ class _StudentCourseExamsWidgetState extends State<StudentCourseExamsWidget> {
               exam: exam,
               onTap: exam.isFrozen
                   ? null
-                  : () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              ChangeNotifierProvider.value(
-                            value: prov,
-                            child: StudentExamDetailScreen(exam: exam),
+                  : () {
+                      if (exam.enablePasscode) {
+                        ExamPasscodeSheet.show(
+                          context: context,
+                          exam: exam,
+                          correctPasscode:
+                              exam.passcode!, // or hard-coded string
+                        );
+                      } else {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ChangeNotifierProvider.value(
+                              value: prov,
+                              child: StudentExamDetailScreen(exam: exam),
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                      }
+                    },
             )),
 
         const SizedBox(height: 8),
@@ -167,8 +174,8 @@ class _CourseExamTile extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                  color: accent.withValues(alpha: 0.2), width: 1.2),
+              border:
+                  Border.all(color: accent.withValues(alpha: 0.2), width: 1.2),
               boxShadow: [
                 BoxShadow(
                     color: Colors.black.withValues(alpha: 0.04),
@@ -203,16 +210,16 @@ class _CourseExamTile extends StatelessWidget {
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                  Text(exam.name,
-                      style: const TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 4),
-                  _MetaRow(exam: exam, accent: accent),
-                ]),
+                      Text(exam.name,
+                          style: const TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 4),
+                      _MetaRow(exam: exam, accent: accent),
+                    ]),
               ),
 
               const SizedBox(width: 8),
@@ -236,6 +243,7 @@ class _CourseExamTile extends StatelessWidget {
 class _MetaRow extends StatelessWidget {
   final StudentExamListItem exam;
   final Color accent;
+
   const _MetaRow({required this.exam, required this.accent});
 
   @override
@@ -256,7 +264,7 @@ class _MetaRow extends StatelessWidget {
 
     // Remaining submissions
     if (exam.maxSubmissions != null && exam.maxSubmissions! > 0) {
-      final rem = exam.remainingSubmissions ?? 0;
+      final rem = exam.submissionCount;
       parts.add(_MetaChip(
           icon: Icons.repeat_rounded,
           label: exam.isFrozen && !exam.isSubmitted
@@ -278,8 +286,7 @@ class _MetaRow extends StatelessWidget {
         deadlineLabel = 'ينتهي خلال ${diff.inHours}س';
         deadlineColor = diff.inHours < 3 ? Colors.redAccent : Colors.orange;
       } else {
-        deadlineLabel =
-            '${exam.endDate!.day}/${exam.endDate!.month}';
+        deadlineLabel = '${exam.endDate!.day}/${exam.endDate!.month}';
         deadlineColor = Colors.grey.shade600;
       }
       parts.add(_MetaChip(
@@ -296,22 +303,27 @@ class _MetaChip extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
+
   const _MetaChip(
       {required this.icon, required this.label, required this.color});
 
   @override
-  Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children: [
+  Widget build(BuildContext context) =>
+      Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(icon, size: 12, color: color),
         const SizedBox(width: 3),
         Text(label,
             style: TextStyle(
-                fontFamily: 'Cairo', fontSize: 11, color: Colors.grey.shade700)),
+                fontFamily: 'Cairo',
+                fontSize: 11,
+                color: Colors.grey.shade700)),
       ]);
 }
 
 class _ScorePill extends StatelessWidget {
   final double pct;
   final bool passed;
+
   const _ScorePill({required this.pct, required this.passed});
 
   @override

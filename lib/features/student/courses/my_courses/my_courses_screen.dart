@@ -5,6 +5,8 @@ import '../../../../config/app_config.dart' as Helpers;
 import '../../../../config/app_theme.dart';
 import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/app_network_image.dart';
+import '../../../../utils/widget/base_page.dart';
+import '../../../shared/profile/course_instractor_profile.dart';
 import '../../models.dart';
 import '../details/components/app_responsive.dart';
 import '../details/course_detail_screen.dart';
@@ -20,17 +22,10 @@ class MyCoursesScreen extends StatefulWidget {
 
 class _MyCoursesScreenState extends State<MyCoursesScreen> {
   @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: Helpers.pageDirection,
-      child: Scaffold(
-        backgroundColor: context.colors.background,
-        body: SafeArea(
+    return BasePage(
+      useWebCard: true,
+      child:SafeArea(
           child: Column(
             children: [
               // Header — mobile uses AppBar, web uses inline title
@@ -62,7 +57,6 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
             ],
           ),
         ),
-      ),
     );
   }
 }
@@ -411,6 +405,8 @@ class _EnrolledCard extends StatelessWidget {
                       width: 88,
                       height: 88,
                       borderRadius: BorderRadius.circular(14),
+                      heroTag: "my_courses-list-${course.id}",
+
                     ),
                     if (isDone)
                       Positioned(
@@ -470,20 +466,8 @@ class _EnrolledCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        [
-                          if (course.instructorName.isNotEmpty)
-                            'أ. ${course.instructorName}',
-                          if (course.categoryName != null)
-                            course.categoryName!,
-                        ].join('  ·  '),
-                        style: context.colors.caption.copyWith(
-                          fontSize: 11,
-                          color: context.colors.textLight,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      if(course.teacher!=Null)
+                        InstructorAvatar(teacher: course.teacher!, size: 50, canOpen: true,),
                       const SizedBox(height: 10),
                       CourseProgressBar(
                         progress: course.progress,

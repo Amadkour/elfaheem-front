@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../../config/app_config.dart';
@@ -37,7 +38,7 @@ class MyPrimaryMenu extends StatelessWidget {
             fontFamily: 'Tajawal',
             fontWeight: FontWeight.w100,
             fontSize: 17,
-            color: context.colors.textMedium,
+            color: context.colors.textDark,
           ),
         ),
         children: List.generate(
@@ -45,7 +46,7 @@ class MyPrimaryMenu extends StatelessWidget {
             (int i) => Column(
                   children: [
                     DecoratedBox(
-                      decoration: const BoxDecoration(color: Colors.white),
+                      decoration:  BoxDecoration(color: context.colors.background),
                       child: ListTile(
                         leading: haveLogo
                             ? (Image.network(
@@ -64,6 +65,9 @@ class MyPrimaryMenu extends StatelessWidget {
                             color: context.colors.textMedium,
                           ),
                         ),
+                        trailing:(initValue?['text']==options[i]['text']??false)?
+                        Icon( CupertinoIcons.check_mark_circled_solid,color: context.colors.primary,):
+                        Icon( CupertinoIcons.circle,color: context.colors.secondText,),
                         onTap: () => onChange(i),
                       ),
                     ),

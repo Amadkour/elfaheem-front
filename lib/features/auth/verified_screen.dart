@@ -4,11 +4,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/auth/login_screen.dart';
+import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_theme.dart';
+import '../shared/profile/change_password_widget.dart';
 import 'additional_register_screen.dart';
-import 'change_password_screen.dart';
-
+import 'auth_widgets.dart';
 enum OtpFlowEnum { registration, forget, changePassword }
 
 class OtpVerificationScreen extends StatefulWidget {
@@ -78,12 +79,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
 
   void _startResendTimer() {
     _resendTimer?.cancel();
-    setState(() => _remainingSeconds = resendSeconds);
+    if(mounted) if(mounted) setState(() => _remainingSeconds = resendSeconds);
     _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_remainingSeconds <= 0) {
         timer.cancel();
       } else {
-        setState(() => _remainingSeconds--);
+        if(mounted) if(mounted) setState(() => _remainingSeconds--);
       }
     });
   }
@@ -99,7 +100,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   bool get _isOtpComplete => _fullOtp.length == otpLength;
 
   void _onOtpChanged(int index, String value) {
-    setState(() => _hasError = false);
+    if(mounted) if(mounted) setState(() => _hasError = false);
     if (value.isNotEmpty && index < otpLength - 1) {
       _focusNodes[index + 1].requestFocus();
     } else if (value.isEmpty && index > 0) {
@@ -119,11 +120,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
 
   Future<void> _onConfirm() async {
     if (_isOtpComplete) {
-      setState(() => _isLoading = true);
+      if(mounted) if(mounted) setState(() => _isLoading = true);
       final success = await context
           .read<AuthProvider>()
           .verifyOtp(gmail: widget.email, code: _fullOtp);
-      setState(() => _isLoading = false);
+      if(mounted) if(mounted) setState(() => _isLoading = false);
 
       if (success && mounted) {
         if (widget.flow == OtpFlowEnum.registration) {
@@ -137,12 +138,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
         } else {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
-              builder: (_) => ChangePasswordScreen(email: widget.email),
+              builder: (_) => ChangePasswordScreen(email: widget.email,fromProfile: false,code: _fullOtp,),
             ),
           );
         }
       } else if (mounted) {
-        setState(() => _hasError = true);
+        if(mounted) if(mounted) setState(() => _hasError = true);
         _shakeController.forward(from: 0);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -160,7 +161,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     for (final c in _controllers) {
       c.clear();
     }
-    setState(() => _hasError = false);
+    if(mounted) if(mounted) setState(() => _hasError = false);
     _startResendTimer();
     _focusNodes[0].requestFocus();
     final success = await context.read<AuthProvider>().resendOtp(widget.email);
@@ -191,66 +192,73 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: pageDirection,
-      child: Scaffold(
-        backgroundColor: context.colors.background,
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          title: Text('verification'.tr),
-        ),
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 480),
-                child: FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(context.colors.radiusXL),
-                    ),
-                    color: context.colors.cardBg,
-                    child: Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            'enter_verification_code'.tr,
-                            style: context.colors.h1,
+    return BasePage(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: Text('verification'.tr),
+      ),
+      child:  SafeArea(
+          child: Row(
+            children: [
+              if(MediaQuery.of(context).size.width > 800)
+                AuthSidebar(),
+              Expanded(
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 480),
+                      child: FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: Card(
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(context.colors.radiusXL),
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'verification_code_sent'.tr,
-                            style: context.colors.body,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            widget.email,
-                            style:  TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: context.colors.textDark,
+                          color: context.colors.cardBg,
+                          child: Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                ProgressBar(currentStep: 1, totalSteps:3),
+                                const SizedBox(height: 28),
+
+                                Text(
+                                  'enter_verification_code'.tr,
+                                  style: context.colors.h1,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'verification_code_sent'.tr,
+                                  style: context.colors.body,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  widget.email,
+                                  style:  TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: context.colors.textDark,
+                                  ),
+                                ),
+                                const SizedBox(height: 32),
+                                _buildOtpFields(),
+                                const SizedBox(height: 24),
+                                _buildResendRow(),
+                                const SizedBox(height: 32),
+                                _buildConfirmButton(),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 32),
-                          _buildOtpFields(),
-                          const SizedBox(height: 24),
-                          _buildResendRow(),
-                          const SizedBox(height: 32),
-                          _buildConfirmButton(),
-                        ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
         ),
-      ),
     );
   }
 
@@ -295,10 +303,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       bgColor = context.colors.danger.withValues(alpha: 0.05);
     } else if (isFocused) {
       borderColor = context.colors.primary;
-      bgColor = Colors.white;
+      bgColor = context.colors.background;
     } else if (isFilled) {
       borderColor = context.colors.primary.withValues(alpha: 0.5);
-      bgColor = Colors.white;
+      bgColor = context.colors.background;
     } else {
       borderColor = context.colors.divider;
       bgColor = context.colors.inputBg;
@@ -331,14 +339,31 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
           maxLength: 1,
           style:  TextStyle(
             fontSize: 28,
+            height: 2.7,
             fontWeight: FontWeight.w800,
             color: context.colors.textDark,
           ),
-          decoration: const InputDecoration(
+          decoration:  InputDecoration(
+            constraints: BoxConstraints(minHeight: 70),
+            focusColor:  context.colors.background,
             counterText: '',
             border: InputBorder.none,
+            fillColor: context.colors.background,
             contentPadding: EdgeInsets.zero,
+            focusedBorder: OutlineInputBorder(
+                borderSide: BorderSide.none,
+                borderRadius: BorderRadius.circular(context.colors.radiusMedium)
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderSide: BorderSide.none,
+              borderRadius: BorderRadius.circular(context.colors.radiusMedium)
+            ),
+            disabledBorder: OutlineInputBorder(
+                borderSide: BorderSide.none,
+                borderRadius: BorderRadius.circular(context.colors.radiusMedium)
+            ),
           ),
+
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           onChanged: (value) => _onOtpChanged(index, value),
           cursorColor: context.colors.primary,

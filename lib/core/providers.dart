@@ -1,5 +1,7 @@
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/features/analytics/student/exam/student_exam_provider.dart';
+import 'package:flutter_education_app/features/analytics/student/student_analytics_provider.dart';
 import 'package:flutter_education_app/features/student/attendance/attendance_provider.dart';
 import 'package:flutter_education_app/features/student/courses/details/course_detail_provider.dart';
 import 'package:flutter_education_app/features/shared/exams_provider.dart';
@@ -8,7 +10,6 @@ import 'package:provider/provider.dart';
 import '../config/storage_service.dart' show StorageService;
 import '../features/auth/auth_provider.dart';
 import '../features/category/categories_provider.dart';
-import '../features/material/materials_provider.dart';
 import '../features/module/modules_provider.dart';
 import '../features/notification/notifications_provider.dart';
 import '../features/shared/attendance_provider.dart';
@@ -54,12 +55,23 @@ List<SingleChildWidget> appProviders(
       // ── Domain providers (all share the ApiClient singleton) ─────────────────
       ChangeNotifierProvider<TeacherSessionsProvider>(
         create: (_) => TeacherSessionsProvider(),
+      ), ChangeNotifierProvider<StudentAnalyticsProvider>(
+        create: (_) => StudentAnalyticsProvider(),
       ),
       ChangeNotifierProvider<MyCoursesProvider>(
         create: (_) => MyCoursesProvider(),
       ),
+      ChangeNotifierProvider<TeacherScheduleOverviewProvider>(
+        create: (_) => TeacherScheduleOverviewProvider(),
+      ),
+      ChangeNotifierProvider<StudentExamProvider>(
+        create: (_) => StudentExamProvider(),
+      ),
       ChangeNotifierProvider<CourseDetailProvider>(
         create: (_) => CourseDetailProvider(),
+      ),
+      ChangeNotifierProvider<StudentSchedulesProvider>(
+        create: (_) => StudentSchedulesProvider(),
       ),
       ChangeNotifierProvider<TeacherProvider>(
         create: (_) => TeacherProvider(),
@@ -78,9 +90,6 @@ List<SingleChildWidget> appProviders(
       ),
       ChangeNotifierProvider<ModulesProvider>(
         create: (_) => ModulesProvider(),
-      ),
-      ChangeNotifierProvider<MaterialsProvider>(
-        create: (_) => MaterialsProvider(),
       ),
       ChangeNotifierProvider<StudentSessionsProvider>(
         create: (_) => StudentSessionsProvider(),

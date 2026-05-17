@@ -1,59 +1,54 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/utils/helpers.dart';
-
 import '../../config/app_theme.dart';
 
-class ScreenAppBar extends StatelessWidget {
+class ScreenAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final List<Widget>? actions;
   final bool showBack;
+  final Color? background;
 
   const ScreenAppBar({
     super.key,
     required this.title,
     this.actions,
     this.showBack = true,
+    this.background,
   });
 
   @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: Helpers.pageDirection,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-        child: Row(
-          children: [
-            if (showBack)
-              GestureDetector(
-                onTap: () => Navigator.of(context).maybePop(),
-                child: Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: context.colors.cardBg,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: context.colors.cardShadow,
-                  ),
-                  child:  Icon(
-                    Icons.arrow_back,
-                    color: context.colors.textDark,
-                    size: 22,
-                  ),
-                ),
-              ),
-            if (showBack) const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                title,
-                style: context.colors.h2,
-                textAlign: showBack ? TextAlign.right : TextAlign.right,
-              ),
-            ),
-            SizedBox(width: 10,),
-            if (actions != null) ...actions!,
-          ],
+    final c = context.colors;
+    return AppBar(
+      backgroundColor: background ?? c.cardBg,
+      automaticallyImplyLeading: false,
+      leading: showBack
+          ? GestureDetector(
+        onTap: () => Navigator.of(context).pop(),
+        child: Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: c.cardBg,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: c.cardShadow,
+          ),
+          child: Icon(
+            CupertinoIcons.back,
+            color: c.textDark,
+            size: 20,
+          ),
         ),
+      )
+          : null,
+      title: Text(
+        title,
+        style: c.h2.copyWith(fontFamily: 'bahji'),
+        textAlign: TextAlign.right,
       ),
+      actions: actions,
     );
   }
 }

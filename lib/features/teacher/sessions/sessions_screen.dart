@@ -1,12 +1,14 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/teacher/attendance/teacher_attendance_screen.dart';
 import 'package:flutter_education_app/features/teacher/courses/course_form_screen.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../config/app_theme.dart';
+import '../../../utils/widget/base_page.dart';
+import '../../../utils/widget/rating_widget.dart';
+import '../../shared/session/session_material_widget.dart';
 import '../../student/models.dart';
-import '../../teacher/exam/teacher_exam_screen.dart';
 import '../../teacher/home/teacher_models.dart';
 import '../../teacher/sessions/components/session_form_sheet.dart';
 import '../../teacher/sessions/sessions_provider.dart';
@@ -23,6 +25,7 @@ class TeacherSessionsScreen extends StatefulWidget {
 
 class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
   late TeacherCourse _course;
+  late VideoPlayerController _controller;
 
   @override
   void initState() {
@@ -36,9 +39,9 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
 
   Future<void> _refreshCourse() async {
     final updated =
-    await context.read<TeacherProvider>().fetchCourseById(widget.course.id);
+        await context.read<TeacherProvider>().fetchCourseById(widget.course.id);
     if (updated != null && mounted) {
-      setState(() => _course = updated);
+      if(mounted) setState(() => _course = updated);
     }
   }
 
@@ -57,64 +60,26 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
     );
   }
 
-  void _openEditCourse() {
-    Navigator.push(
+  Future<void> _openEditCourse() async {
+    await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => CourseFormScreen(course: _course)),
     );
+    _refreshCourse();
   }
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.sizeOf(context).width > 700;
-
-    return Directionality(
-      textDirection: Helpers.pageDirection,
-      child: Scaffold(
-        backgroundColor: context.colors.background,
-        body: SafeArea(
+    return BasePage(
+      useWebCard: true,
+      child: SafeArea(
           child: _SessionsList(
             course: _course,
-            isWide: isWide,
             onAdd: _openAddSheet,
-            onEdit: (s) => _openSheet(context, existing: s),
-            onAttend: (s) => _openAttendance(context, s),
-            onExam: (s) => _openExams(context, s),
             onEditCourse: _openEditCourse,
             onRefreshCourse: _refreshCourse,
           ),
         ),
-      ),
-    );
-  }
-
-  void _openAttendance(BuildContext ctx, TeacherSessionItem session) {
-    Navigator.push(
-      ctx,
-      MaterialPageRoute(
-        builder: (_) => ChangeNotifierProvider.value(
-          value: ctx.read<TeacherSessionsProvider>(),
-          child: TeacherAttendanceScreen(
-            sessionId: session.id,
-            courseId: session.courseId,
-            sessionName: session.name,
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _openExams(BuildContext ctx, TeacherSessionItem session) {
-    Navigator.push(
-      ctx,
-      MaterialPageRoute(
-        builder: (_) => TeacherExamScreen(
-          courseId: session.courseId,
-          courseTitle: _course.title,
-          sessionId: session.id,
-          sessionName: session.name,
-        ),
-      ),
     );
   }
 }
@@ -125,21 +90,13 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
 
 class _SessionsList extends StatelessWidget {
   final TeacherCourse course;
-  final bool isWide;
   final VoidCallback onAdd;
-  final void Function(TeacherSessionItem) onEdit;
-  final void Function(TeacherSessionItem) onAttend;
-  final void Function(TeacherSessionItem) onExam;
   final VoidCallback onEditCourse;
   final Future<void> Function() onRefreshCourse;
 
   const _SessionsList({
     required this.course,
-    required this.isWide,
     required this.onAdd,
-    required this.onEdit,
-    required this.onAttend,
-    required this.onExam,
     required this.onEditCourse,
     required this.onRefreshCourse,
   });
@@ -160,7 +117,6 @@ class _SessionsList extends StatelessWidget {
       child: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          // ── Hero Banner ────────────────────────────────────────────────
           SliverToBoxAdapter(
             child: _CourseHero(
               course: course,
@@ -168,30 +124,28 @@ class _SessionsList extends StatelessWidget {
               onEditCourse: onEditCourse,
             ),
           ),
-
-          // ── Stats row ──────────────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: RatingWidget(
+              type: RateType.course,
+              sourceId: course.id.toString(),
+              canEdit: false,
+              compact: false,
+            ),
+          ),
           SliverToBoxAdapter(
             child: _StatsRow(
               course: course,
               sessionCount: provider.sessions.length,
             ),
           ),
-
-          // ── Course details: schedules, prerequisites, tools, certs ─────
           SliverToBoxAdapter(
             child: _CourseDetailsSection(course: course),
           ),
-
-          // ── Sessions section header ────────────────────────────────────
           SliverToBoxAdapter(
             child: _SectionHeader(onAdd: onAdd),
           ),
-
-          // ── Loading ────────────────────────────────────────────────────
           if (provider.isLoading && provider.sessions.isEmpty)
             const SliverFillRemaining(child: _LoadingState()),
-
-          // ── Empty ──────────────────────────────────────────────────────
           if (!provider.isLoading && provider.sessions.isEmpty)
             SliverFillRemaining(
               child: _EmptyState(
@@ -207,20 +161,15 @@ class _SessionsList extends StatelessWidget {
                 ),
               ),
             ),
-
-          // ── Session items ──────────────────────────────────────────────
           if (provider.sessions.isNotEmpty)
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
-              sliver: SliverList.separated(
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
+              sliver: SliverList.builder(
                 itemCount: provider.sessions.length,
-                itemBuilder: (ctx, i) => _SessionTile(
+                itemBuilder: (_, i) => SessionMaterialCard(
                   session: provider.sessions[i],
-                  onEdit: () => onEdit(provider.sessions[i]),
-                  onAttend: () => onAttend(provider.sessions[i]),
-                  onExam: () => onExam(provider.sessions[i]),
-                  isWide: isWide,
+                  course: course,
+                  isTeacher: true,
                 ),
               ),
             ),
@@ -231,7 +180,7 @@ class _SessionsList extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Course Details Section — expandable cards for each category
+// Course Details Section
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _CourseDetailsSection extends StatelessWidget {
@@ -241,9 +190,9 @@ class _CourseDetailsSection extends StatelessWidget {
 
   bool get _hasAny =>
       course.schedules.isNotEmpty ||
-          course.prerequisites.isNotEmpty ||
-          course.tools.isNotEmpty ||
-          course.certificates.isNotEmpty;
+      course.prerequisites.isNotEmpty ||
+      course.tools.isNotEmpty ||
+      course.certificates.isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -254,7 +203,6 @@ class _CourseDetailsSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Section label
           Row(
             children: [
               Container(
@@ -267,60 +215,53 @@ class _CourseDetailsSection extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Text(
-                'تفاصيل الدورة',
+                'course_details'.tr,
                 style: context.colors.h3.copyWith(fontSize: 14),
               ),
             ],
           ),
           const SizedBox(height: 12),
-
-          // Cards grid — 2 columns when two or more cards exist
           if (course.schedules.isNotEmpty)
             _DetailCard(
               icon: Icons.calendar_month_rounded,
-              title: 'الجدول الأسبوعي',
+              title: 'weekly_schedule'.tr,
               color: const Color(0xFF4DA6FF),
               children: course.schedules
                   .map((s) => _ScheduleRow(schedule: s))
                   .toList(),
             ),
-
           if (course.prerequisites.isNotEmpty) ...[
             const SizedBox(height: 10),
             _DetailCard(
               icon: Icons.checklist_rounded,
-              title: 'المتطلبات السابقة',
+              title: 'prerequisites'.tr,
               color: const Color(0xFFFF9F43),
               children: course.prerequisites
                   .map((p) => _BulletRow(text: p.title))
                   .toList(),
             ),
           ],
-
           if (course.tools.isNotEmpty) ...[
             const SizedBox(height: 10),
             _DetailCard(
               icon: Icons.build_rounded,
-              title: 'الأدوات المطلوبة',
+              title: 'required_tools'.tr,
               color: const Color(0xFF1DB954),
-              children: course.tools
-                  .map((t) => _BulletRow(text: t.name))
-                  .toList(),
+              children:
+                  course.tools.map((t) => _BulletRow(text: t.name)).toList(),
             ),
           ],
-
           if (course.certificates.isNotEmpty) ...[
             const SizedBox(height: 10),
             _DetailCard(
               icon: Icons.workspace_premium_rounded,
-              title: 'الشهادات',
+              title: 'certificates'.tr,
               color: const Color(0xFFFFD700),
               children: course.certificates
                   .map((c) => _CertificateRow(cert: c))
                   .toList(),
             ),
           ],
-
           const SizedBox(height: 4),
         ],
       ),
@@ -372,7 +313,7 @@ class _DetailCardState extends State<_DetailCard>
   }
 
   void _toggle() {
-    setState(() => _expanded = !_expanded);
+    if(mounted) setState(() => _expanded = !_expanded);
     _expanded ? _ctrl.forward() : _ctrl.reverse();
   }
 
@@ -400,7 +341,6 @@ class _DetailCardState extends State<_DetailCard>
       ),
       child: Column(
         children: [
-          // ── Header ────────────────────────────────────────────────────
           InkWell(
             onTap: _toggle,
             borderRadius: BorderRadius.circular(16),
@@ -408,7 +348,6 @@ class _DetailCardState extends State<_DetailCard>
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Row(
                 children: [
-                  // Icon bubble
                   Container(
                     width: 36,
                     height: 36,
@@ -430,10 +369,9 @@ class _DetailCardState extends State<_DetailCard>
                       ),
                     ),
                   ),
-                  // Item count badge
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: widget.color.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(20),
@@ -449,7 +387,6 @@ class _DetailCardState extends State<_DetailCard>
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // Chevron
                   AnimatedRotation(
                     turns: _expanded ? 0.5 : 0,
                     duration: const Duration(milliseconds: 250),
@@ -463,8 +400,6 @@ class _DetailCardState extends State<_DetailCard>
               ),
             ),
           ),
-
-          // ── Expandable body ───────────────────────────────────────────
           SizeTransition(
             sizeFactor: _anim,
             child: Column(
@@ -480,10 +415,9 @@ class _DetailCardState extends State<_DetailCard>
                   child: Column(
                     children: widget.children
                         .map((child) => Padding(
-                      padding:
-                      const EdgeInsets.symmetric(vertical: 4),
-                      child: child,
-                    ))
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: child,
+                            ))
                         .toList(),
                   ),
                 ),
@@ -500,16 +434,15 @@ class _DetailCardState extends State<_DetailCard>
 // Row widgets for each detail type
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Schedule row: day name + time range chip
 class _ScheduleRow extends StatelessWidget {
   final CourseSchedule schedule;
+
   const _ScheduleRow({required this.schedule});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        // Day label
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
@@ -527,13 +460,12 @@ class _ScheduleRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 10),
-        // Time range
-         Icon(Icons.access_time_rounded,
+        Icon(Icons.access_time_rounded,
             size: 13, color: context.colors.textMedium),
         const SizedBox(width: 4),
         Text(
           '${schedule.startTime} – ${schedule.endTime}',
-          style:  TextStyle(
+          style: TextStyle(
             fontFamily: 'Tajawal',
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -545,9 +477,9 @@ class _ScheduleRow extends StatelessWidget {
   }
 }
 
-/// Bullet row: simple dot + text (prerequisites & tools)
 class _BulletRow extends StatelessWidget {
   final String text;
+
   const _BulletRow({required this.text});
 
   @override
@@ -555,15 +487,15 @@ class _BulletRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-         Padding(
-          padding: EdgeInsets.only(top: 5),
+        Padding(
+          padding: const EdgeInsets.only(top: 5),
           child: Icon(Icons.circle, size: 6, color: context.colors.textMedium),
         ),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
             text,
-            style:  TextStyle(
+            style: TextStyle(
               fontFamily: 'Tajawal',
               fontSize: 13,
               color: context.colors.textDark,
@@ -576,9 +508,9 @@ class _BulletRow extends StatelessWidget {
   }
 }
 
-/// Certificate row: star icon + title + optional description
 class _CertificateRow extends StatelessWidget {
   final CourseCertificate cert;
+
   const _CertificateRow({required this.cert});
 
   @override
@@ -594,19 +526,18 @@ class _CertificateRow extends StatelessWidget {
             children: [
               Text(
                 cert.title,
-                style:  TextStyle(
+                style: TextStyle(
                   fontFamily: 'Tajawal',
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: context.colors.textDark,
                 ),
               ),
-              if (cert.description != null &&
-                  cert.description!.isNotEmpty) ...[
+              if (cert.description != null && cert.description!.isNotEmpty) ...[
                 const SizedBox(height: 2),
                 Text(
                   cert.description!,
-                  style:  TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Tajawal',
                     fontSize: 11,
                     color: context.colors.textMedium,
@@ -646,20 +577,6 @@ class _CourseHero extends StatelessWidget {
           width: double.infinity,
           child: _buildBackground(),
         ),
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withValues(alpha: 0.25),
-                  Colors.black.withValues(alpha: 0.75),
-                ],
-              ),
-            ),
-          ),
-        ),
         Positioned(
           top: 12,
           left: 16,
@@ -688,7 +605,7 @@ class _CourseHero extends StatelessWidget {
                 Container(
                   margin: const EdgeInsets.only(bottom: 8),
                   padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: context.colors.primary.withValues(alpha: 0.85),
                     borderRadius: BorderRadius.circular(20),
@@ -748,10 +665,22 @@ class _CourseHero extends StatelessWidget {
             colors: [Color(0xFF1A1F3A), Color(0xFF2D3461)],
           ),
         ),
-        child: Image.network(
-          imageUrl,
-          fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => _GradientBackground(),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withValues(alpha: 0.25),
+                Colors.black.withValues(alpha: 0.75),
+              ],
+            ),
+          ),
+          child: Image.network(
+            imageUrl,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => _GradientBackground(),
+          ),
         ),
       );
     }
@@ -762,21 +691,21 @@ class _CourseHero extends StatelessWidget {
 class _GradientBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
-    decoration: const BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [Color(0xFF1A1F3A), Color(0xFF2D3461)],
-      ),
-    ),
-    child: Center(
-      child: Icon(
-        Icons.school_rounded,
-        size: 72,
-        color: Colors.white.withValues(alpha: 0.12),
-      ),
-    ),
-  );
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF1A1F3A), Color(0xFF2D3461)],
+          ),
+        ),
+        child: Center(
+          child: Icon(
+            Icons.school_rounded,
+            size: 72,
+            color: Colors.white.withValues(alpha: 0.12),
+          ),
+        ),
+      );
 }
 
 class _CircleBtn extends StatelessWidget {
@@ -795,8 +724,8 @@ class _CircleBtn extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.40),
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-              color: Colors.white.withValues(alpha: 0.20), width: 1),
+          border:
+              Border.all(color: Colors.white.withValues(alpha: 0.20), width: 1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -844,20 +773,18 @@ class _StatsRow extends StatelessWidget {
         value: '$sessionCount',
         color: context.colors.primary,
       ),
-    //  if (course.price > 0)
-        _StatItem(
-          icon: Icons.sell_rounded,
-          label: 'cost'.tr,
-          value: course.price == 0 ? 'free'.tr : '${course.price} ج',
-          color: const Color(0xFF1DB954),
-        ),
-     // if (course.totalHours > 0)
-        _StatItem(
-          icon: Icons.timer_rounded,
-          label: 'duration'.tr,
-          value: '${course.totalHours} ${'h'.tr}',
-          color: const Color(0xFFFF9F43),
-        ),
+      _StatItem(
+        icon: Icons.sell_rounded,
+        label: 'cost'.tr,
+        value: course.price == 0 ? 'free'.tr : '${course.price} ج',
+        color: const Color(0xFF1DB954),
+      ),
+      _StatItem(
+        icon: Icons.timer_rounded,
+        label: 'duration'.tr,
+        value: '${course.totalHours} ${'h'.tr}',
+        color: const Color(0xFFFF9F43),
+      ),
     ];
 
     return Container(
@@ -878,7 +805,7 @@ class _StatsRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children:
-        stats.map((s) => Expanded(child: _StatChip(item: s))).toList(),
+            stats.map((s) => Expanded(child: _StatChip(item: s))).toList(),
       ),
     );
   }
@@ -889,51 +816,54 @@ class _StatItem {
   final String label;
   final String value;
   final Color color;
-  const _StatItem(
-      {required this.icon,
-        required this.label,
-        required this.value,
-        required this.color});
+
+  const _StatItem({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
 }
 
 class _StatChip extends StatelessWidget {
   final _StatItem item;
+
   const _StatChip({required this.item});
 
   @override
   Widget build(BuildContext context) => Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color: item.color.withValues(alpha: 0.12),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(item.icon, size: 18, color: item.color),
-      ),
-      const SizedBox(height: 6),
-      Text(
-        item.value,
-        style: TextStyle(
-          fontFamily: 'Tajawal',
-          fontSize: 14,
-          fontWeight: FontWeight.w800,
-          color: context.colors.textDark,
-        ),
-      ),
-      const SizedBox(height: 2),
-      Text(
-        item.label,
-        style:  TextStyle(
-          fontFamily: 'Tajawal',
-          fontSize: 10,
-          color: context.colors.textMedium,
-        ),
-      ),
-    ],
-  );
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: item.color.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(item.icon, size: 18, color: item.color),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            item.value,
+            style: TextStyle(
+              fontFamily: 'Tajawal',
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: context.colors.textDark,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            item.label,
+            style: TextStyle(
+              fontFamily: 'Tajawal',
+              fontSize: 10,
+              color: context.colors.textMedium,
+            ),
+          ),
+        ],
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -942,341 +872,35 @@ class _StatChip extends StatelessWidget {
 
 class _SectionHeader extends StatelessWidget {
   final VoidCallback onAdd;
+
   const _SectionHeader({required this.onAdd});
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-    child: Row(
-      children: [
-        Container(
-          width: 4,
-          height: 20,
-          decoration: BoxDecoration(
-            gradient: context.colors.primaryGradient,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text('sessions'.tr, style: context.colors.h3.copyWith(fontSize: 15)),
-        ),
-        _AddButton(onTap: onAdd),
-      ],
-    ),
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Session tile (unchanged logic)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _SessionTile extends StatelessWidget {
-  final TeacherSessionItem session;
-  final VoidCallback onEdit;
-  final VoidCallback onAttend;
-  final VoidCallback onExam;
-  final bool isWide;
-
-  const _SessionTile({
-    required this.session,
-    required this.onEdit,
-    required this.onAttend,
-    required this.onExam,
-    required this.isWide,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Exams button is now unified inside SessionCard's action row
-    return SessionCard(
-      session: session,
-      onEdit: onEdit,
-      onDelete: () => _confirmDelete(context, session),
-      onStartLive: () => _handleStart(context, session),
-      onEndLive: () => _handleEnd(context, session),
-      onRecording: () => _handleRecording(context, session),
-      onAttend: onAttend,
-      onExam: onExam,
-    );
-  }
-
-  Future<void> _confirmDelete(BuildContext context, TeacherSessionItem s) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          backgroundColor: context.colors.surface,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(context.colors.radiusLarge)),
-          title: Row(children: [
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+        child: Row(
+          children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 4,
+              height: 20,
               decoration: BoxDecoration(
-                  color: context.colors.danger.withValues(alpha: 0.1),
-                  shape: BoxShape.circle),
-              child:  Icon(Icons.delete_rounded,
-                  color: context.colors.danger, size: 18),
-            ),
-            const SizedBox(width: 12),
-            const Text('حذف الدرس',
-                style: TextStyle(
-                    fontFamily: 'Tajawal', fontWeight: FontWeight.w700)),
-          ]),
-          content: Text('هل تريد حذف "${s.name}"؟',
-              style:  TextStyle(
-                  fontFamily: 'Tajawal', color: context.colors.textMedium)),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child:  Text('إلغاء',
-                  style: TextStyle(
-                      fontFamily: 'Tajawal', color: context.colors.textMedium)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: context.colors.danger,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10))),
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('حذف',
-                  style: TextStyle(
-                      fontFamily: 'Tajawal', fontWeight: FontWeight.w700)),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (ok == true && context.mounted) {
-      final deleted =
-      await context.read<TeacherSessionsProvider>().deleteSession(s.id);
-      if (context.mounted) {
-        _snack(context, deleted ? 'تم الحذف' : 'فشل الحذف',
-            deleted ? context.colors.success : context.colors.danger);
-      }
-    }
-  }
-
-  Future<void> _handleStart(BuildContext context, TeacherSessionItem s) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          backgroundColor: context.colors.surface,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(context.colors.radiusLarge)),
-          title: Row(children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration:  BoxDecoration(
-                  gradient: LinearGradient(
-                      colors: [context.colors.primary, context.colors.primaryDark]),
-                  shape: BoxShape.circle),
-              child: const Icon(Icons.play_circle_rounded,
-                  color: Colors.white, size: 20),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text('بدء الحصة المباشرة',
-                  style: TextStyle(
-                      fontFamily: 'Tajawal', fontWeight: FontWeight.w700)),
-            ),
-          ]),
-          content: Text(
-              'سيتم إنشاء غرفة مباشرة لـ "${s.name}". هل تريد المتابعة؟',
-              style:  TextStyle(
-                  fontFamily: 'Tajawal', color: context.colors.textMedium)),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text('cancel'.tr,
-                  style:  TextStyle(
-                      fontFamily: 'Tajawal', color: context.colors.textMedium)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: context.colors.primary,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10))),
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('بدء البث',
-                  style: TextStyle(
-                      fontFamily: 'Tajawal', fontWeight: FontWeight.w700)),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (confirmed != true || !context.mounted) return;
-    context.read<TeacherSessionsProvider>().joinLive(context, s.id, s.courseId, 5);
-  }
-
-  Future<void> _handleEnd(BuildContext context, TeacherSessionItem s) async {
-    bool saveRecording = true;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dCtx) => StatefulBuilder(
-        builder: (dCtx, setD) => Directionality(
-          textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            backgroundColor: context.colors.surface,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(context.colors.radiusLarge)),
-            title: Row(children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                    color: context.colors.danger.withValues(alpha: 0.1),
-                    shape: BoxShape.circle),
-                child:  Icon(Icons.stop_circle_rounded,
-                    color: context.colors.danger, size: 20),
+                gradient: context.colors.primaryGradient,
+                borderRadius: BorderRadius.circular(2),
               ),
-              const SizedBox(width: 12),
-              const Text('إنهاء الحصة',
-                  style: TextStyle(
-                      fontFamily: 'Tajawal', fontWeight: FontWeight.w700)),
-            ]),
-            content: Column(mainAxisSize: MainAxisSize.min, children: [
-               Text('هل تريد إنهاء الحصة للجميع؟',
-                  style: TextStyle(
-                      fontFamily: 'Tajawal', color: context.colors.textMedium)),
-              const SizedBox(height: 14),
-              GestureDetector(
-                onTap: () => setD(() => saveRecording = !saveRecording),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                      color: context.colors.background,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: context.colors.divider)),
-                  child: Row(children: [
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      width: 22,
-                      height: 22,
-                      decoration: BoxDecoration(
-                        color: saveRecording
-                            ? context.colors.primary
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: saveRecording
-                              ? context.colors.primary
-                              : context.colors.divider,
-                          width: 2,
-                        ),
-                      ),
-                      child: saveRecording
-                          ? const Icon(Icons.check_rounded,
-                          size: 14, color: Colors.white)
-                          : null,
-                    ),
-                    const SizedBox(width: 10),
-                     Text('حفظ التسجيل تلقائياً',
-                        style: TextStyle(
-                            fontFamily: 'Tajawal',
-                            fontWeight: FontWeight.w600,
-                            color: context.colors.textDark)),
-                  ]),
-                ),
-              ),
-            ]),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dCtx, false),
-                child:  Text('إلغاء',
-                    style: TextStyle(
-                        fontFamily: 'Tajawal', color: context.colors.textMedium)),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: context.colors.danger,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10))),
-                onPressed: () => Navigator.pop(dCtx, true),
-                child: const Text('إنهاء الحصة',
-                    style: TextStyle(
-                        fontFamily: 'Tajawal', fontWeight: FontWeight.w700)),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-    if (confirmed != true || !context.mounted) return;
-    final ok = await context
-        .read<TeacherSessionsProvider>()
-        .endLive(s.id, saveRecording: saveRecording);
-    if (context.mounted) {
-      _snack(context, ok ? 'تم إنهاء الحصة' : 'حدث خطأ',
-          ok ? context.colors.success : context.colors.danger);
-    }
-  }
-
-  Future<void> _handleRecording(
-      BuildContext context, TeacherSessionItem s) async {
-    if (s.hasRecording) {
-      final uri = Uri.parse(s.recordingUrl!);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
-      return;
-    }
-    _snack(context, 'جاري البحث عن التسجيل...', context.colors.primary);
-    final url =
-    await context.read<TeacherSessionsProvider>().fetchRecordingUrl(s.id);
-    if (!context.mounted) return;
-    if (url != null) {
-      final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
-    } else {
-      _snack(context, 'التسجيل لم يكتمل بعد، حاول لاحقاً', context.colors.accent);
-    }
-  }
-
-  void _snack(BuildContext context, String msg, Color color) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Row(children: [
-            Icon(
-              color == context.colors.success
-                  ? Icons.check_circle_rounded
-                  : color == context.colors.danger
-                  ? Icons.error_rounded
-                  : Icons.info_rounded,
-              color: Colors.white,
-              size: 18,
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(msg,
-                  style: const TextStyle(
-                      fontFamily: 'Tajawal',
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600)),
+              child: Text('sessions'.tr,
+                  style: context.colors.h3.copyWith(fontSize: 15)),
             ),
-          ]),
-          backgroundColor: color,
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(16),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14))));
+            _AddButton(onTap: onAdd),
+          ],
+        ),
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Loading / Empty states (unchanged)
+// Loading / Empty states
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _LoadingState extends StatelessWidget {
@@ -1284,765 +908,103 @@ class _LoadingState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-    child: Column(mainAxisSize: MainAxisSize.min, children: [
-      SizedBox(
-        width: 40,
-        height: 40,
-        child: CircularProgressIndicator(
-          valueColor:  AlwaysStoppedAnimation(context.colors.primary),
-          strokeWidth: 3,
-          backgroundColor: context.colors.primaryLight,
-        ),
-      ),
-      const SizedBox(height: 16),
-      Text('جاري تحميل الدروس...', style: context.colors.body),
-    ]),
-  );
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          SizedBox(
+            width: 40,
+            height: 40,
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation(context.colors.primary),
+              strokeWidth: 3,
+              backgroundColor: context.colors.primaryLight,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text('جاري تحميل الدروس...', style: context.colors.body),
+        ]),
+      );
 }
 
 class _EmptyState extends StatelessWidget {
   final VoidCallback onAdd;
+
   const _EmptyState({required this.onAdd});
 
   @override
   Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(40),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(
-          width: 90,
-          height: 90,
-          decoration: BoxDecoration(
-            gradient: context.colors.primaryGradient,
-            shape: BoxShape.circle,
-            boxShadow: context.colors.primaryShadow,
-          ),
-          child: const Icon(Icons.video_library_rounded,
-              size: 40, color: Colors.white),
-        ),
-        const SizedBox(height: 20),
-        Text('لا توجد دروس بعد',
-            style: context.colors.h3.copyWith(color: context.colors.textDark)),
-        const SizedBox(height: 8),
-        Text('أضف أول درس لتبدأ في تنظيم مواد الكورس',
-            style: context.colors.body, textAlign: TextAlign.center),
-        const SizedBox(height: 28),
-        GestureDetector(
-          onTap: onAdd,
-          child: Container(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-            decoration: BoxDecoration(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              width: 90,
+              height: 90,
+              decoration: BoxDecoration(
                 gradient: context.colors.primaryGradient,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: context.colors.primaryShadow),
-            child: const Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.add_rounded, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Text('أضف أول درس',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'Tajawal',
-                      fontSize: 15)),
-            ]),
-          ),
+                shape: BoxShape.circle,
+                boxShadow: context.colors.primaryShadow,
+              ),
+              child: const Icon(Icons.video_library_rounded,
+                  size: 40, color: Colors.white),
+            ),
+            const SizedBox(height: 20),
+            Text('لا توجد دروس بعد',
+                style:
+                    context.colors.h3.copyWith(color: context.colors.textDark)),
+            const SizedBox(height: 8),
+            Text('أضف أول درس لتبدأ في تنظيم مواد الكورس',
+                style: context.colors.body, textAlign: TextAlign.center),
+            const SizedBox(height: 28),
+            GestureDetector(
+              onTap: onAdd,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                decoration: BoxDecoration(
+                    gradient: context.colors.primaryGradient,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: context.colors.primaryShadow),
+                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.add_rounded, color: Colors.white, size: 20),
+                  SizedBox(width: 8),
+                  Text('أضف أول درس',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'Tajawal',
+                          fontSize: 15)),
+                ]),
+              ),
+            ),
+          ]),
         ),
-      ]),
-    ),
-  );
+      );
 }
 
 class _AddButton extends StatelessWidget {
   final VoidCallback onTap;
+
   const _AddButton({required this.onTap});
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      height: 36,
-      padding:  EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        gradient: context.colors.primaryGradient,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: context.colors.primaryShadow,
-      ),
-      child: const Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.add_rounded, color: Colors.white, size: 18),
-        SizedBox(width: 6),
-        Text('إضافة درس',
-            style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Tajawal',
-                fontSize: 12)),
-      ]),
-    ),
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// session_card.dart  — premium redesign
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SessionCard — drop-in replacement, identical public API
-// ─────────────────────────────────────────────────────────────────────────────
-
-class SessionCard extends StatelessWidget {
-  final TeacherSessionItem session;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-  final VoidCallback onStartLive;
-  final VoidCallback onEndLive;
-  final VoidCallback onRecording;
-  final VoidCallback onAttend;
-  final VoidCallback onExam;
-
-  const SessionCard({
-    super.key,
-    required this.session,
-    required this.onEdit,
-    required this.onDelete,
-    required this.onStartLive,
-    required this.onEndLive,
-    required this.onRecording,
-    required this.onAttend,
-    required this.onExam,
-  });
-
-  // ── Derived state helpers ─────────────────────────────────────────────────
-
-  bool get _isLive => session.isLive;
-  bool get _isRecorded => session.type == 'recorded';
-  bool get _hasRecording => session.hasRecording;
-
-  /// Left-edge accent color per session state / type
-  Color? get _accentColor {
-    if (_isLive) return const Color(0xFFFF4E4E);
-    if (_hasRecording) return const Color(0xFF1DB954);
-    if (_isRecorded) return const Color(0xFF4DA6FF);
-    return null;
-  }
-
-  /// Human-readable status label
-  String _statusLabel(BuildContext ctx) {
-    if (_isLive) return 'مباشر الآن';
-    if (_hasRecording) return 'مسجّل';
-    return _isRecorded ? 'مسجّل'.tr : 'live'.tr;
-  }
-
-  IconData get _statusIcon {
-    if (_isLive) return Icons.sensors_rounded;
-    if (_hasRecording) return Icons.play_circle_rounded;
-    if (_isRecorded) return Icons.video_library_rounded;
-    return Icons.live_tv_rounded;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: context.colors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: _isLive
-              ? const Color(0xFFFF4E4E).withValues(alpha: 0.35)
-              : context.colors.divider,
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: _isLive
-                ? const Color(0xFFFF4E4E).withValues(alpha: 0.12)
-                : Colors.black.withValues(alpha: 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 5),
+        onTap: onTap,
+        child: Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            gradient: context.colors.primaryGradient,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: context.colors.primaryShadow,
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ── Left accent bar ─────────────────────────────────────────
-              _AccentBar(color: _accentColor??context.colors.primary, isLive: _isLive),
-
-              // ── Card body ───────────────────────────────────────────────
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // ── Top row: title + menu ─────────────────────────
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Session type icon bubble
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: (_accentColor??context.colors.primary).withValues(alpha: 0.10),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(_statusIcon,
-                                size: 20, color: _accentColor??context.colors.primary),
-                          ),
-                          const SizedBox(width: 12),
-
-                          // Title + session number
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  session.name,
-                                  style:  TextStyle(
-                                    fontFamily: 'Tajawal',
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w800,
-                                    color: context.colors.textDark,
-                                    height: 1.3,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                _StatusBadge(
-                                  label: _statusLabel(context),
-                                  color: _accentColor??context.colors.primary,
-                                  isLive: _isLive,
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          // 3-dot menu
-                          _ContextMenu(
-                            onEdit: onEdit,
-                            onDelete: onDelete,
-                          ),
-                        ],
-                      ),
-
-                      // ── Meta row: date / duration / order ─────────────
-                      if (_hasMetaRow) ...[
-                        const SizedBox(height: 10),
-                        _MetaRow(session: session),
-                      ],
-
-                      // ── Divider ───────────────────────────────────────
-                      const SizedBox(height: 12),
-                      Divider(
-                        height: 1,
-                        color: context.colors.divider.withValues(alpha: 0.6),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // ── Action buttons ────────────────────────────────
-                      _ActionRow(
-                        session: session,
-                        isLive: _isLive,
-                        hasRecording: _hasRecording,
-                        onStartLive: onStartLive,
-                        onEndLive: onEndLive,
-                        onRecording: onRecording,
-                        onAttend: onAttend,
-                        onExam: onExam,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  bool get _hasMetaRow =>
-      session.scheduledAt != null ||
-          session.durationMinutes != null ||
-          session.order != null;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Animated left accent bar — pulses when live
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _AccentBar extends StatefulWidget {
-  final Color color;
-  final bool isLive;
-
-  const _AccentBar({required this.color, required this.isLive});
-
-  @override
-  State<_AccentBar> createState() => _AccentBarState();
-}
-
-class _AccentBarState extends State<_AccentBar>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _anim;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-    _anim = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
-    if (widget.isLive) _ctrl.repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (!widget.isLive) {
-      return Container(
-        width: 5,
-        decoration: BoxDecoration(
-          color: widget.color,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(18),
-            bottomLeft: Radius.circular(18),
-          ),
+          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.add_rounded, color: Colors.white, size: 18),
+            SizedBox(width: 6),
+            Text('إضافة درس',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'Tajawal',
+                    fontSize: 12)),
+          ]),
         ),
       );
-    }
-
-    return AnimatedBuilder(
-      animation: _anim,
-      builder: (_, __) => Container(
-        width: 5,
-        decoration: BoxDecoration(
-          color: widget.color.withValues(alpha: _anim.value),
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(18),
-            bottomLeft: Radius.circular(18),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Status badge — "مباشر الآن" with live dot, or type label
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _StatusBadge extends StatefulWidget {
-  final String label;
-  final Color color;
-  final bool isLive;
-
-  const _StatusBadge(
-      {required this.label, required this.color, required this.isLive});
-
-  @override
-  State<_StatusBadge> createState() => _StatusBadgeState();
-}
-
-class _StatusBadgeState extends State<_StatusBadge>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    );
-    if (widget.isLive) _ctrl.repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: widget.color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-            color: widget.color.withValues(alpha: 0.25), width: 0.8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (widget.isLive) ...[
-            AnimatedBuilder(
-              animation: _ctrl,
-              builder: (_, __) => Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: widget.color
-                      .withValues(alpha: 0.4 + _ctrl.value * 0.6),
-                ),
-              ),
-            ),
-            const SizedBox(width: 5),
-          ],
-          Text(
-            widget.label,
-            style: TextStyle(
-              fontFamily: 'Tajawal',
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: widget.color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Meta row: scheduled date · duration · order
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _MetaRow extends StatelessWidget {
-  final TeacherSessionItem session;
-
-  const _MetaRow({required this.session});
-
-  @override
-  Widget build(BuildContext context) {
-    final chips = <_MetaChip>[];
-
-    final dt = session.scheduledAt;
-    chips.add(_MetaChip(
-      icon: Icons.event_rounded,
-      label:
-      '${dt.day}/${dt.month}/${dt.year}  ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}',
-    ));
-  
-    chips.add(_MetaChip(
-      icon: Icons.timer_outlined,
-      label: '${session.durationMinutes} دقيقة',
-    ));
-  
-    chips.add(_MetaChip(
-      icon: Icons.format_list_numbered_rounded,
-      label: 'درس ${session.order}',
-    ));
-  
-    if (chips.isEmpty) return const SizedBox.shrink();
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 6,
-      children: chips,
-    );
-  }
-}
-
-class _MetaChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _MetaChip({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Icon(icon, size: 12, color: context.colors.textMedium),
-      const SizedBox(width: 4),
-      Text(
-        label,
-        style:  TextStyle(
-          fontFamily: 'Tajawal',
-          fontSize: 11,
-          color: context.colors.textMedium,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    ],
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 3-dot context menu: edit + delete
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ContextMenu extends StatelessWidget {
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-
-  const _ContextMenu({required this.onEdit, required this.onDelete});
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      onSelected: (v) {
-        if (v == 'edit') onEdit();
-        if (v == 'delete') onDelete();
-      },
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      color: context.colors.surface,
-      elevation: 8,
-      shadowColor: Colors.black.withValues(alpha: 0.15),
-      icon: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: context.colors.background,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: context.colors.divider, width: 1),
-        ),
-        child:  Icon(Icons.more_vert_rounded,
-            size: 16, color: context.colors.textMedium),
-      ),
-      itemBuilder: (_) => [
-        PopupMenuItem(
-          value: 'edit',
-          child: Row(children: [
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                color: context.colors.primary.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child:  Icon(Icons.edit_rounded,
-                  size: 15, color: context.colors.primary),
-            ),
-            const SizedBox(width: 10),
-            const Text('تعديل',
-                style: TextStyle(
-                    fontFamily: 'Tajawal', fontWeight: FontWeight.w600)),
-          ]),
-        ),
-        PopupMenuItem(
-          value: 'delete',
-          child: Row(children: [
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                color: context.colors.danger.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child:  Icon(Icons.delete_rounded,
-                  size: 15, color: context.colors.danger),
-            ),
-            const SizedBox(width: 10),
-             Text('حذف',
-                style: TextStyle(
-                    fontFamily: 'Tajawal',
-                    fontWeight: FontWeight.w600,
-                    color: context.colors.danger)),
-          ]),
-        ),
-      ],
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Action row: contextual buttons based on session state
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ActionRow extends StatelessWidget {
-  final TeacherSessionItem session;
-  final bool isLive;
-  final bool hasRecording;
-  final VoidCallback onStartLive;
-  final VoidCallback onEndLive;
-  final VoidCallback onRecording;
-  final VoidCallback onAttend;
-  final VoidCallback onExam;
-
-  const _ActionRow({
-    required this.session,
-    required this.isLive,
-    required this.hasRecording,
-    required this.onStartLive,
-    required this.onEndLive,
-    required this.onRecording,
-    required this.onAttend,
-    required this.onExam,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        // ── Attendance button — always present ──────────────────────────
-        _ActionBtn(
-          icon: Icons.how_to_reg_rounded,
-          label: 'الحضور',
-          color: const Color(0xFF4DA6FF),
-          onTap: onAttend,
-          outlined: true,
-        ),
-
-        const SizedBox(width: 8),
-
-        const SizedBox(width: 8),
-
-        // ── Exams shortcut ──────────────────────────────────────────────
-        _ActionBtn(
-          icon: Icons.quiz_rounded,
-          label: 'exams'.tr,
-          color: const Color(0xFF7B5FFF),
-          onTap: onExam,
-          outlined: true,
-        ),
-
-        const SizedBox(width: 8),
-
-        // ── Live controls ───────────────────────────────────────────────
-        if (isLive) ...[
-          Expanded(
-            child: _ActionBtn(
-              icon: Icons.stop_circle_rounded,
-              label: 'إنهاء البث',
-              color: context.colors.danger,
-              onTap: onEndLive,
-              filled: true,
-            ),
-          ),
-        ] else ...[
-          if (session.type != 'recorded') ...[
-            Expanded(
-              child: _ActionBtn(
-                icon: Icons.play_circle_rounded,
-                label: 'بدء البث',
-                color: context.colors.primary,
-                onTap: onStartLive,
-                filled: true,
-              ),
-            ),
-            const SizedBox(width: 8),
-          ],
-
-          // Recording button
-          if (hasRecording)
-            Expanded(
-              child: _ActionBtn(
-                icon: Icons.smart_display_rounded,
-                label: 'التسجيل',
-                color: const Color(0xFF1DB954),
-                onTap: onRecording,
-                filled: true,
-              ),
-            )
-          else if (session.type == 'recorded')
-            Expanded(
-              child: _ActionBtn(
-                icon: Icons.upload_file_rounded,
-                label: 'رفع التسجيل',
-                color: const Color(0xFF1DB954),
-                onTap: onRecording,
-                outlined: true,
-              ),
-            ),
-        ],
-      ],
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Reusable action button — filled or outlined style
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ActionBtn extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-  final bool filled;
-  final bool outlined;
-
-  const _ActionBtn({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-    this.filled = false,
-    this.outlined = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final bg = filled
-        ? color
-        : outlined
-        ? Colors.transparent
-        : color.withValues(alpha: 0.09);
-
-    final border = outlined
-        ? Border.all(color: color.withValues(alpha: 0.4), width: 1)
-        : filled
-        ? null
-        : null;
-
-    final textColor = filled ? Colors.white : color;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        height: 36,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(10),
-          border: border,
-          boxShadow: filled
-              ? [
-            BoxShadow(
-              color: color.withValues(alpha: 0.28),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            )
-          ]
-              : null,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: textColor),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'Tajawal',
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: textColor,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

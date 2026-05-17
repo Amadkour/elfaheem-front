@@ -1,6 +1,7 @@
 // ignore_for_file: depend_on_referenced_packages, use_build_context_synchronously
 library;
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart'
     show TeacherCourseStatus, TeacherCourse;
@@ -16,10 +17,6 @@ import '../home/teacher_provider.dart';
 import '../schedules/schedules_screen.dart';
 import '../sessions/sessions_screen.dart';
 import 'course_form_screen.dart';
-
-// ═══════════════════════════════════════════════════════════════════════════════
-//  TeacherCoursesScreen
-// ═══════════════════════════════════════════════════════════════════════════════
 
 class TeacherCoursesScreen extends StatefulWidget {
   const TeacherCoursesScreen({super.key});
@@ -44,6 +41,7 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: BasePage(
+        useWebCard: true,
         floatingActionButton: isWide ? null : _FloatingAddBtn(),
         child: SafeArea(
           bottom: false,
@@ -539,6 +537,8 @@ class _CourseCardState extends State<_CourseCard> {
                   url: c.imageUrl,
                   width: double.infinity,
                   borderRadius: BorderRadius.zero,
+                  heroTag: "courses-screen-${c.id}",
+
                 ),
               ),
             ],
@@ -575,7 +575,7 @@ class _CourseCardState extends State<_CourseCard> {
           // ── Expand toggle ────────────────────────────────────────────
 
           InkWell(
-            onTap: () => setState(() => _expanded = !_expanded),
+            onTap: () { if(mounted) setState(() => _expanded = !_expanded);},
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               child: Row(
@@ -981,7 +981,7 @@ class _ExtRow extends StatelessWidget {
                   ),
                 ),
                 if (onTap != null)
-                   Icon(Icons.chevron_left_rounded,
+                   Icon(CupertinoIcons.settings,
                       size: 16, color: context.colors.primary),
               ],
             ),

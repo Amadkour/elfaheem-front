@@ -1,73 +1,47 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/student/courses/my_courses/my_courses_provider.dart';
 import 'package:flutter_education_app/features/student/models.dart'
     show CourseModel;
-import 'package:provider/provider.dart';
-
+import '../../../../config/app_config.dart';
 import '../../../../config/app_theme.dart';
 import '../../../../utils/widget/app_network_image.dart';
+import '../../../shared/profile/course_instractor_profile.dart';
 import '../../courses/details/course_detail_screen.dart';
-import '../../courses/list/courses_provider.dart';
 
-class MyCoursesRow extends StatelessWidget {
-  const MyCoursesRow({super.key, required this.showMyCourses});
-  final bool showMyCourses;
+class CoursesRow extends StatelessWidget {
+  final List<CourseModel> courses;
+  const CoursesRow({super.key, required this.courses});
+
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<CoursesProvider>();
-    final isWide = MediaQuery.of(context).size.width >= 680;
+    final ScrollController controller=ScrollController();
 
-    if (provider.isLoading) {
-      return  SizedBox(
-        height: 270,
-        child: Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation(context.colors.primary),
-            strokeWidth: 2.5,
-          ),
-        ),
-      );
-    }
-
-    if (showMyCourses && provider.explorHomecourses.isEmpty ||provider.myCourses.isEmpty  ) {
-      return  SizedBox(
+    if (courses.isEmpty) {
+      return SizedBox(
         height: 100,
-        child: Center(child: Text('لا توجد كورسات', style: context.colors.body)),
+        child:
+            Center(child: Text('لا توجد كورسات', style: context.colors.body)),
       );
     }
-
-    final display = showMyCourses? provider.myCourses.take(6).toList():provider.explorHomecourses.take(6).toList();
-
-    // ── Wide: 3-column grid ─────────────────────────────────────────────────
-    if (isWide) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 0.68,
-          ),
-          itemCount: display.length,
-          itemBuilder: (_, i) => _CourseCard(course: display[i],showMyCourses: showMyCourses,),
-        ),
-      );
-    }
-
     // ── Mobile: horizontal scroll ───────────────────────────────────────────
-    return SizedBox(
-      height: 296,
+    Widget list= SizedBox(
+      height: context.height/3 >300?300:context.height/4,
       child: ListView.separated(
+        controller: controller,
         padding: const EdgeInsets.symmetric(horizontal: 20),
         scrollDirection: Axis.horizontal,
-        itemCount: display.length,
+        itemCount: courses.length,
         separatorBuilder: (_, __) => const SizedBox(width: 14),
-        itemBuilder: (_, i) =>
-            _CourseCard(course: display[i], fixedWidth: 188,showMyCourses: showMyCourses,),
+        itemBuilder: (_, i) => _CourseCard(course: courses[i], fixedWidth: 188),
       ),
+    );
+    if (!kIsWeb) return list;
+    return Scrollbar(
+      controller: controller,
+      thumbVisibility: true, // This keeps the 'cursor' visible
+      trackVisibility: true, // Optional: shows the path of the scrollbar
+      child: list,
     );
   }
 }
@@ -78,24 +52,19 @@ class MyCoursesRow extends StatelessWidget {
 class _CourseCard extends StatelessWidget {
   final CourseModel course;
   final double? fixedWidth;
-  final bool showMyCourses;
 
-  const _CourseCard({required this.course, this.fixedWidth, required this.showMyCourses});
-
-  Color? get _accentColor {
-    final name = course.categoryName?.toLowerCase() ?? '';
-    if (name.contains('برمج') || name.contains('تقن')) return const Color(0xFF5B4FCF);
-    if (name.contains('رياض') || name.contains('علوم')) return const Color(0xFF0F6E56);
-    if (name.contains('لغ')) return const Color(0xFFD85A30);
-    if (name.contains('تصم') || name.contains('فن')) return const Color(0xFFD4537E);
-    return null;
-  }
+  const _CourseCard({required this.course, this.fixedWidth});
 
   bool get _isLive => course.type == 'live';
-  bool get _hasProgress => course.progress >= 0;
+
+  bool get _hasProgress => course.progress > 0;
 
   @override
   Widget build(BuildContext context) {
+    final hasLectures = course.sessions.isNotEmpty;
+    final hasHours = course.hoursCount > 0;
+    final hasCertificate = course.certificates.isNotEmpty;
+    final hasStudents = course.studentsCount > 0;
     return GestureDetector(
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => CourseDetailScreen(course: course)),
@@ -107,7 +76,7 @@ class _CourseCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha:0.07),
+              color: Colors.black.withValues(alpha: 0.07),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
@@ -119,55 +88,93 @@ class _CourseCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             _Thumbnail(course: course, isLive: _isLive),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 11, 12, 13),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Title
-                  Text(
-                    course.title,
-                    style: context.colors.h3.copyWith(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.2,
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 11),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title
+                    Spacer(),
+                    Text(
+                      course.title,
+                      style: context.colors.h3.copyWith(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
+                    Spacer(),
 
-                  // Teacher
-                  if (course.instructorName.isNotEmpty)
-                    _TeacherRow(
-                      name: course.instructorName,
-                      accentColor: _accentColor??context.colors.primary,
-                      accentLight: (_accentColor??context.colors.primary).withValues(alpha:0.12),
+                    // Teacher
+                    if (course.teacher != Null)
+                      InstructorAvatar(
+                        teacher: course.teacher!,
+                        size: 30,
+                        canOpen: true,
+                        showTitle: true,
+                      ),
+
+                    const _CardDivider(),
+
+                    // Rating + students
+                    Spacer(flex: 1),
+                    if (hasStudents || hasCertificate)
+                      _StudentRow(
+                          course: course,
+                          hasStudents: hasStudents,
+                          hasCertificate: hasCertificate),
+                    Spacer(),
+
+                    // Lectures + hours
+                    if (hasHours || hasLectures)
+                      _MetaRow(
+                        course: course,
+                        hasHours: hasHours,
+                        hasLectures: hasLectures,
+                      ),
+                    Spacer(
+                      flex: 2,
+                    ),
+                    // Category pill + price
+                    Row(
+                      children: [
+                        if (course.categoryName != null &&
+                            course.categoryName!.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 9, vertical: 3),
+                            decoration: BoxDecoration(
+                              color:
+                                  context.colors.primary.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              course.categoryName!,
+                              style: context.colors.caption.copyWith(
+                                color: context.colors.primary,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ),
+                        Spacer(),
+                        if (course.rate != null) _StatsRow(course: course),
+                      ],
                     ),
 
-                  const _CardDivider(),
-
-                  // Rating + students
-                  _StatsRow(course: course),
-                  const SizedBox(height: 6),
-
-                  // Lectures + hours
-                  _MetaRow(course: course),
-                  const SizedBox(height: 8),
-
-                  // Category pill + price
-                  _BottomRow(
-                    course: course,
-                    accentColor: _accentColor??context.colors.primary,
-                    accentLight: (_accentColor??context.colors.primary)..withValues(alpha:0.12),
-                  ),
-// Progress bar — only when enrolled
-                  if (_hasProgress && showMyCourses) ...[
-                    const SizedBox(height: 9),
-                    _ProgressBar(progress: course.progress),
+                    // Progress bar — only when enrolled
+                    if (_hasProgress) ...[
+                      const SizedBox(height: 9),
+                      _ProgressBar(progress: course.progress),
+                    ],
+                    Spacer(
+                      flex: 2,
+                    ),
                   ],
-                  //],
-                ],
+                ),
               ),
             ),
           ],
@@ -191,14 +198,18 @@ class _Thumbnail extends StatelessWidget {
         AppNetworkImage(
           url: course.imageUrl,
           width: double.infinity,
-          height: 118,
+          height: context.height/6>150?150:context.height/8,
+          heroTag: "course-row-card-${course.id}",
         ),
         // Bottom dark gradient for readability
         Positioned.fill(
           child: DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Colors.transparent, Colors.black.withValues(alpha:0.36)],
+                colors: [
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: 0.36)
+                ],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
@@ -213,7 +224,7 @@ class _Thumbnail extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha:0.45),
+              color: Colors.black.withValues(alpha: 0.45),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
@@ -236,7 +247,7 @@ class _Thumbnail extends StatelessWidget {
             width: 28,
             height: 28,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha:0.88),
+              color: Colors.white.withValues(alpha: 0.88),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -265,9 +276,9 @@ class _Thumbnail extends StatelessWidget {
               boxShadow: [
                 BoxShadow(
                   color: (course.price == 0
-                      ? const Color(0xFF0F6E56)
-                      : context.colors.primary)
-                      .withValues(alpha:0.35),
+                          ? const Color(0xFF0F6E56)
+                          : context.colors.primary)
+                      .withValues(alpha: 0.35),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -291,52 +302,26 @@ class _Thumbnail extends StatelessWidget {
   }
 }
 
-// ── Teacher row ──────────────────────────────────────────────────────────────
-class _TeacherRow extends StatelessWidget {
-  final String name;
-  final Color accentColor;
-  final Color accentLight;
 
-  const _TeacherRow({
-    required this.name,
-    required this.accentColor,
-    required this.accentLight,
-  });
+class IconColored extends StatelessWidget{
+  final Color color;
+  final IconData icon;
 
+  const IconColored({super.key, required this.color, required this.icon});
   @override
   Widget build(BuildContext context) {
-    final initial = name.isNotEmpty ? name[0] : '؟';
-    return Row(
-      children: [
-        Container(
-          width: 20,
-          height: 20,
-          decoration: BoxDecoration(color: accentLight, shape: BoxShape.circle),
-          alignment: Alignment.center,
-          child: Text(
-            initial,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: accentColor,
-              fontFamily: 'Cairo',
-            ),
-          ),
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            'أ. $name',
-            style: context.colors.caption.copyWith(fontSize: 11, color: context.colors.textLight),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
-        ),
-      ],
-    );
+   return  Container(
+     width: 20,
+     height: 20,
+     decoration: BoxDecoration(
+       color: color.withValues(alpha: 0.12),
+       borderRadius: BorderRadius.circular(5),
+     ),
+     child: Icon(icon, size: 13, color: color),
+   );
   }
-}
 
+}
 // ── Thin divider ─────────────────────────────────────────────────────────────
 class _CardDivider extends StatelessWidget {
   const _CardDivider();
@@ -344,11 +329,11 @@ class _CardDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 3),
       child: Divider(
         height: 0.5,
         thickness: 0.5,
-        color: Colors.black.withValues(alpha:0.07),
+        color: Colors.black.withValues(alpha: 0.07),
       ),
     );
   }
@@ -364,7 +349,7 @@ class _StatsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-         Icon(Icons.star_rounded, color: context.colors.accent, size: 13),
+        Icon(Icons.star_rounded, color: context.colors.accent, size: 13),
         const SizedBox(width: 3),
         Text(
           course.rate?.toStringAsFixed(1) ?? '–',
@@ -372,14 +357,6 @@ class _StatsRow extends StatelessWidget {
             color: context.colors.textDark,
             fontWeight: FontWeight.w700,
             fontSize: 12,
-          ),
-        ),
-        _Dot(),
-        Expanded(
-          child: Text(
-            '${course.studentsCount} طالب',
-            style: context.colors.caption.copyWith(fontSize: 11),
-            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
@@ -390,90 +367,75 @@ class _StatsRow extends StatelessWidget {
 // ── Lectures + hours ─────────────────────────────────────────────────────────
 class _MetaRow extends StatelessWidget {
   final CourseModel course;
+  final bool hasLectures, hasHours;
 
-  const _MetaRow({required this.course});
+  const _MetaRow(
+      {required this.course,
+      required this.hasLectures,
+      required this.hasHours});
 
   @override
   Widget build(BuildContext context) {
-    final hasLectures = course.sessions.isNotEmpty;
-    final hasHours = course.hoursCount > 0;
-
-    if (!hasLectures && !hasHours) return const SizedBox.shrink();
-
     return Row(
       children: [
         if (hasLectures) ...[
-           Icon(Icons.play_circle_outline_rounded,
-              size: 12, color: context.colors.textLight),
+          IconColored(color: context.colors.primary, icon: Icons.play_circle_outline_rounded,),
           const SizedBox(width: 3),
           Text(
-            '${course.sessions.length} محاضرة',
+            '${course.sessions.length} ${'session'.tr}',
             style: context.colors.caption.copyWith(fontSize: 10),
           ),
         ],
-        if (hasLectures && hasHours) _Dot(),
+        if (hasLectures && hasHours) Spacer(),
         if (hasHours) ...[
-           Icon(Icons.access_time_rounded,
-              size: 12, color: context.colors.textLight),
+          IconColored(color: context.colors.accent, icon: Icons.access_time_rounded,),
           const SizedBox(width: 3),
           Text(
             '${course.hoursCount} ساعة',
             style: context.colors.caption.copyWith(fontSize: 10),
           ),
         ],
+        Spacer(),
       ],
     );
   }
 }
 
-// ── Bottom row: category + price ─────────────────────────────────────────────
-class _BottomRow extends StatelessWidget {
+// ── Lectures + hours ─────────────────────────────────────────────────────────
+class _StudentRow extends StatelessWidget {
   final CourseModel course;
-  final Color accentColor;
-  final Color accentLight;
+  final bool hasStudents, hasCertificate;
 
-  const _BottomRow({
-    required this.course,
-    required this.accentColor,
-    required this.accentLight,
-  });
+  const _StudentRow(
+      {required this.course,
+      required this.hasStudents,
+      required this.hasCertificate});
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        if (course.categoryName != null)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-            decoration: BoxDecoration(
-              color: accentLight,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              course.categoryName!,
-              style: context.colors.caption.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 10,
-              ),
-            ),
-          )
-        else
-          const SizedBox.shrink(),
-        Text(
-          course.price == 0
-              ? 'مجاني'
-              : '\$ ${course.price.toStringAsFixed(0)}',
-          style: TextStyle(
-            color: course.price == 0
-                ? const Color(0xFF0F6E56)
-                : context.colors.accent,
-            fontWeight: FontWeight.w800,
-            fontSize: 13,
-            fontFamily: 'Cairo',
+        if (hasCertificate) ...[
+          IconColored(color: context.colors.success, icon:Icons.workspace_premium_rounded),
+
+          const SizedBox(width: 3),
+          Text(
+            course.certificates.first.title,
+            style: context.colors.caption.copyWith(fontSize: 10),
           ),
-        ),
+        ],
+        if (hasStudents && hasCertificate) Spacer(),
+
+        if (hasStudents) ...[
+          IconColored(color: context.colors.accent2, icon:CupertinoIcons.group),
+
+          const SizedBox(width: 3),
+          Text(
+            '${course.studentsCount} ${'student'.tr}',
+            style: context.colors.caption.copyWith(fontSize: 10),
+          ),
+        ],
+        Spacer(),
       ],
     );
   }
@@ -512,21 +474,10 @@ class _ProgressBar extends StatelessWidget {
             value: progress.clamp(0.0, 1.0),
             minHeight: 5,
             backgroundColor: context.colors.primaryLight,
-            valueColor:  AlwaysStoppedAnimation(context.colors.primary),
+            valueColor: AlwaysStoppedAnimation(context.colors.primary),
           ),
         ),
       ],
-    );
-  }
-}
-
-// ── Dot separator ────────────────────────────────────────────────────────────
-class _Dot extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return  Padding(
-      padding: EdgeInsets.symmetric(horizontal: 5),
-      child: CircleAvatar(radius: 1.5, backgroundColor: context.colors.textLight),
     );
   }
 }

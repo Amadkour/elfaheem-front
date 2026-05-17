@@ -27,19 +27,14 @@ class MyCoursesProvider extends BaseProvider {
     if(_q.isEmpty)return list;
     final q=_q.toLowerCase();
     return list.where((c)=>c.name.toLowerCase().contains(q)||
-        (c.teacherName?.toLowerCase().contains(q)??false)).toList();
+        (c.teacher?.name.toLowerCase().contains(q)??false)).toList();
   }
 
   Future<void> fetchMyEnrollments() async {
-    print("-----my-enrollments-------");
-    final r=await run(()=>_api.get('/api/v1/my-enrollments'));
+    final r=await run(()=>_api.get('/api/v1/my-enrolled-courses'));
     if(r is List){
       _all=r.map((e){
-        final j=e as Map<String,dynamic>;
-        final cj=j['course']as Map<String,dynamic>? ??j;
-        final c=CourseModel.fromJson(cj);
-        final p=(j['progress']as num?)?.toDouble()??c.progress;
-        return c.copyWith(progress:p);
+       return CourseModel.fromJson(e);
       }).toList();
       notifyListeners();
     }

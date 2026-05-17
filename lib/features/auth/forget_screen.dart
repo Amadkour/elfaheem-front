@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/auth/verified_screen.dart';
 import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart';
+import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../config/app_theme.dart';
@@ -7,6 +9,7 @@ import 'auth_provider.dart';
 import '../../utils/helpers.dart';
 import 'register_screen.dart';
 import 'auth_widgets.dart';
+
 class ForgetScreen extends StatefulWidget {
   const ForgetScreen({super.key});
 
@@ -39,7 +42,10 @@ class _ForgetScreenState extends State<ForgetScreen> {
     if (!mounted) return;
     if (success) {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const DashboardScreen()),
+        MaterialPageRoute(builder: (_) =>
+            OtpVerificationScreen(email: _emailController.text.trim(),
+              flow: OtpFlowEnum.forget,
+              role: 'student',)),
       );
     } else {
       Helpers.showMessage(
@@ -52,14 +58,12 @@ class _ForgetScreenState extends State<ForgetScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width > 800;
+    final isWide = MediaQuery
+        .of(context)
+        .size
+        .width > 800;
 
-    return Directionality(
-      textDirection: pageDirection,
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF8F9FB),
-        body: isWide ? _buildWideLayout() : _buildNarrowLayout(),
-      ),
+    return BasePage(child: isWide ? _buildWideLayout() : _buildNarrowLayout(),
     );
   }
 
@@ -83,100 +87,119 @@ class _ForgetScreenState extends State<ForgetScreen> {
   }
 
   Widget _buildNarrowLayout() {
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
-        child: _buildForm(),
+    return Center(
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+          child: _buildForm(),
+        ),
       ),
     );
   }
 
   Widget _buildForm() {
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Back button
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.arrow_back_ios_rounded, size: 14),
-                const SizedBox(width: 4),
-
-              ],
-            ),
-          ),
-          const SizedBox(height: 50),
-
-
-
-          Text(
-            'forget'.tr,
-            style: const TextStyle(
-              fontFamily:  'Tajawal',
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF16181D),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'forget_welcome'.tr,
-            style:  TextStyle(
-              fontFamily:  'Tajawal',
-              fontSize: 14,
-              color:context.colors.scondeText ,
-              height: 1.6,
-            ),
-          ),
-          const SizedBox(height: 50),
-
-          IconTextField(
-            controller: _emailController,
-            label: 'email'.tr,
-            icon: Icons.email_outlined,
-            keyboard: TextInputType.emailAddress,
-          ),
-          const SizedBox(height: 12),
-
-          // Hint
-          Row(
-            children: [
-               Icon(Icons.info_outline_rounded, size: 13, color: context.colors.primaryBlue,
+    return Container(
+      width: context.width > 800 ? 500 : context.width,
+      padding: const EdgeInsets.all(20.0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(context.colors.radiusXL),
+        color: context.colors.cardBg,
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Back button
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.arrow_back_ios_rounded, size: 14),
+                  const SizedBox(width: 4),
+                  Text(
+                    'login'.tr,
+                    style: TextStyle(
+                      fontFamily: 'Tajawal',
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: context.colors.textDark,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 6),
-              Text(
-                'reset_link_hint'.tr,
-                style:  TextStyle(
-                  fontFamily:  'Tajawal',
-                  fontSize: 12,
+            ),
+            const SizedBox(height: 50),
+
+
+            Text(
+              'forget'.tr,
+              style: TextStyle(
+                fontFamily: 'Tajawal',
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                color: context.colors.textDark,),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'forget_welcome'.tr,
+              style: TextStyle(
+                fontFamily: 'Tajawal',
+                fontSize: 14,
+                color: context.colors.secondText,
+                height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 50),
+
+            IconTextField(
+              controller: _emailController,
+              label: 'email'.tr,
+              icon: Icons.email_outlined,
+              keyboard: TextInputType.emailAddress,
+            ),
+            const SizedBox(height: 12),
+
+            // Hint
+            Row(
+              children: [
+                Icon(Icons.info_outline_rounded, size: 13,
                   color: context.colors.primaryBlue,
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 100),
-
-          PrimaryButton(
-            isLoading: context.watch<AuthProvider>().isLoadingLogin,
-            label: 'send_reset_link'.tr,
-            icon: Icons.send_rounded,
-            onPressed: _submit,
-          ),
-          const SizedBox(height: 24),
-
-          LinkRow(
-            message: "doesn't_have_account".tr,
-            linkText: 'register'.tr,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                const SizedBox(width: 6),
+                Text(
+                  'reset_link_hint'.tr,
+                  style: TextStyle(
+                    fontFamily: 'Tajawal',
+                    fontSize: 12,
+                    color: context.colors.primaryBlue,
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
+            const SizedBox(height: 100),
+
+            PrimaryButton(
+              isLoading: context
+                  .watch<AuthProvider>()
+                  .isLoadingForget,
+              label: 'send_reset_link'.tr,
+              icon: Icons.send_rounded,
+              onPressed: _submit,
+            ),
+            const SizedBox(height: 24),
+
+            LinkRow(
+              message: "doesn't_have_account".tr,
+              linkText: 'register'.tr,
+              onTap: () =>
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                  ),
+            ),
+          ],
+        ),),
     );
   }
 }

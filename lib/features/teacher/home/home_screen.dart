@@ -1,13 +1,16 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/courses/course_form_screen.dart';
 import 'package:flutter_education_app/features/teacher/home/queue_work_items.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart'
-    show TeacherStats, TeacherCourse, ScheduleSession;
+    show TeacherStats, TeacherCourse;
 import 'package:flutter_education_app/features/teacher/home/teacher_provider.dart';
 import 'package:provider/provider.dart';
-import '../../../config/app_config.dart' as Helpers;
+import '../../../config/app_config.dart';
 import '../../../config/app_theme.dart';
 import '../../../utils/widget/app_network_image.dart';
+import '../../../utils/widget/base_page.dart';
 import '../../auth/auth_provider.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import '../../student/home/component/home_section_header.dart';
@@ -42,7 +45,9 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
     final loading = provider.isLoading;
     final isWide = context.showSidebar;
 
-    return  SafeArea(
+    return BasePage(
+      useWebCard: true,
+      child: SafeArea(
         child: RefreshIndicator(
           color: context.colors.primary,
           onRefresh: () => context.read<TeacherProvider>().init(),
@@ -59,67 +64,67 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
 
               // ── Stats ────────────────────────────────────────────
               SliverToBoxAdapter(
-                child: ContentBox(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: loading
-                      ? const _StatsShimmer()
-                      : _StatsRow(stats: provider.stats),
-                ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                child: ColoredBox(
+                  color: context.colors.cardBg,
+                  child: Column(
+                    children: [
+                      ContentBox(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: loading
+                            ? const _StatsShimmer()
+                            : StatsRow(stats: provider.stats, isFull: false,),
+                      ),
+                      const SizedBox(height: 20),
 
-              // ── Add course button ────────────────────────────────
-              SliverToBoxAdapter(
-                child: ContentBox(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: _AddCourseButton(),
-                ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                      // ── Add course button ────────────────────────────────
+                      ContentBox(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: _AddCourseButton(),
+                      ),
+                      SizedBox(height: 24),
 
-              // ── Courses ──────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: ContentBox(
-                  child: SectionHeader(
-                    title: 'الكورسات',
-                    actionLabel: 'عرض الكل',
-                    onAction: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                            builder: (_) => const TeacherCoursesScreen())),
+                      // ── Courses ──────────────────────────────────────────
+                      ContentBox(
+                        child: SectionHeader(
+                          title: 'courses'.tr,
+                          actionLabel: 'show_all'.tr,
+                          onAction: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      const TeacherCoursesScreen())),
+                        ),
+                      ),
+                      SizedBox(height: 14),
+                      ContentBox(
+                        child: loading
+                            ? const _CoursesShimmer()
+                            : _CoursesRow(courses: provider.allCourses),
+                      ),
+                      SizedBox(height: 26),
+
+                      // ── Schedule ─────────────────────────────────────────
+                      ContentBox(
+                        child: SectionHeader(
+                          title: 'الجدول الزمني',
+                          actionLabel: 'المواعيد القادمة',
+                          onAction: () {},
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      loading
+                          ? const _ScheduleShimmer()
+                          : ContentBox(
+                              child: ScheduleQueueList(
+                                  sessions: provider.schedule)),
+                      SizedBox(height: 36),
+                    ],
                   ),
                 ),
               ),
-              const SliverToBoxAdapter(child: SizedBox(height: 14)),
-              SliverToBoxAdapter(
-                child: ContentBox(
-                    child: loading
-                        ? const _CoursesShimmer()
-                        : _CoursesRow(courses: provider.allCourses)),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 26)),
-
-              // ── Schedule ─────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: ContentBox(
-                  child: SectionHeader(
-                    title: 'الجدول الزمني',
-                    actionLabel: 'المواعيد القادمة',
-                    onAction: () {},
-                  ),
-                ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 14)),
-              SliverToBoxAdapter(
-                child: loading
-                    ? const _ScheduleShimmer()
-                    : ContentBox(
-                        child:
-                            ScheduleQueueList(sessions: provider.schedule)),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 36)),
             ],
           ),
         ),
+      ),
     );
   }
 }
@@ -129,7 +134,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
 class _WebTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final name = context.watch<AuthProvider>().currentUser?.name ?? 'معلم';
+    final name = context.watch<AuthProvider>().currentUser?.name ?? 'sir'.tr;
     return Container(
       height: 56,
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -143,7 +148,8 @@ class _WebTopBar extends StatelessWidget {
         ],
       ),
       child: Row(children: [
-        Text('مرحباً، $name 👋', style: context.colors.h2.copyWith(fontSize: 16)),
+        Text('${'welcome'.tr} $name 👋',
+            style: context.colors.h2.copyWith(fontSize: 16)),
       ]),
     );
   }
@@ -154,7 +160,7 @@ class _WebTopBar extends StatelessWidget {
 class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final name = context.watch<AuthProvider>().currentUser?.name ?? 'المعلم';
+    final name = context.watch<AuthProvider>().currentUser?.name ?? 'sir'.tr;
     final initial = name.isNotEmpty ? name[0] : '؟';
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
@@ -203,7 +209,7 @@ class _TopBar extends StatelessWidget {
                   offset: const Offset(0, 2))
             ],
           ),
-          child:  Icon(Icons.notifications_rounded,
+          child: Icon(Icons.notifications_rounded,
               color: context.colors.primary, size: 22),
         ),
       ]),
@@ -217,8 +223,7 @@ class _Shimmer extends StatefulWidget {
   final double width, height;
   final double radius;
 
-  const _Shimmer(
-      {required this.width, required this.height, this.radius=0});
+  const _Shimmer({required this.width, required this.height, this.radius = 0});
 
   @override
   State<_Shimmer> createState() => _ShimmerState();
@@ -307,39 +312,81 @@ class _ScheduleShimmer extends StatelessWidget {
 
 // ── Stats row ─────────────────────────────────────────────────────────────────
 
-class _StatsRow extends StatelessWidget {
+class StatsRow extends StatelessWidget {
   final TeacherStats stats;
+  final bool isFull;
 
-  const _StatsRow({required this.stats});
+  const StatsRow({
+    super.key,
+    required this.stats,
+    required this.isFull,
+  });
 
   @override
-  Widget build(BuildContext context) => Row(children: [
-        _StatCard(
-          value: stats.overallRating.toStringAsFixed(1),
-          label: 'التقييم العام',
-          icon: Icons.star_rounded,
-          gradient: const LinearGradient(
-              colors: [Color(0xFFFF9500), Color(0xFFFF9500)]),
-          shadowColor: const Color(0xFFFF9500),
-        ),
-        const SizedBox(width: 12),
-        _StatCard(
-          value: '${stats.totalStudents}',
-          label: 'إجمالي الطلاب',
-          icon: Icons.people_alt_rounded,
-          gradient: const LinearGradient(
-              colors: [Color(0xFFFFD166), Color(0xFFFFD166)]),
-          shadowColor: const Color(0xFFFFD166),
-        ),
-        const SizedBox(width: 12),
-        _StatCard(
-          value: '${stats.totalCourses}',
-          label: 'الكورسات',
-          icon: Icons.library_books_rounded,
-          gradient: context.colors.tealGradient,
-          shadowColor: context.colors.accent2,
-        ),
-      ]);
+  Widget build(BuildContext context) {
+    Widget mainW = Row(
+
+        children: [
+      _StatCard(
+        value: stats.overallRating.toStringAsFixed(1),
+        label: 'overall_rate'.tr,
+        icon: Icons.star_rounded,
+        gradient: const LinearGradient(
+            colors: [Color(0xFFFF9500), Color(0xFFFF9500)]),
+        shadowColor: const Color(0xFFFF9500),
+      ),
+      const SizedBox(width: 12),
+      _StatCard(
+        value: '${stats.totalStudents}',
+        label: 'total_count'.tr,
+        icon: Icons.people_alt_rounded,
+        gradient: const LinearGradient(
+            colors: [Color(0xFFFFD166), Color(0xFFFFD166)]),
+        shadowColor: const Color(0xFFFFD166),
+      ),
+      const SizedBox(width: 12),
+      _StatCard(
+        value: '${stats.totalCourses}',
+        label: 'course_count'.tr,
+        icon: Icons.library_books_rounded,
+        gradient: context.colors.tealGradient,
+        shadowColor: context.colors.accent2,
+      ),
+    ]);
+
+    if (!isFull) return mainW;
+    return Column(
+      children: [
+        mainW,
+        SizedBox(height: 20,),
+        Row(children: [
+          _StatCard(
+            value: stats.doctorRating.toStringAsFixed(1),
+            label: 'teacher_rate'.tr,
+            icon: Icons.star_rounded,
+            gradient: context.colors.primaryGradient.withOpacity(.7),
+            shadowColor: context.colors.primary,
+          ),
+          const SizedBox(width: 12),
+          _StatCard(
+            value: stats.courseRating.toStringAsFixed(1),
+            label: 'course_rate'.tr,
+            icon: Icons.star_rounded,
+            gradient: context.colors.disableGradient,
+            shadowColor: context.colors.textMedium,
+          ),
+          const SizedBox(width: 12),
+          _StatCard(
+            value: stats.materialRating.toStringAsFixed(1),
+            label: 'materials_rate'.tr,
+            icon: Icons.star_rounded,
+            gradient: context.colors.purpleGradient,
+            shadowColor: context.colors.purple,
+          ),
+        ])
+      ],
+    );
+  }
 }
 
 class _StatCard extends StatelessWidget {
@@ -405,7 +452,7 @@ class _AddCourseButton extends StatelessWidget {
         child: Container(
           height: 54,
           decoration: BoxDecoration(
-            gradient: context.colors.primaryGradient,
+            gradient: AppTheme.primaryGradient,
             borderRadius: BorderRadius.circular(30),
             boxShadow: [
               BoxShadow(
@@ -444,7 +491,7 @@ class _CoursesRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget content = SizedBox(
-        height: context.height/(context.isMobile? 3.5:5),
+      height: context.height / (context.isMobile ? 3.5 : 5),
       child: ListView.separated(
         controller: _controller,
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -456,17 +503,18 @@ class _CoursesRow extends StatelessWidget {
       ),
     );
     if (courses.isEmpty) {
-      return  SizedBox(
+      return SizedBox(
         height: 140,
         child: Center(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.school_outlined, size: 40, color: context.colors.textLight),
+          Icon(Icons.school_outlined,
+              size: 40, color: context.colors.textLight),
           SizedBox(height: 8),
-          Text('لا توجد كورسات بعد', style: context.colors.caption),
+          Text('no_courses', style: context.colors.caption),
         ])),
       );
     }
-    if (context.isMobile) return content;
+    if (!kIsWeb) return content;
     return Scrollbar(
       controller: _controller,
       thumbVisibility: true, // This keeps the 'cursor' visible
@@ -484,23 +532,22 @@ class _TeacherCourseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => GestureDetector(
         onTap: () async {
-
-          // print(c!.prerequisites.map((e)=>e.title));
-          // print(c.certificates.map((e)=>e.title));
-          // print(c.tools.map((e)=>e.name));
           Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (_) => TeacherSessionsScreen(course: course)),
-        );
+            context,
+            MaterialPageRoute(
+                builder: (_) => TeacherSessionsScreen(course: course)),
+          );
         },
         child: Container(
+          constraints: BoxConstraints(maxWidth: 300),
           decoration: BoxDecoration(
-            color: context.colors.cardBg,
+            color: context.colors.background,
             borderRadius: BorderRadius.circular(18),
+            border: BoxBorder.all(
+                color: context.colors.secondText.withValues(alpha: 0.07)),
             boxShadow: [
               BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.07),
+                  color: context.colors.primaryDark.withValues(alpha: 0.07),
                   blurRadius: 14,
                   offset: const Offset(0, 4)),
             ],
@@ -513,64 +560,115 @@ class _TeacherCourseCard extends StatelessWidget {
               child: AppNetworkImage(
                 url: course.imageUrl,
                 fit: BoxFit.cover,
+                enableFullscreen: false,
+                color: context.colors.background,
                 height: 100,
-                width: context.width/(context.isMobile? 2:3),
+                width: context.width / (context.isMobile ? 2 : 3),
+                heroTag: "teacher-home-course-${course.id}",
               ),
             ),
             Divider(),
-            Padding(
-              padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(course.title,
-                        style: context.colors.label
-                            .copyWith(color: context.colors.textDark, fontSize: 13),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 6),
-                    Row(children: [
-                      _MetaIcon(
-                        Icons.people_rounded,
-                        '${course.studentsCount}',
-                        color: context.colors.primary,
-                        hintLabel: "student_participant".tr,
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(course.title,
+                                style: context.colors.label.copyWith(
+                                    color: context.colors.textDark,
+                                    fontSize: 13),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: course.isPublished
+                                  ? context.colors.accent2
+                                  : context.colors.accent,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              course.isPublished ? 'منشورة' : 'مسودة',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  fontFamily: 'Cairo'),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 10),
-                      _MetaIcon(Icons.video_library_rounded,
-                          '${course.sessionsCount}',
-                          color: const Color(0xFF185FA5),
-                          hintLabel: "student_views".tr),
-                    ]),
-                    const SizedBox(height: 10),
-                    _MetaIcon(Icons.star_rounded,
-                        course.averageRating.toStringAsFixed(1),
-                        color: context.colors.accent, hintLabel: "student_rate".tr),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: course.isPublished
-                                ? context.colors.accent2
-                                : context.colors.accent,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            course.isPublished ? 'منشورة' : 'مسودة',
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                fontFamily: 'Cairo'),
-                          ),
+                      if (course.categoryName != null) ...[
+                        Spacer(),
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(course.categoryName!,
+                                  style: context.colors.label.copyWith(
+                                      color: context.colors.secondText,
+                                      fontSize: 11),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis),
+                            ),
+                            SizedBox(
+                              width: 5,
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: context.colors.primary,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                "${course.price} ${"sar".tr}",
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    fontFamily: 'Cairo'),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
-                    ),
-                  ]),
+                      Spacer(),
+                      Row(children: [
+                        _MetaIcon(
+                          Icons.people_rounded,
+                          '${course.studentsCount}',
+                          color: context.colors.primary,
+                          hintLabel: "student_participant".tr,
+                        ),
+                        Spacer(),
+                        _MetaIcon(Icons.video_library_rounded,
+                            '${course.sessionsCount}',
+                            color: const Color(0xFF185FA5),
+                            hintLabel: "sessions".tr),
+                        Spacer(
+                          flex: 3,
+                        ),
+                      ]),
+                      Spacer(),
+                      _MetaIcon(
+                        Icons.ondemand_video_rounded,
+                        course.type.tr,
+                        color: context.colors.accent2,
+                      ),
+                      Spacer(),
+                      _MetaIcon(Icons.star_rounded,
+                          course.averageRating.toStringAsFixed(1),
+                          color: context.colors.accent,
+                          hintLabel: "student_rate".tr),
+                      Spacer(),
+                    ]),
+              ),
             ),
           ]),
         ),
@@ -579,31 +677,36 @@ class _TeacherCourseCard extends StatelessWidget {
 
 class _MetaIcon extends StatelessWidget {
   final IconData icon;
-  final String hintLabel;
+  final String? hintLabel;
   final String label;
   final Color color;
 
-  const _MetaIcon(this.icon, this.label,
-      {required this.color, required this.hintLabel});
+  const _MetaIcon(this.icon, this.label, {required this.color, this.hintLabel});
 
   @override
-  Widget build(BuildContext context) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 16,
-            height: 16,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(4),
+  Widget build(BuildContext context) => label == '0'
+      ? SizedBox.shrink()
+      : Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Icon(icon, size: 10, color: color),
             ),
-            child: Icon(icon, size: 10, color: color),
-          ),
-          const SizedBox(width: 3),
-          Text("$hintLabel :", style: context.colors.label.copyWith(fontSize: 10)),
-          Text(label, style: context.colors.label.copyWith(fontSize: 10)),
-        ],
-      );
+            if (hintLabel != null)
+              Text("$hintLabel : ",
+                  style: context.colors.label.copyWith(
+                      fontSize: 10, color: context.colors.secondText)),
+            Text(label,
+                style: context.colors.label.copyWith(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: context.colors.textDark)),
+          ],
+        );
 }
-
-// ── Schedule list + card ──────────────────────────────────────────────────────

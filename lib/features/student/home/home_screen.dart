@@ -2,14 +2,16 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/category/categories_screen.dart';
+import 'package:flutter_education_app/features/student/courses/list/courses_provider.dart';
+import 'package:flutter_education_app/features/student/courses/my_courses/my_courses_provider.dart';
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../config/app_theme.dart';
+import '../../../utils/widget/base_page.dart';
 import '../courses/list/courses_list_screen.dart';
-import '../courses/my_courses/my_courses_provider.dart';
 import 'component/category_row.dart';
 import 'component/course_row.dart';
 import 'component/home_section_header.dart';
@@ -37,93 +39,94 @@ class _HomeScreenState extends State<HomeScreen>
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await context.read<HomeProvider>().init(context);
-
     });
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Directionality(
-      textDirection: Helpers.pageDirection,
-      child: Scaffold(
-        backgroundColor: context.colors.background,
-        body: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: _kContentMax),
-              child: CustomScrollView(
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                  // ── Top bar ──────────────────────────────────────────────
-                  SliverToBoxAdapter(child: TopBar()),
-                  const SliverToBoxAdapter(child: SizedBox(height: 18)),
+    return BasePage(
+      useWebCard: true,
+      child: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: _kContentMax),
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                // ── Top bar ──────────────────────────────────────────────
+                SliverToBoxAdapter(child: TopBar()),
+                const SliverToBoxAdapter(child: SizedBox(height: 18)),
 
-                  // ── Search bar ───────────────────────────────────────────
-                  const SliverToBoxAdapter(child: SearchBarIcon()),
-                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                // ── Search bar ───────────────────────────────────────────
+                const SliverToBoxAdapter(child: SearchBarIcon()),
+                const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-                  // ── Upcoming session banner ──────────────────────────────
-                  const SliverToBoxAdapter(child: _UpcomingBanner()),
-                  const SliverToBoxAdapter(child: SizedBox(height: 28)),
+                // ── Upcoming session banner ──────────────────────────────
+                const SliverToBoxAdapter(child: _UpcomingBanner()),
+                const SliverToBoxAdapter(child: SizedBox(height: 28)),
 
-                  // ── Categories ───────────────────────────────────────────
-                  SliverToBoxAdapter(
-                    child: SectionHeader(
-                      title: 'categories'.tr,
-                      actionLabel: 'show_more'.tr,
-                      onAction: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                            builder: (_) => const CategoriesScreen()),
-                      ),
+                // ── Categories ───────────────────────────────────────────
+                SliverToBoxAdapter(
+                  child: SectionHeader(
+                    title: 'categories'.tr,
+                    actionLabel: 'show_more'.tr,
+                    onAction: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const CategoriesScreen()),
                     ),
                   ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                  const SliverToBoxAdapter(child: CategoriesRow()),
-                  const SliverToBoxAdapter(child: SizedBox(height: 28)),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                const SliverToBoxAdapter(child: CategoriesRow()),
+                const SliverToBoxAdapter(child: SizedBox(height: 28)),
 
-                  // ── my courses ──────────────────────────────────────────────
-                  SliverToBoxAdapter(
-                    child: SectionHeader(
-                      title: 'my_courses'.tr,
-                      actionLabel: 'show_more'.tr,
-                      onAction: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                            builder: (_) => const CoursesListScreen()),
-                      ),
+                // ── Courses ──────────────────────────────────────────────
+                SliverToBoxAdapter(
+                  child: SectionHeader(
+                    title: 'my_courses'.tr,
+                    actionLabel: 'show_more'.tr,
+                    onAction: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const CoursesListScreen()),
                     ),
                   ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                  const SliverToBoxAdapter(child: MyCoursesRow(showMyCourses: true,)),
-                  const SliverToBoxAdapter(child: SizedBox(height: 28)),
-                  // ── Courses ──────────────────────────────────────────────
-                  SliverToBoxAdapter(
-                    child: SectionHeader(
-                      title: 'courses'.tr,
-                      actionLabel: 'show_more'.tr,
-                      onAction: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                            builder: (_) => const CoursesListScreen()),
-                      ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                SliverToBoxAdapter(
+                    child: CoursesRow(
+                        courses: context.read<HomeProvider>().myCourses)),
+                const SliverToBoxAdapter(child: SizedBox(height: 28)),
+// ── Courses ──────────────────────────────────────────────
+                SliverToBoxAdapter(
+                  child: SectionHeader(
+                    title: 'other_courses'.tr,
+                    actionLabel: 'show_more'.tr,
+                    onAction: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const CoursesListScreen()),
                     ),
                   ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                  const SliverToBoxAdapter(child: MyCoursesRow(showMyCourses: false,)),
-                  const SliverToBoxAdapter(child: SizedBox(height: 28)),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                SliverToBoxAdapter(
+                    child: CoursesRow(
+                  courses:context.read<HomeProvider>().otherCourses,
+                )),
+                const SliverToBoxAdapter(child: SizedBox(height: 28)),
 
-                  // ── Best teachers ────────────────────────────────────────
-                  SliverToBoxAdapter(
-                    child: SectionHeader(
-                      title: 'best_teachers'.tr,
-                      actionLabel: 'show_more'.tr,
-                      onAction: () {},
-                    ),
+                // ── Best teachers ────────────────────────────────────────
+                SliverToBoxAdapter(
+                  child: SectionHeader(
+                    title: 'best_teachers'.tr,
+                    actionLabel: 'show_more'.tr,
+                    onAction: () {},
                   ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                  SliverToBoxAdapter(child: InstructorsRow()),
-                  const SliverToBoxAdapter(child: SizedBox(height: 40)),
-                ],
-              ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                SliverToBoxAdapter(child: InstructorsRow()),
+                const SliverToBoxAdapter(child: SizedBox(height: 40)),
+              ],
             ),
           ),
         ),
@@ -176,7 +179,7 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
     _tickTimer?.cancel();
     _tickTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       if (_secondsLeft > 0) {
-        setState(() => _secondsLeft -= 60);
+        if (mounted) setState(() => _secondsLeft -= 60);
       } else {
         _schedProv.fetch().then((_) => _recalcSeconds());
       }
@@ -189,14 +192,15 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
   void _recalcSeconds() {
     final next = _schedProv.nextSlot;
     if (next == null) {
-      setState(() => _secondsLeft = 0);
+      if (mounted) setState(() => _secondsLeft = 0);
       return;
     }
     if (next.isOngoing) {
-      setState(() => _secondsLeft = (next.minutesUntilEnd ?? 0) * 60);
+      if (mounted)
+        setState(() => _secondsLeft = (next.minutesUntilEnd ?? 0) * 60);
     } else {
       final mu = next.minutesUntilStart ?? 0;
-      setState(() => _secondsLeft = mu > 0 ? mu * 60 : 0);
+      if (mounted) setState(() => _secondsLeft = mu > 0 ? mu * 60 : 0);
     }
   }
 
@@ -239,9 +243,10 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
               borderRadius: BorderRadius.circular(context.colors.radiusXL),
               boxShadow: [
                 BoxShadow(
-                  color:
-                      (isOngoing ? const Color(0xFFC0392B) : context.colors.primary)
-                          .withValues(alpha: 0.38),
+                  color: (isOngoing
+                          ? const Color(0xFFC0392B)
+                          : context.colors.primary)
+                      .withValues(alpha: 0.38),
                   blurRadius: 24,
                   offset: const Offset(0, 8),
                 ),

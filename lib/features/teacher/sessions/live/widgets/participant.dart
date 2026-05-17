@@ -8,7 +8,6 @@ import 'participant_info.dart';
 import 'participant_stats.dart';
 
 abstract class ParticipantWidget extends StatefulWidget {
-  // Convenience method to return relevant widget for participant
   static ParticipantWidget widgetFor(ParticipantTrack participantTrack,
       {bool showStatsLayer = false}) {
     if (participantTrack.participant is LocalParticipant) {
@@ -143,7 +142,7 @@ abstract class _ParticipantWidgetState<T extends ParticipantWidget>
           children: [
             // Video
             InkWell(
-              onTap: () => setState(() => _visible = !_visible),
+              onTap: () { if(mounted) setState(() => _visible = !_visible);},
               child: activeVideoTrack != null && !activeVideoTrack!.muted
                   ? VideoTrackRenderer(
                       renderMode: VideoRenderMode.auto,

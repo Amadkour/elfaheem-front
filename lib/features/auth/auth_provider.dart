@@ -73,17 +73,20 @@ class AuthProvider extends BaseProvider {
     // Restore the user from disk immediately so role/isTeacher are ready
     // before the first frame is drawn — no async gap, no null user.
     _loadCachedUser();
+
   }
 
   Future<void> loadSpecialization(BuildContext context) async {
+    makeLoading();
     specializations =
         await context.read<CategoriesProvider>().getSpecialization();
+    stopLoading();
   }
 
   // ── Dropdown options ──────────────────────────────────────────────────────────
   List<Map<String, String>> teachingTypes = [
     {'text': 'live'},
-    {'text': 'recorded'},
+    {'text': 'record'},
     {'text': 'both'},
   ];
   List<Map<String, String>> paymentTypes = [
@@ -109,6 +112,8 @@ class AuthProvider extends BaseProvider {
   UserModel? get currentUser => _currentUser;
 
   bool get isStudent => _currentUser?.role == 'student';
+
+  bool get selectedRoleIsStudent => selectedRole!['text'] == 'student';
 
   bool get isTeacher => _currentUser?.role == 'teacher';
 
@@ -137,7 +142,7 @@ class AuthProvider extends BaseProvider {
   }) async {
     isLoadingRegistration = true;
     notifyListeners();
-
+    print('/api/v1/auth/register');
     final result = await run(() => _api.post(
           '/api/v1/auth/register',
           body: {
@@ -299,28 +304,38 @@ class AuthProvider extends BaseProvider {
 
   Future<bool> changePassword({
     required String email,
-    required String oldPassword,
-    required String newPassword,
+    required String password,
+    required String code,
   }) async {
+    print({
+      'gmail': email,
+      'new_password': email,
+      'code': code,
+    });
     final result = await run(() => _api.put(
-          '/api/v1/auth/change-password',
+          '/api/v1/auth/reset-password',
           body: {
             'gmail': email,
-            'old_password': oldPassword,
-            'new_password': newPassword,
+            'new_password': email,
+            'code': code,
           },
         ));
     return result != null;
   }
 
   // ── Forgot Password ───────────────────────────────────────────────────────────
+  bool isLoadingForget = false;
 
   Future<bool> forgotPassword(String gmail) async {
+    isLoadingForget = true;
+    notifyListeners();
     final result = await run(() => _api.post(
           '/api/v1/auth/forgot-password',
           body: {'gmail': gmail},
           auth: false,
         ));
+    isLoadingForget = false;
+    notifyListeners();
     return result != null;
   }
 
@@ -376,7 +391,7 @@ class AuthProvider extends BaseProvider {
     selectedSpecialization = specializations[i];
     notifyListeners();
   }
-
+  Map<String,dynamic> getSpecializationById(String id)=>specializations.firstWhere((e)=>e['id']==id);
   // ── Internal helpers ──────────────────────────────────────────────────────────
 
   Future<void> _persistTokens(Map<dynamic, dynamic> data) async {

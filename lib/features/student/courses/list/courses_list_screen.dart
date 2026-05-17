@@ -8,6 +8,8 @@ import '../../../../config/app_config.dart' as Helpers;
 import '../../../../config/app_theme.dart';
 import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/app_network_image.dart';
+import '../../../../utils/widget/base_page.dart';
+import '../../../shared/profile/course_instractor_profile.dart';
 import '../../models.dart';
 import '../details/components/app_responsive.dart';
 import '../details/course_detail_screen.dart';
@@ -53,63 +55,30 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: Helpers.pageDirection,
-      child: Scaffold(
-        backgroundColor: context.colors.background,
-        body: SafeArea(
-          child: Column(
-            children: [
-              // Only show app-bar on mobile (web uses sidebar topbar)
-              if (!context.showSidebar) ...[
-                ScreenAppBar(title: 'استكشف الكورسات'),
-                const SizedBox(height: 6),
-              ] else ...[
-                _WebHeader(),
-              ],
-              ContentBox(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
-                child: _SearchBar(
-                  controller: _searchCtrl,
-                  focusNode: _focusNode,
-                  onChanged: _onSearch,
-                  onClear: _clearSearch,
-                ),
+    return BasePage(
+      child: SafeArea(
+        child: Column(
+          children: [
+            // Only show app-bar on mobile (web uses sidebar topbar)
+              ScreenAppBar(title: 'explorer_courses'.tr),
+
+            ContentBox(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
+              child: _SearchBar(
+                controller: _searchCtrl,
+                focusNode: _focusNode,
+                onChanged: _onSearch,
+                onClear: _clearSearch,
               ),
-              const SizedBox(height: 14),
-              const Expanded(child: _CourseList()),
-            ],
-          ),
+            ),
+            const SizedBox(height: 14),
+            const Expanded(child: _CourseList()),
+          ],
         ),
       ),
     );
   }
 }
-
-class _WebHeader extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => Container(
-        height: 56,
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        decoration: BoxDecoration(
-          color: context.colors.cardBg,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Text('استكشف الكورسات', style: context.colors.h2.copyWith(fontSize: 16)),
-          ],
-        ),
-      );
-}
-
 // ── Search bar ────────────────────────────────────────────────────────────────
 
 class _SearchBar extends StatelessWidget {
@@ -144,8 +113,10 @@ class _SearchBar extends StatelessWidget {
           focusNode: focusNode,
           textDirection: TextDirection.rtl,
           onChanged: onChanged,
-          style:  TextStyle(
-              fontFamily: 'Cairo', fontSize: 14, color: context.colors.textDark),
+          style: TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 14,
+              color: context.colors.textDark),
           decoration: InputDecoration(
             hintText: 'بحث عن كورس...',
             hintStyle: context.colors.caption.copyWith(fontSize: 14),
@@ -158,14 +129,14 @@ class _SearchBar extends StatelessWidget {
                 color: context.colors.primaryLight.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(9),
               ),
-              child:  Icon(Icons.search_rounded,
+              child: Icon(Icons.search_rounded,
                   color: context.colors.primary, size: 18),
             ),
             suffixIcon: ListenableBuilder(
               listenable: controller,
               builder: (_, __) => controller.text.isNotEmpty
                   ? IconButton(
-                      icon:  Icon(Icons.close_rounded,
+                      icon: Icon(Icons.close_rounded,
                           color: context.colors.textLight, size: 18),
                       onPressed: onClear)
                   : const SizedBox.shrink(),
@@ -191,7 +162,7 @@ class _CourseList extends StatelessWidget {
     final isGrid = cols > 1;
 
     if (provider.isLoading && provider.courses.isEmpty) {
-      return  Center(
+      return Center(
         child: CircularProgressIndicator(
           valueColor: AlwaysStoppedAnimation(context.colors.primary),
           strokeWidth: 2.5,
@@ -235,7 +206,7 @@ class _CourseList extends StatelessWidget {
                         provider.courses.length + (provider.hasMore ? 1 : 0),
                     itemBuilder: (_, i) {
                       if (i >= provider.courses.length) {
-                        return  Center(
+                        return Center(
                           child: CircularProgressIndicator(
                             valueColor:
                                 AlwaysStoppedAnimation(context.colors.primary),
@@ -254,12 +225,12 @@ class _CourseList extends StatelessWidget {
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
                     itemBuilder: (_, i) {
                       if (i == provider.courses.length) {
-                        return  Padding(
+                        return Padding(
                           padding: EdgeInsets.all(16),
                           child: Center(
                             child: CircularProgressIndicator(
-                              valueColor:
-                                  AlwaysStoppedAnimation(context.colors.primary),
+                              valueColor: AlwaysStoppedAnimation(
+                                  context.colors.primary),
                               strokeWidth: 2,
                             ),
                           ),
@@ -310,7 +281,7 @@ class _CourseCard extends StatelessWidget {
               // Thumbnail column
               SizedBox(
                 width: 104,
-                height: context.height/7,
+                height: context.height / 7,
                 child: Stack(
                   fit: StackFit.passthrough,
                   children: [
@@ -318,6 +289,8 @@ class _CourseCard extends StatelessWidget {
                       url: course.imageUrl,
                       width: 104,
                       height: double.infinity,
+                      heroTag: "course-list-${course.id}",
+
                     ),
                     Positioned.fill(
                       child: DecoratedBox(
@@ -371,36 +344,9 @@ class _CourseCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (course.instructorName.isNotEmpty) ...[
-                        const SizedBox(height: 3),
-                        Row(
-                          children: [
-                            Container(
-                              width: 18,
-                              height: 18,
-                              decoration: BoxDecoration(
-                                color: context.colors.primary.withValues(alpha: 0.12),
-                                shape: BoxShape.circle,
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                course.instructorName[0],
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w800,
-                                  color: context.colors.primary,
-                                  fontFamily: 'Cairo',
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 5),
-                            Text(
-                              'أ. ${course.instructorName}',
-                              style: context.colors.caption.copyWith(fontSize: 11),
-                            ),
-                          ],
-                        ),
-                      ],
+                      if(course.teacher!=Null)
+                        InstructorAvatar(teacher: course.teacher!, size: 50, canOpen: true,),
+
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 10,
@@ -542,7 +488,7 @@ class _MetaItem extends StatelessWidget {
   Widget build(BuildContext context) => Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: color??context.colors.textLight),
+          Icon(icon, size: 12, color: color ?? context.colors.textLight),
           const SizedBox(width: 3),
           Text(label, style: context.colors.caption.copyWith(fontSize: 11)),
         ],
@@ -571,7 +517,8 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(message,
-                style: context.colors.body.copyWith(fontWeight: FontWeight.w600)),
+                style:
+                    context.colors.body.copyWith(fontWeight: FontWeight.w600)),
           ],
         ),
       );

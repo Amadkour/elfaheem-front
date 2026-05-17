@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
+import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../config/app_theme.dart';
@@ -66,19 +67,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    ApiClient().context=context;
+    ApiClient().context = context;
     final isWide = MediaQuery.of(context).size.width > 800;
 
-    return Consumer<LangProvider>(
-      builder: (context,l,_) {
-        return Directionality(
-          textDirection: pageDirection,
-          child: Scaffold(
-            body: isWide ? _buildWideLayout() : _buildNarrowLayout(),
-          ),
-        );
-      }
-    );
+    return Consumer<LangProvider>(builder: (context, l, _) {
+      return BasePage(
+        child: isWide ? _buildWideLayout() : _buildNarrowLayout(),
+      );
+    });
   }
 
   // ── Wide (web) layout: sidebar + form panel ──────────────────────────────
@@ -105,108 +101,122 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // ── Narrow (mobile) layout ────────────────────────────────────────────────
   Widget _buildNarrowLayout() {
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
-        child: _buildFormCard(),
+    return Center(
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+          child: _buildFormCard(),
+        ),
       ),
     );
   }
 
   Widget _buildFormCard() {
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Lang row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              AppNetworkImage(url: '',width: 100,height: 100,),
-              LangDropdown(),
+    return Container(
+      width: context.width > 800 ? 500 : context.width,
+      padding: const EdgeInsets.all(20.0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(context.colors.radiusXL),
+        color: context.colors.cardBg,
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Lang row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                AppNetworkImage(
+                  url: '',
+                  width: 100,
+                  height: 100,
+                  heroTag: "logo-login",
 
+                ),
+                LangDropdown(),
 
-              // Screen icon + title
-
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'login'.tr,
-            style: const TextStyle(
-              fontFamily: 'Tajawal',
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF16181D),
+                // Screen icon + title
+              ],
             ),
-          ),
-          Text(
-            'login_welcome'.tr,
-            style:  TextStyle(
-              fontFamily: 'Tajawal',
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color:context.colors.scondeText,
-            ),
-          ),
-
-          const SizedBox(height: 32),
-
-          // Email
-          IconTextField(
-            controller: _emailController,
-            label: 'email'.tr,
-            icon: Icons.email_outlined,
-            keyboard: TextInputType.emailAddress,
-          ),
-          const SizedBox(height: 20),
-
-          // Password
-          IconPasswordField(
-            controller: _passwordController,
-            label: 'password'.tr,
-          ),
-          const SizedBox(height: 8),
-
-          // Forgot
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: GestureDetector(
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ForgetScreen()),
+            const SizedBox(height: 16),
+            Text(
+              'login'.tr,
+              style: TextStyle(
+                fontFamily: 'Tajawal',
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                color: context.colors.textDark,
               ),
-              child: Text(
-                'forget_password'.tr,
-                style: TextStyle(
-                  fontFamily: 'Tajawal',
-                  fontSize: 13,
-                  color: context.colors.primaryBlue,
-                  fontWeight: FontWeight.w500,
+            ),
+            Text(
+              'login_welcome'.tr,
+              style: TextStyle(
+                fontFamily: 'Tajawal',
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: context.colors.secondText,
+              ),
+            ),
+
+            const SizedBox(height: 32),
+
+            // Email
+            IconTextField(
+              controller: _emailController,
+              label: 'email'.tr,
+              icon: Icons.email_outlined,
+              keyboard: TextInputType.emailAddress,
+            ),
+            const SizedBox(height: 20),
+
+            // Password
+            IconPasswordField(
+              controller: _passwordController,
+              label: 'password'.tr,
+            ),
+            const SizedBox(height: 8),
+
+            // Forgot
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: GestureDetector(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ForgetScreen()),
+                ),
+                child: Text(
+                  'forget_password'.tr,
+                  style: TextStyle(
+                    fontFamily: 'Tajawal',
+                    fontSize: 13,
+                    color: context.colors.primaryBlue,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 100),
+            const SizedBox(height: 100),
 
-          // Login button
-          PrimaryButton(
-            isLoading: context.watch<AuthProvider>().isLoadingLogin,
-            label: 'login'.tr,
-            icon: Icons.arrow_forward_rounded,
-            onPressed: _login,
-          ),
-          const SizedBox(height: 24),
-
-          // Register link
-          LinkRow(
-            message: "doesn't_have_account".tr,
-            linkText: 'register'.tr,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const RegisterScreen()),
+            // Login button
+            PrimaryButton(
+              isLoading: context.watch<AuthProvider>().isLoadingLogin,
+              label: 'login'.tr,
+              icon: Icons.arrow_forward_rounded,
+              onPressed: _login,
             ),
-          ),
-        ],
+            const SizedBox(height: 24),
+
+            // Register link
+            LinkRow(
+              message: "doesn't_have_account".tr,
+              linkText: 'register'.tr,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const RegisterScreen()),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

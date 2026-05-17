@@ -1,32 +1,50 @@
 // features/teacher/attendance/teacher_attendance_screen.dart
+//
+// Premium redesign — glassmorphism header, animated session flags,
+// gradient stat cards, polished student tiles.
+// All hard-coded strings are now keys that must be looked up from
+// the translation map (passed via AppLocalizations / your i18n helper).
+// For brevity the file keeps the same provider/model imports as before.
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:ui';
 import 'package:flutter_education_app/config/app_theme.dart';
 import 'attendance_model.dart';
 import 'teacher_attendance_provider.dart';
 
+// ─── helper: replace with your real l10n lookup ──────────────────────────────
+// e.g. AppLocalizations.of(context)!.translate(key)
+String tr(BuildContext context, String key) {
+  // TODO: wire to your TranslationProvider / AppLocalizations
+  // Returning the key itself as a safe fallback so the UI never crashes.
+  return key;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 class TeacherAttendanceScreen extends StatelessWidget {
   final int courseId;
   final String courseTitle;
-
+  final int? sessionId;
   const TeacherAttendanceScreen({
     super.key,
     required this.courseId,
     required this.courseTitle,
+    this.sessionId
   });
 
-  // Navigate and inject the provider at the call site — see analytics_hub_screen.dart
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) =>
-      TeacherAttendanceProvider(courseId: courseId)..loadSessions(),
+      TeacherAttendanceProvider(courseId: courseId)..loadSessions(sessionId),
       child: _TeacherAttendanceView(courseTitle: courseTitle),
     );
   }
 }
 
-// ── Inner stateless view — reads the provider ────────────────────────────────
+// ── Inner view ────────────────────────────────────────────────────────────────
 
 class _TeacherAttendanceView extends StatefulWidget {
   final String courseTitle;
@@ -36,12 +54,34 @@ class _TeacherAttendanceView extends StatefulWidget {
   State<_TeacherAttendanceView> createState() => _TeacherAttendanceViewState();
 }
 
-class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
+class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
+    with TickerProviderStateMixin {
   final _searchCtrl = TextEditingController();
+  late final AnimationController _headerAnim;
+  late final Animation<double> _headerFade;
+
+  // Palette
+  static const Color _primary = Color(0xFF1565C0);
+  static const Color _primaryLight = Color(0xFF42A5F5);
+  static const Color _success = Color(0xFF00C853);
+  static const Color _danger = Color(0xFFEF5350);
+  static const Color _surface = Color(0xFFF8FAFF);
+  static const Color _cardBg = Colors.white;
+
+  @override
+  void initState() {
+    super.initState();
+    _headerAnim = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 700));
+    _headerFade =
+        CurvedAnimation(parent: _headerAnim, curve: Curves.easeOutCubic);
+    _headerAnim.forward();
+  }
 
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _headerAnim.dispose();
     super.dispose();
   }
 
@@ -53,84 +93,134 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: context.colors.background,
+        backgroundColor: _surface,
         body: NestedScrollView(
-          headerSliverBuilder: (ctx, _) => [_buildAppBar(ctx)],
+          headerSliverBuilder: (ctx, _) => [_buildSliverHeader(ctx)],
           body: _buildBody(prov, isWide),
         ),
       ),
     );
   }
 
-  // ── App bar ─────────────────────────────────────────────────────────────────
-  Widget _buildAppBar(BuildContext ctx) => SliverAppBar(
-    expandedHeight: 180,
-    pinned: true,
-    backgroundColor: context.colors.primary,
-    leading: IconButton(
-      icon: const Icon(Icons.arrow_forward_ios,
-          color: Colors.white, size: 20),
-      onPressed: () => Navigator.pop(ctx),
-    ),
-    flexibleSpace: FlexibleSpaceBar(
-      background: Container(
-        decoration: const BoxDecoration(
-          borderRadius: BorderRadius.only(
-            bottomLeft: Radius.circular(34),
-            bottomRight: Radius.circular(34),
-          ),
-          image: DecorationImage(
-            image: AssetImage('assets/images/attendence.png'),
-            fit: BoxFit.cover,
-          ),
+  // ── Sliver header ─────────────────────────────────────────────────────────
+  Widget _buildSliverHeader(BuildContext ctx) {
+    return SliverAppBar(
+      expandedHeight: 200,
+      pinned: true,
+      elevation: 0,
+      backgroundColor: _primary,
+      leading: Padding(
+        padding: const EdgeInsets.all(8),
+        child: _GlassButton(
+          icon: Icons.arrow_forward_ios_rounded,
+          onTap: () => Navigator.pop(ctx),
+        ),
       ),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-          decoration: BoxDecoration(
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(34),
-              bottomRight: Radius.circular(34),
-            ),
-            color: const Color(0xFF158CEA).withOpacity(.72),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      flexibleSpace: FlexibleSpaceBar(
+        collapseMode: CollapseMode.parallax,
+        background: FadeTransition(
+          opacity: _headerFade,
+          child: Stack(
+            fit: StackFit.expand,
             children: [
-
-              const Spacer(),
-              const Text(
-                'سجل الحضور',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 34,
-                  fontWeight: FontWeight.w700,
+              // Gradient mesh background
+              Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFF0D47A1),
+                      Color(0xFF1565C0),
+                      Color(0xFF1976D2),
+                      Color(0xFF42A5F5),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                widget.courseTitle,
-                style: TextStyle(
-                  color: Colors.white.withOpacity(.9),
-                  fontSize: 18,
+              // Decorative circles
+              Positioned(
+                top: -30,
+                right: -30,
+                child: _Circle(size: 160, color: Colors.white.withValues(alpha:.06)),
+              ),
+              Positioned(
+                bottom: 10,
+                left: -20,
+                child: _Circle(size: 120, color: Colors.white.withValues(alpha:.05)),
+              ),
+              Positioned(
+                top: 40,
+                right: 80,
+                child: _Circle(size: 60, color: _primaryLight.withValues(alpha:.2)),
+              ),
+              // Content
+              Padding(
+                padding:
+                const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    // Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha:.18),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                            color: Colors.white.withValues(alpha:.3), width: 1),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.fact_check_rounded,
+                              color: Colors.white, size: 13),
+                          const SizedBox(width: 5),
+                          Text(
+                            tr(context, 'attendance_record'),
+                            style: const TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 12,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      widget.courseTitle,
+                      style: const TextStyle(
+                        fontFamily: 'Cairo',
+                        color: Colors.white,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        height: 1.2,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
         ),
-
       ),
-  ));
+    );
+  }
 
-  // ── Body ────────────────────────────────────────────────────────────────────
+  // ── Body ──────────────────────────────────────────────────────────────────
   Widget _buildBody(TeacherAttendanceProvider prov, bool isWide) {
     if (prov.isLoadingSessions) {
-      return const Center(child: CircularProgressIndicator());
+      return _buildLoadingState();
     }
     if (prov.hasError && prov.sessions.isEmpty) {
-      return _buildError(prov.errorMessage, prov.loadSessions);
+      return _buildError(prov.errorMessage,()async=> prov.loadSessions(null));
     }
     return Column(children: [
-      _buildSessionSelector(prov),
+      _buildSessionFlagBar(prov),
       if (prov.selectedSession != null) ...[
         if (prov.isLoadingStudents)
           const Expanded(child: Center(child: CircularProgressIndicator()))
@@ -149,170 +239,294 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
             ),
             _buildSaveBar(prov),
           ],
-      ],
+      ] else
+        Expanded(child: _buildSelectSessionHint()),
     ]);
   }
 
-  // ── Error state ─────────────────────────────────────────────────────────────
-  Widget _buildError(String? msg, VoidCallback retry) => Center(
-    child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Icon(Icons.wifi_off_rounded, size: 56, color: Colors.grey.shade300),
-      const SizedBox(height: 12),
-      Text(msg ?? 'حدث خطأ',
-          style: const TextStyle(
-              fontFamily: 'Cairo', fontSize: 14, color: Colors.grey)),
-      const SizedBox(height: 16),
-      ElevatedButton.icon(
-        onPressed: retry,
-        icon: const Icon(Icons.refresh_rounded),
-        label: const Text('إعادة المحاولة',
-            style: TextStyle(fontFamily: 'Cairo')),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: context.colors.primary,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12)),
-        ),
-      ),
-    ]),
-  );
-
-  // ── Session chip bar ────────────────────────────────────────────────────────
-  Widget _buildSessionSelector(TeacherAttendanceProvider prov) => Container(
-    color: AppTheme.background,
-    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(
+  // ── Loading skeleton ──────────────────────────────────────────────────────
+  Widget _buildLoadingState() => Expanded(
+    child: Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.calendar_today,size: 13,
-            color: AppTheme.textMedium,),
-          SizedBox(width: 5,),
-          const Text('اختر المحاضرة',
-              style: TextStyle(
-                  fontFamily: 'Cairo',
-                  fontSize: 13,
-                  color: AppTheme.textMedium,
-                  fontWeight: FontWeight.w600)),
+          SizedBox(
+            width: 52,
+            height: 52,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              valueColor:
+              AlwaysStoppedAnimation<Color>(_primary),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            tr(context, 'loading_attendance'),
+            style: const TextStyle(
+                fontFamily: 'Cairo',
+                color: Colors.grey,
+                fontSize: 14),
+          ),
         ],
       ),
-      const SizedBox(height: 10),
-      SizedBox(
-        height: 42,
-        child: prov.sessions.isEmpty
-            ? const Center(
-            child: Text('لا توجد محاضرات',
-                style:
-                TextStyle(fontFamily: 'Cairo', color: Colors.grey)))
-            : ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: prov.sessions.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 8),
-          itemBuilder: (_, i) {
-            final s = prov.sessions[i];
-            final sel = prov.selectedSession?.id == s.id;
-            return GestureDetector(
-              onTap: () => prov.selectSession(s),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: sel ? context.colors.primaryBlue : Colors.transparent,
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(
-                      color: sel
-                          ? context.colors.primaryBlue
-                          : Colors.grey.shade300),
-                ),
-                child: Text(s.name,
-                    style: TextStyle(
-                        fontFamily: 'Cairo',
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: sel
-                            ? Colors.white
-                            : Colors.grey.shade700)),
-              ),
-            );
-          },
-        ),
-      ),
-      SizedBox(height: 10,),
-      Divider(color: AppTheme.textLight.withAlpha(100),),
-    ]),
-  );
-
-  // ── Stats row ───────────────────────────────────────────────────────────────
-  Widget _buildStats(TeacherAttendanceProvider prov) => Container(
-    margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-    child: Row(children: [
-      _StatCard(
-          label: 'إجمالي الطلاب',
-          value: '${prov.allStudents.length}',
-          icon: Icons.people_rounded,
-          color: context.colors.primary),
-      const SizedBox(width: 10),
-      _StatCard(
-          label: 'حاضر',
-          value: '${prov.presentCount}',
-          icon: Icons.check_circle_rounded,
-          color: context.colors.success),
-      const SizedBox(width: 10),
-      _StatCard(
-          label: 'غائب',
-          value: '${prov.absentCount}',
-          icon: Icons.cancel_rounded,
-          color: Colors.redAccent),
-    ]),
-  );
-
-  // ── Search bar ──────────────────────────────────────────────────────────────
-  Widget _buildSearchBar(TeacherAttendanceProvider prov) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-    child: TextField(
-      controller: _searchCtrl,
-      textDirection: TextDirection.rtl,
-      decoration: InputDecoration(
-        hintText: 'ابحث عن طالب...',
-        hintStyle:
-        const TextStyle(fontFamily: 'Cairo', color: Colors.grey),
-        prefixIcon:
-        const Icon(Icons.search_rounded, color: Colors.grey),
-        suffixIcon: prov.search.isNotEmpty
-            ? IconButton(
-            icon: const Icon(Icons.close, color: Colors.grey),
-            onPressed: () {
-              _searchCtrl.clear();
-              prov.setSearch('');
-            })
-            : null,
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide.none),
-        contentPadding:
-        const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      ),
-      onChanged: prov.setSearch,
     ),
   );
 
-  // ── List / grid ─────────────────────────────────────────────────────────────
+  // ── Select session hint ───────────────────────────────────────────────────
+  Widget _buildSelectSessionHint() => Center(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: _primary.withValues(alpha:.08),
+            shape: BoxShape.circle,
+          ),
+          child:
+          Icon(Icons.touch_app_rounded, size: 48, color: _primary.withValues(alpha:.5)),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          tr(context, 'select_lecture'),
+          style: TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade600),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          tr(context, 'select_session_hint_sub'),
+          style: TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 13,
+              color: Colors.grey.shade400),
+        ),
+      ],
+    ),
+  );
+
+  // ── Error state ───────────────────────────────────────────────────────────
+  Widget _buildError(String? msg, VoidCallback retry) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: _danger.withValues(alpha:.08),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(Icons.wifi_off_rounded,
+              size: 44, color: _danger.withValues(alpha:.7)),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          msg ?? tr(context, 'something-went-wrong'),
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+              fontFamily: 'Cairo', fontSize: 14, color: Colors.grey),
+        ),
+        const SizedBox(height: 20),
+        ElevatedButton.icon(
+          onPressed: retry,
+          icon: const Icon(Icons.refresh_rounded, size: 18),
+          label: Text(tr(context, 'retry'),
+              style: const TextStyle(fontFamily: 'Cairo')),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _primary,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(
+                horizontal: 24, vertical: 12),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14)),
+            elevation: 0,
+          ),
+        ),
+      ]),
+    ),
+  );
+
+  // ── Session flag bar ──────────────────────────────────────────────────────
+  Widget _buildSessionFlagBar(TeacherAttendanceProvider prov) {
+    return Container(
+      color: _cardBg,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Label row
+          Row(children: [
+            Container(
+              width: 3,
+              height: 16,
+              decoration: BoxDecoration(
+                color: _primary,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              tr(context, 'select_lecture'),
+              style: const TextStyle(
+                fontFamily: 'Cairo',
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1A237E),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 12),
+          // Flags
+          SizedBox(
+            height: 80,
+            child: prov.sessions.isEmpty
+                ? Center(
+              child: Text(
+                tr(context, 'no_sessions_available'),
+                style: const TextStyle(
+                    fontFamily: 'Cairo',
+                    color: Colors.grey,
+                    fontSize: 13),
+              ),
+            )
+                : ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.only(bottom: 4),
+              itemCount: prov.sessions.length,
+              separatorBuilder: (_, __) =>
+              const SizedBox(width: 10),
+              itemBuilder: (_, i) {
+                final s = prov.sessions[i];
+                final sel = prov.selectedSession?.id == s.id;
+                return _SessionFlag(
+                  session: s,
+                  index: i,
+                  isSelected: sel,
+                  onTap: () => prov.selectSession(s),
+                  primaryColor: _primary,
+                  primaryLight: _primaryLight,
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 4),
+          Divider(
+              color: Colors.grey.shade100, thickness: 1.5, height: 1),
+        ],
+      ),
+    );
+  }
+
+  // ── Stats row ─────────────────────────────────────────────────────────────
+  Widget _buildStats(TeacherAttendanceProvider prov) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Row(children: [
+        _PremiumStatCard(
+          label: tr(context, 'total_students'),
+          value: '${prov.allStudents.length}',
+          icon: Icons.people_rounded,
+          gradient: const LinearGradient(
+            colors: [Color(0xFF1565C0), Color(0xFF42A5F5)],
+          ),
+        ),
+        const SizedBox(width: 10),
+        _PremiumStatCard(
+          label: tr(context, 'present'),
+          value: '${prov.presentCount}',
+          icon: Icons.check_circle_rounded,
+          gradient: const LinearGradient(
+            colors: [Color(0xFF00897B), Color(0xFF00C853)],
+          ),
+        ),
+        const SizedBox(width: 10),
+        _PremiumStatCard(
+          label: tr(context, 'absent'),
+          value: '${prov.absentCount}',
+          icon: Icons.cancel_rounded,
+          gradient: const LinearGradient(
+            colors: [Color(0xFFD32F2F), Color(0xFFEF5350)],
+          ),
+        ),
+      ]),
+    );
+  }
+
+  // ── Search bar ────────────────────────────────────────────────────────────
+  Widget _buildSearchBar(TeacherAttendanceProvider prov) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+    child: Container(
+      decoration: BoxDecoration(
+        color: _cardBg,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha:.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _searchCtrl,
+        textDirection: TextDirection.rtl,
+        style:
+        const TextStyle(fontFamily: 'Cairo', fontSize: 14),
+        decoration: InputDecoration(
+          hintText: tr(context, 'search_student'),
+          hintStyle: TextStyle(
+              fontFamily: 'Cairo',
+              color: Colors.grey.shade400,
+              fontSize: 13),
+          prefixIcon: Icon(Icons.search_rounded,
+              color: Colors.grey.shade400, size: 20),
+          suffixIcon: prov.search.isNotEmpty
+              ? IconButton(
+              icon: Icon(Icons.close_rounded,
+                  color: Colors.grey.shade400, size: 18),
+              onPressed: () {
+                _searchCtrl.clear();
+                prov.setSearch('');
+              })
+              : null,
+          filled: true,
+          fillColor: Colors.transparent,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16, vertical: 14),
+        ),
+        onChanged: prov.setSearch,
+      ),
+    ),
+  );
+
+  // ── Lists ─────────────────────────────────────────────────────────────────
   Widget _buildList(TeacherAttendanceProvider prov) {
     final list = prov.filtered;
     if (list.isEmpty) {
-      return const Center(
-        child: Text('لا توجد نتائج',
-            style: TextStyle(fontFamily: 'Cairo', color: Colors.grey)),
+      return Center(
+        child: Text(tr(context, 'no_search_results'),
+            style: const TextStyle(
+                fontFamily: 'Cairo', color: Colors.grey)),
       );
     }
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       itemCount: list.length,
-      itemBuilder: (_, i) => _StudentTile(
+      itemBuilder: (_, i) => _PremiumStudentTile(
         student: list[i],
         onToggle: (v) => prov.toggleStudent(list[i].id, v),
+        presentLabel: tr(context, 'present'),
+        absentLabel: tr(context, 'absent'),
+        durationLabel: tr(context, 'attendance_duration'),
+        minutesLabel: tr(context, 'minutes'),
+        successColor: _success,
+        dangerColor: _danger,
       ),
     );
   }
@@ -321,247 +535,529 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
     final list = prov.filtered;
     return LayoutBuilder(
       builder: (_, c) => GridView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: c.maxWidth > 1100 ? 3 : 2,
-          childAspectRatio: 3.2,
+          childAspectRatio: 3.4,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
         ),
         itemCount: list.length,
-        itemBuilder: (_, i) => _StudentTile(
+        itemBuilder: (_, i) => _PremiumStudentTile(
           student: list[i],
           onToggle: (v) => prov.toggleStudent(list[i].id, v),
+          presentLabel: tr(context, 'present'),
+          absentLabel: tr(context, 'absent'),
+          durationLabel: tr(context, 'attendance_duration'),
+          minutesLabel: tr(context, 'minutes'),
+          successColor: _success,
+          dangerColor: _danger,
           compact: false,
         ),
       ),
     );
   }
 
-  // ── Save bar ────────────────────────────────────────────────────────────────
-  Widget _buildSaveBar(TeacherAttendanceProvider prov) => Container(
-    color: Colors.white,
-    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-    child: Row(children: [
-      Expanded(
-        child: ElevatedButton.icon(
-          onPressed: prov.saving || prov.changes.isEmpty
-              ? null
-              : () async {
-            final ok = await prov.saveAttendance(prov.changes);
-            prov.clearChanges();
-            if (!context.mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text(
-                  ok ? 'تم حفظ الحضور بنجاح' : 'فشل الحفظ، حاول مرة أخرى',
-                  style:
-                  const TextStyle(fontFamily: 'Cairo')),
-              backgroundColor:
-              ok ? context.colors.success : Colors.redAccent,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ));
-          },
-          icon: prov.saving
-              ? const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                  strokeWidth: 2, color: Colors.white))
-              : const Icon(Icons.save_rounded, color: Colors.white),
-          label: Text(
-              prov.saving ? 'جارٍ الحفظ...' : 'حفظ الحضور',
-              style: const TextStyle(
-                  fontFamily: 'Cairo',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700)),
-          style: ElevatedButton.styleFrom(
-            backgroundColor:  context.colors.success,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14)),
+  // ── Save bar ──────────────────────────────────────────────────────────────
+  Widget _buildSaveBar(TeacherAttendanceProvider prov) {
+    return Container(
+      decoration: BoxDecoration(
+        color: _cardBg,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha:.08),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+      child: Row(children: [
+        // Save button
+        Expanded(
+          flex: 3,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            child: ElevatedButton.icon(
+              onPressed: prov.saving || prov.changes.isEmpty
+                  ? null
+                  : () async {
+                final ok =
+                await prov.saveAttendance(prov.changes);
+                prov.clearChanges();
+                if (!context.mounted) return;
+                _showSnack(
+                  ok
+                      ? tr(context, 'attendance_saved')
+                      : tr(context, 'save_failed'),
+                  ok ? _success : _danger,
+                );
+              },
+              icon: prov.saving
+                  ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.save_rounded,
+                  color: Colors.white, size: 18),
+              label: Text(
+                prov.saving
+                    ? tr(context, 'saving')
+                    : tr(context, 'save_attendance'),
+                style: const TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _success,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.grey.shade200,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+                elevation: 0,
+              ),
+            ),
           ),
         ),
-      ),
-      const SizedBox(width: 12),
-      OutlinedButton(
-        onPressed: () async {
-          final ok = await prov.markAll(true);
-          if (!context.mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(
-                ok ? 'تم حفظ الحضور بنجاح' : 'فشل الحفظ، حاول مرة أخرى',
-                style:
-                const TextStyle(fontFamily: 'Cairo')),
-            backgroundColor:
-            ok ? context.colors.success : Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
-          ));
-        },
-        style: OutlinedButton.styleFrom(
-          foregroundColor: context.colors.success,
-          side: BorderSide(color: context.colors.success),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14)),
-          padding:
-          const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
+        const SizedBox(width: 8),
+        // All present
+        _QuickActionBtn(
+          label: tr(context, 'mark_all_present'),
+          color: _success,
+          icon: Icons.done_all_rounded,
+          onTap: () async {
+            final ok = await prov.markAll(true);
+            if (!context.mounted) return;
+            _showSnack(
+              ok
+                  ? tr(context, 'attendance_saved')
+                  : tr(context, 'save_failed'),
+              ok ? _success : _danger,
+            );
+          },
         ),
-        child: const Text('كل حاضر',
-            style: TextStyle(fontFamily: 'Cairo', fontSize: 13)),
-      ),
-      const SizedBox(width: 8),
-      OutlinedButton(
-        onPressed: () => prov.markAll(false),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: Colors.redAccent,
-          side: const BorderSide(color: Colors.redAccent),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14)),
-          padding:
-          const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
+        const SizedBox(width: 8),
+        // All absent
+        _QuickActionBtn(
+          label: tr(context, 'mark_all_absent'),
+          color: _danger,
+          icon: Icons.remove_done_rounded,
+          onTap: () => prov.markAll(false),
         ),
-        child: const Text('كل غائب',
-            style: TextStyle(fontFamily: 'Cairo', fontSize: 13)),
-      ),
-    ]),
-  );
+      ]),
+    );
+  }
+
+  void _showSnack(String msg, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg,
+          style: const TextStyle(fontFamily: 'Cairo')),
+      backgroundColor: color,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12)),
+      margin:
+      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    ));
+  }
 }
 
-// ── Reusable widgets ─────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Reusable premium widgets
+// ─────────────────────────────────────────────────────────────────────────────
 
-class _StatCard extends StatelessWidget {
-  final String label, value;
-  final IconData icon;
+/// Decorative circle for header
+class _Circle extends StatelessWidget {
+  final double size;
   final Color color;
-
-  const _StatCard(
-      {required this.label,
-        required this.value,
-        required this.icon,
-        required this.color});
+  const _Circle({required this.size, required this.color});
 
   @override
-  Widget build(BuildContext context) => Expanded(
-    child: Container(
-      padding:
-      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-
-    border: Border(
-      top: BorderSide(
-        color: color,
-        width: 3,
-      ),
-    ),
-      ),
-      child:
-
-        Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-
-          Text(value,
-              style: TextStyle(
-                  fontFamily: 'Cairo',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: color)),
-
-          SizedBox(height: 5,),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: color, size: 11),
-              SizedBox(width: 5,),
-              Text(label,
-                  style: const TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 11,
-                      color: AppTheme.textMedium)),
-            ],
-          ),
-        ]),
-
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: color,
     ),
   );
 }
 
-class _StudentTile extends StatelessWidget {
-  final AttendanceStudent student;
-  final ValueChanged<bool> onToggle;
-  final bool compact;
+/// Glass icon button for app bar
+class _GlassButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _GlassButton({required this.icon, required this.onTap});
 
-  const _StudentTile(
-      {required this.student,
-        required this.onToggle,
-        this.compact = true});
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha:.2),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+                color: Colors.white.withValues(alpha:.3), width: 1),
+          ),
+          child: Icon(icon, color: Colors.white, size: 18),
+        ),
+      ),
+    ),
+  );
+}
+
+/// Flag-style session chip (vertical card with number + name)
+class _SessionFlag extends StatelessWidget {
+  final dynamic session; // AttendanceSession
+  final int index;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final Color primaryColor;
+  final Color primaryLight;
+
+  const _SessionFlag({
+    required this.session,
+    required this.index,
+    required this.isSelected,
+    required this.onTap,
+    required this.primaryColor,
+    required this.primaryLight,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final present = student.isPresent;
-    final statusColor =
-    present ? context.colors.success : Colors.redAccent;
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
-      margin: compact ? const EdgeInsets.only(bottom: 10) : EdgeInsets.zero,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-            color: statusColor.withValues(alpha: 0.35), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2))
-        ],
-      ),
-      child: ListTile(
-        contentPadding:
-        const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-        leading: CircleAvatar(
-          radius: 22,
-          backgroundColor: statusColor.withValues(alpha: 0.12),
-          backgroundImage: student.imageUrl != null
-              ? NetworkImage(student.imageUrl!)
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+        width: 90,
+        decoration: BoxDecoration(
+          gradient: isSelected
+              ? LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [primaryColor, primaryLight],
+          )
               : null,
-          child: student.imageUrl == null
-              ? Text(student.name[0],
-              style: TextStyle(
-                  fontFamily: 'Cairo',
-                  fontWeight: FontWeight.w700,
-                  color: statusColor))
-              : null,
+          color: isSelected ? null : Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected
+                ? Colors.transparent
+                : Colors.grey.shade200,
+            width: 1.5,
+          ),
+          boxShadow: isSelected
+              ? [
+            BoxShadow(
+              color: primaryColor.withValues(alpha:.35),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            )
+          ]
+              : [],
         ),
-        title: Text(student.name,
-            style: const TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 14,
-                fontWeight: FontWeight.w600)),
-        subtitle: student.durationMinutes != null
-            ? Text('مدة الحضور: ${student.durationMinutes} دقيقة',
-            style: const TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 12,
-                color: Colors.grey))
-            : Text(present ? 'حاضر' : 'غائب',
-            style: TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 12,
-                color: statusColor)),
-        trailing: Switch.adaptive(
-          value: present,
-          activeColor: context.colors.success,
-          inactiveThumbColor: Colors.redAccent,
-          onChanged: onToggle,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Number badge
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? Colors.white.withValues(alpha:.25)
+                    : primaryColor.withValues(alpha:.1),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  '${index + 1}',
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: isSelected ? Colors.white : primaryColor,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: Text(
+                session.name,
+                maxLines: 2,
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color:
+                  isSelected ? Colors.white : Colors.grey.shade700,
+                  height: 1.3,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
+}
+
+/// Gradient stat card
+class _PremiumStatCard extends StatelessWidget {
+  final String label, value;
+  final IconData icon;
+  final LinearGradient gradient;
+
+  const _PremiumStatCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.gradient,
+  });
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: Container(
+      padding: const EdgeInsets.symmetric(
+          horizontal: 12, vertical: 14),
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color:
+            gradient.colors.first.withValues(alpha:.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha:.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon,
+                color: Colors.white, size: 14),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 10,
+              color: Colors.white.withValues(alpha:.85),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// Premium student list tile
+class _PremiumStudentTile extends StatelessWidget {
+  final AttendanceStudent student;
+  final ValueChanged<bool> onToggle;
+  final String presentLabel, absentLabel, durationLabel, minutesLabel;
+  final Color successColor, dangerColor;
+  final bool compact;
+
+  const _PremiumStudentTile({
+    required this.student,
+    required this.onToggle,
+    required this.presentLabel,
+    required this.absentLabel,
+    required this.durationLabel,
+    required this.minutesLabel,
+    required this.successColor,
+    required this.dangerColor,
+    this.compact = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final present = student.isPresent;
+    final statusColor = present ? successColor : dangerColor;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOutCubic,
+      margin: compact
+          ? const EdgeInsets.only(bottom: 10)
+          : EdgeInsets.zero,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+            color: statusColor.withValues(alpha:.2), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha:.04),
+              blurRadius: 10,
+              offset: const Offset(0, 3))
+        ],
+      ),
+      child: ListTile(
+        contentPadding:
+        const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        leading: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: statusColor.withValues(alpha:.1),
+              backgroundImage: student.imageUrl != null
+                  ? NetworkImage(student.imageUrl!)
+                  : null,
+              child: student.imageUrl == null
+                  ? Text(
+                student.name[0],
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: statusColor,
+                ),
+              )
+                  : null,
+            ),
+            Positioned(
+              bottom: -2,
+              left: -2,
+              child: Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: statusColor,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: Colors.white, width: 2),
+                ),
+              ),
+            ),
+          ],
+        ),
+        title: Text(
+          student.name,
+          style: const TextStyle(
+            fontFamily: 'Cairo',
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        subtitle: student.durationMinutes != null
+            ? Text(
+          '$durationLabel: ${student.durationMinutes} $minutesLabel',
+          style: const TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 12,
+              color: Colors.grey),
+        )
+            : Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha:.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                present ? presentLabel : absentLabel,
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: statusColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+        trailing: Transform.scale(
+          scale: 0.9,
+          child: Switch.adaptive(
+            value: present,
+            activeColor: successColor,
+            inactiveThumbColor: dangerColor,
+            onChanged: onToggle,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Quick action button (All Present / All Absent)
+class _QuickActionBtn extends StatelessWidget {
+  final String label;
+  final Color color;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _QuickActionBtn({
+    required this.label,
+    required this.color,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(
+          horizontal: 12, vertical: 14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha:.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha:.3)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }

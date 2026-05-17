@@ -27,7 +27,7 @@ class AppTheme {
   static const Color success      = Color(0xFF34C270);
   static const Color danger       = Color(0xFFFF3B5C);
   static const Color warning      = Color(0xFFFF9500);
-  static const Color scondeText   = Color(0xFF687280);
+  static const Color secondText   = Color(0xFF687280);
   static const Color purple       = Color(0xFF8B6FFF);
 
   // ── Light surfaces ────────────────────────────────────────────────────────
@@ -62,9 +62,14 @@ class AppTheme {
   static const double radiusXL     = 32;
 
   // ── Gradients ─────────────────────────────────────────────────────────────
+  // static const LinearGradient primaryGradient = LinearGradient(
+  //   colors: [Color(0xFF158CEA), Color(0xFF4F7FFF)],
+  //   begin: Alignment.topLeft, end: Alignment.bottomRight,
+  // );
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [Color(0xFF158CEA), Color(0xFF4F7FFF)],
-    begin: Alignment.topLeft, end: Alignment.bottomRight,
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF0F3A8F), Color(0xFF1A56C4), Color(0xFF2563EB)],
   );
   static const LinearGradient disableGradient = LinearGradient(
     colors: [Color(0x500F1729), Color(0x505A6580)],
@@ -354,7 +359,7 @@ class AppColors {
   Color get danger       => AppTheme.danger;
   Color get warning      => AppTheme.warning;
   Color get purple       => AppTheme.purple;
-  Color get scondeText   => AppTheme.scondeText;
+  Color get secondText   => AppTheme.secondText;
 
   // ══════════════════════════════════════════════════════════════════════════
   // TINTED ICON BACKGROUNDS
@@ -389,7 +394,7 @@ class AppColors {
   // GRADIENTS
   // ══════════════════════════════════════════════════════════════════════════
 
-  LinearGradient get primaryGradient    => AppTheme.primaryGradient;
+  LinearGradient get primaryGradient    => isDark?AppTheme.darkSlideBarGradient: AppTheme.primaryGradient;
   LinearGradient get disableGradient    => AppTheme.disableGradient;
   LinearGradient get accentGradient     => AppTheme.accentGradient;
   LinearGradient get tealGradient       => AppTheme.tealGradient;

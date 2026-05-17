@@ -75,7 +75,7 @@
 //   //           ),
 //   //           const Spacer(),
 //   //           GestureDetector(
-//   //             onTap: () => setState(() => _showAttendancePanel = false),
+//   //             onTap: () => if(mounted) setState(() => _showAttendancePanel = false),
 //   //             child: const Icon(Icons.close, color: Colors.white54, size: 18),
 //   //           ),
 //   //         ]),

@@ -61,13 +61,13 @@ class TeacherAttendanceProvider extends ChangeNotifier {
 
   // ── Load sessions ──────────────────────────────────────────────────────────
 
-  Future<void> loadSessions() async {
+  Future<void> loadSessions(int? sessionId) async {
     _setState(AttendanceLoadState.loadingSessions);
     try {
       fullAttendance = await _api.fetchCourseAttendance(courseId);
       _errorMessage = null;
       _setState(AttendanceLoadState.idle);
-      if (sessions.isNotEmpty) await selectSession(sessions.first);
+      if (sessions.isNotEmpty) await selectSession(sessionId!=null? sessions.firstWhere((e)=>e.id==sessionId): sessions.first);
     } on ApiException catch (e) {
       _errorMessage = e.message;
       _setState(AttendanceLoadState.error);

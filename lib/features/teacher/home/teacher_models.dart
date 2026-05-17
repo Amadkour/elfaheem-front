@@ -329,9 +329,8 @@ class TeacherDashboardData {
       {required this.stats, required this.courses, required this.schedule});
 
   factory TeacherDashboardData.fromJson(Map<String, dynamic> j) {
-    final s = j['stats'] as Map<String, dynamic>? ?? {};
     return TeacherDashboardData(
-        stats: TeacherStats.fromJson(s),
+        stats: TeacherStats.fromJson(j),
         courses: (j['courses'] as List? ?? [])
             .map((e) => TeacherCourse.fromJson(e as Map<String, dynamic>))
             .toList(),

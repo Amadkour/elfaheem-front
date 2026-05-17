@@ -116,14 +116,14 @@ class _ControlsWidgetState extends State<ControlsWidget>
     try {
       final next = position.switched();
       await track.setCameraPosition(next);
-      setState(() => position = next);
+      if(mounted) setState(() => position = next);
     } catch (e) { log('flip camera: $e'); }
   }
 
   // ── Screen share ───────────────────────────────────────────────────────────
   void _onScreenShareToggle() async {
     if (_screenShareBusy) return;
-    setState(() => _screenShareBusy = true);
+    if(mounted) setState(() => _screenShareBusy = true);
     try {
       if (lkPlatformIsDesktop()) {
         await _toggleDesktopScreenShare();
@@ -132,7 +132,7 @@ class _ControlsWidgetState extends State<ControlsWidget>
         await widget.onToggleScreenShare!();
       }
     } catch (e) { log('screen share toggle: $e'); }
-    finally { if (mounted) setState(() => _screenShareBusy = false); }
+    finally { if (mounted) if(mounted) setState(() => _screenShareBusy = false); }
   }
 
   Future<void> _toggleDesktopScreenShare() async {

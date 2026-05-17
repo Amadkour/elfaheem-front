@@ -26,13 +26,9 @@ class AuthSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 400,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF0F3A8F), Color(0xFF1A56C4), Color(0xFF2563EB)],
-        ),
+      width: context.width/3 >400?400:context.width/3 ,
+      decoration:  BoxDecoration(
+        gradient: context.colors.primaryGradient,
       ),
       child: Stack(
         children: [
@@ -56,7 +52,7 @@ class AuthSidebar extends StatelessWidget {
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 48),
-              child: Column(
+              child:Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Logo
@@ -66,10 +62,9 @@ class AuthSidebar extends StatelessWidget {
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha:0.15),
+                          color: Colors.white.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
-                          border:
-                              Border.all(color: Colors.white.withValues(alpha:0.2)),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                         ),
                         child: const Icon(Icons.layers_rounded,
                             color: Colors.white, size: 22),
@@ -84,16 +79,16 @@ class AuthSidebar extends StatelessWidget {
                               color: Colors.white,
                               fontSize: 18,
                               fontWeight: FontWeight.w600,
-                              fontFamily:  'Tajawal',
+                              fontFamily: 'Tajawal',
                             ),
                           ),
                           Text(
-                            'Learning Platform',
+                            'learning_platform'.tr,
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha:0.5),
+                              color: Colors.white.withValues(alpha: 0.5),
                               fontSize: 11,
                               letterSpacing: 1.2,
-                              fontFamily:  'Tajawal',
+                              fontFamily: 'Tajawal',
                             ),
                           ),
                         ],
@@ -104,23 +99,23 @@ class AuthSidebar extends StatelessWidget {
                   const Spacer(),
 
                   // Headline
-                  const Text(
-                    'Unlock your\nfull potential\ntoday.',
-                    style: TextStyle(
+                  Text(
+                    'unlock_potential'.tr,
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 36,
                       fontWeight: FontWeight.bold,
-                      fontFamily:  'Tajawal',
+                      fontFamily: 'Tajawal',
                       height: 1.2,
                     ),
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    'Join thousands of students and educators in a rich digital learning experience.',
+                    'join_students_hint'.tr,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha:0.65),
+                      color: Colors.white.withValues(alpha: 0.65),
                       fontSize: 14,
-                      fontFamily:  'Tajawal',
+                      fontFamily: 'Tajawal',
                       height: 1.7,
                     ),
                   ),
@@ -129,17 +124,17 @@ class AuthSidebar extends StatelessWidget {
                   // Feature list
                   _SidebarFeature(
                     icon: Icons.schedule_rounded,
-                    text: 'Live sessions & on-demand courses',
+                    text: 'feature_live_sessions'.tr,
                   ),
                   const SizedBox(height: 14),
                   _SidebarFeature(
                     icon: Icons.groups_rounded,
-                    text: 'Expert teachers across all specializations',
+                    text: 'feature_expert_teachers'.tr,
                   ),
                   const SizedBox(height: 14),
                   _SidebarFeature(
                     icon: Icons.insert_chart_outlined_rounded,
-                    text: 'Interactive assessments & progress tracking',
+                    text: 'feature_assessments'.tr,
                   ),
 
                   const Spacer(),
@@ -149,9 +144,9 @@ class AuthSidebar extends StatelessWidget {
                     spacing: 10,
                     runSpacing: 8,
                     children: [
-                      _TrustBadge(label: '10k+ Students'),
-                      _TrustBadge(label: '500+ Teachers'),
-                      _TrustBadge(label: 'Secure & Private'),
+                      _TrustBadge(label: 'badge_students'.tr),
+                      _TrustBadge(label: 'badge_teachers'.tr),
+                      _TrustBadge(label: 'badge_secure'.tr),
                     ],
                   ),
                 ],
@@ -294,18 +289,20 @@ class IconTextField extends StatelessWidget {
         TextFormField(
           controller: controller,
           keyboardType: keyboard,
-          style: const TextStyle(
+          style:  TextStyle(
             fontFamily: 'Tajawal',
             fontSize: 14,
-            color: _kText,
+            color: context.colors.textDark,
+
           ),
           decoration: InputDecoration(
             prefixIcon: Icon(icon, size: 18, color: const Color(0xFF9CA3AF)),
             hintText: label,
-            hintStyle: const TextStyle(
+            hintStyle:  TextStyle(
               fontFamily: 'Tajawal',
               fontSize: 14,
-              color: Color(0xFF9CA3AF),
+              color: context.colors.textDark,
+
             ),
             filled: true,
             fillColor: context.colors.inputBg,
@@ -369,10 +366,10 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
         TextFormField(
           controller: widget.controller,
           obscureText: _obscure,
-          style: const TextStyle(
+          style:  TextStyle(
             fontFamily: 'Tajawal',
             fontSize: 14,
-            color: _kText,
+            color: context.colors.textDark,
           ),
           decoration: InputDecoration(
             prefixIcon: const Icon(
@@ -382,7 +379,7 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
             ),
             suffixIcon: GestureDetector(
               onTap: () {
-                setState(() => _obscure = !_obscure);
+                if(mounted) if(mounted) setState(() => _obscure = !_obscure);
                 widget.onToggle?.call();
               },
               child: Icon(
@@ -394,10 +391,11 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
               ),
             ),
             hintText: '••••••••',
-            hintStyle: const TextStyle(
+            hintStyle:  TextStyle(
               fontFamily: 'Tajawal',
               fontSize: 14,
-              color: Color(0xFF9CA3AF),
+              color: context.colors.textDark,
+
             ),
             filled: true,
             fillColor: context.colors.inputBg,
@@ -427,15 +425,17 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
 // ── 5. Primary button ─────────────────────────────────────────────────────────
 class PrimaryButton extends StatelessWidget {
   final bool isLoading;
+  final bool enable;
   final String label;
   final IconData icon;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   const PrimaryButton({super.key, 
     required this.isLoading,
     required this.label,
     required this.icon,
-    required this.onPressed,
+     this.onPressed,
+     this.enable=true,
   });
 
   @override
@@ -444,9 +444,9 @@ class PrimaryButton extends StatelessWidget {
       width: double.infinity,
       height: 52,
       child: ElevatedButton(
-        onPressed: isLoading ? null : onPressed,
+        onPressed: isLoading || !enable ? null : onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: context.colors.accent,
+          backgroundColor: enable? context.colors.accent:context.colors.textDark,
           disabledBackgroundColor: context.colors.accent.withValues(alpha:0.6),
           foregroundColor: Colors.white,
           elevation: 0,
@@ -596,7 +596,7 @@ class RolePicker extends StatelessWidget {
                 ),
                 padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
                 decoration: BoxDecoration(
-                  color: isSelected ? _kBrandLight : context.colors.inputBg,
+                  color:  context.colors.inputBg,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: isSelected ? context.colors.primaryBlue : _kBorder,
@@ -629,7 +629,7 @@ class RolePicker extends StatelessWidget {
                         fontFamily: 'Tajawal',
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: isSelected ? context.colors.primaryBlue : _kText,
+                        color: isSelected ? context.colors.primary : context.colors.textDark,
                       ),
                     ),
                   ],
@@ -670,19 +670,23 @@ class StyledDropdown extends StatelessWidget {
         border: Border.all(color: _kBorder, width: 1.5),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(left: 14),
+            padding: const EdgeInsets.fromLTRB(0,20,10,0),
             child: Icon(icon, size: 18, color: const Color(0xFF9CA3AF)),
           ),
           Expanded(
-            child: MyPrimaryMenu(
-              label: label,
-              controller: controller,
-              initValue: initValue,
-              options: options,
-              haveLogo: false,
-              onChange: onChange,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(10,0,10,5),
+              child: MyPrimaryMenu(
+                label: label,
+                controller: controller,
+                initValue: initValue,
+                options: options,
+                haveLogo: false,
+                onChange: onChange,
+              ),
             ),
           ),
         ],

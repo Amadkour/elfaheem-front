@@ -14,6 +14,7 @@ import 'package:flutter_education_app/features/student/home/home_screen.dart';
 import 'package:flutter_education_app/features/student/models.dart';
 import 'package:provider/provider.dart';
 import 'package:responsive_framework/responsive_framework.dart';
+import 'package:timeago/timeago.dart' as timeago;
 import 'config/app_config.dart';
 import 'config/app_theme.dart';
 import 'config/storage_service.dart';
@@ -35,7 +36,8 @@ Future<void> main() async {
   _storage = await StorageService.getInstance();
  ApiClient _api=ApiClient();
   await readLanguage();
-
+  timeago.setLocaleMessages('ar', timeago.ArShortMessages());
+  timeago.setLocaleMessages('en', timeago.EnShortMessages());
   runApp(
     MultiProvider(
       providers: appProviders(storage: _storage,api:_api),

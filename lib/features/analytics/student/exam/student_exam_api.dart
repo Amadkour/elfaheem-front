@@ -1,17 +1,19 @@
-// features/student/exam/student_exam_api.dart
+// student_exam_api.dart
 //
 // Endpoints consumed:
-//   GET  /api/v1/student/exams                         → all exams across enrolled courses
-//   GET  /api/v1/courses/{id}/exams/active             → live-screen poll (unanswered only)
-//   GET  /api/v1/exams/{id}/questions                  → questions for one exam
-//   POST /api/v1/exam-answers                          → submit one answer  (upsert)
-//   GET  /api/v1/exams/{id}/results                    → student's own result
+//   GET  /api/v1/student/exams               → all exams across enrolled courses
+//   GET  /api/v1/courses/{id}/exams/active   → live-screen poll
+//   GET  /api/v1/exams/{id}/questions        → questions for one exam
+//   POST /api/v1/exam-answers                → submit one answer (upsert per round)
+//   GET  /api/v1/exams/{id}/results          → student's own BEST result
+//   GET  /api/v1/courses/{id}/exams/student  → exams for course profile widget
 
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/analytics/teacher/exam/exam_model.dart';
+
 // ── Student-specific response shapes ─────────────────────────────────────────
 
-/// Returned by GET /api/v1/student/exams
+/// Returned by GET /api/v1/student/exams and /courses/{id}/exams/student
 class StudentExamListItem {
   final int id;
   final String name;
@@ -27,9 +29,11 @@ class StudentExamListItem {
   final int questionCount;
   final int? maxSubmissions;
   final int submissionCount;
+  final int? remainingSubmissions;  // ← NEW: server-computed
   final DateTime? endDate;
-
-  // score fields (null if not submitted)
+  final bool enablePasscode;
+  final String? passcode;
+  // Best score across all submissions (null if not submitted)
   final double? marksObtained;
   final double? percentage;
   final bool? passed;
@@ -49,15 +53,14 @@ class StudentExamListItem {
     required this.questionCount,
     this.maxSubmissions,
     this.submissionCount = 0,
+    this.remainingSubmissions,
     this.endDate,
     this.marksObtained,
     this.percentage,
-    this.passed,
+    this.passed, required this.enablePasscode, this.passcode,
   });
 
   factory StudentExamListItem.fromJson(Map<String, dynamic> j) {
-    print(j);
-    print(j.keys);
     return StudentExamListItem(
         id: j['id'] as int,
         name: j['name'] as String,
@@ -75,12 +78,15 @@ class StudentExamListItem {
         questionCount: j['question_count'] as int? ?? 0,
         maxSubmissions: j['max_submissions'] as int?,
         submissionCount: j['submission_count'] as int? ?? 0,
+        remainingSubmissions: j['remaining_submissions'] as int?,
         endDate: j['end_date'] != null
             ? DateTime.tryParse(j['end_date'].toString())
             : null,
         marksObtained: (j['marks_obtained'] as num?)?.toDouble(),
         percentage: (j['percentage'] as num?)?.toDouble(),
         passed: j['passed'] as bool?,
+      enablePasscode: j['enable_passcode'] as bool? ?? false,
+      passcode: j['passcode'] as String?,
       );
   }
 
@@ -94,35 +100,45 @@ class StudentExamListItem {
     return ExamStatus.active;
   }
 
-  /// True when the deadline (end_date) has passed.
   bool get isDeadlineFrozen =>
       endDate != null && DateTime.now().isAfter(endDate!);
 
-  /// True when the student has used all allowed submission attempts.
   bool get isSubmissionsFrozen =>
       maxSubmissions != null &&
           maxSubmissions! > 0 &&
           submissionCount >= maxSubmissions!;
 
-  /// True when student cannot submit any more answers.
   bool get isFrozen => isDeadlineFrozen || isSubmissionsFrozen;
 
-  /// How many more times the student can re-submit (null = unlimited).
-  int? get remainingSubmissions {
+  /// Computed locally as fallback when server doesn't return remainingSubmissions
+  int? get computedRemainingSubmissions {
+    if (remainingSubmissions != null) return remainingSubmissions;
     if (maxSubmissions == null || maxSubmissions! <= 0) return null;
     return (maxSubmissions! - submissionCount).clamp(0, maxSubmissions!);
   }
+
+  /// Whether the student can attempt again (has remaining submissions)
+  bool get canRetry =>
+      !isDeadlineFrozen &&
+          (maxSubmissions == null ||
+              maxSubmissions! <= 0 ||
+              submissionCount < maxSubmissions!);
 }
 
-/// Returned by GET /api/v1/student/exams/{id}/results
+/// Returned by GET /api/v1/exams/{id}/results — BEST submission
 class StudentMyResult {
   final int examId;
   final double marksObtained;
   final double totalMarks;
   final double percentage;
   final bool passed;
+
   final int answeredCount;
   final int questionCount;
+  final int submissionCount;
+  final int? remainingSubmissions;
+  final double? bestPercentage;    // ← NEW: best across all rounds
+  final double? currentPercentage; // ← NEW: current round's score
 
   const StudentMyResult({
     required this.examId,
@@ -132,6 +148,10 @@ class StudentMyResult {
     required this.passed,
     required this.answeredCount,
     required this.questionCount,
+    this.submissionCount = 0,
+    this.remainingSubmissions,
+    this.bestPercentage,
+    this.currentPercentage,
   });
 
   factory StudentMyResult.fromJson(Map<String, dynamic> j, int examId) =>
@@ -143,6 +163,10 @@ class StudentMyResult {
         passed: j['passed'] as bool? ?? false,
         answeredCount: j['answered_count'] as int? ?? 0,
         questionCount: j['question_count'] as int? ?? 0,
+        submissionCount: j['submission_count'] as int? ?? 0,
+        remainingSubmissions: j['remaining_submissions'] as int?,
+        bestPercentage: (j['best_percentage'] as num?)?.toDouble(),
+        currentPercentage: (j['current_percentage'] as num?)?.toDouble(),
       );
 }
 
@@ -152,36 +176,24 @@ class StudentExamApi {
   final ApiClient _api;
   StudentExamApi({ApiClient? api}) : _api = api ?? ApiClient();
 
-  /// GET /api/v1/student/exams
   Future<List<StudentExamListItem>> fetchMyExams() async {
     final data = await _api.get('/api/v1/student/exams');
     if (data is! List) return [];
-    return (data)
-        .cast<Map<String, dynamic>>()
-        .map(StudentExamListItem.fromJson)
-        .toList();
+    return data.cast<Map<String, dynamic>>().map(StudentExamListItem.fromJson).toList();
   }
 
-  /// GET /api/v1/courses/{courseId}/exams/active
-  /// Returns exams that have full question lists embedded.
-  Future<List<Map<String, dynamic>>> fetchActiveExamsForCourse(
-      int courseId) async {
+  Future<List<Map<String, dynamic>>> fetchActiveExamsForCourse(int courseId) async {
     final data = await _api.get('/api/v1/courses/$courseId/exams/active');
     if (data is! List) return [];
-    return (data).cast<Map<String, dynamic>>();
+    return data.cast<Map<String, dynamic>>();
   }
 
-  /// GET /api/v1/exams/{examId}/questions
   Future<List<Question>> fetchQuestions(int examId) async {
     final data = await _api.get('/api/v1/exams/$examId/questions');
     if (data is! List) return [];
-    return (data)
-        .cast<Map<String, dynamic>>()
-        .map(Question.fromJson)
-        .toList();
+    return data.cast<Map<String, dynamic>>().map(Question.fromJson).toList();
   }
 
-  /// POST /api/v1/exam-answers  (upsert — one call per question)
   Future<Map<String, dynamic>> submitAnswer({
     required int examId,
     required int questionId,
@@ -195,20 +207,14 @@ class StudentExamApi {
     return data as Map<String, dynamic>;
   }
 
-  /// GET /api/v1/exams/{examId}/results
   Future<StudentMyResult> fetchMyResult(int examId) async {
     final data = await _api.get('/api/v1/exams/$examId/results');
     return StudentMyResult.fromJson(data as Map<String, dynamic>, examId);
   }
 
-  /// GET /api/v1/courses/{courseId}/exams/student
-  /// Exams for a specific course (used in course profile widget).
   Future<List<StudentExamListItem>> fetchCourseExams(String courseId) async {
     final data = await _api.get('/api/v1/courses/$courseId/exams/student');
     if (data is! List) return [];
-    return (data)
-        .cast<Map<String, dynamic>>()
-        .map(StudentExamListItem.fromJson)
-        .toList();
+    return data.cast<Map<String, dynamic>>().map(StudentExamListItem.fromJson).toList();
   }
 }

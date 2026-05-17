@@ -65,7 +65,6 @@ class TeacherProvider extends BaseProvider {
           queryParams: {'skip': skip, 'limit': limit},
         ));
     if (result is List) {
-      print("111111111111111111111111111111111111111111");
 
       _allCourses = result
           .map((e) => TeacherCourse.fromJson(e as Map<String, dynamic>))
@@ -138,7 +137,7 @@ class TeacherProvider extends BaseProvider {
   }
 
   Future<bool> deleteCourse(int courseId) async {
-    await run(() => _api.delete('/api/v1/courses/$courseId'));
+    await run(() => _api.delete('/api/v1/courses/$courseId',queryParams: {'force':true}));
     if (state == ProviderState.success) {
       _allCourses = _allCourses.where((c) => c.id != courseId).toList();
       _updateStats();

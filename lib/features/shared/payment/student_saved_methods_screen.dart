@@ -742,7 +742,7 @@ class _AddStudentBankFormState extends State<_AddStudentBankForm> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _saving = true);
+    if(mounted) if(mounted) setState(() => _saving = true);
     final p = context.read<SavedMethodsProvider>();
     final r = await p.saveBankAccount(
       bankName:    _bankCtrl.text.trim(),
@@ -750,7 +750,7 @@ class _AddStudentBankFormState extends State<_AddStudentBankForm> {
       iban:        _ibanCtrl.text.trim(),
     );
     if (mounted) {
-      setState(() => _saving = false);
+      if(mounted) if(mounted) setState(() => _saving = false);
       if (r != null) {
         _bankCtrl.clear(); _nameCtrl.clear(); _ibanCtrl.clear();
         ScaffoldMessenger.of(context).showSnackBar(

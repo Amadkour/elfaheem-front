@@ -30,12 +30,12 @@ class _AppShellState extends State<AppShell> {
           ? _WebLayout(
               pages: widget.pages,
               idx: _idx,
-              onSelect: (i) => setState(() => _idx = i),
+              onSelect: (i) { if(mounted) setState(() => _idx = i);},
             )
           : _MobileLayout(
               pages: widget.pages,
               idx: _idx,
-              onSelect: (i) => setState(() => _idx = i),
+              onSelect: (i) { if(mounted) setState(() => _idx = i);},
             ),
     );
   }

@@ -59,7 +59,6 @@
     "en": "Login",
     "ar": " سجّل الدخول"
   },
-
   "login_welcome": {
     "en": "to continue your learning journey",
     "ar": "لمتابعة رحلتك التعليمية"
@@ -145,6 +144,10 @@
     "ar": "أسلوب التدريس"
   },
   "record": {
+    "en": "Record",
+    "ar": "مسجل"
+  },
+  "recorded": {
     "en": "Record",
     "ar": "مسجل"
   },
@@ -242,7 +245,7 @@
   },
   "sessions": {
     "en": "Sessions",
-    "ar": "الحصص"
+    "ar": "المحاضرات"
   },
   "logout": {
     "en": "Logout",
@@ -438,11 +441,11 @@
   },
   "edit_session": {
     "en": "Edit Session",
-    "ar": "تعديل الحصة"
+    "ar": "تعديل المحاضرة"
   },
   "delete_session": {
     "en": "Delete Session",
-    "ar": "حذف الحصة"
+    "ar": "حذف المحاضرة"
   },
   "attendees": {
     "en": "Attendees",
@@ -462,15 +465,15 @@
   },
   "session_is_live": {
     "en": "Session is live now",
-    "ar": "الحصة تبث الآن"
+    "ar": "المحاضرة تبث الآن"
   },
   "start_live_session": {
     "en": "Start Live Session",
-    "ar": "بدء الحصة المباشرة"
+    "ar": "بدء المحاضرة المباشرة"
   },
   "end_session": {
     "en": "End Session",
-    "ar": "إنهاء الحصة"
+    "ar": "إنهاء المحاضرة"
   },
   "live_room": {
     "en": "Live Room",
@@ -877,7 +880,6 @@
     "ar": "المشاهدات"
   },
   "student_rate": {
-
     "en": "rate",
     "ar": "التقييم"
   },
@@ -969,7 +971,6 @@
     "en": "not Refreshed yet",
     "ar": "لم يُحدَّث بعد"
   },
-
   "moments-ago": {
     "en": "Moments ago",
     "ar": "منذ لحظات"
@@ -978,84 +979,82 @@
     "en": "since",
     "ar": "من "
   },
-    "m": {
+  "m": {
     "en": "m",
-     "ar": "د"
+    "ar": "د"
   },
   "day": {
     "en": "m",
-     "ar": "د"
+    "ar": "د"
   },
   "refresh": {
     "en": "Refresh",
-     "ar": "تحديث"
+    "ar": "تحديث"
   },
   "refreshing": {
     "en": "Refreshing",
-     "ar": "جاري التحديث…"
+    "ar": "جاري التحديث…"
   },
   "play-now": {
     "en": "playing now",
-     "ar": " جارية الآن"
+    "ar": " جارية الآن"
   },
-
   "next-lesson": {
     "en": "Upcoming Lesson",
-     "ar": " الحصة القادمة"
-  } ,
+    "ar": " المحاضرة القادمة"
+  },
   "completed": {
     "en": "Completed",
-     "ar": "مكتمل"
-  } ,
+    "ar": "مكتمل"
+  },
   "no-lessons-today": {
     "en": "No Sessions Today",
-     "ar": "لا توجد حصص اليوم"
+    "ar": "لا توجد حصص اليوم"
   },
   "no-lessons": {
     "en": "No Sessions for ",
-     "ar": "لا توجد حصص يوم"
+    "ar": "لا توجد حصص يوم"
   },
   "loading-schedule": {
     "en": "Loading the schedule…",
-     "ar": "جاري تحميل الجدول…"
+    "ar": "جاري تحميل الجدول…"
   },
   "rest-follow": {
     "en": "Rest and follow the schedule day by day.",
-     "ar": "استرح وتابع الجدول يوماً بيوم"
+    "ar": "استرح وتابع الجدول يوماً بيوم"
   },
   "retry": {
     "en": "Retry",
-     "ar": "إعادة المحاولة"
+    "ar": "إعادة المحاولة"
   },
   "appointment": {
     "en": "appointment —",
-     "ar": "المواعيد —"
+    "ar": "المواعيد —"
   },
   "appointment-repeat": {
     "en": "The appointments are automatically repeated weekly • students will see them on their schedules.",
-     "ar": "المواعيد تتكرر أسبوعياً تلقائياً  •  الطلاب يرونها في جدولهم"
+    "ar": "المواعيد تتكرر أسبوعياً تلقائياً  •  الطلاب يرونها في جدولهم"
   },
   "appointment-delete": {
     "en": "Delete Appointment",
-     "ar": "حذف الموعد"
+    "ar": "حذف الموعد"
   },
   "appointment-delete2": {
     "en": "Delete Appointment for",
-     "ar": "حذف موعد"
+    "ar": "حذف موعد"
   },
   "no-appointment": {
     "en": "No Appointment yet",
-     "ar": "لا توجد مواعيد بعد"
+    "ar": "لا توجد مواعيد بعد"
   },
   "add-weekly-appointment-for-student": {
     "en": "Add weekly appointments for your students to see in their schedule.",
-     "ar": "أضف مواعيد أسبوعية ليراها طلابك في جدولهم"
+    "ar": "أضف مواعيد أسبوعية ليراها طلابك في جدولهم"
   },
   "add-weekly-appointment": {
     "en": "Add weekly appointments +",
-     "ar": "+ إضافة موعد أسبوعي"
+    "ar": "+ إضافة موعد أسبوعي"
   },
-
   "duplicate-schedule": {
     "en": "Duplicate appointment",
     "ar": "موعد مكرر"
@@ -1064,7 +1063,6 @@
     "en": "There is already an appointment on the same day. Add another one?",
     "ar": "يوجد موعد بنفس اليوم. إضافة موعد آخر؟"
   },
-
   "appointment-added-successfully": {
     "en": "Appointment added successfully ✓",
     "ar": "تم إضافة الموعد ✓"
@@ -1073,7 +1071,6 @@
     "en": "Something went wrong",
     "ar": "حدث خطأ"
   },
-
   "start-time": {
     "en": "Start time",
     "ar": "وقت البداية"
@@ -1132,10 +1129,154 @@
   },
   "profile": {
     "en": "Profile",
-    "ar": "ملفي"
+    "ar": "حسابي"
+  },
+  "loading_attendance": {
+    "en": "Loading attendance…",
+    "ar": "جارٍ تحميل الحضور…"
+  },
+  "select_session_hint_sub": {
+    "en": "Tap a session card above to get started",
+    "ar": "اضغط على إحدى بطاقات المحاضرة أعلاه للبدء"
+  },
+  "no_sessions_available": {
+    "en": "No sessions available",
+    "ar": "لا توجد حصص متاحة"
+  },
+  "save_failed": {
+    "en": "Save failed, please try again",
+    "ar": "فشل الحفظ، يرجى المحاولة مرة أخرى"
+  },
+  "session_number": {
+    "en": "Session {number}",
+    "ar": "المحاضرة {number}"
+  },
+  "explorer_courses": {
+    "en": "Explorer Courses",
+    "ar": "استكشف دورات اخري"
+  },
+  "course_details": {
+    "en": "Course Details",
+    "ar": "تفاصيل الدورة"
+  },
+  "teacher_dot": {
+    "en": "Teacher",
+    "ar": "معلم"
+  },
+  "pricing": {
+    "en": "Pricing",
+    "ar": "التسعير"
+  },
+  "joined": {
+    "en": "Joined",
+    "ar": "انضم"
+  },
+  "verified": {
+    "en": "Verified",
+    "ar": "موثق"
+  },
+  "active": {
+    "en": "Active",
+    "ar": "نشط"
+  },
+  "live_and_recorded": {
+    "en": "Live & Recorded",
+    "ar": "مباشر ومسجل"
+  },
+  "live_only": {
+    "en": "Live Only",
+    "ar": "مباشر فقط"
+  },
+  "country": {
+    "en": "Country",
+    "ar": "الدولة"
+  },
+  "show_less": {
+    "en": "Show less",
+    "ar": "عرض أقل"
+  },
+  "ratings_and_reviews": {
+    "en": "Ratings & Reviews",
+    "ar": "التقييمات والمراجعات"
+  },
+  "no_bio_hint": {
+    "en": "This teacher hasn't added a bio yet. Check their courses to learn more about their teaching style and expertise.",
+    "ar": "لم يُضف هذا المعلم نبذة عنه بعد. تفقد كورساته لتعرف المزيد عن أسلوبه في التدريس."
+  },
+  "learning_platform": {
+    "en": "Learning Platform",
+    "ar": "منصة تعليمية"
+  },
+  "unlock_potential": {
+    "en": "Unlock your\nfull potential\ntoday.",
+    "ar": "اكتشف\nإمكاناتك\nالكاملة اليوم."
+  },
+  "join_students_hint": {
+    "en": "Join thousands of students and educators in a rich digital learning experience.",
+    "ar": "انضم إلى آلاف الطلاب والمعلمين في تجربة تعليمية رقمية ثرية."
+  },
+  "feature_live_sessions": {
+    "en": "Live sessions & on-demand courses",
+    "ar": "حصص مباشرة وكورسات مسجلة"
+  },
+  "feature_expert_teachers": {
+    "en": "Expert teachers across all specializations",
+    "ar": "معلمون متخصصون في جميع المجالات"
+  },
+  "feature_assessments": {
+    "en": "Interactive assessments & progress tracking",
+    "ar": "اختبارات تفاعلية ومتابعة التقدم"
+  },
+  "badge_students": {
+    "en": "10k+ Students",
+    "ar": "+10 آلاف طالب"
+  },
+  "badge_teachers": {
+    "en": "500+ Teachers",
+    "ar": "+500 معلم"
+  },
+  "badge_secure": {
+    "en": "Secure & Private",
+    "ar": "آمن وخاص"
+  },
+  "sar": {
+    "en": "SAR",
+    "ar": "ريال"
+  },
+  "my_schedule": {
+    "en": "Schedule",
+    "ar": "جدولي"
+  },
+  "analysis": {
+    "en": "Analysis",
+    "ar": "التحليلات"
+  },
+  "my_profile": {
+    "en": "Profile",
+    "ar": "حسابي"
+  },
+  "materials_rate": {
+    "en": "Materials Rate",
+    "ar": "تقيم المحتوي"
+  },
+  "course_rate": {
+    "en": "Courses Rate",
+    "ar": "تقيم الدورات"
+  },
+  "teacher_rate": {
+    "en": "Teacher Rate",
+    "ar": "تقيم المدرس"
+  },
+  "course_count": {
+    "en": "Courses count",
+    "ar": "عدد الدورات"
+  },
+  "overall_rate": {
+    "en": "Overall Rate",
+    "ar": "التقيم العام"
+  },
+  "total_count": {
+    "en": "Total Count",
+    "ar": "اجمالي الاشتراكات"
   }
-
-
-
-
 }

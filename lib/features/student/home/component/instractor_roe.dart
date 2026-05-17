@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/analytics/teacher/teacher_attendance_screen.dart';
+import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:flutter_education_app/features/shared/profile/course_instractor_profile.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/app_theme.dart';
 import '../../../../utils/widget/app_network_image.dart';
@@ -20,7 +23,7 @@ class InstructorsRow extends StatelessWidget {
     final instructors = provider.instructors;
 
     if (instructors.isEmpty) {
-      return  SizedBox(
+      return SizedBox(
         height: 128,
         child: Center(
           child: Text('لا يوجد مدرسون', style: context.colors.caption),
@@ -37,59 +40,21 @@ class InstructorsRow extends StatelessWidget {
         separatorBuilder: (_, __) => const SizedBox(width: 16),
         itemBuilder: (_, i) {
           final ins = instructors[i];
-          final gradColors = _avatarGradients[i % _avatarGradients.length];
-          final initial = ins.name.isNotEmpty ? ins.name[0] : '؟';
-
           return SizedBox(
             width: 84,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Avatar with gradient ring + shadow
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: gradColors,
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    border: Border.all(
-                      color: gradColors[0].withValues(alpha:0.25),
-                      width: 2.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: gradColors[0].withValues(alpha:0.28),
-                        blurRadius: 14,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                if (ins.teacher != null)
+                  InstructorAvatar(
+                    teacher: ins.teacher!,
+                    size: 50,
+                    canOpen: true,
+                    showTitle: false,
                   ),
-                  child: ins.avatarUrl.isNotEmpty
-                      ? ClipOval(
-                    child: AppNetworkImage(
-                      url: ins.avatarUrl,
-                      fit: BoxFit.cover,
-                    ),
-                  )
-                      : Center(
-                    child: Text(
-                      initial,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        fontFamily: 'Cairo',
-                      ),
-                    ),
-                  ),
-                ),
                 const SizedBox(height: 9),
                 Text(
-                  ins.name,
+                  ins.teacher?.name ?? 'T',
                   style: context.colors.h3.copyWith(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -99,16 +64,20 @@ class InstructorsRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  ins.specialty,
-                  style: context.colors.caption.copyWith(
-                    fontSize: 10,
-                    color: context.colors.textLight,
+                if (ins.teacher?.teacherProfile?.specializationId != null)
+                  Text(
+                    context.read<AuthProvider>().getSpecializationById(ins
+                            .teacher?.teacherProfile?.specializationId
+                            .toString() ??
+                        '-1')['text'],
+                    style: context.colors.caption.copyWith(
+                      fontSize: 10,
+                      color: context.colors.textLight,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
               ],
             ),
           );
