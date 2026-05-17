@@ -142,7 +142,7 @@ class AuthProvider extends BaseProvider {
   }) async {
     isLoadingRegistration = true;
     notifyListeners();
-
+    print('/api/v1/auth/register');
     final result = await run(() => _api.post(
           '/api/v1/auth/register',
           body: {

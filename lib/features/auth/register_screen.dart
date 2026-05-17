@@ -72,6 +72,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
     final authProvider = context.read<AuthProvider>();
+    print("-------------------");
     final success = await authProvider.register(
       gmail: _emailController.text.trim(),
       phone: _phoneController.text.trim(),
@@ -302,7 +303,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
           PrimaryButton(
             isLoading: provider.isLoadingRegistration,
-            label: 'confirm'.tr,
+            label: 'confirm2'.tr,
             icon: Icons.check_rounded,
             onPressed: _register,
             enable: _canSubmit,
