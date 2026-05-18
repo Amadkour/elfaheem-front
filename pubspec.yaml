@@ -75,6 +75,12 @@ flutter_native_splash:
   # General image for all platforms except Android 12+
   image: assets/images/splash.png
 
+  android_gravity: fill
+
+  ios_content_mode: center
+
+  fullscreen: true
+
   # Android 12+ specific configuration (required for newer Android versions)
   android_12:
     image: assets/images/splash.png
