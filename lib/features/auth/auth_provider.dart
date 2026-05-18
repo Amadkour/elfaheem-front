@@ -73,7 +73,6 @@ class AuthProvider extends BaseProvider {
     // Restore the user from disk immediately so role/isTeacher are ready
     // before the first frame is drawn — no async gap, no null user.
     _loadCachedUser();
-
   }
 
   Future<void> loadSpecialization(BuildContext context) async {
@@ -86,7 +85,7 @@ class AuthProvider extends BaseProvider {
   // ── Dropdown options ──────────────────────────────────────────────────────────
   List<Map<String, String>> teachingTypes = [
     {'text': 'live'},
-    {'text': 'record'},
+    {'text': 'recorded'},
     {'text': 'both'},
   ];
   List<Map<String, String>> paymentTypes = [
@@ -142,7 +141,6 @@ class AuthProvider extends BaseProvider {
   }) async {
     isLoadingRegistration = true;
     notifyListeners();
-    print('/api/v1/auth/register');
     final result = await run(() => _api.post(
           '/api/v1/auth/register',
           body: {
@@ -208,10 +206,6 @@ class AuthProvider extends BaseProvider {
   Future<bool> completeTeacherProfile({
     required int experienceYears,
     required String email,
-    int? specializationId,
-    String teachingType = 'both',
-    String paymentType = 'free',
-    String? about,
   }) async {
     isLoadingAdditionalRegistration = true;
     notifyListeners();
@@ -220,11 +214,10 @@ class AuthProvider extends BaseProvider {
           '/api/v1/auth/teacher-profile',
           body: {
             'experience_years': experienceYears,
-            'teaching_type': teachingType,
-            'payment_type': paymentType,
+            'teaching_type': selectedTeachingType!['text'],
+            'payment_type': selectedPaymentType!['text'],
             'gmail': email,
-            if (specializationId != null) 'specialization_id': specializationId,
-            if (about != null) 'about': about,
+            'specialization_id': selectedSpecialization!['id'],
           },
         ));
 
@@ -403,8 +396,8 @@ class AuthProvider extends BaseProvider {
         refreshToken: refresh,
       );
       await _api.saveTokens(
-        accessToken: access,
-        refreshToken: refresh,
+        access: access,
+        refresh: refresh,
       );
     }
   }

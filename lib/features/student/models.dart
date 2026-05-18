@@ -1,6 +1,8 @@
 /// features/courses/models.dart  —  Student data models v3.2.0
 library;
 
+import 'package:flutter_education_app/features/category/categories_provider.dart';
+
 import '../category/model.dart';
 import '../teacher/home/teacher_models.dart';
 
@@ -284,7 +286,7 @@ class TeacherProfileDetail {
   final int id;
   final int userId;
   final int experienceYears;
-  final int? specializationId;
+  final CategoryModel? specialization;
   final String teachingType;
   final String paymentType;
   final String? about;
@@ -294,7 +296,7 @@ class TeacherProfileDetail {
     required this.id,
     required this.userId,
     required this.experienceYears,
-    this.specializationId,
+    this.specialization,
     required this.teachingType,
     required this.paymentType,
     this.about,
@@ -306,7 +308,7 @@ class TeacherProfileDetail {
         id: j['id'] as int,
         userId: j['user_id'] as int,
         experienceYears: j['experience_years'] as int,
-        specializationId: j['specialization_id'] as int?,
+        specialization: CategoryModel.fromJson(j['specialization'] as Map<String, dynamic>? ??{}),
         teachingType: j['teaching_type'] as String,
         paymentType: j['payment_type'] as String,
         about: j['about'] as String?,

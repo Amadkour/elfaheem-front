@@ -1,8 +1,3 @@
-/// ─────────────────────────────────────────────────────────────────────────────
-/// main.dart
-/// Only change from before: MaterialApp now reads ProfileProvider.darkMode
-/// and passes the correct ThemeMode — that's the ENTIRE dark-mode wiring.
-/// ─────────────────────────────────────────────────────────────────────────────
 library;
 
 import 'package:flutter/material.dart';
@@ -30,17 +25,19 @@ import 'features/teacher/dashboard/teacher_dashboard_screen.dart';
 import 'features/shared/profile/profile_provider.dart';
 
 late StorageService _storage;
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
+
   WidgetsFlutterBinding.ensureInitialized();
   _storage = await StorageService.getInstance();
- ApiClient _api=ApiClient();
+ ApiClient api=ApiClient();
   await readLanguage();
   timeago.setLocaleMessages('ar', timeago.ArShortMessages());
   timeago.setLocaleMessages('en', timeago.EnShortMessages());
   runApp(
     MultiProvider(
-      providers: appProviders(storage: _storage,api:_api),
+      providers: appProviders(storage: _storage,api:api),
       child: const ElFaheemApp(),
     ),
   );
@@ -72,6 +69,7 @@ class ElFaheemApp extends StatelessWidget {
     final isDark = context.watch<ProfileProvider>().darkMode;
 
     return MaterialApp(
+      key: navigatorKey,
       title: 'ElFaheem',
       debugShowCheckedModeBanner: false,
 
@@ -90,7 +88,6 @@ class ElFaheemApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       builder: (a, child) {
-        ApiClient().context = a;
         return ResponsiveBreakpoints.builder(
           breakpoints: [
             const Breakpoint(start: 0,    end: 450,            name: MOBILE),

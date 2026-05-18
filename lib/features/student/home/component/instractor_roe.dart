@@ -64,12 +64,8 @@ class InstructorsRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
-                if (ins.teacher?.teacherProfile?.specializationId != null)
-                  Text(
-                    context.read<AuthProvider>().getSpecializationById(ins
-                            .teacher?.teacherProfile?.specializationId
-                            .toString() ??
-                        '-1')['text'],
+                if (ins.teacher?.teacherProfile?.specialization != null)
+                  Text(ins.teacher!.teacherProfile!.specialization!.name,
                     style: context.colors.caption.copyWith(
                       fontSize: 10,
                       color: context.colors.textLight,

@@ -46,7 +46,13 @@ class CategoryModel {
       imageUrl: json['image_url'] as String? ?? '',
     );
   }
-
+  Map<String, dynamic> toSpecializationMap(){
+    return {
+      'id': id,
+      'text': name,
+      'logo': imageUrl
+    };
+  }
   static Map<String, dynamic> fromJsonToSpecializationMap(
       Map<String, dynamic> json) {
     return {
@@ -99,16 +105,10 @@ class CategoriesProvider extends BaseProvider {
   }
 
   Future<List<Map<String, dynamic>>> getSpecialization() async {
-    final result = await run(
-      () => _api.get('/api/v1/categories', auth: true),
-    );
-    if (result is List) {
-      return result
-          .map((e) => CategoryModel.fromJsonToSpecializationMap(
-              e as Map<String, dynamic>))
-          .toList();
-    }
-    return [];
+   if (categories.isEmpty){
+     await fetchCategories();
+   }
+   return categories.map((e)=>e.toSpecializationMap()).toList();
   }
 
   // ── selectCategory ────────────────────────────────────────────────────────────
