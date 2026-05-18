@@ -85,16 +85,35 @@ class _LoginScreenState extends State<LoginScreen> {
         AuthSidebar(),
         // Right form panel
         Expanded(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
-                child: _buildFormCard(),
+          child: Row(
+            children: [
+              Spacer(),
+              Container(
+                constraints: const BoxConstraints(maxWidth: 600),
+                margin: EdgeInsets.symmetric(vertical: 10),
+                padding: const EdgeInsets.all(0.0),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(context.colors.radiusXL),
+                  color: context.colors.cardBg,
+                ),
+                child: ClipRRect(
+                  borderRadius:
+                      BorderRadiusGeometry.circular(context.colors.radiusXL),
+                  child: SingleChildScrollView(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 440),
+                      child: _buildFormCard(),
+                    ),
+                  ),
+                ),
               ),
-            ),
+              Spacer(),
+
+            ],
           ),
-        ),
+        )
       ],
     );
   }
@@ -114,178 +133,176 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildFormCard() {
     final provider = context.watch<ProfileProvider>();
 
-    return  Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-
-            // Lang row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                AppNetworkImage(
-                  url: '',
-                  width: 100,
-                  height: 100,
-                  heroTag: "logo-login",
-                  color: context.colors.background,
-                ),
-                LangDropdown(),
-
-                // Screen icon + title
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'login'.tr,
-              style: TextStyle(
-                fontFamily: 'Tajawal',
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: context.colors.textDark,
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Lang row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              AppNetworkImage(
+                url: '',
+                width: 100,
+                height: 100,
+                heroTag: "logo-login",
+                color: context.colors.background,
               ),
-            ),
-            Text(
-              'login_welcome'.tr,
-              style: TextStyle(
-                fontFamily: 'Tajawal',
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: context.colors.secondText,
-              ),
-            ),
+              LangDropdown(),
 
-            const SizedBox(height: 32),
-
-            // Email
-            IconTextField(
-              controller: _emailController,
-              label: 'email'.tr,
-              icon: Icons.email_outlined,
-              keyboard: TextInputType.emailAddress,
+              // Screen icon + title
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'login'.tr,
+            style: TextStyle(
+              fontFamily: 'Tajawal',
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: context.colors.textDark,
             ),
-            const SizedBox(height: 20),
-
-            // Password
-            IconPasswordField(
-              controller: _passwordController,
-              label: 'password'.tr,
+          ),
+          Text(
+            'login_welcome'.tr,
+            style: TextStyle(
+              fontFamily: 'Tajawal',
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: context.colors.secondText,
             ),
-            const SizedBox(height: 8),
+          ),
 
-            // Forgot
-            Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: GestureDetector(
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const ForgetScreen()),
-                ),
-                child: Text(
-                  'forget_password'.tr,
-                  style: TextStyle(
-                    fontFamily: 'Tajawal',
-                    fontSize: 13,
-                    color: context.colors.primaryBlue,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 100),
+          const SizedBox(height: 32),
 
-            // Login button
-            PrimaryButton(
-              isLoading: context.watch<AuthProvider>().isLoadingLogin,
-              label: 'login'.tr,
-              icon: Icons.arrow_forward_rounded,
-              onPressed: _login,
-            ),
-            const SizedBox(height: 24),
+          // Email
+          IconTextField(
+            controller: _emailController,
+            label: 'email'.tr,
+            icon: Icons.email_outlined,
+            keyboard: TextInputType.emailAddress,
+          ),
+          const SizedBox(height: 20),
 
-            // Register link
-            LinkRow(
-              message: "doesn't_have_account".tr,
-              linkText: 'register'.tr,
+          // Password
+          IconPasswordField(
+            controller: _passwordController,
+            label: 'password'.tr,
+          ),
+          const SizedBox(height: 8),
+
+          // Forgot
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: GestureDetector(
               onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                MaterialPageRoute(builder: (_) => const ForgetScreen()),
+              ),
+              child: Text(
+                'forget_password'.tr,
+                style: TextStyle(
+                  fontFamily: 'Tajawal',
+                  fontSize: 13,
+                  color: context.colors.primaryBlue,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
-            SizedBox(
-              height: 10,
+          ),
+           SizedBox(height: context.height/10),
+
+          // Login button
+          PrimaryButton(
+            isLoading: context.watch<AuthProvider>().isLoadingLogin,
+            label: 'login'.tr,
+            icon: Icons.arrow_forward_rounded,
+            onPressed: _login,
+          ),
+          const SizedBox(height: 24),
+
+          // Register link
+          LinkRow(
+            message: "doesn't_have_account".tr,
+            linkText: 'register'.tr,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const RegisterScreen()),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    provider.changeMode(!provider.darkMode);
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 500),
-                    width: 72,
-                    height: 38,
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(40),
-                      gradient: provider.darkMode
-                          ? const LinearGradient(
-                        colors: [
-                          Color(0xff0F172A),
-                          Color(0xff1E293B),
-                        ],
-                      )
-                          : const LinearGradient(
-                        colors: [
-                          Color(0xffFFE082),
-                          Color(0xffFFB300),
-                        ],
-                      ),
-                    ),
-                    child: Stack(
-                      children: [
-                        AnimatedAlign(
+          ),
+          SizedBox(height: context.height/50),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  provider.changeMode(!provider.darkMode);
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 500),
+                  width: 72,
+                  height: 38,
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(40),
+                    gradient: provider.darkMode
+                        ? const LinearGradient(
+                            colors: [
+                              Color(0xff0F172A),
+                              Color(0xff1E293B),
+                            ],
+                          )
+                        : const LinearGradient(
+                            colors: [
+                              Color(0xffFFE082),
+                              Color(0xffFFB300),
+                            ],
+                          ),
+                  ),
+                  child: Stack(
+                    children: [
+                      AnimatedAlign(
+                        duration: const Duration(milliseconds: 500),
+                        curve: Curves.easeInOut,
+                        alignment: provider.darkMode
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
+                        child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 500),
-                          curve: Curves.easeInOut,
-                          alignment: provider.darkMode
-                              ? Alignment.centerRight
-                              : Alignment.centerLeft,
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 500),
-                            transitionBuilder: (child, animation) {
-                              return RotationTransition(
-                                turns: animation,
-                                child: child,
-                              );
-                            },
-                            child: Container(
-                              key: ValueKey(provider.darkMode),
-                              width: 30,
-                              height: 30,
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                provider.darkMode
-                                    ? Icons.dark_mode_rounded
-                                    : Icons.wb_sunny_rounded,
-                                color: provider.darkMode
-                                    ? Colors.indigo
-                                    : Colors.orange,
-                                size: 18,
-                              ),
+                          transitionBuilder: (child, animation) {
+                            return RotationTransition(
+                              turns: animation,
+                              child: child,
+                            );
+                          },
+                          child: Container(
+                            key: ValueKey(provider.darkMode),
+                            width: 30,
+                            height: 30,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              provider.darkMode
+                                  ? Icons.dark_mode_rounded
+                                  : Icons.wb_sunny_rounded,
+                              color: provider.darkMode
+                                  ? Colors.indigo
+                                  : Colors.orange,
+                              size: 18,
                             ),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

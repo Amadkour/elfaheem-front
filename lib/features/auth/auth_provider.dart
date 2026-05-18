@@ -18,8 +18,10 @@ class UserModel {
   final String? phone;
   final String? country;
   final String? dob;
+  final String? bio;
   final String? imageUrl;
   final String? registrationStep;
+  final DateTime lastLogin;
 
   const UserModel({
     required this.id,
@@ -29,8 +31,10 @@ class UserModel {
     this.phone,
     this.country,
     this.dob,
+    this.bio,
     this.imageUrl,
     this.registrationStep,
+    required this.lastLogin,
   });
 
   bool get isTeacher => role == 'teacher';
@@ -41,8 +45,12 @@ class UserModel {
         gmail: j['gmail'] as String,
         role: j['role'] as String,
         phone: j['phone'] as String?,
+        lastLogin: j['last_login'] == null
+            ? DateTime.now()
+            : DateTime.parse(j['last_login'] as String),
         country: j['country'] as String?,
         dob: j['dob'] as String?,
+        bio: j['bio'] as String?,
         imageUrl: j['image_url'] as String?,
         registrationStep: j['registration_step'] as String?,
       );
@@ -56,6 +64,8 @@ class UserModel {
         'phone': phone,
         'country': country,
         'dob': dob,
+        'bio': bio,
+        'last_login': lastLogin.toIso8601String(),
         'image_url': imageUrl,
         'registration_step': registrationStep,
       };
@@ -235,7 +245,12 @@ class AuthProvider extends BaseProvider {
   }) async {
     isLoadingLogin = true;
     notifyListeners();
-    _currentUser = UserModel(id: 0, name: '', gmail: gmail, role: 'student');
+    _currentUser = UserModel(
+        id: 0,
+        name: '',
+        gmail: gmail,
+        role: 'student',
+        lastLogin: DateTime.now());
     final result = await run(() => _api.post(
           '/api/v1/auth/login',
           body: {'gmail': gmail, 'password': password},
@@ -384,7 +399,10 @@ class AuthProvider extends BaseProvider {
     selectedSpecialization = specializations[i];
     notifyListeners();
   }
-  Map<String,dynamic> getSpecializationById(String id)=>specializations.firstWhere((e)=>e['id']==id);
+
+  Map<String, dynamic> getSpecializationById(String id) =>
+      specializations.firstWhere((e) => e['id'] == id);
+
   // ── Internal helpers ──────────────────────────────────────────────────────────
 
   Future<void> _persistTokens(Map<dynamic, dynamic> data) async {

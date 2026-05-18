@@ -25,7 +25,6 @@ class TeacherSessionsScreen extends StatefulWidget {
 
 class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
   late TeacherCourse _course;
-  late VideoPlayerController _controller;
 
   @override
   void initState() {
@@ -125,11 +124,14 @@ class _SessionsList extends StatelessWidget {
             ),
           ),
           SliverToBoxAdapter(
-            child: RatingWidget(
-              type: RateType.course,
-              sourceId: course.id.toString(),
-              canEdit: false,
-              compact: false,
+            child: Padding(
+              padding:  const EdgeInsets.fromLTRB(16, 14, 16, 0),
+              child: RatingWidget(
+                type: RateType.course,
+                sourceId: course.id.toString(),
+                canEdit: false,
+                compact: false,
+              ),
             ),
           ),
           SliverToBoxAdapter(

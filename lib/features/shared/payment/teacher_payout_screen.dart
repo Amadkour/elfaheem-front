@@ -7,6 +7,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart' as Helpers;
@@ -34,11 +35,9 @@ class _TeacherPayoutView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: Helpers.pageDirection,
-      child: Scaffold(
-        backgroundColor: context.colors.background,
-        body: SafeArea(
+    return BasePage(
+      useWebCard: true,
+      child:  SafeArea(
           child: Column(
             children: [
               ScreenAppBar(title: 'حسابات الاستلام'),
@@ -92,7 +91,6 @@ class _TeacherPayoutView extends StatelessWidget {
             ],
           ),
         ),
-      ),
     );
   }
 }

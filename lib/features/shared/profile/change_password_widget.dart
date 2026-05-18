@@ -225,7 +225,15 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       children: [
         AuthSidebar(),
         Expanded(
-          child: SizedBox(width: 800, child: w),
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 600),
+                child: w,
+              ),
+            ),
+          ),
         ),
       ],
     );

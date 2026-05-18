@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../config/app_theme.dart';
 import '../../../utils/widget/app_bar.dart';
+import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/text_field.dart';
 import '../../../utils/widget/primary_button.dart';
 import 'saved_payment_models.dart';
@@ -52,11 +53,9 @@ class _StudentMethodsViewState extends State<_StudentMethodsView>
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Directionality(
-      textDirection: Helpers.pageDirection,
-      child: Scaffold(
-        backgroundColor: c.background,
-        body: SafeArea(
+    return BasePage(
+      useWebCard: true,
+      child: SafeArea(
           child: Column(
             children: [
               ScreenAppBar(title: 'طرق الدفع المحفوظة'),
@@ -101,7 +100,6 @@ class _StudentMethodsViewState extends State<_StudentMethodsView>
             ],
           ),
         ),
-      ),
     );
   }
 }

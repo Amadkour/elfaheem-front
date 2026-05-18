@@ -108,7 +108,7 @@ class Helpers {
   );
 
   static double  calculateRemainingWidth(BuildContext context,{double? maxWith}) {
-    return context.width >= 1100 ? (maxWith??800) : context.width >= 900 ? 650: context.width >=
+    return context.width >= 1100 ? (maxWith??900) : context.width >= 900 ? 650: context.width >=
         900 ? 500 : context.width >= 600 ? context.width - 70 : context.width;
   }
 }

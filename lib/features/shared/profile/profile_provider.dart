@@ -150,7 +150,6 @@ class ProfileProvider extends BaseProvider {
       if (dob != null && dob.isNotEmpty) body['dob'] = dob;
       if (bio != null && bio.isNotEmpty) body['bio'] = bio;
       if (country != null && country.isNotEmpty) body['country'] = country;
-
       final r = await run(
         () => ApiClient().put(
           '/api/v1/auth/me',

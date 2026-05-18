@@ -116,7 +116,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                             icon: Icons.lock_rounded,
                             iconBg: c.accentTint,
                             iconColor: c.accent,
-                            label: 'payments'.tr,
+                            label: 'bank_accounts'.tr,
                             onTap: () => _push(const TeacherEarningsScreen()),
                           ),
                         // if(context.read<TeacherProvider>().stats.teacher!=null)

@@ -74,7 +74,6 @@ class _InstructorProfileScreenState extends State<InstructorProfileScreen>
       child: BasePage(
         useWebCard: true,
         appBar: ScreenAppBar(title: widget.teacher.name),
-        maxWith: 1000,
         child: LayoutBuilder(
           builder: (ctx, constraints) {
             return constraints.maxWidth > 800

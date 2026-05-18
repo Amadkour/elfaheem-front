@@ -38,29 +38,31 @@ class BasePage extends StatelessWidget {
                 child: child)));
 
     if (useWebCard && context.width >599) {
-      return Stack(
-        children: [
-          Positioned.fill(
-            child: CustomPaint(
-              painter: ElearningPatternPainter(isDark: context.colors.isDark,width: Helpers.calculateRemainingWidth(context)),
+      return Scaffold(
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: CustomPaint(
+                painter: ElearningPatternPainter(isDark: context.colors.isDark,width: Helpers.calculateRemainingWidth(context)),
+              ),
             ),
-          ),
-          Align(
-            alignment: AlignmentGeometry.center,
-            child: Container(
-                width:  Helpers.calculateRemainingWidth(context,maxWith: maxWith),
-                margin: EdgeInsets.symmetric(vertical: 10),
-                padding: const EdgeInsets.all(0.0),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(context.colors.radiusXL),
-                  color: context.colors.cardBg,
-
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadiusGeometry.circular(context.colors.radiusXL),
-                    child: w)),
-          ),
-        ],
+            Align(
+              alignment: AlignmentGeometry.center,
+              child: Container(
+                  width:  Helpers.calculateRemainingWidth(context,maxWith: maxWith),
+                  margin: EdgeInsets.symmetric(vertical: 10),
+                  padding: const EdgeInsets.all(0.0),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(context.colors.radiusXL),
+                    color: context.colors.cardBg,
+        
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadiusGeometry.circular(context.colors.radiusXL),
+                      child: w)),
+            ),
+          ],
+        ),
       );
     }
 
