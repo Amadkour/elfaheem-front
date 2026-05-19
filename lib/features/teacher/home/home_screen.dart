@@ -7,6 +7,7 @@ import 'package:flutter_education_app/features/teacher/home/teacher_models.dart'
     show TeacherStats, TeacherCourse;
 import 'package:flutter_education_app/features/teacher/home/teacher_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:responsive_framework/responsive_framework.dart';
 import '../../../config/app_config.dart';
 import '../../../config/app_theme.dart';
 import '../../../utils/widget/app_network_image.dart';
@@ -364,7 +365,7 @@ class StatsRow extends StatelessWidget {
             value: stats.doctorRating.toStringAsFixed(1),
             label: 'teacher_rate'.tr,
             icon: Icons.star_rounded,
-            gradient: context.colors.primaryGradient.withOpacity(.7),
+            gradient: context.colors.successGradient.withOpacity(.7),
             shadowColor: context.colors.primary,
           ),
           const SizedBox(width: 12),
@@ -372,7 +373,7 @@ class StatsRow extends StatelessWidget {
             value: stats.courseRating.toStringAsFixed(1),
             label: 'course_rate'.tr,
             icon: Icons.star_rounded,
-            gradient: context.colors.disableGradient,
+            gradient: context.colors.dangerGradient,
             shadowColor: context.colors.textMedium,
           ),
           const SizedBox(width: 12),
@@ -422,20 +423,32 @@ class _StatCard extends StatelessWidget {
             children: [
               Icon(icon, color: Colors.white, size: 18),
               const SizedBox(height: 10),
-              Text(value,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      fontFamily: 'Cairo',
-                      height: 1)),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(value,
+                    maxLines: 1,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        fontFamily: 'Cairo',
+                        overflow: TextOverflow.visible,
+                        height: 1)),
+              ),
               const SizedBox(height: 3),
-              Text(label,
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400,
-                      fontFamily: 'Cairo')),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(label,
+                    maxLines: 1,
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                      overflow: TextOverflow.ellipsis,
+                        fontFamily: 'Cairo',
+                
+                    )),
+              ),
             ],
           ),
         ),
@@ -571,103 +584,116 @@ class _TeacherCourseCard extends StatelessWidget {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(course.title,
+
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(course.title,
                                 style: context.colors.label.copyWith(
                                     color: context.colors.textDark,
                                     fontSize: 13),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: course.isPublished
-                                  ? context.colors.accent2
-                                  : context.colors.accent,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              course.isPublished ? 'منشورة' : 'مسودة',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  fontFamily: 'Cairo'),
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (course.categoryName != null) ...[
-                        Spacer(),
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(course.categoryName!,
-                                  style: context.colors.label.copyWith(
-                                      color: context.colors.secondText,
-                                      fontSize: 11),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis),
-                            ),
-                            SizedBox(
-                              width: 5,
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 1),
-                              decoration: BoxDecoration(
+
+                            if (course.categoryName != null) ...[
+                              Spacer(),
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(course.categoryName!,
+                                        style: context.colors.label.copyWith(
+                                            color: context.colors.secondText,
+                                            fontSize: 11),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis),
+                                  ),
+                                  SizedBox(
+                                    width: 5,
+                                  ),
+
+                                ],
+                              ),
+                            ],
+                            Spacer(),
+                            Row(children: [
+                              _MetaIcon(
+                                Icons.people_rounded,
+                                '${course.studentsCount}',
                                 color: context.colors.primary,
-                                borderRadius: BorderRadius.circular(8),
+                                hintLabel: "student_participant".tr,
                               ),
-                              child: Text(
-                                "${course.price} ${"sar".tr}",
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                    fontFamily: 'Cairo'),
+                              Spacer(),
+                              _MetaIcon(Icons.video_library_rounded,
+                                  '${course.sessionsCount}',
+                                  color: const Color(0xFF185FA5),
+                                  hintLabel: "sessions".tr),
+                              Spacer(
+                                flex: 3,
                               ),
+                            ]),
+                            Spacer(),
+                            _MetaIcon(
+                              Icons.ondemand_video_rounded,
+                              course.type.tr,
+                              color: context.colors.accent2,
                             ),
-                          ],
+                            Spacer(),
+                            _MetaIcon(Icons.star_rounded,
+                                course.averageRating.toStringAsFixed(1),
+                                color: context.colors.accent,
+                                hintLabel: "student_rate".tr),
+                            Spacer(),
+                          ]),
+                    ),
+                   Container(
+                     margin: EdgeInsets.only(left: 10),
+                     color: context.colors.textLight,
+                     width: 1,
+                   ),
+                    Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: course.isPublished
+                                ? context.colors.accent2
+                                : context.colors.accent,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            course.isPublished ? 'منشورة' : 'مسودة',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                fontFamily: 'Cairo'),
+                          ),
+                        ),
+                        SizedBox(height: 10,),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 3, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: context.colors.primary,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            "${course.price} ${"sar".tr}",
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                fontFamily: 'Cairo'),
+                          ),
                         ),
                       ],
-                      Spacer(),
-                      Row(children: [
-                        _MetaIcon(
-                          Icons.people_rounded,
-                          '${course.studentsCount}',
-                          color: context.colors.primary,
-                          hintLabel: "student_participant".tr,
-                        ),
-                        Spacer(),
-                        _MetaIcon(Icons.video_library_rounded,
-                            '${course.sessionsCount}',
-                            color: const Color(0xFF185FA5),
-                            hintLabel: "sessions".tr),
-                        Spacer(
-                          flex: 3,
-                        ),
-                      ]),
-                      Spacer(),
-                      _MetaIcon(
-                        Icons.ondemand_video_rounded,
-                        course.type.tr,
-                        color: context.colors.accent2,
-                      ),
-                      Spacer(),
-                      _MetaIcon(Icons.star_rounded,
-                          course.averageRating.toStringAsFixed(1),
-                          color: context.colors.accent,
-                          hintLabel: "student_rate".tr),
-                      Spacer(),
-                    ]),
+                    ),
+                  ],
+                ),
               ),
             ),
           ]),

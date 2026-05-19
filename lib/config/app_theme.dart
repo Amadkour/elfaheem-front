@@ -69,7 +69,7 @@ class AppTheme {
   static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF0F3A8F), Color(0xFF1A56C4), Color(0xFF2563EB)],
+    colors: [primary, primaryBlue, primary],
   );
   static const LinearGradient disableGradient = LinearGradient(
     colors: [Color(0x500F1729), Color(0x505A6580)],

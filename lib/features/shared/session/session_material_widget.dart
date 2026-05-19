@@ -227,34 +227,20 @@ class _TeacherSessionCardState extends State<SessionMaterialCard>
         color: context.colors.cardBg,
         borderRadius: BorderRadius.circular(context.colors.radiusMedium),
         boxShadow: context.colors.cardShadow,
-        border: isLive
-            ? Border.all(color: context.colors.danger.withValues(alpha: 0.5))
-            : null,
+        border:
+        Border(
+          right:isLive ?
+          BorderSide(color:context.colors.danger.withValues(alpha: 0.8) ,width: 4)
+           :
+          BorderSide(color:context.colors.primary.withValues(alpha: 0.8) ,width: 4)
+      ),
+
       ),
       child: Column(children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(5, 5, 14, 5),
+          padding: const EdgeInsets.fromLTRB(5, 5, 5, 5),
           child: Row(children: [
-            Container(
-              width: 5,
-              height: widget.isTeacher || s.isLive || materials.isNotEmpty
-                  ? 100
-                  : 70,
-              decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: isLive
-                          ? [
-                              context.colors.danger,
-                              context.colors.danger.withValues(alpha: 0.4)
-                            ]
-                          : [
-                              context.colors.primary,
-                              context.colors.primary.withValues(alpha: 0.4)
-                            ]),
-                  borderRadius: BorderRadius.circular(4)),
-            ),
+
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -268,17 +254,23 @@ class _TeacherSessionCardState extends State<SessionMaterialCard>
                           children: [
                         Row(
                           children: [
-                            Text(s.name,
-                                style: context.colors.h3,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis),
+                            FittedBox(
+                              fit:BoxFit.scaleDown,
+                              child: Text(s.name,
+                                  style: context.colors.h3,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis),
+                            ),
                             SizedBox(
                               width: 5,
                             ),
-                            Text(s.createdAt.age,
-                                style: context.colors.navLabelUnselected,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis),
+                            FittedBox(
+                              fit:BoxFit.scaleDown,
+                              child: Text(s.createdAt.age,
+                                  style: context.colors.navLabelUnselected,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis),
+                            ),
                         
                           ],
                         ),
@@ -299,42 +291,14 @@ class _TeacherSessionCardState extends State<SessionMaterialCard>
                         ]),
                             ]),
                       ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Row(
-                            children: [
-                              if (widget.isTeacher) ...[
-                                _iconAction(
-                                  context,
-                                  icon: CupertinoIcons.settings_solid,
-                                  color: context.colors.textMedium,
-                                  tooltip: 'تعديل',
-                                  onTap: () => _showEditDialog(context),
-                                ),
-                                _iconAction(
-                                  context,
-                                  icon: Icons.delete,
-                                  color: context.colors.danger,
-                                  tooltip: 'حذف',
-                                  onTap: () => _confirmDelete(context),
-                                ),
-                              ]
-                            ],
-                          ),
-                          RatingWidget(
-                            type: RateType.session,
-                            sourceId: s.id.toString(),
-                            canEdit: !widget.isTeacher,
-                          ),
-                        ],
-                      ),
+
                     ],
                   ),
 
                   Divider(
                     height: 2,
                   ),
+
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Row(children: [
@@ -355,6 +319,13 @@ class _TeacherSessionCardState extends State<SessionMaterialCard>
                           outlined: true,
                         ),
                       ],
+
+                      Spacer(),
+
+                    ]),
+                  ),
+                  Row(
+                    children: [
                       if (s.type == 'live') ...[
                         const SizedBox(width: 8),
                         _ActionBtn(
@@ -363,7 +334,7 @@ class _TeacherSessionCardState extends State<SessionMaterialCard>
                           color: context.colors.success,
                           onTap: () async {
                             final prov =
-                                context.read<TeacherSessionsProvider>();
+                            context.read<TeacherSessionsProvider>();
                             if (s.isLiveActive) {
                               await prov.endLive(s.id);
                             } else {
@@ -376,28 +347,36 @@ class _TeacherSessionCardState extends State<SessionMaterialCard>
                           outlined: true,
                         ),
                       ],
-                      Spacer(),
                       if (materials.isNotEmpty)
                         Column(
                           children: [
-                            GestureDetector(
-                              onTap: _toggle,
-                              child: Column(
-                                children: [
-                                  Text('${materials.length} ${'materials'.tr}',
-                                      style: context.colors.navLabelUnselected
-                                          .copyWith(height: 0.3),
-                                      maxLines: 1,
-                                      textDirection: TextDirection.ltr,
-                                      overflow: TextOverflow.ellipsis),
-                                  AnimatedRotation(
-                                    turns: _expanded ? 0.5 : 0,
-                                    duration: const Duration(milliseconds: 280),
-                                    child: Icon(
-                                        Icons.keyboard_arrow_down_rounded,
-                                        color: context.colors.textMedium),
-                                  ),
-                                ],
+                            Container(
+                              height: 30,
+                              padding: const EdgeInsets.symmetric(horizontal: 14),
+                              decoration: BoxDecoration(
+
+                                borderRadius: BorderRadius.circular(11),
+                                border: Border.all(color: AppTheme.purple),
+                              ),
+                              child: GestureDetector(
+                                onTap: _toggle,
+                                child: Row(
+                                  children: [
+                                    Text('${materials.length} ${'materials'.tr}',
+                                        style: context.colors.navLabelUnselected
+                                            .copyWith(height: 0.3),
+                                        maxLines: 1,
+                                        textDirection: TextDirection.ltr,
+                                        overflow: TextOverflow.ellipsis),
+                                    AnimatedRotation(
+                                      turns: _expanded ? 0.5 : 0,
+                                      duration: const Duration(milliseconds: 280),
+                                      child: Icon(
+                                          Icons.keyboard_arrow_down_rounded,
+                                          color: context.colors.textMedium),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ],
@@ -405,8 +384,41 @@ class _TeacherSessionCardState extends State<SessionMaterialCard>
                       else if (widget.isTeacher)
                         _AddMaterialButton(
                           sessionId: s.id,
-                        )
-                    ]),
+                        ),
+
+
+                    ],
+                  ),
+
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Row(
+                        children: [
+                          if (widget.isTeacher) ...[
+                            _iconAction(
+                              context,
+                              icon: CupertinoIcons.settings_solid,
+                              color: context.colors.textMedium,
+                              tooltip: 'تعديل',
+                              onTap: () => _showEditDialog(context),
+                            ),
+                            _iconAction(
+                              context,
+                              icon: Icons.delete,
+                              color: context.colors.danger,
+                              tooltip: 'حذف',
+                              onTap: () => _confirmDelete(context),
+                            ),
+                          ]
+                        ],
+                      ),
+                      RatingWidget(
+                        type: RateType.session,
+                        sourceId: s.id.toString(),
+                        canEdit: !widget.isTeacher,
+                      ),
+                    ],
                   ),
                 ],
               ),
