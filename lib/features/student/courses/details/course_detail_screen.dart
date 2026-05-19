@@ -12,6 +12,8 @@ import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/app_network_image.dart';
 import '../../../../utils/widget/base_page.dart';
 import '../../../../utils/widget/rating_widget.dart';
+import '../../../shared/profile/complaint_provider.dart';
+import '../../../shared/profile/complaints_screen.dart';
 import '../../enrollment/enrollment_provider.dart';
 import '../../enrollment/enrollment_screen.dart';
 import '../../models.dart';
@@ -32,7 +34,9 @@ class CourseDetailScreen extends StatefulWidget {
 class _CourseDetailScreenState extends State<CourseDetailScreen> {
   @override
   void initState() {
-    context.read<CourseDetailProvider>().course=widget.course;
+    context
+        .read<CourseDetailProvider>()
+        .course = widget.course;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       context.read<CourseDetailProvider>().init(widget.course);
     });
@@ -44,20 +48,20 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     CourseDetailProvider provider = context.watch<CourseDetailProvider>();
     final isWide = context.showSidebar;
 
-    return  BasePage(
+    return BasePage(
       useWebCard: true,
-      maxWith:1000,
+      maxWith: 1000,
       child: provider.isLoading
-            ? Center(
-                child:  SizedBox(
-                width: context.width/5,
-                height: context.width/5,
-                child: CircularProgressIndicator(
-                    color: context.colors.primary, strokeWidth: context.width/80),
-              ))
-            : isWide
-                ? _WebDetail(provider)
-                : _MobileDetail(provider),
+          ? Center(
+          child: SizedBox(
+            width: context.width / 5,
+            height: context.width / 5,
+            child: CircularProgressIndicator(
+                color: context.colors.primary, strokeWidth: context.width / 80),
+          ))
+          : isWide
+          ? _WebDetail(provider)
+          : _MobileDetail(provider),
     );
   }
 }
@@ -72,10 +76,10 @@ class _MobileDetail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (BuildContext context) {
-        return StudentExamProvider();
-      },
-      child:SafeArea(
+        create: (BuildContext context) {
+          return StudentExamProvider();
+        },
+        child: SafeArea(
           child: Column(
             children: [
               Expanded(
@@ -91,9 +95,10 @@ class _MobileDetail extends StatelessWidget {
                       const SliverToBoxAdapter(child: SizedBox(height: 4)),
                       SliverToBoxAdapter(
                           child: TabContent(
-                        activeTab: provider.activeTab, courseId: provider.course.id,
+                            activeTab: provider.activeTab,
+                            courseId: provider.course.id,
 
-                      )),
+                          )),
                     ],
                   ),
                 ),
@@ -125,7 +130,7 @@ class _WebDetail extends StatelessWidget {
               alignment: Alignment.topCenter,
               child: ConstrainedBox(
                 constraints:
-                    const BoxConstraints(maxWidth: Breakpoints.contentMax),
+                const BoxConstraints(maxWidth: Breakpoints.contentMax),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -146,8 +151,9 @@ class _WebDetail extends StatelessWidget {
                                 child: SizedBox(height: 4)),
                             SliverToBoxAdapter(
                                 child: TabContent(
-                              activeTab: provider.activeTab, courseId: provider.course.id,
-                            )),
+                                  activeTab: provider.activeTab,
+                                  courseId: provider.course.id,
+                                )),
                             const SliverToBoxAdapter(
                                 child: SizedBox(height: 32)),
                           ],
@@ -181,7 +187,7 @@ class _WebTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ScreenAppBar(title: course.title,actions: [ _FavButton()],);
+    return ScreenAppBar(title: course.title, actions: [ _FavButton()],);
   }
 }
 
@@ -292,7 +298,8 @@ class _Fact extends StatelessWidget {
   const _Fact({required this.icon, required this.label, required this.color});
 
   @override
-  Widget build(BuildContext context) => Padding(
+  Widget build(BuildContext context) =>
+      Padding(
         padding: const EdgeInsets.symmetric(vertical: 7),
         child: Row(
           children: [
@@ -323,7 +330,9 @@ class _CourseHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.watch<CourseDetailProvider>().course;
+    final c = context
+        .watch<CourseDetailProvider>()
+        .course;
 
     return Stack(
       children: [
@@ -417,7 +426,8 @@ class _HeroBadge extends StatelessWidget {
   const _HeroBadge(this.label);
 
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) =>
+      Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.2),
@@ -439,7 +449,10 @@ class _HeroBadge extends StatelessWidget {
 class _FavButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final isFav = context.watch<CourseDetailProvider>().course.isFavorite;
+    final isFav = context
+        .watch<CourseDetailProvider>()
+        .course
+        .isFavorite;
     return _CircleIconBtn(
       icon: isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
       iconColor: isFav ? context.colors.danger : null,
@@ -457,7 +470,8 @@ class _CircleIconBtn extends StatelessWidget {
       {required this.icon, required this.onTap, this.iconColor});
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
+  Widget build(BuildContext context) =>
+      GestureDetector(
         onTap: onTap,
         child: Container(
           width: 40,
@@ -473,7 +487,8 @@ class _CircleIconBtn extends StatelessWidget {
               ),
             ],
           ),
-          child: Icon(icon, size: 20, color: iconColor ?? context.colors.textDark),
+          child: Icon(
+              icon, size: 20, color: iconColor ?? context.colors.textDark),
         ),
       );
 }
@@ -483,7 +498,9 @@ class _CircleIconBtn extends StatelessWidget {
 class _CourseMeta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final c = context.watch<CourseDetailProvider>().course;
+    final c = context
+        .watch<CourseDetailProvider>()
+        .course;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
@@ -491,37 +508,55 @@ class _CourseMeta extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Stars row
-          RatingWidget(type: RateType.course, sourceId: c.id, canEdit: true,),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              RatingWidget(
+                type: RateType.course, sourceId: c.id, canEdit: true,),
+              IconButton(onPressed: () {
+                Navigator
+                    .of(context)
+                    .push(MaterialPageRoute(builder: (_) =>
+                    ChangeNotifierProvider(
+                        create: (_) => ComplaintProvider(),
+                        child:  NewComplaintScreen(courseTitle: c.title,courseId: c.id,))));
+                }, icon: Icon(Icons.headset_mic_rounded))
+            ],
+          ),
           const SizedBox(height: 18),
 
           // Stat chips — 4-col grid
           SizedBox(
-            height: context.height/9,
+            height: context.height / 9,
             child: Row(
               children: [
                 StatChip(
                   icon: Icons.people_alt_rounded,
                   label: '${c.studentsCount}\nطالب',
-                  iconColor: context.colors.primary, maxHeight: context.height/9,
+                  iconColor: context.colors.primary,
+                  maxHeight: context.height / 9,
                 ),
                 StatChip(
                   icon: Icons.video_library_rounded,
                   label: '${c.sessionsCount}\nمحاضرة',
                   iconColor: const Color(0xFF185FA5),
-                  iconBg: const Color(0xFFE6F1FB), maxHeight: context.height/9,
+                  iconBg: const Color(0xFFE6F1FB),
+                  maxHeight: context.height / 9,
                 ),
                 StatChip(
                   icon: Icons.access_time_rounded,
                   label: '${c.totalHours.toStringAsFixed(0)}\nساعة',
                   iconColor: const Color(0xFFBA7517),
-                  iconBg: const Color(0xFFFAEEDA), maxHeight: context.height/9,
+                  iconBg: const Color(0xFFFAEEDA),
+                  maxHeight: context.height / 9,
                 ),
                 if (c.certificates.isNotEmpty)
-                   StatChip(
+                  StatChip(
                     icon: Icons.workspace_premium_rounded,
                     label: 'شهادة\nإتمام',
                     iconColor: context.colors.accent,
-                    iconBg: Color(0xFFFAEEDA), maxHeight: context.height/9,
+                    iconBg: Color(0xFFFAEEDA),
+                    maxHeight: context.height / 9,
                   )
                 else
                   StatChip(
@@ -530,7 +565,8 @@ class _CourseMeta extends StatelessWidget {
                         : Icons.play_circle_outline_rounded,
                     label: c.type == 'live' ? 'مباشر' : 'مسجّل',
                     iconColor:
-                        c.type == 'live' ? context.colors.danger : context.colors.primary, maxHeight: context.height/9,
+                    c.type == 'live' ? context.colors.danger : context.colors
+                        .primary, maxHeight: context.height / 9,
                   ),
               ],
             ),
@@ -544,7 +580,7 @@ class _CourseMeta extends StatelessWidget {
 // ── Tab bar ───────────────────────────────────────────────────────────────────
 
 class _TabBarWidget extends StatelessWidget {
-  static   final _tabs =  [
+  static final _tabs = [
     (CourseDetailTab.lessons, 'sessions'.tr, Icons.play_lesson_rounded),
     (CourseDetailTab.about, 'course_details'.tr, Icons.info_outline_rounded),
     (CourseDetailTab.live, 'live'.tr, Icons.sensors_rounded),
@@ -587,12 +623,12 @@ class _TabBarWidget extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: isActive
                         ? [
-                            BoxShadow(
-                              color: context.colors.primary.withValues(alpha: 0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ]
+                      BoxShadow(
+                        color: context.colors.primary.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
                         : null,
                   ),
                   child: Row(
@@ -601,15 +637,17 @@ class _TabBarWidget extends StatelessWidget {
                       Icon(
                         icon,
                         size: 14,
-                        color: isActive ? Colors.white : context.colors.textLight,
+                        color: isActive ? Colors.white : context.colors
+                            .textLight,
                       ),
                       const SizedBox(width: 5),
                       Text(
                         label,
                         style: context.colors.label.copyWith(
-                          color: isActive ? Colors.white : context.colors.textLight,
+                          color: isActive ? Colors.white : context.colors
+                              .textLight,
                           fontWeight:
-                              isActive ? FontWeight.w700 : FontWeight.w500,
+                          isActive ? FontWeight.w700 : FontWeight.w500,
                           fontSize: 12,
                         ),
                       ),
@@ -643,7 +681,7 @@ class _EnrollButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(32),
             border: Border.all(color: context.colors.accent2),
           ),
-          child:  Row(
+          child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.check_circle_rounded,
@@ -673,14 +711,16 @@ class _EnrollButton extends StatelessWidget {
       child: GestureDetector(
         onTap: p.course.isEnrolled
             ? null
-            : () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ChangeNotifierProvider(
+            : () =>
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    ChangeNotifierProvider(
                       create: (_) => EnrollmentProvider(p.course),
-                      child:  EnrollmentScreen(course: p.course,),
+                      child: EnrollmentScreen(course: p.course,),
                     ),
-                  ),
-                ),
+              ),
+            ),
         child: Container(
           height: 52,
           decoration: BoxDecoration(
@@ -697,20 +737,20 @@ class _EnrollButton extends StatelessWidget {
           child: Center(
             child: p.course.isEnrolled
                 ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                        color: Colors.white, strokeWidth: 2.5),
-                  )
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                  color: Colors.white, strokeWidth: 2.5),
+            )
                 : Text(
-                    label,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
-                      fontFamily: 'Cairo',
-                    ),
-                  ),
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 15,
+                fontFamily: 'Cairo',
+              ),
+            ),
           ),
         ),
       ),
@@ -725,10 +765,11 @@ class _EnrollWrap extends StatelessWidget {
   const _EnrollWrap({required this.child, required this.isWide});
 
   @override
-  Widget build(BuildContext context) => isWide
-      ? child
-      : Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-          child: SafeArea(top: false, child: child),
-        );
+  Widget build(BuildContext context) =>
+      isWide
+          ? child
+          : Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+        child: SafeArea(top: false, child: child),
+      );
 }

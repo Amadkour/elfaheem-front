@@ -24,6 +24,8 @@ import '../../teacher/profile/teacher_earnings_screen.dart';
 import '../payment/student_saved_methods_screen.dart';
 import '../payment/teacher_payout_screen.dart';
 import 'change_password_widget.dart';
+import 'complaint_provider.dart';
+import 'complaints_screen.dart';
 import 'course_instractor_profile.dart';
 import 'setting_title.dart';
 import 'profile_provider.dart' show ProfileProvider, AppLanguage, AppLanguageX;
@@ -119,7 +121,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                             label: 'bank_accounts'.tr,
                             onTap: () => _push(const TeacherEarningsScreen()),
                           ),
-                        // if(context.read<TeacherProvider>().stats.teacher!=null)
+                        if(p.role=='teacher')
                         SettingsTile(
                           icon: Icons.lock_rounded,
                           iconBg: c.accentTint,
@@ -202,13 +204,15 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                     child: SettingsGroup(
                       title: 'help'.tr,
                       children: [
+
                         SettingsTile(
+                        onTap: () => _push(ChangeNotifierProvider(
+                            create: (_) => ComplaintProvider(), child: const ComplaintsScreen())),
                           icon: Icons.headset_mic_rounded,
                           iconBg: c.primaryTint,
                           iconColor: c.primary,
-                          label: 'help_center'.tr,
-                          onTap: () => _push(const SupportScreen()),
-                        ),
+                          label: 'help_center'.tr,),
+
                         SettingsTile(
                           icon: Icons.privacy_tip_rounded,
                           iconBg: c.successTint,
