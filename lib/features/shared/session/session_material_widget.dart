@@ -294,45 +294,43 @@ class _TeacherSessionCardState extends State<SessionMaterialCard>
 
                     ],
                   ),
-
+               SizedBox(height: 10,),
                   Divider(
                     height: 2,
                   ),
-               Row(
+                   Row(
                  children: [
                    Expanded(
                      child: Column(
                        children: [
+                         SizedBox(height: 10,),
+                         Row(children: [
+                           if (widget.isTeacher) ...[
+                             _ActionBtn(
+                               icon: Icons.how_to_reg_rounded,
+                               label: 'الحضور',
+                               color: const Color(0xFF4DA6FF),
+                               onTap: _openAttendance,
+                               outlined: true,
+                             ),
+                             const SizedBox(width: 8),
+                             _ActionBtn(
+                               icon: Icons.quiz_rounded,
+                               label: 'الامتحانات',
+                               color: const Color(0xFFFF9F43),
+                               onTap: _openExams,
+                               outlined: true,
+                             ),
+                           ],
 
-                         Padding(
-                           padding: const EdgeInsets.all(8.0),
-                           child: Row(children: [
-                             if (widget.isTeacher) ...[
-                               _ActionBtn(
-                                 icon: Icons.how_to_reg_rounded,
-                                 label: 'الحضور',
-                                 color: const Color(0xFF4DA6FF),
-                                 onTap: _openAttendance,
-                                 outlined: true,
-                               ),
-                               const SizedBox(width: 8),
-                               _ActionBtn(
-                                 icon: Icons.quiz_rounded,
-                                 label: 'الامتحانات',
-                                 color: const Color(0xFFFF9F43),
-                                 onTap: _openExams,
-                                 outlined: true,
-                               ),
-                             ],
+                           Spacer(),
 
-                             Spacer(),
-
-                           ]),
-                         ),
+                         ]),
+                    SizedBox(height: 8,),
                          Row(
                            children: [
                              if (s.type == 'live') ...[
-                               const SizedBox(width: 8),
+
                                _ActionBtn(
                                  icon: CupertinoIcons.video_camera_solid,
                                  label: 'Meet Now',
@@ -352,6 +350,7 @@ class _TeacherSessionCardState extends State<SessionMaterialCard>
                                  outlined: true,
                                ),
                              ],
+                             SizedBox(width: 5,),
                              if (materials.isNotEmpty)
                                Column(
                                  children: [
@@ -368,8 +367,11 @@ class _TeacherSessionCardState extends State<SessionMaterialCard>
                                        child: Row(
                                          children: [
                                            Text('${materials.length} ${'materials'.tr}',
-                                               style: context.colors.navLabelUnselected
-                                                   .copyWith(height: 0.3),
+                                               style:
+                                               TextStyle(
+                                                 color:  context.colors.purple
+                                               ),
+
                                                maxLines: 1,
                                                textDirection: TextDirection.ltr,
                                                overflow: TextOverflow.ellipsis),
@@ -378,7 +380,7 @@ class _TeacherSessionCardState extends State<SessionMaterialCard>
                                              duration: const Duration(milliseconds: 280),
                                              child: Icon(
                                                  Icons.keyboard_arrow_down_rounded,
-                                                 color: context.colors.textMedium),
+                                                 color: context.colors.purple),
                                            ),
                                          ],
                                        ),
