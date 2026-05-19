@@ -110,7 +110,7 @@ class TeamMemberModel {
 
 class ContactInfoModel {
   final int id;
-  final String type;   // email / phone / address / website / whatsapp
+  final String type; // email / phone / address / website / whatsapp
   final String value;
   final String? iconName;
   final int order;
@@ -196,16 +196,23 @@ class TermsSectionModel {
   final String title;
   final String body;
   final int order;
+  bool isRead;
 
-  const TermsSectionModel({
+  TermsSectionModel({
     required this.id,
     required this.iconName,
     required this.title,
     required this.body,
     required this.order,
+    this.isRead = false,
   });
 
-  factory TermsSectionModel.fromJson(Map<String, dynamic> j) => TermsSectionModel(
+  void toggle() {
+    isRead = !isRead;
+  }
+
+  factory TermsSectionModel.fromJson(Map<String, dynamic> j) =>
+      TermsSectionModel(
         id: j['id'],
         iconName: j['icon_name'] ?? 'description',
         title: j['title'] ?? '',

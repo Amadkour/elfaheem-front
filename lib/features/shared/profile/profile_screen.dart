@@ -24,6 +24,7 @@ import '../../teacher/profile/teacher_earnings_screen.dart';
 import '../payment/student_saved_methods_screen.dart';
 import '../payment/teacher_payout_screen.dart';
 import 'about_and_terms_screen.dart';
+import 'about_terms_provider.dart';
 import 'change_password_widget.dart';
 import 'complaint_provider.dart';
 import 'complaints_screen.dart';
@@ -122,19 +123,21 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                             label: 'bank_accounts'.tr,
                             onTap: () => _push(const TeacherEarningsScreen()),
                           ),
-                        if(p.role=='teacher')
-                        SettingsTile(
-                          icon: Icons.lock_rounded,
-                          iconBg: c.accentTint,
-                          iconColor: c.accent,
-                          label: 'teacher_profile'.tr,
-                          onTap: () => _push(InstructorProfileScreen(
-                            teacher:
-                                context.read<TeacherProvider>().stats.teacher!,
-                            studentView: false,
-                            stats: context.read<TeacherProvider>().stats,
-                          )),
-                        ),
+                        if (p.role == 'teacher')
+                          SettingsTile(
+                            icon: Icons.lock_rounded,
+                            iconBg: c.accentTint,
+                            iconColor: c.accent,
+                            label: 'teacher_profile'.tr,
+                            onTap: () => _push(InstructorProfileScreen(
+                              teacher: context
+                                  .read<TeacherProvider>()
+                                  .stats
+                                  .teacher!,
+                              studentView: false,
+                              stats: context.read<TeacherProvider>().stats,
+                            )),
+                          ),
                         SettingsTile(
                           icon: Icons.account_balance_wallet_rounded,
                           iconBg: c.successTint,
@@ -205,28 +208,30 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                     child: SettingsGroup(
                       title: 'help'.tr,
                       children: [
-
                         SettingsTile(
-                        onTap: () => _push(ChangeNotifierProvider(
-                            create: (_) => ComplaintProvider(), child: const ComplaintsScreen())),
+                          onTap: () => _push(ChangeNotifierProvider(
+                              create: (_) => ComplaintProvider(),
+                              child: const ComplaintsScreen())),
                           icon: Icons.headset_mic_rounded,
                           iconBg: c.primaryTint,
                           iconColor: c.primary,
-                          label: 'help_center'.tr,),
-
+                          label: 'help_center'.tr,
+                        ),
                         SettingsTile(
                           icon: Icons.privacy_tip_rounded,
                           iconBg: c.successTint,
                           iconColor: c.success,
                           label: 'privacy'.tr,
-                          onTap: () => _push(const PrivacyScreen()),
+                          onTap: () => _push( TermsScreen()),
                         ),
                         SettingsTile(
                           icon: Icons.info_rounded,
                           iconBg: c.accentTint,
                           iconColor: c.accent,
                           label: 'about'.tr,
-                          onTap: () => _push(const AboutScreen()),
+                          onTap: () => _push(ChangeNotifierProvider(
+                              create: (_) => AboutTermsProvider(),
+                              child: AboutScreen())),
                         ),
                       ],
                     ),

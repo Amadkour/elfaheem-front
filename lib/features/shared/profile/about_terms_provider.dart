@@ -69,4 +69,13 @@ class AboutTermsProvider extends BaseProvider {
       notifyListeners();
     }
   }
+
+  void clearSelection() {
+    if(terms!=null){
+      for(int i=0;i<terms!.sections.length;i++) {
+        terms!.sections[i].isRead = false;
+      }
+    }
+    notifyListeners();
+  }
 }

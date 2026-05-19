@@ -5,8 +5,10 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:provider/provider.dart';
 
+import '../../../config/app_config.dart';
 import '../../../config/app_theme.dart';
 import '../../../utils/helpers.dart';
 import '../../../utils/widget/app_bar.dart';
@@ -82,7 +84,7 @@ class _AboutScreenState extends State<AboutScreen> {
         useWebCard: true,
         child: SafeArea(
           child: Column(children: [
-            ScreenAppBar(title: 'من نحن'),
+            ScreenAppBar(title: 'about'.tr),
             Expanded(child: _buildBody(p, c, isWide)),
           ]),
         ),
@@ -447,19 +449,28 @@ class _TeamRow extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
               m.imageUrl != null
-                  ? CircleAvatar(
-                      radius: 26,
-                      backgroundImage: NetworkImage(m.imageUrl!),
-                      backgroundColor: c.primaryTint,
-                    )
+                  ? Container(
+            decoration: BoxDecoration(
+                shape: BoxShape.circle,
+              color: c.primaryTint
+            ),
+                    child: ClipOval(
+                        child: AppNetworkImage(url:m.imageUrl!,height: 25,width: 25,),
+                      ),
+                  )
                   : Text(m.emoji ?? '👤',
                       style: const TextStyle(fontSize: 36)),
               const SizedBox(height: 8),
-              Text(m.name,
+              Text(m.imageUrl!,
                   style: c.h3.copyWith(fontSize: 12),
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis),
+              // Text(m.name,
+              //     style: c.h3.copyWith(fontSize: 12),
+              //     textAlign: TextAlign.center,
+              //     maxLines: 1,
+              //     overflow: TextOverflow.ellipsis),
               const SizedBox(height: 3),
               Text(m.role,
                   style: c.caption.copyWith(fontSize: 10),

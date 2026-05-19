@@ -13,6 +13,7 @@ import '../features/category/categories_provider.dart';
 import '../features/module/modules_provider.dart';
 import '../features/notification/notifications_provider.dart';
 import '../features/shared/attendance_provider.dart';
+import '../features/shared/profile/about_terms_provider.dart';
 import '../features/shared/profile/profile_provider.dart';
 import '../features/student/courses/list/courses_provider.dart';
 import '../features/student/courses/my_courses/my_courses_provider.dart';
@@ -51,6 +52,9 @@ List<SingleChildWidget> appProviders(
       // ── Domain providers (all share the ApiClient singleton) ─────────────────
       ChangeNotifierProvider<TeacherSchedulesProvider>(
         create: (_) => TeacherSchedulesProvider(),
+
+      ), ChangeNotifierProvider<AboutTermsProvider>(
+        create: (_) => AboutTermsProvider(),
       ),
       // ── Domain providers (all share the ApiClient singleton) ─────────────────
       ChangeNotifierProvider<TeacherSessionsProvider>(
