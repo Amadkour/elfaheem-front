@@ -298,101 +298,118 @@ class _TeacherSessionCardState extends State<SessionMaterialCard>
                   Divider(
                     height: 2,
                   ),
+               Row(
+                 children: [
+                   Expanded(
+                     child: Column(
+                       children: [
 
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(children: [
-                      if (widget.isTeacher) ...[
-                        _ActionBtn(
-                          icon: Icons.how_to_reg_rounded,
-                          label: 'الحضور',
-                          color: const Color(0xFF4DA6FF),
-                          onTap: _openAttendance,
-                          outlined: true,
-                        ),
-                        const SizedBox(width: 8),
-                        _ActionBtn(
-                          icon: Icons.quiz_rounded,
-                          label: 'الامتحانات',
-                          color: const Color(0xFFFF9F43),
-                          onTap: _openExams,
-                          outlined: true,
-                        ),
-                      ],
+                         Padding(
+                           padding: const EdgeInsets.all(8.0),
+                           child: Row(children: [
+                             if (widget.isTeacher) ...[
+                               _ActionBtn(
+                                 icon: Icons.how_to_reg_rounded,
+                                 label: 'الحضور',
+                                 color: const Color(0xFF4DA6FF),
+                                 onTap: _openAttendance,
+                                 outlined: true,
+                               ),
+                               const SizedBox(width: 8),
+                               _ActionBtn(
+                                 icon: Icons.quiz_rounded,
+                                 label: 'الامتحانات',
+                                 color: const Color(0xFFFF9F43),
+                                 onTap: _openExams,
+                                 outlined: true,
+                               ),
+                             ],
 
-                      Spacer(),
+                             Spacer(),
 
-                    ]),
-                  ),
+                           ]),
+                         ),
+                         Row(
+                           children: [
+                             if (s.type == 'live') ...[
+                               const SizedBox(width: 8),
+                               _ActionBtn(
+                                 icon: CupertinoIcons.video_camera_solid,
+                                 label: 'Meet Now',
+                                 color: context.colors.success,
+                                 onTap: () async {
+                                   final prov =
+                                   context.read<TeacherSessionsProvider>();
+                                   if (s.isLiveActive) {
+                                     await prov.endLive(s.id);
+                                   } else {
+                                     await prov.startLive(s.id);
+                                     if (context.mounted) {
+                                       prov.joinLive(context, s.id, s.courseId, 200);
+                                     }
+                                   }
+                                 },
+                                 outlined: true,
+                               ),
+                             ],
+                             if (materials.isNotEmpty)
+                               Column(
+                                 children: [
+                                   Container(
+                                     height: 30,
+                                     padding: const EdgeInsets.symmetric(horizontal: 14),
+                                     decoration: BoxDecoration(
+
+                                       borderRadius: BorderRadius.circular(11),
+                                       border: Border.all(color: AppTheme.purple),
+                                     ),
+                                     child: GestureDetector(
+                                       onTap: _toggle,
+                                       child: Row(
+                                         children: [
+                                           Text('${materials.length} ${'materials'.tr}',
+                                               style: context.colors.navLabelUnselected
+                                                   .copyWith(height: 0.3),
+                                               maxLines: 1,
+                                               textDirection: TextDirection.ltr,
+                                               overflow: TextOverflow.ellipsis),
+                                           AnimatedRotation(
+                                             turns: _expanded ? 0.5 : 0,
+                                             duration: const Duration(milliseconds: 280),
+                                             child: Icon(
+                                                 Icons.keyboard_arrow_down_rounded,
+                                                 color: context.colors.textMedium),
+                                           ),
+                                         ],
+                                       ),
+                                     ),
+                                   ),
+                                 ],
+                               )
+                             else if (widget.isTeacher)
+                               _AddMaterialButton(
+                                 sessionId: s.id,
+                               ),
+
+
+                           ],
+                         ),
+                       ],
+                     ),
+
+                   ),
+
+                 ],
+               ),
+                  Divider(),
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      if (s.type == 'live') ...[
-                        const SizedBox(width: 8),
-                        _ActionBtn(
-                          icon: CupertinoIcons.video_camera_solid,
-                          label: 'Meet Now',
-                          color: context.colors.success,
-                          onTap: () async {
-                            final prov =
-                            context.read<TeacherSessionsProvider>();
-                            if (s.isLiveActive) {
-                              await prov.endLive(s.id);
-                            } else {
-                              await prov.startLive(s.id);
-                              if (context.mounted) {
-                                prov.joinLive(context, s.id, s.courseId, 200);
-                              }
-                            }
-                          },
-                          outlined: true,
-                        ),
-                      ],
-                      if (materials.isNotEmpty)
-                        Column(
-                          children: [
-                            Container(
-                              height: 30,
-                              padding: const EdgeInsets.symmetric(horizontal: 14),
-                              decoration: BoxDecoration(
-
-                                borderRadius: BorderRadius.circular(11),
-                                border: Border.all(color: AppTheme.purple),
-                              ),
-                              child: GestureDetector(
-                                onTap: _toggle,
-                                child: Row(
-                                  children: [
-                                    Text('${materials.length} ${'materials'.tr}',
-                                        style: context.colors.navLabelUnselected
-                                            .copyWith(height: 0.3),
-                                        maxLines: 1,
-                                        textDirection: TextDirection.ltr,
-                                        overflow: TextOverflow.ellipsis),
-                                    AnimatedRotation(
-                                      turns: _expanded ? 0.5 : 0,
-                                      duration: const Duration(milliseconds: 280),
-                                      child: Icon(
-                                          Icons.keyboard_arrow_down_rounded,
-                                          color: context.colors.textMedium),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        )
-                      else if (widget.isTeacher)
-                        _AddMaterialButton(
-                          sessionId: s.id,
-                        ),
-
-
-                    ],
-                  ),
-
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
+                      RatingWidget(
+                        type: RateType.session,
+                        sourceId: s.id.toString(),
+                        canEdit: !widget.isTeacher,
+                      ),
                       Row(
                         children: [
                           if (widget.isTeacher) ...[
@@ -413,13 +430,11 @@ class _TeacherSessionCardState extends State<SessionMaterialCard>
                           ]
                         ],
                       ),
-                      RatingWidget(
-                        type: RateType.session,
-                        sourceId: s.id.toString(),
-                        canEdit: !widget.isTeacher,
-                      ),
+
                     ],
                   ),
+
+
                 ],
               ),
             ),
@@ -609,14 +624,20 @@ class _MaterialGrid extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(m.name,
-                      style: context.colors.body
-                          .copyWith(fontWeight: FontWeight.w600, fontSize: 13),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
+                  Flexible(
+                    child: Text(m.name,
+
+                        style: context.colors.body
+                            .copyWith(fontWeight: FontWeight.w600, fontSize: 13),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis),
+                  ),
                   SizedBox(
                     width: 5,
                   ),
