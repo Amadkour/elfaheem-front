@@ -23,6 +23,7 @@ import '../../student/courses/details/components/app_responsive.dart';
 import '../../teacher/profile/teacher_earnings_screen.dart';
 import '../payment/student_saved_methods_screen.dart';
 import '../payment/teacher_payout_screen.dart';
+import 'about_and_terms_screen.dart';
 import 'change_password_widget.dart';
 import 'complaint_provider.dart';
 import 'complaints_screen.dart';
@@ -709,65 +710,65 @@ class _SupportScreenState extends State<SupportScreen> {
 
 // ── About ─────────────────────────────────────────────────────────────────────
 
-class AboutScreen extends StatelessWidget {
-  const AboutScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: Helpers.pageDirection,
-      child: Scaffold(
-        backgroundColor: context.colors.background,
-        body: SafeArea(
-          child: Column(children: [
-            ScreenAppBar(title: 'عنا'),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 32, 20, 32),
-                child: Column(children: [
-                  Container(
-                    width: 140,
-                    height: 140,
-                    decoration: BoxDecoration(
-                        gradient: context.colors.primaryGradient,
-                        shape: BoxShape.circle,
-                        boxShadow: context.colors.primaryShadow),
-                    child: const Icon(Icons.school_rounded,
-                        size: 72, color: Colors.white),
-                  ),
-                  const SizedBox(height: 24),
-                  Text('مركز الفهيم', style: context.colors.h1),
-                  const SizedBox(height: 8),
-                  Text('قدرات وتحصيلي والنجليزي',
-                      style: context.colors.caption
-                          .copyWith(color: context.colors.textMedium)),
-                  const SizedBox(height: 24),
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                        color: context.colors.cardBg,
-                        borderRadius:
-                            BorderRadius.circular(context.colors.radiusMedium),
-                        boxShadow: context.colors.cardShadow),
-                    child: Text(
-                      'مركز الفهيم يحرص على تقديم احسن الكورسات بأحسن المدرسين ليكون عندنا احسن جيل متقدم',
-                      style: TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: 16,
-                          height: 1.9,
-                          color: context.colors.textDark),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ]),
-              ),
-            ),
-          ]),
-        ),
-      ),
-    );
-  }
-}
+// class AboutScreen extends StatelessWidget {
+//   const AboutScreen({super.key});
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Directionality(
+//       textDirection: Helpers.pageDirection,
+//       child: Scaffold(
+//         backgroundColor: context.colors.background,
+//         body: SafeArea(
+//           child: Column(children: [
+//             ScreenAppBar(title: 'عنا'),
+//             Expanded(
+//               child: SingleChildScrollView(
+//                 padding: const EdgeInsets.fromLTRB(20, 32, 20, 32),
+//                 child: Column(children: [
+//                   Container(
+//                     width: 140,
+//                     height: 140,
+//                     decoration: BoxDecoration(
+//                         gradient: context.colors.primaryGradient,
+//                         shape: BoxShape.circle,
+//                         boxShadow: context.colors.primaryShadow),
+//                     child: const Icon(Icons.school_rounded,
+//                         size: 72, color: Colors.white),
+//                   ),
+//                   const SizedBox(height: 24),
+//                   Text('مركز الفهيم', style: context.colors.h1),
+//                   const SizedBox(height: 8),
+//                   Text('قدرات وتحصيلي والنجليزي',
+//                       style: context.colors.caption
+//                           .copyWith(color: context.colors.textMedium)),
+//                   const SizedBox(height: 24),
+//                   Container(
+//                     padding: const EdgeInsets.all(20),
+//                     decoration: BoxDecoration(
+//                         color: context.colors.cardBg,
+//                         borderRadius:
+//                             BorderRadius.circular(context.colors.radiusMedium),
+//                         boxShadow: context.colors.cardShadow),
+//                     child: Text(
+//                       'مركز الفهيم يحرص على تقديم احسن الكورسات بأحسن المدرسين ليكون عندنا احسن جيل متقدم',
+//                       style: TextStyle(
+//                           fontFamily: 'Cairo',
+//                           fontSize: 16,
+//                           height: 1.9,
+//                           color: context.colors.textDark),
+//                       textAlign: TextAlign.center,
+//                     ),
+//                   ),
+//                 ]),
+//               ),
+//             ),
+//           ]),
+//         ),
+//       ),
+//     );
+//   }
+// }
 
 // ── Privacy ───────────────────────────────────────────────────────────────────
 

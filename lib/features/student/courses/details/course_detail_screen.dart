@@ -14,6 +14,7 @@ import '../../../../utils/widget/base_page.dart';
 import '../../../../utils/widget/rating_widget.dart';
 import '../../../shared/profile/complaint_provider.dart';
 import '../../../shared/profile/complaints_screen.dart';
+import '../../../shared/profile/new_complaint_screen.dart';
 import '../../enrollment/enrollment_provider.dart';
 import '../../enrollment/enrollment_screen.dart';
 import '../../models.dart';

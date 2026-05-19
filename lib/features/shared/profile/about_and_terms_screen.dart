@@ -1,42 +1,78 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// features/shared/profile/about_and_terms_screen.dart
-// Premium About Us + Terms & Conditions — dark/light adaptive, Web & Mobile
+// features/shared/about/about_and_terms_screen.dart
+// About Us + Terms & Conditions — fully server-driven, dark/light adaptive
 // ─────────────────────────────────────────────────────────────────────────────
 library;
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../config/app_theme.dart';
 import '../../../utils/helpers.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../student/courses/details/components/app_responsive.dart';
+import 'about_terms_model.dart';
+import 'about_terms_provider.dart';
+
+// ── Icon resolver: maps backend string → Flutter IconData ─────────────────────
+// Extend this map whenever you add a new icon_name in the admin panel.
+IconData _icon(String name) => _iconMap[name] ?? Icons.circle_outlined;
+
+const _iconMap = <String, IconData>{
+  'play_circle_outline':     Icons.play_circle_outline_rounded,
+  'people_alt':              Icons.people_alt_outlined,
+  'quiz':                    Icons.quiz_outlined,
+  'emoji_events':            Icons.emoji_events_outlined,
+  'support_agent':           Icons.support_agent_rounded,
+  'devices':                 Icons.devices_outlined,
+  'school':                  Icons.school_outlined,
+  'book':                    Icons.book_outlined,
+  'star':                    Icons.star_outline_rounded,
+  'gavel':                   Icons.gavel_rounded,
+  'person':                  Icons.person_outline_rounded,
+  'payment':                 Icons.payment_outlined,
+  'shield':                  Icons.shield_outlined,
+  'block':                   Icons.block_outlined,
+  'update':                  Icons.update_rounded,
+  'description':             Icons.description_outlined,
+  'email':                   Icons.email_outlined,
+  'phone':                   Icons.phone_outlined,
+  'location_on':             Icons.location_on_outlined,
+  'language':                Icons.language_outlined,
+  'chat':                    Icons.chat_bubble_outline_rounded,
+  'info':                    Icons.info_outline_rounded,
+  'verified':                Icons.verified_outlined,
+  'lock':                    Icons.lock_outline_rounded,
+  'notifications':           Icons.notifications_outlined,
+  'help':                    Icons.help_outline_rounded,
+  'workspace_premium':       Icons.workspace_premium_outlined,
+  'bug_report':              Icons.bug_report_outlined,
+};
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  About Screen
 // ══════════════════════════════════════════════════════════════════════════════
 
-class AboutScreen extends StatelessWidget {
+class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
 
-  static const _features = [
-    (Icons.play_circle_outline_rounded,  'كورسات مباشرة ومسجلة',    'تعلّم في أي وقت مع محتوى تفاعلي عالي الجودة'),
-    (Icons.people_alt_outlined,          'نخبة من المدرسين',         'أفضل المدرسين في مجالات القدرات والتحصيلي والإنجليزي'),
-    (Icons.quiz_outlined,                'اختبارات تفاعلية',         'قياس مستواك بنماذج محاكاة وأسئلة حديثة'),
-    (Icons.emoji_events_outlined,        'شهادات معتمدة',            'احصل على شهادة إتمام لكل كورس تنهيه بنجاح'),
-    (Icons.support_agent_rounded,        'دعم فوري',                 'فريق دعم جاهز على مدار الساعة لمساعدتك'),
-    (Icons.devices_outlined,             'جميع الأجهزة',             'استخدم التطبيق من هاتفك أو الحاسوب بكل سهولة'),
-  ];
+  @override
+  State<AboutScreen> createState() => _AboutScreenState();
+}
 
-  static const _team = [
-    ('أحمد محمد',   'المؤسس والرئيس التنفيذي',    '👨‍💼'),
-    ('سارة علي',    'مديرة المحتوى التعليمي',      '👩‍🏫'),
-    ('خالد إبراهيم','مدير التقنية',                '👨‍💻'),
-    ('نورة حسن',   'مديرة خدمة العملاء',          '👩‍💼'),
-  ];
+class _AboutScreenState extends State<AboutScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AboutTermsProvider>().loadAbout();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final p      = context.watch<AboutTermsProvider>();
     final c      = context.colors;
     final isWide = context.showSidebar;
 
@@ -47,51 +83,81 @@ class AboutScreen extends StatelessWidget {
         child: SafeArea(
           child: Column(children: [
             ScreenAppBar(title: 'من نحن'),
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: Breakpoints.contentMax),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
-                      child: Column(children: [
-                        // ── Hero ──────────────────────────────────────────
-                        _HeroBanner(isWide: isWide),
-                        const SizedBox(height: 32),
-
-                        // ── Mission ───────────────────────────────────────
-                        _SectionTitle(text: 'رسالتنا'),
-                        const SizedBox(height: 12),
-                        _MissionCard(),
-                        const SizedBox(height: 32),
-
-                        // ── Stats ─────────────────────────────────────────
-                        _StatsRow(),
-                        const SizedBox(height: 32),
-
-                        // ── Features ──────────────────────────────────────
-                        _SectionTitle(text: 'ما يميّزنا'),
-                        const SizedBox(height: 16),
-                        _FeaturesGrid(features: _features, isWide: isWide),
-                        const SizedBox(height: 32),
-
-                        // ── Team ──────────────────────────────────────────
-                        _SectionTitle(text: 'فريقنا'),
-                        const SizedBox(height: 16),
-                        _TeamRow(team: _team),
-                        const SizedBox(height: 32),
-
-                        // ── Contact ───────────────────────────────────────
-                        _ContactCard(),
-                      ]),
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            Expanded(child: _buildBody(p, c, isWide)),
           ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody(AboutTermsProvider p, AppColors c, bool isWide) {
+    if (p.isLoadingAbout) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (p.aboutError != null) {
+      return _ErrorState(
+        message: p.aboutError!,
+        onRetry: () => p.loadAbout(forceRefresh: true),
+      );
+    }
+    if (p.about == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final about = p.about!;
+
+    return RefreshIndicator(
+      onRefresh: () => p.loadAbout(forceRefresh: true),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints:
+                const BoxConstraints(maxWidth: Breakpoints.contentMax),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+              child: Column(children: [
+                // ── Hero ──────────────────────────────────────────────────
+                _HeroBanner(info: about.info),
+                const SizedBox(height: 32),
+
+                // ── Mission ───────────────────────────────────────────────
+                if ((about.info?.mission ?? '').isNotEmpty) ...[
+                  _SectionTitle(text: 'رسالتنا'),
+                  const SizedBox(height: 12),
+                  _MissionCard(mission: about.info!.mission!),
+                  const SizedBox(height: 32),
+                ],
+
+                // ── Stats ─────────────────────────────────────────────────
+                if (about.stats.isNotEmpty) ...[
+                  _StatsRow(stats: about.stats),
+                  const SizedBox(height: 32),
+                ],
+
+                // ── Features ──────────────────────────────────────────────
+                if (about.features.isNotEmpty) ...[
+                  _SectionTitle(text: 'ما يميّزنا'),
+                  const SizedBox(height: 16),
+                  _FeaturesGrid(features: about.features, isWide: isWide),
+                  const SizedBox(height: 32),
+                ],
+
+                // ── Team ──────────────────────────────────────────────────
+                if (about.team.isNotEmpty) ...[
+                  _SectionTitle(text: 'فريقنا'),
+                  const SizedBox(height: 16),
+                  _TeamRow(team: about.team),
+                  const SizedBox(height: 32),
+                ],
+
+                // ── Contact ───────────────────────────────────────────────
+                if (about.contacts.isNotEmpty)
+                  _ContactCard(contacts: about.contacts),
+              ]),
+            ),
+          ),
         ),
       ),
     );
@@ -101,23 +167,21 @@ class AboutScreen extends StatelessWidget {
 // ── Hero Banner ───────────────────────────────────────────────────────────────
 
 class _HeroBanner extends StatelessWidget {
-  const _HeroBanner({required this.isWide});
-  final bool isWide;
+  const _HeroBanner({required this.info});
+  final AppInfoModel? info;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(
-          horizontal: 24, vertical: isWide ? 52 : 36),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 44),
       decoration: BoxDecoration(
         gradient: c.primaryGradient,
         borderRadius: BorderRadius.circular(24),
         boxShadow: c.primaryShadow,
       ),
       child: Column(children: [
-        // Logo ring
         Container(
           width: 100,
           height: 100,
@@ -127,30 +191,44 @@ class _HeroBanner extends StatelessWidget {
             border: Border.all(
                 color: Colors.white.withValues(alpha: 0.4), width: 2),
           ),
-          child: const Icon(Icons.school_rounded,
-              size: 52, color: Colors.white),
+          child: info?.logoUrl != null
+              ? ClipOval(
+                  child: Image.network(
+                    info!.logoUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const Icon(
+                        Icons.school_rounded,
+                        size: 52,
+                        color: Colors.white),
+                  ),
+                )
+              : const Icon(Icons.school_rounded,
+                  size: 52, color: Colors.white),
         ),
         const SizedBox(height: 20),
-        const Text(
-          'مركز الفهيم',
-          style: TextStyle(
+        Text(
+          info?.name ?? 'مركز الفهيم',
+          style: const TextStyle(
               fontFamily: 'Cairo',
               fontSize: 32,
               fontWeight: FontWeight.w800,
               color: Colors.white,
               letterSpacing: -0.5),
         ),
-        const SizedBox(height: 8),
-        Text(
-          'قدرات · تحصيلي · الإنجليزي',
-          style: TextStyle(
-              fontFamily: 'Cairo',
-              fontSize: 16,
-              color: Colors.white.withValues(alpha: 0.85)),
-        ),
+        if ((info?.tagline ?? '').isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            info!.tagline!,
+            style: TextStyle(
+                fontFamily: 'Cairo',
+                fontSize: 16,
+                color: Colors.white.withValues(alpha: 0.85)),
+          ),
+        ],
         const SizedBox(height: 20),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(30),
@@ -181,8 +259,13 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Row(children: [
-      Container(width: 4, height: 22, color: c.primary,
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(4))),
+      Container(
+        width: 4,
+        height: 22,
+        decoration: BoxDecoration(
+            color: c.primary,
+            borderRadius: BorderRadius.circular(4)),
+      ),
       const SizedBox(width: 10),
       Text(text, style: c.h2.copyWith(fontSize: 18)),
     ]);
@@ -192,6 +275,9 @@ class _SectionTitle extends StatelessWidget {
 // ── Mission Card ──────────────────────────────────────────────────────────────
 
 class _MissionCard extends StatelessWidget {
+  const _MissionCard({required this.mission});
+  final String mission;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -207,9 +293,7 @@ class _MissionCard extends StatelessWidget {
         Icon(Icons.format_quote_rounded, color: c.primary, size: 32),
         const SizedBox(height: 12),
         Text(
-          'نسعى في مركز الفهيم إلى تقديم تجربة تعليمية متكاملة تُمكّن كل طالب من '
-          'الوصول إلى أفضل المدرسين وأحدث المحتويات التعليمية، لنبني معاً جيلاً '
-          'مؤهلاً ومتفوقاً يستحق المستقبل.',
+          mission,
           style: c.body.copyWith(
               height: 1.9, fontSize: 15, fontStyle: FontStyle.italic),
           textAlign: TextAlign.center,
@@ -222,12 +306,8 @@ class _MissionCard extends StatelessWidget {
 // ── Stats Row ─────────────────────────────────────────────────────────────────
 
 class _StatsRow extends StatelessWidget {
-  static const _stats = [
-    ('١٠٠٠+', 'طالب مسجّل'),
-    ('٥٠+',   'مدرس متخصص'),
-    ('٢٠٠+',  'كورس متاح'),
-    ('٩٨٪',   'رضا الطلاب'),
-  ];
+  const _StatsRow({required this.stats});
+  final List<AppStatModel> stats;
 
   @override
   Widget build(BuildContext context) {
@@ -240,19 +320,20 @@ class _StatsRow extends StatelessWidget {
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: _stats.map((s) {
-          final (val, label) = s;
+        children: stats.take(4).map((s) {
           return Column(mainAxisSize: MainAxisSize.min, children: [
-            Text(val,
+            Text(s.value,
                 style: TextStyle(
                     fontFamily: 'Cairo',
                     fontSize: 24,
                     fontWeight: FontWeight.w900,
                     color: c.primary)),
             const SizedBox(height: 4),
-            Text(label,
+            Text(s.label,
                 style: TextStyle(
-                    fontFamily: 'Cairo', fontSize: 11, color: c.textMedium)),
+                    fontFamily: 'Cairo',
+                    fontSize: 11,
+                    color: c.textMedium)),
           ]);
         }).toList(),
       ),
@@ -265,50 +346,41 @@ class _StatsRow extends StatelessWidget {
 class _FeaturesGrid extends StatelessWidget {
   const _FeaturesGrid(
       {required this.features, required this.isWide});
-  final List<(IconData, String, String)> features;
+  final List<AppFeatureModel> features;
   final bool isWide;
 
   @override
   Widget build(BuildContext context) {
-    if (isWide) {
-      // 3-column grid on web
-      final rows = <Widget>[];
-      for (int i = 0; i < features.length; i += 3) {
-        rows.add(Row(children: [
-          for (int j = i; j < i + 3 && j < features.length; j++) ...[
-            Expanded(child: _FeatureCard(data: features[j])),
-            if (j < i + 2 && j < features.length - 1)
-              const SizedBox(width: 12),
-          ],
-        ]));
-        if (i + 3 < features.length) rows.add(const SizedBox(height: 12));
-      }
-      return Column(children: rows);
-    }
-    // 2-column grid on mobile
+    final cols = isWide ? 3 : 2;
     final rows = <Widget>[];
-    for (int i = 0; i < features.length; i += 2) {
-      rows.add(Row(children: [
-        Expanded(child: _FeatureCard(data: features[i])),
-        const SizedBox(width: 12),
-        if (i + 1 < features.length)
-          Expanded(child: _FeatureCard(data: features[i + 1]))
-        else
-          const Expanded(child: SizedBox()),
-      ]));
-      if (i + 2 < features.length) rows.add(const SizedBox(height: 12));
+    for (int i = 0; i < features.length; i += cols) {
+      final rowItems = features.skip(i).take(cols).toList();
+      rows.add(Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (int j = 0; j < rowItems.length; j++) ...[
+            Expanded(child: _FeatureCard(feature: rowItems[j])),
+            if (j < rowItems.length - 1) const SizedBox(width: 12),
+          ],
+          // pad last row
+          for (int k = rowItems.length; k < cols; k++) ...[
+            const SizedBox(width: 12),
+            const Expanded(child: SizedBox()),
+          ],
+        ],
+      ));
+      if (i + cols < features.length) rows.add(const SizedBox(height: 12));
     }
     return Column(children: rows);
   }
 }
 
 class _FeatureCard extends StatelessWidget {
-  const _FeatureCard({required this.data});
-  final (IconData, String, String) data;
+  const _FeatureCard({required this.feature});
+  final AppFeatureModel feature;
 
   @override
   Widget build(BuildContext context) {
-    final (icon, title, desc) = data;
     final c = context.colors;
     return Container(
       padding: const EdgeInsets.all(16),
@@ -317,7 +389,9 @@ class _FeatureCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(c.radiusMedium),
         boxShadow: c.cardShadow,
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
         Container(
           width: 44,
           height: 44,
@@ -325,17 +399,20 @@ class _FeatureCard extends StatelessWidget {
             gradient: c.primaryGradient,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(icon, color: Colors.white, size: 22),
+          child: Icon(_icon(feature.iconName),
+              color: Colors.white, size: 22),
         ),
         const SizedBox(height: 12),
-        Text(title,
+        Text(feature.title,
             style: c.h3.copyWith(fontSize: 13),
             maxLines: 1,
             overflow: TextOverflow.ellipsis),
-        const SizedBox(height: 6),
-        Text(desc,
-            style: c.caption.copyWith(height: 1.5, fontSize: 11),
-            maxLines: 3),
+        if ((feature.description ?? '').isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(feature.description!,
+              style: c.caption.copyWith(height: 1.5, fontSize: 11),
+              maxLines: 3),
+        ],
       ]),
     );
   }
@@ -345,22 +422,22 @@ class _FeatureCard extends StatelessWidget {
 
 class _TeamRow extends StatelessWidget {
   const _TeamRow({required this.team});
-  final List<(String, String, String)> team;
+  final List<TeamMemberModel> team;
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return SizedBox(
-      height: 140,
+      height: 148,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: team.length,
         separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemBuilder: (_, i) {
-          final (name, role, emoji) = team[i];
-          final c = context.colors;
+          final m = team[i];
           return Container(
             width: 130,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: c.cardBg,
               borderRadius: BorderRadius.circular(c.radiusMedium),
@@ -369,13 +446,22 @@ class _TeamRow extends StatelessWidget {
             child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-              Text(emoji, style: const TextStyle(fontSize: 36)),
+              m.imageUrl != null
+                  ? CircleAvatar(
+                      radius: 26,
+                      backgroundImage: NetworkImage(m.imageUrl!),
+                      backgroundColor: c.primaryTint,
+                    )
+                  : Text(m.emoji ?? '👤',
+                      style: const TextStyle(fontSize: 36)),
               const SizedBox(height: 8),
-              Text(name,
-                  style: c.h3.copyWith(fontSize: 13),
-                  textAlign: TextAlign.center),
-              const SizedBox(height: 4),
-              Text(role,
+              Text(m.name,
+                  style: c.h3.copyWith(fontSize: 12),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 3),
+              Text(m.role,
                   style: c.caption.copyWith(fontSize: 10),
                   textAlign: TextAlign.center,
                   maxLines: 2),
@@ -390,6 +476,17 @@ class _TeamRow extends StatelessWidget {
 // ── Contact Card ──────────────────────────────────────────────────────────────
 
 class _ContactCard extends StatelessWidget {
+  const _ContactCard({required this.contacts});
+  final List<ContactInfoModel> contacts;
+
+  static const _typeConfig = <String, (IconData, Color)>{
+    'email':    (Icons.email_outlined,           Color(0xFF3B82F6)),
+    'phone':    (Icons.phone_outlined,           Color(0xFF10B981)),
+    'address':  (Icons.location_on_outlined,     Color(0xFFF59E0B)),
+    'website':  (Icons.language_outlined,        Color(0xFF8B5CF6)),
+    'whatsapp': (Icons.chat_bubble_outline_rounded, Color(0xFF25D366)),
+  };
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -405,51 +502,71 @@ class _ContactCard extends StatelessWidget {
       child: Column(children: [
         Text('تواصل معنا', style: c.h2.copyWith(fontSize: 16)),
         const SizedBox(height: 16),
-        _ContactRow(
-            icon: Icons.email_outlined,
-            label: 'support@elfaheem.sa',
-            color: const Color(0xFF3B82F6)),
-        const SizedBox(height: 12),
-        _ContactRow(
-            icon: Icons.phone_outlined,
-            label: '+966 5X XXX XXXX',
-            color: const Color(0xFF10B981)),
-        const SizedBox(height: 12),
-        _ContactRow(
-            icon: Icons.location_on_outlined,
-            label: 'الرياض، المملكة العربية السعودية',
-            color: const Color(0xFFF59E0B)),
+        ...contacts.asMap().entries.map((entry) {
+          final contact = entry.value;
+          final cfg   = _typeConfig[contact.type];
+          final icon  = cfg?.$1 ??
+              (contact.iconName != null
+                  ? _icon(contact.iconName!)
+                  : Icons.contact_support_outlined);
+          final color = cfg?.$2 ?? c.primary;
+          return Padding(
+            padding: EdgeInsets.only(
+                bottom: entry.key < contacts.length - 1 ? 12 : 0),
+            child: Row(children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(contact.value,
+                    style: c.body.copyWith(fontSize: 14),
+                    overflow: TextOverflow.ellipsis),
+              ),
+            ]),
+          );
+        }),
       ]),
     );
   }
 }
 
-class _ContactRow extends StatelessWidget {
-  const _ContactRow(
-      {required this.icon, required this.label, required this.color});
-  final IconData icon;
-  final String label;
-  final Color color;
+// ── Shared Error State ────────────────────────────────────────────────────────
+
+class _ErrorState extends StatelessWidget {
+  const _ErrorState(
+      {required this.message, required this.onRetry});
+  final String message;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Row(children: [
-      Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(10)),
-        child: Icon(icon, color: color, size: 18),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.wifi_off_rounded, size: 56, color: c.textLight),
+          const SizedBox(height: 16),
+          Text(message,
+              style: c.body.copyWith(color: c.textMedium),
+              textAlign: TextAlign.center),
+          const SizedBox(height: 20),
+          FilledButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('إعادة المحاولة',
+                style: TextStyle(fontFamily: 'Cairo')),
+          ),
+        ]),
       ),
-      const SizedBox(width: 12),
-      Expanded(
-        child: Text(label,
-            style: c.body.copyWith(fontSize: 14),
-            overflow: TextOverflow.ellipsis),
-      ),
-    ]);
+    );
   }
 }
 
@@ -465,63 +582,25 @@ class TermsScreen extends StatefulWidget {
 }
 
 class _TermsScreenState extends State<TermsScreen> {
-  final Set<int> _expanded = {0};
+  final Set<int> _expanded = {};
 
-  static const _sections = [
-    (
-      Icons.gavel_rounded,
-      'القبول بالشروط',
-      'باستخدامك لتطبيق مركز الفهيم فإنك توافق على الالتزام بهذه الشروط والأحكام. '
-          'إذا كنت لا توافق على أي بند من هذه الشروط، يُرجى التوقف عن استخدام التطبيق فوراً. '
-          'يحتفظ المركز بحق تعديل هذه الشروط في أي وقت مع إشعار مسبق.',
-    ),
-    (
-      Icons.person_outline_rounded,
-      'حساب المستخدم',
-      'يتحمل المستخدم مسؤولية الحفاظ على سرية بيانات حسابه وكلمة مروره. '
-          'يجب أن تكون المعلومات المقدمة عند التسجيل صحيحة ودقيقة. '
-          'يحق للمركز إلغاء أي حساب ينتهك سياساتنا دون إشعار مسبق.',
-    ),
-    (
-      Icons.school_outlined,
-      'استخدام المحتوى التعليمي',
-      'جميع المواد التعليمية المتاحة على المنصة محمية بحقوق الملكية الفكرية. '
-          'يُحظر تحميل أو نقل أو إعادة نشر أي محتوى دون إذن كتابي مسبق. '
-          'يُسمح باستخدام المحتوى للأغراض التعليمية الشخصية فقط.',
-    ),
-    (
-      Icons.payment_outlined,
-      'المدفوعات والاسترداد',
-      'تُعالج المدفوعات بشكل آمن عبر بوابات دفع معتمدة. '
-          'يمكن طلب استرداد المبلغ خلال 7 أيام من تاريخ الشراء إذا لم يتم '
-          'الوصول إلى أكثر من 20٪ من محتوى الكورس. '
-          'لا تُسترد رسوم الاشتراكات بعد انتهاء مدة الاسترداد.',
-    ),
-    (
-      Icons.shield_outlined,
-      'الخصوصية وحماية البيانات',
-      'نلتزم بحماية بياناتك الشخصية وفق أعلى معايير الأمان. '
-          'لا نشارك بياناتك مع أطراف ثالثة إلا بموافقتك الصريحة أو لمتطلبات قانونية. '
-          'يمكنك طلب حذف بياناتك في أي وقت عبر التواصل مع فريق الدعم.',
-    ),
-    (
-      Icons.block_outlined,
-      'السلوك المحظور',
-      'يُحظر استخدام المنصة لأغراض غير مشروعة أو مسيئة. '
-          'لا يجوز انتحال شخصية مستخدمين آخرين أو المدرسين أو إدارة المركز. '
-          'يُمنع منعاً باتاً نشر محتوى مسيء أو غير لائق في أي جزء من المنصة.',
-    ),
-    (
-      Icons.update_rounded,
-      'تحديثات الشروط',
-      'يحق لمركز الفهيم تحديث هذه الشروط والأحكام دورياً. '
-          'سيتم إشعارك بأي تغييرات جوهرية عبر البريد الإلكتروني أو إشعارات التطبيق. '
-          'استمرارك في استخدام المنصة بعد التحديث يُعدّ قبولاً ضمنياً للشروط الجديدة.',
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await context.read<AboutTermsProvider>().loadTerms();
+      // Auto-expand the first section
+      final sections =
+          context.read<AboutTermsProvider>().terms?.sections ?? [];
+      if (sections.isNotEmpty && mounted) {
+        setState(() => _expanded.add(sections.first.id));
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final p = context.watch<AboutTermsProvider>();
     final c = context.colors;
 
     return Directionality(
@@ -531,52 +610,69 @@ class _TermsScreenState extends State<TermsScreen> {
         child: SafeArea(
           child: Column(children: [
             ScreenAppBar(title: 'الشروط والأحكام'),
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: ConstrainedBox(
-                    constraints:
-                        const BoxConstraints(maxWidth: Breakpoints.contentMax),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
-                      child: Column(children: [
-                        // ── Header card ────────────────────────────────────
-                        _TermsHeader(),
-                        const SizedBox(height: 20),
-                        // ── Sections ───────────────────────────────────────
-                        ...List.generate(_sections.length, (i) {
-                          final (icon, title, body) = _sections[i];
-                          final isOpen = _expanded.contains(i);
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: _TermsSection(
-                              index: i,
-                              icon: icon,
-                              title: title,
-                              body: body,
-                              isOpen: isOpen,
-                              onToggle: () => setState(() {
-                                if (isOpen) {
-                                  _expanded.remove(i);
-                                } else {
-                                  _expanded.add(i);
-                                }
-                              }),
-                            ),
-                          );
-                        }),
-                        const SizedBox(height: 16),
-                        // ── Footer note ────────────────────────────────────
-                        _TermsFooter(),
-                      ]),
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            Expanded(child: _buildBody(p, c)),
           ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody(AboutTermsProvider p, AppColors c) {
+    if (p.isLoadingTerms) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (p.termsError != null) {
+      return _ErrorState(
+        message: p.termsError!,
+        onRetry: () => p.loadTerms(forceRefresh: true),
+      );
+    }
+    if (p.terms == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final terms = p.terms!;
+
+    return RefreshIndicator(
+      onRefresh: () => p.loadTerms(forceRefresh: true),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints:
+                const BoxConstraints(maxWidth: Breakpoints.contentMax),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+              child: Column(children: [
+                // ── Header ─────────────────────────────────────────────
+                _TermsHeader(meta: terms.meta),
+                const SizedBox(height: 20),
+
+                // ── Accordion sections ──────────────────────────────────
+                ...terms.sections.map((section) {
+                  final isOpen = _expanded.contains(section.id);
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _TermsSection(
+                      section: section,
+                      isOpen: isOpen,
+                      onToggle: () => setState(() {
+                        if (isOpen) {
+                          _expanded.remove(section.id);
+                        } else {
+                          _expanded.add(section.id);
+                        }
+                      }),
+                    ),
+                  );
+                }),
+
+                const SizedBox(height: 16),
+                _TermsFooter(),
+              ]),
+            ),
+          ),
         ),
       ),
     );
@@ -586,6 +682,9 @@ class _TermsScreenState extends State<TermsScreen> {
 // ── Terms Header ──────────────────────────────────────────────────────────────
 
 class _TermsHeader extends StatelessWidget {
+  const _TermsHeader({required this.meta});
+  final TermsMetaModel? meta;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -613,17 +712,27 @@ class _TermsHeader extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             boxShadow: c.primaryShadow,
           ),
-          child:
-              const Icon(Icons.description_outlined, color: Colors.white, size: 26),
+          child: const Icon(Icons.description_outlined,
+              color: Colors.white, size: 26),
         ),
         const SizedBox(width: 14),
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
             Text('الشروط والأحكام',
                 style: c.h2.copyWith(fontSize: 16)),
             const SizedBox(height: 4),
-            Text('آخر تحديث: يناير ٢٠٢٥',
-                style: c.caption.copyWith(fontSize: 12)),
+            Text(
+              meta != null
+                  ? 'آخر تحديث: ${meta!.lastUpdated}'
+                  : 'الشروط والأحكام',
+              style: c.caption.copyWith(fontSize: 12),
+            ),
+            if ((meta?.version ?? '').isNotEmpty)
+              Text('الإصدار ${meta!.version}',
+                  style: c.caption
+                      .copyWith(fontSize: 11, color: c.textLight)),
           ]),
         ),
       ]),
@@ -631,21 +740,15 @@ class _TermsHeader extends StatelessWidget {
   }
 }
 
-// ── Terms Section ─────────────────────────────────────────────────────────────
+// ── Terms Section Accordion ───────────────────────────────────────────────────
 
 class _TermsSection extends StatelessWidget {
   const _TermsSection({
-    required this.index,
-    required this.icon,
-    required this.title,
-    required this.body,
+    required this.section,
     required this.isOpen,
     required this.onToggle,
   });
-  final int index;
-  final IconData icon;
-  final String title;
-  final String body;
+  final TermsSectionModel section;
   final bool isOpen;
   final VoidCallback onToggle;
 
@@ -660,36 +763,38 @@ class _TermsSection extends StatelessWidget {
         borderRadius: BorderRadius.circular(c.radiusMedium),
         boxShadow: c.cardShadow,
         border: isOpen
-            ? Border.all(color: c.primary.withValues(alpha: 0.3), width: 1.5)
+            ? Border.all(
+                color: c.primary.withValues(alpha: 0.3), width: 1.5)
             : null,
       ),
       child: Column(children: [
-        // ── Header row ──────────────────────────────────────────────────
         GestureDetector(
           onTap: onToggle,
           behavior: HitTestBehavior.opaque,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(children: [
-              // Number badge
               Container(
-                width: 32,
-                height: 32,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   color: isOpen ? c.primary : c.primaryTint,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon,
-                    size: 17,
-                    color: isOpen ? Colors.white : c.primary),
+                child: Icon(
+                  _icon(section.iconName),
+                  size: 18,
+                  color: isOpen ? Colors.white : c.primary,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  title,
+                  section.title,
                   style: c.h3.copyWith(
-                      fontSize: 14,
-                      color: isOpen ? c.primary : c.textDark),
+                    fontSize: 14,
+                    color: isOpen ? c.primary : c.textDark,
+                  ),
                 ),
               ),
               AnimatedRotation(
@@ -703,20 +808,22 @@ class _TermsSection extends StatelessWidget {
             ]),
           ),
         ),
-        // ── Body ────────────────────────────────────────────────────────
         AnimatedCrossFade(
           duration: const Duration(milliseconds: 250),
-          crossFadeState:
-              isOpen ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+          crossFadeState: isOpen
+              ? CrossFadeState.showFirst
+              : CrossFadeState.showSecond,
           firstChild: Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
             child: Column(children: [
               Divider(color: c.divider, height: 1),
               const SizedBox(height: 14),
-              Text(body,
-                  style: c.body.copyWith(height: 1.8, fontSize: 14),
-                  textAlign: TextAlign.start),
+              Text(
+                section.body,
+                style: c.body.copyWith(height: 1.85, fontSize: 14),
+                textAlign: TextAlign.start,
+              ),
             ]),
           ),
           secondChild: const SizedBox(width: double.infinity),
@@ -748,11 +855,12 @@ class _TermsFooter extends StatelessWidget {
             'باستمرارك في استخدام مركز الفهيم، فأنت تقر بأنك قرأت '
             'وفهمت ووافقت على جميع الشروط والأحكام المذكورة أعلاه.',
             style: TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 13,
-                height: 1.7,
-                color: c.success.withValues(alpha: 0.9),
-                fontWeight: FontWeight.w500),
+              fontFamily: 'Cairo',
+              fontSize: 13,
+              height: 1.7,
+              color: c.success.withValues(alpha: 0.9),
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ]),
