@@ -78,7 +78,7 @@ class _WebHeader extends StatelessWidget {
     ),
     child: Row(
       children: [
-        Text('كورساتي',
+        Text('my_courses'.tr,
             style: context.colors.h2.copyWith(fontSize: 16)),
       ],
     ),
@@ -99,26 +99,26 @@ class _StatsRow extends StatelessWidget {
       child: Row(
         children: [
           _StatCard(
-            label: 'المسجّلة',
+            label: 'registered_courses'.tr,
             count: p.allCount,
             icon: Icons.library_books_rounded,
-            gradient: context.colors.primaryGradient,
+            gradient: context.colors.accentGradient,
             shadowColor: context.colors.primary,
           ),
           const SizedBox(width: 10),
           _StatCard(
-            label: 'مستمرة',
+            label: 'ongoing_courses'.tr,
             count: p.inProgressCount,
             icon: Icons.trending_up_rounded,
-            gradient: context.colors.accentGradient,
+            gradient: context.colors.tealGradient,
             shadowColor: context.colors.accent,
           ),
           const SizedBox(width: 10),
           _StatCard(
-            label: 'مكتملة',
+            label: 'completed_courses'.tr,
             count: p.completedCount,
             icon: Icons.workspace_premium_rounded,
-            gradient: context.colors.tealGradient,
+            gradient: context.colors.purpleGradient,
             shadowColor: context.colors.accent2,
           ),
         ],
@@ -158,34 +158,29 @@ class _StatCard extends StatelessWidget {
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha:0.2),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: Colors.white, size: 18),
-          ),
+          Icon(icon, color: Colors.white, size: 18),
           const SizedBox(height: 10),
-          Text(
-            '$count',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-              fontFamily: 'Cairo',
-              height: 1,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '$count',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                fontFamily: 'Cairo',
+                height: 1,
+              ),
             ),
           ),
           const SizedBox(height: 2),
           Text(
             label,
             style: TextStyle(
-              color: Colors.white.withValues(alpha:0.75),
-              fontSize: 11,
+              color: Colors.white,
+              fontSize: 14,
               fontFamily: 'Cairo',
             ),
           ),
@@ -200,10 +195,10 @@ class _StatCard extends StatelessWidget {
 class _FilterTabs extends StatelessWidget {
   const _FilterTabs();
 
-  static const _tabs = [
-    (CourseStatus.all, 'الكل', Icons.apps_rounded),
-    (CourseStatus.inProgress, 'مستمر', Icons.play_arrow_rounded),
-    (CourseStatus.completed, 'مكتملة', Icons.check_circle_rounded),
+  static  final List<(CourseStatus, String, IconData)> _tabs = [
+    (CourseStatus.all, 'filter_all'.tr, Icons.apps_rounded),
+    (CourseStatus.inProgress, 'ongoing'.tr, Icons.play_arrow_rounded),
+    (CourseStatus.completed, 'completed_courses'.tr, Icons.check_circle_rounded),
   ];
 
   @override
@@ -236,20 +231,19 @@ class _FilterTabs extends StatelessWidget {
                 onTap: () =>
                     context.read<MyCoursesProvider>().setFilter(status),
                 child: AnimatedContainer(
+                  height: 30,
+                  margin: EdgeInsets.all(8),
                   duration: const Duration(milliseconds: 220),
                   curve: Curves.easeOut,
                   decoration: BoxDecoration(
-                    gradient: active ? context.colors.primaryGradient : null,
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: active
-                        ? [
-                      BoxShadow(
-                        color: context.colors.primary.withValues(alpha:0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                        : null,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: active
+                            ?context.colors.primary:context.colors.textLight,
+                        width: 2
+                      )
+                    ),
+
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -258,7 +252,7 @@ class _FilterTabs extends StatelessWidget {
                         icon,
                         size: 14,
                         color: active
-                            ? Colors.white
+                            ? context.colors.primary
                             : context.colors.textLight,
                       ),
                       const SizedBox(width: 5),
@@ -266,7 +260,7 @@ class _FilterTabs extends StatelessWidget {
                         label,
                         style: context.colors.label.copyWith(
                           color: active
-                              ? Colors.white
+                              ? context.colors.primary
                               : context.colors.textLight,
                           fontWeight: active
                               ? FontWeight.w700
@@ -323,7 +317,8 @@ class _CourseList extends StatelessWidget {
                   size: 38, color: context.colors.primary),
             ),
             const SizedBox(height: 14),
-             Text('لا توجد كورسات في هذا القسم',
+             Text(
+                 'no_courses_in_section'.tr,
                 style: context.colors.body),
           ],
         ),
@@ -427,8 +422,8 @@ class _EnrolledCard extends StatelessWidget {
                               ),
                             ],
                           ),
-                          child: const Text(
-                            'مكتمل',
+                          child:  Text(
+                            'completed_badge'.tr,
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 9,
@@ -494,7 +489,8 @@ class _ProgressDot extends StatelessWidget {
   const _ProgressDot({required this.progress});
 
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) =>
+      Container(
     width: 24,
     height: 24,
     decoration: BoxDecoration(

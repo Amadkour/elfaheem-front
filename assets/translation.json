@@ -1306,5 +1306,35 @@
     "other_courses": {
       "en": "Explorer Other Courses",
       "ar": "اسكشاف دورات اخري"
-    }
+    },
+
+  "registered_courses": {
+    "en": "Recorded",
+    "ar": "المسجّلة"
+  },
+  "ongoing_courses": {
+    "en": "Ongoing",
+    "ar": "مستمرة"
+  },
+  "completed_courses": {
+    "en": "Completed",
+    "ar": "مكتملة"
+  },
+
+  "ongoing": {
+    "en": "Ongoing",
+    "ar": "مستمر"
+  },
+  "no_courses_in_section": {
+    "en": "No courses in this section",
+    "ar": "لا توجد كورسات في هذا القسم"
+  },
+  "completed_badge": {
+    "en": "Completed",
+    "ar": "مكتمل"
+  },
+  "show_all": {
+    "en": "Show all",
+    "ar": "عرض الكل"
   }
+}
