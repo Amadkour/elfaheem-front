@@ -81,6 +81,7 @@ class _HomeScreenState extends State<HomeScreen>
                 const SliverToBoxAdapter(child: CategoriesRow()),
                 const SliverToBoxAdapter(child: SizedBox(height: 28)),
 
+
                 // ── Courses ──────────────────────────────────────────────
                 SliverToBoxAdapter(
                   child: SectionHeader(
