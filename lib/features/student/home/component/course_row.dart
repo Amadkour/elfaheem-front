@@ -21,12 +21,12 @@ class CoursesRow extends StatelessWidget {
       return SizedBox(
         height: 100,
         child:
-            Center(child: Text('لا توجد كورسات', style: context.colors.body)),
+            Center(child: Text('no_courses_yet'.tr, style: context.colors.body)),
       );
     }
     // ── Mobile: horizontal scroll ───────────────────────────────────────────
     Widget list= SizedBox(
-      height: context.height/3 >300?300:context.height/4,
+      height: context.height/2 >300?300:context.height/4,
       child: ListView.separated(
         controller: controller,
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -94,20 +94,39 @@ class _CourseCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Title
-                    Spacer(),
-                    Text(
-                      course.title,
-                      style: context.colors.h3.copyWith(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.2,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          course.title,
+                          style: context.colors.h3.copyWith(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.2,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                       // if (course.rate != null)
+                          _StatsRow(course: course),
+                      ],
                     ),
-                    Spacer(),
 
+
+                    if (course.categoryName != null &&
+                        course.categoryName!.isNotEmpty)
+
+                      Text(
+                          course.categoryName!,
+                          style: context.colors.caption.copyWith(
+                            color: context.colors.textLight,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 10,
+                          ),
+                        ),
+
+
+                    Divider(),
                     // Teacher
                     if (course.teacher != Null)
                       InstructorAvatar(
@@ -138,43 +157,18 @@ class _CourseCard extends StatelessWidget {
                     Spacer(
                       flex: 2,
                     ),
-                    // Category pill + price
-                    Row(
-                      children: [
-                        if (course.categoryName != null &&
-                            course.categoryName!.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 9, vertical: 3),
-                            decoration: BoxDecoration(
-                              color:
-                                  context.colors.primary.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              course.categoryName!,
-                              style: context.colors.caption.copyWith(
-                                color: context.colors.primary,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ),
-                        Spacer(),
-                        if (course.rate != null) _StatsRow(course: course),
-                      ],
-                    ),
+
 
                     // Progress bar — only when enrolled
-                    if (_hasProgress) ...[
+                   if ( course.isEnrolled) ...[
                       const SizedBox(height: 9),
                       _ProgressBar(progress: course.progress),
-                    ],
+                   // ],
                     Spacer(
                       flex: 2,
                     ),
                   ],
-                ),
+                ]),
               ),
             ),
           ],
