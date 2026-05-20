@@ -6,7 +6,7 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/profile/setting_group.dart';
+import 'package:flutter_education_app/features/shared/profile/components/setting_group.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
@@ -23,13 +23,13 @@ import '../../student/courses/details/components/app_responsive.dart';
 import '../../teacher/profile/teacher_earnings_screen.dart';
 import '../payment/student_saved_methods_screen.dart';
 import '../payment/teacher_payout_screen.dart';
-import 'about_and_terms_screen.dart';
-import 'about_terms_provider.dart';
+import 'about/about_and_terms_screen.dart';
+import 'about/about_terms_provider.dart';
 import 'change_password_widget.dart';
-import 'complaint_provider.dart';
-import 'complaints_screen.dart';
+import 'compalints/complaint_provider.dart';
+import 'compalints/complaints_screen.dart';
 import 'course_instractor_profile.dart';
-import 'setting_title.dart';
+import 'components/setting_title.dart';
 import 'profile_provider.dart' show ProfileProvider, AppLanguage, AppLanguageX;
 import 'update_account_widget.dart';
 import '../../../utils/helpers.dart';

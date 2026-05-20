@@ -568,16 +568,18 @@ class _TeacherCourseCard extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Align(
-              alignment: AlignmentGeometry.center,
-              child: AppNetworkImage(
-                url: course.imageUrl,
-                fit: BoxFit.cover,
-                enableFullscreen: false,
-                color: context.colors.background,
-                height: 100,
-                width: context.width / (context.isMobile ? 2 : 3),
-                heroTag: "teacher-home-course-${course.id}",
+            Expanded(
+              child: Align(
+                alignment: AlignmentGeometry.center,
+                child: AppNetworkImage(
+                  url: course.imageUrl,
+                  fit: BoxFit.cover,
+                  enableFullscreen: false,
+                  color: context.colors.background,
+                  height: 100,
+                  width: context.width / (context.isMobile ? 2 : 3),
+                  heroTag: "teacher-home-course-${course.id}",
+                ),
               ),
             ),
             Divider(),
@@ -597,7 +599,7 @@ class _TeacherCourseCard extends StatelessWidget {
                                     fontSize: 13),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis),
-
+                            if(context.height>900) ...[
                             if (course.categoryName != null) ...[
                               Spacer(),
                               Row(
@@ -646,7 +648,7 @@ class _TeacherCourseCard extends StatelessWidget {
                                 color: context.colors.accent,
                                 hintLabel: "student_rate".tr),
                             Spacer(),
-                          ]),
+                          ]]),
                     ),
                    Container(
                      margin: EdgeInsets.only(left: 10),
@@ -674,6 +676,7 @@ class _TeacherCourseCard extends StatelessWidget {
                           ),
                         ),
                         SizedBox(height: 10,),
+                        if(context.height>700)
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 3, vertical: 3),

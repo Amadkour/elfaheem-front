@@ -71,6 +71,7 @@ class TopBar extends StatelessWidget {
           ),
 
           // Notification bell — elevated card style
+          if(context.width<900)
           GestureDetector(
             onTap: () =>
                 Navigator.of(context).popAndPushNamed('/notifications'),

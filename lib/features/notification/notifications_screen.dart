@@ -1,37 +1,61 @@
- import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
 import '../../config/app_theme.dart';
 import '../../utils/helpers.dart';
 import '../../utils/widget/app_bar.dart';
+import '../../utils/widget/base_page.dart';
 import 'notifications_provider.dart';
 
-class NotificationsScreen extends StatelessWidget {
+class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
+
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  @override
+  void initState() {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await context.read<NotificationsProvider>().fetchNotifications();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: Helpers.pageDirection,
-      child: Scaffold(
-        backgroundColor: context.colors.background,
-        body: SafeArea(
+      child: BasePage(
+        useWebCard: true,
+        child: SafeArea(
           child: Column(
             children: [
-               ScreenAppBar(title: 'notifications'.tr),
+              ScreenAppBar(title: 'notifications'.tr),
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  physics: const BouncingScrollPhysics(),
-                  children:   [
-                    const SizedBox(height: 8),
-                    _NotifGroup(group: NotifGroup.today,     groupTitle: 'today'.tr),
-                    const SizedBox(height: 20),
-                    _NotifGroup(group: NotifGroup.yesterday, groupTitle: 'yesterday'.tr),
-                    SizedBox(height: 24),
-                  ],
-                ),
+                child: context.read<NotificationsProvider>().allNotifs.isEmpty
+                    ? Center(
+                        child: Icon(
+                        Icons.notifications_active_rounded,
+                        size: 50,
+                        color: context.colors.primary,
+                      ))
+                    : ListView(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        physics: const BouncingScrollPhysics(),
+                        children: [
+                          const SizedBox(height: 8),
+                          _NotifGroup(
+                              group: NotifGroup.today, groupTitle: 'today'.tr),
+                          const SizedBox(height: 20),
+                          _NotifGroup(
+                              group: NotifGroup.yesterday,
+                              groupTitle: 'yesterday'.tr),
+                          SizedBox(height: 24),
+                        ],
+                      ),
               ),
             ],
           ),
@@ -45,19 +69,16 @@ class NotificationsScreen extends StatelessWidget {
 
 class _NotifGroup extends StatelessWidget {
   final NotifGroup group;
-  final String     groupTitle;
+  final String groupTitle;
 
   const _NotifGroup({required this.group, required this.groupTitle});
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<NotificationsProvider>();
-    List<NotificationModel> notifs   = group == NotifGroup.today
-        ? provider.todayNotifs
+    List<NotificationModel> notifs = group == NotifGroup.today
+        ? provider.allNotifs
         : provider.yesterdayNotifs;
-
-    if (notifs.isEmpty) return const SizedBox.shrink();
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -71,7 +92,8 @@ class _NotifGroup extends StatelessWidget {
                   context.read<NotificationsProvider>().markGroupAsRead(group),
               child: Text(
                 'تحديد الكل كمقروء',
-                style: context.colors.label.copyWith(color: context.colors.primary),
+                style: context.colors.label
+                    .copyWith(color: context.colors.primary),
               ),
             ),
           ],
@@ -93,27 +115,28 @@ class _NotifGroup extends StatelessWidget {
 
 class _NotifTile extends StatelessWidget {
   final NotificationModel notif;
+
   const _NotifTile({required this.notif});
 
   /// Map iconAsset key → widget
-  Widget _buildIcon(String asset,BuildContext context) {
+  Widget _buildIcon(String asset, BuildContext context) {
     switch (asset) {
       case 'payment':
         return _IconBadge(
           icon: Icons.credit_card_rounded,
-          bg: context.colors.primary.withValues(alpha:0.15),
+          bg: context.colors.primary.withValues(alpha: 0.15),
           iconColor: context.colors.primary,
         );
       case 'badge':
         return _IconBadge(
           icon: Icons.workspace_premium_rounded,
-          bg: context.colors.accent.withValues(alpha:0.15),
+          bg: context.colors.accent.withValues(alpha: 0.15),
           iconColor: context.colors.accent,
         );
       case 'new':
         return _NewBadgeIcon();
       default:
-        return  _IconBadge(
+        return _IconBadge(
           icon: Icons.notifications_rounded,
           bg: context.colors.background,
           iconColor: context.colors.textMedium,
@@ -126,23 +149,30 @@ class _NotifTile extends StatelessWidget {
     final isRead = notif.isRead;
 
     return GestureDetector(
-      onTap: () =>
-          context.read<NotificationsProvider>().markAsRead(notif.id),
+      onTap: () => context.read<NotificationsProvider>().markAsRead(notif.id),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isRead ? context.colors.cardBg : context.colors.primaryBlue.withValues(alpha: 0.05),
+          color: isRead
+              ? context.colors.cardBg
+              : context.colors.primaryBlue.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(context.colors.radiusMedium),
           border: Border.all(
-            color: isRead ? Colors.transparent : context.colors.primaryBlue.withValues(alpha:0.2),
+            color: isRead
+                ? Colors.transparent
+                : context.colors.primaryBlue.withValues(alpha: 0.2),
           ),
           boxShadow: context.colors.cardShadow,
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _buildIcon(notif.iconAsset, context),
+
             // Content (RTL: title + body on right)
+            const SizedBox(width: 12),
+            // Icon badge (LTR: on left for RTL layout)
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,7 +193,7 @@ class _NotifTile extends StatelessWidget {
                         Container(
                           width: 8,
                           height: 8,
-                          decoration:  BoxDecoration(
+                          decoration: BoxDecoration(
                             color: context.colors.primaryBlue,
                             shape: BoxShape.circle,
                           ),
@@ -175,9 +205,7 @@ class _NotifTile extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 12),
-            // Icon badge (LTR: on left for RTL layout)
-            _buildIcon(notif.iconAsset,context),
+
           ],
         ),
       ),
@@ -189,8 +217,8 @@ class _NotifTile extends StatelessWidget {
 
 class _IconBadge extends StatelessWidget {
   final IconData icon;
-  final Color    bg;
-  final Color    iconColor;
+  final Color bg;
+  final Color iconColor;
 
   const _IconBadge({
     required this.icon,

@@ -17,8 +17,8 @@ import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
 import '../../config/app_theme.dart';
-import '../shared/profile/about_terms_model.dart';
-import '../shared/profile/about_terms_provider.dart';
+import '../shared/profile/about/about_terms_model.dart';
+import '../shared/profile/about/about_terms_provider.dart';
 import '../shared/profile/change_password_widget.dart';
 import 'auth_provider.dart';
 import '../../utils/helpers.dart';
@@ -69,7 +69,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AuthProvider>().loadSpecialization(context);
       // Pre-fetch terms so the sheet opens instantly
-      context.read<AboutTermsProvider>().loadTerms();
+      context.read<AboutTermsProvider>().loadTerms(context);
     });
   }
 
@@ -96,12 +96,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
         child: const _TermsBottomSheet(),
       ),
     );
-    if(mounted && context.read<AboutTermsProvider>().terms!.sections.every((e)=>e.isRead)) {
+    if (mounted &&
+       ( context
+            .read<AboutTermsProvider>()
+            .terms!
+            .sections
+            .every((e) => e.accept))|| accepted==true) {
       setState(() => _termsAccepted = true);
     }
-    // if (accepted == true && mounted) {
-    //   setState(() => _termsAccepted = true);
-    // }
+
   }
 
   // ── Submit ────────────────────────────────────────────────────────────────
@@ -550,7 +553,12 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
     if (_hasReadAll) return;
     final pos = _scrollCtrl.position;
     // Consider "read" when within 48 px of the bottom
-    if ((pos.pixels >= pos.maxScrollExtent - 48)||context.read<AboutTermsProvider>().terms!.sections.every((e)=>e.isRead)) {
+    if ((pos.pixels >= pos.maxScrollExtent - 48) ||
+        context
+            .read<AboutTermsProvider>()
+            .terms!
+            .sections
+            .every((e) => e.accept)) {
       setState(() => _hasReadAll = true);
     }
   }
@@ -675,7 +683,7 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
               textAlign: TextAlign.center),
           const SizedBox(height: 16),
           FilledButton.icon(
-            onPressed: () => p.loadTerms(forceRefresh: true),
+            onPressed: () => p.loadTerms(context, forceRefresh: true),
             icon: const Icon(Icons.refresh_rounded),
             label: const Text('إعادة المحاولة',
                 style: TextStyle(fontFamily: 'Tajawal')),
@@ -780,7 +788,7 @@ class _SectionCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
-                  section.isRead
+                  section.accept
                       ? Icons.check_circle
                       : Icons.radio_button_unchecked,
                   size: 17,
@@ -788,7 +796,6 @@ class _SectionCard extends StatelessWidget {
             ),
           ),
           // Section number
-
         ]),
         Divider(color: c.divider, height: 20),
         // Body
@@ -891,7 +898,12 @@ class _BottomBar extends StatelessWidget {
               offset: const Offset(0, -3)),
         ],
       ),
-      child: hasReadAll ||context.read<AboutTermsProvider>().terms!.sections.every((e)=>e.isRead)
+      child: hasReadAll ||
+              context
+                  .read<AboutTermsProvider>()
+                  .terms!
+                  .sections
+                  .every((e) => e.accept)
           // ── Unlocked: show accept button ─────────────────────────────
           ? Column(mainAxisSize: MainAxisSize.min, children: [
               // Success hint

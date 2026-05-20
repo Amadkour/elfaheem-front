@@ -1,4 +1,3 @@
-
 library;
 
 import 'dart:convert';
@@ -35,16 +34,16 @@ class ApiException implements Exception {
 // ── Token Storage ─────────────────────────────────────────────────────────────
 
 class TokenStorage {
-  static const _accessKey  = 'access_token';
+  static const _accessKey = 'access_token';
   static const _refreshKey = 'refresh_token';
 
   Future<void> save({required String access, required String refresh}) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_accessKey,  access);
+    await prefs.setString(_accessKey, access);
     await prefs.setString(_refreshKey, refresh);
   }
 
-  Future<String?> get accessToken  async =>
+  Future<String?> get accessToken async =>
       (await SharedPreferences.getInstance()).getString(_accessKey);
 
   Future<String?> get refreshToken async =>
@@ -61,17 +60,19 @@ class TokenStorage {
 
 class ApiClient {
   ApiClient._();
+
   static final ApiClient instance = ApiClient._();
+
   factory ApiClient() => instance;
 
-  static const String   _base    = AppConfig.baseUrl;
+  static const String _base = AppConfig.baseUrl;
   static const Duration _timeout = Duration(seconds: 30);
 
   final _storage = TokenStorage();
 
   // ── Dio (used for multipart only) ─────────────────────────────────────────
 
-   late final Dio dio = _buildDio();
+  late final Dio dio = _buildDio();
 
   Dio _buildDio() {
     final dio = Dio(BaseOptions(
@@ -100,7 +101,7 @@ class ApiClient {
                 data: error.requestOptions.data,
                 queryParameters: error.requestOptions.queryParameters,
                 options: Options(
-                  method:  error.requestOptions.method,
+                  method: error.requestOptions.method,
                   headers: error.requestOptions.headers,
                 ),
               );
@@ -122,15 +123,15 @@ class ApiClient {
   Future<Map<String, String>> _headers({bool auth = true}) async {
     return {
       HttpHeaders.contentTypeHeader: 'application/json',
-      HttpHeaders.acceptHeader:      'application/json',
-      if (auth )
-        'Authorization': 'Bearer ${await _storage.accessToken}',
+      HttpHeaders.acceptHeader: 'application/json',
+      HttpHeaders.acceptLanguageHeader: AppConfig.lang,
+      if (auth) 'Authorization': 'Bearer ${await _storage.accessToken}',
     };
   }
 
   Future<http.Response> _send(
-      Future<http.Response> Function(http.Client) fn,
-      ) async {
+    Future<http.Response> Function(http.Client) fn,
+  ) async {
     final client = http.Client();
     try {
       return await fn(client).timeout(_timeout);
@@ -150,17 +151,17 @@ class ApiClient {
           .replace(queryParameters: {'refresh_token': refresh});
 
       final res = await _send(
-              (c) async => c.post(uri, headers: await _headers(auth: false)),
-    );
+        (c) async => c.post(uri, headers: await _headers(auth: false)),
+      );
 
-    if (res.statusCode == 200) {
-    final data = jsonDecode(res.body) as Map<String, dynamic>;
-    await _storage.save(
-    access:  data['access_token']  as String,
-    refresh: data['refresh_token'] as String? ?? refresh,
-    );
-    return true;
-    }
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        await _storage.save(
+          access: data['access_token'] as String,
+          refresh: data['refresh_token'] as String? ?? refresh,
+        );
+        return true;
+      }
     } catch (_) {}
 
     return false;
@@ -174,18 +175,18 @@ class ApiClient {
   // ── Response handler ──────────────────────────────────────────────────────
 
   dynamic _handle(dynamic res) {
-    final int    statusCode;
+    final int statusCode;
     final String requestPath;
-    dynamic      body;
+    dynamic body;
 
     if (res is http.Response) {
-      statusCode  = res.statusCode;
+      statusCode = res.statusCode;
       requestPath = res.request?.url.path ?? '';
       body = res.body.isNotEmpty ? jsonDecode(res.body) : null;
     } else if (res is Response) {
-      statusCode  = res.statusCode ?? 0;
+      statusCode = res.statusCode ?? 0;
       requestPath = res.realUri.path;
-      body        = res.data;
+      body = res.data;
     } else {
       throw const ApiException(statusCode: 0, message: 'Unknown response type');
     }
@@ -233,12 +234,13 @@ class ApiClient {
   // ── GET ───────────────────────────────────────────────────────────────────
 
   Future<dynamic> get(
-      String path, {
-        Map<String, dynamic>? queryParams,
-        bool auth = true,
-      }) async {
+    String path, {
+    Map<String, dynamic>? queryParams,
+    bool auth = true,
+  }) async {
     final res = await _send(
-            (c) async => c.get(_uri(path, queryParams), headers: await _headers(auth: auth)),
+      (c) async =>
+          c.get(_uri(path, queryParams), headers: await _headers(auth: auth)),
     );
     return _handle(res);
   }
@@ -246,17 +248,17 @@ class ApiClient {
   // ── POST ──────────────────────────────────────────────────────────────────
 
   Future<dynamic> post(
-      String path, {
-        dynamic body,
-        Map<String, dynamic>? queryParams,
-        bool auth = true,
-      }) async {
+    String path, {
+    dynamic body,
+    Map<String, dynamic>? queryParams,
+    bool auth = true,
+  }) async {
     final res = await _send(
-          (c) async => c.post(
-          _uri(path, queryParams),
-          headers: await _headers(auth: auth),
-      body: body != null ? jsonEncode(body) : null,
-    ),
+      (c) async => c.post(
+        _uri(path, queryParams),
+        headers: await _headers(auth: auth),
+        body: body != null ? jsonEncode(body) : null,
+      ),
     );
     return _handle(res);
   }
@@ -264,17 +266,17 @@ class ApiClient {
   // ── PUT ───────────────────────────────────────────────────────────────────
 
   Future<dynamic> put(
-      String path, {
-        dynamic body,
-        Map<String, dynamic>? queryParams,
-        bool auth = true,
-      }) async {
+    String path, {
+    dynamic body,
+    Map<String, dynamic>? queryParams,
+    bool auth = true,
+  }) async {
     final res = await _send(
-          (c) async => c.put(
-          _uri(path, queryParams),
-          headers: await _headers(auth: auth),
-      body: body != null ? jsonEncode(body) : null,
-    ),
+      (c) async => c.put(
+        _uri(path, queryParams),
+        headers: await _headers(auth: auth),
+        body: body != null ? jsonEncode(body) : null,
+      ),
     );
     return _handle(res);
   }
@@ -282,12 +284,13 @@ class ApiClient {
   // ── DELETE ────────────────────────────────────────────────────────────────
 
   Future<dynamic> delete(
-      String path, {
-        Map<String, dynamic>? queryParams,
-        bool auth = true,
-      }) async {
+    String path, {
+    Map<String, dynamic>? queryParams,
+    bool auth = true,
+  }) async {
     final res = await _send(
-            (c) async => c.delete(_uri(path, queryParams), headers: await _headers(auth: auth)),
+      (c) async => c.delete(_uri(path, queryParams),
+          headers: await _headers(auth: auth)),
     );
     return _handle(res);
   }
@@ -295,14 +298,14 @@ class ApiClient {
   // ── Upload image (Dio multipart) ──────────────────────────────────────────
 
   Future<dynamic> uploadImage(
-      String path, {
-        required XFile file,
-        String fieldName = 'file',
-      }) async {
-    final ext   = p.extension(file.path).replaceFirst('.', '').toLowerCase();
-    final mime  = _imageMime(ext);
+    String path, {
+    required XFile file,
+    String fieldName = 'file',
+  }) async {
+    final ext = p.extension(file.path).replaceFirst('.', '').toLowerCase();
+    final mime = _imageMime(ext);
     final bytes = await file.readAsBytes();
-    final name  = p.basename(file.path).isNotEmpty
+    final name = p.basename(file.path).isNotEmpty
         ? p.basename(file.path)
         : 'upload.${ext.isEmpty ? 'jpg' : ext}';
 
@@ -322,13 +325,13 @@ class ApiClient {
   // ── POST multipart (fields + file) ───────────────────────────────────────
 
   Future<dynamic> postMultipart(
-      String path, {
-        required Map<String, String> fields,
-        required String fileField,
-        required String fileName,
-        required Uint8List fileBytes,
-      }) async {
-    final ext  = p.extension(fileName).replaceFirst('.', '').toLowerCase();
+    String path, {
+    required Map<String, String> fields,
+    required String fileField,
+    required String fileName,
+    required Uint8List fileBytes,
+  }) async {
+    final ext = p.extension(fileName).replaceFirst('.', '').toLowerCase();
     final mime = _fileMime(ext);
 
     final res = await dio.post(
@@ -355,25 +358,28 @@ class ApiClient {
   // ── MIME helpers ──────────────────────────────────────────────────────────
 
   static String _imageMime(String ext) => switch (ext) {
-    'png'  => 'image/png',
-    'webp' => 'image/webp',
-    'gif'  => 'image/gif',
-    _      => 'image/jpeg',
-  };
+        'png' => 'image/png',
+        'webp' => 'image/webp',
+        'gif' => 'image/gif',
+        _ => 'image/jpeg',
+      };
 
   static String _fileMime(String ext) => switch (ext) {
-    'png'  => 'image/png',
-    'webp' => 'image/webp',
-    'gif'  => 'image/gif',
-    'jpg' || 'jpeg' => 'image/jpeg',
-    'pdf'  => 'application/pdf',
-    'doc'  => 'application/msword',
-    'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'xls'  => 'application/vnd.ms-excel',
-    'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'ppt'  => 'application/vnd.ms-powerpoint',
-    'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    'txt'  => 'text/plain',
-    _      => 'application/octet-stream',
-  };
+        'png' => 'image/png',
+        'webp' => 'image/webp',
+        'gif' => 'image/gif',
+        'jpg' || 'jpeg' => 'image/jpeg',
+        'pdf' => 'application/pdf',
+        'doc' => 'application/msword',
+        'docx' =>
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'xls' => 'application/vnd.ms-excel',
+        'xlsx' =>
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'ppt' => 'application/vnd.ms-powerpoint',
+        'pptx' =>
+          'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'txt' => 'text/plain',
+        _ => 'application/octet-stream',
+      };
 }

@@ -1,7 +1,6 @@
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/analytics/student/exam/student_exam_provider.dart';
-import 'package:flutter_education_app/features/analytics/student/student_analytics_provider.dart';
+import 'package:flutter_education_app/features/student/analysis/student_analytics_provider.dart';
 import 'package:flutter_education_app/features/student/attendance/attendance_provider.dart';
 import 'package:flutter_education_app/features/student/courses/details/course_detail_provider.dart';
 import 'package:flutter_education_app/features/shared/exams_provider.dart';
@@ -10,15 +9,14 @@ import 'package:provider/provider.dart';
 import '../config/storage_service.dart' show StorageService;
 import '../features/auth/auth_provider.dart';
 import '../features/category/categories_provider.dart';
-import '../features/module/modules_provider.dart';
 import '../features/notification/notifications_provider.dart';
 import '../features/shared/attendance_provider.dart';
-import '../features/shared/profile/about_terms_provider.dart';
+import '../features/shared/profile/about/about_terms_provider.dart';
 import '../features/shared/profile/profile_provider.dart';
+import '../features/student/analysis/exam/student_exam_provider.dart';
 import '../features/student/courses/list/courses_provider.dart';
 import '../features/student/courses/my_courses/my_courses_provider.dart';
 import '../features/student/home/home_provider.dart';
-import '../features/rating/ratings_provider.dart';
 import 'package:nested/nested.dart';
 import '../features/student/reward/rewards_provider.dart';
 import '../features/student/sessions/sessions_provider.dart';
@@ -92,9 +90,6 @@ List<SingleChildWidget> appProviders(
       ChangeNotifierProvider<HomeProvider>(
         create: (_) => HomeProvider(),
       ),
-      ChangeNotifierProvider<ModulesProvider>(
-        create: (_) => ModulesProvider(),
-      ),
       ChangeNotifierProvider<StudentSessionsProvider>(
         create: (_) => StudentSessionsProvider(),
       ),
@@ -103,9 +98,6 @@ List<SingleChildWidget> appProviders(
       ),
       ChangeNotifierProvider<AttendanceProvider>(
         create: (_) => AttendanceProvider(),
-      ),
-      ChangeNotifierProvider<RatingsProvider>(
-        create: (_) => RatingsProvider(),
       ),
       ChangeNotifierProvider<StudentAttendanceProvider>(
         create: (_) => StudentAttendanceProvider(),

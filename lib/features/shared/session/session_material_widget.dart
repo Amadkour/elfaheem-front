@@ -1,21 +1,17 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// Teacher session card (expandable, mobile-first)
-// ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 import '../../../config/app_config.dart';
 import '../../../config/app_theme.dart';
 import '../../../utils/widget/rating_widget.dart';
 import '../../../utils/widget/video_screen.dart';
-import '../../analytics/teacher/exam/teacher_exam_hub_screen.dart';
-import '../../analytics/teacher/teacher_attendance_screen.dart';
+import '../../teacher/analysis/attendance/teacher_attendance_screen.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import '../../student/models.dart';
+import '../../teacher/analysis/exam/teacher_exam_hub_screen.dart';
 import '../../teacher/home/teacher_models.dart';
 import '../../teacher/sessions/model/session_material_model.dart';
 import '../../teacher/sessions/sessions_provider.dart';

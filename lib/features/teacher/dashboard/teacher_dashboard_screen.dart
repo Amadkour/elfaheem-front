@@ -2,9 +2,10 @@ library;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/notification/notifications_provider.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
-import '../../analytics/teacher/analytics_hub_screen.dart';
+import '../analysis/analytics_hub_screen.dart';
 import '../../student/dashboard/dashboard_screen.dart';
 import '../courses/courses_screen.dart';
 import '../home/home_screen.dart';
@@ -28,7 +29,10 @@ class _State extends State<TeacherDashboardScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await context.read<NotificationsProvider>().fetchNotifications();
 
+    });
     TeacherProvider provider = context.read<TeacherProvider>();
     dashboardItems.clear();
     dashboardItems.addAll([

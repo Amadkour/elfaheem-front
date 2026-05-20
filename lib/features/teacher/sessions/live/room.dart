@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:livekit_client/livekit_client.dart';
-import '../../../../utils/exts.dart';
+import '../components/exts.dart';
 import 'widgets/controls.dart';
 import 'widgets/participant.dart';
 import 'widgets/participant_info.dart';
@@ -1751,7 +1751,6 @@ class _RecordingButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isRecording ? _recRed : _textLow;
     return GestureDetector(
       onTap: loading ? null : onTap,
       child: AnimatedContainer(

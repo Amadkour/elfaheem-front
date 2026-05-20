@@ -12,8 +12,8 @@ import '../../../../config/app_theme.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../utils/widget/app_network_image.dart';
 import '../../../utils/widget/refresh_button.dart';
-import '../../analytics/student/student_analytics_provider.dart';
-import '../../analytics/student/student_analytics_screen.dart';
+import '../analysis/student_analytics_provider.dart';
+import '../analysis/student_analytics_screen.dart';
 import '../../auth/auth_widgets.dart';
 import '../../shared/profile/profile_screen.dart';
 import '../../shared/profile/update_account_widget.dart';
@@ -36,10 +36,13 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
 
-   List<DashboardItem> dashboardItems=[];
+  List<DashboardItem> dashboardItems = [];
 
   @override
   void initState() {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await context.read<NotificationsProvider>().fetchNotifications();
+    });
     HomeProvider provider = context.read<HomeProvider>();
     dashboardItems.clear();
     dashboardItems.addAll([
@@ -47,7 +50,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         CupertinoIcons.home,
         CupertinoIcons.house_fill,
         'home',
-      ()async=> provider.init(context),
+        () async => provider.init(context),
         const StudentHomeTab(),
       ),
       DashboardItem(
@@ -80,6 +83,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ]);
     super.initState();
   }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -88,23 +92,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (w >= 900) {
           return WideShell(
             currentIndex: _currentIndex,
-            onTap: (i) { if(mounted) setState(() => _currentIndex = i);},
+            onTap: (i) {
+              if (mounted) setState(() => _currentIndex = i);
+            },
             dashboardItems: dashboardItems,
-
           );
         }
         if (w >= 600) {
           return RailShell(
             currentIndex: _currentIndex,
-            onTap: (i) { if(mounted) setState(() => _currentIndex = i);},
+            onTap: (i) {
+              if (mounted) setState(() => _currentIndex = i);
+            },
             dashboardItems: dashboardItems,
           );
         }
         return MobileShell(
           currentIndex: _currentIndex,
-          onTap: (i) { if(mounted) setState(() => _currentIndex = i);},
+          onTap: (i) {
+            if (mounted) setState(() => _currentIndex = i);
+          },
           dashboardItems: dashboardItems,
-
         );
       },
     );
@@ -319,9 +327,8 @@ class UserChipButton extends StatelessWidget {
                         url:
                             context.read<AuthProvider>().currentUser!.imageUrl!,
                         enableFullscreen: false,
-                            heroTag: "user_logo-dashboard",
-
-                          )))
+                        heroTag: "user_logo-dashboard",
+                      )))
                   : Text(initial,
                       style: const TextStyle(
                           color: Colors.white,
@@ -456,10 +463,9 @@ class _WideTopBar extends StatelessWidget {
   final String title;
   final int unread;
   final Future<void> Function()? onRefresh;
+
   const _WideTopBar(
-      {required this.title,
-      required this.unread,
-      required this.onRefresh});
+      {required this.title, required this.unread, required this.onRefresh});
 
   @override
   Widget build(BuildContext context) {
@@ -482,30 +488,47 @@ class _WideTopBar extends StatelessWidget {
         children: [
           Text(title, style: context.colors.h2),
           const Spacer(),
-          if (onRefresh != null)
-            RefreshButton(onTap: onRefresh!),
-          GestureDetector(
-            onTap: () => Navigator.of(context).pushNamed('/notifications'),
-            child: Stack(clipBehavior: Clip.none, children: [
-              Icon(Icons.notifications_rounded,
-                  color: unread > 0
-                      ? context.colors.primary
-                      : context.colors.textLight,
-                  size: 24),
-              if (unread > 0)
-                Positioned(
-                  top: -2,
-                  right: -2,
-                  child: Container(
-                    width: 11,
-                    height: 11,
-                    decoration: BoxDecoration(
-                        color: context.colors.danger, shape: BoxShape.circle),
-                  ),
-                ),
-            ]),
-          ),
+          if (onRefresh != null) RefreshButton(onTap: onRefresh!),
+          SizedBox(width: 5,),
+          NotificationIcon(haveUnreadNotifications: unread > 0),
         ],
+      ),
+    );
+  }
+}
+
+class NotificationIcon extends StatelessWidget {
+  const NotificationIcon({super.key, required this.haveUnreadNotifications});
+
+  final bool haveUnreadNotifications;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).pushNamed('/notifications'),
+      child: Container(
+        padding: EdgeInsets.all(7),
+        margin: EdgeInsets.all(5),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          color: context.colors.primary,
+        ),
+        child: Stack(clipBehavior: Clip.none, children: [
+          Icon(Icons.notifications_rounded,
+              color: Colors.white,
+              size: 20),
+          if (haveUnreadNotifications)
+            Positioned(
+              top: -2,
+              right: -2,
+              child: Container(
+                width: 11,
+                height: 11,
+                decoration: BoxDecoration(
+                    color: context.colors.danger, shape: BoxShape.circle),
+              ),
+            ),
+        ]),
       ),
     );
   }

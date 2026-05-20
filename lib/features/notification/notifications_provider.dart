@@ -85,8 +85,7 @@ class NotificationModel {
     return NotificationModel(
       id:        json['id'].toString(),
       title:     json['title']   as String? ?? '',
-      body:      json['body']    as String?
-          ?? json['message'] as String?
+      body:      json['message']    as String?
           ?? '',
       isRead:    json['is_read'] as bool? ?? false,
       iconAsset: iconAsset,
@@ -145,7 +144,7 @@ class NotificationsProvider extends BaseProvider {
   /// Notifications belonging to [NotifGroup.today].
   List<NotificationModel> get todayNotifs =>
       _all.where((n) => n.group == NotifGroup.today).toList();
-
+  List<NotificationModel> get allNotifs => _all;
   /// Notifications belonging to [NotifGroup.yesterday].
   List<NotificationModel> get yesterdayNotifs =>
       _all.where((n) => n.group == NotifGroup.yesterday).toList();
@@ -173,15 +172,15 @@ class NotificationsProvider extends BaseProvider {
   }
 
   Future<void> _loadPage({bool unreadOnly = false}) async {
-    final result = await run(() => _api.get(
+    dynamic result = await run(() => _api.get(
       '/api/v1/notifications',
       queryParams: {
-        'skip':        _skip,
-        'limit':       _pageSize,
+        'skip':        0,
+        'limit':       20,
         'unread_only': unreadOnly,
       },
     ));
-
+    result=result['items'];
     if (result is List) {
       final page = result
           .map((e) => NotificationModel.fromJson(e as Map<String, dynamic>))

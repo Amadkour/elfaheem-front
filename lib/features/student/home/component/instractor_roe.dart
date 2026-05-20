@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/analytics/teacher/teacher_attendance_screen.dart';
+import 'package:flutter_education_app/features/teacher/analysis/attendance/teacher_attendance_screen.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/course_instractor_profile.dart';
 import 'package:provider/provider.dart';

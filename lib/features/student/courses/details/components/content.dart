@@ -1,6 +1,6 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_education_app/features/analytics/student/exam/student_course_exams_widget.dart';
 
+import '../../../analysis/exam/student_course_exams_widget.dart';
 import '../../../models.dart';
 import 'about.dart';
 import 'session.dart'; // uses the SessionsTab defined above

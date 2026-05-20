@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
-import '../../../../../utils/exts.dart';
+import '../../components/exts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared Design System tokens (mirrors PreJoinPage & RoomPage)
