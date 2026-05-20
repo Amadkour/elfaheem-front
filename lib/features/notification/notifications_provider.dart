@@ -19,6 +19,7 @@ library;
 
 import '../../core/api_client.dart';
 import '../../core/base_provider.dart';
+import 'notification_service.dart';
 
 // ── NotifGroup ────────────────────────────────────────────────────────────────
 
@@ -190,6 +191,15 @@ class NotificationsProvider extends BaseProvider {
       _skip    += page.length;
       _hasMore  = page.length == _pageSize;
       notifyListeners();
+      for (final notif in page) {
+        if (!notif.isRead) {
+          await NotificationService.instance.show(
+            id: notif.id.hashCode,
+            title: notif.title,
+            body: notif.body,
+          );
+        }
+      }
     }
   }
 

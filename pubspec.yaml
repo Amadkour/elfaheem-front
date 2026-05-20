@@ -50,6 +50,12 @@ dependencies:
   path: any
   cross_file: any
   timeago: ^3.7.1
+  flutter_local_notifications: ^17.2.2
+  timezone: ^0.9.4
+  firebase_core: ^3.8.1
+  firebase_messaging: ^15.1.6
+  firebase_crashlytics: ^4.3.10
+  firebase_remote_config: ^5.5.0
 dependency_overrides:
   # Pin packages that use Apple APIs unavailable on CI runner's Xcode version.
   connectivity_plus: '>=7.0.0 <7.1.0' # NWPath.isUltraConstrained

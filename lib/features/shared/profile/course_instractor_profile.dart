@@ -244,7 +244,8 @@ class _WideLayout extends StatelessWidget {
                       studentView: studentView,
                     ),
                     const SizedBox(height: 28),
-                    StatsRow(stats: stats!, isFull: true)
+                    if (stats != null)
+                      StatsRow(stats: stats!, isFull: true)
                   ],
                 ),
               ),

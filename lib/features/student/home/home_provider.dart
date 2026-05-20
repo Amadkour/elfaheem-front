@@ -112,9 +112,6 @@ class HomeProvider extends BaseProvider {
         auth: true,
       ),
     );
-     print("--------------------");
-     print(result['categories']);
-     print("--------------------");
     if (result['categories'] is List) {
       categories = (result['categories'] as List)
           .map<CategoryModel>((e) => CategoryModel.fromJson(e as Map<String, dynamic>))
@@ -140,9 +137,6 @@ class HomeProvider extends BaseProvider {
           .map<InstructorData>(InstructorData.fromJson)
           .toList();
     }
-
-    print(otherCourses.length);
-
     notifyListeners();
   }
 }

@@ -1,5 +1,9 @@
 library;
 
+import 'dart:async';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';   // ← NEW
+import 'package:flutter/foundation.dart';                           // ← NEW (kDebugMode)
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
@@ -7,6 +11,7 @@ import 'package:flutter_education_app/features/auth/forget_screen.dart';
 import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart';
 import 'package:flutter_education_app/features/student/home/home_screen.dart';
 import 'package:flutter_education_app/features/student/models.dart';
+import 'package:flutter_education_app/utils/remote_config_service.dart';
 import 'package:provider/provider.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -17,6 +22,7 @@ import 'core/providers.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/register_screen.dart';
 import 'features/auth/verified_screen.dart';
+import 'features/notification/notification_service.dart';
 import 'features/notification/notifications_screen.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'features/student/courses/details/course_detail_screen.dart';
@@ -27,20 +33,48 @@ import 'features/shared/profile/profile_provider.dart';
 late StorageService _storage;
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+/// Wrap the entire app in [runZonedGuarded] so any uncaught async error
+/// is forwarded to Crashlytics automatically.
 Future<void> main() async {
+  await runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  WidgetsFlutterBinding.ensureInitialized();
-  _storage = await StorageService.getInstance();
- ApiClient api=ApiClient();
-  await readLanguage();
-  timeago.setLocaleMessages('ar', timeago.ArShortMessages());
-  timeago.setLocaleMessages('en', timeago.EnShortMessages());
-  runApp(
-    MultiProvider(
-      providers: appProviders(storage: _storage,api:api),
-      child: const ElFaheemApp(),
-    ),
-  );
+    _storage = await StorageService.getInstance();
+    ApiClient api = ApiClient();
+
+    await readLanguage();
+    timeago.setLocaleMessages('ar', timeago.ArShortMessages());
+    timeago.setLocaleMessages('en', timeago.EnShortMessages());
+
+    // ── Firebase ────────────────────────────────────────────────────────────
+    await Firebase.initializeApp();
+
+    // ── Crashlytics ─────────────────────────────────────────────────────────
+    // In debug mode, Crashlytics is disabled to avoid polluting your dashboard.
+    // Enable it in production (release / profile builds).
+    await FirebaseCrashlytics.instance
+        .setCrashlyticsCollectionEnabled(!kDebugMode);
+
+    // Forward Flutter framework errors to Crashlytics
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+
+    // ── Remote Config ────────────────────────────────────────────────────────
+    await RemoteConfigService.instance.init();
+
+    // ── FCM / Local Notifications ────────────────────────────────────────────
+    await NotificationService.instance.init();
+
+    runApp(
+      MultiProvider(
+        providers: appProviders(storage: _storage, api: api),
+        child: const ElFaheemApp(),
+      ),
+    );
+  },
+      // Catches errors OUTSIDE the Flutter widget tree (e.g. in Futures, Streams)
+          (error, stack) {
+        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -63,23 +97,20 @@ class ElFaheemApp extends StatelessWidget {
       initialRoute = '/dashboard';
     }
 
-    // ── Dark-mode wiring ─────────────────────────────────────────────────────
-    // context.watch rebuilds MaterialApp whenever darkMode flips.
-    // That's all — no other file needs to change for the theme to switch.
     final isDark = context.watch<ProfileProvider>().darkMode;
+
+    // ── App name from Remote Config ──────────────────────────────────────────
+    // RemoteConfigService.instance.appName returns "ElFaheem" by default,
+    // or whatever value is set in Firebase Console → Remote Config.
+    final appName = RemoteConfigService.instance.appName;
 
     return MaterialApp(
       key: navigatorKey,
-      title: 'ElFaheem',
+      title: appName,                 // ← was hardcoded 'ElFaheem'
       debugShowCheckedModeBanner: false,
-
-      // Light theme
       theme: AppTheme.themeData,
-      // Dark theme
       darkTheme: AppTheme.darkThemeData,
-      // Controlled by ProfileProvider — not by the OS
       themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
-
       initialRoute: initialRoute,
       onGenerateRoute: _router,
       localizationsDelegates: const [
@@ -109,24 +140,23 @@ class ElFaheemApp extends StatelessWidget {
 
   Route<dynamic>? _router(RouteSettings settings) {
     switch (settings.name) {
-      case '/login':            return _fade(const LoginScreen());
-      case '/register':         return _fade(const RegisterScreen());
+      case '/login':             return _fade(const LoginScreen());
+      case '/register':          return _fade(const RegisterScreen());
       case '/otp':
-        final args  = settings.arguments as List;
+        final args = settings.arguments as List;
         return _fade(OtpVerificationScreen(
           email: args[0] as String, role: args[1] as String,
         ));
-      case '/forgot-password':  return _fade(const ForgetScreen());
-      case '/home':             return _fade(const _Guard(child: HomeScreen()));
-      case '/dashboard':        return _fade(const _Guard(child: DashboardScreen()));
-      case '/teacher_dashboard':return _fade(const _Guard(child: TeacherDashboardScreen()));
-      case '/courses':          return _fade(const _Guard(child: CoursesListScreen()));
+      case '/forgot-password':   return _fade(const ForgetScreen());
+      case '/home':              return _fade(const _Guard(child: HomeScreen()));
+      case '/dashboard':         return _fade(const _Guard(child: DashboardScreen()));
+      case '/teacher_dashboard': return _fade(const _Guard(child: TeacherDashboardScreen()));
+      case '/courses':           return _fade(const _Guard(child: CoursesListScreen()));
       case '/course-detail':
         final course = settings.arguments as CourseModel;
         return _fade(_Guard(child: CourseDetailScreen(course: course)));
-      // case '/my-enrollments':   return _fade(const _Guard(child: EnrollmentScreen(course: null,)));
-      case '/notifications':    return _fade(const _Guard(child: NotificationsScreen()));
-      default:                  return _fade(const _NotFoundScreen());
+      case '/notifications':     return _fade(const _Guard(child: NotificationsScreen()));
+      default:                   return _fade(const _NotFoundScreen());
     }
   }
 
@@ -167,7 +197,7 @@ class _NotFoundScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;   // ← uses AppColorsX extension
+    final c = context.colors;
     return Scaffold(
       backgroundColor: c.background,
       body: Center(

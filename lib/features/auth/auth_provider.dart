@@ -7,6 +7,7 @@ import '../../config/storage_service.dart';
 import '../../core/api_client.dart';
 import '../../core/base_provider.dart';
 import '../category/categories_provider.dart';
+import '../notification/notification_service.dart';
 
 // ── Model ─────────────────────────────────────────────────────────────────────
 
@@ -266,6 +267,7 @@ class AuthProvider extends BaseProvider {
       await _storage.saveUser(userJson); // ← persisted to SharedPreferences
 
       isLoadingLogin = false;
+      await NotificationService.instance.registerWithBackend(_api);
       notifyListeners();
       return true;
     }
@@ -371,6 +373,7 @@ class AuthProvider extends BaseProvider {
   Future<void> logout() async {
     await _storage.clearAll(); // wipes tokens + user JSON
     _currentUser = null;
+    await NotificationService.instance.unregisterFromBackend(_api);
     notifyListeners();
   }
 

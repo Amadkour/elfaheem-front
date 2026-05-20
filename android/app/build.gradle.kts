@@ -3,8 +3,9 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services")          // ← Firebase
+    id("com.google.firebase.crashlytics")          // ← NEW: Crashlytics
 }
 
 android {
@@ -15,16 +16,12 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.flutter_education_app"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-//        minSdk = flutter.minSdkVersion
         minSdk = flutter.minSdkVersion
-//        targetSdk = flutter.targetSdkVersion
         targetSdk = 34
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -32,14 +29,24 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+
+            // ── Crashlytics ───────────────────────────────────────────────────
+            // Uploads mapping file so Crashlytics can deobfuscate stack traces.
+            // Set to false during development to speed up builds.
+            firebaseCrashlytics {
+                mappingFileUploadEnabled = true
+                nativeSymbolUploadEnabled = false   // enable if you use C/C++ NDK
+            }
+        }
+        debug {
+            firebaseCrashlytics {
+                mappingFileUploadEnabled = false
+            }
         }
     }
 }
 
-// Configure Kotlin compiler options (migrated from deprecated kotlinOptions)
 kotlin {
     compilerOptions {
         jvmTarget = JvmTarget.fromTarget("17")
@@ -51,6 +58,6 @@ flutter {
 }
 
 dependencies {
-    // Required for multi-dex (WebRTC is large)
     implementation("androidx.multidex:multidex:2.0.1")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
