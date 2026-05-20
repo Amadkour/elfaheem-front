@@ -281,11 +281,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: List.generate(otpLength, (index) {
-            return SizedBox(
-              width: 70,
-              height: 70,
-              child: _buildSingleBox(index),
-            );
+            return _buildSingleBox(index);
           }),
         ),
       ),
@@ -312,61 +308,66 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       bgColor = context.colors.inputBg;
     }
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-        border: Border.all(color: borderColor, width: isFocused ? 2 : 1),
-        boxShadow: isFocused
-            ? [
-                BoxShadow(
-                  color: context.colors.primary.withValues(alpha: 0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(context.colors.radiusMedium),
+            border: Border.all(color: borderColor, width: isFocused ? 2 : 1),
+            boxShadow: isFocused
+                ? [
+                    BoxShadow(
+                      color: context.colors.primary.withValues(alpha: 0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: KeyboardListener(
+            focusNode: FocusNode(),
+            onKeyEvent: (event) => _onKeyEvent(index, event),
+            child: TextField(
+              controller: _controllers[index],
+              focusNode: _focusNodes[index],
+              textAlign: TextAlign.center,
+              keyboardType: TextInputType.number,
+              maxLength: 1,
+              style:  TextStyle(
+                fontSize: 28,
+                height: 2.7,
+                fontWeight: FontWeight.w800,
+                color: context.colors.textDark,
+              ),
+              decoration:  InputDecoration(
+                constraints: BoxConstraints(minHeight: 70),
+                focusColor:  context.colors.background,
+                counterText: '',
+                border: InputBorder.none,
+                fillColor: context.colors.background,
+                contentPadding: EdgeInsets.zero,
+                focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide.none,
+                    borderRadius: BorderRadius.circular(context.colors.radiusMedium)
                 ),
-              ]
-            : null,
-      ),
-      child: KeyboardListener(
-        focusNode: FocusNode(),
-        onKeyEvent: (event) => _onKeyEvent(index, event),
-        child: TextField(
-          controller: _controllers[index],
-          focusNode: _focusNodes[index],
-          textAlign: TextAlign.center,
-          keyboardType: TextInputType.number,
-          maxLength: 1,
-          style:  TextStyle(
-            fontSize: 28,
-            height: 2.7,
-            fontWeight: FontWeight.w800,
-            color: context.colors.textDark,
-          ),
-          decoration:  InputDecoration(
-            constraints: BoxConstraints(minHeight: 70),
-            focusColor:  context.colors.background,
-            counterText: '',
-            border: InputBorder.none,
-            fillColor: context.colors.background,
-            contentPadding: EdgeInsets.zero,
-            focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide.none,
-                borderRadius: BorderRadius.circular(context.colors.radiusMedium)
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderSide: BorderSide.none,
-              borderRadius: BorderRadius.circular(context.colors.radiusMedium)
-            ),
-            disabledBorder: OutlineInputBorder(
-                borderSide: BorderSide.none,
-                borderRadius: BorderRadius.circular(context.colors.radiusMedium)
-            ),
-          ),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide.none,
+                  borderRadius: BorderRadius.circular(context.colors.radiusMedium)
+                ),
+                disabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide.none,
+                    borderRadius: BorderRadius.circular(context.colors.radiusMedium)
+                ),
+              ),
 
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          onChanged: (value) => _onOtpChanged(index, value),
-          cursorColor: context.colors.primary,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              onChanged: (value) => _onOtpChanged(index, value),
+              cursorColor: context.colors.primary,
+            ),
+          ),
         ),
       ),
     );
