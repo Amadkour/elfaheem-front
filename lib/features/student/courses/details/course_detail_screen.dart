@@ -90,7 +90,9 @@ class _MobileDetail extends StatelessWidget {
                     slivers: [
                       SliverToBoxAdapter(child: _CourseHero()),
                       SliverToBoxAdapter(child: _CourseMeta()),
-                      SliverToBoxAdapter(child: _TabBarWidget()),
+                      if (provider.course.isEnrolled)
+...[
+                        SliverToBoxAdapter(child: _TabBarWidget()),
                       const SliverToBoxAdapter(child: SizedBox(height: 4)),
                       SliverToBoxAdapter(
                           child: TabContent(
@@ -98,6 +100,7 @@ class _MobileDetail extends StatelessWidget {
                             courseId: provider.course.id,
 
                           )),
+    ]
                     ],
                   ),
                 ),
@@ -382,38 +385,7 @@ class _CourseHero extends StatelessWidget {
               ],
             ),
           ),
-        // Category + title overlay at bottom
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (c.categoryName != null) ...[
-                  _HeroBadge(c.categoryName!),
-                  const SizedBox(height: 8),
-                ],
-                Text(
-                  c.name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    fontFamily: 'Cairo',
-                    letterSpacing: -0.4,
-                    height: 1.25,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ),
+
       ],
     );
   }
@@ -426,21 +398,13 @@ class _HeroBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) =>
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-        ),
-        child: Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            fontFamily: 'Cairo',
-          ),
+      Text(
+        label,
+        style:  TextStyle(
+          color: context.colors.textLight,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          fontFamily: 'Cairo',
         ),
       );
 }
@@ -502,16 +466,30 @@ class _CourseMeta extends StatelessWidget {
         .course;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+
           // Stars row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              RatingWidget(
-                type: RateType.course, sourceId: c.id, canEdit: true,),
+
+              Text(
+                c.name,
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  fontFamily: 'Cairo',
+                  letterSpacing: -0.4,
+                  height: 1.25,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Spacer(),
               IconButton(onPressed: () {
                 Navigator
                     .of(context)
@@ -519,7 +497,23 @@ class _CourseMeta extends StatelessWidget {
                     ChangeNotifierProvider(
                         create: (_) => ComplaintProvider(),
                         child:  NewComplaintScreen(courseTitle: c.title,courseId: c.id,))));
-                }, icon: Icon(Icons.headset_mic_rounded))
+              }, icon: Icon(Icons.headset_mic_rounded)),
+              SizedBox(height: 8,),
+
+            ],
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (c.categoryName != null) ...[
+                _HeroBadge(c.categoryName!),
+                //const SizedBox(height: 8),
+              ],
+              Spacer(),
+              RatingWidget(
+                type: RateType.course, sourceId: c.id, canEdit: c.isEnrolled,),
+
             ],
           ),
           const SizedBox(height: 18),
@@ -616,34 +610,33 @@ class _TabBarWidget extends StatelessWidget {
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 220),
                   curve: Curves.easeOut,
+                  margin: EdgeInsets.only(left: 3,right: 3,bottom: 8),
+                  
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   decoration: BoxDecoration(
-                    gradient: isActive ? context.colors.primaryGradient : null,
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: isActive
-                        ? [
-                      BoxShadow(
-                        color: context.colors.primary.withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                        : null,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: isActive ?context.colors.primary:context.colors
+                            .textLight
+                      )
+                    ),
+
+
                   ),
-                  child: Row(
+                  child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
                         icon,
                         size: 14,
-                        color: isActive ? Colors.white : context.colors
+                        color: isActive ? context.colors.primary : context.colors
                             .textLight,
                       ),
                       const SizedBox(width: 5),
                       Text(
                         label,
                         style: context.colors.label.copyWith(
-                          color: isActive ? Colors.white : context.colors
+                          color: isActive ?context.colors.primary: context.colors
                               .textLight,
                           fontWeight:
                           isActive ? FontWeight.w700 : FontWeight.w500,

@@ -25,10 +25,12 @@ class StatChip extends StatelessWidget {
       child: Container(
         height: maxHeight,
         width: maxHeight,
+        margin: EdgeInsets.all(3),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
         decoration: BoxDecoration(
           color: context.colors.cardBg,
-          borderRadius: BorderRadius.circular(16),
+          //borderRadius: BorderRadius.circular(16),
+            shape: BoxShape.circle,
           border: Border.all(color: fg.withValues(alpha:0.12)),
           boxShadow: [
             BoxShadow(
