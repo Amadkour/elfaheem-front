@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/auth/login_screen.dart';
+import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_theme.dart';
@@ -192,76 +193,90 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
 
   @override
   Widget build(BuildContext context) {
+    bool isWeb=MediaQuery.of(context).size.width > 800;
     return BasePage(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: Text('verification'.tr),
-      ),
+      appBar:isWeb?null: ScreenAppBar(title: 'verification'.tr),
       child:  SafeArea(
-          child: Row(
+          child: (isWeb)?
+    Row(
             children: [
-              if(MediaQuery.of(context).size.width > 800)
                 AuthSidebar(),
-              Expanded(
-                child: Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 480),
-                      child: FadeTransition(
-                        opacity: _fadeAnimation,
-                        child: Card(
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(context.colors.radiusXL),
-                          ),
-                          color: context.colors.cardBg,
-                          child: Padding(
-                            padding: const EdgeInsets.all(32),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                ProgressBar(currentStep: 1, totalSteps:3),
-                                const SizedBox(height: 28),
+              form(true)
+            ],
+          ):Column(
+            children: [
+              ProgressBar(currentStep: 1, totalSteps:3),
 
-                                Text(
-                                  'enter_verification_code'.tr,
-                                  style: context.colors.h1,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'verification_code_sent'.tr,
-                                  style: context.colors.body,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  widget.email,
-                                  style:  TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    color: context.colors.textDark,
-                                  ),
-                                ),
-                                const SizedBox(height: 32),
-                                _buildOtpFields(),
-                                const SizedBox(height: 24),
-                                _buildResendRow(),
-                                const SizedBox(height: 32),
-                                _buildConfirmButton(),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+              Padding(
+                padding:  EdgeInsets.fromLTRB(20,context.height/7,20,0),
+                child: form(false),
               ),
             ],
           ),
         ),
     );
   }
+ Widget form (bool isWeb) {
+    Widget main=Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if(isWeb)
+        ProgressBar(currentStep: 1, totalSteps:3),
+        const SizedBox(height: 28),
 
+        Text(
+          'enter_verification_code'.tr,
+          style: context.colors.h1,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'verification_code_sent'.tr,
+          style: context.colors.body,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          widget.email,
+          style:  TextStyle(
+            fontWeight: FontWeight.w700,
+            color: context.colors.textDark,
+          ),
+        ),
+        const SizedBox(height: 32),
+        _buildOtpFields(),
+        const SizedBox(height: 24),
+        _buildResendRow(),
+        const SizedBox(height: 32),
+        _buildConfirmButton(),
+      ],
+    );
+    if(isWeb) {
+      return Expanded(
+   child: Center(
+     child: SingleChildScrollView(
+       padding: const EdgeInsets.all(24),
+       child: ConstrainedBox(
+         constraints: const BoxConstraints(maxWidth: 480),
+         child: FadeTransition(
+           opacity: _fadeAnimation,
+           child: Card(
+             elevation: 0,
+             shape: RoundedRectangleBorder(
+               borderRadius: BorderRadius.circular(context.colors.radiusXL),
+             ),
+             color: context.colors.cardBg,
+             child: Padding(
+               padding: const EdgeInsets.all(32),
+               child: main
+             ),
+           ),
+         ),
+       ),
+     ),
+   ),
+ );
+    }
+    return main;
+ }
   Widget _buildOtpFields() {
     return AnimatedBuilder(
       animation: _shakeAnimation,
@@ -344,10 +359,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
               ),
               decoration:  InputDecoration(
                 constraints: BoxConstraints(minHeight: 70),
-                focusColor:  context.colors.background,
+                focusColor:  context.colors.cardBg,
                 counterText: '',
                 border: InputBorder.none,
-                fillColor: context.colors.background,
+                fillColor: context.colors.cardBg,
                 contentPadding: EdgeInsets.zero,
                 focusedBorder: OutlineInputBorder(
                     borderSide: BorderSide.none,
