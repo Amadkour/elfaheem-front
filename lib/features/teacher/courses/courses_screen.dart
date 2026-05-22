@@ -159,7 +159,7 @@ class _AddCourseButton extends StatelessWidget {
                   color: Colors.white,
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  fontFamily: 'Cairo',
+                  fontFamily: 'bahji',
                 ),
               ),
             ],
@@ -412,7 +412,7 @@ class _EmptyState extends StatelessWidget {
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
-                      fontFamily: 'Cairo',
+                      fontFamily: 'bahji',
                       fontSize: 14,
                     ),
                   ),
@@ -452,18 +452,18 @@ class _CourseCardState extends State<_CourseCard> {
           title: Text(
             'delete_course'.tr,
             style: const TextStyle(
-                fontFamily: 'Cairo', fontWeight: FontWeight.w800),
+                fontFamily: 'bahji', fontWeight: FontWeight.w800),
           ),
           content: Text(
             '${'delete_course_confirm'.tr} "${widget.course.title}"؟',
-            style: const TextStyle(fontFamily: 'Cairo'),
+            style: const TextStyle(fontFamily: 'bahji'),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
               child: Text('cancel'.tr,
                   style:  TextStyle(
-                      fontFamily: 'Cairo', color: context.colors.textMedium)),
+                      fontFamily: 'bahji', color: context.colors.textMedium)),
             ),
             Container(
               decoration: BoxDecoration(
@@ -473,7 +473,7 @@ class _CourseCardState extends State<_CourseCard> {
                 onPressed: () => Navigator.pop(context, true),
                 child: Text('delete'.tr,
                     style: const TextStyle(
-                        fontFamily: 'Cairo',
+                        fontFamily: 'bahji',
                         color: Colors.white,
                         fontWeight: FontWeight.w700)),
               ),
@@ -488,7 +488,7 @@ class _CourseCardState extends State<_CourseCard> {
       if (mounted && deleted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('course_deleted'.tr,
-              style: const TextStyle(fontFamily: 'Cairo', color: Colors.white)),
+              style: const TextStyle(fontFamily: 'bahji', color: Colors.white)),
           backgroundColor: context.colors.success,
           behavior: SnackBarBehavior.floating,
           shape:
@@ -789,7 +789,7 @@ class _StatusBadge extends StatelessWidget {
             color: isDraft ? const Color(0xFFf59e0b) : context.colors.accent2,
             fontSize: 16,
             fontWeight: FontWeight.w800,
-            fontFamily: 'Cairo',
+            fontFamily: 'bahji',
           ),
         ),
       );
@@ -865,7 +865,7 @@ class _PublishButton extends StatelessWidget {
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
               ),
             ),
           ],

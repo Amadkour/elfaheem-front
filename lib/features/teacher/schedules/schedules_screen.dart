@@ -300,7 +300,7 @@ class _NextBanner extends StatelessWidget {
                       style: const TextStyle(
                           color: Colors.white,
                           fontSize: 11,
-                          fontFamily: 'Cairo',
+                          fontFamily: 'bahji',
                           fontWeight: FontWeight.w700),
                     ),
                   ),
@@ -309,7 +309,7 @@ class _NextBanner extends StatelessWidget {
                       style: const TextStyle(
                           color: Colors.white,
                           fontSize: 17,
-                          fontFamily: 'Cairo',
+                          fontFamily: 'bahji',
                           fontWeight: FontWeight.w800),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
@@ -322,7 +322,7 @@ class _NextBanner extends StatelessWidget {
                         style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 12,
-                            fontFamily: 'Cairo')),
+                            fontFamily: 'bahji')),
                     if (slot.calcDuration > 0) ...[
                       const SizedBox(width: 10),
                       Container(
@@ -334,7 +334,7 @@ class _NextBanner extends StatelessWidget {
                             style: const TextStyle(
                                 color: Colors.white70,
                                 fontSize: 11,
-                                fontFamily: 'Cairo')),
+                                fontFamily: 'bahji')),
                       ),
                     ],
                   ]),
@@ -351,7 +351,7 @@ class _NextBanner extends StatelessWidget {
                       style: const TextStyle(
                           color: Colors.white,
                           fontSize: 13,
-                          fontFamily: 'Cairo',
+                          fontFamily: 'bahji',
                           fontWeight: FontWeight.w700),
                     ),
                   ),
@@ -434,12 +434,12 @@ class _ProgressRing extends StatelessWidget {
                       color: Colors.white,
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
-                      fontFamily: 'Cairo')),
+                      fontFamily: 'bahji')),
                Text('completed'.tr,
                   style: TextStyle(
                       color: Colors.white60,
                       fontSize: 9,
-                      fontFamily: 'Cairo')),
+                      fontFamily: 'bahji')),
             ]),
           ]));
 }
@@ -548,7 +548,7 @@ class _WeekStrip extends StatelessWidget {
                       Text(
                         slotDayShort(day),
                         style: TextStyle(
-                          fontFamily: 'Cairo',
+                          fontFamily: 'bahji',
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: isSel
@@ -659,7 +659,7 @@ class ScheduleSlotCard extends StatelessWidget {
               child: Column(children: [
                 Text(slot.startTime,
                     style: TextStyle(
-                        fontFamily: 'Cairo',
+                        fontFamily: 'bahji',
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
                         color: accentColor)),
@@ -669,7 +669,7 @@ class ScheduleSlotCard extends StatelessWidget {
                     color: accentColor.withValues(alpha: 0.3)),
                 Text(slot.endTime,
                     style: TextStyle(
-                        fontFamily: 'Cairo',
+                        fontFamily: 'bahji',
                         fontSize: 11,
                         color: accentColor.withValues(alpha: 0.7))),
               ]),
@@ -755,7 +755,7 @@ class _StatusRow extends StatelessWidget {
         const SizedBox(width: 4),
         Text(slot.countdownLabel(ongoingSecondsLeft),
             style:  TextStyle(
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: context.colors.danger)),
@@ -770,7 +770,7 @@ class _StatusRow extends StatelessWidget {
         const SizedBox(width: 4),
         Text(slot.countdownLabel(0),
             style: TextStyle(
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: accentColor)),
@@ -805,7 +805,7 @@ class _StatusBadge extends StatelessWidget {
           SizedBox(width: 4),
           Text('session_type_live'.tr,
               style: TextStyle(
-                  fontFamily: 'Cairo',
+                  fontFamily: 'bahji',
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
                   color: context.colors.danger)),
@@ -823,7 +823,7 @@ class _StatusBadge extends StatelessWidget {
                ),
         child:  Text('today'.tr,
             style: TextStyle(
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
                 color: context.colors.success)),
@@ -836,7 +836,7 @@ class _StatusBadge extends StatelessWidget {
           borderRadius: BorderRadius.circular(8)),
       child: Text(slotDayShort(slot.day),
           style: TextStyle(
-              fontFamily: 'Cairo',
+              fontFamily: 'bahji',
               fontSize: 10,
               fontWeight: FontWeight.w700,
               color: context.colors.primary.withValues(alpha: 0.8))),
@@ -857,7 +857,7 @@ class _InfoChip extends StatelessWidget {
         const SizedBox(width: 3),
         Text(label,
             style: TextStyle(
-                fontFamily: 'Cairo', fontSize: 11, color: AppTheme.textLight)),
+                fontFamily: 'bahji', fontSize: 11, color: AppTheme.textLight)),
       ]);
 }
 
@@ -928,7 +928,7 @@ class _LoadingState extends StatelessWidget {
       const SizedBox(height: 16),
        Text('loading-schedule'.tr,
           style: TextStyle(
-              fontFamily: 'Cairo',
+              fontFamily: 'bahji',
               fontSize: 13,
               color: context.colors.textMedium)),
       const SizedBox(height: 20),
@@ -936,7 +936,7 @@ class _LoadingState extends StatelessWidget {
         onTap: onRefresh,
         child: Text('retry'.tr,
             style: TextStyle(
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
                 fontSize: 13,
                 color: context.colors.primary,
                 fontWeight: FontWeight.w700,
@@ -1088,7 +1088,7 @@ class _ManageCard extends StatelessWidget {
                 color: Colors.white,
                 fontSize: 15,
                 fontWeight: FontWeight.w800,
-                fontFamily: 'Cairo'),
+                fontFamily: 'bahji'),
             textAlign: TextAlign.center,
           ),
         ),
@@ -1140,18 +1140,18 @@ class _ManageCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16)),
             title:  Text('appointment-delete'.tr,
                 style: TextStyle(
-                    fontFamily: 'Cairo',
+                    fontFamily: 'bahji',
                     fontWeight: FontWeight.w700)),
             content: Text(
                 '${'appointment-delete'.tr}$slotDayLabel(s.day)$s.startTime؟',
 
-                style: const TextStyle(fontFamily: 'Cairo')),
+                style: const TextStyle(fontFamily: 'bahji')),
             actions: [
               TextButton(
                   onPressed: () => Navigator.pop(ctx, false),
                   child:  Text('cancel'.tr,
                       style: TextStyle(
-                          fontFamily: 'Cairo',
+                          fontFamily: 'bahji',
                           color: context.colors.textMedium))),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -1161,7 +1161,7 @@ class _ManageCard extends StatelessWidget {
                 onPressed: () => Navigator.pop(ctx, true),
                 child:  Text('delete'.tr,
                     style: TextStyle(
-                        fontFamily: 'Cairo',
+                        fontFamily: 'bahji',
                         color: Colors.white,
                         fontWeight: FontWeight.w700)),
               ),
@@ -1215,7 +1215,7 @@ class _ManageEmptyState extends StatelessWidget {
                 style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
-                    fontFamily: 'Cairo',
+                    fontFamily: 'bahji',
                     fontSize: 14)),
           ),
         ),
@@ -1270,17 +1270,17 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
               child: AlertDialog(
                 title:  Text('duplicate-schedule'.tr,
                     style: TextStyle(
-                        fontFamily: 'Cairo',
+                        fontFamily: 'bahji',
                         fontWeight: FontWeight.w700)),
                 content:  Text(
                     'same-day-schedule-exists'.tr,
-                    style: TextStyle(fontFamily: 'Cairo')),
+                    style: TextStyle(fontFamily: 'bahji')),
                 actions: [
                   TextButton(
                       onPressed: () => Navigator.pop(context, false),
                       child:  Text('cancel'.tr,
                           style: TextStyle(
-                              fontFamily: 'Cairo',
+                              fontFamily: 'bahji',
                               color: context.colors.textMedium))),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
@@ -1290,7 +1290,7 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
                     onPressed: () => Navigator.pop(context, true),
                     child:  Text('add'.tr,
                         style: TextStyle(
-                            fontFamily: 'Cairo',
+                            fontFamily: 'bahji',
                             color: Colors.white,
                             fontWeight: FontWeight.w700)),
                   ),
@@ -1311,7 +1311,7 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
         content: Text(
             r != null ? 'appointment-added-successfully'.tr : 'something-went-wrong'.tr,
             style: const TextStyle(
-                fontFamily: 'Cairo', color: Colors.white)),
+                fontFamily: 'bahji', color: Colors.white)),
         backgroundColor:
         r != null ? context.colors.success : context.colors.danger,
         behavior: SnackBarBehavior.floating,

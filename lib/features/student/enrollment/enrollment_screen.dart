@@ -109,7 +109,7 @@ class MoyasarCardPaymentScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: Text('بيانات البطاقة',
-              style: TextStyle(fontFamily: 'Cairo', color: c.textDark, fontWeight: FontWeight.w700)),
+              style: TextStyle(fontFamily: 'bahji', color: c.textDark, fontWeight: FontWeight.w700)),
           backgroundColor: c.cardBg,
           surfaceTintColor: Colors.transparent,
           elevation: 0,
@@ -437,7 +437,7 @@ class _StcBadge extends StatelessWidget {
     child: const Text('STC Pay',
         style: TextStyle(
           fontSize: 10, fontWeight: FontWeight.w700,
-          color: _kStcColor, fontFamily: 'Cairo',
+          color: _kStcColor, fontFamily: 'bahji',
         )),
   );
 }
@@ -455,7 +455,7 @@ class _SecureBadge extends StatelessWidget {
       const SizedBox(width: 3),
       Text('آمن', style: TextStyle(
         fontSize: 10, fontWeight: FontWeight.w700,
-        color: Colors.green.shade700, fontFamily: 'Cairo',
+        color: Colors.green.shade700, fontFamily: 'bahji',
       )),
     ]),
   );
@@ -697,7 +697,7 @@ class _FeeBreakdownCardState extends State<_FeeBreakdownCard> {
                             color: Colors.white,
                             fontWeight: FontWeight.w800,
                             fontSize: 16,
-                            fontFamily: 'Cairo',
+                            fontFamily: 'bahji',
                           )),
                     ),
                   ],
@@ -788,7 +788,7 @@ class _ConfirmBar extends StatelessWidget {
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
                   fontSize: 17,
-                  fontFamily: 'Cairo',
+                  fontFamily: 'bahji',
                 )),
           ),
         ),
@@ -1262,7 +1262,7 @@ class _GradientBtn extends StatelessWidget {
                 color: Colors.white,
                 fontWeight: FontWeight.w800,
                 fontSize: 16,
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
               )),
         ),
       ),

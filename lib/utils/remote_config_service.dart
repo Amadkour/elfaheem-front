@@ -1,5 +1,6 @@
 // lib/config/remote_config_service.dart
 import 'package:firebase_remote_config/firebase_remote_config.dart';
+import 'package:flutter/foundation.dart';
 
 /// Singleton wrapper around Firebase Remote Config.
 ///
@@ -50,10 +51,12 @@ class RemoteConfigService {
     }
 
     // Listen for real-time config updates (optional but nice to have)
-    _rc.onConfigUpdated.listen((event) async {
-      await _rc.activate();
-      print('[RemoteConfig] config updated: ${event.updatedKeys}');
-    });
+    if (!kIsWeb) {
+      _rc.onConfigUpdated.listen((event) async {
+        await _rc.activate();
+        print('[RemoteConfig] config updated: ${event.updatedKeys}');
+      });
+    }
   }
 
   // ── Getters ───────────────────────────────────────────────────────────────

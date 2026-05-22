@@ -61,7 +61,7 @@ class _StudentExamsTabState extends State<StudentExamsTab>
                 child: Text(
                     'اختبار "${exam.name}" في ${exam.courseName} يبدأ بعد ${exam.minutesLeft} دقيقة!',
                     style: const TextStyle(
-                        fontFamily: 'Cairo',
+                        fontFamily: 'bahji',
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
                         fontSize: 13))),
@@ -71,7 +71,7 @@ class _StudentExamsTabState extends State<StudentExamsTab>
                 onPressed: () =>
                     ScaffoldMessenger.of(context).hideCurrentMaterialBanner(),
                 child: const Text('إغلاق',
-                    style: TextStyle(color: Colors.white, fontFamily: 'Cairo')))
+                    style: TextStyle(color: Colors.white, fontFamily: 'bahji')))
           ],
         ));
         break;
@@ -179,7 +179,7 @@ class _StudentExamsTabState extends State<StudentExamsTab>
                                     onPressed: _load,
                                     child: const Text('إعادة المحاولة',
                                         style:
-                                        TextStyle(fontFamily: 'Cairo'))),
+                                        TextStyle(fontFamily: 'bahji'))),
                               ]))
                           : _exams.isEmpty
                           ?  Center(
@@ -269,7 +269,7 @@ class _ExamCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8)),
                 child: Text(sub ? (passed ? 'ناجح' : 'راسب') : 'لم يُؤَدَّ',
                     style: TextStyle(
-                        fontFamily: 'Cairo',
+                        fontFamily: 'bahji',
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: color))),
@@ -288,7 +288,7 @@ class _ExamCard extends StatelessWidget {
               const SizedBox(width: 10),
               Text('${pct.toStringAsFixed(0)}%',
                   style: TextStyle(
-                      fontFamily: 'Cairo',
+                      fontFamily: 'bahji',
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: color)),

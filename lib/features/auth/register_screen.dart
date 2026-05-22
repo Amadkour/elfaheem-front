@@ -201,177 +201,169 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Widget _buildForm(AuthProvider provider) {
     final c = context.colors;
-    return Container(
-      width: context.width > 800 ? 500 : context.width,
-      padding: const EdgeInsets.all(20.0),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(c.radiusXL),
-        color: c.cardBg,
-      ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ProgressBar(currentStep: 0, totalSteps: 3),
-            const SizedBox(height: 28),
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ProgressBar(currentStep: 0, totalSteps: 3),
+          const SizedBox(height: 28),
 
-            // Back
-            GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.arrow_back_ios_rounded, size: 14),
-                const SizedBox(width: 4),
-                Text('login'.tr,
-                    style: TextStyle(
-                        fontFamily: 'Tajawal',
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: c.textDark)),
-              ]),
-            ),
-            const SizedBox(height: 20),
+          // Back
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.arrow_back_ios_rounded, size: 14),
+              const SizedBox(width: 4),
+              Text('login'.tr,
+                  style: TextStyle(
+                      fontFamily: 'Tajawal',
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: c.textDark)),
+            ]),
+          ),
+          const SizedBox(height: 20),
 
-            Text('create_account'.tr,
-                style: TextStyle(
-                    fontFamily: 'Tajawal',
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: c.textDark)),
-            const SizedBox(height: 6),
-            Text('registration_welcome'.tr,
-                style: TextStyle(
-                    fontFamily: 'Tajawal',
-                    fontSize: 14,
-                    color: c.secondText,
-                    height: 1.5)),
-            const SizedBox(height: 28),
+          Text('create_account'.tr,
+              style: TextStyle(
+                  fontFamily: 'Tajawal',
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: c.textDark)),
+          const SizedBox(height: 6),
+          Text('registration_welcome'.tr,
+              style: TextStyle(
+                  fontFamily: 'Tajawal',
+                  fontSize: 14,
+                  color: c.secondText,
+                  height: 1.5)),
+          const SizedBox(height: 28),
 
-            // Full name
-            IconTextField(
-                controller: _fullNameController,
-                label: 'full_name'.tr,
-                icon: Icons.person_outline_rounded),
-            const SizedBox(height: 20),
+          // Full name
+          IconTextField(
+              controller: _fullNameController,
+              label: 'full_name'.tr,
+              icon: Icons.person_outline_rounded),
+          const SizedBox(height: 20),
 
-            // Email
-            IconTextField(
-                controller: _emailController,
-                label: 'email'.tr,
-                icon: Icons.email_outlined,
-                keyboard: TextInputType.emailAddress),
-            const SizedBox(height: 20),
+          // Email
+          IconTextField(
+              controller: _emailController,
+              label: 'email'.tr,
+              icon: Icons.email_outlined,
+              keyboard: TextInputType.emailAddress),
+          const SizedBox(height: 20),
 
-            // Phone
-            IconTextField(
-                controller: _phoneController,
-                label: 'phone'.tr,
-                icon: Icons.phone_outlined,
-                keyboard: TextInputType.phone),
-            const SizedBox(height: 20),
+          // Phone
+          IconTextField(
+              controller: _phoneController,
+              label: 'phone'.tr,
+              icon: Icons.phone_outlined,
+              keyboard: TextInputType.phone),
+          const SizedBox(height: 20),
 
-            // Date of birth
-            SectionLabel(label: 'dob'.tr),
-            const SizedBox(height: 8),
-            MyDatePicker(
-              onChange: (picked) => setState(() {
-                selectedDate = picked;
-                _dobController.text = "${selectedDate.toLocal()}".split(' ')[0];
-              }),
-              selectedDate: selectedDate,
-              controller: _dobController,
-              label: 'dob'.tr,
-            ),
-            const SizedBox(height: 20),
+          // Date of birth
+          SectionLabel(label: 'dob'.tr),
+          const SizedBox(height: 8),
+          MyDatePicker(
+            onChange: (picked) => setState(() {
+              selectedDate = picked;
+              _dobController.text = "${selectedDate.toLocal()}".split(' ')[0];
+            }),
+            selectedDate: selectedDate,
+            controller: _dobController,
+            label: 'dob'.tr,
+          ),
+          const SizedBox(height: 20),
 
-            // Role
-            SectionLabel(label: 'role'.tr),
-            const SizedBox(height: 10),
-            RolePicker(provider: provider, rolController: _rolController),
-            const SizedBox(height: 20),
+          // Role
+          SectionLabel(label: 'role'.tr),
+          const SizedBox(height: 10),
+          RolePicker(provider: provider, rolController: _rolController),
+          const SizedBox(height: 20),
 
-            // Password
-            IconPasswordField(
-              controller: _passwordController,
-              label: 'password'.tr,
-              obscure: _obscurePassword,
-              onToggle: () =>
-                  setState(() => _obscurePassword = !_obscurePassword),
-            ),
-            const SizedBox(height: 20),
-            if (_passwordController.text.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              StrengthBar(
-                strength: _strength,
-                strengthColor: _strengthColor(c),
-                strengthLabel: _strengthLabel(),
-                c: c,
-              ),
-            ],
-
-            // Confirm password
-            IconPasswordField(
-              controller: _confirmedPasswordController,
-              label: 'confirmed_password'.tr,
-              obscure: _obscureConfirm,
-              onToggle: () =>
-                  setState(() => _obscureConfirm = !_obscureConfirm),
-            ),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration:
-                  BoxDecoration(color: c.inputBg, borderRadius: c.brMedium),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('المتطلبات', style: c.label.copyWith(fontSize: 12)),
-                    const SizedBox(height: 10),
-                    PasswordReq(
-                        met: _reqMinLength, label: '٦ أحرف على الأقل', c: c),
-                    PasswordReq(
-                        met: _reqUppercase,
-                        label: 'حرف كبير واحد على الأقل (A-Z)',
-                        c: c),
-                    PasswordReq(
-                        met: _reqDigit,
-                        label: 'رقم واحد على الأقل (0-9)',
-                        c: c),
-                    PasswordReq(
-                        met: _reqMatch,
-                        label: 'تطابق كلمة المرور الجديدة',
-                        c: c),
-                  ]),
-            ),
-            const SizedBox(height: 24),
-
-            // ── Terms acceptance row ─────────────────────────────────────
-            _TermsAcceptRow(
-              accepted: _termsAccepted,
-              onReadTap: _openTerms,
-              onCheckChanged: (v) {
-                // Only allow manual un-tick; tick only via reading the sheet
-                if (!v) setState(() => _termsAccepted = false);
-              },
-            ),
-            const SizedBox(height: 20),
-
-            // Submit
-            PrimaryButton(
-              isLoading: provider.isLoadingRegistration,
-              label: 'confirm'.tr,
-              icon: Icons.check_rounded,
-              onPressed: _register,
-              enable: _canSubmit,
-            ),
-            const SizedBox(height: 20),
-
-            LinkRow(
-              message: 'have_account'.tr,
-              linkText: 'login'.tr,
-              onTap: () => Navigator.pop(context),
+          // Password
+          IconPasswordField(
+            controller: _passwordController,
+            label: 'password'.tr,
+            obscure: _obscurePassword,
+            onToggle: () =>
+                setState(() => _obscurePassword = !_obscurePassword),
+          ),
+          const SizedBox(height: 20),
+          if (_passwordController.text.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            StrengthBar(
+              strength: _strength,
+              strengthColor: _strengthColor(c),
+              strengthLabel: _strengthLabel(),
+              c: c,
             ),
           ],
-        ),
+
+          // Confirm password
+          IconPasswordField(
+            controller: _confirmedPasswordController,
+            label: 'confirmed_password'.tr,
+            obscure: _obscureConfirm,
+            onToggle: () =>
+                setState(() => _obscureConfirm = !_obscureConfirm),
+          ),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration:
+                BoxDecoration(color: c.inputBg, borderRadius: c.brMedium),
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('المتطلبات', style: c.label.copyWith(fontSize: 12)),
+                  const SizedBox(height: 10),
+                  PasswordReq(
+                      met: _reqMinLength, label: '٦ أحرف على الأقل', c: c),
+                  PasswordReq(
+                      met: _reqUppercase,
+                      label: 'حرف كبير واحد على الأقل (A-Z)',
+                      c: c),
+                  PasswordReq(
+                      met: _reqDigit,
+                      label: 'رقم واحد على الأقل (0-9)',
+                      c: c),
+                  PasswordReq(
+                      met: _reqMatch,
+                      label: 'تطابق كلمة المرور الجديدة',
+                      c: c),
+                ]),
+          ),
+          const SizedBox(height: 24),
+
+          // ── Terms acceptance row ─────────────────────────────────────
+          _TermsAcceptRow(
+            accepted: _termsAccepted,
+            onReadTap: _openTerms,
+            onCheckChanged: (v) {
+              // Only allow manual un-tick; tick only via reading the sheet
+              if (!v) setState(() => _termsAccepted = false);
+            },
+          ),
+          const SizedBox(height: 20),
+
+          // Submit
+          PrimaryButton(
+            isLoading: provider.isLoadingRegistration,
+            label: 'confirm'.tr,
+            icon: Icons.check_rounded,
+            onPressed: _register,
+            enable: _canSubmit,
+          ),
+          const SizedBox(height: 20),
+
+          LinkRow(
+            message: 'have_account'.tr,
+            linkText: 'login'.tr,
+            onTap: () => Navigator.pop(context),
+          ),
+        ],
       ),
     );
   }

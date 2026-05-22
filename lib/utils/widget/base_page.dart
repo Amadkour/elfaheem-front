@@ -53,6 +53,7 @@ class BasePage extends StatelessWidget {
                   margin: EdgeInsets.symmetric(vertical: 10),
                   padding: const EdgeInsets.all(0.0),
                   decoration: BoxDecoration(
+                    border: BoxBorder.all(color: context.colors.divider,width: 1),
                     borderRadius: BorderRadius.circular(context.colors.radiusXL),
                     color: context.colors.cardBg,
         

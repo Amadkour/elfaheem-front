@@ -2,15 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/category/categories_screen.dart';
-import 'package:flutter_education_app/features/student/courses/list/courses_provider.dart';
-import 'package:flutter_education_app/features/student/courses/my_courses/my_courses_provider.dart';
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
 import 'package:provider/provider.dart';
-
 import '../../../config/app_config.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../config/app_theme.dart';
 import '../../../utils/widget/base_page.dart';
+import '../../teacher/home/home_screen.dart';
 import '../courses/list/courses_list_screen.dart';
 import 'component/category_row.dart';
 import 'component/course_row.dart';
@@ -19,20 +17,80 @@ import 'component/instractor_roe.dart';
 import 'component/search_bar_icon.dart';
 import 'component/top_bar.dart';
 import '../../teacher/schedules/schedules_provider.dart';
-
-const double _kContentMax = 900;
-
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
+class _CoursesShimmer extends StatelessWidget {
+  const _CoursesShimmer();
 
-class _HomeScreenState extends State<HomeScreen>
-    with AutomaticKeepAliveClientMixin {
   @override
-  bool get wantKeepAlive => true;
+  Widget build(BuildContext context) => Column(
+    children: [
+      Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Shimmer(width: context.width, height: 50,radius: 10,),
+      ),
+      const SizedBox(height: 20),
+      Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Shimmer(width: context.width, height: 150,radius: 20,),
+      ),
+      Expanded(
+        flex: 1,
+        child: ListView.separated(
+          scrollDirection: Axis.vertical,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          itemCount: 3,
+          separatorBuilder: (_, __) => const SizedBox(width: 14),
+          itemBuilder: (_, __) => const Shimmer(width: 50, height: 50,radius: 25,),
+        ),
+      ),
+      Expanded(
+        flex: 3,
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: 3,
+            separatorBuilder: (_, __) => const SizedBox(width: 14),
+            itemBuilder: (_, __) =>  Shimmer(width: context.width/5, height: context.height/5),
+          ),
+        ),
+      ),
+      const SizedBox(height: 20),
+
+      Expanded(
+        flex: 3,
+
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          itemCount: 3,
+          separatorBuilder: (_, __) => const SizedBox(width: 14),
+          itemBuilder: (_, __) =>  Shimmer(width: context.width/5, height: context.height/5),
+        ),
+      ),
+      Expanded(
+        flex: 1,
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: ListView.separated(
+            scrollDirection: Axis.vertical,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: 3,
+            separatorBuilder: (_, __) => const SizedBox(width: 14),
+            itemBuilder: (_, __) => const Shimmer(width: 50, height: 50,radius: 25,),
+          ),
+        ),
+      ),
+    ],
+  );
+}
+class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void initState() {
@@ -42,96 +100,101 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
+
   @override
   Widget build(BuildContext context) {
-    super.build(context);
-    return BasePage(
-      useWebCard: true,
-      child: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: _kContentMax),
-            child: CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                // ── Top bar ──────────────────────────────────────────────
-                SliverToBoxAdapter(child: TopBar()),
-                const SliverToBoxAdapter(child: SizedBox(height: 18)),
 
-                // ── Search bar ───────────────────────────────────────────
-                const SliverToBoxAdapter(child: SearchBarIcon()),
-                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+    return Consumer<HomeProvider>(
+      builder: (context,provider,child) {
+        return BasePage(
+          useWebCard: true,
+          child: SafeArea(
+            child: Center(
+              child:provider.isLoading?_CoursesShimmer(): ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 900),
+                child: CustomScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    // ── Top bar ──────────────────────────────────────────────
+                    SliverToBoxAdapter(child: TopBar()),
+                    const SliverToBoxAdapter(child: SizedBox(height: 18)),
 
-                // ── Upcoming session banner ──────────────────────────────
-                const SliverToBoxAdapter(child: _UpcomingBanner()),
-                const SliverToBoxAdapter(child: SizedBox(height: 28)),
+                    // ── Search bar ───────────────────────────────────────────
+                    const SliverToBoxAdapter(child: SearchBarIcon()),
+                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-                // ── Categories ───────────────────────────────────────────
-                SliverToBoxAdapter(
-                  child: SectionHeader(
-                    title: 'categories'.tr,
-                    actionLabel: 'show_more'.tr,
-                    onAction: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                          builder: (_) => const CategoriesScreen()),
+                    // ── Upcoming session banner ──────────────────────────────
+                    const SliverToBoxAdapter(child: _UpcomingBanner()),
+                    const SliverToBoxAdapter(child: SizedBox(height: 28)),
+
+                    // ── Categories ───────────────────────────────────────────
+                    SliverToBoxAdapter(
+                      child: SectionHeader(
+                        title: 'categories'.tr,
+                        actionLabel: 'show_more'.tr,
+                        onAction: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => const CategoriesScreen()),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                const SliverToBoxAdapter(child: CategoriesRow()),
-                const SliverToBoxAdapter(child: SizedBox(height: 28)),
+                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                    const SliverToBoxAdapter(child: CategoriesRow()),
+                    const SliverToBoxAdapter(child: SizedBox(height: 28)),
 
 
-                // ── Courses ──────────────────────────────────────────────
-                SliverToBoxAdapter(
-                  child: SectionHeader(
-                    title: 'my_courses'.tr,
-                    actionLabel: 'show_more'.tr,
-                    onAction: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                          builder: (_) => const CoursesListScreen()),
+                    // ── Courses ──────────────────────────────────────────────
+                    SliverToBoxAdapter(
+                      child: SectionHeader(
+                        title: 'my_courses'.tr,
+                        actionLabel: 'show_more'.tr,
+                        onAction: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => const CoursesListScreen()),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                SliverToBoxAdapter(
-                    child: CoursesRow(
-                        courses: context.read<HomeProvider>().myCourses)),
-                const SliverToBoxAdapter(child: SizedBox(height: 28)),
-// ── Courses ──────────────────────────────────────────────
-                SliverToBoxAdapter(
-                  child: SectionHeader(
-                    title: 'other_courses'.tr,
-                    actionLabel: 'show_more'.tr,
-                    onAction: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                          builder: (_) => const CoursesListScreen()),
+                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                    SliverToBoxAdapter(
+                        child: CoursesRow(
+                            courses: context.read<HomeProvider>().myCourses)),
+                    const SliverToBoxAdapter(child: SizedBox(height: 28)),
+        // ── Courses ──────────────────────────────────────────────
+                    SliverToBoxAdapter(
+                      child: SectionHeader(
+                        title: 'other_courses'.tr,
+                        actionLabel: 'show_more'.tr,
+                        onAction: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => const CoursesListScreen()),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                SliverToBoxAdapter(
-                    child: CoursesRow(
-                  courses:context.read<HomeProvider>().otherCourses,
-                )),
-                const SliverToBoxAdapter(child: SizedBox(height: 28)),
+                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                    SliverToBoxAdapter(
+                        child: CoursesRow(
+                      courses:context.read<HomeProvider>().otherCourses,
+                    )),
+                    const SliverToBoxAdapter(child: SizedBox(height: 28)),
 
-                // ── Best teachers ────────────────────────────────────────
-                SliverToBoxAdapter(
-                  child: SectionHeader(
-                    title: 'best_teachers'.tr,
-                    actionLabel: 'show_more'.tr,
-                    onAction: () {},
-                  ),
+                    // ── Best teachers ────────────────────────────────────────
+                    SliverToBoxAdapter(
+                      child: SectionHeader(
+                        title: 'best_teachers'.tr,
+                        actionLabel: 'show_more'.tr,
+                        onAction: () {},
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                    SliverToBoxAdapter(child: InstructorsRow()),
+                    const SliverToBoxAdapter(child: SizedBox(height: 40)),
+                  ],
                 ),
-                const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                SliverToBoxAdapter(child: InstructorsRow()),
-                const SliverToBoxAdapter(child: SizedBox(height: 40)),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      }
     );
   }
 }
@@ -383,7 +446,7 @@ class _BannerContent extends StatelessWidget {
             style: const TextStyle(
               color: Colors.white,
               fontSize: 11,
-              fontFamily: 'Cairo',
+              fontFamily: 'bahji',
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -395,7 +458,7 @@ class _BannerContent extends StatelessWidget {
             color: Colors.white,
             fontWeight: FontWeight.w800,
             fontSize: 16,
-            fontFamily: 'Cairo',
+            fontFamily: 'bahji',
             letterSpacing: -0.3,
           ),
           maxLines: 1,
@@ -412,7 +475,7 @@ class _BannerContent extends StatelessWidget {
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.80),
                 fontSize: 12,
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
               ),
             ),
           ],
@@ -435,7 +498,7 @@ class _BannerContent extends StatelessWidget {
                 color: Colors.white,
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
               ),
             ),
           ),

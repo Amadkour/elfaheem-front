@@ -107,7 +107,7 @@ class _CourseCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                       // if (course.rate != null)
+                       if (course.rate != null)
                           _StatsRow(course: course),
                       ],
                     ),
@@ -132,7 +132,7 @@ class _CourseCard extends StatelessWidget {
                       InstructorAvatar(
                         teacher: course.teacher!,
                         size: 30,
-                        canOpen: true,
+                        canOpen: false,
                         showTitle: true,
                       ),
 
@@ -158,12 +158,11 @@ class _CourseCard extends StatelessWidget {
                       flex: 2,
                     ),
 
-
+                    // Text(course.progress.toString()),
                     // Progress bar — only when enrolled
-                   if ( course.isEnrolled) ...[
-                      const SizedBox(height: 9),
+                   if ( course.isEnrolled && course.progress>0) ...[
                       _ProgressBar(progress: course.progress),
-                   // ],
+
                     Spacer(
                       flex: 2,
                     ),
@@ -227,7 +226,7 @@ class _Thumbnail extends StatelessWidget {
                 color: Colors.white,
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
               ),
             ),
           ),
@@ -286,7 +285,7 @@ class _Thumbnail extends StatelessWidget {
                 color: Colors.white,
                 fontWeight: FontWeight.w800,
                 fontSize: 11,
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
               ),
             ),
           ),
@@ -443,32 +442,32 @@ class _ProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pct = (progress * 100).round();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    Color primary=progress>90?context.colors.success:progress>30?context.colors.primary:context.colors.danger;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('تقدمك', style: context.colors.caption.copyWith(fontSize: 10)),
-            Text(
-              '$pct%',
-              style: context.colors.caption.copyWith(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: context.colors.primary,
+        Text('you_progress'.tr, style: context.colors.caption.copyWith(fontSize: 10)),
+
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3.0),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: LinearProgressIndicator(
+                value: (progress/100).clamp(0.0, 1.0),
+                minHeight: 5,
+                backgroundColor: context.colors.primaryLight,
+                valueColor: AlwaysStoppedAnimation(primary),
               ),
             ),
-          ],
+          ),
         ),
-        const SizedBox(height: 5),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: LinearProgressIndicator(
-            value: progress.clamp(0.0, 1.0),
-            minHeight: 5,
-            backgroundColor: context.colors.primaryLight,
-            valueColor: AlwaysStoppedAnimation(context.colors.primary),
+        Text(
+          '$progress%',
+          style: context.colors.caption.copyWith(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color:primary,
           ),
         ),
       ],

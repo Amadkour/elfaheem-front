@@ -28,6 +28,7 @@ class JoinArgs {
     required this.userId,
     required this.onStart,
     required this.onEnd,
+    this.onComplete,
   });
 
   final int sessionId;
@@ -45,6 +46,10 @@ class JoinArgs {
   final bool enableBackupVideoCodec;
   final Future<dynamic> Function() onStart;
   final Future<dynamic> Function() onEnd;
+
+  /// Called after the student leaves the live room (RoomPage pops).
+  /// Not used for teachers. Triggers POST /sessions/{id}/complete.
+  final Future<void> Function()? onComplete;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -133,8 +138,8 @@ class _PreJoinPageState extends State<PreJoinPage>
     _pulse = CurvedAnimation(parent: _pulseAnim, curve: Curves.easeInOut);
 
     _auroraAnim =
-        AnimationController(vsync: this, duration: const Duration(seconds: 8))
-          ..repeat();
+    AnimationController(vsync: this, duration: const Duration(seconds: 8))
+      ..repeat();
 
     _masterFade.forward();
     unawaited(_initDevices());
@@ -182,7 +187,7 @@ class _PreJoinPageState extends State<PreJoinPage>
         _selectedVideoDevice == null) {
       final opts = _videoOptions;
       _selectedVideoDevice = opts.firstWhere(
-        (d) => d['is_front'] == true,
+            (d) => d['is_front'] == true,
         orElse: () => opts.first,
       );
       await _changeLocalVideoTrack();
@@ -199,7 +204,7 @@ class _PreJoinPageState extends State<PreJoinPage>
       if (_selectedVideoDevice == null && _videoOptions.isNotEmpty) {
         final opts = _videoOptions;
         _selectedVideoDevice = opts.firstWhere(
-          (d) => d['is_front'] == true,
+              (d) => d['is_front'] == true,
           orElse: () => opts.first,
         );
       }
@@ -268,21 +273,21 @@ class _PreJoinPageState extends State<PreJoinPage>
     final args = widget.args;
     try {
       const cameraEncoding =
-          VideoEncoding(maxBitrate: 5 * 1000 * 1000, maxFramerate: 60);
+      VideoEncoding(maxBitrate: 5 * 1000 * 1000, maxFramerate: 60);
       const screenEncoding =
-          VideoEncoding(maxBitrate: 3 * 1000 * 1000, maxFramerate: 15);
+      VideoEncoding(maxBitrate: 3 * 1000 * 1000, maxFramerate: 15);
 
       final room = Room(
         roomOptions: RoomOptions(
           adaptiveStream: args.adaptiveStream,
           dynacast: args.dynacast,
           defaultAudioPublishOptions:
-              const AudioPublishOptions(name: 'custom_audio_track_name'),
+          const AudioPublishOptions(name: 'custom_audio_track_name'),
           defaultCameraCaptureOptions: const CameraCaptureOptions(
             cameraPosition: CameraPosition.front,
             maxFrameRate: 60,
             params:
-                VideoParameters(dimensions: VideoDimensionsPresets.h1080_169),
+            VideoParameters(dimensions: VideoDimensionsPresets.h1080_169),
           ),
           defaultScreenShareCaptureOptions: const ScreenShareCaptureOptions(
             captureScreenAudio: true,
@@ -294,9 +299,9 @@ class _PreJoinPageState extends State<PreJoinPage>
             simulcast: args.simulcast,
             videoCodec: args.preferredCodec,
             degradationPreference:
-                DegradationPreference.maintainFramerateAndResolution,
+            DegradationPreference.maintainFramerateAndResolution,
             backupVideoCodec:
-                BackupVideoCodec(enabled: args.enableBackupVideoCodec),
+            BackupVideoCodec(enabled: args.enableBackupVideoCodec),
             videoEncoding: cameraEncoding,
             screenShareEncoding: screenEncoding,
           ),
@@ -320,15 +325,22 @@ class _PreJoinPageState extends State<PreJoinPage>
         context,
         MaterialPageRoute(
             builder: (_) => RoomPage(
-                  room,
-                  listener,
-                  fastConnection: true,
-                  onEnd: widget.args.onEnd,
-                  isTeacher: widget.args.isTeacher,
+              room,
+              listener,
+              fastConnection: true,
+              onEnd: widget.args.onEnd,
+              isTeacher: widget.args.isTeacher,
               courseId: widget.args.courseId,
               sessionId: widget.args.sessionId,
-                )),
+            )),
       );
+
+      // ── Student live-completion ───────────────────────────────────────────
+      // When a student leaves the room (RoomPage pops) we hit the complete API
+      // automatically — no manual tap needed.
+      if (!widget.args.isTeacher) {
+        await widget.args.onComplete?.call();
+      }
     } catch (error) {
       log('Could not connect $error');
       if (!context.mounted) return;
@@ -439,7 +451,7 @@ class _PreJoinPageState extends State<PreJoinPage>
                   const Spacer(),
                   SlideTransition(
                     position: Tween<Offset>(
-                            begin: const Offset(0, 0.25), end: Offset.zero)
+                        begin: const Offset(0, 0.25), end: Offset.zero)
                         .animate(_slideUp),
                     child: FadeTransition(
                         opacity: _fadeIn, child: _buildBottomSection()),
@@ -592,7 +604,7 @@ class _PreJoinPageState extends State<PreJoinPage>
               boxShadow: [
                 BoxShadow(
                     color:
-                        _DS.cyan.withValues(alpha: 0.10 + _pulse.value * 0.08),
+                    _DS.cyan.withValues(alpha: 0.10 + _pulse.value * 0.08),
                     blurRadius: 14)
               ],
             ),
@@ -621,30 +633,30 @@ class _PreJoinPageState extends State<PreJoinPage>
         Row(children: [
           Expanded(
               child: _buildDeviceCard(
-            icon: _enableVideo
-                ? Icons.videocam_rounded
-                : Icons.videocam_off_rounded,
-            label: 'Camera',
-            sublabel: _enableVideo ? 'Front · 1080p' : 'Disabled',
-            isActive: _enableVideo,
-            gradColors: _enableVideo ? _DS.camOnGrad : _DS.camOffGrad,
-            onTap: _toggleCamera,
-          )),
+                icon: _enableVideo
+                    ? Icons.videocam_rounded
+                    : Icons.videocam_off_rounded,
+                label: 'Camera',
+                sublabel: _enableVideo ? 'Front · 1080p' : 'Disabled',
+                isActive: _enableVideo,
+                gradColors: _enableVideo ? _DS.camOnGrad : _DS.camOffGrad,
+                onTap: _toggleCamera,
+              )),
           const SizedBox(width: 12),
           Expanded(
               child: _buildDeviceCard(
-            icon: _enableAudio ? Icons.mic_rounded : Icons.mic_off_rounded,
-            label: 'Microphone',
-            sublabel: _enableAudio
-                ? (_audioInputs.isNotEmpty &&
-                        _audioInputs.first.label.isNotEmpty
+                icon: _enableAudio ? Icons.mic_rounded : Icons.mic_off_rounded,
+                label: 'Microphone',
+                sublabel: _enableAudio
+                    ? (_audioInputs.isNotEmpty &&
+                    _audioInputs.first.label.isNotEmpty
                     ? _audioInputs.first.label
                     : 'Default mic')
-                : 'Muted',
-            isActive: _enableAudio,
-            gradColors: _enableAudio ? _DS.micOnGrad : _DS.micOffGrad,
-            onTap: _toggleAudio,
-          )),
+                    : 'Muted',
+                isActive: _enableAudio,
+                gradColors: _enableAudio ? _DS.micOnGrad : _DS.micOffGrad,
+                onTap: _toggleAudio,
+              )),
         ]),
 
         const SizedBox(height: 18),
@@ -698,11 +710,11 @@ class _PreJoinPageState extends State<PreJoinPage>
           ),
           boxShadow: isActive
               ? [
-                  BoxShadow(
-                      color: gradColors.first.withValues(alpha: 0.14),
-                      blurRadius: 22,
-                      spreadRadius: 0)
-                ]
+            BoxShadow(
+                color: gradColors.first.withValues(alpha: 0.14),
+                blurRadius: 22,
+                spreadRadius: 0)
+          ]
               : [],
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -715,17 +727,17 @@ class _PreJoinPageState extends State<PreJoinPage>
                 borderRadius: BorderRadius.circular(8),
                 gradient: isActive
                     ? LinearGradient(
-                        colors: gradColors,
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight)
+                    colors: gradColors,
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight)
                     : null,
                 color: isActive ? null : _DS.glass15,
                 boxShadow: isActive
                     ? [
-                        BoxShadow(
-                            color: gradColors.first.withValues(alpha: 0.4),
-                            blurRadius: 10)
-                      ]
+                  BoxShadow(
+                      color: gradColors.first.withValues(alpha: 0.4),
+                      blurRadius: 10)
+                ]
                     : [],
               ),
               child: Icon(icon,
@@ -741,13 +753,13 @@ class _PreJoinPageState extends State<PreJoinPage>
                 gradient: isActive ? LinearGradient(colors: gradColors) : null,
                 color: isActive ? null : _DS.glass15,
                 border:
-                    isActive ? null : Border.all(color: _DS.glassBdr, width: 1),
+                isActive ? null : Border.all(color: _DS.glassBdr, width: 1),
               ),
               child: AnimatedAlign(
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOut,
                 alignment:
-                    isActive ? Alignment.centerRight : Alignment.centerLeft,
+                isActive ? Alignment.centerRight : Alignment.centerLeft,
                 child: Container(
                   margin: const EdgeInsets.all(3),
                   width: 16,
@@ -799,29 +811,29 @@ class _PreJoinPageState extends State<PreJoinPage>
               gradient: _busy
                   ? null
                   : const LinearGradient(
-                      colors: _DS.joinGrad,
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    ),
+                colors: _DS.joinGrad,
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
               color: _busy ? _DS.surfaceHi : null,
               border: _busy ? Border.all(color: _DS.glassBdr, width: 1) : null,
               boxShadow: _busy
                   ? []
                   : [
-                      BoxShadow(
-                        color: _DS.cyan
-                            .withValues(alpha: 0.28 + _pulse.value * 0.14),
-                        blurRadius: 26 + _pulse.value * 12,
-                        offset: const Offset(0, 8),
-                      ),
-                      BoxShadow(
-                        color: _DS.indigo
-                            .withValues(alpha: 0.18 + _pulse.value * 0.08),
-                        blurRadius: 40,
-                        spreadRadius: -4,
-                        offset: const Offset(0, 14),
-                      ),
-                    ],
+                BoxShadow(
+                  color: _DS.cyan
+                      .withValues(alpha: 0.28 + _pulse.value * 0.14),
+                  blurRadius: 26 + _pulse.value * 12,
+                  offset: const Offset(0, 8),
+                ),
+                BoxShadow(
+                  color: _DS.indigo
+                      .withValues(alpha: 0.18 + _pulse.value * 0.08),
+                  blurRadius: 40,
+                  spreadRadius: -4,
+                  offset: const Offset(0, 14),
+                ),
+              ],
             ),
             child: Stack(alignment: Alignment.center, children: [
               // Inner highlight stripe
@@ -834,7 +846,7 @@ class _PreJoinPageState extends State<PreJoinPage>
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       borderRadius:
-                          const BorderRadius.vertical(top: Radius.circular(20)),
+                      const BorderRadius.vertical(top: Radius.circular(20)),
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
@@ -851,24 +863,24 @@ class _PreJoinPageState extends State<PreJoinPage>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: _busy
                       ? [
-                          const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                                color: _DS.cyan, strokeWidth: 2.5),
-                          ),
-                        ]
+                    const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                          color: _DS.cyan, strokeWidth: 2.5),
+                    ),
+                  ]
                       : [
-                          Icon(Icons.play_circle_filled_rounded,
-                              color: Colors.white, size: 26),
-                          SizedBox(width: 10),
-                          Text('Join Session',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.3))
-                        ]),
+                    Icon(Icons.play_circle_filled_rounded,
+                        color: Colors.white, size: 26),
+                    SizedBox(width: 10),
+                    Text('Join Session',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.3))
+                  ]),
             ]),
           ),
         ),

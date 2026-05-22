@@ -81,7 +81,7 @@ class Helpers {
             style: const TextStyle(
                 fontFamily: 'Tajawal', fontWeight: FontWeight.w700)),
         content: const Text('هل أنت متأكد أنك تريد تسجيل الخروج؟',
-            style: TextStyle(fontFamily: 'Cairo')),
+            style: TextStyle(fontFamily: 'bahji')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),

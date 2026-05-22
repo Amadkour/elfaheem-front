@@ -125,7 +125,7 @@ class _StudentExamResultScreenState extends State<StudentExamResultScreen>
                                 Text(
                                   '${(_scoreAnim.value * _pct).toStringAsFixed(0)}%',
                                   style: const TextStyle(
-                                    fontFamily: 'Cairo',
+                                    fontFamily: 'bahji',
                                     fontSize: 32,
                                     fontWeight: FontWeight.w900,
                                     color: Colors.white,
@@ -134,7 +134,7 @@ class _StudentExamResultScreenState extends State<StudentExamResultScreen>
                                 Text(
                                   _passed ? 'ناجح ✓' : 'راسب ✗',
                                   style: const TextStyle(
-                                    fontFamily: 'Cairo',
+                                    fontFamily: 'bahji',
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
                                     color: Colors.white,
@@ -148,7 +148,7 @@ class _StudentExamResultScreenState extends State<StudentExamResultScreen>
                         Text(
                           s.exam.name,
                           style: const TextStyle(
-                            fontFamily: 'Cairo',
+                            fontFamily: 'bahji',
                             fontSize: 14,
                             color: Colors.white70,
                           ),
@@ -162,7 +162,7 @@ class _StudentExamResultScreenState extends State<StudentExamResultScreen>
               title: const Text(
                 'نتيجة الاختبار',
                 style: TextStyle(
-                  fontFamily: 'Cairo',
+                  fontFamily: 'bahji',
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
                 ),
@@ -311,7 +311,7 @@ class _ResultBanner extends StatelessWidget {
                 child: Text(
                   passed ? 'تهانينا! اجتزت الاختبار 🎉' : 'لم تجتز الاختبار هذه المرة',
                   style: TextStyle(
-                    fontFamily: 'Cairo', fontSize: 15,
+                    fontFamily: 'bahji', fontSize: 15,
                     fontWeight: FontWeight.w800, color: color,
                   ),
                 ),
@@ -328,7 +328,7 @@ class _ResultBanner extends StatelessWidget {
                     Icon(Icons.star_rounded, size: 12, color: Colors.white),
                     SizedBox(width: 3),
                     Text('أفضل نتيجة', style: TextStyle(
-                      fontFamily: 'Cairo', fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white,
+                      fontFamily: 'bahji', fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white,
                     )),
                   ]),
                 ),
@@ -339,7 +339,7 @@ class _ResultBanner extends StatelessWidget {
               passed
                   ? 'حققت ${pct.toStringAsFixed(1)}% وهو أعلى من حد النجاح (${passingScore.toInt()}%)'
                   : 'حققت ${pct.toStringAsFixed(1)}% وحد النجاح ${passingScore.toInt()}%',
-              style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: color.withValues(alpha: .8)),
+              style: TextStyle(fontFamily: 'bahji', fontSize: 12, color: color.withValues(alpha: .8)),
             ),
           ]),
         ),
@@ -420,10 +420,10 @@ class _StatRow extends StatelessWidget {
   Widget build(BuildContext context) => Row(children: [
     Icon(icon, size: 16, color: color),
     const SizedBox(width: 8),
-    Text(label, style: const TextStyle(fontFamily: 'Cairo', fontSize: 13, color: Colors.grey)),
+    Text(label, style: const TextStyle(fontFamily: 'bahji', fontSize: 13, color: Colors.grey)),
     const Spacer(),
     Text(value, style: TextStyle(
-      fontFamily: 'Cairo', fontSize: 15, fontWeight: FontWeight.w800, color: color,
+      fontFamily: 'bahji', fontSize: 15, fontWeight: FontWeight.w800, color: color,
     )),
   ]);
 }
@@ -459,11 +459,11 @@ class _RetryButton extends StatelessWidget {
         const SizedBox(width: 10),
         Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           const Text('حاول مرة أخرى', style: TextStyle(
-            fontFamily: 'Cairo', fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white,
+            fontFamily: 'bahji', fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white,
           )),
           if (remaining != null)
             Text('متبقي $remaining محاولة', style: const TextStyle(
-              fontFamily: 'Cairo', fontSize: 10, color: Colors.white70,
+              fontFamily: 'bahji', fontSize: 10, color: Colors.white70,
             )),
         ]),
       ]),
@@ -520,13 +520,13 @@ class _QuestionBreakdownTile extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(
               'السؤال ${index + 1}: ${question.title}',
-              style: const TextStyle(fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontFamily: 'bahji', fontSize: 13, fontWeight: FontWeight.w600),
               maxLines: 2, overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 4),
             Text(
               answer != null ? 'إجابتك: $answer' : 'لم تُجب على هذا السؤال',
-              style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: color),
+              style: TextStyle(fontFamily: 'bahji', fontSize: 12, color: color),
             ),
           ]),
         ),
@@ -539,7 +539,7 @@ class _QuestionBreakdownTile extends StatelessWidget {
             ),
             child: Text(
               '${marksObtained.toStringAsFixed(1)} / ${question.marks.toStringAsFixed(0)}',
-              style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.w700, color: color),
+              style: TextStyle(fontFamily: 'bahji', fontSize: 12, fontWeight: FontWeight.w700, color: color),
             ),
           ),
       ]),
@@ -583,7 +583,7 @@ class _GradBtn extends StatelessWidget {
       ),
       child: Center(
         child: Text(label, style: const TextStyle(
-          color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16, fontFamily: 'Cairo',
+          color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16, fontFamily: 'bahji',
         )),
       ),
     ),
@@ -605,7 +605,7 @@ class _WarningBanner extends StatelessWidget {
     child: Row(children: [
       const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
       const SizedBox(width: 8),
-      Expanded(child: Text(message, style: const TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.orange))),
+      Expanded(child: Text(message, style: const TextStyle(fontFamily: 'bahji', fontSize: 12, color: Colors.orange))),
     ]),
   );
 }

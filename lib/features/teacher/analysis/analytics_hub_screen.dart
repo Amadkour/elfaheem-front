@@ -106,7 +106,7 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen>
           decoration: InputDecoration(
             hintText: 'ابحث عن كورس...',
             hintStyle: const TextStyle(
-                fontFamily: 'Cairo', color: Colors.grey, fontSize: 13),
+                fontFamily: 'bahji', color: Colors.grey, fontSize: 13),
             prefixIcon:
                 const Icon(Icons.search_rounded, color: Colors.grey, size: 20),
             suffixIcon: _search.isNotEmpty
@@ -136,7 +136,7 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen>
           Text(
             noCoursesAtAll ? 'لا توجد كورسات بعد' : 'لا توجد نتائج للبحث',
             style: const TextStyle(
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
                 fontSize: 16,
                 color: Colors.grey,
                 fontWeight: FontWeight.w600),
@@ -145,7 +145,7 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen>
             const SizedBox(height: 8),
             const Text('أضف كورساً أولاً من تبويب "كورساتي"',
                 style: TextStyle(
-                    fontFamily: 'Cairo', fontSize: 13, color: Colors.grey)),
+                    fontFamily: 'bahji', fontSize: 13, color: Colors.grey)),
           ],
         ]),
       );
@@ -195,7 +195,7 @@ class _CourseAnalyticsCard extends StatelessWidget {
                     children: [
                   Text(course.title,
                       style: const TextStyle(
-                          fontFamily: 'Cairo',
+                          fontFamily: 'bahji',
                           fontSize: 15,
                           fontWeight: FontWeight.w700),
                       maxLines: 1,
@@ -207,13 +207,13 @@ class _CourseAnalyticsCard extends StatelessWidget {
                     const SizedBox(width: 3),
                     Text('${course.studentsCount} طالب',
                         style: const TextStyle(
-                            fontFamily: 'Cairo',
+                            fontFamily: 'bahji',
                             fontSize: 12,
                             color: Colors.grey)),
                     const SizedBox(width: 5),
                     Text("|",
                         style: const TextStyle(
-                            fontFamily: 'Cairo',
+                            fontFamily: 'bahji',
                             fontSize: 12,
                             color: Colors.grey)),
                     const SizedBox(width: 5),
@@ -222,7 +222,7 @@ class _CourseAnalyticsCard extends StatelessWidget {
                     const SizedBox(width: 3),
                     Text('${course.sessionsCount} محاضرة',
                         style: const TextStyle(
-                            fontFamily: 'Cairo',
+                            fontFamily: 'bahji',
                             fontSize: 12,
                             color: Colors.grey)),
                   ]),
@@ -317,13 +317,13 @@ class _ActionButton extends StatelessWidget {
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(label,
                   style: TextStyle(
-                      fontFamily: 'Cairo',
+                      fontFamily: 'bahji',
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: color)),
               Text(sublabel,
                   style: const TextStyle(
-                      fontFamily: 'Cairo', fontSize: 10, color: Colors.grey)),
+                      fontFamily: 'bahji', fontSize: 10, color: Colors.grey)),
             ]),
           ]),
         ),

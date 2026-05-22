@@ -144,7 +144,7 @@ class _QueueHeader extends StatelessWidget {
           Text(
             'جدول الأسبوع',
             style: TextStyle(
-              fontFamily: 'Cairo',
+              fontFamily: 'bahji',
               fontSize: 13,
               fontWeight: FontWeight.w700,
               color: context.colors.textMedium,
@@ -162,7 +162,7 @@ class _QueueHeader extends StatelessWidget {
             child: Text(
               '$count',
               style:  TextStyle(
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color: context.colors.textMedium,
@@ -198,7 +198,7 @@ class _DayGroup extends StatelessWidget {
           child: Text(
             dayLabel,
             style: TextStyle(
-              fontFamily: 'Cairo',
+              fontFamily: 'bahji',
               fontSize: 11,
               fontWeight: FontWeight.w700,
               color: context.colors.textMedium.withValues(alpha: 0.6),
@@ -375,7 +375,7 @@ class _CountdownBar extends StatelessWidget {
                   Text(
                     'مباشر الآن',
                     style: TextStyle(
-                      fontFamily: 'Cairo',
+                      fontFamily: 'bahji',
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
                       color: accent,
@@ -390,7 +390,7 @@ class _CountdownBar extends StatelessWidget {
                   Text(
                     'ينتهي بعد  ${_fmtCountdown(untilEnd.isNegative ? Duration.zero : untilEnd)}',
                     style: TextStyle(
-                      fontFamily: 'Cairo',
+                      fontFamily: 'bahji',
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
                       color: accent.withValues(alpha: 0.85),
@@ -417,7 +417,7 @@ class _CountdownBar extends StatelessWidget {
           Text(
             'يبدأ بعد  ${_fmtCountdown(display)}',
             style: TextStyle(
-              fontFamily: 'Cairo',
+              fontFamily: 'bahji',
               fontSize: 11,
               fontWeight: FontWeight.w700,
               color: accent,
@@ -585,7 +585,7 @@ class _TimeBlock extends StatelessWidget {
         children: [
           Text(session.startTime,
               style: TextStyle(
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
                 fontSize: 12,
                 fontWeight: FontWeight.w900,
                 color: accent,
@@ -598,7 +598,7 @@ class _TimeBlock extends StatelessWidget {
           ),
           Text(session.endTime,
               style: TextStyle(
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
                 color: accent.withValues(alpha: 0.7),
@@ -644,7 +644,7 @@ class _Initials extends StatelessWidget {
     child: Text(
       name.length >= 2 ? name.substring(0, 2).toUpperCase() : name.toUpperCase(),
       style:  TextStyle(
-        fontFamily: 'Cairo',
+        fontFamily: 'bahji',
         fontSize: 13,
         fontWeight: FontWeight.w900,
         color: context.colors.textMedium,
@@ -721,7 +721,7 @@ class _MetaChip extends StatelessWidget {
       const SizedBox(width: 3),
       Text(label,
           style:  TextStyle(
-            fontFamily: 'Cairo',
+            fontFamily: 'bahji',
             fontSize: 11,
             color: context.colors.textMedium,
           )),
@@ -756,7 +756,7 @@ class _StatusBadge extends StatelessWidget {
     ),
     child: Text(_label,
         style: TextStyle(
-          fontFamily: 'Cairo',
+          fontFamily: 'bahji',
           fontSize: 10,
           fontWeight: FontWeight.w800,
           color: accent,
@@ -974,7 +974,7 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
             TextFormField(
               controller: _nameCtrl,
               textDirection: TextDirection.rtl,
-              style: const TextStyle(fontFamily: 'Cairo', fontSize: 14),
+              style: const TextStyle(fontFamily: 'bahji', fontSize: 14),
               validator: (v) =>
               (v?.isEmpty ?? true) ? 'أدخل اسم الحصة' : null,
               decoration: InputDecoration(
@@ -990,7 +990,7 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
             TextFormField(
               controller: _durCtrl,
               keyboardType: TextInputType.number,
-              style: const TextStyle(fontFamily: 'Cairo', fontSize: 14),
+              style: const TextStyle(fontFamily: 'bahji', fontSize: 14),
               validator: (v) {
                 final n = int.tryParse(v ?? '');
                 return (n == null || n <= 0) ? 'أدخل مدة صحيحة' : null;
@@ -1033,7 +1033,7 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
                       fontSize: 15,
-                      fontFamily: 'Cairo',
+                      fontFamily: 'bahji',
                     ),
                   ),
                 ),

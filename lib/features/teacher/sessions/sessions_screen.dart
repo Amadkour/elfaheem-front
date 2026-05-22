@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/courses/course_form_screen.dart';
+import 'package:flutter_education_app/features/teacher/sessions/students/course_student_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 import '../../../config/app_config.dart' as Helpers;
@@ -40,7 +41,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
     final updated =
         await context.read<TeacherProvider>().fetchCourseById(widget.course.id);
     if (updated != null && mounted) {
-      if(mounted) setState(() => _course = updated);
+      if (mounted) setState(() => _course = updated);
     }
   }
 
@@ -72,13 +73,13 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
     return BasePage(
       useWebCard: true,
       child: SafeArea(
-          child: _SessionsList(
-            course: _course,
-            onAdd: _openAddSheet,
-            onEditCourse: _openEditCourse,
-            onRefreshCourse: _refreshCourse,
-          ),
+        child: _SessionsList(
+          course: _course,
+          onAdd: _openAddSheet,
+          onEditCourse: _openEditCourse,
+          onRefreshCourse: _refreshCourse,
         ),
+      ),
     );
   }
 }
@@ -125,7 +126,7 @@ class _SessionsList extends StatelessWidget {
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding:  const EdgeInsets.fromLTRB(16, 14, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
               child: RatingWidget(
                 type: RateType.course,
                 sourceId: course.id.toString(),
@@ -315,7 +316,7 @@ class _DetailCardState extends State<_DetailCard>
   }
 
   void _toggle() {
-    if(mounted) setState(() => _expanded = !_expanded);
+    if (mounted) setState(() => _expanded = !_expanded);
     _expanded ? _ctrl.forward() : _ctrl.reverse();
   }
 
@@ -764,11 +765,18 @@ class _StatsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final stats = <_StatItem>[
       _StatItem(
-        icon: Icons.people_alt_rounded,
-        label: 'student'.tr,
-        value: '${course.studentsCount}',
-        color: const Color(0xFF4DA6FF),
-      ),
+          icon: Icons.people_alt_rounded,
+          label: 'student'.tr,
+          value: '${course.studentsCount}',
+          color: const Color(0xFF4DA6FF),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => EnrolledStudentsScreen(course: course),
+              ),
+            );
+          }),
       _StatItem(
         icon: Icons.play_lesson_rounded,
         label: 'sessions'.tr,
@@ -818,12 +826,14 @@ class _StatItem {
   final String label;
   final String value;
   final Color color;
+  final void Function()? onTap;
 
   const _StatItem({
     required this.icon,
     required this.label,
     required this.value,
     required this.color,
+    this.onTap,
   });
 }
 
@@ -833,39 +843,49 @@ class _StatChip extends StatelessWidget {
   const _StatChip({required this.item});
 
   @override
-  Widget build(BuildContext context) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: item.color.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(item.icon, size: 18, color: item.color),
+  Widget build(BuildContext context) {
+    Widget w = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: item.color.withValues(alpha: 0.12),
+            shape: BoxShape.circle,
           ),
-          const SizedBox(height: 6),
-          Text(
-            item.value,
-            style: TextStyle(
-              fontFamily: 'Tajawal',
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: context.colors.textDark,
-            ),
+          child: Icon(item.icon, size: 18, color: item.color),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          item.value,
+          style: TextStyle(
+            fontFamily: 'Tajawal',
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            color: context.colors.textDark,
           ),
-          const SizedBox(height: 2),
-          Text(
-            item.label,
-            style: TextStyle(
-              fontFamily: 'Tajawal',
-              fontSize: 10,
-              color: context.colors.textMedium,
-            ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          item.label,
+          style: TextStyle(
+            fontFamily: 'Tajawal',
+            decoration:item.onTap==null?null: TextDecoration.underline,
+            decorationColor: Colors.blueAccent,
+            decorationThickness: 2,
+            fontSize: 10,
+            color: context.colors.textMedium,
           ),
-        ],
-      );
+        ),
+      ],
+    );
+    if (item.onTap == null) return w;
+    return InkWell(
+      onTap: item.onTap,
+      child: w,
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

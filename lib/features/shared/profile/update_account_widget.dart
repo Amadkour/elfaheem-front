@@ -136,7 +136,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
   void _showSnack(String msg, Color color) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(msg,
-            style: const TextStyle(fontFamily: 'Cairo', color: Colors.white)),
+            style: const TextStyle(fontFamily: 'bahji', color: Colors.white)),
         backgroundColor: color,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),

@@ -293,7 +293,7 @@ class _UserTrophy extends StatelessWidget {
                   color:      Colors.white,
                   fontWeight: FontWeight.w800,
                   fontSize:   13,
-                  fontFamily: 'Cairo',
+                  fontFamily: 'bahji',
                 ),
               ),
             ),

@@ -165,7 +165,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
                           Text(
                             'attendance_record'.tr,
                             style: const TextStyle(
-                              fontFamily: 'Cairo',
+                              fontFamily: 'bahji',
                               fontSize: 12,
                               color: Colors.white,
                               fontWeight: FontWeight.w600,
@@ -178,7 +178,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
                     Text(
                       widget.courseTitle,
                       style: const TextStyle(
-                        fontFamily: 'Cairo',
+                        fontFamily: 'bahji',
                         color: Colors.white,
                         fontSize: 26,
                         fontWeight: FontWeight.w800,
@@ -247,7 +247,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
           Text(
             'loading_attendance'.tr,
             style: const TextStyle(
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
                 color: Colors.grey,
                 fontSize: 14),
           ),
@@ -274,7 +274,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
         Text(
           'select_lecture'.tr,
           style: TextStyle(
-              fontFamily: 'Cairo',
+              fontFamily: 'bahji',
               fontSize: 16,
               fontWeight: FontWeight.w600,
               color: Colors.grey.shade600),
@@ -283,7 +283,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
         Text(
           'select_session_hint_sub'.tr,
           style: TextStyle(
-              fontFamily: 'Cairo',
+              fontFamily: 'bahji',
               fontSize: 13,
               color: Colors.grey.shade400),
         ),
@@ -310,14 +310,14 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
           msg ?? 'something-went-wrong'.tr,
           textAlign: TextAlign.center,
           style: const TextStyle(
-              fontFamily: 'Cairo', fontSize: 14, color: Colors.grey),
+              fontFamily: 'bahji', fontSize: 14, color: Colors.grey),
         ),
         const SizedBox(height: 20),
         ElevatedButton.icon(
           onPressed: retry,
           icon: const Icon(Icons.refresh_rounded, size: 18),
           label: Text('retry'.tr,
-              style: const TextStyle(fontFamily: 'Cairo')),
+              style: const TextStyle(fontFamily: 'bahji')),
           style: ElevatedButton.styleFrom(
             backgroundColor: _primary,
             foregroundColor: Colors.white,
@@ -354,7 +354,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
             Text(
               'select_lecture'.tr,
               style: const TextStyle(
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF1A237E),
@@ -370,7 +370,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
               child: Text(
                 'no_sessions_available'.tr,
                 style: const TextStyle(
-                    fontFamily: 'Cairo',
+                    fontFamily: 'bahji',
                     color: Colors.grey,
                     fontSize: 13),
               ),
@@ -457,11 +457,11 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
         controller: _searchCtrl,
         textDirection: TextDirection.rtl,
         style:
-        const TextStyle(fontFamily: 'Cairo', fontSize: 14),
+        const TextStyle(fontFamily: 'bahji', fontSize: 14),
         decoration: InputDecoration(
           hintText: 'search_student'.tr,
           hintStyle: TextStyle(
-              fontFamily: 'Cairo',
+              fontFamily: 'bahji',
               color: Colors.grey.shade400,
               fontSize: 13),
           prefixIcon: Icon(Icons.search_rounded,
@@ -496,7 +496,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
       return Center(
         child: Text('no_search_results'.tr,
             style: const TextStyle(
-                fontFamily: 'Cairo', color: Colors.grey)),
+                fontFamily: 'bahji', color: Colors.grey)),
       );
     }
     return ListView.builder(
@@ -590,7 +590,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
                     ? 'saving'.tr
                     : 'save_attendance'.tr,
                 style: const TextStyle(
-                    fontFamily: 'Cairo',
+                    fontFamily: 'bahji',
                     fontSize: 14,
                     fontWeight: FontWeight.w700),
               ),
@@ -638,7 +638,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
   void _showSnack(String msg, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg,
-          style: const TextStyle(fontFamily: 'Cairo')),
+          style: const TextStyle(fontFamily: 'bahji')),
       backgroundColor: color,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(
@@ -767,7 +767,7 @@ class _SessionFlag extends StatelessWidget {
                 child: Text(
                   '${index + 1}',
                   style: TextStyle(
-                    fontFamily: 'Cairo',
+                    fontFamily: 'bahji',
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
                     color: isSelected ? Colors.white : primaryColor,
@@ -784,7 +784,7 @@ class _SessionFlag extends StatelessWidget {
                 textAlign: TextAlign.center,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontFamily: 'Cairo',
+                  fontFamily: 'bahji',
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                   color:
@@ -846,7 +846,7 @@ class _PremiumStatCard extends StatelessWidget {
           Text(
             value,
             style: const TextStyle(
-              fontFamily: 'Cairo',
+              fontFamily: 'bahji',
               fontSize: 22,
               fontWeight: FontWeight.w900,
               color: Colors.white,
@@ -855,7 +855,7 @@ class _PremiumStatCard extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontFamily: 'Cairo',
+              fontFamily: 'bahji',
               fontSize: 10,
               color: Colors.white.withValues(alpha:.85),
               fontWeight: FontWeight.w500,
@@ -926,7 +926,7 @@ class _PremiumStudentTile extends StatelessWidget {
                   ? Text(
                 student.name[0],
                 style: TextStyle(
-                  fontFamily: 'Cairo',
+                  fontFamily: 'bahji',
                   fontWeight: FontWeight.w800,
                   fontSize: 16,
                   color: statusColor,
@@ -953,7 +953,7 @@ class _PremiumStudentTile extends StatelessWidget {
         title: Text(
           student.name,
           style: const TextStyle(
-            fontFamily: 'Cairo',
+            fontFamily: 'bahji',
             fontSize: 14,
             fontWeight: FontWeight.w700,
           ),
@@ -962,7 +962,7 @@ class _PremiumStudentTile extends StatelessWidget {
             ? Text(
           '$durationLabel: ${student.durationMinutes} $minutesLabel',
           style: const TextStyle(
-              fontFamily: 'Cairo',
+              fontFamily: 'bahji',
               fontSize: 12,
               color: Colors.grey),
         )
@@ -978,7 +978,7 @@ class _PremiumStudentTile extends StatelessWidget {
               child: Text(
                 present ? presentLabel : absentLabel,
                 style: TextStyle(
-                  fontFamily: 'Cairo',
+                  fontFamily: 'bahji',
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                   color: statusColor,
@@ -1034,7 +1034,7 @@ class _QuickActionBtn extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontFamily: 'Cairo',
+              fontFamily: 'bahji',
               fontSize: 10,
               fontWeight: FontWeight.w600,
               color: color,

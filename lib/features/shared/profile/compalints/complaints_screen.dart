@@ -176,7 +176,7 @@ class _Stat extends StatelessWidget {
       Text(
         '$value',
         style: TextStyle(
-            fontFamily: 'Cairo',
+            fontFamily: 'bahji',
             fontSize: 20,
             fontWeight: FontWeight.w800,
             color: color),
@@ -185,7 +185,7 @@ class _Stat extends StatelessWidget {
       Text(
         label,
         style: const TextStyle(
-            fontFamily: 'Cairo', fontSize: 11, color: Colors.white70),
+            fontFamily: 'bahji', fontSize: 11, color: Colors.white70),
       ),
     ]);
   }
@@ -280,7 +280,7 @@ class _FilterChip extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            fontFamily: 'Cairo',
+            fontFamily: 'bahji',
             fontSize: 12,
             fontWeight: FontWeight.w600,
             color: selected ? Colors.white : c.textMedium,
@@ -376,7 +376,7 @@ class _ComplaintCard extends StatelessWidget {
                 child: Text(
                   _statusLabel(complaint.status),
                   style: TextStyle(
-                    fontFamily: 'Cairo',
+                    fontFamily: 'bahji',
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     color: statusClr,
@@ -395,7 +395,7 @@ class _ComplaintCard extends StatelessWidget {
                 child: Text(
                   _categoryLabel(complaint.category),
                   style: TextStyle(
-                    fontFamily: 'Cairo',
+                    fontFamily: 'bahji',
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: c.primary,
@@ -635,7 +635,7 @@ class _InfoCard extends StatelessWidget {
             child: Text(
               _statusLabel(complaint.status),
               style: TextStyle(
-                  fontFamily: 'Cairo',
+                  fontFamily: 'bahji',
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: statusClr),
@@ -688,7 +688,7 @@ class _InfoCard extends StatelessWidget {
                 child: Text(
                   _statusLabel(s),
                   style: TextStyle(
-                    fontFamily: 'Cairo',
+                    fontFamily: 'bahji',
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: selected ? Colors.white : sc,
@@ -756,7 +756,7 @@ class _MetaChip extends StatelessWidget {
         const SizedBox(width: 4),
         Text(label,
             style: TextStyle(
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
                 color: color)),
@@ -828,7 +828,7 @@ class _ReplyBubble extends StatelessWidget {
                     child: Text(
                       reply.senderName,
                       style: TextStyle(
-                          fontFamily: 'Cairo',
+                          fontFamily: 'bahji',
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: reply.isAdmin ? c.accent : c.textMedium),
@@ -837,7 +837,7 @@ class _ReplyBubble extends StatelessWidget {
                 Text(
                   reply.message,
                   style: TextStyle(
-                      fontFamily: 'Cairo',
+                      fontFamily: 'bahji',
                       fontSize: 14,
                       height: 1.5,
                       color: isMe ? Colors.white : c.textDark),
@@ -846,7 +846,7 @@ class _ReplyBubble extends StatelessWidget {
                 Text(
                   _formatTime(reply.createdAt),
                   style: TextStyle(
-                      fontFamily: 'Cairo',
+                      fontFamily: 'bahji',
                       fontSize: 10,
                       color: isMe
                           ? Colors.white60
@@ -904,11 +904,11 @@ class _ReplyInput extends StatelessWidget {
               controller: controller,
               maxLines: null,
               textDirection: TextDirection.rtl,
-              style: TextStyle(fontFamily: 'Cairo', color: c.textDark),
+              style: TextStyle(fontFamily: 'bahji', color: c.textDark),
               decoration: InputDecoration(
                 hintText: 'اكتب ردًا...',
                 hintStyle:
-                    TextStyle(fontFamily: 'Cairo', color: c.textLight),
+                    TextStyle(fontFamily: 'bahji', color: c.textLight),
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 border: InputBorder.none,

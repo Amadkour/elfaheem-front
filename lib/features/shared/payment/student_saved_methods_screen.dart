@@ -78,7 +78,7 @@ class _StudentMethodsViewState extends State<_StudentMethodsView>
                   labelColor:   Colors.white,
                   unselectedLabelColor: c.textMedium,
                   labelStyle: const TextStyle(
-                      fontFamily:  'Cairo',
+                      fontFamily:  'bahji',
                       fontWeight:  FontWeight.w700,
                       fontSize:    13),
                   tabs: const [
@@ -249,7 +249,7 @@ class _VisualCardState extends State<_VisualCard>
                                   color:      Colors.white,
                                   fontSize:   13,
                                   fontWeight: FontWeight.w800,
-                                  fontFamily: 'Cairo',
+                                  fontFamily: 'bahji',
                                 ),
                               ),
                             ),
@@ -264,7 +264,7 @@ class _VisualCardState extends State<_VisualCard>
                             fontSize:    20,
                             fontWeight:  FontWeight.w600,
                             letterSpacing: 3,
-                            fontFamily:  'Cairo',
+                            fontFamily:  'bahji',
                           ),
                         ),
                         const SizedBox(height: 14),
@@ -277,7 +277,7 @@ class _VisualCardState extends State<_VisualCard>
                                     style: TextStyle(
                                         color: Colors.white.withValues(alpha: .5),
                                         fontSize: 9,
-                                        fontFamily: 'Cairo',
+                                        fontFamily: 'bahji',
                                         letterSpacing: 1)),
                                 const SizedBox(height: 3),
                                 Text(
@@ -286,7 +286,7 @@ class _VisualCardState extends State<_VisualCard>
                                     color:      Colors.white,
                                     fontSize:   12,
                                     fontWeight: FontWeight.w600,
-                                    fontFamily: 'Cairo',
+                                    fontFamily: 'bahji',
                                   ),
                                 ),
                               ],
@@ -299,7 +299,7 @@ class _VisualCardState extends State<_VisualCard>
                                     style: TextStyle(
                                         color: Colors.white.withValues(alpha: .5),
                                         fontSize: 9,
-                                        fontFamily: 'Cairo',
+                                        fontFamily: 'bahji',
                                         letterSpacing: 1)),
                                 const SizedBox(height: 3),
                                 Text(
@@ -308,7 +308,7 @@ class _VisualCardState extends State<_VisualCard>
                                     color:      Colors.white,
                                     fontSize:   13,
                                     fontWeight: FontWeight.w600,
-                                    fontFamily: 'Cairo',
+                                    fontFamily: 'bahji',
                                   ),
                                 ),
                               ],
@@ -341,7 +341,7 @@ class _VisualCardState extends State<_VisualCard>
                   const SizedBox(width: 4),
                   Text('افتراضية',
                       style: TextStyle(
-                          fontFamily: 'Cairo',
+                          fontFamily: 'bahji',
                           fontSize:   11,
                           fontWeight: FontWeight.w700,
                           color: Colors.amber[800])),
@@ -415,19 +415,19 @@ class _VisualCardState extends State<_VisualCard>
     final ok = await showDialog<bool>(
       context: ctx,
       builder: (_) => AlertDialog(
-        title:   const Text('حذف البطاقة', style: TextStyle(fontFamily: 'Cairo')),
+        title:   const Text('حذف البطاقة', style: TextStyle(fontFamily: 'bahji')),
         content: const Text('هل تريد حذف هذه البطاقة؟',
-            style: TextStyle(fontFamily: 'Cairo')),
+            style: TextStyle(fontFamily: 'bahji')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
+            child: const Text('إلغاء', style: TextStyle(fontFamily: 'bahji')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: Text('حذف',
                 style: TextStyle(
-                    color:      ctx.colors.danger, fontFamily: 'Cairo')),
+                    color:      ctx.colors.danger, fontFamily: 'bahji')),
           ),
         ],
       ),
@@ -615,7 +615,7 @@ class _Step extends StatelessWidget {
               child: Text(n,
                   style: const TextStyle(
                       color: Colors.white, fontSize: 11,
-                      fontWeight: FontWeight.w800, fontFamily: 'Cairo')),
+                      fontWeight: FontWeight.w800, fontFamily: 'bahji')),
             ),
           ),
           const SizedBox(width: 10),
@@ -708,7 +708,7 @@ class _StudentBankTile extends StatelessWidget {
             TextButton(
               onPressed: () => p.setDefault(method.id),
               child: Text('افتراضي',
-                  style: TextStyle(fontFamily: 'Cairo', color: c.primary, fontSize: 12)),
+                  style: TextStyle(fontFamily: 'bahji', color: c.primary, fontSize: 12)),
             ),
           IconButton(
             onPressed: () => p.delete(method.id),
@@ -754,7 +754,7 @@ class _AddStudentBankFormState extends State<_AddStudentBankForm> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('تم حفظ الحساب البنكي ✓',
-                style: TextStyle(fontFamily: 'Cairo', color: Colors.white)),
+                style: TextStyle(fontFamily: 'bahji', color: Colors.white)),
             backgroundColor: context.colors.success,
             behavior:        SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(

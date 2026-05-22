@@ -63,6 +63,7 @@ class SessionModel {
   final DateTime createdAt;
   String? recordingUrl;
   bool isCompleted;
+  final bool isLiveActive;
 
   SessionModel(
       {required this.id,
@@ -76,7 +77,8 @@ class SessionModel {
       this.recordingUrl,
       this.recordingStatus,
       this.isCompleted = false,
-      required this.createdAt});
+      required this.createdAt,
+      required this.isLiveActive});
 
   bool get isLive => type == 'live';
 
@@ -101,6 +103,7 @@ class SessionModel {
       type: j['type'] as String? ?? 'pre-recorded',
       durationMinutes: j['duration_minutes'] as int? ?? 0,
       order: j['order'] as int? ?? 0,
+      isLiveActive: j['is_live_active'] as bool? ?? false,
       scheduledAt: j['scheduled_at'] != null
           ? DateTime.parse(j['scheduled_at'] as String)
           : null,
@@ -118,6 +121,7 @@ class SessionModel {
       durationMinutes: durationMinutes,
       order: order,
       scheduledAt: scheduledAt,
+      isLiveActive: isLiveActive,
       createdAt: createdAt);
 
   SessionModel copyWith({bool? isCompleted, String? type}) => SessionModel(
@@ -130,6 +134,7 @@ class SessionModel {
       description: description,
       scheduledAt: scheduledAt,
       createdAt: createdAt,
+      isLiveActive: isLiveActive,
       recordingUrl: recordingUrl,
       recordingStatus: recordingStatus,
       isCompleted: isCompleted ?? this.isCompleted);
@@ -153,7 +158,7 @@ class TeacherSessionItem {
     this.description,
     this.type,
     required this.scheduledAt,
-    this.isLiveActive = false,
+    required this.isLiveActive,
     this.roomUrl,
     this.recordingUrl,
     this.recordingStatus,
@@ -308,7 +313,8 @@ class TeacherProfileDetail {
         id: j['id'] as int,
         userId: j['user_id'] as int,
         experienceYears: j['experience_years'] as int,
-        specialization: CategoryModel.fromJson(j['specialization'] as Map<String, dynamic>? ??{}),
+        specialization: CategoryModel.fromJson(
+            j['specialization'] as Map<String, dynamic>? ?? {}),
         teachingType: j['teaching_type'] as String,
         paymentType: j['payment_type'] as String,
         about: j['about'] as String?,
@@ -324,7 +330,12 @@ class CourseModel {
   bool isEnrolled;
   bool isFavorite;
   bool isSubscribed;
+
+  // Progress fields — populated by the API for enrolled students.
+  // Progress is based on materials only (0.0–100.0).
   double progress;
+  int materialsTotal;
+  int materialsCompleted;
   late List<SessionModel> sessions;
   final List<CourseSchedule> schedules;
   final List<CourseInfoItem> certificates, tools, prerequisites;
@@ -346,6 +357,8 @@ class CourseModel {
       this.isFavorite = false,
       this.isSubscribed = false,
       this.progress = 0.0,
+      this.materialsTotal = 0,
+      this.materialsCompleted = 0,
       this.sessions = const [],
       this.schedules = const [],
       this.certificates = const [],
@@ -399,6 +412,9 @@ class CourseModel {
       type: j['type'] as String? ?? 'recorded',
       isSubscribed: j['is_subscribed'] as bool? ?? false,
       isFavorite: j['is_favorite'] as bool? ?? false,
+      progress: (j['progress'] as num?)?.toDouble() ?? 0.0,
+      materialsTotal: j['materials_total'] as int? ?? 0,
+      materialsCompleted: j['materials_completed'] as int? ?? 0,
       sessions: (j['sessions'] as List? ?? [])
           .map((e) => SessionModel.fromJson(e as Map<String, dynamic>))
           .toList()
@@ -427,6 +443,8 @@ class CourseModel {
   CourseModel copyWith(
           {bool? isFavorite,
           double? progress,
+          int? materialsTotal,
+          int? materialsCompleted,
           List<SessionModel>? sessions,
           String? categoryName,
           double? averageRating,
@@ -447,6 +465,8 @@ class CourseModel {
           description: description,
           isFavorite: isFavorite ?? this.isFavorite,
           progress: progress ?? this.progress,
+          materialsTotal: materialsTotal ?? this.materialsTotal,
+          materialsCompleted: materialsCompleted ?? this.materialsCompleted,
           sessions: sessions ?? this.sessions,
           schedules: schedules,
           certificates: certificates,

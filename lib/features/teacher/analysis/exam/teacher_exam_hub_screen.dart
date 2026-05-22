@@ -74,7 +74,7 @@ class _HubViewState extends State<_HubView>
                 icon: const Icon(Icons.add_rounded, color: Colors.white),
                 label: Text('new_exam'.tr,
                     style: TextStyle(
-                        fontFamily: 'Cairo',
+                        fontFamily: 'bahji',
                         color: Colors.white,
                         fontWeight: FontWeight.w700)),
               )
@@ -201,11 +201,11 @@ class _HubViewState extends State<_HubView>
           const SizedBox(height: 12),
           const Text('لا توجد اختبارات بعد',
               style: TextStyle(
-                  fontFamily: 'Cairo', fontSize: 16, color: Colors.grey)),
+                  fontFamily: 'bahji', fontSize: 16, color: Colors.grey)),
           const SizedBox(height: 8),
           const Text('اضغط على "اختبار جديد" لإنشاء أول اختبار',
               style: TextStyle(
-                  fontFamily: 'Cairo', fontSize: 13, color: Colors.grey)),
+                  fontFamily: 'bahji', fontSize: 13, color: Colors.grey)),
         ]),
       );
     }
@@ -249,7 +249,7 @@ class _HubViewState extends State<_HubView>
           const SizedBox(height: 12),
           const Text('اختر اختباراً لعرض نتائج الطلاب',
               style: TextStyle(
-                  fontFamily: 'Cairo', fontSize: 15, color: Colors.grey)),
+                  fontFamily: 'bahji', fontSize: 15, color: Colors.grey)),
         ]),
       );
     }
@@ -273,7 +273,7 @@ class _HubViewState extends State<_HubView>
             Expanded(
               child: Text(prov.selectedExam!.name,
                   style: const TextStyle(
-                      fontFamily: 'Cairo',
+                      fontFamily: 'bahji',
                       fontSize: 15,
                       fontWeight: FontWeight.w700),
                   overflow: TextOverflow.ellipsis),
@@ -295,7 +295,7 @@ class _HubViewState extends State<_HubView>
         child: prov.results.isEmpty
             ? const Center(
                 child: Text('لا توجد نتائج بعد',
-                    style: TextStyle(fontFamily: 'Cairo', color: Colors.grey)))
+                    style: TextStyle(fontFamily: 'bahji', color: Colors.grey)))
             : ListView.builder(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
                 itemCount: prov.results.length,
@@ -334,21 +334,21 @@ class _HubViewState extends State<_HubView>
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
           title: const Text('حذف الاختبار',
               style:
-                  TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
+                  TextStyle(fontFamily: 'bahji', fontWeight: FontWeight.w700)),
           content: const Text('هل أنت متأكد؟ سيتم حذف جميع الأسئلة والإجابات.',
-              style: TextStyle(fontFamily: 'Cairo')),
+              style: TextStyle(fontFamily: 'bahji')),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(context, false),
                 child:
-                    const Text('إلغاء', style: TextStyle(fontFamily: 'Cairo'))),
+                    const Text('إلغاء', style: TextStyle(fontFamily: 'bahji'))),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
               style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.redAccent,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10))),
-              child: const Text('حذف', style: TextStyle(fontFamily: 'Cairo')),
+              child: const Text('حذف', style: TextStyle(fontFamily: 'bahji')),
             ),
           ],
         ),
@@ -396,7 +396,7 @@ class _HubViewState extends State<_HubView>
 
   void _snack(String msg, Color color) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(msg, style: const TextStyle(fontFamily: 'Cairo')),
+        content: Text(msg, style: const TextStyle(fontFamily: 'bahji')),
         backgroundColor: color,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -473,7 +473,7 @@ class _ExamCard extends StatelessWidget {
                               child: Text(
                                 exam.name,
                                 style: const TextStyle(
-                                  fontFamily: 'Cairo',
+                                  fontFamily: 'bahji',
                                   fontSize: 18,
                                   fontWeight: FontWeight.w800,
                                 ),
@@ -493,7 +493,7 @@ class _ExamCard extends StatelessWidget {
                               child: Text(
                                 exam.isPublished ? 'منشور' : 'غير منشور',
                                 style: TextStyle(
-                                  fontFamily: 'Cairo',
+                                  fontFamily: 'bahji',
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                   color: exam.isPublished
@@ -511,7 +511,7 @@ class _ExamCard extends StatelessWidget {
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontFamily: 'Cairo',
+                              fontFamily: 'bahji',
                               fontSize: 13,
                               height: 1.5,
                               color: Colors.grey.shade600,
@@ -707,12 +707,12 @@ class _ManageQuestionsSheet extends StatelessWidget {
                     children: [
                       const Text('إدارة الأسئلة',
                           style: TextStyle(
-                              fontFamily: 'Cairo',
+                              fontFamily: 'bahji',
                               fontSize: 17,
                               fontWeight: FontWeight.w700)),
                       Text(exam.name,
                           style: const TextStyle(
-                              fontFamily: 'Cairo',
+                              fontFamily: 'bahji',
                               fontSize: 12,
                               color: Colors.grey),
                           overflow: TextOverflow.ellipsis),
@@ -726,7 +726,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
                     size: 18, color: context.colors.primary),
                 label: Text('إضافة',
                     style: TextStyle(
-                        fontFamily: 'Cairo',
+                        fontFamily: 'bahji',
                         fontWeight: FontWeight.w700,
                         color: context.colors.primary)),
               ),
@@ -747,14 +747,14 @@ class _ManageQuestionsSheet extends StatelessWidget {
                         const SizedBox(height: 8),
                         Text(error,
                             style: const TextStyle(
-                                fontFamily: 'Cairo', color: Colors.grey)),
+                                fontFamily: 'bahji', color: Colors.grey)),
                         const SizedBox(height: 12),
                         ElevatedButton(
                           onPressed: () => prov.loadQuestions(exam.id),
                           style: ElevatedButton.styleFrom(
                               backgroundColor: context.colors.primary),
                           child: const Text('إعادة المحاولة',
-                              style: TextStyle(fontFamily: 'Cairo')),
+                              style: TextStyle(fontFamily: 'bahji')),
                         ),
                       ]))
                     : questions.isEmpty
@@ -767,13 +767,13 @@ class _ManageQuestionsSheet extends StatelessWidget {
                                 const SizedBox(height: 10),
                                 const Text('لا توجد أسئلة بعد',
                                     style: TextStyle(
-                                        fontFamily: 'Cairo',
+                                        fontFamily: 'bahji',
                                         fontSize: 15,
                                         color: Colors.grey)),
                                 const SizedBox(height: 6),
                                 const Text('اضغط "إضافة" لإنشاء أول سؤال',
                                     style: TextStyle(
-                                        fontFamily: 'Cairo',
+                                        fontFamily: 'bahji',
                                         fontSize: 12,
                                         color: Colors.grey)),
                               ]))
@@ -832,22 +832,22 @@ class _ManageQuestionsSheet extends StatelessWidget {
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text('حذف السؤال',
               style:
-                  TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
+                  TextStyle(fontFamily: 'bahji', fontWeight: FontWeight.w700)),
           content: Text(
               'هل تريد حذف: "${q.title.length > 60 ? '${q.title.substring(0, 60)}...' : q.title}"?',
-              style: const TextStyle(fontFamily: 'Cairo')),
+              style: const TextStyle(fontFamily: 'bahji')),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
                 child:
-                    const Text('إلغاء', style: TextStyle(fontFamily: 'Cairo'))),
+                    const Text('إلغاء', style: TextStyle(fontFamily: 'bahji'))),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
               style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.redAccent,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10))),
-              child: const Text('حذف', style: TextStyle(fontFamily: 'Cairo')),
+              child: const Text('حذف', style: TextStyle(fontFamily: 'bahji')),
             ),
           ],
         ),
@@ -902,7 +902,7 @@ class _QuestionTile extends StatelessWidget {
                 child: Center(
                   child: Text('${index + 1}',
                       style: TextStyle(
-                          fontFamily: 'Cairo',
+                          fontFamily: 'bahji',
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
                           color: context.colors.primary)),
@@ -912,7 +912,7 @@ class _QuestionTile extends StatelessWidget {
               Expanded(
                 child: Text(question.title,
                     style: const TextStyle(
-                        fontFamily: 'Cairo',
+                        fontFamily: 'bahji',
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         height: 1.4)),
@@ -935,7 +935,7 @@ class _QuestionTile extends StatelessWidget {
                       leading: Icon(Icons.edit_rounded,
                           color: context.colors.primary),
                       title:
-                          Text('تعديل', style: TextStyle(fontFamily: 'Cairo')),
+                          Text('تعديل', style: TextStyle(fontFamily: 'bahji')),
                     ),
                   ),
                   const PopupMenuItem(
@@ -946,7 +946,7 @@ class _QuestionTile extends StatelessWidget {
                           Icon(Icons.delete_outline, color: Colors.redAccent),
                       title: Text('حذف',
                           style: TextStyle(
-                              fontFamily: 'Cairo', color: Colors.redAccent)),
+                              fontFamily: 'bahji', color: Colors.redAccent)),
                     ),
                   ),
                 ],
@@ -984,7 +984,7 @@ class _QuestionTile extends StatelessWidget {
                       ],
                       Text(opt,
                           style: TextStyle(
-                              fontFamily: 'Cairo',
+                              fontFamily: 'bahji',
                               fontSize: 12,
                               color: isCorrect
                                   ? context.colors.success
@@ -1004,7 +1004,7 @@ class _QuestionTile extends StatelessWidget {
             child: Text(
                 '${question.marks.toStringAsFixed(question.marks % 1 == 0 ? 0 : 1)} درجة',
                 style: TextStyle(
-                    fontFamily: 'Cairo',
+                    fontFamily: 'bahji',
                     fontSize: 11,
                     color: Colors.grey.shade500)),
           ),
@@ -1135,7 +1135,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
   void _snack(String msg, Color color) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: const TextStyle(fontFamily: 'Cairo')),
+      content: Text(msg, style: const TextStyle(fontFamily: 'bahji')),
       backgroundColor: color,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -1177,7 +1177,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
               const SizedBox(width: 8),
               Text(isEditing ? 'تعديل السؤال' : 'إضافة سؤال',
                   style: const TextStyle(
-                      fontFamily: 'Cairo',
+                      fontFamily: 'bahji',
                       fontSize: 17,
                       fontWeight: FontWeight.w700)),
             ]),
@@ -1244,7 +1244,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                         const SizedBox(height: 14),
                         const Text('الخيارات',
                             style: TextStyle(
-                                fontFamily: 'Cairo',
+                                fontFamily: 'bahji',
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
                                 color: Colors.grey)),
@@ -1267,7 +1267,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                                         decoration: InputDecoration(
                                           hintText: 'الخيار ${i + 1}',
                                           hintStyle: const TextStyle(
-                                              fontFamily: 'Cairo',
+                                              fontFamily: 'bahji',
                                               color: Colors.grey),
                                           filled: true,
                                           fillColor: Colors.grey.shade50,
@@ -1307,7 +1307,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                           icon: const Icon(Icons.add_rounded, size: 16),
                           label: const Text('إضافة خيار',
                               style:
-                                  TextStyle(fontFamily: 'Cairo', fontSize: 13)),
+                                  TextStyle(fontFamily: 'bahji', fontSize: 13)),
                           style: TextButton.styleFrom(
                               foregroundColor: context.colors.primary),
                         ),
@@ -1343,7 +1343,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                               : Text(
                                   isEditing ? 'حفظ التعديلات' : 'إضافة السؤال',
                                   style: const TextStyle(
-                                      fontFamily: 'Cairo',
+                                      fontFamily: 'bahji',
                                       fontSize: 15,
                                       fontWeight: FontWeight.w700)),
                         ),
@@ -1482,7 +1482,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                 SizedBox(width: 8),
                 Text('إنشاء اختبار جديد',
                     style: TextStyle(
-                        fontFamily: 'Cairo',
+                        fontFamily: 'bahji',
                         fontSize: 17,
                         fontWeight: FontWeight.w700)),
               ]),
@@ -1572,7 +1572,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                                             '${_scheduleDate!.hour.toString().padLeft(2, '0')}:${_scheduleDate!.minute.toString().padLeft(2, '0')}'
                                         : 'اختر تاريخ ووقت البدء',
                                     style: TextStyle(
-                                        fontFamily: 'Cairo',
+                                        fontFamily: 'bahji',
                                         fontSize: 14,
                                         color: _scheduleDate != null
                                             ? Colors.black87
@@ -1610,7 +1610,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                                             '${_deadlineDate!.hour.toString().padLeft(2, '0')}:${_deadlineDate!.minute.toString().padLeft(2, '0')}'
                                         : 'اختر الموعد النهائي',
                                     style: TextStyle(
-                                        fontFamily: 'Cairo',
+                                        fontFamily: 'bahji',
                                         fontSize: 14,
                                         color: _deadlineDate != null
                                             ? context.colors.textDark
@@ -1663,7 +1663,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                                     strokeWidth: 2, color: Colors.white))
                             : const Text('إنشاء الاختبار',
                                 style: TextStyle(
-                                    fontFamily: 'Cairo',
+                                    fontFamily: 'bahji',
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700)),
                       ),
@@ -1717,7 +1717,7 @@ class _AnswersSheet extends StatelessWidget {
                           style: TextStyle(
                               color: context.colors.primary,
                               fontWeight: FontWeight.w700,
-                              fontFamily: 'Cairo'))
+                              fontFamily: 'bahji'))
                       : null,
                 ),
                 const SizedBox(width: 10),
@@ -1727,7 +1727,7 @@ class _AnswersSheet extends StatelessWidget {
                       children: [
                         Text(result.studentName,
                             style: const TextStyle(
-                                fontFamily: 'Cairo',
+                                fontFamily: 'bahji',
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700)),
                         Text(
@@ -1735,7 +1735,7 @@ class _AnswersSheet extends StatelessWidget {
                             '${result.totalMarks?.toStringAsFixed(0) ?? 0} درجة'
                             '  •  ${result.percentage?.toStringAsFixed(1) ?? 0}%',
                             style: const TextStyle(
-                                fontFamily: 'Cairo',
+                                fontFamily: 'bahji',
                                 fontSize: 13,
                                 color: Colors.grey)),
                       ]),
@@ -1753,7 +1753,7 @@ class _AnswersSheet extends StatelessWidget {
                   ? const Center(
                       child: Text('لا توجد إجابات مسجّلة',
                           style: TextStyle(
-                              fontFamily: 'Cairo', color: Colors.grey)))
+                              fontFamily: 'bahji', color: Colors.grey)))
                   : ListView.builder(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
                       itemCount: result.answers.length,
@@ -1785,12 +1785,12 @@ class _AnswersSheet extends StatelessWidget {
                                   children: [
                                     Text('السؤال ${a.questionId}',
                                         style: const TextStyle(
-                                            fontFamily: 'Cairo',
+                                            fontFamily: 'bahji',
                                             fontSize: 12,
                                             color: Colors.grey)),
                                     Text(a.answer ?? 'لم يجب',
                                         style: const TextStyle(
-                                            fontFamily: 'Cairo',
+                                            fontFamily: 'bahji',
                                             fontSize: 14,
                                             fontWeight: FontWeight.w600)),
                                   ]),
@@ -1798,7 +1798,7 @@ class _AnswersSheet extends StatelessWidget {
                             Text(
                                 '${a.marksObtained?.toStringAsFixed(1) ?? 0} درجة',
                                 style: TextStyle(
-                                    fontFamily: 'Cairo',
+                                    fontFamily: 'bahji',
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
                                     color: color)),
@@ -1855,7 +1855,7 @@ class _ResultTile extends StatelessWidget {
             child: result.studentImage == null
                 ? Text(result.studentName[0],
                     style: TextStyle(
-                        fontFamily: 'Cairo',
+                        fontFamily: 'bahji',
                         fontWeight: FontWeight.w700,
                         color: color))
                 : null,
@@ -1876,7 +1876,7 @@ class _ResultTile extends StatelessWidget {
         ]),
         title: Text(result.studentName,
             style: const TextStyle(
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
                 fontSize: 14,
                 fontWeight: FontWeight.w600)),
         subtitle:
@@ -1907,7 +1907,7 @@ class _ResultTile extends StatelessWidget {
             Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           Text(pct != null ? '${pct.toStringAsFixed(0)}%' : '—',
               style: TextStyle(
-                  fontFamily: 'Cairo',
+                  fontFamily: 'bahji',
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
                   color: color)),
@@ -1916,7 +1916,7 @@ class _ResultTile extends StatelessWidget {
               onTap: onViewAnswers,
               child: Text('الإجابات',
                   style: TextStyle(
-                      fontFamily: 'Cairo',
+                      fontFamily: 'bahji',
                       fontSize: 11,
                       color: context.colors.primary,
                       fontWeight: FontWeight.w600)),
@@ -1945,7 +1945,7 @@ class _StatusBadge extends StatelessWidget {
             borderRadius: BorderRadius.circular(20)),
         child: Text(label,
             style: TextStyle(
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color: color)),
@@ -1962,13 +1962,13 @@ class _MiniStat extends StatelessWidget {
         child: Column(children: [
           Text(value,
               style: TextStyle(
-                  fontFamily: 'Cairo',
+                  fontFamily: 'bahji',
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
                   color: color)),
           Text(label,
               style: const TextStyle(
-                  fontFamily: 'Cairo', fontSize: 10, color: Colors.grey)),
+                  fontFamily: 'bahji', fontSize: 10, color: Colors.grey)),
         ]),
       );
 }
@@ -2003,8 +2003,8 @@ class _Field extends StatelessWidget {
           labelText: label,
           hintText: hint,
           labelStyle: const TextStyle(
-              fontFamily: 'Cairo', fontSize: 13, color: Colors.grey),
-          hintStyle: const TextStyle(fontFamily: 'Cairo', color: Colors.grey),
+              fontFamily: 'bahji', fontSize: 13, color: Colors.grey),
+          hintStyle: const TextStyle(fontFamily: 'bahji', color: Colors.grey),
           filled: true,
           fillColor: context.colors.inputBg,
           border: OutlineInputBorder(
@@ -2045,7 +2045,7 @@ class _Toggle extends StatelessWidget {
             leading: Icon(icon, color: context.colors.primary, size: 20),
             title: Text(label,
                 style: const TextStyle(
-                    fontFamily: 'Cairo',
+                    fontFamily: 'bahji',
                     fontSize: 13,
                     fontWeight: FontWeight.w600)),
             trailing: Switch.adaptive(
@@ -2075,7 +2075,7 @@ class _ErrorView extends StatelessWidget {
           const SizedBox(height: 12),
           Text(message ?? 'حدث خطأ',
               style: const TextStyle(
-                  fontFamily: 'Cairo', fontSize: 14, color: Colors.grey)),
+                  fontFamily: 'bahji', fontSize: 14, color: Colors.grey)),
           const SizedBox(height: 12),
           ElevatedButton(
               onPressed: onRetry,
@@ -2084,7 +2084,7 @@ class _ErrorView extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12))),
               child: const Text('إعادة المحاولة',
-                  style: TextStyle(fontFamily: 'Cairo', color: Colors.white))),
+                  style: TextStyle(fontFamily: 'bahji', color: Colors.white))),
         ]),
       );
 }
@@ -2119,7 +2119,7 @@ class _InfoChip extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontFamily: 'Cairo',
+              fontFamily: 'bahji',
               fontWeight: FontWeight.w700,
               color: color,
             ),
@@ -2162,7 +2162,7 @@ class _ModernActionBtn extends StatelessWidget {
             Text(
               title,
               style: TextStyle(
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
                 fontWeight: FontWeight.w700,
                 color: color,
               ),

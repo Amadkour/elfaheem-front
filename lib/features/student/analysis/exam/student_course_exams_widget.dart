@@ -51,12 +51,12 @@ class _StudentCourseExamsWidgetState extends State<StudentCourseExamsWidget> {
           Expanded(
             child: Text(error,
                 style: const TextStyle(
-                    fontFamily: 'Cairo', fontSize: 12, color: Colors.grey)),
+                    fontFamily: 'bahji', fontSize: 12, color: Colors.grey)),
           ),
           TextButton(
             onPressed: () => prov.loadCourseExams(widget.courseId),
             child: const Text('إعادة',
-                style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
+                style: TextStyle(fontFamily: 'bahji', fontSize: 12)),
           ),
         ]),
       );
@@ -70,7 +70,7 @@ class _StudentCourseExamsWidgetState extends State<StudentCourseExamsWidget> {
           SizedBox(width: 8),
           Text('لا توجد اختبارات لهذه المادة بعد',
               style: TextStyle(
-                  fontFamily: 'Cairo', fontSize: 13, color: Colors.grey)),
+                  fontFamily: 'bahji', fontSize: 13, color: Colors.grey)),
         ]),
       );
     }
@@ -86,14 +86,14 @@ class _StudentCourseExamsWidgetState extends State<StudentCourseExamsWidget> {
             const SizedBox(width: 8),
             Text('الاختبارات',
                 style: TextStyle(
-                    fontFamily: 'Cairo',
+                    fontFamily: 'bahji',
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: context.colors.primary)),
             const Spacer(),
             Text('${exams.length} اختبار',
                 style: const TextStyle(
-                    fontFamily: 'Cairo', fontSize: 12, color: Colors.grey)),
+                    fontFamily: 'bahji', fontSize: 12, color: Colors.grey)),
           ]),
         ),
 
@@ -202,7 +202,7 @@ class _CourseExamTile extends StatelessWidget {
                     children: [
                       Text(exam.name,
                           style: const TextStyle(
-                              fontFamily: 'Cairo',
+                              fontFamily: 'bahji',
                               fontSize: 14,
                               fontWeight: FontWeight.w700),
                           maxLines: 1,
@@ -304,7 +304,7 @@ class _MetaChip extends StatelessWidget {
         const SizedBox(width: 3),
         Text(label,
             style: TextStyle(
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
                 fontSize: 11,
                 color: Colors.grey.shade700)),
       ]);
@@ -326,7 +326,7 @@ class _ScorePill extends StatelessWidget {
           borderRadius: BorderRadius.circular(20)),
       child: Text('${pct.toStringAsFixed(0)}%',
           style: TextStyle(
-              fontFamily: 'Cairo',
+              fontFamily: 'bahji',
               fontSize: 13,
               fontWeight: FontWeight.w800,
               color: color)),

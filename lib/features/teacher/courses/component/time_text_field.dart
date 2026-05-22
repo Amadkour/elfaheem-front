@@ -13,7 +13,7 @@ class TimeField extends StatelessWidget {
     controller: controller,
     textAlign: TextAlign.center,
     keyboardType: TextInputType.datetime,
-    style: const TextStyle(fontFamily: 'Cairo', fontSize: 14),
+    style: const TextStyle(fontFamily: 'bahji', fontSize: 14),
     decoration: InputDecoration(
       labelText: label,
       labelStyle: context.colors.caption,

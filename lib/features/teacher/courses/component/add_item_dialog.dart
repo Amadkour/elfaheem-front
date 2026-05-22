@@ -24,12 +24,12 @@ Future<void> addItemDialog(
             borderRadius: BorderRadius.circular(context.colors.radiusMedium)),
         title: Text(hint,
             style: const TextStyle(
-                fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
+                fontFamily: 'bahji', fontWeight: FontWeight.w700)),
         content: TextField(
           controller: ctrl,
           autofocus: true,
           textDirection: TextDirection.rtl,
-          style: const TextStyle(fontFamily: 'Cairo'),
+          style: const TextStyle(fontFamily: 'bahji'),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: context.colors.caption,
@@ -43,7 +43,7 @@ Future<void> addItemDialog(
             onPressed: () => Navigator.pop(dialogContext),
             child:  Text('إلغاء',
                 style: TextStyle(
-                    fontFamily: 'Cairo', color: context.colors.textMedium)),
+                    fontFamily: 'bahji', color: context.colors.textMedium)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -56,7 +56,7 @@ Future<void> addItemDialog(
                 Navigator.pop(dialogContext, ctrl.text.trim()),
             child: const Text('إضافة',
                 style: TextStyle(
-                    fontFamily: 'Cairo',
+                    fontFamily: 'bahji',
                     color: Colors.white,
                     fontWeight: FontWeight.w700)),
           ),

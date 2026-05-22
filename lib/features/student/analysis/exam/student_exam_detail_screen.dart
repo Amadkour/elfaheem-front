@@ -145,7 +145,7 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen>
                           child: Text(
                             exam.name,
                             style: const TextStyle(
-                              fontFamily: 'Cairo', fontSize: 17,
+                              fontFamily: 'bahji', fontSize: 17,
                               fontWeight: FontWeight.w800, color: Colors.white,
                             ),
                             textAlign: TextAlign.center,
@@ -158,7 +158,7 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen>
                           Text(
                             exam.courseName!,
                             style: const TextStyle(
-                              fontFamily: 'Cairo', fontSize: 13, color: Colors.white70,
+                              fontFamily: 'bahji', fontSize: 13, color: Colors.white70,
                             ),
                           ),
                         ],
@@ -170,7 +170,7 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen>
               title: Text(
                 exam.name,
                 style: const TextStyle(
-                  fontFamily: 'Cairo', fontSize: 15,
+                  fontFamily: 'bahji', fontSize: 15,
                   fontWeight: FontWeight.w700, color: Colors.white,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -193,7 +193,7 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen>
                       child: Text(
                         exam.description!,
                         style: TextStyle(
-                          fontFamily: 'Cairo', fontSize: 13, color: c.textMedium, height: 1.6,
+                          fontFamily: 'bahji', fontSize: 13, color: c.textMedium, height: 1.6,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -354,9 +354,9 @@ class _InfoRow extends StatelessWidget {
     ),
     const SizedBox(width: 10),
     Expanded(child: Text(label,
-        style: const TextStyle(fontFamily: 'Cairo', fontSize: 13, color: Colors.grey))),
+        style: const TextStyle(fontFamily: 'bahji', fontSize: 13, color: Colors.grey))),
     Text(value, style: TextStyle(
-      fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.w700, color: color,
+      fontFamily: 'bahji', fontSize: 13, fontWeight: FontWeight.w700, color: color,
     )),
   ]);
 }
@@ -397,7 +397,7 @@ class _ScoreCard extends StatelessWidget {
               Icon(Icons.emoji_events_rounded, size: 14, color: _color),
               const SizedBox(width: 4),
               Text('أفضل نتيجة', style: TextStyle(
-                fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.w700, color: _color,
+                fontFamily: 'bahji', fontSize: 11, fontWeight: FontWeight.w700, color: _color,
               )),
             ]),
           ),
@@ -405,7 +405,7 @@ class _ScoreCard extends StatelessWidget {
           Text(
             exam.passed == true ? 'ناجح ✓' : 'راسب ✗',
             style: TextStyle(
-              fontFamily: 'Cairo', fontSize: 14, fontWeight: FontWeight.w700, color: _color,
+              fontFamily: 'bahji', fontSize: 14, fontWeight: FontWeight.w700, color: _color,
             ),
           ),
         ]),
@@ -430,7 +430,7 @@ class _ScoreCard extends StatelessWidget {
             const SizedBox(width: 4),
             Text(
               'تم التقديم ${exam.submissionCount} مرة',
-              style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.grey.shade500),
+              style: TextStyle(fontFamily: 'bahji', fontSize: 12, color: Colors.grey.shade500),
             ),
           ]),
         ],
@@ -447,10 +447,10 @@ class _ScoreStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Column(children: [
     Text(value, style: TextStyle(
-      fontFamily: 'Cairo', fontSize: 18, fontWeight: FontWeight.w800, color: color,
+      fontFamily: 'bahji', fontSize: 18, fontWeight: FontWeight.w800, color: color,
     )),
     const SizedBox(height: 2),
-    Text(label, style: const TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey)),
+    Text(label, style: const TextStyle(fontFamily: 'bahji', fontSize: 11, color: Colors.grey)),
   ]);
 }
 
@@ -501,14 +501,14 @@ class _ActionButton extends StatelessWidget {
               Icon(icon, color: Colors.white, size: 20),
               const SizedBox(width: 8),
               Text(label, style: const TextStyle(
-                fontFamily: 'Cairo', fontSize: 16,
+                fontFamily: 'bahji', fontSize: 16,
                 fontWeight: FontWeight.w800, color: Colors.white,
               )),
             ]),
             if (subtitle != null) ...[
               const SizedBox(height: 2),
               Text(subtitle!, style: const TextStyle(
-                fontFamily: 'Cairo', fontSize: 11, color: Colors.white70,
+                fontFamily: 'bahji', fontSize: 11, color: Colors.white70,
               )),
             ],
           ],
@@ -535,7 +535,7 @@ class _OutlineBtn extends StatelessWidget {
       ),
       child: Center(
         child: Text(label, style: TextStyle(
-          fontFamily: 'Cairo', fontSize: 15,
+          fontFamily: 'bahji', fontSize: 15,
           fontWeight: FontWeight.w600, color: Colors.grey.shade600,
         )),
       ),
@@ -558,7 +558,7 @@ class _ErrorBanner extends StatelessWidget {
       const Icon(Icons.error_outline_rounded, color: Colors.red, size: 18),
       const SizedBox(width: 10),
       Expanded(child: Text(message, style: const TextStyle(
-        fontFamily: 'Cairo', fontSize: 13, color: Colors.red,
+        fontFamily: 'bahji', fontSize: 13, color: Colors.red,
       ))),
     ]),
   );
@@ -579,7 +579,7 @@ class _WarningNotice extends StatelessWidget {
       Expanded(
         child: Text(
           'بمجرد بدء الاختبار لا يمكن إيقافه مؤقتاً. تأكد من اتصالك قبل البدء.',
-          style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.orange),
+          style: TextStyle(fontFamily: 'bahji', fontSize: 12, color: Colors.orange),
         ),
       ),
     ]),
@@ -627,7 +627,7 @@ class _CountdownCardState extends State<_CountdownCard> {
     ),
     child: Column(children: [
       const Text('يبدأ الاختبار خلال', style: TextStyle(
-        fontFamily: 'Cairo', fontSize: 13, color: Colors.orange, fontWeight: FontWeight.w600,
+        fontFamily: 'bahji', fontSize: 13, color: Colors.orange, fontWeight: FontWeight.w600,
       )),
       const SizedBox(height: 14),
       Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -655,11 +655,11 @@ class _TimeBox extends StatelessWidget {
         border: Border.all(color: Colors.orange.withValues(alpha: .2)),
       ),
       child: Center(child: Text(value, style: const TextStyle(
-        fontFamily: 'Cairo', fontSize: 22, fontWeight: FontWeight.w900, color: Colors.orange,
+        fontFamily: 'bahji', fontSize: 22, fontWeight: FontWeight.w900, color: Colors.orange,
       ))),
     ),
     const SizedBox(height: 5),
-    Text(label, style: const TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey)),
+    Text(label, style: const TextStyle(fontFamily: 'bahji', fontSize: 11, color: Colors.grey)),
   ]);
 }
 

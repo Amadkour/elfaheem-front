@@ -2,8 +2,8 @@ library;
 
 import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';   // ← NEW
-import 'package:flutter/foundation.dart';                           // ← NEW (kDebugMode)
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
@@ -29,52 +29,69 @@ import 'features/student/courses/details/course_detail_screen.dart';
 import 'features/student/courses/list/courses_list_screen.dart';
 import 'features/teacher/dashboard/teacher_dashboard_screen.dart';
 import 'features/shared/profile/profile_provider.dart';
+import 'firebase_options.dart';
 
 late StorageService _storage;
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-/// Wrap the entire app in [runZonedGuarded] so any uncaught async error
-/// is forwarded to Crashlytics automatically.
 Future<void> main() async {
-  await runZonedGuarded(() async {
-    WidgetsFlutterBinding.ensureInitialized();
+  WidgetsFlutterBinding.ensureInitialized();
 
-    _storage = await StorageService.getInstance();
-    ApiClient api = ApiClient();
+  await _initCore();
 
-    await readLanguage();
-    timeago.setLocaleMessages('ar', timeago.ArShortMessages());
-    timeago.setLocaleMessages('en', timeago.EnShortMessages());
+  if (!kIsWeb) {
+    // Crashlytics is mobile-only — not supported on Flutter Web
+    await _initCrashlytics();
+    runZonedGuarded(_runApp, _onZoneError);
+  } else {
+    _runApp();
+  }
+}
 
-    // ── Firebase ────────────────────────────────────────────────────────────
-    await Firebase.initializeApp();
+// ── Shared initialisation (all platforms) ───────────────────────────────────
 
-    // ── Crashlytics ─────────────────────────────────────────────────────────
-    // In debug mode, Crashlytics is disabled to avoid polluting your dashboard.
-    // Enable it in production (release / profile builds).
-    await FirebaseCrashlytics.instance
-        .setCrashlyticsCollectionEnabled(!kDebugMode);
+Future<void> _initCore() async {
+  _storage = await StorageService.getInstance();
 
-    // Forward Flutter framework errors to Crashlytics
-    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+  await readLanguage();
+  timeago.setLocaleMessages('ar', timeago.ArShortMessages());
+  timeago.setLocaleMessages('en', timeago.EnShortMessages());
 
-    // ── Remote Config ────────────────────────────────────────────────────────
-    await RemoteConfigService.instance.init();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
-    // ── FCM / Local Notifications ────────────────────────────────────────────
-    await NotificationService.instance.init();
+  await RemoteConfigService.instance.init();
+  await NotificationService.instance.init();
+}
 
-    runApp(
-      MultiProvider(
-        providers: appProviders(storage: _storage, api: api),
-        child: const ElFaheemApp(),
-      ),
-    );
-  },
-      // Catches errors OUTSIDE the Flutter widget tree (e.g. in Futures, Streams)
-          (error, stack) {
-        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-      });
+// ── Crashlytics (mobile only) ────────────────────────────────────────────────
+
+Future<void> _initCrashlytics() async {
+  // Disable in debug so your dashboard stays clean during development
+  await FirebaseCrashlytics.instance
+      .setCrashlyticsCollectionEnabled(!kDebugMode);
+
+  // Flutter framework errors (widget build failures, etc.)
+  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+}
+
+void _onZoneError(Object error, StackTrace stack) {
+  // Catches errors outside the widget tree (Futures, Streams, isolates)
+  FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+}
+
+// ── App entry point ──────────────────────────────────────────────────────────
+
+void _runApp() {
+  final api = ApiClient();
+
+  runApp(
+    MultiProvider(
+      providers: appProviders(storage: _storage, api: api),
+      child: const ElFaheemApp(),
+    ),
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -98,15 +115,11 @@ class ElFaheemApp extends StatelessWidget {
     }
 
     final isDark = context.watch<ProfileProvider>().darkMode;
-
-    // ── App name from Remote Config ──────────────────────────────────────────
-    // RemoteConfigService.instance.appName returns "ElFaheem" by default,
-    // or whatever value is set in Firebase Console → Remote Config.
     final appName = RemoteConfigService.instance.appName;
 
     return MaterialApp(
       key: navigatorKey,
-      title: appName,                 // ← was hardcoded 'ElFaheem'
+      title: appName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.themeData,
       darkTheme: AppTheme.darkThemeData,
@@ -118,18 +131,16 @@ class ElFaheemApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      builder: (a, child) {
-        return ResponsiveBreakpoints.builder(
-          breakpoints: [
-            const Breakpoint(start: 0,    end: 450,            name: MOBILE),
-            const Breakpoint(start: 451,  end: 800,            name: TABLET),
-            const Breakpoint(start: 801,  end: 1920,           name: DESKTOP),
-            const Breakpoint(start: 1921, end: double.infinity, name: '4K'),
-          ],
-          useShortestSide: true,
-          child: child!,
-        );
-      },
+      builder: (_, child) => ResponsiveBreakpoints.builder(
+        breakpoints: [
+          const Breakpoint(start: 0,    end: 450,            name: MOBILE),
+          const Breakpoint(start: 451,  end: 800,            name: TABLET),
+          const Breakpoint(start: 801,  end: 1920,           name: DESKTOP),
+          const Breakpoint(start: 1921, end: double.infinity, name: '4K'),
+        ],
+        useShortestSide: true,
+        child: child!,
+      ),
       supportedLocales: context
           .read<LangProvider>()
           .languages

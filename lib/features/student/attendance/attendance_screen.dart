@@ -86,7 +86,7 @@ class StudentAttendanceWidget extends StatelessWidget {
                               color: Colors.white,
                               fontWeight: FontWeight.w700,
                               fontSize: 14,
-                              fontFamily: 'Cairo'))
+                              fontFamily: 'bahji'))
                     ])),
         ),
       ]),
@@ -107,7 +107,7 @@ class StudentAttendanceWidget extends StatelessWidget {
               ok
                   ? (p.isCheckedIn ? 'تم تسجيل مغادرتك' : 'تم تسجيل حضورك ✓')
                   : 'حدث خطأ',
-              style: TextStyle(fontFamily: 'Cairo', color: Colors.white)),
+              style: TextStyle(fontFamily: 'bahji', color: Colors.white)),
           backgroundColor: ok ? context.colors.success : context.colors.danger,
           behavior: SnackBarBehavior.floating,
           shape:

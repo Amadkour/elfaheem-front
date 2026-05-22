@@ -93,7 +93,7 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
           foregroundColor: Colors.white,
           title: const Text('دخول الاختبار',
               style:
-              TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
+              TextStyle(fontFamily: 'bahji', fontWeight: FontWeight.w700)),
           leading: IconButton(
               icon: const Icon(Icons.arrow_forward_ios),
               onPressed: () => Navigator.pop(context)),
@@ -125,7 +125,7 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
             const SizedBox(height: 20),
             Text(exam.name,
                 style: const TextStyle(
-                    fontFamily: 'Cairo',
+                    fontFamily: 'bahji',
                     fontSize: 20,
                     fontWeight: FontWeight.w800),
                 textAlign: TextAlign.center),
@@ -133,7 +133,7 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
               const SizedBox(height: 8),
               Text(exam.description!,
                   style: const TextStyle(
-                      fontFamily: 'Cairo', fontSize: 14, color: Colors.grey),
+                      fontFamily: 'bahji', fontSize: 14, color: Colors.grey),
                   textAlign: TextAlign.center),
             ],
             const SizedBox(height: 24),
@@ -157,7 +157,7 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
                   alignment: Alignment.centerRight,
                   child: Text('كلمة مرور الاختبار',
                       style: TextStyle(
-                          fontFamily: 'Cairo',
+                          fontFamily: 'bahji',
                           fontSize: 14,
                           fontWeight: FontWeight.w600)),
                 ),
@@ -167,7 +167,7 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
                   textAlign: TextAlign.center,
                   obscureText: true,
                   style: const TextStyle(
-                      fontFamily: 'Cairo', fontSize: 18, letterSpacing: 4),
+                      fontFamily: 'bahji', fontSize: 18, letterSpacing: 4),
                   decoration: InputDecoration(
                     hintText: '••••••',
                     errorText: _error,
@@ -202,7 +202,7 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
                     Expanded(
                         child: Text(_error!,
                             style: const TextStyle(
-                                fontFamily: 'Cairo',
+                                fontFamily: 'bahji',
                                 fontSize: 13,
                                 color: Colors.red))),
                   ]),
@@ -234,7 +234,7 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
                         SizedBox(width: 8),
                         Text('ابدأ الاختبار الآن',
                             style: TextStyle(
-                                fontFamily: 'Cairo',
+                                fontFamily: 'bahji',
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700)),
                       ]),
@@ -257,7 +257,7 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
                       child: Text(
                         'بمجرد بدء الاختبار لا يمكن إيقافه مؤقتاً. تأكد من اتصالك بالإنترنت.',
                         style: TextStyle(
-                            fontFamily: 'Cairo',
+                            fontFamily: 'bahji',
                             fontSize: 12,
                             color: Colors.orange),
                       )),
@@ -394,7 +394,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
               const CircularProgressIndicator(),
               const SizedBox(height: 20),
               const Text('جارٍ إرسال إجاباتك...',
-                  style: TextStyle(fontFamily: 'Cairo', fontSize: 16)),
+                  style: TextStyle(fontFamily: 'bahji', fontSize: 16)),
             ]),
           ),
         ),
@@ -415,7 +415,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
           automaticallyImplyLeading: false,
           title: Text(widget.exam.name,
               style: const TextStyle(
-                  fontFamily: 'Cairo',
+                  fontFamily: 'bahji',
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: Colors.black87),
@@ -434,7 +434,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                 const SizedBox(width: 6),
                 Text(_timerDisplay,
                     style: TextStyle(
-                        fontFamily: 'Cairo',
+                        fontFamily: 'bahji',
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: _timerColor)),
@@ -451,10 +451,10 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 Text('السؤال ${_current + 1} من ${widget.questions.length}',
                     style: const TextStyle(
-                        fontFamily: 'Cairo', fontSize: 12, color: Colors.grey)),
+                        fontFamily: 'bahji', fontSize: 12, color: Colors.grey)),
                 Text('$_answeredCount / ${widget.questions.length} تمت الإجابة',
                     style: const TextStyle(
-                        fontFamily: 'Cairo', fontSize: 12, color: Colors.grey)),
+                        fontFamily: 'bahji', fontSize: 12, color: Colors.grey)),
               ]),
               const SizedBox(height: 6),
               ClipRRect(
@@ -500,7 +500,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                                   borderRadius: BorderRadius.circular(8)),
                               child: Text('${q.marks.toInt()} درجات',
                                   style: TextStyle(
-                                      fontFamily: 'Cairo',
+                                      fontFamily: 'bahji',
                                       fontSize: 11,
                                       fontWeight: FontWeight.w700,
                                       color: context.colors.primary)),
@@ -508,7 +508,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                             const SizedBox(height: 12),
                             Text(q.title,
                                 style: const TextStyle(
-                                    fontFamily: 'Cairo',
+                                    fontFamily: 'bahji',
                                     fontSize: 17,
                                     fontWeight: FontWeight.w600,
                                     height: 1.5)),
@@ -571,7 +571,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                               Expanded(
                                   child: Text(opt,
                                       style: TextStyle(
-                                          fontFamily: 'Cairo',
+                                          fontFamily: 'bahji',
                                           fontSize: 15,
                                           fontWeight: selected
                                               ? FontWeight.w600
@@ -593,7 +593,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                         decoration: InputDecoration(
                           hintText: 'اكتب إجابتك هنا...',
                           hintStyle: const TextStyle(
-                              fontFamily: 'Cairo', color: Colors.grey),
+                              fontFamily: 'bahji', color: Colors.grey),
                           filled: true,
                           fillColor: Colors.white,
                           border: OutlineInputBorder(
@@ -641,7 +641,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                             child: Center(
                                 child: Text('${i + 1}',
                                     style: TextStyle(
-                                        fontFamily: 'Cairo',
+                                        fontFamily: 'bahji',
                                         fontSize: 12,
                                         fontWeight: FontWeight.w700,
                                         color: isCurrent
@@ -667,7 +667,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                   onPressed: _prev,
                   icon: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
                   label: const Text('السابق',
-                      style: TextStyle(fontFamily: 'Cairo')),
+                      style: TextStyle(fontFamily: 'bahji')),
                   style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.grey,
                       side: BorderSide(color: Colors.grey.shade300),
@@ -682,7 +682,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                   onPressed: _next,
                   icon: const Text('التالي',
                       style: TextStyle(
-                          fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
+                          fontFamily: 'bahji', fontWeight: FontWeight.w700)),
                   label: const Icon(Icons.arrow_back_ios_rounded, size: 14),
                   style: ElevatedButton.styleFrom(
                       backgroundColor: context.colors.primary,
@@ -698,7 +698,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                   icon: const Icon(Icons.send_rounded, size: 16),
                   label: const Text('تسليم الاختبار',
                       style: TextStyle(
-                          fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
+                          fontFamily: 'bahji', fontWeight: FontWeight.w700)),
                   style: ElevatedButton.styleFrom(
                       backgroundColor: context.colors.success,
                       foregroundColor: Colors.white,
@@ -724,18 +724,18 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
           RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
           title: const Text('تسليم الاختبار',
               style:
-              TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
+              TextStyle(fontFamily: 'bahji', fontWeight: FontWeight.w700)),
           content: Text(
             _answeredCount < widget.questions.length
                 ? 'لم تجب على ${widget.questions.length - _answeredCount} سؤال. هل أنت متأكد من التسليم؟'
                 : 'هل تريد تسليم إجاباتك الآن؟',
-            style: const TextStyle(fontFamily: 'Cairo'),
+            style: const TextStyle(fontFamily: 'bahji'),
           ),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(context),
                 child:
-                const Text('إلغاء', style: TextStyle(fontFamily: 'Cairo'))),
+                const Text('إلغاء', style: TextStyle(fontFamily: 'bahji'))),
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
@@ -747,7 +747,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                       borderRadius: BorderRadius.circular(10))),
               child: const Text('تأكيد التسليم',
                   style: TextStyle(
-                      fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
+                      fontFamily: 'bahji', fontWeight: FontWeight.w700)),
             ),
           ],
         ),
@@ -777,7 +777,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
           automaticallyImplyLeading: false,
           title: const Text('نتيجة الاختبار',
               style: TextStyle(
-                  fontFamily: 'Cairo',
+                  fontFamily: 'bahji',
                   fontWeight: FontWeight.w700,
                   color: Colors.white)),
         ),
@@ -804,7 +804,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                         child: Text(
                           'تعذّر إرسال بعض الإجابات: $_submitError',
                           style: const TextStyle(
-                              fontFamily: 'Cairo',
+                              fontFamily: 'bahji',
                               fontSize: 12,
                               color: Colors.orange),
                         )),
@@ -832,14 +832,14 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                       Column(mainAxisSize: MainAxisSize.min, children: [
                         Text('${(v * 100).toStringAsFixed(0)}%',
                             style: TextStyle(
-                                fontFamily: 'Cairo',
+                                fontFamily: 'bahji',
                                 fontSize: 36,
                                 fontWeight: FontWeight.w900,
                                 color:
                                 passed ? context.colors.success : Colors.redAccent)),
                         Text(passed ? 'ناجح ✓' : 'راسب ✗',
                             style: TextStyle(
-                                fontFamily: 'Cairo',
+                                fontFamily: 'bahji',
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
                                 color:
@@ -853,7 +853,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                     ? 'تهانينا! اجتزت الاختبار بنجاح'
                     : 'لم تجتز الاختبار هذه المرة',
                 style: TextStyle(
-                    fontFamily: 'Cairo',
+                    fontFamily: 'bahji',
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: passed ? context.colors.success : Colors.redAccent),
@@ -908,7 +908,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                   ),
                   child: const Text('العودة للرئيسية',
                       style: TextStyle(
-                          fontFamily: 'Cairo',
+                          fontFamily: 'bahji',
                           fontSize: 15,
                           fontWeight: FontWeight.w700)),
                 ),
@@ -961,11 +961,11 @@ class _InfoRow extends StatelessWidget {
     const SizedBox(width: 10),
     Text(label,
         style: const TextStyle(
-            fontFamily: 'Cairo', fontSize: 13, color: Colors.grey)),
+            fontFamily: 'bahji', fontSize: 13, color: Colors.grey)),
     const Spacer(),
     Text(value,
         style: TextStyle(
-            fontFamily: 'Cairo',
+            fontFamily: 'bahji',
             fontSize: 13,
             fontWeight: FontWeight.w700,
             color: color)),
@@ -982,11 +982,11 @@ class _ResultRow extends StatelessWidget {
   Widget build(BuildContext context) => Row(children: [
     Text(label,
         style: const TextStyle(
-            fontFamily: 'Cairo', fontSize: 14, color: Colors.grey)),
+            fontFamily: 'bahji', fontSize: 14, color: Colors.grey)),
     const Spacer(),
     Text(value,
         style: TextStyle(
-            fontFamily: 'Cairo',
+            fontFamily: 'bahji',
             fontSize: 16,
             fontWeight: FontWeight.w800,
             color: color)),
@@ -1037,7 +1037,7 @@ class _CountdownBannerState extends State<_CountdownBanner> {
     child: Column(children: [
       const Text('يبدأ الاختبار خلال',
           style: TextStyle(
-              fontFamily: 'Cairo',
+              fontFamily: 'bahji',
               fontSize: 14,
               color: Colors.orange,
               fontWeight: FontWeight.w600)),
@@ -1083,7 +1083,7 @@ class _TimeBox extends StatelessWidget {
       child: Center(
           child: Text(value,
               style: const TextStyle(
-                  fontFamily: 'Cairo',
+                  fontFamily: 'bahji',
                   fontSize: 22,
                   fontWeight: FontWeight.w900,
                   color: Colors.orange))),
@@ -1091,6 +1091,6 @@ class _TimeBox extends StatelessWidget {
     const SizedBox(height: 4),
     Text(label,
         style: const TextStyle(
-            fontFamily: 'Cairo', fontSize: 11, color: Colors.grey)),
+            fontFamily: 'bahji', fontSize: 11, color: Colors.grey)),
   ]);
 }

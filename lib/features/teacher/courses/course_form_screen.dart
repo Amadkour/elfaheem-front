@@ -189,7 +189,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
   void _showSnack(String msg, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg,
-          style: const TextStyle(fontFamily: 'Cairo', color: Colors.white)),
+          style: const TextStyle(fontFamily: 'bahji', color: Colors.white)),
       backgroundColor: color,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -493,7 +493,7 @@ class _HeroHeader extends StatelessWidget {
                       color: Colors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
-                      fontFamily: 'Cairo',
+                      fontFamily: 'bahji',
                     ),
                   ),
                 ),
@@ -513,7 +513,7 @@ class _HeroHeader extends StatelessWidget {
                       color: Colors.white,
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      fontFamily: 'Cairo',
+                      fontFamily: 'bahji',
                     ),
                   ),
                 ),
@@ -583,7 +583,7 @@ class _FormCard extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
-                      fontFamily: 'Cairo',
+                      fontFamily: 'bahji',
                       color: Color(0xFF1A1A2E),
                     )),
               ]),
@@ -618,7 +618,7 @@ class _LabeledField extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
                 color: Colors.black.withValues(alpha: 0.55),
               )),
           const SizedBox(height: 6),
@@ -694,7 +694,7 @@ class _StickyFooter extends StatelessWidget {
                           color: Colors.white,
                           fontWeight: FontWeight.w800,
                           fontSize: 14,
-                          fontFamily: 'Cairo',
+                          fontFamily: 'bahji',
                         ),
                       ),
               ),

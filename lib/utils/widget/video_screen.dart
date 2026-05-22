@@ -27,10 +27,12 @@ class VideoScreen extends StatelessWidget {
     super.key,
     required this.uri,
     required this.session,
+     this.onComplete,
   });
 
   final Uri uri;
   final TeacherSessionItem session;
+  final Future<void> Function()? onComplete;
 
   @override
   Widget build(BuildContext context) {
@@ -44,8 +46,8 @@ class VideoScreen extends StatelessWidget {
           builder: (context, constraints) {
             final isWide = constraints.maxWidth > 800;
             return isWide
-                ? _WideLayout(uri: uri, session: session)
-                : _NarrowLayout(uri: uri, session: session);
+                ? _WideLayout(uri: uri, session: session,onComplete:onComplete)
+                : _NarrowLayout(uri: uri, session: session,onComplete: onComplete,);
           },
         ),
       ),
@@ -55,7 +57,9 @@ class VideoScreen extends StatelessWidget {
 
 // ─── Wide (Web/Tablet) Layout ─────────────────────────────────────────
 class _WideLayout extends StatelessWidget {
-  const _WideLayout({required this.uri, required this.session});
+  const _WideLayout({required this.uri, required this.session,  this.onComplete});
+  final Future<void> Function()? onComplete;
+
   final Uri uri;
   final TeacherSessionItem session;
 
@@ -70,7 +74,7 @@ class _WideLayout extends StatelessWidget {
             children: [
               _PremiumAppBar(session: session),
               Expanded(
-                child: _VideoPlayer(uri: uri),
+                child: _VideoPlayer(uri: uri,onComplete: onComplete,),
               ),
             ],
           ),
@@ -92,7 +96,10 @@ class _WideLayout extends StatelessWidget {
 
 // ─── Narrow (Mobile) Layout ───────────────────────────────────────────
 class _NarrowLayout extends StatelessWidget {
-  const _NarrowLayout({required this.uri, required this.session});
+  const _NarrowLayout({required this.uri, required this.session, this.onComplete});
+
+  final Future<void> Function()? onComplete;
+
   final Uri uri;
   final TeacherSessionItem session;
 
@@ -101,7 +108,7 @@ class _NarrowLayout extends StatelessWidget {
     return Column(
       children: [
         _PremiumAppBar(session: session),
-        _VideoPlayer(uri: uri),
+        _VideoPlayer(uri: uri,onComplete: onComplete,),
         Expanded(
           child: _SessionInfoPanel(session: session),
         ),
@@ -113,6 +120,7 @@ class _NarrowLayout extends StatelessWidget {
 // ─── App Bar ──────────────────────────────────────────────────────────
 class _PremiumAppBar extends StatelessWidget {
   const _PremiumAppBar({required this.session});
+
   final TeacherSessionItem session;
 
   @override
@@ -206,7 +214,7 @@ class _LiveBadgeState extends State<_LiveBadge>
         decoration: BoxDecoration(
           color: Color.lerp(
             _AppColors.liveGlow,
-            _AppColors.live.withValues(alpha:0.25),
+            _AppColors.live.withValues(alpha: 0.25),
             _pulse.value,
           ),
           borderRadius: BorderRadius.circular(20),
@@ -248,7 +256,10 @@ class _LiveBadgeState extends State<_LiveBadge>
 
 // ─── Video Player ─────────────────────────────────────────────────────
 class _VideoPlayer extends StatefulWidget {
-  const _VideoPlayer({required this.uri});
+  const _VideoPlayer({required this.uri, this.onComplete});
+
+  final Future<void> Function()? onComplete;
+
   final Uri uri;
 
   @override
@@ -267,7 +278,14 @@ class _VideoPlayerState extends State<_VideoPlayer> {
       videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
       viewType: VideoViewType.textureView,
     );
-    _controller.addListener(() => setState(() {}));
+    _controller.addListener(() async {
+
+      if (_controller.value.position.inSeconds ==
+          (_controller.value.duration.inSeconds - 20) && widget.onComplete!=null) {
+        await widget.onComplete?.call();
+      }
+      setState(() {});
+    });
     _controller.setLooping(true);
     _controller.initialize().then((_) => setState(() {}));
   }
@@ -279,7 +297,7 @@ class _VideoPlayerState extends State<_VideoPlayer> {
   }
 
   void _toggleControls() {
-    if(mounted) setState(() => _showControls = !_showControls);
+    if (mounted) setState(() => _showControls = !_showControls);
   }
 
   String _formatDuration(Duration d) {
@@ -298,170 +316,166 @@ class _VideoPlayerState extends State<_VideoPlayer> {
         aspectRatio: isInit ? _controller.value.aspectRatio : 16 / 9,
         child: isInit
             ? GestureDetector(
-          onTap: _toggleControls,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              VideoPlayer(_controller),
-              // Gradient overlay
-              AnimatedOpacity(
-                opacity: _showControls ? 1 : 0,
-                duration: const Duration(milliseconds: 200),
-                child: Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Color(0x88000000),
-                        Colors.transparent,
-                        Colors.transparent,
-                        Color(0xCC000000),
-                      ],
-                      stops: [0, 0.3, 0.6, 1],
-                    ),
-                  ),
-                ),
-              ),
-              // Center play/pause
-              AnimatedOpacity(
-                opacity: _showControls ? 1 : 0,
-                duration: const Duration(milliseconds: 200),
-                child: Center(
-                  child: GestureDetector(
-                    onTap: () {
-                      _controller.value.isPlaying
-                          ? _controller.pause()
-                          : _controller.play();
-                    },
-                    child: Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.black45,
-                        border: Border.all(
-                            color: Colors.white24, width: 1.5),
-                      ),
-                      child: Icon(
-                        _controller.value.isPlaying
-                            ? Icons.pause_rounded
-                            : Icons.play_arrow_rounded,
-                        color: Colors.white,
-                        size: 36,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              // Bottom controls bar
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: AnimatedOpacity(
-                  opacity: _showControls ? 1 : 0,
-                  duration: const Duration(milliseconds: 200),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Progress bar
-                        SliderTheme(
-                          data: SliderThemeData(
-                            trackHeight: 2,
-                            thumbShape: const RoundSliderThumbShape(
-                                enabledThumbRadius: 6),
-                            overlayShape: const RoundSliderOverlayShape(
-                                overlayRadius: 14),
-                            activeTrackColor: _AppColors.accent,
-                            inactiveTrackColor:
-                            Colors.white.withValues(alpha:0.2),
-                            thumbColor: Colors.white,
-                            overlayColor:
-                            _AppColors.accent.withValues(alpha:0.2),
-                          ),
-                          child: Slider(
-                            value: _controller.value.position.inSeconds
-                                .toDouble(),
-                            max: _controller.value.duration.inSeconds
-                                .toDouble()
-                                .clamp(1, double.infinity),
-                            onChanged: (v) {
-                              _controller.seekTo(
-                                  Duration(seconds: v.toInt()));
-                            },
+                onTap: _toggleControls,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    VideoPlayer(_controller),
+                    // Gradient overlay
+                    AnimatedOpacity(
+                      opacity: _showControls ? 1 : 0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Color(0x88000000),
+                              Colors.transparent,
+                              Colors.transparent,
+                              Color(0xCC000000),
+                            ],
+                            stops: [0, 0.3, 0.6, 1],
                           ),
                         ),
-                        // Time & speed row
-                        Row(
-                          children: [
-                            Text(
-                              _formatDuration(
-                                  _controller.value.position),
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 11,
-                                fontFeatures: [
-                                  FontFeature.tabularFigures()
+                      ),
+                    ),
+                    // Center play/pause
+                    AnimatedOpacity(
+                      opacity: _showControls ? 1 : 0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Center(
+                        child: GestureDetector(
+                          onTap: () {
+                            _controller.value.isPlaying
+                                ? _controller.pause()
+                                : _controller.play();
+                          },
+                          child: Container(
+                            width: 64,
+                            height: 64,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.black45,
+                              border:
+                                  Border.all(color: Colors.white24, width: 1.5),
+                            ),
+                            child: Icon(
+                              _controller.value.isPlaying
+                                  ? Icons.pause_rounded
+                                  : Icons.play_arrow_rounded,
+                              color: Colors.white,
+                              size: 36,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Bottom controls bar
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: AnimatedOpacity(
+                        opacity: _showControls ? 1 : 0,
+                        duration: const Duration(milliseconds: 200),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Progress bar
+                              SliderTheme(
+                                data: SliderThemeData(
+                                  trackHeight: 2,
+                                  thumbShape: const RoundSliderThumbShape(
+                                      enabledThumbRadius: 6),
+                                  overlayShape: const RoundSliderOverlayShape(
+                                      overlayRadius: 14),
+                                  activeTrackColor: _AppColors.accent,
+                                  inactiveTrackColor:
+                                      Colors.white.withValues(alpha: 0.2),
+                                  thumbColor: Colors.white,
+                                  overlayColor:
+                                      _AppColors.accent.withValues(alpha: 0.2),
+                                ),
+                                child: Slider(
+                                  value: _controller.value.position.inSeconds
+                                      .toDouble(),
+                                  max: _controller.value.duration.inSeconds
+                                      .toDouble()
+                                      .clamp(1, double.infinity),
+                                  onChanged: (v) {
+                                    _controller
+                                        .seekTo(Duration(seconds: v.toInt()));
+                                  },
+                                ),
+                              ),
+                              // Time & speed row
+                              Row(
+                                children: [
+                                  Text(
+                                    _formatDuration(_controller.value.position),
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 11,
+                                      fontFeatures: [
+                                        FontFeature.tabularFigures()
+                                      ],
+                                    ),
+                                  ),
+                                  const Text(' / ',
+                                      style: TextStyle(
+                                          color: Colors.white38, fontSize: 11)),
+                                  Text(
+                                    _formatDuration(_controller.value.duration),
+                                    style: const TextStyle(
+                                      color: Colors.white38,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  _SpeedSelector(controller: _controller),
+                                  const SizedBox(width: 8),
+                                  _FullscreenButton(controller: _controller),
                                 ],
                               ),
-                            ),
-                            const Text(' / ',
-                                style: TextStyle(
-                                    color: Colors.white38,
-                                    fontSize: 11)),
-                            Text(
-                              _formatDuration(
-                                  _controller.value.duration),
-                              style: const TextStyle(
-                                color: Colors.white38,
-                                fontSize: 11,
-                              ),
-                            ),
-                            const Spacer(),
-                            _SpeedSelector(controller: _controller),
-                            const SizedBox(width: 8),
-                            _FullscreenButton(
-                                controller: _controller),
-                          ],
+                            ],
+                          ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                    // Closed caption
+                    if (_controller.value.caption.text.isNotEmpty)
+                      Positioned(
+                        bottom: 60,
+                        left: 20,
+                        right: 20,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            _controller.value.caption.text,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 14),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              )
+            : const Center(
+                child: CircularProgressIndicator(
+                  color: _AppColors.accent,
+                  strokeWidth: 2,
                 ),
               ),
-              // Closed caption
-              if (_controller.value.caption.text.isNotEmpty)
-                Positioned(
-                  bottom: 60,
-                  left: 20,
-                  right: 20,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      _controller.value.caption.text,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          color: Colors.white, fontSize: 14),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        )
-            : const Center(
-          child: CircularProgressIndicator(
-            color: _AppColors.accent,
-            strokeWidth: 2,
-          ),
-        ),
       ),
     );
   }
@@ -469,6 +483,7 @@ class _VideoPlayerState extends State<_VideoPlayer> {
 
 class _SpeedSelector extends StatelessWidget {
   const _SpeedSelector({required this.controller});
+
   final VideoPlayerController controller;
 
   static const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
@@ -486,17 +501,17 @@ class _SpeedSelector extends StatelessWidget {
       onSelected: controller.setPlaybackSpeed,
       itemBuilder: (_) => speeds
           .map((s) => PopupMenuItem<double>(
-        value: s,
-        child: Text(
-          '${s}x',
-          style: TextStyle(
-            color: s == controller.value.playbackSpeed
-                ? _AppColors.accent
-                : _AppColors.textSecondary,
-            fontSize: 13,
-          ),
-        ),
-      ))
+                value: s,
+                child: Text(
+                  '${s}x',
+                  style: TextStyle(
+                    color: s == controller.value.playbackSpeed
+                        ? _AppColors.accent
+                        : _AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
+              ))
           .toList(),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -515,6 +530,7 @@ class _SpeedSelector extends StatelessWidget {
 
 class _FullscreenButton extends StatelessWidget {
   const _FullscreenButton({required this.controller});
+
   final VideoPlayerController controller;
 
   @override
@@ -523,8 +539,8 @@ class _FullscreenButton extends StatelessWidget {
       onTap: () {
         // Fullscreen logic can be added with a fullscreen package
       },
-      child: const Icon(Icons.fullscreen_rounded,
-          color: Colors.white70, size: 20),
+      child:
+          const Icon(Icons.fullscreen_rounded, color: Colors.white70, size: 20),
     );
   }
 }
@@ -532,6 +548,7 @@ class _FullscreenButton extends StatelessWidget {
 // ─── Session Info Panel ───────────────────────────────────────────────
 class _SessionInfoPanel extends StatelessWidget {
   const _SessionInfoPanel({required this.session});
+
   final TeacherSessionItem session;
 
   @override
@@ -561,6 +578,7 @@ class _SessionInfoPanel extends StatelessWidget {
 
 class _SessionHeader extends StatelessWidget {
   const _SessionHeader({required this.session});
+
   final TeacherSessionItem session;
 
   Color get _statusColor {
@@ -586,13 +604,11 @@ class _SessionHeader extends StatelessWidget {
         Row(
           children: [
             Container(
-              padding:
-              const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
               decoration: BoxDecoration(
-                color: _statusColor.withValues(alpha:0.12),
+                color: _statusColor.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(20),
-                border:
-                Border.all(color: _statusColor.withValues(alpha:0.4)),
+                border: Border.all(color: _statusColor.withValues(alpha: 0.4)),
               ),
               child: Text(
                 _statusLabel.toUpperCase(),
@@ -607,13 +623,12 @@ class _SessionHeader extends StatelessWidget {
             const SizedBox(width: 8),
             if (session.type != null)
               Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
                   color: _AppColors.accentGlow,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                      color: _AppColors.accent.withValues(alpha:0.4)),
+                      color: _AppColors.accent.withValues(alpha: 0.4)),
                 ),
                 child: Text(
                   session.type!.toUpperCase(),
@@ -645,6 +660,7 @@ class _SessionHeader extends StatelessWidget {
 
 class _SessionStatsRow extends StatelessWidget {
   const _SessionStatsRow({required this.session});
+
   final TeacherSessionItem session;
 
   @override
@@ -735,6 +751,7 @@ class _VerticalDivider extends StatelessWidget {
 
 class _DescriptionCard extends StatefulWidget {
   const _DescriptionCard({required this.description});
+
   final String description;
 
   @override
@@ -778,14 +795,15 @@ class _DescriptionCardState extends State<_DescriptionCard> {
               height: 1.6,
             ),
           ),
-          crossFadeState: _expanded
-              ? CrossFadeState.showSecond
-              : CrossFadeState.showFirst,
+          crossFadeState:
+              _expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
           duration: const Duration(milliseconds: 250),
         ),
         const SizedBox(height: 6),
         GestureDetector(
-          onTap: () { if(mounted) setState(() => _expanded = !_expanded);},
+          onTap: () {
+            if (mounted) setState(() => _expanded = !_expanded);
+          },
           child: Text(
             _expanded ? 'Show less' : 'Show more',
             style: const TextStyle(
@@ -802,6 +820,7 @@ class _DescriptionCardState extends State<_DescriptionCard> {
 
 class _SessionMetaList extends StatelessWidget {
   const _SessionMetaList({required this.session});
+
   final TeacherSessionItem session;
 
   String _formatDate(DateTime? dt) {
@@ -811,8 +830,19 @@ class _SessionMetaList extends StatelessWidget {
 
   String _monthName(int m) {
     const months = [
-      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      '',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
     ];
     return months[m];
   }
@@ -933,6 +963,7 @@ class _MetaDivider extends StatelessWidget {
 
 class _ActionButtons extends StatelessWidget {
   const _ActionButtons({required this.session});
+
   final TeacherSessionItem session;
 
   @override
@@ -987,34 +1018,31 @@ class _PremiumButton extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: isPrimary
               ? const LinearGradient(
-            colors: [Color(0xFF6C63FF), Color(0xFF9B5DE5)],
-          )
+                  colors: [Color(0xFF6C63FF), Color(0xFF9B5DE5)],
+                )
               : null,
           color: isPrimary ? null : _AppColors.surfaceElevated,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isPrimary
                 ? Colors.transparent
-                : _AppColors.accent.withValues(alpha:0.3),
+                : _AppColors.accent.withValues(alpha: 0.3),
           ),
           boxShadow: isPrimary
               ? [
-            BoxShadow(
-              color: _AppColors.accent.withValues(alpha:0.35),
-              blurRadius: 20,
-              offset: const Offset(0, 6),
-            )
-          ]
+                  BoxShadow(
+                    color: _AppColors.accent.withValues(alpha: 0.35),
+                    blurRadius: 20,
+                    offset: const Offset(0, 6),
+                  )
+                ]
               : null,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon,
-                color: isPrimary
-                    ? Colors.white
-                    : _AppColors.accent,
-                size: 18),
+                color: isPrimary ? Colors.white : _AppColors.accent, size: 18),
             const SizedBox(width: 8),
             Text(
               label,

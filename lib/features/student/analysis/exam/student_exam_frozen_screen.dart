@@ -77,7 +77,7 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
           ),
           title: Text(e.name,
               style: const TextStyle(
-                  fontFamily: 'Cairo', fontWeight: FontWeight.w700),
+                  fontFamily: 'bahji', fontWeight: FontWeight.w700),
               overflow: TextOverflow.ellipsis),
         ),
         body: SingleChildScrollView(
@@ -116,7 +116,7 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
                   ? 'انتهى الموعد النهائي للاختبار'
                   : 'استنفدت جميع محاولاتك',
               style: TextStyle(
-                  fontFamily: 'Cairo',
+                  fontFamily: 'bahji',
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
                   color: _accent),
@@ -130,7 +130,7 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
                   ? 'لم يعد بالإمكان تقديم هذا الاختبار.\nتواصل مع المعلم إذا كنت بحاجة لمهلة إضافية.'
                   : 'لقد قدّمت هذا الاختبار ${e.submissionCount} مرة وهو الحد المسموح به.',
               style: const TextStyle(
-                  fontFamily: 'Cairo', fontSize: 14, color: Colors.grey),
+                  fontFamily: 'bahji', fontSize: 14, color: Colors.grey),
               textAlign: TextAlign.center,
             ),
 
@@ -203,7 +203,7 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
                     size: 16, color: Colors.white),
                 label: const Text('العودة للاختبارات',
                     style: TextStyle(
-                        fontFamily: 'Cairo',
+                        fontFamily: 'bahji',
                         fontSize: 15,
                         fontWeight: FontWeight.w700)),
                 style: ElevatedButton.styleFrom(
@@ -249,7 +249,7 @@ class _ScoreSummaryCard extends StatelessWidget {
       child: Column(children: [
         Text('نتيجتك الأخيرة',
             style: const TextStyle(
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
                 fontSize: 13,
                 color: Colors.grey)),
         const SizedBox(height: 12),
@@ -267,7 +267,7 @@ class _ScoreSummaryCard extends StatelessWidget {
           ),
           Text('${pct.toStringAsFixed(0)}%',
               style: TextStyle(
-                  fontFamily: 'Cairo',
+                  fontFamily: 'bahji',
                   fontSize: 22,
                   fontWeight: FontWeight.w900,
                   color: accent)),
@@ -276,7 +276,7 @@ class _ScoreSummaryCard extends StatelessWidget {
         Text(
           exam.passed == true ? 'ناجح ✓' : 'راسب ✗',
           style: TextStyle(
-              fontFamily: 'Cairo',
+              fontFamily: 'bahji',
               fontSize: 15,
               fontWeight: FontWeight.w700,
               color: accent),
@@ -286,7 +286,7 @@ class _ScoreSummaryCard extends StatelessWidget {
           Text(
             '${exam.marksObtained!.toStringAsFixed(1)} / ${exam.totalMarks!.toStringAsFixed(0)} درجة',
             style: const TextStyle(
-                fontFamily: 'Cairo', fontSize: 13, color: Colors.grey),
+                fontFamily: 'bahji', fontSize: 13, color: Colors.grey),
           ),
         ],
       ]),
@@ -341,11 +341,11 @@ class _InfoRow extends StatelessWidget {
         const SizedBox(width: 8),
         Text(label,
             style: const TextStyle(
-                fontFamily: 'Cairo', fontSize: 13, color: Colors.grey)),
+                fontFamily: 'bahji', fontSize: 13, color: Colors.grey)),
         const Spacer(),
         Text(value,
             style: TextStyle(
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
                 color: color)),

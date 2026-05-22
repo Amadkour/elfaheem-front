@@ -137,7 +137,7 @@ class _Sidebar extends StatelessWidget {
                     color: Colors.white,
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
-                    fontFamily: 'Cairo',
+                    fontFamily: 'bahji',
                   ),
                 ),
               ],
@@ -182,7 +182,7 @@ class _Sidebar extends StatelessWidget {
                       color: Colors.white,
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
-                      fontFamily: 'Cairo',
+                      fontFamily: 'bahji',
                     ),
                   ),
                 ),
@@ -197,7 +197,7 @@ class _Sidebar extends StatelessWidget {
                           color: Colors.white,
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          fontFamily: 'Cairo',
+                          fontFamily: 'bahji',
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -206,7 +206,7 @@ class _Sidebar extends StatelessWidget {
                         style: TextStyle(
                           color: Colors.white.withValues(alpha:0.5),
                           fontSize: 10,
-                          fontFamily: 'Cairo',
+                          fontFamily: 'bahji',
                         ),
                       ),
                     ],
@@ -285,7 +285,7 @@ class _SideNavItem extends StatelessWidget {
                   fontSize: 13,
                   fontWeight:
                       active ? FontWeight.w700 : FontWeight.w500,
-                  fontFamily: 'Cairo',
+                  fontFamily: 'bahji',
                 ),
               ),
             ],
@@ -392,7 +392,7 @@ class _BottomNav extends StatelessWidget {
                           color: active
                               ? context.colors.primary
                               : context.colors.textLight,
-                          fontFamily: 'Cairo',
+                          fontFamily: 'bahji',
                         ),
                       ),
                     ],

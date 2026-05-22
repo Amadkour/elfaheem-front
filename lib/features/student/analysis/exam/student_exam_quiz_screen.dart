@@ -101,7 +101,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen>
               Text(
                 unanswered > 0 ? 'يوجد أسئلة بدون إجابة!' : 'هل أنت متأكد؟',
                 style: const TextStyle(
-                    fontFamily: 'Cairo', fontSize: 18, fontWeight: FontWeight.w800),
+                    fontFamily: 'bahji', fontSize: 18, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 10),
               Text(
@@ -109,7 +109,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen>
                     ? 'لم تجب على $unanswered سؤال. هل تريد التقديم الآن؟'
                     : 'ستُرسَل جميع إجاباتك ولن تتمكن من التعديل لاحقاً.',
                 style: const TextStyle(
-                    fontFamily: 'Cairo', fontSize: 13, color: Colors.grey, height: 1.6),
+                    fontFamily: 'bahji', fontSize: 13, color: Colors.grey, height: 1.6),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
@@ -121,7 +121,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen>
                       padding: const EdgeInsets.symmetric(vertical: 13),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
-                    child: const Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
+                    child: const Text('إلغاء', style: TextStyle(fontFamily: 'bahji')),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -135,7 +135,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen>
                       elevation: 0,
                     ),
                     child: const Text('تقديم',
-                        style: TextStyle(fontFamily: 'Cairo', color: Colors.white,
+                        style: TextStyle(fontFamily: 'bahji', color: Colors.white,
                             fontWeight: FontWeight.w800)),
                   ),
                 ),
@@ -252,7 +252,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen>
                             Text(
                               prov.timerDisplay,
                               style: TextStyle(
-                                fontFamily: 'Cairo',
+                                fontFamily: 'bahji',
                                 fontSize: 15,
                                 fontWeight: FontWeight.w800,
                                 color: timerColor,
@@ -418,7 +418,7 @@ class _CounterBadge extends StatelessWidget {
       child: Text(
         'السؤال $current / $total',
         style: const TextStyle(
-          fontFamily: 'Cairo', fontSize: 13,
+          fontFamily: 'bahji', fontSize: 13,
           fontWeight: FontWeight.w800, color: Colors.white,
         ),
       ),
@@ -460,7 +460,7 @@ class _QuestionCard extends StatelessWidget {
             ),
             child: Text('السؤال ${index + 1}',
                 style: const TextStyle(
-                  fontFamily: 'Cairo', fontSize: 11,
+                  fontFamily: 'bahji', fontSize: 11,
                   fontWeight: FontWeight.w700, color: Colors.white,
                 )),
           ),
@@ -473,7 +473,7 @@ class _QuestionCard extends StatelessWidget {
             ),
             child: Text('${question.marks.toStringAsFixed(0)} درجة',
                 style: TextStyle(
-                  fontFamily: 'Cairo', fontSize: 11,
+                  fontFamily: 'bahji', fontSize: 11,
                   fontWeight: FontWeight.w700, color: Colors.amber.shade800,
                 )),
           ),
@@ -546,7 +546,7 @@ class _OptionTile extends StatelessWidget {
               child: Text(
                 letter,
                 style: TextStyle(
-                  fontFamily: 'Cairo',
+                  fontFamily: 'bahji',
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
                   color: selected ? Colors.white : Colors.grey,
@@ -559,7 +559,7 @@ class _OptionTile extends StatelessWidget {
             child: Text(
               label,
               style: TextStyle(
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
                 fontSize: 14,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                 color: selected ? c.primary : c.textDark,
@@ -613,7 +613,7 @@ class _TextAnswerFieldState extends State<_TextAnswerField> {
         onChanged: widget.onChanged,
         maxLines: 5,
         textDirection: TextDirection.rtl,
-        style: TextStyle(fontFamily: 'Cairo', fontSize: 14, color: c.textDark, height: 1.6),
+        style: TextStyle(fontFamily: 'bahji', fontSize: 14, color: c.textDark, height: 1.6),
         decoration: InputDecoration(
           hintText: 'اكتب إجابتك هنا…',
           hintStyle: c.caption,
@@ -674,7 +674,7 @@ class _NextBtn extends StatelessWidget {
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           Text('السؤال التالي',
               style: TextStyle(
-                fontFamily: 'Cairo', fontSize: 14, fontWeight: FontWeight.w800,
+                fontFamily: 'bahji', fontSize: 14, fontWeight: FontWeight.w800,
                 color: answered ? Colors.white : Colors.grey.shade500,
               )),
           const SizedBox(width: 6),
@@ -717,7 +717,7 @@ class _SubmitBtn extends StatelessWidget {
           Icon(Icons.send_rounded, color: Colors.white, size: 18),
           SizedBox(width: 8),
           Text('تقديم الاختبار',
-              style: TextStyle(fontFamily: 'Cairo', fontSize: 15,
+              style: TextStyle(fontFamily: 'bahji', fontSize: 15,
                   fontWeight: FontWeight.w800, color: Colors.white)),
         ]),
       ),
@@ -807,7 +807,7 @@ class _QuestionGridSheet extends StatelessWidget {
                   child: Center(
                     child: Text('${i + 1}',
                         style: TextStyle(
-                          fontFamily: 'Cairo',
+                          fontFamily: 'bahji',
                           fontSize: 14, fontWeight: FontWeight.w800,
                           color: isCurrent
                               ? Colors.white
@@ -838,6 +838,6 @@ class _LegendItem extends StatelessWidget {
       decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4)),
     ),
     const SizedBox(width: 5),
-    Text(label, style: const TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey)),
+    Text(label, style: const TextStyle(fontFamily: 'bahji', fontSize: 11, color: Colors.grey)),
   ]);
 }

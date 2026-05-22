@@ -109,7 +109,7 @@ class _CourseAnalyticsViewState extends State<_CourseAnalyticsView>
                           color: Colors.white,
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
-                          fontFamily: 'Cairo'),
+                          fontFamily: 'bahji'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 4),
@@ -117,7 +117,7 @@ class _CourseAnalyticsViewState extends State<_CourseAnalyticsView>
                       style: TextStyle(
                           color: Colors.white70,
                           fontSize: 13,
-                          fontFamily: 'Cairo')),
+                          fontFamily: 'bahji')),
                   const SizedBox(height: 16),
                   // Hero stats row
                   Row(children: [
@@ -148,9 +148,9 @@ class _CourseAnalyticsViewState extends State<_CourseAnalyticsView>
         bottom: TabBar(
           controller: _tab,
           labelStyle: const TextStyle(
-              fontFamily: 'Cairo', fontWeight: FontWeight.w700, fontSize: 14),
+              fontFamily: 'bahji', fontWeight: FontWeight.w700, fontSize: 14),
           unselectedLabelStyle:
-              const TextStyle(fontFamily: 'Cairo', fontSize: 13),
+              const TextStyle(fontFamily: 'bahji', fontSize: 13),
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white60,
           indicatorColor: Colors.white,
@@ -183,7 +183,7 @@ class _AttendanceTab extends StatelessWidget {
       return const Center(
         child: Text('لا توجد محاضرات بعد',
             style:
-                TextStyle(fontFamily: 'Cairo', fontSize: 15, color: Colors.grey)),
+                TextStyle(fontFamily: 'bahji', fontSize: 15, color: Colors.grey)),
       );
     }
     return Column(children: [
@@ -248,7 +248,7 @@ class _AttendanceSummaryCard extends StatelessWidget {
               ),
               Text('${rate.toStringAsFixed(0)}%',
                   style: TextStyle(
-                      fontFamily: 'Cairo',
+                      fontFamily: 'bahji',
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
                       color: _color)),
@@ -259,7 +259,7 @@ class _AttendanceSummaryCard extends StatelessWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('إجمالي الحضور',
                   style: TextStyle(
-                      fontFamily: 'Cairo', fontSize: 13, color: Colors.grey)),
+                      fontFamily: 'bahji', fontSize: 13, color: Colors.grey)),
               const SizedBox(height: 6),
               _BarRow('حضر', present, total, context.colors.success),
               const SizedBox(height: 6),
@@ -282,7 +282,7 @@ class _BarRow extends StatelessWidget {
             width: 36,
             child: Text(label,
                 style: const TextStyle(
-                    fontFamily: 'Cairo', fontSize: 12, color: Colors.grey))),
+                    fontFamily: 'bahji', fontSize: 12, color: Colors.grey))),
         const SizedBox(width: 8),
         Expanded(
           child: ClipRRect(
@@ -298,7 +298,7 @@ class _BarRow extends StatelessWidget {
         const SizedBox(width: 8),
         Text('$value',
             style: TextStyle(
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: color)),
@@ -351,13 +351,13 @@ class _AttendanceTile extends StatelessWidget {
         ),
         title: Text(record.sessions.name,
             style: const TextStyle(
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
                 fontSize: 14,
                 fontWeight: FontWeight.w600)),
         subtitle: record.sessions.scheduledAt != null
             ? Text(_fmtDate(record.sessions.scheduledAt!),
                 style: const TextStyle(
-                    fontFamily: 'Cairo', fontSize: 12, color: Colors.grey))
+                    fontFamily: 'bahji', fontSize: 12, color: Colors.grey))
             : null,
         trailing: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -366,7 +366,7 @@ class _AttendanceTile extends StatelessWidget {
               Text(
                   record.attendance.first.isPresent ? 'حاضر' : 'غائب',
                   style: TextStyle(
-                      fontFamily: 'Cairo',
+                      fontFamily: 'bahji',
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: record.attendance.first.isPresent
@@ -375,7 +375,7 @@ class _AttendanceTile extends StatelessWidget {
               if (record.attendance.first.duration != null)
                 Text('${record.attendance.first.duration} دقيقة',
                     style: const TextStyle(
-                        fontFamily: 'Cairo', fontSize: 11, color: Colors.grey)),
+                        fontFamily: 'bahji', fontSize: 11, color: Colors.grey)),
             ]),
       ),
     );
@@ -418,7 +418,7 @@ class _ExamsTab extends StatelessWidget {
           const SizedBox(height: 12),
           const Text('لا توجد اختبارات حتى الآن',
               style: TextStyle(
-                  fontFamily: 'Cairo', fontSize: 15, color: Colors.grey)),
+                  fontFamily: 'bahji', fontSize: 15, color: Colors.grey)),
         ]),
       );
     }
@@ -472,7 +472,7 @@ class _ExamTile extends StatelessWidget {
               Expanded(
                   child: Text(exam.examName,
                       style: const TextStyle(
-                          fontFamily: 'Cairo',
+                          fontFamily: 'bahji',
                           fontSize: 15,
                           fontWeight: FontWeight.w700))),
               _Badge(exam.statusLabel, _color),
@@ -499,12 +499,12 @@ class _ExamTile extends StatelessWidget {
                     Text(
                         'درجتي: ${exam.marksObtained?.toStringAsFixed(0)} / ${exam.totalMarks?.toStringAsFixed(0)}',
                         style: const TextStyle(
-                            fontFamily: 'Cairo',
+                            fontFamily: 'bahji',
                             fontSize: 13,
                             color: Colors.grey)),
                     Text('${exam.percentage!.toStringAsFixed(1)}%',
                         style: TextStyle(
-                            fontFamily: 'Cairo',
+                            fontFamily: 'bahji',
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
                             color: _color)),
@@ -551,10 +551,10 @@ class _HeroStat extends StatelessWidget {
                   color: color,
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
-                  fontFamily: 'Cairo')),
+                  fontFamily: 'bahji')),
           Text(label,
               style: const TextStyle(
-                  color: Colors.white60, fontSize: 10, fontFamily: 'Cairo')),
+                  color: Colors.white60, fontSize: 10, fontFamily: 'bahji')),
         ]),
       );
 }
@@ -572,7 +572,7 @@ class _Badge extends StatelessWidget {
             borderRadius: BorderRadius.circular(20)),
         child: Text(label,
             style: TextStyle(
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color: color)),
@@ -592,7 +592,7 @@ class _InfoChip extends StatelessWidget {
         const SizedBox(width: 4),
         Text(label,
             style: const TextStyle(
-                fontFamily: 'Cairo', fontSize: 12, color: Colors.grey)),
+                fontFamily: 'bahji', fontSize: 12, color: Colors.grey)),
       ]);
 }
 
@@ -611,13 +611,13 @@ class _ErrorRetry extends StatelessWidget {
             Text(message,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                    fontFamily: 'Cairo', fontSize: 14, color: Colors.grey)),
+                    fontFamily: 'bahji', fontSize: 14, color: Colors.grey)),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh_rounded),
               label: const Text('إعادة المحاولة',
-                  style: TextStyle(fontFamily: 'Cairo')),
+                  style: TextStyle(fontFamily: 'bahji')),
               style: ElevatedButton.styleFrom(
                 backgroundColor: context.colors.primary,
                 foregroundColor: Colors.white,

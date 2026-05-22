@@ -185,7 +185,7 @@ class _TopBar extends StatelessWidget {
                   color: Colors.white,
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
-                  fontFamily: 'Cairo')),
+                  fontFamily: 'bahji')),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -220,17 +220,17 @@ class _TopBar extends StatelessWidget {
 
 // ── Shimmer ───────────────────────────────────────────────────────────────────
 
-class _Shimmer extends StatefulWidget {
+class Shimmer extends StatefulWidget {
   final double width, height;
   final double radius;
 
-  const _Shimmer({required this.width, required this.height, this.radius = 0});
+  const Shimmer({required this.width, required this.height, this.radius = 0});
 
   @override
-  State<_Shimmer> createState() => _ShimmerState();
+  State<Shimmer> createState() => _ShimmerState();
 }
 
-class _ShimmerState extends State<_Shimmer>
+class _ShimmerState extends State<Shimmer>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<double> _anim;
@@ -275,7 +275,7 @@ class _StatsShimmer extends StatelessWidget {
             (i) => Expanded(
                   child: Padding(
                     padding: EdgeInsets.only(left: i < 2 ? 12 : 0),
-                    child: const _Shimmer(width: double.infinity, height: 90),
+                    child: const Shimmer(width: double.infinity, height: 90),
                   ),
                 )),
       );
@@ -292,7 +292,7 @@ class _CoursesShimmer extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           itemCount: 3,
           separatorBuilder: (_, __) => const SizedBox(width: 14),
-          itemBuilder: (_, __) => const _Shimmer(width: 170, height: 200),
+          itemBuilder: (_, __) => const Shimmer(width: 170, height: 200),
         ),
       );
 }
@@ -306,7 +306,7 @@ class _ScheduleShimmer extends StatelessWidget {
             2,
             (i) => Padding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
-                  child: const _Shimmer(width: double.infinity, height: 150),
+                  child: const Shimmer(width: double.infinity, height: 150),
                 )),
       );
 }
@@ -431,7 +431,7 @@ class _StatCard extends StatelessWidget {
                         color: Colors.white,
                         fontSize: 22,
                         fontWeight: FontWeight.w900,
-                        fontFamily: 'Cairo',
+                        fontFamily: 'bahji',
                         overflow: TextOverflow.visible,
                         height: 1)),
               ),
@@ -445,7 +445,7 @@ class _StatCard extends StatelessWidget {
                         fontSize: 14,
                         fontWeight: FontWeight.w400,
                       overflow: TextOverflow.ellipsis,
-                        fontFamily: 'Cairo',
+                        fontFamily: 'bahji',
                 
                     )),
               ),
@@ -485,7 +485,7 @@ class _AddCourseButton extends StatelessWidget {
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
-                      fontFamily: 'Cairo')),
+                      fontFamily: 'bahji')),
             ],
           ),
         ),
@@ -672,7 +672,7 @@ class _TeacherCourseCard extends StatelessWidget {
                                 color: Colors.white,
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
-                                fontFamily: 'Cairo'),
+                                fontFamily: 'bahji'),
                           ),
                         ),
                         SizedBox(height: 10,),
@@ -690,7 +690,7 @@ class _TeacherCourseCard extends StatelessWidget {
                                 color: Colors.white,
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
-                                fontFamily: 'Cairo'),
+                                fontFamily: 'bahji'),
                           ),
                         ),
                       ],

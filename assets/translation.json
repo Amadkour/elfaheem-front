@@ -1336,5 +1336,17 @@
   "show_all": {
     "en": "Show all",
     "ar": "عرض الكل"
+  },
+  "you_progress": {
+    "en": "Your Progress",
+    "ar": "تقدمك"
+  },
+  "you_progress_in_course": {
+    "en": "Your Progress in Course",
+    "ar": "تقدمك في الدورة"
+  },
+  "you_are_enrolled": {
+    "en": "Your Are enrolled",
+    "ar": "انت مشترك في الدورة"
   }
 }

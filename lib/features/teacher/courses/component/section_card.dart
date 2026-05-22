@@ -99,7 +99,7 @@ class _ItemRow extends StatelessWidget {
     dense: true,
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
     title: Text(label,
-        style: const TextStyle(fontFamily: 'Cairo', fontSize: 13)),
+        style: const TextStyle(fontFamily: 'bahji', fontSize: 13)),
     trailing: GestureDetector(
       onTap: onRemove,
       child:

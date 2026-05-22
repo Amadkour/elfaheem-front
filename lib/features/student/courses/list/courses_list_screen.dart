@@ -114,7 +114,7 @@ class _SearchBar extends StatelessWidget {
           textDirection: TextDirection.rtl,
           onChanged: onChanged,
           style: TextStyle(
-              fontFamily: 'Cairo',
+              fontFamily: 'bahji',
               fontSize: 14,
               color: context.colors.textDark),
           decoration: InputDecoration(
@@ -413,7 +413,7 @@ class _PricePill extends StatelessWidget {
           color: Colors.white,
           fontSize: 10,
           fontWeight: FontWeight.w800,
-          fontFamily: 'Cairo',
+          fontFamily: 'bahji',
         ),
       ),
     );

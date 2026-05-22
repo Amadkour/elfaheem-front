@@ -143,7 +143,7 @@ class _InfoBanner extends StatelessWidget {
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
                       fontSize: 14,
-                      fontFamily: 'Cairo',
+                      fontFamily: 'bahji',
                     )),
                 const SizedBox(height: 4),
                 Text(
@@ -151,7 +151,7 @@ class _InfoBanner extends StatelessWidget {
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: .8),
                     fontSize: 11,
-                    fontFamily: 'Cairo',
+                    fontFamily: 'bahji',
                     height: 1.5,
                   ),
                 ),
@@ -268,7 +268,7 @@ class _BankAccountCard extends StatelessWidget {
                         color: Color(0xFF2D6A4F),
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        fontFamily: 'Cairo',
+                        fontFamily: 'bahji',
                       ),
                     ),
                   ),
@@ -305,7 +305,7 @@ class _BankAccountCard extends StatelessWidget {
                     onPressed: () => p.setDefault(method.id),
                     icon: const Icon(Icons.star_border_rounded, size: 16),
                     label: const Text('افتراضي',
-                        style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
+                        style: TextStyle(fontFamily: 'bahji', fontSize: 12)),
                     style: TextButton.styleFrom(foregroundColor: c.primary),
                   ),
                 IconButton(
@@ -338,19 +338,19 @@ class _BankAccountCard extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('حذف الحساب', style: TextStyle(fontFamily: 'Cairo')),
+        title: const Text('حذف الحساب', style: TextStyle(fontFamily: 'bahji')),
         content: const Text('هل أنت متأكد من حذف هذا الحساب البنكي؟',
-            style: TextStyle(fontFamily: 'Cairo')),
+            style: TextStyle(fontFamily: 'bahji')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
+            child: const Text('إلغاء', style: TextStyle(fontFamily: 'bahji')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: Text('حذف',
                 style: TextStyle(
-                    color: context.colors.danger, fontFamily: 'Cairo')),
+                    color: context.colors.danger, fontFamily: 'bahji')),
           ),
         ],
       ),
@@ -498,7 +498,7 @@ class _AddBankFormState extends State<_AddBankForm> {
 
 SnackBar _snack(String msg, Color color) => SnackBar(
       content: Text(msg,
-          style: const TextStyle(fontFamily: 'Cairo', color: Colors.white)),
+          style: const TextStyle(fontFamily: 'bahji', color: Colors.white)),
       backgroundColor: color,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

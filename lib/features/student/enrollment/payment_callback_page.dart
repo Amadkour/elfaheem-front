@@ -244,7 +244,7 @@ class _GradBtn extends StatelessWidget {
       ),
       child: Center(child: Text(label, style: const TextStyle(
           color: Colors.white, fontWeight: FontWeight.w800,
-          fontSize: 16, fontFamily: 'Cairo'))),
+          fontSize: 16, fontFamily: 'bahji'))),
     ),
   );
 }

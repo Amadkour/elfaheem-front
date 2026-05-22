@@ -67,14 +67,14 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView>
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('اختباراتي وحضوري',
                   style: TextStyle(
-                      fontFamily: 'Cairo',
+                      fontFamily: 'bahji',
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
                       color: Colors.black87)),
               const SizedBox(height: 2),
               const Text('اختر كورساً لعرض سجل حضورك ونتائجك',
                   style: TextStyle(
-                      fontFamily: 'Cairo', fontSize: 13, color: Colors.grey)),
+                      fontFamily: 'bahji', fontSize: 13, color: Colors.grey)),
             ]),
           ),
           Container(
@@ -97,7 +97,7 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView>
           decoration: InputDecoration(
             hintText: 'ابحث عن كورس...',
             hintStyle: const TextStyle(
-                fontFamily: 'Cairo', color: Colors.grey, fontSize: 13),
+                fontFamily: 'bahji', color: Colors.grey, fontSize: 13),
             prefixIcon:
                 const Icon(Icons.search_rounded, color: Colors.grey, size: 20),
             suffixIcon: prov.search.isNotEmpty
@@ -134,13 +134,13 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView>
             Text(prov.error!,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                    fontFamily: 'Cairo', fontSize: 14, color: Colors.grey)),
+                    fontFamily: 'bahji', fontSize: 14, color: Colors.grey)),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: prov.loadCourses,
               icon: const Icon(Icons.refresh_rounded),
               label: const Text('إعادة المحاولة',
-                  style: TextStyle(fontFamily: 'Cairo')),
+                  style: TextStyle(fontFamily: 'bahji')),
               style: ElevatedButton.styleFrom(
                 backgroundColor: context.colors.primary,
                 foregroundColor: Colors.white,
@@ -164,7 +164,7 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView>
                 ? 'لم تسجّل في أي كورس بعد'
                 : 'لا توجد نتائج للبحث',
             style: const TextStyle(
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
                 fontSize: 16,
                 color: Colors.grey,
                 fontWeight: FontWeight.w600),
@@ -173,7 +173,7 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView>
             const SizedBox(height: 8),
             const Text('اذهب إلى "كورساتي" للتسجيل',
                 style: TextStyle(
-                    fontFamily: 'Cairo', fontSize: 13, color: Colors.grey)),
+                    fontFamily: 'bahji', fontSize: 13, color: Colors.grey)),
           ],
         ]),
       );
@@ -260,7 +260,7 @@ class _CourseCard extends StatelessWidget {
                       children: [
                         Text(course.title,
                             style: const TextStyle(
-                                fontFamily: 'Cairo',
+                                fontFamily: 'bahji',
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700),
                             maxLines: 1,
@@ -269,7 +269,7 @@ class _CourseCard extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(course.teacherName!,
                               style: const TextStyle(
-                                  fontFamily: 'Cairo',
+                                  fontFamily: 'bahji',
                                   fontSize: 12,
                                   color: Colors.grey)),
                         ],
@@ -287,7 +287,7 @@ class _CourseCard extends StatelessWidget {
                         const SizedBox(height: 3),
                         Text('${course.progress.toStringAsFixed(0)}% مكتمل',
                             style: const TextStyle(
-                                fontFamily: 'Cairo',
+                                fontFamily: 'bahji',
                                 fontSize: 10,
                                 color: Colors.grey)),
                       ]),
@@ -332,7 +332,7 @@ class _CourseCard extends StatelessWidget {
                   const SizedBox(width: 3),
                   Text('${course.sessionsCount} محاضرة',
                       style: const TextStyle(
-                          fontFamily: 'Cairo',
+                          fontFamily: 'bahji',
                           fontSize: 12,
                           color: Colors.grey)),
                 ]),
@@ -374,7 +374,7 @@ class _ActionChip extends StatelessWidget {
           const SizedBox(width: 5),
           Text(label,
               style: TextStyle(
-                  fontFamily: 'Cairo',
+                  fontFamily: 'bahji',
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                   color: color)),

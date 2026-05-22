@@ -75,7 +75,7 @@ class _RefreshButtonState extends State<RefreshButton>
           Text(
             isRefreshing ? 'refreshing'.tr : 'refresh'.tr,
             style: TextStyle(
-              fontFamily: 'Cairo',
+              fontFamily: 'bahji',
               fontSize: 13,
               fontWeight: FontWeight.w700,
               color: isRefreshing ? context.colors.primaryBlue : Colors.white,

@@ -75,12 +75,12 @@ class _StudentExamListScreenState extends State<StudentExamListScreen>
                         const Icon(Icons.quiz_rounded, color: Colors.white, size: 36),
                         const SizedBox(height: 8),
                         const Text('اختباراتي', style: TextStyle(
-                          fontFamily: 'Cairo', fontSize: 22,
+                          fontFamily: 'bahji', fontSize: 22,
                           fontWeight: FontWeight.w800, color: Colors.white,
                         )),
                         const SizedBox(height: 4),
                         Text('${all.length} اختبار في ${all.map((e) => e.courseId).toSet().length} مادة',
-                            style: const TextStyle(fontFamily: 'Cairo', fontSize: 13, color: Colors.white70)),
+                            style: const TextStyle(fontFamily: 'bahji', fontSize: 13, color: Colors.white70)),
                       ],
                     ),
                   ),
@@ -90,8 +90,8 @@ class _StudentExamListScreenState extends State<StudentExamListScreen>
                 controller: _tabCtrl,
                 indicatorColor: Colors.white,
                 indicatorWeight: 3,
-                labelStyle: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700, fontSize: 12),
-                unselectedLabelStyle: const TextStyle(fontFamily: 'Cairo', fontSize: 12),
+                labelStyle: const TextStyle(fontFamily: 'bahji', fontWeight: FontWeight.w700, fontSize: 12),
+                unselectedLabelStyle: const TextStyle(fontFamily: 'bahji', fontSize: 12),
                 labelColor: Colors.white,
                 unselectedLabelColor: Colors.white60,
                 isScrollable: true,
@@ -270,7 +270,7 @@ class _ExamCard extends StatelessWidget {
                 Text(
                   'يمكنك المحاولة مرة أخرى (${exam.computedRemainingSubmissions} محاولة متبقية)',
                   style: const TextStyle(
-                    fontFamily: 'Cairo', fontSize: 11,
+                    fontFamily: 'bahji', fontSize: 11,
                     fontWeight: FontWeight.w700, color: Color(0xFF6C5CE7),
                   ),
                 ),
@@ -310,7 +310,7 @@ class _ScoreBadge extends StatelessWidget {
       ),
       child: Text('${pct.toStringAsFixed(0)}%',
           style: const TextStyle(
-            fontFamily: 'Cairo', fontSize: 13,
+            fontFamily: 'bahji', fontSize: 13,
             fontWeight: FontWeight.w900, color: Colors.white,
           )),
     );
@@ -332,7 +332,7 @@ class _StatusBadge extends StatelessWidget {
     ),
     child: Text(
       exam.isFrozen ? 'مغلق' : 'نشط',
-      style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.w700, color: accent),
+      style: TextStyle(fontFamily: 'bahji', fontSize: 11, fontWeight: FontWeight.w700, color: accent),
     ),
   );
 }
@@ -353,10 +353,10 @@ class _ScoreBar extends StatelessWidget {
         const Icon(Icons.emoji_events_rounded, size: 12, color: Colors.amber),
         const SizedBox(width: 4),
         Text('أفضل نتيجة',
-            style: const TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey)),
+            style: const TextStyle(fontFamily: 'bahji', fontSize: 11, color: Colors.grey)),
         const Spacer(),
         Text('${pct.toStringAsFixed(1)}%',
-            style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.w800, color: accent)),
+            style: TextStyle(fontFamily: 'bahji', fontSize: 12, fontWeight: FontWeight.w800, color: accent)),
       ]),
       const SizedBox(height: 5),
       ClipRRect(
@@ -391,7 +391,7 @@ class _MetaChip extends StatelessWidget {
       Icon(icon, size: 12, color: color),
       const SizedBox(width: 4),
       Text(label, style: TextStyle(
-        fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.w600, color: color,
+        fontFamily: 'bahji', fontSize: 11, fontWeight: FontWeight.w600, color: color,
       )),
     ]),
   );
@@ -448,7 +448,7 @@ class _DeadlineChipState extends State<_DeadlineChip> {
         Icon(Icons.hourglass_bottom_rounded, size: 12, color: color),
         const SizedBox(width: 4),
         Text(label, style: TextStyle(
-          fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.w600, color: color,
+          fontFamily: 'bahji', fontSize: 11, fontWeight: FontWeight.w600, color: color,
         )),
       ]),
     );
@@ -467,7 +467,7 @@ class _EmptyState extends StatelessWidget {
       Icon(Icons.inbox_rounded, size: 56, color: Colors.grey.shade300),
       const SizedBox(height: 14),
       Text(message, style: TextStyle(
-        fontFamily: 'Cairo', fontSize: 14, color: Colors.grey.shade500,
+        fontFamily: 'bahji', fontSize: 14, color: Colors.grey.shade500,
       )),
     ]),
   );
@@ -486,13 +486,13 @@ class _ErrorState extends StatelessWidget {
         const Icon(Icons.wifi_off_rounded, size: 48, color: Colors.redAccent),
         const SizedBox(height: 14),
         Text(message,
-            style: const TextStyle(fontFamily: 'Cairo', fontSize: 14, color: Colors.grey),
+            style: const TextStyle(fontFamily: 'bahji', fontSize: 14, color: Colors.grey),
             textAlign: TextAlign.center),
         const SizedBox(height: 20),
         ElevatedButton.icon(
           onPressed: onRetry,
           icon: const Icon(Icons.refresh_rounded, size: 18),
-          label: const Text('إعادة المحاولة', style: TextStyle(fontFamily: 'Cairo')),
+          label: const Text('إعادة المحاولة', style: TextStyle(fontFamily: 'bahji')),
           style: ElevatedButton.styleFrom(
             backgroundColor: context.colors.primary,
             foregroundColor: Colors.white,

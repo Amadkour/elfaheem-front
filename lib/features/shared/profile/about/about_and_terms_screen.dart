@@ -205,7 +205,7 @@ class _HeroBanner extends StatelessWidget {
         Text(
           info?.name ?? 'ElFaheem',
           style: const TextStyle(
-              fontFamily: 'Cairo',
+              fontFamily: 'bahji',
               fontSize: 32,
               fontWeight: FontWeight.w800,
               color: Colors.white,
@@ -216,7 +216,7 @@ class _HeroBanner extends StatelessWidget {
           Text(
             info!.tagline!,
             style: TextStyle(
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
                 fontSize: 16,
                 color: Colors.white.withValues(alpha: 0.85)),
             textAlign: TextAlign.center,
@@ -304,14 +304,14 @@ class _StatsRow extends StatelessWidget {
           return Column(mainAxisSize: MainAxisSize.min, children: [
             Text(s.value,
                 style: TextStyle(
-                    fontFamily: 'Cairo',
+                    fontFamily: 'bahji',
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
                     color: c.primary)),
             const SizedBox(height: 4),
             Text(s.label,
                 style: TextStyle(
-                    fontFamily: 'Cairo', fontSize: 11, color: c.textMedium)),
+                    fontFamily: 'bahji', fontSize: 11, color: c.textMedium)),
           ]);
         }).toList(),
       ),
@@ -566,7 +566,7 @@ class _ErrorState extends StatelessWidget {
             onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded),
             label: Text(_l(context, 'إعادة المحاولة', 'Try Again'),
-                style: const TextStyle(fontFamily: 'Cairo')),
+                style: const TextStyle(fontFamily: 'bahji')),
           ),
         ]),
       ),
@@ -851,7 +851,7 @@ class _TermsFooter extends StatelessWidget {
               'By continuing to use the platform, you confirm that you have read, understood, and agreed to all Terms & Conditions.',
             ),
             style: TextStyle(
-              fontFamily: 'Cairo',
+              fontFamily: 'bahji',
               fontSize: 13,
               height: 1.7,
               color: c.success.withValues(alpha: 0.9),

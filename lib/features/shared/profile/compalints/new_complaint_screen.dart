@@ -80,7 +80,7 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
       });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: const Text('تم إرسال الشكوى بنجاح',
-            style: TextStyle(fontFamily: 'Cairo')),
+            style: TextStyle(fontFamily: 'bahji')),
         backgroundColor: context.colors.success,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -90,7 +90,7 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
     } else {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: const Text('حدث خطأ، حاول مرة أخرى',
-            style: TextStyle(fontFamily: 'Cairo')),
+            style: TextStyle(fontFamily: 'bahji')),
         backgroundColor: context.colors.danger,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -200,9 +200,9 @@ class _TabBar extends StatelessWidget {
         labelColor: Colors.white,
         unselectedLabelColor: c.textMedium,
         labelStyle: const TextStyle(
-            fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.w700),
+            fontFamily: 'bahji', fontSize: 13, fontWeight: FontWeight.w700),
         unselectedLabelStyle: const TextStyle(
-            fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.w500),
+            fontFamily: 'bahji', fontSize: 13, fontWeight: FontWeight.w500),
         tabs: [
           const Tab(
             child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -243,7 +243,7 @@ class _Badge extends StatelessWidget {
       child: Text(
         '$count',
         style: const TextStyle(
-            fontFamily: 'Cairo',
+            fontFamily: 'bahji',
             fontSize: 10,
             fontWeight: FontWeight.w800,
             color: Colors.white),
@@ -305,7 +305,7 @@ class _FormTab extends StatelessWidget {
                 Expanded(
                   child: Text(courseTitle!,
                       style: TextStyle(
-                          fontFamily: 'Cairo',
+                          fontFamily: 'bahji',
                           color: c.accent,
                           fontWeight: FontWeight.w600)),
                 ),
@@ -791,7 +791,7 @@ class _ReplyBubble extends StatelessWidget {
                       Text(
                         isAdmin ? 'فريق الدعم' : 'أنت',
                         style: TextStyle(
-                          fontFamily: 'Cairo',
+                          fontFamily: 'bahji',
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: isAdmin ? c.primary : c.textMedium,
@@ -877,7 +877,7 @@ class _ResolvedBadge extends StatelessWidget {
         Text(
           'تم حل الشكوى في ${_fmt(resolvedAt)}',
           style: TextStyle(
-              fontFamily: 'Cairo',
+              fontFamily: 'bahji',
               fontSize: 12,
               color: c.success,
               fontWeight: FontWeight.w600),
@@ -947,7 +947,7 @@ class _StatusBadge extends StatelessWidget {
         ),
         child: Text(label,
             style: TextStyle(
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
                 color: color)),
@@ -970,7 +970,7 @@ class _CategoryBadge extends StatelessWidget {
         ),
         child: Text(label,
             style: TextStyle(
-                fontFamily: 'Cairo',
+                fontFamily: 'bahji',
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
                 color: primary)),
@@ -1041,7 +1041,7 @@ class _CategoryPicker extends StatelessWidget {
               const SizedBox(width: 6),
               Text(label,
                   style: TextStyle(
-                      fontFamily: 'Cairo',
+                      fontFamily: 'bahji',
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: sel ? Colors.white : c.textMedium)),
@@ -1092,7 +1092,7 @@ class _PriorityPicker extends StatelessWidget {
                 label,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    fontFamily: 'Cairo',
+                    fontFamily: 'bahji',
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: sel ? Colors.white : color),

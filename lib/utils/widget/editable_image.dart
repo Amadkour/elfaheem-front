@@ -126,7 +126,7 @@ class EditableImage extends StatelessWidget {
                 style: TextStyle(
                     fontSize: 9,
                     color: Color(0xFF0D6EFD),
-                    fontFamily: 'Cairo',
+                    fontFamily: 'bahji',
                     fontWeight: FontWeight.w600)),
           ],
         ),
@@ -183,7 +183,7 @@ class _ImageSourceSheet extends StatelessWidget {
                 style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    fontFamily: 'Cairo',
+                    fontFamily: 'bahji',
                     color: context.colors.textDark)),
             const SizedBox(height: 16),
             _SheetTile(
@@ -229,6 +229,6 @@ class _SheetTile extends StatelessWidget {
           child: Icon(icon, color: color, size: 20),
         ),
         title: Text(label,
-            style: const TextStyle(fontFamily: 'Cairo', fontSize: 14)),
+            style: const TextStyle(fontFamily: 'bahji', fontSize: 14)),
       );
 }

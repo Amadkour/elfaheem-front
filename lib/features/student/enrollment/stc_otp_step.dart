@@ -279,7 +279,7 @@ class _StcOtpStepState extends State<StcOtpStep>
                                 color:      _full ? Colors.white : c.textLight,
                                 fontWeight: FontWeight.w800,
                                 fontSize:   16,
-                                fontFamily: 'Cairo',
+                                fontFamily: 'bahji',
                               ),
                             ),
                     ),
@@ -436,7 +436,7 @@ class _OtpBoxState extends State<_OtpBox> {
             fontSize:    22,
             fontWeight:  FontWeight.w800,
             color:       widget.hasError ? c.danger : c.textDark,
-            fontFamily:  'Cairo',
+            fontFamily:  'bahji',
           ),
           decoration: const InputDecoration(
             counterText: '',

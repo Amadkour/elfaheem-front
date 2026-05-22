@@ -271,7 +271,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                           Text(
                             'log-out'.tr,
                             style: TextStyle(
-                              fontFamily: 'Cairo',
+                              fontFamily: 'bahji',
                               fontWeight: FontWeight.w700,
                               fontSize: 14,
                               color: context.colors.danger,
@@ -525,7 +525,7 @@ class FavouriteCoursesScreen extends StatelessWidget {
                       SizedBox(height: 12),
                       Text('لا توجد كورسات مفضّلة بعد',
                           style: TextStyle(
-                              fontFamily: 'Cairo',
+                              fontFamily: 'bahji',
                               color: context.colors.textMedium)),
                     ]))
                   : GridView.builder(
@@ -758,7 +758,7 @@ class _SupportScreenState extends State<SupportScreen> {
 //                     child: Text(
 //                       'مركز الفهيم يحرص على تقديم احسن الكورسات بأحسن المدرسين ليكون عندنا احسن جيل متقدم',
 //                       style: TextStyle(
-//                           fontFamily: 'Cairo',
+//                           fontFamily: 'bahji',
 //                           fontSize: 16,
 //                           height: 1.9,
 //                           color: context.colors.textDark),
@@ -914,7 +914,7 @@ class ProfileHeader extends StatelessWidget {
 
 SnackBar _snack(String msg, Color color) => SnackBar(
       content: Text(msg,
-          style: const TextStyle(fontFamily: 'Cairo', color: Colors.white)),
+          style: const TextStyle(fontFamily: 'bahji', color: Colors.white)),
       backgroundColor: color,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

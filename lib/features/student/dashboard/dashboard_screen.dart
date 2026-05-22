@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
-import 'package:flutter_education_app/features/student/dashboard/component/student_home_tab.dart';
 import 'package:flutter_education_app/features/student/dashboard/component/student_schedule_tab.dart';
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
 import 'package:flutter_education_app/features/teacher/dashboard/teacher_dashboard_screen.dart';
@@ -21,6 +20,7 @@ import '../courses/details/components/app_responsive.dart';
 import '../courses/my_courses/my_courses_provider.dart';
 import '../courses/my_courses/my_courses_screen.dart';
 import '../../notification/notifications_provider.dart';
+import '../home/home_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DashboardScreen — responsive shell
@@ -43,15 +43,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await context.read<NotificationsProvider>().fetchNotifications();
     });
-    HomeProvider provider = context.read<HomeProvider>();
     dashboardItems.clear();
     dashboardItems.addAll([
       DashboardItem(
         CupertinoIcons.home,
         CupertinoIcons.house_fill,
         'home',
-        () async => provider.init(context),
-        const StudentHomeTab(),
+        () async => context.read<HomeProvider>().init(context),
+        const HomeScreen(),
       ),
       DashboardItem(
           CupertinoIcons.book,
@@ -202,7 +201,7 @@ class WideShell extends StatelessWidget {
                               children: [
                                 const Text('Elfaheem',
                                     style: TextStyle(
-                                        fontFamily: 'Cairo',
+                                        fontFamily: 'bahji',
                                         color: Colors.white,
                                         fontWeight: FontWeight.w900,
                                         fontSize: 17)),
@@ -334,7 +333,7 @@ class UserChipButton extends StatelessWidget {
                           color: Colors.white,
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
-                          fontFamily: 'Cairo')),
+                          fontFamily: 'bahji')),
             ),
             if (showLabel) ...[
               const SizedBox(width: 10),
@@ -347,13 +346,13 @@ class UserChipButton extends StatelessWidget {
                             color: Colors.white,
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            fontFamily: 'Cairo'),
+                            fontFamily: 'bahji'),
                         overflow: TextOverflow.ellipsis),
                     Text(user.isTeacher ? 'teacher'.tr : 'student'.tr,
                         style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.45),
                             fontSize: 10,
-                            fontFamily: 'Cairo')),
+                            fontFamily: 'bahji')),
                   ],
                 ),
               ),
@@ -428,7 +427,7 @@ class _SidebarTile extends StatelessWidget {
               child: Text(
                 label,
                 style: TextStyle(
-                  fontFamily: 'Cairo',
+                  fontFamily: 'bahji',
                   color: selected
                       ? Colors.white
                       : Colors.white.withValues(alpha: 0.48),
@@ -448,7 +447,7 @@ class _SidebarTile extends StatelessWidget {
                         color: Colors.white,
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
-                        fontFamily: 'Cairo')),
+                        fontFamily: 'bahji')),
               ),
           ],
         ),
@@ -716,7 +715,7 @@ class _BottomNav extends StatelessWidget {
                             color: active
                                 ? context.colors.primaryBlue
                                 : context.colors.textLight,
-                            fontFamily: 'Cairo',
+                            fontFamily: 'bahji',
                           ),
                         ),
                       ],

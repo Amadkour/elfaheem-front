@@ -7,7 +7,6 @@ plugins {
     // END: FlutterFire Configuration
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
-    id("com.google.gms.google-services")          // ← Firebase
     id("com.google.firebase.crashlytics")          // ← NEW: Crashlytics
 }
 

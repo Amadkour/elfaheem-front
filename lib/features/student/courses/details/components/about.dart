@@ -227,7 +227,7 @@ class _InstructorCard extends StatelessWidget {
                         color: Colors.white,
                         fontSize: 24,
                         fontWeight: FontWeight.w900,
-                        fontFamily: 'Cairo',
+                        fontFamily: 'bahji',
                       ),
                     )
                   : const Icon(Icons.person_rounded,
@@ -272,7 +272,7 @@ class _InstructorCard extends StatelessWidget {
                       color: Colors.white,
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      fontFamily: 'Cairo',
+                      fontFamily: 'bahji',
                     ),
                   ),
                 ],

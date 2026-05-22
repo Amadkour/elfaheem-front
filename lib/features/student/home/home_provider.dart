@@ -94,9 +94,8 @@ class HomeProvider extends BaseProvider {
   // ── Init — run everything in parallel ─────────────────────────────────────
 
   Future<void> init(BuildContext context) async {
-    await Future.wait([
-      fetchStudentDashboard(),
-    ]);
+    await fetchStudentDashboard();
+
   }
 
   // ── Fetch top 5 doctors ───────────────────────────────────────────────────
@@ -104,30 +103,36 @@ class HomeProvider extends BaseProvider {
   /// Calls GET /api/v1/teacher/doctors?page=1&size=5
   /// The backend returns teachers ordered by composite_rate DESC.
   Future<void> fetchStudentDashboard() async {
-    notifyListeners();
-
+    makeLoading();
     final result = await run(
       () => _api.get(
         '/api/v1/teacher/student-dashboard',
         auth: true,
       ),
     );
+    makeLoading();
+
     if (result['categories'] is List) {
       categories = (result['categories'] as List)
           .map<CategoryModel>((e) => CategoryModel.fromJson(e as Map<String, dynamic>))
           .toList();
+      notifyListeners();
     }
 
     if (result['enrolled_courses'] is List) {
       myCourses = (result['enrolled_courses'] as List)
           .map<CourseModel>((e) => CourseModel.fromJson(e as Map<String, dynamic>))
           .toList();
+      notifyListeners();
+
     }
 
     if (result['other_courses'] is List) {
       otherCourses = (result['other_courses'] as List)
           .map<CourseModel>((e) => CourseModel.fromJson(e as Map<String, dynamic>))
           .toList();
+      notifyListeners();
+
     }
 
     if (result['best_teachers'] is Map &&
@@ -136,7 +141,9 @@ class HomeProvider extends BaseProvider {
           .whereType<Map<String, dynamic>>()
           .map<InstructorData>(InstructorData.fromJson)
           .toList();
+
     }
+    stopLoading();
     notifyListeners();
   }
 }
