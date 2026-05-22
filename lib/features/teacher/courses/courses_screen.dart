@@ -29,9 +29,9 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => context.read<TeacherProvider>().fetchMyCourses(),
-    );
+    // WidgetsBinding.instance.addPostFrameCallback(
+    //   (_) => context.read<TeacherProvider>().fetchMyCourses(),
+    // );
   }
 
   @override

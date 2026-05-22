@@ -77,7 +77,7 @@ class AboutTab extends StatelessWidget {
                   icon: Icons.settings_rounded,
                   iconBg: const Color(0xFFEEEDFE),
                   iconColor: context.colors.primary,
-                  title: x.title,
+                  title: x.name,
                   subtitle: x.description,
                 )),
             const SizedBox(height: 22),

@@ -122,7 +122,6 @@ abstract class BaseProvider extends ChangeNotifier {
           'in ${_baseDelay.inMilliseconds}ms…');
       await Future.delayed(_baseDelay);
     }
-
     _setProviderState(ProviderState.error);
     return null;
   }

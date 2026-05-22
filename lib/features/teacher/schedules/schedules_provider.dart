@@ -54,7 +54,6 @@ class ScheduleSlot {
   final int scheduleId;
   final int courseId;
   final String courseName;
-  final String? courseImage;
   final String day;
   final String dayLabelStr;
   final String startTime;
@@ -77,7 +76,6 @@ class ScheduleSlot {
     required this.endTime,
     required this.isToday,
     required this.isOngoing,
-    this.courseImage,
     this.minutesUntilStart,
     this.minutesUntilEnd,
     this.scheduledDate,
@@ -89,7 +87,6 @@ class ScheduleSlot {
         scheduleId: j['schedule_id'] as int,
         courseId: j['course_id'] as int,
         courseName: j['course_name'] as String,
-        courseImage: j['course_image'] as String?,
         day: j['day'] as String,
         dayLabelStr: j['day_label'] as String? ?? j['day'] as String,
         startTime: j['start_time'] as String,

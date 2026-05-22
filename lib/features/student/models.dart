@@ -10,51 +10,6 @@ enum CourseStatus { all, inProgress, completed }
 
 enum CourseDetailTab { lessons, about, live, exam }
 
-// class CourseSchedule {
-//   final int id, courseId;
-//   final String day, startTime, endTime;
-//
-//   const CourseSchedule(
-//       {required this.id,
-//       required this.courseId,
-//       required this.day,
-//       required this.startTime,
-//       required this.endTime});
-//
-//   String get dayLabel =>
-//       const {
-//         'monday': 'الإثنين',
-//         'tuesday': 'الثلاثاء',
-//         'wednesday': 'الأربعاء',
-//         'thursday': 'الخميس',
-//         'friday': 'الجمعة',
-//         'saturday': 'السبت',
-//         'sunday': 'الأحد'
-//       }[day] ??
-//       day;
-//
-//   factory CourseSchedule.fromJson(Map<String, dynamic> j) => CourseSchedule(
-//       id: j['id'] as int? ?? -1,
-//       courseId: j['course_id'] as int? ?? 0,
-//       day: j['day'] as String? ?? '',
-//       startTime: j['start_time'] as String? ?? '',
-//       endTime: j['end_time'] as String? ?? '');
-// }
-
-class CourseInfoItem {
-  final int id;
-  final String title;
-  final String? description;
-
-  const CourseInfoItem(
-      {required this.id, required this.title, this.description});
-
-  factory CourseInfoItem.fromJson(Map<String, dynamic> j) => CourseInfoItem(
-      id: j['id'] as int? ?? -1,
-      title: j['title'] as String? ?? j['name'] as String? ?? '',
-      description: j['description'] as String? ?? '');
-}
-
 class SessionModel {
   final int id, courseId, durationMinutes, order;
   final String name, type;
@@ -181,7 +136,6 @@ class TeacherSessionItem {
   }
 
   factory TeacherSessionItem.fromJson(Map<String, dynamic> j) {
-    print(j);
     return TeacherSessionItem(
         id: j['id'] as int,
         courseId: j['course_id'] as int? ?? 0,
@@ -338,7 +292,9 @@ class CourseModel {
   int materialsCompleted;
   late List<SessionModel> sessions;
   final List<CourseSchedule> schedules;
-  final List<CourseInfoItem> certificates, tools, prerequisites;
+  final List<CourseCertificate> certificates;
+  final List<CourseTool>tools;
+  final List<CoursePrerequisite>  prerequisites;
   final TeacherProfileData? teacher;
 
   CourseModel(
@@ -423,13 +379,13 @@ class CourseModel {
           .map((e) => CourseSchedule.fromJson(e as Map<String, dynamic>))
           .toList(),
       certificates: (j['certificates'] as List? ?? [])
-          .map((e) => CourseInfoItem.fromJson(e as Map<String, dynamic>))
+          .map((e) => CourseCertificate.fromJson(e as Map<String, dynamic>))
           .toList(),
       tools: (j['tools'] as List? ?? [])
-          .map((e) => CourseInfoItem.fromJson(e as Map<String, dynamic>))
+          .map((e) => CourseTool.fromJson(e as Map<String, dynamic>))
           .toList(),
       prerequisites: (j['prerequisites'] as List? ?? [])
-          .map((e) => CourseInfoItem.fromJson(e as Map<String, dynamic>))
+          .map((e) => CoursePrerequisite.fromJson(e as Map<String, dynamic>))
           .toList(),
       isEnrolled: j['is_enrolled']);
 
@@ -438,6 +394,17 @@ class CourseModel {
       title: title,
       imageUrl: imageUrl,
       totalHours: totalHours,
+      description: description,
+      categoryName: categoryName,
+      certificates: certificates,
+      schedules: schedules,
+      prerequisites: prerequisites,
+      studentsCount: studentsCount,
+      sessionsCount: sessionsCount,
+      tools: tools,
+      averageRating: averageRating,
+      isPublished: true,
+      price: price,
       type: type);
 
   CourseModel copyWith(
