@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../config/app_config.dart';
 import '../../../../config/app_theme.dart';
 import '../../../../utils/widget/base_page.dart';
 import '../../../teacher/home/teacher_models.dart';
@@ -87,7 +88,7 @@ class _Header extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'الطلاب المسجلون',
+                  'enrolled_students_title'.tr,
                   style: context.colors.h3.copyWith(fontSize: 16),
                 ),
                 const SizedBox(height: 2),
@@ -131,21 +132,21 @@ class _StatsBar extends StatelessWidget {
         children: [
           _Stat(
             icon: Icons.people_alt_rounded,
-            label: 'إجمالي',
+            label: 'stat_total'.tr,
             value: '${p.totalCount}',
             color: const Color(0xFF5B8FFF),
           ),
           _Divider(),
           _Stat(
             icon: Icons.trending_up_rounded,
-            label: 'متوسط التقدم',
+            label: 'stat_avg_progress'.tr,
             value: '${p.avgProgress.toStringAsFixed(0)}%',
             color: const Color(0xFF1DB954),
           ),
           _Divider(),
           _Stat(
             icon: Icons.workspace_premium_rounded,
-            label: 'أكملوا',
+            label: 'stat_completed'.tr,
             value: '${p.completedCount}',
             color: const Color(0xFFFF9F43),
           ),
@@ -234,7 +235,7 @@ class _SearchBar extends StatelessWidget {
           color: context.colors.textDark,
         ),
         decoration: InputDecoration(
-          hintText: 'ابحث بالاسم أو البريد...',
+          hintText: 'search_student_by_name_email'.tr,
           hintStyle: TextStyle(
             fontFamily: 'Tajawal',
             color: context.colors.textMedium,
@@ -300,10 +301,10 @@ class _StudentList extends StatelessWidget {
                   size: 32, color: context.colors.textMedium),
             ),
             const SizedBox(height: 16),
-            Text('لا يوجد طلاب', style: context.colors.h3),
+            Text('no_students'.tr, style: context.colors.h3),
             const SizedBox(height: 6),
             Text(
-              'لم يسجل أحد في هذا الكورس بعد',
+              'no_students_hint'.tr,
               style: TextStyle(
                 fontFamily: 'Tajawal',
                 fontSize: 13,
@@ -408,7 +409,7 @@ class _StudentCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'انضم ${_formatDate(student.enrolledAt)}',
+                  '${'joined'.tr} ${_formatDate(student.enrolledAt)}',
                   style: TextStyle(
                     fontFamily: 'Tajawal',
                     fontSize: 10,

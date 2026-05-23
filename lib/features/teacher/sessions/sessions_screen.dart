@@ -8,6 +8,7 @@ import '../../../config/app_config.dart' as Helpers;
 import '../../../config/app_theme.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/rating_widget.dart';
+import '../../shared/session/progress_banner.dart';
 import '../../shared/session/session_material_widget.dart';
 import '../../student/models.dart';
 import '../../teacher/home/teacher_models.dart';
@@ -132,6 +133,16 @@ class _SessionsList extends StatelessWidget {
                 sourceId: course.id.toString(),
                 canEdit: false,
                 compact: false,
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
+              child: ProgressBanner(
+                progress: course.progress,
+                total: course.expectedHours.toInt(),
+                complete: course.totalHours.toInt(),
               ),
             ),
           ),
@@ -871,7 +882,7 @@ class _StatChip extends StatelessWidget {
           item.label,
           style: TextStyle(
             fontFamily: 'Tajawal',
-            decoration:item.onTap==null?null: TextDecoration.underline,
+            decoration: item.onTap == null ? null : TextDecoration.underline,
             decorationColor: Colors.blueAccent,
             decorationThickness: 2,
             fontSize: 10,

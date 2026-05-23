@@ -10,6 +10,7 @@ import '../../../utils/widget/base_page.dart';
 import '../../auth/auth_provider.dart';
 import '../../shared/course/home_course_list.dart';
 import '../../student/courses/details/components/app_responsive.dart';
+import '../../student/home/component/course_row.dart';
 import '../../student/home/component/home_section_header.dart';
 import '../../student/models.dart';
 import '../courses/component/teacher_stats.dart';
@@ -99,23 +100,20 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                       ContentBox(
                         child: loading
                             ? const _CoursesShimmer()
-                            : SizedBox(
-                          height: context.height/3,
-                              child: HomeCourseList(
-                                  hasMore: false,
-                                  courses: provider.allCourses
-                                      .map((e) => e.toCourseModel)
-                                      .toList(),
-                                  onTap: (CourseModel course) {
-                                    Navigator.of(context).push(
+                            : CoursesRow(
+                                courses: provider.allCourses
+                                    .map((e) => e.toCourseModel)
+                                    .toList(),
+                                isTeacher:
+                                    context.read<AuthProvider>().isTeacher,
+                                onTap: (CourseModel c) {
+                                  Navigator.push(
+                                      context,
                                       MaterialPageRoute(
                                           builder: (_) => TeacherSessionsScreen(
-                                              course: course.toTeacherModel)),
-                                    );
-                                  },
-                                  isTeacher:
-                                      context.read<AuthProvider>().isTeacher),
-                            ),
+                                              course: c.toTeacherModel)));
+                                },
+                              ),
                       ),
                       SizedBox(height: 26),
 

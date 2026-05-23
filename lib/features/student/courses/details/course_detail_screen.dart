@@ -528,20 +528,20 @@ class _CourseMeta extends StatelessWidget {
               children: [
                 StatChip(
                   icon: Icons.people_alt_rounded,
-                  label: '${c.studentsCount}\nطالب',
+                  label: '${c.studentsCount}\n ${'student'.tr}',
                   iconColor: context.colors.primary,
                   maxHeight: context.height / 9,
                 ),
                 StatChip(
                   icon: Icons.video_library_rounded,
-                  label: '${c.sessionsCount}\nمحاضرة',
+                  label: '${c.sessionsCount}\n ${'session'.tr}',
                   iconColor: const Color(0xFF185FA5),
                   iconBg: const Color(0xFFE6F1FB),
                   maxHeight: context.height / 9,
                 ),
                 StatChip(
                   icon: Icons.access_time_rounded,
-                  label: '${c.totalHours.toStringAsFixed(0)}\nساعة',
+                  label: '${c.totalHours.toStringAsFixed(0)}\n ${'hour'.tr}',
                   iconColor: const Color(0xFFBA7517),
                   iconBg: const Color(0xFFFAEEDA),
                   maxHeight: context.height / 9,

@@ -14,11 +14,12 @@ class CourseSchedule {
   final int courseId;
   final String day, startTime, endTime;
 
-  const CourseSchedule({required this.id,
-    required this.courseId,
-    required this.day,
-    required this.startTime,
-    required this.endTime});
+  const CourseSchedule(
+      {required this.id,
+      required this.courseId,
+      required this.day,
+      required this.startTime,
+      required this.endTime});
 
   String get dayLabel =>
       const {
@@ -30,7 +31,7 @@ class CourseSchedule {
         'saturday': 'السبت',
         'sunday': 'الأحد'
       }[day] ??
-          day;
+      day;
 
   /// Lightweight constructor for pending (not-yet-saved) entries.
   factory CourseSchedule.pending({
@@ -46,13 +47,12 @@ class CourseSchedule {
         endTime: endTime,
       );
 
-  factory CourseSchedule.fromJson(Map<String, dynamic> j) =>
-      CourseSchedule(
-          id: j['id'] as int,
-          courseId: j['course_id'] as int? ?? 0,
-          day: j['day'] as String? ?? '',
-          startTime: j['start_time'] as String? ?? '',
-          endTime: j['end_time'] as String? ?? '');
+  factory CourseSchedule.fromJson(Map<String, dynamic> j) => CourseSchedule(
+      id: j['id'] as int,
+      courseId: j['course_id'] as int? ?? 0,
+      day: j['day'] as String? ?? '',
+      startTime: j['start_time'] as String? ?? '',
+      endTime: j['end_time'] as String? ?? '');
 }
 
 // ── CourseCertificate ─────────────────────────────────────────────────────────
@@ -61,10 +61,11 @@ class CourseCertificate {
   final String title;
   final String? description;
 
-  const CourseCertificate({required this.id,
-    required this.courseId,
-    required this.title,
-    this.description});
+  const CourseCertificate(
+      {required this.id,
+      required this.courseId,
+      required this.title,
+      this.description});
 
   factory CourseCertificate.fromJson(Map<String, dynamic> j) =>
       CourseCertificate(
@@ -80,17 +81,17 @@ class CourseTool {
   final String name;
   final String? description;
 
-  const CourseTool({required this.id,
-    required this.courseId,
-    required this.name,
-    this.description});
+  const CourseTool(
+      {required this.id,
+      required this.courseId,
+      required this.name,
+      this.description});
 
-  factory CourseTool.fromJson(Map<String, dynamic> j) =>
-      CourseTool(
-          id: j['id'] as int,
-          courseId: j['course_id'] as int? ?? 0,
-          name: j['title'] as String? ?? '',
-          description: j['description'] as String?);
+  factory CourseTool.fromJson(Map<String, dynamic> j) => CourseTool(
+      id: j['id'] as int,
+      courseId: j['course_id'] as int? ?? 0,
+      name: j['title'] as String? ?? '',
+      description: j['description'] as String?);
 }
 
 // ── CoursePrerequisite ────────────────────────────────────────────────────────
@@ -99,10 +100,11 @@ class CoursePrerequisite {
   final String title;
   final String? description;
 
-  const CoursePrerequisite({required this.id,
-    required this.courseId,
-    required this.title,
-    this.description});
+  const CoursePrerequisite(
+      {required this.id,
+      required this.courseId,
+      required this.title,
+      this.description});
 
   factory CoursePrerequisite.fromJson(Map<String, dynamic> j) =>
       CoursePrerequisite(
@@ -238,7 +240,7 @@ class ScheduleSession {
 class TeacherCourse {
   final int id, studentsCount, sessionsCount;
   final String title, imageUrl, type;
-  final double totalHours, averageRating, price;
+  final double totalHours, averageRating, price, progress,expectedHours;
   final String? categoryName, description;
   final bool isPublished;
   final List<CourseSchedule> schedules;
@@ -263,20 +265,23 @@ class TeacherCourse {
     this.certificates = const [],
     this.tools = const [],
     this.prerequisites = const [],
+    required this.progress,
+    required this.expectedHours,
   });
 
-  factory TeacherCourse.fromJson(Map<String, dynamic> j) =>
-      TeacherCourse(
+  factory TeacherCourse.fromJson(Map<String, dynamic> j) => TeacherCourse(
         id: j['id'] as int,
         title: j['name'] as String? ?? '',
         imageUrl: j['image_url'] as String? ?? '',
         studentsCount: j['students_count'] as int? ?? 0,
+        expectedHours: j['expected_hours'] as double? ?? 0.0,
         sessionsCount: j['sessions_count'] as int? ?? 0,
         averageRating: (j['average_rating'] as num?)?.toDouble() ?? 0.0,
         totalHours: (j['total_hours'] as num?)?.toDouble() ?? 0,
         price: (j['fees'] as num?)?.toDouble() ?? 0,
+        progress: (j['progress'] as num?)?.toDouble() ?? 0.0,
         categoryName:
-        (j['category'] as Map<String, dynamic>?)?['name'] as String?,
+            (j['category'] as Map<String, dynamic>?)?['name'] as String?,
         isPublished: j['is_published'] as bool? ?? false,
         description: j['description'] as String?,
         type: j['type'] as String? ?? 'recorded',
@@ -294,14 +299,15 @@ class TeacherCourse {
             .toList(),
       );
 
-  CourseModel get toCourseModel =>
-      CourseModel(id: id.toString(),
-          name: title,
-          imageUrl: imageUrl,
-          price: price,
-          type: type,
-          isEnrolled: false,
-          averageRating: averageRating,
+  CourseModel get toCourseModel => CourseModel(
+        id: id.toString(),
+        name: title,
+        imageUrl: imageUrl,
+        price: price,
+        progress: progress,
+        type: type,
+        isEnrolled: false,
+        averageRating: averageRating,
         certificates: certificates,
         tools: tools,
         prerequisites: prerequisites,
@@ -310,21 +316,26 @@ class TeacherCourse {
         studentsCount: studentsCount,
         sessionsCount: sessionsCount,
         totalHours: totalHours,
+        expectedHours: expectedHours,
         categoryName: categoryName,
+        isPublished: isPublished,
       );
 
-  TeacherCourse copyWith({bool? isPublished,
-    String? imageUrl,
-    List<CourseSchedule>? schedules,
-    List<CourseCertificate>? certificates,
-    List<CourseTool>? tools,
-    List<CoursePrerequisite>? prerequisites}) =>
+  TeacherCourse copyWith(
+          {bool? isPublished,
+          String? imageUrl,
+          List<CourseSchedule>? schedules,
+          List<CourseCertificate>? certificates,
+          List<CourseTool>? tools,
+          List<CoursePrerequisite>? prerequisites}) =>
       TeacherCourse(
           id: id,
           title: title,
+          progress: progress,
           imageUrl: imageUrl ?? this.imageUrl,
           totalHours: totalHours,
           type: type,
+          expectedHours: expectedHours,
           studentsCount: studentsCount,
           sessionsCount: sessionsCount,
           averageRating: averageRating,
@@ -354,8 +365,8 @@ class TeacherDashboardData {
             .map((e) => TeacherCourse.fromJson(e as Map<String, dynamic>))
             .toList(),
         schedule:
-        (j['schedule'] as List? ?? j['upcoming_sessions'] as List? ?? [])
-            .map((e) => ScheduleSession.fromJson(e as Map<String, dynamic>))
-            .toList());
+            (j['schedule'] as List? ?? j['upcoming_sessions'] as List? ?? [])
+                .map((e) => ScheduleSession.fromJson(e as Map<String, dynamic>))
+                .toList());
   }
 }

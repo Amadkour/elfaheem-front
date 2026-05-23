@@ -244,8 +244,7 @@ class _WideLayout extends StatelessWidget {
                       studentView: studentView,
                     ),
                     const SizedBox(height: 28),
-                    if (stats != null)
-                      StatsRow(stats: stats!, isFull: true)
+                    if (stats != null) StatsRow(stats: stats!, isFull: true)
                   ],
                 ),
               ),
@@ -386,7 +385,8 @@ class _HeroSliverAppBar extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            (teacher.teacherProfile?.specialization?.name??''),
+                            (teacher.teacherProfile?.specialization?.name ??
+                                ''),
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.75),
                               fontSize: 12,
@@ -498,13 +498,15 @@ class InstructorAvatar extends StatelessWidget {
   final double size;
   final bool canOpen;
   final bool showTitle;
+  final bool showImage;
 
   const InstructorAvatar(
       {super.key,
       required this.teacher,
       required this.size,
       required this.canOpen,
-      this.showTitle = false});
+      this.showTitle = false,
+      this.showImage = true});
 
   @override
   Widget build(BuildContext context) {
@@ -557,10 +559,11 @@ class InstructorAvatar extends StatelessWidget {
       w = Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          if(showImage) ...[
           w,
           SizedBox(
             width: 5,
-          ),
+          ),],
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -1004,13 +1007,13 @@ class _RatingSection extends StatelessWidget {
           title: 'ratings_and_reviews'.tr,
         ),
         const SizedBox(height: 12),
-        if(studentView)
-        RatingWidget(
-          type: RateType.doctor,
-          sourceId: teacher.id.toString(),
-          canEdit: studentView,
-          compact: studentView,
-        ),
+        if (studentView)
+          RatingWidget(
+            type: RateType.doctor,
+            sourceId: teacher.id.toString(),
+            canEdit: studentView,
+            compact: studentView,
+          ),
       ],
     );
   }

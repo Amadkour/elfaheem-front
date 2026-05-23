@@ -23,7 +23,6 @@ class HomeCourseList extends StatelessWidget {
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: Breakpoints.contentMax),
-        // child: isGrid
         child: isGrid
             ? GridView.builder(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
@@ -45,7 +44,7 @@ class HomeCourseList extends StatelessWidget {
                 ),
               );
             }
-            return _CourseCard(course: courses[i],onTap: onTap,);
+            return _CourseCard(course: courses[i],onTap: onTap,isTeacher: isTeacher,);
           },
         )
             : ListView.separated(
@@ -67,7 +66,7 @@ class HomeCourseList extends StatelessWidget {
                 ),
               );
             }
-            return _CourseCard(course:courses[i],onTap: onTap,);
+            return _CourseCard(course:courses[i],onTap: onTap,isTeacher: isTeacher,);
           },
         ),
       ),
@@ -80,8 +79,8 @@ class HomeCourseList extends StatelessWidget {
 class _CourseCard extends StatelessWidget {
   final CourseModel course;
   final void Function(CourseModel course) onTap;
-
-  const _CourseCard({required this.course, required this.onTap});
+  final bool isTeacher;
+  const _CourseCard({required this.course, required this.onTap, required this.isTeacher});
 
   void _open(BuildContext ctx) => onTap.call(course);
 
@@ -172,7 +171,7 @@ class _CourseCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if(course.teacher!=Null)
+                      if(!isTeacher&&course.teacher!=Null)
                         InstructorAvatar(teacher: course.teacher!, size: 50, canOpen: true,),
 
                       const SizedBox(height: 8),
@@ -186,13 +185,13 @@ class _CourseCard extends StatelessWidget {
                             color: context.colors.accent,
                           ),
                           _MetaItem(Icons.people_rounded,
-                              '${course.studentsCount} طالب'),
-                          if (course.sessions.isNotEmpty)
+                              '${course.studentsCount} ${'student'.tr}'),
+                          if (course.sessionsCount>0)
                             _MetaItem(Icons.video_library_rounded,
-                                '${course.sessions.length} محاضرة'),
+                                '${course.sessionsCount} ${'course'.tr}'),
                           if (course.hoursCount > 0)
                             _MetaItem(Icons.access_time_rounded,
-                                '${course.hoursCount} ساعة'),
+                                '${course.hoursCount} ${'hour'.tr}'),
                         ],
                       ),
                     ],

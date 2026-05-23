@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/shared/session/screen_vedio_recorder.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../config/app_config.dart';
@@ -655,8 +656,9 @@ class _MaterialGrid extends StatelessWidget {
                       child: Text(
                         m.name,
                         style: context.colors.body.copyWith(
-                            fontWeight: FontWeight.w600, fontSize: 13),
-                        maxLines: 2,
+                            fontWeight: FontWeight.w600, fontSize: 13,
+                        ),
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -719,24 +721,35 @@ class _MaterialGrid extends StatelessWidget {
     final uri = Uri.parse(m.url);
 
     if (m.type == SessionMaterialType.video) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => VideoScreen(
-            uri: uri,
-            session: session,
-            onComplete: isTeacher
-                ? null
-                : () async {
-              if (context.mounted) {
-                await context
-                    .read<CourseDetailProvider>()
-                    .markMaterialComplete(session.id, m.id);
-              }
-            },
+
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => VideoPlayerScreen(
+            title: '${session.name}. ${m.name}',
+            qualities: [VideoQuality(label: 'Auto', url: m.url)],
+            autoPlay: true,
+            startFullScreen: false,
           ),
         ),
       );
+      // await Navigator.push(
+      //   context,
+      //   MaterialPageRoute(
+      //     builder: (_) => VideoScreen(
+      //       uri: uri,
+      //       session: session,
+      //       onComplete: isTeacher
+      //           ? null
+      //           : () async {
+      //         if (context.mounted) {
+      //           await context
+      //               .read<CourseDetailProvider>()
+      //               .markMaterialComplete(session.id, m.id);
+      //         }
+      //       },
+      //     ),
+      //   ),
+      // );
     } else if (m.type == SessionMaterialType.image) {
       await showDialog<void>(
         context: context,

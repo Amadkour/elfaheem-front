@@ -281,6 +281,7 @@ class CourseModel {
   final String? categoryId, categoryName, description;
   final double price, averageRating, totalHours;
   final int studentsCount, sessionsCount;
+  final bool isPublished;
   bool isEnrolled;
   bool isFavorite;
   bool isSubscribed;
@@ -289,12 +290,12 @@ class CourseModel {
   // Progress is based on materials only (0.0–100.0).
   double progress;
   int materialsTotal;
+  final double expectedHours;
   int materialsCompleted;
-  late List<SessionModel> sessions;
   final List<CourseSchedule> schedules;
   final List<CourseCertificate> certificates;
-  final List<CourseTool>tools;
-  final List<CoursePrerequisite>  prerequisites;
+  final List<CourseTool> tools;
+  final List<CoursePrerequisite> prerequisites;
   final TeacherProfileData? teacher;
 
   CourseModel(
@@ -315,13 +316,14 @@ class CourseModel {
       this.progress = 0.0,
       this.materialsTotal = 0,
       this.materialsCompleted = 0,
-      this.sessions = const [],
       this.schedules = const [],
       this.certificates = const [],
       this.tools = const [],
       this.prerequisites = const [],
       required this.isEnrolled,
-      this.teacher});
+      this.teacher,
+      required this.isPublished,
+      required this.expectedHours});
 
   String get title => name;
 
@@ -342,7 +344,9 @@ class CourseModel {
       schedules: [],
       prerequisites: [],
       isEnrolled: false,
-      teacher: null);
+      teacher: null,
+      isPublished: true,
+      expectedHours: 0);
 
   factory CourseModel.fromJson(Map<String, dynamic> j) => CourseModel(
       id: j['id'].toString(),
@@ -361,6 +365,7 @@ class CourseModel {
           j['students_count'] as int? ?? j['enrollment_count'] as int? ?? 0,
       sessionsCount: j['sessions_count'] as int? ?? 0,
       totalHours: (j['total_hours'] as num?)?.toDouble() ?? 0.0,
+      expectedHours: (j['expected_hours'] as num?)?.toDouble() ?? 0.0,
       teacher: j['teacher'] != null
           ? TeacherProfileData.fromJson(j['teacher'] as Map<String, dynamic>)
           : null,
@@ -371,10 +376,6 @@ class CourseModel {
       progress: (j['progress'] as num?)?.toDouble() ?? 0.0,
       materialsTotal: j['materials_total'] as int? ?? 0,
       materialsCompleted: j['materials_completed'] as int? ?? 0,
-      sessions: (j['sessions'] as List? ?? [])
-          .map((e) => SessionModel.fromJson(e as Map<String, dynamic>))
-          .toList()
-        ..sort((a, b) => a.order.compareTo(b.order)),
       schedules: (j['schedules'] as List? ?? [])
           .map((e) => CourseSchedule.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -387,11 +388,13 @@ class CourseModel {
       prerequisites: (j['prerequisites'] as List? ?? [])
           .map((e) => CoursePrerequisite.fromJson(e as Map<String, dynamic>))
           .toList(),
-      isEnrolled: j['is_enrolled']);
+      isEnrolled: j['is_enrolled'],
+      isPublished: j['is_published']);
 
   TeacherCourse get toTeacherModel => TeacherCourse(
       id: int.parse(id),
       title: title,
+      progress: progress,
       imageUrl: imageUrl,
       totalHours: totalHours,
       description: description,
@@ -405,7 +408,8 @@ class CourseModel {
       averageRating: averageRating,
       isPublished: true,
       price: price,
-      type: type);
+      type: type,
+      expectedHours: expectedHours);
 
   CourseModel copyWith(
           {bool? isFavorite,
@@ -434,12 +438,13 @@ class CourseModel {
           progress: progress ?? this.progress,
           materialsTotal: materialsTotal ?? this.materialsTotal,
           materialsCompleted: materialsCompleted ?? this.materialsCompleted,
-          sessions: sessions ?? this.sessions,
           schedules: schedules,
           certificates: certificates,
           tools: tools,
           prerequisites: prerequisites,
-          isEnrolled: isEnrolled);
+          isEnrolled: isEnrolled,
+          isPublished: isPublished,
+          expectedHours: expectedHours);
 }
 
 class AttendanceRecord {

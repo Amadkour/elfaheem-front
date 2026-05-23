@@ -67,26 +67,26 @@ class _HubViewState extends State<_HubView>
 
     return BasePage(
       useWebCard: true,
-        floatingActionButton: prov.tab == 0
-            ? FloatingActionButton.extended(
-                onPressed: () => _showCreateSheet(context),
-                backgroundColor: context.colors.primary,
-                icon: const Icon(Icons.add_rounded, color: Colors.white),
-                label: Text('new_exam'.tr,
-                    style: TextStyle(
-                        fontFamily: 'bahji',
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700)),
-              )
-            : null,
+      floatingActionButton: prov.tab == 0
+          ? FloatingActionButton.extended(
+              onPressed: () => _showCreateSheet(context),
+              backgroundColor: context.colors.primary,
+              icon: const Icon(Icons.add_rounded, color: Colors.white),
+              label: Text('new_exam'.tr,
+                  style: TextStyle(
+                      fontFamily: 'bahji',
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700)),
+            )
+          : null,
       child: NestedScrollView(
-          headerSliverBuilder: (ctx, _) =>
-              [SliverToBoxAdapter(child: _buildAppBar(ctx))],
-          body: TabBarView(
-            controller: _tab,
-            children: [_buildExamsTab(prov), _buildResultsTab(prov)],
-          ),
+        headerSliverBuilder: (ctx, _) =>
+            [SliverToBoxAdapter(child: _buildAppBar(ctx))],
+        body: TabBarView(
+          controller: _tab,
+          children: [_buildExamsTab(prov), _buildResultsTab(prov)],
         ),
+      ),
     );
   }
 
@@ -97,7 +97,6 @@ class _HubViewState extends State<_HubView>
             height: 250,
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
             decoration: BoxDecoration(
-
               image: DecorationImage(
                 image: AssetImage('assets/images/test_background.png'),
                 fit: BoxFit.cover,
@@ -122,9 +121,9 @@ class _HubViewState extends State<_HubView>
                 const SizedBox(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.start,
-                  children: const [
+                  children: [
                     Text(
-                      'الاختبارات',
+                      'exam_hub_title'.tr,
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 34,
@@ -136,9 +135,9 @@ class _HubViewState extends State<_HubView>
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.start,
-                  children: const [
+                  children: [
                     Text(
-                      'تابع تقدم طلابك ✨',
+                      'exam_hub_subtitle'.tr,
                       style: TextStyle(
                         color: Colors.white70,
                         fontSize: 15,
@@ -149,7 +148,7 @@ class _HubViewState extends State<_HubView>
                 const Spacer(),
                 Expanded(
                   child: Container(
-                    decoration:  BoxDecoration(
+                    decoration: BoxDecoration(
                       color: context.colors.background,
                       borderRadius: BorderRadius.vertical(
                         top: Radius.circular(28),
@@ -170,9 +169,9 @@ class _HubViewState extends State<_HubView>
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                       ),
-                      tabs: const [
-                        Tab(text: 'الاختبارات'),
-                        Tab(text: 'نتائج الطلاب'),
+                      tabs: [
+                        Tab(text: 'tab_exams'.tr),
+                        Tab(text: 'tab_student_results'.tr),
                       ],
                     ),
                   ),
@@ -199,12 +198,12 @@ class _HubViewState extends State<_HubView>
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.quiz_outlined, size: 64, color: Colors.grey.shade300),
           const SizedBox(height: 12),
-          const Text('لا توجد اختبارات بعد',
-              style: TextStyle(
+          Text('no_exams_yet'.tr,
+              style: const TextStyle(
                   fontFamily: 'bahji', fontSize: 16, color: Colors.grey)),
           const SizedBox(height: 8),
-          const Text('اضغط على "اختبار جديد" لإنشاء أول اختبار',
-              style: TextStyle(
+          Text('no_exams_empty_hint'.tr,
+              style: const TextStyle(
                   fontFamily: 'bahji', fontSize: 13, color: Colors.grey)),
         ]),
       );
@@ -247,8 +246,8 @@ class _HubViewState extends State<_HubView>
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.bar_chart_rounded, size: 64, color: Colors.grey.shade300),
           const SizedBox(height: 12),
-          const Text('اختر اختباراً لعرض نتائج الطلاب',
-              style: TextStyle(
+          Text('select_exam_to_view_results'.tr,
+              style: const TextStyle(
                   fontFamily: 'bahji', fontSize: 15, color: Colors.grey)),
         ]),
       );
@@ -281,21 +280,24 @@ class _HubViewState extends State<_HubView>
           ]),
           const SizedBox(height: 10),
           Row(children: [
+            _MiniStat('${prov.results.length}', 'stat_enrolled'.tr,
+                context.colors.primary),
+            _MiniStat('${prov.attendedCount}', 'stat_attended'.tr,
+                context.colors.success),
             _MiniStat(
-                '${prov.results.length}', 'مسجّل', context.colors.primary),
-            _MiniStat('${prov.attendedCount}', 'حضر', context.colors.success),
-            _MiniStat('${prov.attemptedCount}', 'أجاب', Colors.orange),
-            _MiniStat('${prov.passedCount}', 'نجح', Colors.teal),
-            _MiniStat(
-                '${prov.avgScore.toStringAsFixed(0)}%', 'متوسط', Colors.purple),
+                '${prov.attemptedCount}', 'stat_answered'.tr, Colors.orange),
+            _MiniStat('${prov.passedCount}', 'stat_passed'.tr, Colors.teal),
+            _MiniStat('${prov.avgScore.toStringAsFixed(0)}%', 'stat_average'.tr,
+                Colors.purple),
           ]),
         ]),
       ),
       Expanded(
         child: prov.results.isEmpty
-            ? const Center(
-                child: Text('لا توجد نتائج بعد',
-                    style: TextStyle(fontFamily: 'bahji', color: Colors.grey)))
+            ? Center(
+                child: Text('no_results_yet'.tr,
+                    style: const TextStyle(
+                        fontFamily: 'bahji', color: Colors.grey)))
             : ListView.builder(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
                 itemCount: prov.results.length,
@@ -317,7 +319,10 @@ class _HubViewState extends State<_HubView>
     final err = await prov.togglePublish(exam);
     if (!context.mounted) return;
     _snack(
-      err ?? (exam.isPublished ? 'تم نشر الاختبار' : 'تم إيقاف نشر الاختبار'),
+      err ??
+          (exam.isPublished
+              ? 'exam_published_snack'.tr
+              : 'exam_unpublished_snack'.tr),
       err != null
           ? Colors.redAccent
           : (exam.isPublished ? context.colors.success : Colors.orange),
@@ -332,23 +337,24 @@ class _HubViewState extends State<_HubView>
         child: AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-          title: const Text('حذف الاختبار',
-              style:
-                  TextStyle(fontFamily: 'bahji', fontWeight: FontWeight.w700)),
-          content: const Text('هل أنت متأكد؟ سيتم حذف جميع الأسئلة والإجابات.',
-              style: TextStyle(fontFamily: 'bahji')),
+          title: Text('delete_exam_title'.tr,
+              style: const TextStyle(
+                  fontFamily: 'bahji', fontWeight: FontWeight.w700)),
+          content: Text('delete_exam_confirm_body'.tr,
+              style: const TextStyle(fontFamily: 'bahji')),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child:
-                    const Text('إلغاء', style: TextStyle(fontFamily: 'bahji'))),
+                child: Text('cancel'.tr,
+                    style: const TextStyle(fontFamily: 'bahji'))),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
               style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.redAccent,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10))),
-              child: const Text('حذف', style: TextStyle(fontFamily: 'bahji')),
+              child: Text('btn_delete'.tr,
+                  style: const TextStyle(fontFamily: 'bahji')),
             ),
           ],
         ),
@@ -357,7 +363,8 @@ class _HubViewState extends State<_HubView>
     if (ok == true && context.mounted) {
       final deleted = await prov.deleteExam(examId);
       if (context.mounted) {
-        _snack(deleted ? 'تم حذف الاختبار' : 'فشل الحذف',
+        _snack(
+            deleted ? 'exam_deleted_snack'.tr : 'exam_delete_failed_snack'.tr,
             deleted ? context.colors.success : Colors.redAccent);
       }
     }
@@ -419,7 +426,6 @@ class _ExamCard extends StatelessWidget {
     required this.onDelete,
     required this.onManageQuestions,
   });
-  
 
   @override
   Widget build(BuildContext context) => Container(
@@ -430,7 +436,7 @@ class _ExamCard extends StatelessWidget {
           border: Border(),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withValues(alpha:0.3),
+              color: Colors.grey.withValues(alpha: 0.3),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -450,7 +456,7 @@ class _ExamCard extends StatelessWidget {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: context.colors.primary.withValues(alpha:.1),
+                      color: context.colors.primary.withValues(alpha: .1),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Icon(
@@ -486,12 +492,14 @@ class _ExamCard extends StatelessWidget {
                               ),
                               decoration: BoxDecoration(
                                 color: exam.isPublished
-                                    ? Colors.green.withValues(alpha:.1)
-                                    : Colors.orange.withValues(alpha:.1),
+                                    ? Colors.green.withValues(alpha: .1)
+                                    : Colors.orange.withValues(alpha: .1),
                                 borderRadius: BorderRadius.circular(30),
                               ),
                               child: Text(
-                                exam.isPublished ? 'منشور' : 'غير منشور',
+                                exam.isPublished
+                                    ? 'exam_published_badge'.tr
+                                    : 'exam_unpublished_badge'.tr,
                                 style: TextStyle(
                                   fontFamily: 'bahji',
                                   fontSize: 12,
@@ -532,12 +540,14 @@ class _ExamCard extends StatelessWidget {
                 children: [
                   _InfoChip(
                     icon: Icons.help_outline_rounded,
-                    label: '${exam.questionCount} سؤال',
+                    label:
+                        '${exam.questionCount} ${'question_count_chip'.tr.split(' ').last}',
                     color: Colors.blueGrey,
                   ),
                   _InfoChip(
                     icon: Icons.timer_outlined,
-                    label: '${exam.duration ?? 0} دقيقة',
+                    label:
+                        '${exam.duration ?? 0} ${'duration_chip'.tr.split(' ').last}',
                     color: Colors.teal,
                   ),
                   if (exam.passcode != null)
@@ -563,7 +573,9 @@ class _ExamCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _ModernActionBtn(
-                      title: exam.isPublished ? 'إخفاء' : 'نشر',
+                      title: exam.isPublished
+                          ? 'exam_toggle_hide'.tr
+                          : 'exam_toggle_publish'.tr,
                       icon: exam.isPublished
                           ? Icons.visibility_off_rounded
                           : Icons.visibility_rounded,
@@ -584,7 +596,7 @@ class _ExamCard extends StatelessWidget {
                   ),
                   Expanded(
                     child: _ModernActionBtn(
-                      title: 'الأسئلة',
+                      title: 'btn_questions'.tr,
                       icon: Icons.edit_note_rounded,
                       color: Colors.deepOrange,
                       onTap: onManageQuestions,
@@ -601,7 +613,7 @@ class _ExamCard extends StatelessWidget {
                   ),
                   Expanded(
                     child: _ModernActionBtn(
-                      title: 'النتائج',
+                      title: 'btn_results'.tr,
                       icon: Icons.bar_chart_rounded,
                       color: context.colors.primary,
                       onTap: onResults,
@@ -626,21 +638,21 @@ class _ExamCard extends StatelessWidget {
                       showDialog(
                         context: context,
                         builder: (_) => AlertDialog(
-                          title: const Text('تأكيد الحذف'),
-                          content: const Text('هل تريد حذف الاختبار؟'),
+                          title: Text('delete_confirm_title'.tr),
+                          content: Text('delete_exam_inline_confirm'.tr),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(context),
-                              child: const Text('إلغاء'),
+                              child: Text('cancel'.tr),
                             ),
                             TextButton(
                               onPressed: () {
                                 Navigator.pop(context);
                                 onDelete();
                               },
-                              child: const Text(
-                                'حذف',
-                                style: TextStyle(color: Colors.red),
+                              child: Text(
+                                'btn_delete'.tr,
+                                style: const TextStyle(color: Colors.red),
                               ),
                             ),
                           ],
@@ -681,7 +693,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
       textDirection: TextDirection.rtl,
       child: Container(
         height: MediaQuery.of(context).size.height * 0.88,
-        decoration:  BoxDecoration(
+        decoration: BoxDecoration(
             color: context.colors.background,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
         child: Column(children: [
@@ -705,8 +717,8 @@ class _ManageQuestionsSheet extends StatelessWidget {
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('إدارة الأسئلة',
-                          style: TextStyle(
+                      Text('manage_questions_title'.tr,
+                          style: const TextStyle(
                               fontFamily: 'bahji',
                               fontSize: 17,
                               fontWeight: FontWeight.w700)),
@@ -724,7 +736,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
                     examId: exam.id, existing: null),
                 icon: Icon(Icons.add_rounded,
                     size: 18, color: context.colors.primary),
-                label: Text('إضافة',
+                label: Text('btn_add'.tr,
                     style: TextStyle(
                         fontFamily: 'bahji',
                         fontWeight: FontWeight.w700,
@@ -753,8 +765,8 @@ class _ManageQuestionsSheet extends StatelessWidget {
                           onPressed: () => prov.loadQuestions(exam.id),
                           style: ElevatedButton.styleFrom(
                               backgroundColor: context.colors.primary),
-                          child: const Text('إعادة المحاولة',
-                              style: TextStyle(fontFamily: 'bahji')),
+                          child: Text('retry'.tr,
+                              style: const TextStyle(fontFamily: 'bahji')),
                         ),
                       ]))
                     : questions.isEmpty
@@ -765,14 +777,14 @@ class _ManageQuestionsSheet extends StatelessWidget {
                                 Icon(Icons.quiz_outlined,
                                     size: 56, color: Colors.grey.shade300),
                                 const SizedBox(height: 10),
-                                const Text('لا توجد أسئلة بعد',
-                                    style: TextStyle(
+                                Text('no_questions_yet'.tr,
+                                    style: const TextStyle(
                                         fontFamily: 'bahji',
                                         fontSize: 15,
                                         color: Colors.grey)),
                                 const SizedBox(height: 6),
-                                const Text('اضغط "إضافة" لإنشاء أول سؤال',
-                                    style: TextStyle(
+                                Text('no_questions_hint'.tr,
+                                    style: const TextStyle(
                                         fontFamily: 'bahji',
                                         fontSize: 12,
                                         color: Colors.grey)),
@@ -830,24 +842,24 @@ class _ManageQuestionsSheet extends StatelessWidget {
         child: AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('حذف السؤال',
-              style:
-                  TextStyle(fontFamily: 'bahji', fontWeight: FontWeight.w700)),
-          content: Text(
-              'هل تريد حذف: "${q.title.length > 60 ? '${q.title.substring(0, 60)}...' : q.title}"?',
+          title: Text('delete_question_title'.tr,
+              style: const TextStyle(
+                  fontFamily: 'bahji', fontWeight: FontWeight.w700)),
+          content: Text('delete_question_title'.tr,
               style: const TextStyle(fontFamily: 'bahji')),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child:
-                    const Text('إلغاء', style: TextStyle(fontFamily: 'bahji'))),
+                child: Text('cancel'.tr,
+                    style: const TextStyle(fontFamily: 'bahji'))),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
               style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.redAccent,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10))),
-              child: const Text('حذف', style: TextStyle(fontFamily: 'bahji')),
+              child: Text('btn_delete'.tr,
+                  style: const TextStyle(fontFamily: 'bahji')),
             ),
           ],
         ),
@@ -934,18 +946,18 @@ class _QuestionTile extends StatelessWidget {
                       dense: true,
                       leading: Icon(Icons.edit_rounded,
                           color: context.colors.primary),
-                      title:
-                          Text('تعديل', style: TextStyle(fontFamily: 'bahji')),
+                      title: Text('btn_edit'.tr,
+                          style: const TextStyle(fontFamily: 'bahji')),
                     ),
                   ),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'delete',
                     child: ListTile(
                       dense: true,
-                      leading:
-                          Icon(Icons.delete_outline, color: Colors.redAccent),
-                      title: Text('حذف',
-                          style: TextStyle(
+                      leading: const Icon(Icons.delete_outline,
+                          color: Colors.redAccent),
+                      title: Text('btn_delete'.tr,
+                          style: const TextStyle(
                               fontFamily: 'bahji', color: Colors.redAccent)),
                     ),
                   ),
@@ -1002,7 +1014,7 @@ class _QuestionTile extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(50, 2, 14, 10),
             child: Text(
-                '${question.marks.toStringAsFixed(question.marks % 1 == 0 ? 0 : 1)} درجة',
+                '${question.marks.toStringAsFixed(question.marks % 1 == 0 ? 0 : 1)} ${'marks_label'.tr}',
                 style: TextStyle(
                     fontFamily: 'bahji',
                     fontSize: 11,
@@ -1069,7 +1081,8 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
   }
 
   void _addOption() {
-    if(mounted) if(mounted) setState(() => _optionCtrls.add(TextEditingController()));
+    if (mounted) if (mounted)
+      setState(() => _optionCtrls.add(TextEditingController()));
   }
 
   void _removeOption(int i) {
@@ -1108,9 +1121,9 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
       if (!context.mounted) return;
       if (q != null) {
         Navigator.pop(context);
-        _snack('تمت إضافة السؤال بنجاح', context.colors.success);
+        _snack('question_added_snack'.tr, context.colors.success);
       } else {
-        _snack('فشلت الإضافة، حاول مرة أخرى', Colors.redAccent);
+        _snack('question_add_failed_snack'.tr, Colors.redAccent);
       }
     } else {
       // EDIT
@@ -1125,9 +1138,9 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
       if (!context.mounted) return;
       if (q != null) {
         Navigator.pop(context);
-        _snack('تم تعديل السؤال بنجاح', context.colors.success);
+        _snack('question_updated_snack'.tr, context.colors.success);
       } else {
-        _snack('فشل التعديل، حاول مرة أخرى', Colors.redAccent);
+        _snack('question_update_failed_snack'.tr, Colors.redAccent);
       }
     }
   }
@@ -1175,7 +1188,10 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                       : Icons.add_circle_outline_rounded,
                   color: context.colors.primary),
               const SizedBox(width: 8),
-              Text(isEditing ? 'تعديل السؤال' : 'إضافة سؤال',
+              Text(
+                  isEditing
+                      ? 'edit_question_title'.tr
+                      : 'add_question_title'.tr,
                   style: const TextStyle(
                       fontFamily: 'bahji',
                       fontSize: 17,
@@ -1195,11 +1211,12 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                       // Question title
                       _Field(
                         ctrl: _titleCtrl,
-                        label: 'نص السؤال *',
-                        hint: 'اكتب السؤال هنا...',
+                        label: 'field_question_text_label'.tr,
+                        hint: 'field_question_text_hint'.tr,
                         maxLines: 3,
-                        validator: (v) =>
-                            v == null || v.trim().isEmpty ? 'مطلوب' : null,
+                        validator: (v) => v == null || v.trim().isEmpty
+                            ? 'field_required'.tr
+                            : null,
                       ),
                       const SizedBox(height: 14),
 
@@ -1208,14 +1225,15 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                         width: 130,
                         child: _Field(
                           ctrl: _marksCtrl,
-                          label: 'الدرجة',
+                          label: 'field_marks_label'.tr,
                           hint: '1',
                           keyboardType: const TextInputType.numberWithOptions(
                               decimal: true),
                           validator: (v) {
-                            if (v == null || v.trim().isEmpty) return 'مطلوب';
+                            if (v == null || v.trim().isEmpty)
+                              return 'field_required'.tr;
                             if (double.tryParse(v.trim()) == null) {
-                              return 'رقم صحيح';
+                              return 'field_invalid_number'.tr;
                             }
                             return null;
                           },
@@ -1226,7 +1244,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                       // MCQ toggle
                       _Toggle(
                         icon: Icons.format_list_bulleted_rounded,
-                        label: 'سؤال اختيار من متعدد (MCQ)',
+                        label: 'toggle_mcq'.tr,
                         value: _isMcq,
                         onChanged: (v) {
                           setState(() {
@@ -1242,8 +1260,8 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
 
                       if (_isMcq) ...[
                         const SizedBox(height: 14),
-                        const Text('الخيارات',
-                            style: TextStyle(
+                        Text('options_label'.tr,
+                            style: const TextStyle(
                                 fontFamily: 'bahji',
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
@@ -1262,10 +1280,12 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                                         textDirection: TextDirection.rtl,
                                         validator: (v) =>
                                             v == null || v.trim().isEmpty
-                                                ? 'أدخل الخيار'
+                                                ? 'field_required'.tr
                                                 : null,
                                         decoration: InputDecoration(
-                                          hintText: 'الخيار ${i + 1}',
+                                          hintText: 'option_hint'
+                                              .tr
+                                              .replaceAll('{num}', '${i + 1}'),
                                           hintStyle: const TextStyle(
                                               fontFamily: 'bahji',
                                               color: Colors.grey),
@@ -1305,9 +1325,9 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                         TextButton.icon(
                           onPressed: _addOption,
                           icon: const Icon(Icons.add_rounded, size: 16),
-                          label: const Text('إضافة خيار',
-                              style:
-                                  TextStyle(fontFamily: 'bahji', fontSize: 13)),
+                          label: Text('btn_add_option'.tr,
+                              style: const TextStyle(
+                                  fontFamily: 'bahji', fontSize: 13)),
                           style: TextButton.styleFrom(
                               foregroundColor: context.colors.primary),
                         ),
@@ -1317,8 +1337,8 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
 // Correct answer
                       _Field(
                         ctrl: _correctCtrl,
-                        label: 'الإجابة الصحيحة (اختياري)',
-                        hint: 'انسخ الخيار الصحيح بالضبط',
+                        label: 'correct_answer_label'.tr,
+                        hint: 'correct_answer_hint'.tr,
                       ),
                       const SizedBox(height: 20),
 
@@ -1341,7 +1361,9 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                                   child: CircularProgressIndicator(
                                       strokeWidth: 2, color: Colors.white))
                               : Text(
-                                  isEditing ? 'حفظ التعديلات' : 'إضافة السؤال',
+                                  isEditing
+                                      ? 'btn_save_edits'.tr
+                                      : 'btn_add_question'.tr,
                                   style: const TextStyle(
                                       fontFamily: 'bahji',
                                       fontSize: 15,
@@ -1409,8 +1431,9 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
     final t =
         await showTimePicker(context: context, initialTime: TimeOfDay.now());
     if (t == null) return;
-    if(mounted) if(mounted) setState(() =>
-        _scheduleDate = DateTime(d.year, d.month, d.day, t.hour, t.minute));
+    if (mounted) if (mounted)
+      setState(() =>
+          _scheduleDate = DateTime(d.year, d.month, d.day, t.hour, t.minute));
   }
 
   Future<void> _pickDeadline() async {
@@ -1423,20 +1446,21 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
     final t = await showTimePicker(
         context: context, initialTime: const TimeOfDay(hour: 23, minute: 59));
     if (t == null) return;
-    if(mounted) if(mounted) setState(() =>
-        _deadlineDate = DateTime(d.year, d.month, d.day, t.hour, t.minute));
+    if (mounted) if (mounted)
+      setState(() =>
+          _deadlineDate = DateTime(d.year, d.month, d.day, t.hour, t.minute));
   }
 
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
     if (_hasSchedule && _scheduleDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('يرجى تحديد تاريخ ووقت البدء')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('snack_pick_start_date'.tr)));
       return;
     }
     if (_hasDeadline && _deadlineDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('يرجى تحديد الموعد النهائي')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('snack_pick_deadline'.tr)));
       return;
     }
     final ok = await widget.provider.createExam(
@@ -1461,7 +1485,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
   Widget build(BuildContext context) => Directionality(
         textDirection: TextDirection.rtl,
         child: Container(
-          decoration:  BoxDecoration(
+          decoration: BoxDecoration(
               color: context.colors.background,
               borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
           padding:
@@ -1480,8 +1504,8 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                 Icon(Icons.add_circle_outline_rounded,
                     color: context.colors.primary),
                 SizedBox(width: 8),
-                Text('إنشاء اختبار جديد',
-                    style: TextStyle(
+                Text('create_exam_sheet_title'.tr,
+                    style: const TextStyle(
                         fontFamily: 'bahji',
                         fontSize: 17,
                         fontWeight: FontWeight.w700)),
@@ -1496,62 +1520,73 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                   child: Column(children: [
                     _Field(
                         ctrl: _nameCtrl,
-                        label: 'اسم الاختبار *',
-                        hint: 'مثال: اختبار الوحدة الأولى',
-                        validator: (v) => v!.isEmpty ? 'مطلوب' : null),
+                        label: 'field_exam_name_label'.tr,
+                        hint: 'field_exam_name_hint'.tr,
+                        validator: (v) =>
+                            v!.isEmpty ? 'field_required'.tr : null),
                     const SizedBox(height: 12),
                     _Field(
                         ctrl: _descCtrl,
-                        label: 'الوصف (اختياري)',
-                        hint: 'وصف مختصر',
+                        label: 'field_desc_optional_label'.tr,
+                        hint: 'field_desc_hint_short'.tr,
                         maxLines: 2),
                     const SizedBox(height: 12),
                     Row(children: [
                       Expanded(
                           child: _Field(
                               ctrl: _totalMarksCtrl,
-                              label: 'الدرجة الكلية',
+                              label: 'field_total_marks_label'.tr,
                               hint: '100',
                               keyboardType: TextInputType.number)),
                       const SizedBox(width: 12),
                       Expanded(
                           child: _Field(
                               ctrl: _passingCtrl,
-                              label: 'النجاح %',
+                              label: 'field_passing_label'.tr,
                               hint: '60',
                               keyboardType: TextInputType.number)),
                       const SizedBox(width: 12),
                       Expanded(
                           child: _Field(
                               ctrl: _durationCtrl,
-                              label: 'المدة (د)',
+                              label: 'field_duration_label'.tr,
                               hint: '60',
                               keyboardType: TextInputType.number)),
                     ]),
                     const SizedBox(height: 14),
                     _Toggle(
                       icon: Icons.lock_outline_rounded,
-                      label: 'كلمة مرور للاختبار',
+                      label: 'toggle_passcode'.tr,
                       value: _hasPasscode,
-                      onChanged: (v) {if(mounted) if(mounted) setState(() => _hasPasscode = v);},
+                      onChanged: (v) {
+                        if (mounted) if (mounted)
+                          setState(() => _hasPasscode = v);
+                      },
                       child: _hasPasscode
                           ? _Field(
                               ctrl: _passcodeCtrl,
-                              label: 'كلمة المرور',
+                              label: 'field_passcode_label'.tr,
                               hint: '123456',
                               maxLength: 6,
                               keyboardType: TextInputType.number,
                               validator: _hasPasscode
-                                  ? (v) => v!.isEmpty ? 'مطلوب' :!RegExp(r'^\d+$').hasMatch(v)?'must be 6 digits only': null
+                                  ? (v) => v!.isEmpty
+                                      ? 'field_required'.tr
+                                      : !RegExp(r'^\d+$').hasMatch(v)
+                                          ? 'passcode_digits_only'.tr
+                                          : null
                                   : null)
                           : null,
                     ),
                     const SizedBox(height: 10),
                     _Toggle(
                       icon: Icons.schedule_rounded,
-                      label: 'جدولة وقت محدد',
+                      label: 'toggle_schedule'.tr,
                       value: _hasSchedule,
-                      onChanged: (v) { if(mounted) if(mounted) setState(() => _hasSchedule = v);},
+                      onChanged: (v) {
+                        if (mounted) if (mounted)
+                          setState(() => _hasSchedule = v);
+                      },
                       child: _hasSchedule
                           ? GestureDetector(
                               onTap: _pickDate,
@@ -1570,7 +1605,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                                     _scheduleDate != null
                                         ? '${_scheduleDate!.day}/${_scheduleDate!.month}/${_scheduleDate!.year}  '
                                             '${_scheduleDate!.hour.toString().padLeft(2, '0')}:${_scheduleDate!.minute.toString().padLeft(2, '0')}'
-                                        : 'اختر تاريخ ووقت البدء',
+                                        : 'pick_start_datetime'.tr,
                                     style: TextStyle(
                                         fontFamily: 'bahji',
                                         fontSize: 14,
@@ -1587,9 +1622,12 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                     // ── Deadline (end_date) ────────────────────────────────────
                     _Toggle(
                       icon: Icons.hourglass_bottom_rounded,
-                      label: 'موعد نهائي للتسليم',
+                      label: 'toggle_deadline'.tr,
                       value: _hasDeadline,
-                      onChanged: (v) { if(mounted) if(mounted) setState(() => _hasDeadline = v);},
+                      onChanged: (v) {
+                        if (mounted) if (mounted)
+                          setState(() => _hasDeadline = v);
+                      },
                       child: _hasDeadline
                           ? GestureDetector(
                               onTap: _pickDeadline,
@@ -1608,7 +1646,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                                     _deadlineDate != null
                                         ? '${_deadlineDate!.day}/${_deadlineDate!.month}/${_deadlineDate!.year}  '
                                             '${_deadlineDate!.hour.toString().padLeft(2, '0')}:${_deadlineDate!.minute.toString().padLeft(2, '0')}'
-                                        : 'اختر الموعد النهائي',
+                                        : 'pick_deadline'.tr,
                                     style: TextStyle(
                                         fontFamily: 'bahji',
                                         fontSize: 14,
@@ -1625,19 +1663,22 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                     // ── Max submissions ────────────────────────────────────────
                     _Toggle(
                       icon: Icons.repeat_rounded,
-                      label: 'تحديد عدد مرات التقديم',
+                      label: 'toggle_max_submissions'.tr,
                       value: _hasMaxSubmissions,
-                      onChanged: (v) { if(mounted) if(mounted) setState(() => _hasMaxSubmissions = v);},
+                      onChanged: (v) {
+                        if (mounted) if (mounted)
+                          setState(() => _hasMaxSubmissions = v);
+                      },
                       child: _hasMaxSubmissions
                           ? _Field(
                               ctrl: _maxSubmissionsCtrl,
-                              label: 'عدد المحاولات المسموح بها',
+                              label: 'field_max_submissions_label'.tr,
                               hint: '1',
                               keyboardType: TextInputType.number,
                               validator: (v) {
                                 final n = int.tryParse(v ?? '');
                                 if (n == null || n < 1)
-                                  return 'أدخل رقماً أكبر من 0';
+                                  return 'field_max_submissions_error'.tr;
                                 return null;
                               },
                             )
@@ -1661,8 +1702,8 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                                 height: 20,
                                 child: CircularProgressIndicator(
                                     strokeWidth: 2, color: Colors.white))
-                            : const Text('إنشاء الاختبار',
-                                style: TextStyle(
+                            : Text('btn_create_exam'.tr,
+                                style: const TextStyle(
                                     fontFamily: 'bahji',
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700)),
@@ -1732,7 +1773,7 @@ class _AnswersSheet extends StatelessWidget {
                                 fontWeight: FontWeight.w700)),
                         Text(
                             '${result.marksObtained?.toStringAsFixed(0) ?? 0} / '
-                            '${result.totalMarks?.toStringAsFixed(0) ?? 0} درجة'
+                            '${result.totalMarks?.toStringAsFixed(0) ?? 0} ${'marks_label'.tr}'
                             '  •  ${result.percentage?.toStringAsFixed(1) ?? 0}%',
                             style: const TextStyle(
                                 fontFamily: 'bahji',
@@ -1741,7 +1782,9 @@ class _AnswersSheet extends StatelessWidget {
                       ]),
                 ),
                 _StatusBadge(
-                    result.passed == true ? 'نجح' : 'راسب',
+                    result.passed == true
+                        ? 'result_passed_badge'.tr
+                        : 'result_failed_badge'.tr,
                     result.passed == true
                         ? context.colors.success
                         : Colors.redAccent),
@@ -1750,9 +1793,9 @@ class _AnswersSheet extends StatelessWidget {
             const Divider(height: 20),
             Expanded(
               child: result.answers.isEmpty
-                  ? const Center(
-                      child: Text('لا توجد إجابات مسجّلة',
-                          style: TextStyle(
+                  ? Center(
+                      child: Text('no_answers'.tr,
+                          style: const TextStyle(
                               fontFamily: 'bahji', color: Colors.grey)))
                   : ListView.builder(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
@@ -1783,12 +1826,13 @@ class _AnswersSheet extends StatelessWidget {
                               child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('السؤال ${a.questionId}',
+                                    Text(
+                                        '${'question_prefix'.tr} ${a.questionId}',
                                         style: const TextStyle(
                                             fontFamily: 'bahji',
                                             fontSize: 12,
                                             color: Colors.grey)),
-                                    Text(a.answer ?? 'لم يجب',
+                                    Text(a.answer ?? 'no_answer_given'.tr,
                                         style: const TextStyle(
                                             fontFamily: 'bahji',
                                             fontSize: 14,
@@ -1796,7 +1840,7 @@ class _AnswersSheet extends StatelessWidget {
                                   ]),
                             ),
                             Text(
-                                '${a.marksObtained?.toStringAsFixed(1) ?? 0} درجة',
+                                '${a.marksObtained?.toStringAsFixed(1) ?? 0} ${'marks_label'.tr}',
                                 style: TextStyle(
                                     fontFamily: 'bahji',
                                     fontSize: 13,
@@ -1883,13 +1927,18 @@ class _ResultTile extends StatelessWidget {
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const SizedBox(height: 4),
           Row(children: [
-            _StatusBadge(result.isAttended ? 'حضر' : 'غاب',
+            _StatusBadge(
+                result.isAttended ? 'attended_badge'.tr : 'absent_badge'.tr,
                 result.isAttended ? context.colors.success : Colors.redAccent),
             const SizedBox(width: 6),
             if (result.attempted)
-              _StatusBadge(passed == true ? 'نجح' : 'راسب', color)
+              _StatusBadge(
+                  passed == true
+                      ? 'result_passed_badge'.tr
+                      : 'result_failed_badge'.tr,
+                  color)
             else
-              const _StatusBadge('لم يؤدِّ', Colors.grey),
+              _StatusBadge('not_attempted_badge'.tr, Colors.grey),
           ]),
           if (pct != null) ...[
             const SizedBox(height: 6),
@@ -1914,7 +1963,7 @@ class _ResultTile extends StatelessWidget {
           if (result.attempted)
             GestureDetector(
               onTap: onViewAnswers,
-              child: Text('الإجابات',
+              child: Text('view_answers_btn'.tr,
                   style: TextStyle(
                       fontFamily: 'bahji',
                       fontSize: 11,
@@ -1951,6 +2000,7 @@ class _StatusBadge extends StatelessWidget {
                 color: color)),
       );
 }
+
 class _MiniStat extends StatelessWidget {
   final String value, label;
   final Color color;
@@ -2073,7 +2123,7 @@ class _ErrorView extends StatelessWidget {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.wifi_off_rounded, size: 52, color: Colors.grey.shade300),
           const SizedBox(height: 12),
-          Text(message ?? 'حدث خطأ',
+          Text(message ?? 'error_occurred'.tr,
               style: const TextStyle(
                   fontFamily: 'bahji', fontSize: 14, color: Colors.grey)),
           const SizedBox(height: 12),
@@ -2083,8 +2133,9 @@ class _ErrorView extends StatelessWidget {
                   backgroundColor: context.colors.primary,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12))),
-              child: const Text('إعادة المحاولة',
-                  style: TextStyle(fontFamily: 'bahji', color: Colors.white))),
+              child: Text('retry'.tr,
+                  style: const TextStyle(
+                      fontFamily: 'bahji', color: Colors.white))),
         ]),
       );
 }
@@ -2108,7 +2159,7 @@ class _InfoChip extends StatelessWidget {
         vertical: 10,
       ),
       decoration: BoxDecoration(
-        color: color.withValues(alpha:.08),
+        color: color.withValues(alpha: .08),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
@@ -2151,7 +2202,7 @@ class _ModernActionBtn extends StatelessWidget {
       child: Ink(
         height: 52,
         decoration: BoxDecoration(
-          color: color.withValues(alpha:.1),
+          color: color.withValues(alpha: .1),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(

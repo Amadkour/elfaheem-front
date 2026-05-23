@@ -48,12 +48,12 @@ class CourseDetailProvider extends BaseProvider {
       notifyListeners();
     }
   }
-
+  List<SessionModel> sessions=[];
   Future<void> fetchSessions(String courseId) async {
     final result =
     await run(() => _api.get('/api/v1/courses/$courseId/sessions'));
     if (result is List) {
-      course.sessions = result
+      sessions = result
           .map((e) => SessionModel.fromJson(e as Map<String, dynamic>))
           .toList()
         ..sort((a, b) => a.order.compareTo(b.order));

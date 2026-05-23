@@ -167,1147 +167,1146 @@
     "en": "Bank Accounts",
     "ar": "الحسابات البنكية"
   },
-    "teacher_profile": {
-      "en": "Teacher Profile",
-      "ar": "ملف المدرس"
-    },
-    "both": {
-      "en": "Both",
-      "ar": "معا"
-    },
-    "additional_registration_welcome": {
-      "en": "To enable you to publish educational content",
-      "ar": " لتمكينك من نشر المحتوى التعليمي"
-    },
-    "complete_profile": {
-      "en": "Complete profile",
-      "ar": "إكمال الملف الشخصي"
-    },
-    "complete_profile_please": {
-      "en": "Please complete the professional information",
-      "ar": "برجاء استكمال البيانات المهنية"
-    },
-    "reset_password_welcome": {
-      "en": "Reset password to a new one",
-      "ar": "اعاده تعيين كلمه سر جديده"
-    },
-    "reset_password": {
-      "en": "Reset password",
-      "ar": "تعيين كلمة المرور"
-    },
-    "forget": {
-      "en": "Forget password",
-      "ar": "نسيت كلمة المرور"
-    },
-    "courses": {
-      "en": "Courses",
-      "ar": "الكورسات"
-    },
-    "categories": {
-      "en": "Categories",
-      "ar": "الأقسام"
-    },
-    "show_more": {
-      "en": "Show more",
-      "ar": "مشاهدة الكل"
-    },
-    "best_teachers": {
-      "en": "Best Teacher",
-      "ar": "أفضل المعلمين"
-    },
-    "search": {
-      "en": "Search",
-      "ar": "بحث"
-    },
-    "notifications": {
-      "en": "Notifications",
-      "ar": "الاشعارات"
-    },
-    "today": {
-      "en": "Today",
-      "ar": "اليوم"
-    },
-    "yesterday": {
-      "en": "Yesterday",
-      "ar": "أمس"
-    },
-    "course_title": {
-      "en": "Course Title",
-      "ar": "عنوان الدورة"
-    },
-    "enter_course_title": {
-      "en": "Enter Course Title",
-      "ar": "أدخل عنوان الدورة"
-    },
-    "course_description": {
-      "en": "Course Description",
-      "ar": "وصف الدورة"
-    },
-    "course_hours": {
-      "en": "Course Expected Hours",
-      "ar": "الساعات المتوقعة الدورة"
-    },
-    "welcome": {
-      "en": "Welcome",
-      "ar": "مرحبا"
-    },
-    "sir": {
-      "en": "Sir",
-      "ar": "عزيزي"
-    },
-    "exit": {
-      "en": "Exit",
-      "ar": "خروج"
-    },
-    "sessions": {
-      "en": "Sessions",
-      "ar": "المحاضرات"
-    },
-    "logout": {
-      "en": "Logout",
-      "ar": "تسجيل خروج"
-    },
-    "save_changes": {
-      "en": "Save Changes",
-      "ar": "حفظ التغيرات"
-    },
-    "add_session": {
-      "en": "Add Session",
-      "ar": "اضافة حصة"
-    },
-    "account": {
-      "en": "Account",
-      "ar": "الحساب"
-    },
-    "change_password": {
-      "en": "Change Password",
-      "ar": "تغير كلمة المرور"
-    },
-    "cancel": {
-      "en": "Cancel",
-      "ar": "الغاء"
-    },
-    "course_fees": {
-      "en": "Course Fees",
-      "ar": "التكلفة"
-    },
-    "login_subtitle": {
-      "en": "Welcome back! Please enter your details.",
-      "ar": "مرحباً بعودتك! الرجاء إدخال بياناتك."
-    },
-    "register_subtitle": {
-      "en": "Join us to start learning.",
-      "ar": "انضم إلينا لتبدأ رحلة التعلم."
-    },
-    "teacher_profile_subtitle": {
-      "en": "Tell us about your professional background.",
-      "ar": "أخبرنا عن خلفيتك المهنية."
-    },
-    "send_reset_link": {
-      "en": "Send Reset Link",
-      "ar": "إرسال رابط إعادة التعيين"
-    },
-    "back_to_login": {
-      "en": "Back to Login",
-      "ar": "العودة إلى تسجيل الدخول"
-    },
-    "new_password": {
-      "en": "New Password",
-      "ar": "كلمة المرور الجديدة"
-    },
-    "confirm_new_password": {
-      "en": "Confirm New Password",
-      "ar": "تأكيد كلمة المرور الجديدة"
-    },
-    "password_mismatch": {
-      "en": "Passwords do not match",
-      "ar": "كلمات المرور غير متطابقة"
-    },
-    "invalid_otp": {
-      "en": "Invalid verification code",
-      "ar": "رمز التحقق غير صحيح"
-    },
-    "otp_resent": {
-      "en": "Verification code resent",
-      "ar": "تم إعادة إرسال رمز التحقق"
-    },
-    "verification": {
-      "en": "Verification",
-      "ar": "التحقق"
-    },
-    "session": {
-      "en": "Session",
-      "ar": "محاضرة"
-    },
-    "about": {
-      "en": "About",
-      "ar": "نبذة عن"
-    },
-    "choose_new_password": {
-      "en": "Choose a strong new password",
-      "ar": "اختر كلمة مرور جديدة قوية"
-    },
-    "forget_subtitle": {
-      "en": "Enter your email to receive a reset link.",
-      "ar": "أدخل بريدك الإلكتروني لتتلقى رابط إعادة التعيين."
-    },
-    "my_courses": {
-      "en": "My Courses",
-      "ar": "كورساتي"
-    },
-    "add": {
-      "en": "Add",
-      "ar": "إضافة"
-    },
-    "add_course": {
-      "en": "Add Course",
-      "ar": "إضافة كورس"
-    },
-    "add_new_course": {
-      "en": "Add New Course",
-      "ar": "إضافة دورة جديدة"
-    },
-    "add_first_course_hint": {
-      "en": "Start by adding your first course now",
-      "ar": "ابدأ بإضافة دورتك الأولى الآن"
-    },
-    "no_courses_section": {
-      "en": "No courses in this section",
-      "ar": "لا توجد كورسات في هذا القسم"
-    },
-    "filter_all": {
-      "en": "All",
-      "ar": "الكل"
-    },
-    "filter_published": {
-      "en": "Published",
-      "ar": "منشورة"
-    },
-    "filter_drafts": {
-      "en": "Drafts",
-      "ar": "مسودات"
-    },
-    "status_draft": {
-      "en": "Draft",
-      "ar": "مسودة"
-    },
-    "status_published": {
-      "en": "Published",
-      "ar": "منشورة"
-    },
-    "delete_course": {
-      "en": "Delete Course",
-      "ar": "حذف الدورة"
-    },
-    "delete_course_confirm": {
-      "en": "Are you sure you want to delete",
-      "ar": "هل تريد حذف"
-    },
-    "delete": {
-      "en": "Delete",
-      "ar": "حذف"
-    },
-    "course_deleted": {
-      "en": "Course deleted successfully",
-      "ar": "تم حذف الدورة"
-    },
-    "publish_course": {
-      "en": "Publish Course",
-      "ar": "نشر الدورة"
-    },
-    "unpublish_course": {
-      "en": "Unpublish Course",
-      "ar": "إيقاف النشر"
-    },
-    "show_details": {
-      "en": "Show Details",
-      "ar": "عرض التفاصيل"
-    },
-    "hide_details": {
-      "en": "Hide Details",
-      "ar": "إخفاء التفاصيل"
-    },
-    "no_extra_details": {
-      "en": "No additional details",
-      "ar": "لا توجد تفاصيل إضافية"
-    },
-    "weekly_schedule": {
-      "en": "Weekly Schedule",
-      "ar": "الجدول الأسبوعي"
-    },
-    "certificates": {
-      "en": "Certificates",
-      "ar": "الشهادات"
-    },
-    "required_tools": {
-      "en": "Required Tools",
-      "ar": "الأدوات المطلوبة"
-    },
-    "prerequisites": {
-      "en": "Prerequisites",
-      "ar": "المتطلبات السابقة"
-    },
-    "others": {
-      "en": "more",
-      "ar": "أخرى"
-    },
-    "h": {
-      "en": "h",
-      "ar": "س"
-    },
-    "edit_session": {
-      "en": "Edit Session",
-      "ar": "تعديل المحاضرة"
-    },
-    "delete_session": {
-      "en": "Delete Session",
-      "ar": "حذف المحاضرة"
-    },
-    "attendees": {
-      "en": "Attendees",
-      "ar": "المشتركون"
-    },
-    "minutes": {
-      "en": "min",
-      "ar": "دقيقة"
-    },
-    "session_type_live": {
-      "en": "Live",
-      "ar": "مباشر"
-    },
-    "session_type_recorded": {
-      "en": "Recorded",
-      "ar": "مسجّل"
-    },
-    "session_is_live": {
-      "en": "Session is live now",
-      "ar": "المحاضرة تبث الآن"
-    },
-    "start_live_session": {
-      "en": "Start Live Session",
-      "ar": "بدء المحاضرة المباشرة"
-    },
-    "end_session": {
-      "en": "End Session",
-      "ar": "إنهاء المحاضرة"
-    },
-    "live_room": {
-      "en": "Live Room",
-      "ar": "الغرفة المباشرة"
-    },
-    "attendance_and_exams": {
-      "en": "Attendance & Exams",
-      "ar": "الحضور والاختبارات"
-    },
-    "select_course_hint": {
-      "en": "Select a course to view attendance or manage exams",
-      "ar": "اختر كورساً لعرض الحضور أو إدارة الاختبارات"
-    },
-    "no_courses_yet": {
-      "en": "No courses yet",
-      "ar": "لا توجد كورسات بعد"
-    },
-    "add_course_first_hint": {
-      "en": "Add a course first from My Courses tab",
-      "ar": "أضف كورساً أولاً من تبويب \"كورساتي\""
-    },
-    "no_search_results": {
-      "en": "No search results",
-      "ar": "لا توجد نتائج للبحث"
-    },
-    "search_course": {
-      "en": "Search for a course...",
-      "ar": "ابحث عن كورس..."
-    },
-    "attendance": {
-      "en": "Attendance",
-      "ar": "الحضور"
-    },
-    "attendance_record": {
-      "en": "Attendance Record",
-      "ar": "سجل الحضور"
-    },
-    "select_lecture": {
-      "en": "Select Lecture",
-      "ar": "اختر المحاضرة"
-    },
-    "total_students": {
-      "en": "Total Students",
-      "ar": "إجمالي الطلاب"
-    },
-    "present": {
-      "en": "Present",
-      "ar": "حاضر"
-    },
-    "absent": {
-      "en": "Absent",
-      "ar": "غائب"
-    },
-    "mark_all_present": {
-      "en": "All Present",
-      "ar": "كل حاضر"
-    },
-    "mark_all_absent": {
-      "en": "All Absent",
-      "ar": "كل غائب"
-    },
-    "save_attendance": {
-      "en": "Save Attendance",
-      "ar": "حفظ الحضور"
-    },
-    "attendance_saved": {
-      "en": "Attendance saved successfully",
-      "ar": "تم حفظ الحضور بنجاح"
-    },
-    "saving": {
-      "en": "Saving...",
-      "ar": "جارٍ الحفظ..."
-    },
-    "attendance_duration": {
-      "en": "Attendance duration",
-      "ar": "مدة الحضور"
-    },
-    "search_student": {
-      "en": "Search for a student...",
-      "ar": "ابحث عن طالب..."
-    },
-    "attendance_rate": {
-      "en": "Attendance Rate",
-      "ar": "نسبة الحضور"
-    },
-    "my_attendance": {
-      "en": "My Attendance",
-      "ar": "حضوري"
-    },
-    "exams": {
-      "en": "Exams",
-      "ar": "الاختبارات"
-    },
-    "manage_exams": {
-      "en": "Manage Exams",
-      "ar": "إدارة الاختبارات"
-    },
-    "new_exam": {
-      "en": "New Exam",
-      "ar": "اختبار جديد"
-    },
-    "create_exam": {
-      "en": "Create New Exam",
-      "ar": "إنشاء اختبار جديد"
-    },
-    "exam_name": {
-      "en": "Exam Name",
-      "ar": "اسم الاختبار"
-    },
-    "exam_name_placeholder": {
-      "en": "e.g. Unit 1 Quiz",
-      "ar": "مثال: اختبار الوحدة الأولى"
-    },
-    "exam_description": {
-      "en": "Description (optional)",
-      "ar": "الوصف (اختياري)"
-    },
-    "exam_description_placeholder": {
-      "en": "Brief description of the exam",
-      "ar": "وصف مختصر للاختبار"
-    },
-    "total_marks": {
-      "en": "Total Marks",
-      "ar": "إجمالي الدرجات"
-    },
-    "passing_score": {
-      "en": "Passing Score %",
-      "ar": "درجة النجاح %"
-    },
-    "duration_minutes": {
-      "en": "Duration (min)",
-      "ar": "المدة (دقيقة)"
-    },
-    "no_exams_yet": {
-      "en": "No exams yet",
-      "ar": "لا توجد اختبارات بعد"
-    },
-    "no_exams_hint": {
-      "en": "Press \"New Exam\" to create the first exam",
-      "ar": "اضغط على \"اختبار جديد\" لإنشاء أول اختبار"
-    },
-    "publish_exam": {
-      "en": "Publish",
-      "ar": "نشر"
-    },
-    "published": {
-      "en": "Published",
-      "ar": "منشور"
-    },
-    "unpublish_exam": {
-      "en": "Unpublish",
-      "ar": "إيقاف النشر"
-    },
-    "exam_status_active": {
-      "en": "Active",
-      "ar": "نشط"
-    },
-    "exam_status_scheduled": {
-      "en": "Scheduled",
-      "ar": "مجدول"
-    },
-    "exam_status_draft": {
-      "en": "Draft",
-      "ar": "مسودة"
-    },
-    "exam_status_ended": {
-      "en": "Ended",
-      "ar": "انتهى"
-    },
-    "view_results": {
-      "en": "Results",
-      "ar": "النتائج"
-    },
-    "student_results": {
-      "en": "Student Results",
-      "ar": "نتائج الطلاب"
-    },
-    "select_exam_hint": {
-      "en": "Select an exam to view results",
-      "ar": "اختر اختباراً لعرض النتائج"
-    },
-    "select_exam_from_tab": {
-      "en": "Go to Exams tab and press View Results",
-      "ar": "اذهب إلى تبويب \"الاختبارات\" واضغط على \"عرض النتائج\""
-    },
-    "attempted": {
-      "en": "Attempted",
-      "ar": "أجاب"
-    },
-    "not_attempted": {
-      "en": "Not Attempted",
-      "ar": "لم يؤدِّ"
-    },
-    "passed": {
-      "en": "Passed",
-      "ar": "نجح"
-    },
-    "failed": {
-      "en": "Failed",
-      "ar": "راسب"
-    },
-    "average_score": {
-      "en": "Average",
-      "ar": "متوسط"
-    },
-    "enrolled": {
-      "en": "Enrolled",
-      "ar": "مسجّل"
-    },
-    "view_answers": {
-      "en": "Answers",
-      "ar": "الإجابات"
-    },
-    "student_answers": {
-      "en": "Student Answers",
-      "ar": "إجابات الطالب"
-    },
-    "no_answers_recorded": {
-      "en": "No answers recorded",
-      "ar": "لا توجد إجابات مسجّلة"
-    },
-    "question_number": {
-      "en": "Question",
-      "ar": "السؤال"
-    },
-    "marks_obtained": {
-      "en": "marks",
-      "ar": "درجة"
-    },
-    "cannot_publish_no_questions": {
-      "en": "Cannot publish an exam with no questions",
-      "ar": "لا يمكن نشر اختبار بدون أسئلة"
-    },
-    "exam_published": {
-      "en": "Exam published",
-      "ar": "تم نشر الاختبار"
-    },
-    "exam_unpublished": {
-      "en": "Exam unpublished",
-      "ar": "تم إيقاف نشر الاختبار"
-    },
-    "enable_passcode": {
-      "en": "Enable Passcode",
-      "ar": "تفعيل كلمة مرور"
-    },
-    "exam_passcode": {
-      "en": "Exam Passcode",
-      "ar": "كلمة مرور الاختبار"
-    },
-    "exam_passcode_placeholder": {
-      "en": "e.g. EXAM2025",
-      "ar": "مثال: EXAM2025"
-    },
-    "schedule_exam": {
-      "en": "Schedule Specific Time",
-      "ar": "جدولة وقت محدد"
-    },
-    "pick_date_time": {
-      "en": "Pick date and time",
-      "ar": "اختر التاريخ والوقت"
-    },
-    "create_exam_btn": {
-      "en": "Create Exam",
-      "ar": "إنشاء الاختبار"
-    },
-    "enter_exam": {
-      "en": "Enter Exam",
-      "ar": "دخول الاختبار"
-    },
-    "start_exam_now": {
-      "en": "Start Exam Now",
-      "ar": "ابدأ الاختبار الآن"
-    },
-    "exam_starts_in": {
-      "en": "Exam starts in",
-      "ar": "يبدأ الاختبار خلال"
-    },
-    "enter_passcode_prompt": {
-      "en": "Please enter the exam passcode",
-      "ar": "يرجى إدخال كلمة مرور الاختبار"
-    },
-    "wrong_passcode": {
-      "en": "Incorrect passcode",
-      "ar": "كلمة المرور غير صحيحة"
-    },
-    "passcode_required": {
-      "en": "Passcode is required",
-      "ar": "يرجى إدخال كلمة المرور"
-    },
-    "exam_warning": {
-      "en": "Once started the exam cannot be paused. Make sure you have internet connection.",
-      "ar": "بمجرد بدء الاختبار لا يمكن إيقافه مؤقتاً. تأكد من اتصالك بالإنترنت."
-    },
-    "question_of": {
-      "en": "Question {current} of {total}",
-      "ar": "السؤال {current} من {total}"
-    },
-    "answered_of": {
-      "en": "{answered} / {total} answered",
-      "ar": "{answered} / {total} تمت الإجابة"
-    },
-    "submit_exam": {
-      "en": "Submit Exam",
-      "ar": "تسليم الاختبار"
-    },
-    "submit_confirm_title": {
-      "en": "Submit Exam",
-      "ar": "تسليم الاختبار"
-    },
-    "submit_confirm_unanswered": {
-      "en": "You have {count} unanswered questions. Are you sure you want to submit?",
-      "ar": "لم تجب على {count} سؤال. هل أنت متأكد من التسليم؟"
-    },
-    "submit_confirm_all_answered": {
-      "en": "Are you sure you want to submit your answers?",
-      "ar": "هل تريد تسليم إجاباتك الآن؟"
-    },
-    "confirm_submit": {
-      "en": "Confirm Submit",
-      "ar": "تأكيد التسليم"
-    },
-    "exam_result": {
-      "en": "Exam Result",
-      "ar": "نتيجة الاختبار"
-    },
-    "congratulations_passed": {
-      "en": "Congratulations! You passed the exam",
-      "ar": "تهانينا! اجتزت الاختبار بنجاح"
-    },
-    "sorry_failed": {
-      "en": "You did not pass this time",
-      "ar": "لم تجتز الاختبار هذه المرة"
-    },
-    "your_score": {
-      "en": "Your Score",
-      "ar": "درجتك"
-    },
-    "questions_answered": {
-      "en": "Questions Answered",
-      "ar": "الأسئلة المجابة"
-    },
-    "passing_mark": {
-      "en": "Passing Mark",
-      "ar": "درجة النجاح"
-    },
-    "back_to_home": {
-      "en": "Back to Home",
-      "ar": "العودة للرئيسية"
-    },
-    "next_question": {
-      "en": "Next",
-      "ar": "التالي"
-    },
-    "previous_question": {
-      "en": "Previous",
-      "ar": "السابق"
-    },
-    "my_exams": {
-      "en": "My Exams",
-      "ar": "اختباراتي"
-    },
-    "exam_coming_soon": {
-      "en": "Coming Soon",
-      "ar": "قادم"
-    },
-    "exam_not_taken": {
-      "en": "Not Taken",
-      "ar": "لم تؤدِّه"
-    },
-    "my_score": {
-      "en": "My Score",
-      "ar": "درجتي"
-    },
-    "hours": {
-      "en": "h",
-      "ar": "ساعة"
-    },
-    "seconds": {
-      "en": "sec",
-      "ar": "ثانية"
-    },
-    "attending": {
-      "en": "Attended",
-      "ar": "حضر"
-    },
-    "did_not_attend": {
-      "en": "Absent",
-      "ar": "غاب"
-    },
-    "register_and_create": {
-      "en": "Create and Manage",
-      "ar": "إنشاء وإدارة"
-    },
-    "record_and_edit": {
-      "en": "Record and Edit",
-      "ar": "تسجيل وتعديل"
-    },
-    "student_participant": {
-      "en": "student participants",
-      "ar": "الطلاب المشاركون"
-    },
-    "student_views": {
-      "en": "views",
-      "ar": "المشاهدات"
-    },
-    "student_rate": {
-      "en": "rate",
-      "ar": "التقييم"
-    },
-    "update_account": {
-      "en": "Update Account",
-      "ar": "تعديل الحساب"
-    },
-    "current_password": {
-      "en": "Current Password",
-      "ar": "كلمة المرور الحالية"
-    },
-    "fill_all_fields": {
-      "en": "Please fill in all fields",
-      "ar": "يرجى تعبئة جميع الحقول"
-    },
-    "password_min_length": {
-      "en": "New password must be at least 6 characters",
-      "ar": "كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل"
-    },
-    "password_same_as_old": {
-      "en": "New password must be different from the current password",
-      "ar": "كلمة المرور الجديدة يجب أن تختلف عن كلمة المرور الحالية"
-    },
-    "new_password_mismatch": {
-      "en": "New password does not match confirmation",
-      "ar": "كلمة المرور الجديدة غير متطابقة"
-    },
-    "change_password_success": {
-      "en": "Password changed successfully",
-      "ar": "تم تغيير كلمة المرور بنجاح"
-    },
-    "change_password_error": {
-      "en": "An error occurred while changing the password",
-      "ar": "حدث خطأ أثناء تغيير كلمة المرور"
-    },
-    "name_label": {
-      "en": "Name",
-      "ar": "الاسم"
-    },
-    "email_label": {
-      "en": "Email",
-      "ar": "الإيميل"
-    },
-    "phone_label": {
-      "en": "Phone Number",
-      "ar": "رقم الهاتف"
-    },
-    "dob_label": {
-      "en": "Date of Birth",
-      "ar": "تاريخ الميلاد"
-    },
-    "bio_label": {
-      "en": "About You",
-      "ar": "نبذة عنك"
-    },
-    "changes_saved": {
-      "en": "Changes saved successfully",
-      "ar": "تم حفظ التغييرات"
-    },
-    "cost": {
-      "en": "Cost",
-      "ar": "التكلفه"
-    },
-    "duration": {
-      "en": "Duration",
-      "ar": "المده"
-    },
-    "change_language": {
-      "en": "Change Language",
-      "ar": "تغير اللفة"
-    },
-    "dark_mode": {
-      "en": "Dark Mode",
-      "ar": "الوضع الليلي"
-    },
-    "privacy": {
-      "en": "Privacy and Conditions",
-      "ar": "سياية الخصوصية"
-    },
-    "time-table": {
-      "en": "My Weekly table",
-      "ar": "جدولي الأسبوعي"
-    },
-    "no-time-table": {
-      "en": "no appointment add for courses yet",
-      "ar": "لا توجد مواعيد مضافة للكورسات بعد"
-    },
-    "not-refreshed": {
-      "en": "not Refreshed yet",
-      "ar": "لم يُحدَّث بعد"
-    },
-    "moments-ago": {
-      "en": "Moments ago",
-      "ar": "منذ لحظات"
-    },
-    "since": {
-      "en": "since",
-      "ar": "من "
-    },
-    "m": {
-      "en": "m",
-      "ar": "د"
-    },
-    "day": {
-      "en": "m",
-      "ar": "د"
-    },
-    "refresh": {
-      "en": "Refresh",
-      "ar": "تحديث"
-    },
-    "refreshing": {
-      "en": "Refreshing",
-      "ar": "جاري التحديث…"
-    },
-    "play-now": {
-      "en": "playing now",
-      "ar": " جارية الآن"
-    },
-    "next-lesson": {
-      "en": "Upcoming Lesson",
-      "ar": " المحاضرة القادمة"
-    },
-    "completed": {
-      "en": "Completed",
-      "ar": "مكتمل"
-    },
-    "no-lessons-today": {
-      "en": "No Sessions Today",
-      "ar": "لا توجد حصص اليوم"
-    },
-    "no-lessons": {
-      "en": "No Sessions for ",
-      "ar": "لا توجد حصص يوم"
-    },
-    "loading-schedule": {
-      "en": "Loading the schedule…",
-      "ar": "جاري تحميل الجدول…"
-    },
-    "rest-follow": {
-      "en": "Rest and follow the schedule day by day.",
-      "ar": "استرح وتابع الجدول يوماً بيوم"
-    },
-    "retry": {
-      "en": "Retry",
-      "ar": "إعادة المحاولة"
-    },
-    "appointment": {
-      "en": "appointment —",
-      "ar": "المواعيد —"
-    },
-    "appointment-repeat": {
-      "en": "The appointments are automatically repeated weekly • students will see them on their schedules.",
-      "ar": "المواعيد تتكرر أسبوعياً تلقائياً  •  الطلاب يرونها في جدولهم"
-    },
-    "appointment-delete": {
-      "en": "Delete Appointment",
-      "ar": "حذف الموعد"
-    },
-    "appointment-delete2": {
-      "en": "Delete Appointment for",
-      "ar": "حذف موعد"
-    },
-    "no-appointment": {
-      "en": "No Appointment yet",
-      "ar": "لا توجد مواعيد بعد"
-    },
-    "add-weekly-appointment-for-student": {
-      "en": "Add weekly appointments for your students to see in their schedule.",
-      "ar": "أضف مواعيد أسبوعية ليراها طلابك في جدولهم"
-    },
-    "add-weekly-appointment": {
-      "en": "Add weekly appointments +",
-      "ar": "+ إضافة موعد أسبوعي"
-    },
-    "duplicate-schedule": {
-      "en": "Duplicate appointment",
-      "ar": "موعد مكرر"
-    },
-    "same-day-schedule-exists": {
-      "en": "There is already an appointment on the same day. Add another one?",
-      "ar": "يوجد موعد بنفس اليوم. إضافة موعد آخر؟"
-    },
-    "appointment-added-successfully": {
-      "en": "Appointment added successfully ✓",
-      "ar": "تم إضافة الموعد ✓"
-    },
-    "something-went-wrong": {
-      "en": "Something went wrong",
-      "ar": "حدث خطأ"
-    },
-    "start-time": {
-      "en": "Start time",
-      "ar": "وقت البداية"
-    },
-    "end-time": {
-      "en": "End time",
-      "ar": "وقت النهاية"
-    },
-    "end-time-must-be-after-start-time": {
-      "en": "End time must be after start time",
-      "ar": "وقت النهاية يجب أن يكون بعد وقت البداية"
-    },
-    "add-appointment": {
-      "en": "Add appointment",
-      "ar": "إضافة الموعد"
-    },
-    "end-now": {
-      "en": "End Now",
-      "ar": "انتهت للتو"
-    },
-    "start-now": {
-      "en": "Start Now",
-      "ar": "بدأت للتو"
-    },
-    "receiving-account": {
-      "en": "Receiving accounts",
-      "ar": "حسابات الاستلام"
-    },
-    "payment-method": {
-      "en": "Saved payment methods",
-      "ar": "طرق الدفع المحفوظة"
-    },
-    "help_center": {
-      "en": "Help Center",
-      "ar": "مركز المساعدة"
-    },
-    "log-out": {
-      "en": "Logout",
-      "ar": "تسجيل الخروج"
-    },
-    "home": {
-      "en": "Home",
-      "ar": "الرئيسية"
-    },
-    "my-courses": {
-      "en": "My Courses",
-      "ar": "كورساتي"
-    },
-    "schedule": {
-      "en": "Schedule",
-      "ar": "الجدول"
-    },
-    "analytics": {
-      "en": "Analytics",
-      "ar": "تحليلات"
-    },
-    "profile": {
-      "en": "Profile",
-      "ar": "حسابي"
-    },
-    "loading_attendance": {
-      "en": "Loading attendance…",
-      "ar": "جارٍ تحميل الحضور…"
-    },
-    "select_session_hint_sub": {
-      "en": "Tap a session card above to get started",
-      "ar": "اضغط على إحدى بطاقات المحاضرة أعلاه للبدء"
-    },
-    "no_sessions_available": {
-      "en": "No sessions available",
-      "ar": "لا توجد حصص متاحة"
-    },
-    "save_failed": {
-      "en": "Save failed, please try again",
-      "ar": "فشل الحفظ، يرجى المحاولة مرة أخرى"
-    },
-    "session_number": {
-      "en": "Session {number}",
-      "ar": "المحاضرة {number}"
-    },
-    "explorer_courses": {
-      "en": "Explorer Courses",
-      "ar": "استكشف دورات اخري"
-    },
-    "course_details": {
-      "en": "Course Details",
-      "ar": "تفاصيل الدورة"
-    },
-    "teacher_dot": {
-      "en": "Teacher",
-      "ar": "معلم"
-    },
-    "pricing": {
-      "en": "Pricing",
-      "ar": "التسعير"
-    },
-    "joined": {
-      "en": "Joined",
-      "ar": "انضم"
-    },
-    "verified": {
-      "en": "Verified",
-      "ar": "موثق"
-    },
-    "active": {
-      "en": "Active",
-      "ar": "نشط"
-    },
-    "live_and_recorded": {
-      "en": "Live & Recorded",
-      "ar": "مباشر ومسجل"
-    },
-    "live_only": {
-      "en": "Live Only",
-      "ar": "مباشر فقط"
-    },
-    "country": {
-      "en": "Country",
-      "ar": "الدولة"
-    },
-    "show_less": {
-      "en": "Show less",
-      "ar": "عرض أقل"
-    },
-    "ratings_and_reviews": {
-      "en": "Ratings & Reviews",
-      "ar": "التقييمات والمراجعات"
-    },
-    "no_bio_hint": {
-      "en": "This teacher hasn't added a bio yet. Check their courses to learn more about their teaching style and expertise.",
-      "ar": "لم يُضف هذا المعلم نبذة عنه بعد. تفقد كورساته لتعرف المزيد عن أسلوبه في التدريس."
-    },
-    "learning_platform": {
-      "en": "Learning Platform",
-      "ar": "منصة تعليمية"
-    },
-    "unlock_potential": {
-      "en": "Unlock your\nfull potential\ntoday.",
-      "ar": "اكتشف\nإمكاناتك\nالكاملة اليوم."
-    },
-    "join_students_hint": {
-      "en": "Join thousands of students and educators in a rich digital learning experience.",
-      "ar": "انضم إلى آلاف الطلاب والمعلمين في تجربة تعليمية رقمية ثرية."
-    },
-    "feature_live_sessions": {
-      "en": "Live sessions & on-demand courses",
-      "ar": "حصص مباشرة وكورسات مسجلة"
-    },
-    "feature_expert_teachers": {
-      "en": "Expert teachers across all specializations",
-      "ar": "معلمون متخصصون في جميع المجالات"
-    },
-    "feature_assessments": {
-      "en": "Interactive assessments & progress tracking",
-      "ar": "اختبارات تفاعلية ومتابعة التقدم"
-    },
-    "badge_students": {
-      "en": "10k+ Students",
-      "ar": "+10 آلاف طالب"
-    },
-    "badge_teachers": {
-      "en": "500+ Teachers",
-      "ar": "+500 معلم"
-    },
-    "badge_secure": {
-      "en": "Secure & Private",
-      "ar": "آمن وخاص"
-    },
-    "sar": {
-      "en": "SAR",
-      "ar": "ريال"
-    },
-    "my_schedule": {
-      "en": "Schedule",
-      "ar": "جدولي"
-    },
-    "analysis": {
-      "en": "Analysis",
-      "ar": "التحليلات"
-    },
-    "my_profile": {
-      "en": "Profile",
-      "ar": "حسابي"
-    },
-    "materials_rate": {
-      "en": "Materials Rate",
-      "ar": "تقيم المحتوي"
-    },
-    "course_rate": {
-      "en": "Courses Rate",
-      "ar": "تقيم الدورات"
-    },
-    "teacher_rate": {
-      "en": "Teacher Rate",
-      "ar": "تقيم المدرس"
-    },
-    "course_count": {
-      "en": "Courses count",
-      "ar": "عدد الدورات"
-    },
-    "overall_rate": {
-      "en": "Overall Rate",
-      "ar": "التقيم العام"
-    },
-    "total_count": {
-      "en": "Total Count",
-      "ar": "اجمالي الاشتراكات"
-    },
-    "settings": {
-      "en": "Settings",
-      "ar": "الضبط"
-    },
-    "help": {
-      "en": "Help",
-      "ar": "المساعدة"
-    },
-    "other_courses": {
-      "en": "Explorer Other Courses",
-      "ar": "اسكشاف دورات اخري"
-    },
-
+  "teacher_profile": {
+    "en": "Teacher Profile",
+    "ar": "ملف المدرس"
+  },
+  "both": {
+    "en": "Both",
+    "ar": "معا"
+  },
+  "additional_registration_welcome": {
+    "en": "To enable you to publish educational content",
+    "ar": " لتمكينك من نشر المحتوى التعليمي"
+  },
+  "complete_profile": {
+    "en": "Complete profile",
+    "ar": "إكمال الملف الشخصي"
+  },
+  "complete_profile_please": {
+    "en": "Please complete the professional information",
+    "ar": "برجاء استكمال البيانات المهنية"
+  },
+  "reset_password_welcome": {
+    "en": "Reset password to a new one",
+    "ar": "اعاده تعيين كلمه سر جديده"
+  },
+  "reset_password": {
+    "en": "Reset password",
+    "ar": "تعيين كلمة المرور"
+  },
+  "forget": {
+    "en": "Forget password",
+    "ar": "نسيت كلمة المرور"
+  },
+  "courses": {
+    "en": "Courses",
+    "ar": "الكورسات"
+  },
+  "categories": {
+    "en": "Categories",
+    "ar": "الأقسام"
+  },
+  "show_more": {
+    "en": "Show more",
+    "ar": "مشاهدة الكل"
+  },
+  "best_teachers": {
+    "en": "Best Teacher",
+    "ar": "أفضل المعلمين"
+  },
+  "search": {
+    "en": "Search",
+    "ar": "بحث"
+  },
+  "notifications": {
+    "en": "Notifications",
+    "ar": "الاشعارات"
+  },
+  "today": {
+    "en": "Today",
+    "ar": "اليوم"
+  },
+  "yesterday": {
+    "en": "Yesterday",
+    "ar": "أمس"
+  },
+  "course_title": {
+    "en": "Course Title",
+    "ar": "عنوان الدورة"
+  },
+  "enter_course_title": {
+    "en": "Enter Course Title",
+    "ar": "أدخل عنوان الدورة"
+  },
+  "course_description": {
+    "en": "Course Description",
+    "ar": "وصف الدورة"
+  },
+  "course_hours": {
+    "en": "Course Expected Hours",
+    "ar": "الساعات المتوقعة الدورة"
+  },
+  "welcome": {
+    "en": "Welcome",
+    "ar": "مرحبا"
+  },
+  "sir": {
+    "en": "Sir",
+    "ar": "عزيزي"
+  },
+  "exit": {
+    "en": "Exit",
+    "ar": "خروج"
+  },
+  "sessions": {
+    "en": "Sessions",
+    "ar": "المحاضرات"
+  },
+  "logout": {
+    "en": "Logout",
+    "ar": "تسجيل خروج"
+  },
+  "save_changes": {
+    "en": "Save Changes",
+    "ar": "حفظ التغيرات"
+  },
+  "add_session": {
+    "en": "Add Session",
+    "ar": "اضافة حصة"
+  },
+  "account": {
+    "en": "Account",
+    "ar": "الحساب"
+  },
+  "change_password": {
+    "en": "Change Password",
+    "ar": "تغير كلمة المرور"
+  },
+  "cancel": {
+    "en": "Cancel",
+    "ar": "الغاء"
+  },
+  "course_fees": {
+    "en": "Course Fees",
+    "ar": "التكلفة"
+  },
+  "login_subtitle": {
+    "en": "Welcome back! Please enter your details.",
+    "ar": "مرحباً بعودتك! الرجاء إدخال بياناتك."
+  },
+  "register_subtitle": {
+    "en": "Join us to start learning.",
+    "ar": "انضم إلينا لتبدأ رحلة التعلم."
+  },
+  "teacher_profile_subtitle": {
+    "en": "Tell us about your professional background.",
+    "ar": "أخبرنا عن خلفيتك المهنية."
+  },
+  "send_reset_link": {
+    "en": "Send Reset Link",
+    "ar": "إرسال رابط إعادة التعيين"
+  },
+  "back_to_login": {
+    "en": "Back to Login",
+    "ar": "العودة إلى تسجيل الدخول"
+  },
+  "new_password": {
+    "en": "New Password",
+    "ar": "كلمة المرور الجديدة"
+  },
+  "confirm_new_password": {
+    "en": "Confirm New Password",
+    "ar": "تأكيد كلمة المرور الجديدة"
+  },
+  "password_mismatch": {
+    "en": "Passwords do not match",
+    "ar": "كلمات المرور غير متطابقة"
+  },
+  "invalid_otp": {
+    "en": "Invalid verification code",
+    "ar": "رمز التحقق غير صحيح"
+  },
+  "otp_resent": {
+    "en": "Verification code resent",
+    "ar": "تم إعادة إرسال رمز التحقق"
+  },
+  "verification": {
+    "en": "Verification",
+    "ar": "التحقق"
+  },
+  "session": {
+    "en": "Session",
+    "ar": "محاضرة"
+  },
+  "about": {
+    "en": "About",
+    "ar": "نبذة عن"
+  },
+  "choose_new_password": {
+    "en": "Choose a strong new password",
+    "ar": "اختر كلمة مرور جديدة قوية"
+  },
+  "forget_subtitle": {
+    "en": "Enter your email to receive a reset link.",
+    "ar": "أدخل بريدك الإلكتروني لتتلقى رابط إعادة التعيين."
+  },
+  "my_courses": {
+    "en": "My Courses",
+    "ar": "كورساتي"
+  },
+  "add": {
+    "en": "Add",
+    "ar": "إضافة"
+  },
+  "add_course": {
+    "en": "Add Course",
+    "ar": "إضافة كورس"
+  },
+  "add_new_course": {
+    "en": "Add New Course",
+    "ar": "إضافة دورة جديدة"
+  },
+  "add_first_course_hint": {
+    "en": "Start by adding your first course now",
+    "ar": "ابدأ بإضافة دورتك الأولى الآن"
+  },
+  "no_courses_section": {
+    "en": "No courses in this section",
+    "ar": "لا توجد كورسات في هذا القسم"
+  },
+  "filter_all": {
+    "en": "All",
+    "ar": "الكل"
+  },
+  "filter_published": {
+    "en": "Published",
+    "ar": "منشورة"
+  },
+  "filter_drafts": {
+    "en": "Drafts",
+    "ar": "مسودات"
+  },
+  "status_draft": {
+    "en": "Draft",
+    "ar": "مسودة"
+  },
+  "status_published": {
+    "en": "Published",
+    "ar": "منشورة"
+  },
+  "delete_course": {
+    "en": "Delete Course",
+    "ar": "حذف الدورة"
+  },
+  "delete_course_confirm": {
+    "en": "Are you sure you want to delete",
+    "ar": "هل تريد حذف"
+  },
+  "delete": {
+    "en": "Delete",
+    "ar": "حذف"
+  },
+  "course_deleted": {
+    "en": "Course deleted successfully",
+    "ar": "تم حذف الدورة"
+  },
+  "publish_course": {
+    "en": "Publish Course",
+    "ar": "نشر الدورة"
+  },
+  "unpublish_course": {
+    "en": "Unpublish Course",
+    "ar": "إيقاف النشر"
+  },
+  "show_details": {
+    "en": "Show Details",
+    "ar": "عرض التفاصيل"
+  },
+  "hide_details": {
+    "en": "Hide Details",
+    "ar": "إخفاء التفاصيل"
+  },
+  "no_extra_details": {
+    "en": "No additional details",
+    "ar": "لا توجد تفاصيل إضافية"
+  },
+  "weekly_schedule": {
+    "en": "Weekly Schedule",
+    "ar": "الجدول الأسبوعي"
+  },
+  "certificates": {
+    "en": "Certificates",
+    "ar": "الشهادات"
+  },
+  "required_tools": {
+    "en": "Required Tools",
+    "ar": "الأدوات المطلوبة"
+  },
+  "prerequisites": {
+    "en": "Prerequisites",
+    "ar": "المتطلبات السابقة"
+  },
+  "others": {
+    "en": "more",
+    "ar": "أخرى"
+  },
+  "h": {
+    "en": "h",
+    "ar": "س"
+  },
+  "edit_session": {
+    "en": "Edit Session",
+    "ar": "تعديل المحاضرة"
+  },
+  "delete_session": {
+    "en": "Delete Session",
+    "ar": "حذف المحاضرة"
+  },
+  "attendees": {
+    "en": "Attendees",
+    "ar": "المشتركون"
+  },
+  "minutes": {
+    "en": "min",
+    "ar": "دقيقة"
+  },
+  "session_type_live": {
+    "en": "Live",
+    "ar": "مباشر"
+  },
+  "session_type_recorded": {
+    "en": "Recorded",
+    "ar": "مسجّل"
+  },
+  "session_is_live": {
+    "en": "Session is live now",
+    "ar": "المحاضرة تبث الآن"
+  },
+  "start_live_session": {
+    "en": "Start Live Session",
+    "ar": "بدء المحاضرة المباشرة"
+  },
+  "end_session": {
+    "en": "End Session",
+    "ar": "إنهاء المحاضرة"
+  },
+  "live_room": {
+    "en": "Live Room",
+    "ar": "الغرفة المباشرة"
+  },
+  "attendance_and_exams": {
+    "en": "Attendance & Exams",
+    "ar": "الحضور والاختبارات"
+  },
+  "select_course_hint": {
+    "en": "Select a course to view attendance or manage exams",
+    "ar": "اختر كورساً لعرض الحضور أو إدارة الاختبارات"
+  },
+  "no_courses_yet": {
+    "en": "No courses yet",
+    "ar": "لا توجد كورسات بعد"
+  },
+  "add_course_first_hint": {
+    "en": "Add a course first from My Courses tab",
+    "ar": "أضف كورساً أولاً من تبويب \"كورساتي\""
+  },
+  "no_search_results": {
+    "en": "No search results",
+    "ar": "لا توجد نتائج للبحث"
+  },
+  "search_course": {
+    "en": "Search for a course...",
+    "ar": "ابحث عن كورس..."
+  },
+  "attendance": {
+    "en": "Attendance",
+    "ar": "الحضور"
+  },
+  "attendance_record": {
+    "en": "Attendance Record",
+    "ar": "سجل الحضور"
+  },
+  "select_lecture": {
+    "en": "Select Lecture",
+    "ar": "اختر المحاضرة"
+  },
+  "total_students": {
+    "en": "Total Students",
+    "ar": "إجمالي الطلاب"
+  },
+  "present": {
+    "en": "Present",
+    "ar": "حاضر"
+  },
+  "absent": {
+    "en": "Absent",
+    "ar": "غائب"
+  },
+  "mark_all_present": {
+    "en": "All Present",
+    "ar": "كل حاضر"
+  },
+  "mark_all_absent": {
+    "en": "All Absent",
+    "ar": "كل غائب"
+  },
+  "save_attendance": {
+    "en": "Save Attendance",
+    "ar": "حفظ الحضور"
+  },
+  "attendance_saved": {
+    "en": "Attendance saved successfully",
+    "ar": "تم حفظ الحضور بنجاح"
+  },
+  "saving": {
+    "en": "Saving...",
+    "ar": "جارٍ الحفظ..."
+  },
+  "attendance_duration": {
+    "en": "Attendance duration",
+    "ar": "مدة الحضور"
+  },
+  "search_student": {
+    "en": "Search for a student...",
+    "ar": "ابحث عن طالب..."
+  },
+  "attendance_rate": {
+    "en": "Attendance Rate",
+    "ar": "نسبة الحضور"
+  },
+  "my_attendance": {
+    "en": "My Attendance",
+    "ar": "حضوري"
+  },
+  "exams": {
+    "en": "Exams",
+    "ar": "الاختبارات"
+  },
+  "manage_exams": {
+    "en": "Manage Exams",
+    "ar": "إدارة الاختبارات"
+  },
+  "new_exam": {
+    "en": "New Exam",
+    "ar": "اختبار جديد"
+  },
+  "create_exam": {
+    "en": "Create New Exam",
+    "ar": "إنشاء اختبار جديد"
+  },
+  "exam_name": {
+    "en": "Exam Name",
+    "ar": "اسم الاختبار"
+  },
+  "exam_name_placeholder": {
+    "en": "e.g. Unit 1 Quiz",
+    "ar": "مثال: اختبار الوحدة الأولى"
+  },
+  "exam_description": {
+    "en": "Description (optional)",
+    "ar": "الوصف (اختياري)"
+  },
+  "exam_description_placeholder": {
+    "en": "Brief description of the exam",
+    "ar": "وصف مختصر للاختبار"
+  },
+  "total_marks": {
+    "en": "Total Marks",
+    "ar": "إجمالي الدرجات"
+  },
+  "passing_score": {
+    "en": "Passing Score %",
+    "ar": "درجة النجاح %"
+  },
+  "duration_minutes": {
+    "en": "Duration (min)",
+    "ar": "المدة (دقيقة)"
+  },
+  "no_exams_yet": {
+    "en": "No exams yet",
+    "ar": "لا توجد اختبارات بعد"
+  },
+  "no_exams_hint": {
+    "en": "Press \"New Exam\" to create the first exam",
+    "ar": "اضغط على \"اختبار جديد\" لإنشاء أول اختبار"
+  },
+  "publish_exam": {
+    "en": "Publish",
+    "ar": "نشر"
+  },
+  "published": {
+    "en": "Published",
+    "ar": "منشور"
+  },
+  "unpublish_exam": {
+    "en": "Unpublish",
+    "ar": "إيقاف النشر"
+  },
+  "exam_status_active": {
+    "en": "Active",
+    "ar": "نشط"
+  },
+  "exam_status_scheduled": {
+    "en": "Scheduled",
+    "ar": "مجدول"
+  },
+  "exam_status_draft": {
+    "en": "Draft",
+    "ar": "مسودة"
+  },
+  "exam_status_ended": {
+    "en": "Ended",
+    "ar": "انتهى"
+  },
+  "view_results": {
+    "en": "Results",
+    "ar": "النتائج"
+  },
+  "student_results": {
+    "en": "Student Results",
+    "ar": "نتائج الطلاب"
+  },
+  "select_exam_hint": {
+    "en": "Select an exam to view results",
+    "ar": "اختر اختباراً لعرض النتائج"
+  },
+  "select_exam_from_tab": {
+    "en": "Go to Exams tab and press View Results",
+    "ar": "اذهب إلى تبويب \"الاختبارات\" واضغط على \"عرض النتائج\""
+  },
+  "attempted": {
+    "en": "Attempted",
+    "ar": "أجاب"
+  },
+  "not_attempted": {
+    "en": "Not Attempted",
+    "ar": "لم يؤدِّ"
+  },
+  "passed": {
+    "en": "Passed",
+    "ar": "نجح"
+  },
+  "failed": {
+    "en": "Failed",
+    "ar": "راسب"
+  },
+  "average_score": {
+    "en": "Average",
+    "ar": "متوسط"
+  },
+  "enrolled": {
+    "en": "Enrolled",
+    "ar": "مسجّل"
+  },
+  "view_answers": {
+    "en": "Answers",
+    "ar": "الإجابات"
+  },
+  "student_answers": {
+    "en": "Student Answers",
+    "ar": "إجابات الطالب"
+  },
+  "no_answers_recorded": {
+    "en": "No answers recorded",
+    "ar": "لا توجد إجابات مسجّلة"
+  },
+  "question_number": {
+    "en": "Question",
+    "ar": "السؤال"
+  },
+  "marks_obtained": {
+    "en": "marks",
+    "ar": "درجة"
+  },
+  "cannot_publish_no_questions": {
+    "en": "Cannot publish an exam with no questions",
+    "ar": "لا يمكن نشر اختبار بدون أسئلة"
+  },
+  "exam_published": {
+    "en": "Exam published",
+    "ar": "تم نشر الاختبار"
+  },
+  "exam_unpublished": {
+    "en": "Exam unpublished",
+    "ar": "تم إيقاف نشر الاختبار"
+  },
+  "enable_passcode": {
+    "en": "Enable Passcode",
+    "ar": "تفعيل كلمة مرور"
+  },
+  "exam_passcode": {
+    "en": "Exam Passcode",
+    "ar": "كلمة مرور الاختبار"
+  },
+  "exam_passcode_placeholder": {
+    "en": "e.g. EXAM2025",
+    "ar": "مثال: EXAM2025"
+  },
+  "schedule_exam": {
+    "en": "Schedule Specific Time",
+    "ar": "جدولة وقت محدد"
+  },
+  "pick_date_time": {
+    "en": "Pick date and time",
+    "ar": "اختر التاريخ والوقت"
+  },
+  "create_exam_btn": {
+    "en": "Create Exam",
+    "ar": "إنشاء الاختبار"
+  },
+  "enter_exam": {
+    "en": "Enter Exam",
+    "ar": "دخول الاختبار"
+  },
+  "start_exam_now": {
+    "en": "Start Exam Now",
+    "ar": "ابدأ الاختبار الآن"
+  },
+  "exam_starts_in": {
+    "en": "Exam starts in",
+    "ar": "يبدأ الاختبار خلال"
+  },
+  "enter_passcode_prompt": {
+    "en": "Please enter the exam passcode",
+    "ar": "يرجى إدخال كلمة مرور الاختبار"
+  },
+  "wrong_passcode": {
+    "en": "Incorrect passcode",
+    "ar": "كلمة المرور غير صحيحة"
+  },
+  "passcode_required": {
+    "en": "Passcode is required",
+    "ar": "يرجى إدخال كلمة المرور"
+  },
+  "exam_warning": {
+    "en": "Once started the exam cannot be paused. Make sure you have internet connection.",
+    "ar": "بمجرد بدء الاختبار لا يمكن إيقافه مؤقتاً. تأكد من اتصالك بالإنترنت."
+  },
+  "question_of": {
+    "en": "Question {current} of {total}",
+    "ar": "السؤال {current} من {total}"
+  },
+  "answered_of": {
+    "en": "{answered} / {total} answered",
+    "ar": "{answered} / {total} تمت الإجابة"
+  },
+  "submit_exam": {
+    "en": "Submit Exam",
+    "ar": "تسليم الاختبار"
+  },
+  "submit_confirm_title": {
+    "en": "Submit Exam",
+    "ar": "تسليم الاختبار"
+  },
+  "submit_confirm_unanswered": {
+    "en": "You have {count} unanswered questions. Are you sure you want to submit?",
+    "ar": "لم تجب على {count} سؤال. هل أنت متأكد من التسليم؟"
+  },
+  "submit_confirm_all_answered": {
+    "en": "Are you sure you want to submit your answers?",
+    "ar": "هل تريد تسليم إجاباتك الآن؟"
+  },
+  "confirm_submit": {
+    "en": "Confirm Submit",
+    "ar": "تأكيد التسليم"
+  },
+  "exam_result": {
+    "en": "Exam Result",
+    "ar": "نتيجة الاختبار"
+  },
+  "congratulations_passed": {
+    "en": "Congratulations! You passed the exam",
+    "ar": "تهانينا! اجتزت الاختبار بنجاح"
+  },
+  "sorry_failed": {
+    "en": "You did not pass this time",
+    "ar": "لم تجتز الاختبار هذه المرة"
+  },
+  "your_score": {
+    "en": "Your Score",
+    "ar": "درجتك"
+  },
+  "questions_answered": {
+    "en": "Questions Answered",
+    "ar": "الأسئلة المجابة"
+  },
+  "passing_mark": {
+    "en": "Passing Mark",
+    "ar": "درجة النجاح"
+  },
+  "back_to_home": {
+    "en": "Back to Home",
+    "ar": "العودة للرئيسية"
+  },
+  "next_question": {
+    "en": "Next",
+    "ar": "التالي"
+  },
+  "previous_question": {
+    "en": "Previous",
+    "ar": "السابق"
+  },
+  "my_exams": {
+    "en": "My Exams",
+    "ar": "اختباراتي"
+  },
+  "exam_coming_soon": {
+    "en": "Coming Soon",
+    "ar": "قادم"
+  },
+  "exam_not_taken": {
+    "en": "Not Taken",
+    "ar": "لم تؤدِّه"
+  },
+  "my_score": {
+    "en": "My Score",
+    "ar": "درجتي"
+  },
+  "hours": {
+    "en": "h",
+    "ar": "ساعة"
+  },
+  "seconds": {
+    "en": "sec",
+    "ar": "ثانية"
+  },
+  "attending": {
+    "en": "Attended",
+    "ar": "حضر"
+  },
+  "did_not_attend": {
+    "en": "Absent",
+    "ar": "غاب"
+  },
+  "register_and_create": {
+    "en": "Create and Manage",
+    "ar": "إنشاء وإدارة"
+  },
+  "record_and_edit": {
+    "en": "Record and Edit",
+    "ar": "تسجيل وتعديل"
+  },
+  "student_participant": {
+    "en": "student participants",
+    "ar": "الطلاب المشاركون"
+  },
+  "student_views": {
+    "en": "views",
+    "ar": "المشاهدات"
+  },
+  "student_rate": {
+    "en": "rate",
+    "ar": "التقييم"
+  },
+  "update_account": {
+    "en": "Update Account",
+    "ar": "تعديل الحساب"
+  },
+  "current_password": {
+    "en": "Current Password",
+    "ar": "كلمة المرور الحالية"
+  },
+  "fill_all_fields": {
+    "en": "Please fill in all fields",
+    "ar": "يرجى تعبئة جميع الحقول"
+  },
+  "password_min_length": {
+    "en": "New password must be at least 6 characters",
+    "ar": "كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل"
+  },
+  "password_same_as_old": {
+    "en": "New password must be different from the current password",
+    "ar": "كلمة المرور الجديدة يجب أن تختلف عن كلمة المرور الحالية"
+  },
+  "new_password_mismatch": {
+    "en": "New password does not match confirmation",
+    "ar": "كلمة المرور الجديدة غير متطابقة"
+  },
+  "change_password_success": {
+    "en": "Password changed successfully",
+    "ar": "تم تغيير كلمة المرور بنجاح"
+  },
+  "change_password_error": {
+    "en": "An error occurred while changing the password",
+    "ar": "حدث خطأ أثناء تغيير كلمة المرور"
+  },
+  "name_label": {
+    "en": "Name",
+    "ar": "الاسم"
+  },
+  "email_label": {
+    "en": "Email",
+    "ar": "الإيميل"
+  },
+  "phone_label": {
+    "en": "Phone Number",
+    "ar": "رقم الهاتف"
+  },
+  "dob_label": {
+    "en": "Date of Birth",
+    "ar": "تاريخ الميلاد"
+  },
+  "bio_label": {
+    "en": "About You",
+    "ar": "نبذة عنك"
+  },
+  "changes_saved": {
+    "en": "Changes saved successfully",
+    "ar": "تم حفظ التغييرات"
+  },
+  "cost": {
+    "en": "Cost",
+    "ar": "التكلفه"
+  },
+  "duration": {
+    "en": "Duration",
+    "ar": "المده"
+  },
+  "change_language": {
+    "en": "Change Language",
+    "ar": "تغير اللفة"
+  },
+  "dark_mode": {
+    "en": "Dark Mode",
+    "ar": "الوضع الليلي"
+  },
+  "privacy": {
+    "en": "Privacy and Conditions",
+    "ar": "سياية الخصوصية"
+  },
+  "time-table": {
+    "en": "My Weekly table",
+    "ar": "جدولي الأسبوعي"
+  },
+  "no-time-table": {
+    "en": "no appointment add for courses yet",
+    "ar": "لا توجد مواعيد مضافة للكورسات بعد"
+  },
+  "not-refreshed": {
+    "en": "not Refreshed yet",
+    "ar": "لم يُحدَّث بعد"
+  },
+  "moments-ago": {
+    "en": "Moments ago",
+    "ar": "منذ لحظات"
+  },
+  "since": {
+    "en": "since",
+    "ar": "من "
+  },
+  "m": {
+    "en": "m",
+    "ar": "د"
+  },
+  "day": {
+    "en": "m",
+    "ar": "د"
+  },
+  "refresh": {
+    "en": "Refresh",
+    "ar": "تحديث"
+  },
+  "refreshing": {
+    "en": "Refreshing",
+    "ar": "جاري التحديث…"
+  },
+  "play-now": {
+    "en": "playing now",
+    "ar": " جارية الآن"
+  },
+  "next-lesson": {
+    "en": "Upcoming Lesson",
+    "ar": " المحاضرة القادمة"
+  },
+  "completed": {
+    "en": "Completed",
+    "ar": "مكتمل"
+  },
+  "no-lessons-today": {
+    "en": "No Sessions Today",
+    "ar": "لا توجد حصص اليوم"
+  },
+  "no-lessons": {
+    "en": "No Sessions for ",
+    "ar": "لا توجد حصص يوم"
+  },
+  "loading-schedule": {
+    "en": "Loading the schedule…",
+    "ar": "جاري تحميل الجدول…"
+  },
+  "rest-follow": {
+    "en": "Rest and follow the schedule day by day.",
+    "ar": "استرح وتابع الجدول يوماً بيوم"
+  },
+  "retry": {
+    "en": "Retry",
+    "ar": "إعادة المحاولة"
+  },
+  "appointment": {
+    "en": "appointment —",
+    "ar": "المواعيد —"
+  },
+  "appointment-repeat": {
+    "en": "The appointments are automatically repeated weekly • students will see them on their schedules.",
+    "ar": "المواعيد تتكرر أسبوعياً تلقائياً  •  الطلاب يرونها في جدولهم"
+  },
+  "appointment-delete": {
+    "en": "Delete Appointment",
+    "ar": "حذف الموعد"
+  },
+  "appointment-delete2": {
+    "en": "Delete Appointment for",
+    "ar": "حذف موعد"
+  },
+  "no-appointment": {
+    "en": "No Appointment yet",
+    "ar": "لا توجد مواعيد بعد"
+  },
+  "add-weekly-appointment-for-student": {
+    "en": "Add weekly appointments for your students to see in their schedule.",
+    "ar": "أضف مواعيد أسبوعية ليراها طلابك في جدولهم"
+  },
+  "add-weekly-appointment": {
+    "en": "Add weekly appointments +",
+    "ar": "+ إضافة موعد أسبوعي"
+  },
+  "duplicate-schedule": {
+    "en": "Duplicate appointment",
+    "ar": "موعد مكرر"
+  },
+  "same-day-schedule-exists": {
+    "en": "There is already an appointment on the same day. Add another one?",
+    "ar": "يوجد موعد بنفس اليوم. إضافة موعد آخر؟"
+  },
+  "appointment-added-successfully": {
+    "en": "Appointment added successfully ✓",
+    "ar": "تم إضافة الموعد ✓"
+  },
+  "something-went-wrong": {
+    "en": "Something went wrong",
+    "ar": "حدث خطأ"
+  },
+  "start-time": {
+    "en": "Start time",
+    "ar": "وقت البداية"
+  },
+  "end-time": {
+    "en": "End time",
+    "ar": "وقت النهاية"
+  },
+  "end-time-must-be-after-start-time": {
+    "en": "End time must be after start time",
+    "ar": "وقت النهاية يجب أن يكون بعد وقت البداية"
+  },
+  "add-appointment": {
+    "en": "Add appointment",
+    "ar": "إضافة الموعد"
+  },
+  "end-now": {
+    "en": "End Now",
+    "ar": "انتهت للتو"
+  },
+  "start-now": {
+    "en": "Start Now",
+    "ar": "بدأت للتو"
+  },
+  "receiving-account": {
+    "en": "Receiving accounts",
+    "ar": "حسابات الاستلام"
+  },
+  "payment-method": {
+    "en": "Saved payment methods",
+    "ar": "طرق الدفع المحفوظة"
+  },
+  "help_center": {
+    "en": "Help Center",
+    "ar": "مركز المساعدة"
+  },
+  "log-out": {
+    "en": "Logout",
+    "ar": "تسجيل الخروج"
+  },
+  "home": {
+    "en": "Home",
+    "ar": "الرئيسية"
+  },
+  "my-courses": {
+    "en": "My Courses",
+    "ar": "كورساتي"
+  },
+  "schedule": {
+    "en": "Schedule",
+    "ar": "الجدول"
+  },
+  "analytics": {
+    "en": "Analytics",
+    "ar": "تحليلات"
+  },
+  "profile": {
+    "en": "Profile",
+    "ar": "حسابي"
+  },
+  "loading_attendance": {
+    "en": "Loading attendance…",
+    "ar": "جارٍ تحميل الحضور…"
+  },
+  "select_session_hint_sub": {
+    "en": "Tap a session card above to get started",
+    "ar": "اضغط على إحدى بطاقات المحاضرة أعلاه للبدء"
+  },
+  "no_sessions_available": {
+    "en": "No sessions available",
+    "ar": "لا توجد حصص متاحة"
+  },
+  "save_failed": {
+    "en": "Save failed, please try again",
+    "ar": "فشل الحفظ، يرجى المحاولة مرة أخرى"
+  },
+  "session_number": {
+    "en": "Session {number}",
+    "ar": "المحاضرة {number}"
+  },
+  "explorer_courses": {
+    "en": "Explorer Courses",
+    "ar": "استكشف دورات اخري"
+  },
+  "course_details": {
+    "en": "Course Details",
+    "ar": "تفاصيل الدورة"
+  },
+  "teacher_dot": {
+    "en": "Teacher",
+    "ar": "معلم"
+  },
+  "pricing": {
+    "en": "Pricing",
+    "ar": "التسعير"
+  },
+  "joined": {
+    "en": "Joined",
+    "ar": "انضم"
+  },
+  "verified": {
+    "en": "Verified",
+    "ar": "موثق"
+  },
+  "active": {
+    "en": "Active",
+    "ar": "نشط"
+  },
+  "live_and_recorded": {
+    "en": "Live & Recorded",
+    "ar": "مباشر ومسجل"
+  },
+  "live_only": {
+    "en": "Live Only",
+    "ar": "مباشر فقط"
+  },
+  "country": {
+    "en": "Country",
+    "ar": "الدولة"
+  },
+  "show_less": {
+    "en": "Show less",
+    "ar": "عرض أقل"
+  },
+  "ratings_and_reviews": {
+    "en": "Ratings & Reviews",
+    "ar": "التقييمات والمراجعات"
+  },
+  "no_bio_hint": {
+    "en": "This teacher hasn't added a bio yet. Check their courses to learn more about their teaching style and expertise.",
+    "ar": "لم يُضف هذا المعلم نبذة عنه بعد. تفقد كورساته لتعرف المزيد عن أسلوبه في التدريس."
+  },
+  "learning_platform": {
+    "en": "Learning Platform",
+    "ar": "منصة تعليمية"
+  },
+  "unlock_potential": {
+    "en": "Unlock your\nfull potential\ntoday.",
+    "ar": "اكتشف\nإمكاناتك\nالكاملة اليوم."
+  },
+  "join_students_hint": {
+    "en": "Join thousands of students and educators in a rich digital learning experience.",
+    "ar": "انضم إلى آلاف الطلاب والمعلمين في تجربة تعليمية رقمية ثرية."
+  },
+  "feature_live_sessions": {
+    "en": "Live sessions & on-demand courses",
+    "ar": "حصص مباشرة وكورسات مسجلة"
+  },
+  "feature_expert_teachers": {
+    "en": "Expert teachers across all specializations",
+    "ar": "معلمون متخصصون في جميع المجالات"
+  },
+  "feature_assessments": {
+    "en": "Interactive assessments & progress tracking",
+    "ar": "اختبارات تفاعلية ومتابعة التقدم"
+  },
+  "badge_students": {
+    "en": "10k+ Students",
+    "ar": "+10 آلاف طالب"
+  },
+  "badge_teachers": {
+    "en": "500+ Teachers",
+    "ar": "+500 معلم"
+  },
+  "badge_secure": {
+    "en": "Secure & Private",
+    "ar": "آمن وخاص"
+  },
+  "sar": {
+    "en": "SAR",
+    "ar": "ريال"
+  },
+  "my_schedule": {
+    "en": "Schedule",
+    "ar": "جدولي"
+  },
+  "analysis": {
+    "en": "Analysis",
+    "ar": "التحليلات"
+  },
+  "my_profile": {
+    "en": "Profile",
+    "ar": "حسابي"
+  },
+  "materials_rate": {
+    "en": "Materials Rate",
+    "ar": "تقيم المحتوي"
+  },
+  "course_rate": {
+    "en": "Courses Rate",
+    "ar": "تقيم الدورات"
+  },
+  "teacher_rate": {
+    "en": "Teacher Rate",
+    "ar": "تقيم المدرس"
+  },
+  "course_count": {
+    "en": "Courses count",
+    "ar": "عدد الدورات"
+  },
+  "overall_rate": {
+    "en": "Overall Rate",
+    "ar": "التقيم العام"
+  },
+  "total_count": {
+    "en": "Total Count",
+    "ar": "اجمالي الاشتراكات"
+  },
+  "settings": {
+    "en": "Settings",
+    "ar": "الضبط"
+  },
+  "help": {
+    "en": "Help",
+    "ar": "المساعدة"
+  },
+  "other_courses": {
+    "en": "Explorer Other Courses",
+    "ar": "اسكشاف دورات اخري"
+  },
   "registered_courses": {
     "en": "Recorded",
     "ar": "المسجّلة"
@@ -1320,7 +1319,6 @@
     "en": "Completed",
     "ar": "مكتملة"
   },
-
   "ongoing": {
     "en": "Ongoing",
     "ar": "مستمر"
@@ -1348,5 +1346,583 @@
   "you_are_enrolled": {
     "en": "Your Are enrolled",
     "ar": "انت مشترك في الدورة"
+  },
+  "__comment_session_material_card": "─── Keys added for session_material_card.dart ───",
+  "save": {
+    "en": "Save",
+    "ar": "حفظ"
+  },
+  "description": {
+    "en": "Description",
+    "ar": "الوصف"
+  },
+  "description_optional": {
+    "en": "Description (optional)",
+    "ar": "الوصف (اختياري)"
+  },
+  "url_label": {
+    "en": "URL",
+    "ar": "الرابط"
+  },
+  "delete_confirm_message": {
+    "en": "Do you want to delete \"{name}\"? This cannot be undone.",
+    "ar": "هل تريد حذف \"{name}\"؟ لا يمكن التراجع."
+  },
+  "meet_now": {
+    "en": "Meet Now",
+    "ar": "انضم الآن"
+  },
+  "join_live_session": {
+    "en": "Join Live",
+    "ar": "الانضمام للبث"
+  },
+  "materials": {
+    "en": "Materials",
+    "ar": "مرفقات"
+  },
+  "attachments": {
+    "en": "Attachments",
+    "ar": "المرفقات"
+  },
+  "no_attachments_yet": {
+    "en": "No attachments yet",
+    "ar": "لا توجد مرفقات بعد"
+  },
+  "edit_material": {
+    "en": "Edit Material",
+    "ar": "تعديل المرفق"
+  },
+  "delete_material": {
+    "en": "Delete Material",
+    "ar": "حذف المرفق"
+  },
+  "add_material": {
+    "en": "Add Material",
+    "ar": "إضافة مرفق"
+  },
+  "add_material_title": {
+    "en": "Add Material",
+    "ar": "إضافة مرفق"
+  },
+  "add_material_btn": {
+    "en": "Add Material",
+    "ar": "إضافة المرفق"
+  },
+  "file_mode": {
+    "en": "File",
+    "ar": "ملف"
+  },
+  "link_mode": {
+    "en": "Link",
+    "ar": "رابط"
+  },
+  "tap_to_pick_file": {
+    "en": "Tap to choose a file",
+    "ar": "اضغط لاختيار الملف"
+  },
+  "please_pick_file": {
+    "en": "Please choose a file",
+    "ar": "يرجى اختيار ملف"
+  },
+  "file_load_failed": {
+    "en": "Failed to load file, please try again",
+    "ar": "فشل تحميل الملف، حاول مرة أخرى"
+  },
+  "please_enter_name": {
+    "en": "Please enter a name",
+    "ar": "يرجى إدخال الاسم"
+  },
+  "please_enter_url": {
+    "en": "Please enter a URL",
+    "ar": "يرجى إدخال الرابط"
+  },
+  "live_badge": {
+    "en": "🔴 Live",
+    "ar": "🔴 مباشر"
+  },
+  "recorded_badge": {
+    "en": "▶ Recorded",
+    "ar": "▶ مسجّل"
+  },
+  "material_type_image": {
+    "en": "Image",
+    "ar": "صورة"
+  },
+  "material_type_video": {
+    "en": "Video",
+    "ar": "فيديو"
+  },
+  "material_type_pdf": {
+    "en": "PDF",
+    "ar": "PDF"
+  },
+  "material_type_document": {
+    "en": "Document",
+    "ar": "مستند"
+  },
+  "material_type_link": {
+    "en": "Link",
+    "ar": "رابط"
+  },
+  "pdf_document": {
+    "en": "PDF / Document",
+    "ar": "PDF / مستند"
+  },
+  "__comment_video_player": "─── Keys added for video_player_screen.dart ───",
+  "audio_only_mode": {
+    "en": "Audio Only",
+    "ar": "صوت فقط"
+  },
+  "video_mode": {
+    "en": "Video",
+    "ar": "الفيديو"
+  },
+  "loading_video": {
+    "en": "Loading video…",
+    "ar": "جارٍ تحميل الفيديو…"
+  },
+  "video_load_error": {
+    "en": "Failed to load video",
+    "ar": "فشل تحميل الفيديو"
+  },
+  "lock_controls": {
+    "en": "Lock Controls",
+    "ar": "قفل التحكم"
+  },
+  "unlock_controls": {
+    "en": "Tap to unlock",
+    "ar": "اضغط للفتح"
+  },
+  "select_quality": {
+    "en": "Select Quality",
+    "ar": "اختر الجودة"
+  },
+  "select_speed": {
+    "en": "Playback Speed",
+    "ar": "سرعة التشغيل"
+  },
+  "normal_speed": {
+    "en": "Normal",
+    "ar": "عادي"
+  },
+  "fullscreen": {
+    "en": "Full Screen",
+    "ar": "ملء الشاشة"
+  },
+  "exit_fullscreen": {
+    "en": "Exit Fullscreen",
+    "ar": "الخروج من ملء الشاشة"
+  },
+  "background_audio_hint": {
+    "en": "Audio continues in background",
+    "ar": "الصوت يستمر في الخلفية"
+  },
+  "exam_hub_title": {
+    "en": "Exams",
+    "ar": "الاختبارات"
+  },
+  "exam_hub_subtitle": {
+    "en": "Track your students' progress ✨",
+    "ar": "تابع تقدم طلابك ✨"
+  },
+  "tab_exams": {
+    "en": "Exams",
+    "ar": "الاختبارات"
+  },
+  "tab_student_results": {
+    "en": "Student Results",
+    "ar": "نتائج الطلاب"
+  },
+  "no_exams_empty_hint": {
+    "en": "Press \"New Exam\" to create the first exam",
+    "ar": "اضغط على \"اختبار جديد\" لإنشاء أول اختبار"
+  },
+  "no_results_yet": {
+    "en": "No results yet",
+    "ar": "لا توجد نتائج بعد"
+  },
+  "select_exam_to_view_results": {
+    "en": "Select an exam to view student results",
+    "ar": "اختر اختباراً لعرض نتائج الطلاب"
+  },
+  "stat_enrolled": {
+    "en": "Enrolled",
+    "ar": "مسجّل"
+  },
+  "stat_attended": {
+    "en": "Attended",
+    "ar": "حضر"
+  },
+  "stat_answered": {
+    "en": "Answered",
+    "ar": "أجاب"
+  },
+  "stat_passed": {
+    "en": "Passed",
+    "ar": "نجح"
+  },
+  "stat_average": {
+    "en": "Average",
+    "ar": "متوسط"
+  },
+  "exam_published_badge": {
+    "en": "Published",
+    "ar": "منشور"
+  },
+  "exam_unpublished_badge": {
+    "en": "Unpublished",
+    "ar": "غير منشور"
+  },
+  "exam_toggle_hide": {
+    "en": "Hide",
+    "ar": "إخفاء"
+  },
+  "exam_toggle_publish": {
+    "en": "Publish",
+    "ar": "نشر"
+  },
+  "exam_published_snack": {
+    "en": "Exam published",
+    "ar": "تم نشر الاختبار"
+  },
+  "exam_unpublished_snack": {
+    "en": "Exam unpublished",
+    "ar": "تم إيقاف نشر الاختبار"
+  },
+  "question_count_chip": {
+    "en": "{count} questions",
+    "ar": "{count} سؤال"
+  },
+  "duration_chip": {
+    "en": "{min} min",
+    "ar": "{min} دقيقة"
+  },
+  "btn_questions": {
+    "en": "Questions",
+    "ar": "الأسئلة"
+  },
+  "btn_results": {
+    "en": "Results",
+    "ar": "النتائج"
+  },
+  "delete_exam_title": {
+    "en": "Delete Exam",
+    "ar": "حذف الاختبار"
+  },
+  "delete_exam_confirm_body": {
+    "en": "Are you sure? All questions and answers will be deleted.",
+    "ar": "هل أنت متأكد؟ سيتم حذف جميع الأسئلة والإجابات."
+  },
+  "delete_confirm_title": {
+    "en": "Confirm Delete",
+    "ar": "تأكيد الحذف"
+  },
+  "delete_exam_inline_confirm": {
+    "en": "Delete this exam?",
+    "ar": "هل تريد حذف الاختبار؟"
+  },
+  "exam_deleted_snack": {
+    "en": "Exam deleted",
+    "ar": "تم حذف الاختبار"
+  },
+  "exam_delete_failed_snack": {
+    "en": "Delete failed",
+    "ar": "فشل الحذف"
+  },
+  "manage_questions_title": {
+    "en": "Manage Questions",
+    "ar": "إدارة الأسئلة"
+  },
+  "btn_add": {
+    "en": "Add",
+    "ar": "إضافة"
+  },
+  "no_questions_yet": {
+    "en": "No questions yet",
+    "ar": "لا توجد أسئلة بعد"
+  },
+  "no_questions_hint": {
+    "en": "Press \"Add\" to create the first question",
+    "ar": "اضغط \"إضافة\" لإنشاء أول سؤال"
+  },
+  "btn_edit": {
+    "en": "Edit",
+    "ar": "تعديل"
+  },
+  "delete_question_title": {
+    "en": "Delete Question",
+    "ar": "حذف السؤال"
+  },
+  "add_question_title": {
+    "en": "Add Question",
+    "ar": "إضافة سؤال"
+  },
+  "edit_question_title": {
+    "en": "Edit Question",
+    "ar": "تعديل السؤال"
+  },
+  "field_question_text_label": {
+    "en": "Question text *",
+    "ar": "نص السؤال *"
+  },
+  "field_question_text_hint": {
+    "en": "Write the question here...",
+    "ar": "اكتب السؤال هنا..."
+  },
+  "field_required": {
+    "en": "Required",
+    "ar": "مطلوب"
+  },
+  "field_marks_label": {
+    "en": "Mark",
+    "ar": "الدرجة"
+  },
+  "field_invalid_number": {
+    "en": "Valid number required",
+    "ar": "رقم صحيح"
+  },
+  "toggle_mcq": {
+    "en": "Multiple Choice Question (MCQ)",
+    "ar": "سؤال اختيار من متعدد (MCQ)"
+  },
+  "options_label": {
+    "en": "Options",
+    "ar": "الخيارات"
+  },
+  "btn_add_option": {
+    "en": "Add Option",
+    "ar": "إضافة خيار"
+  },
+  "option_hint": {
+    "en": "Option {num}",
+    "ar": "الخيار {num}"
+  },
+  "correct_answer_label": {
+    "en": "Correct Answer (optional)",
+    "ar": "الإجابة الصحيحة (اختياري)"
+  },
+  "correct_answer_hint": {
+    "en": "Copy the correct option exactly",
+    "ar": "انسخ الخيار الصحيح بالضبط"
+  },
+  "btn_save_edits": {
+    "en": "Save Changes",
+    "ar": "حفظ التعديلات"
+  },
+  "btn_add_question": {
+    "en": "Add Question",
+    "ar": "إضافة السؤال"
+  },
+  "question_added_snack": {
+    "en": "Question added successfully",
+    "ar": "تمت إضافة السؤال بنجاح"
+  },
+  "question_add_failed_snack": {
+    "en": "Add failed, please try again",
+    "ar": "فشلت الإضافة، حاول مرة أخرى"
+  },
+  "question_updated_snack": {
+    "en": "Question updated successfully",
+    "ar": "تم تعديل السؤال بنجاح"
+  },
+  "question_update_failed_snack": {
+    "en": "Update failed, please try again",
+    "ar": "فشل التعديل، حاول مرة أخرى"
+  },
+  "marks_label": {
+    "en": "marks",
+    "ar": "درجة"
+  },
+  "field_exam_name_label": {
+    "en": "Exam name *",
+    "ar": "اسم الاختبار *"
+  },
+  "field_exam_name_hint": {
+    "en": "e.g. Unit 1 Quiz",
+    "ar": "مثال: اختبار الوحدة الأولى"
+  },
+  "field_desc_hint_short": {
+    "en": "Brief description",
+    "ar": "وصف مختصر"
+  },
+  "field_total_marks_label": {
+    "en": "Total Marks",
+    "ar": "الدرجة الكلية"
+  },
+  "field_passing_label": {
+    "en": "Pass %",
+    "ar": "النجاح %"
+  },
+  "field_duration_label": {
+    "en": "Duration (min)",
+    "ar": "المدة (د)"
+  },
+  "toggle_passcode": {
+    "en": "Exam Passcode",
+    "ar": "كلمة مرور للاختبار"
+  },
+  "field_passcode_label": {
+    "en": "Passcode",
+    "ar": "كلمة المرور"
+  },
+  "toggle_schedule": {
+    "en": "Schedule Specific Time",
+    "ar": "جدولة وقت محدد"
+  },
+  "pick_start_datetime": {
+    "en": "Pick start date and time",
+    "ar": "اختر تاريخ ووقت البدء"
+  },
+  "toggle_deadline": {
+    "en": "Submission Deadline",
+    "ar": "موعد نهائي للتسليم"
+  },
+  "pick_deadline": {
+    "en": "Pick deadline",
+    "ar": "اختر الموعد النهائي"
+  },
+  "toggle_max_submissions": {
+    "en": "Limit Submissions",
+    "ar": "تحديد عدد مرات التقديم"
+  },
+  "field_max_submissions_label": {
+    "en": "Max attempts allowed",
+    "ar": "عدد المحاولات المسموح بها"
+  },
+  "field_max_submissions_error": {
+    "en": "Enter a number greater than 0",
+    "ar": "أدخل رقماً أكبر من 0"
+  },
+  "snack_pick_start_date": {
+    "en": "Please select a start date and time",
+    "ar": "يرجى تحديد تاريخ ووقت البدء"
+  },
+  "snack_pick_deadline": {
+    "en": "Please select a deadline",
+    "ar": "يرجى تحديد الموعد النهائي"
+  },
+  "btn_create_exam": {
+    "en": "Create Exam",
+    "ar": "إنشاء الاختبار"
+  },
+  "no_answers": {
+    "en": "No answers recorded",
+    "ar": "لا توجد إجابات مسجّلة"
+  },
+  "question_prefix": {
+    "en": "Question",
+    "ar": "السؤال"
+  },
+  "no_answer_given": {
+    "en": "No answer",
+    "ar": "لم يجب"
+  },
+  "result_passed_badge": {
+    "en": "Passed",
+    "ar": "نجح"
+  },
+  "result_failed_badge": {
+    "en": "Failed",
+    "ar": "راسب"
+  },
+  "attended_badge": {
+    "en": "Attended",
+    "ar": "حضر"
+  },
+  "absent_badge": {
+    "en": "Absent",
+    "ar": "غاب"
+  },
+  "not_attempted_badge": {
+    "en": "Not Attempted",
+    "ar": "لم يؤدِّ"
+  },
+  "view_answers_btn": {
+    "en": "Answers",
+    "ar": "الإجابات"
+  },
+  "create_exam_sheet_title": {
+    "en": "Create New Exam",
+    "ar": "إنشاء اختبار جديد"
+  },
+  "field_desc_optional_label": {
+    "en": "Description (optional)",
+    "ar": "الوصف (اختياري)"
+  },
+  "passcode_digits_only": {
+    "en": "Must be digits only",
+    "ar": "يجب أن يحتوي على أرقام فقط"
+  },
+  "btn_delete": {
+    "en": "Delete",
+    "ar": "حذف"
+  },
+  "error_occurred": {
+    "en": "An error occurred",
+    "ar": "حدث خطأ"
+  },
+  "analytics_hub_title": {
+    "en": "Attendance & Exams",
+    "ar": "الحضور والاختبارات"
+  },
+  "analytics_hub_subtitle": {
+    "en": "Select a course to manage attendance or exams",
+    "ar": "اختر كورساً لإدارة الحضور أو الاختبارات"
+  },
+  "search_course_hint": {
+    "en": "Search for a course...",
+    "ar": "ابحث عن كورس..."
+  },
+  "analytics_btn_attendance": {
+    "en": "Attendance",
+    "ar": "الحضور"
+  },
+  "analytics_btn_attendance_sub": {
+    "en": "Record & Edit",
+    "ar": "تسجيل وتعديل"
+  },
+  "analytics_btn_exams": {
+    "en": "Exams",
+    "ar": "الاختبارات"
+  },
+  "analytics_btn_exams_sub": {
+    "en": "Create & Manage",
+    "ar": "إنشاء وإدارة"
+  },
+  "video_player": {
+    "en": "Video Player",
+    "ar": "مشغّل الفيديو"
+  },
+  "enter_video_details": {
+    "en": "Enter video details",
+    "ar": "أدخل تفاصيل الفيديو"
+  },
+  "video_title": {
+    "en": "Title",
+    "ar": "العنوان"
+  },
+  "video_title_hint": {
+    "en": "e.g. Lesson 1 – Algebra",
+    "ar": "مثال: الدرس الأول – الجبر"
+  },
+  "video_url": {
+    "en": "Video URL",
+    "ar": "رابط الفيديو"
+  },
+  "video_url_hint": {
+    "en": "https:// or rtsp://",
+    "ar": "https:// أو rtsp://"
+  },
+  "play_video": {
+    "en": "Play",
+    "ar": "تشغيل"
+  },
+  "invalid_url": {
+    "en": "Enter a valid URL",
+    "ar": "أدخل رابطاً صحيحاً"
+  },
+  "quick_test": {
+    "en": "Quick test samples",
+    "ar": "نماذج للتجربة السريعة"
   }
 }
