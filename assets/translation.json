@@ -1924,5 +1924,889 @@
   "quick_test": {
     "en": "Quick test samples",
     "ar": "نماذج للتجربة السريعة"
+  },
+  "status_open": {
+    "en": "Open",
+    "ar": "مفتوح"
+  },
+  "status_in_progress": {
+    "en": "In Progress",
+    "ar": "جاري"
+  },
+  "status_resolved": {
+    "en": "Resolved",
+    "ar": "محلول"
+  },
+  "status_resolved_banner": {
+    "en": "Resolved",
+    "ar": "تم الحل"
+  },
+  "status_closed": {
+    "en": "Closed",
+    "ar": "مغلق"
+  },
+  "category_technical": {
+    "en": "Technical",
+    "ar": "تقني"
+  },
+  "category_payment": {
+    "en": "Payment",
+    "ar": "دفع"
+  },
+  "category_content": {
+    "en": "Content",
+    "ar": "محتوى"
+  },
+  "category_teacher": {
+    "en": "Teacher",
+    "ar": "مدرس"
+  },
+  "category_student": {
+    "en": "Student",
+    "ar": "طالب"
+  },
+  "category_general": {
+    "en": "General",
+    "ar": "عام"
+  },
+  "priority_urgent": {
+    "en": "Urgent",
+    "ar": "عاجل"
+  },
+  "priority_high": {
+    "en": "High",
+    "ar": "عالي"
+  },
+  "priority_medium": {
+    "en": "Medium",
+    "ar": "متوسط"
+  },
+  "priority_low": {
+    "en": "Low",
+    "ar": "منخفض"
+  },
+  "complaints_and_support": {
+    "en": "Complaints & Support",
+    "ar": "الشكاوى والدعم"
+  },
+  "stat_all": {
+    "en": "All",
+    "ar": "الكل"
+  },
+  "search_complaints_hint": {
+    "en": "Search complaints...",
+    "ar": "ابحث في الشكاوى..."
+  },
+  "no_complaints": {
+    "en": "No complaints",
+    "ar": "لا توجد شكاوى"
+  },
+  "no_complaints_hint": {
+    "en": "Tap + to submit a new complaint",
+    "ar": "اضغط + لإرسال شكوى جديدة"
+  },
+  "complaint_details_title": {
+    "en": "Complaint Details",
+    "ar": "تفاصيل الشكوى"
+  },
+  "complaint_not_found": {
+    "en": "Complaint not found",
+    "ar": "لم يُعثر على الشكوى"
+  },
+  "replies_label": {
+    "en": "Replies",
+    "ar": "الردود"
+  },
+  "update_status_label": {
+    "en": "Update status:",
+    "ar": "تحديث الحالة:"
+  },
+  "write_reply_hint": {
+    "en": "Write a reply...",
+    "ar": "اكتب ردًا..."
+  },
+  "support_team": {
+    "en": "Support Team",
+    "ar": "فريق الدعم"
+  },
+  "you_label": {
+    "en": "You",
+    "ar": "أنت"
+  },
+  "ago_minutes_short": {
+    "en": "{n}m ago",
+    "ar": "منذ {n} د"
+  },
+  "ago_hours_short": {
+    "en": "{n}h ago",
+    "ar": "منذ {n} س"
+  },
+  "ago_days": {
+    "en": "{n}d ago",
+    "ar": "منذ {n} يوم"
+  },
+  "ago_minutes_long": {
+    "en": "{n} minutes ago",
+    "ar": "منذ {n} دقيقة"
+  },
+  "ago_hours_long": {
+    "en": "{n} hours ago",
+    "ar": "منذ {n} ساعة"
+  },
+  "new_complaint_tab": {
+    "en": "New Complaint",
+    "ar": "شكوى جديدة"
+  },
+  "my_complaints_tab": {
+    "en": "My Complaints",
+    "ar": "شكاواي"
+  },
+  "complaint_sent_success": {
+    "en": "Complaint submitted successfully",
+    "ar": "تم إرسال الشكوى بنجاح"
+  },
+  "error_try_again": {
+    "en": "An error occurred, please try again",
+    "ar": "حدث خطأ، حاول مرة أخرى"
+  },
+  "complaint_title_label": {
+    "en": "Complaint Title",
+    "ar": "عنوان الشكوى"
+  },
+  "complaint_title_hint": {
+    "en": "Write the complaint title...",
+    "ar": "اكتب عنوان الشكوى..."
+  },
+  "title_too_short": {
+    "en": "Title is too short",
+    "ar": "العنوان قصير جداً"
+  },
+  "category_label": {
+    "en": "Category",
+    "ar": "التصنيف"
+  },
+  "priority_label": {
+    "en": "Priority",
+    "ar": "الأولوية"
+  },
+  "detailed_description_label": {
+    "en": "Detailed Description",
+    "ar": "الوصف التفصيلي"
+  },
+  "description_complaint_hint": {
+    "en": "Describe your problem in detail...",
+    "ar": "اشرح مشكلتك بالتفصيل..."
+  },
+  "description_too_short": {
+    "en": "Description is too short",
+    "ar": "الوصف قصير جداً"
+  },
+  "send_complaint_btn": {
+    "en": "Submit Complaint",
+    "ar": "إرسال الشكوى"
+  },
+  "no_previous_complaints": {
+    "en": "No previous complaints",
+    "ar": "لا توجد شكاوى سابقة"
+  },
+  "complaints_appear_after_send": {
+    "en": "Your complaints will appear here after submission",
+    "ar": "شكاواك ستظهر هنا بعد إرسالها"
+  },
+  "no_reply_yet": {
+    "en": "No reply yet, thank you for your patience",
+    "ar": "لم يتم الرد بعد، شكراً لصبرك"
+  },
+  "resolved_at_prefix": {
+    "en": "Complaint resolved on",
+    "ar": "تم حل الشكوى في"
+  },
+  "replies_count_label": {
+    "en": "Replies ({count})",
+    "ar": "الردود ({count})"
+  },
+  "saved_payment_methods_title": {
+    "en": "Saved Payment Methods",
+    "ar": "طرق الدفع المحفوظة"
+  },
+  "my_cards_tab": {
+    "en": "💳  My Cards",
+    "ar": "💳  بطاقاتي"
+  },
+  "my_bank_accounts_tab": {
+    "en": "🏦  My Bank Accounts",
+    "ar": "🏦  حساباتي البنكية"
+  },
+  "moyasar_secure_payment": {
+    "en": "Secure Payment via Moyasar",
+    "ar": "دفع آمن عبر Moyasar"
+  },
+  "moyasar_card_save_notice": {
+    "en": "Your card is securely saved via Moyasar. We do not store your card data.",
+    "ar": "يتم حفظ بطاقتك بشكل آمن عبر Moyasar. لا تُحفظ بيانات بطاقتك لدينا."
+  },
+  "fee_lowest": {
+    "en": "Lowest",
+    "ar": "الأقل"
+  },
+  "how_to_save_card": {
+    "en": "How do I save my card?",
+    "ar": "كيف أحفظ بطاقتي؟"
+  },
+  "save_card_step1": {
+    "en": "Go to any paid course and tap \"Subscribe Now\"",
+    "ar": "اذهب إلى أي كورس مدفوع واضغط \"اشترك الآن\""
+  },
+  "save_card_step2": {
+    "en": "Choose a payment method (Mada / Visa / Mastercard)",
+    "ar": "اختر طريقة الدفع (مدى / فيزا / ماستركارد)"
+  },
+  "save_card_step3": {
+    "en": "Enter your card details on the secure Moyasar page",
+    "ar": "أدخل بيانات بطاقتك في صفحة Moyasar الآمنة"
+  },
+  "save_card_step4": {
+    "en": "The card is saved automatically for future transactions",
+    "ar": "تُحفظ البطاقة تلقائياً لعمليات قادمة بنقرة واحدة"
+  },
+  "card_holder_label": {
+    "en": "Card Holder",
+    "ar": "صاحب البطاقة"
+  },
+  "expires_label": {
+    "en": "Expires",
+    "ar": "ينتهي"
+  },
+  "default_card_badge": {
+    "en": "Default",
+    "ar": "افتراضية"
+  },
+  "default_label": {
+    "en": "Default",
+    "ar": "افتراضي"
+  },
+  "delete_card_title": {
+    "en": "Delete Card",
+    "ar": "حذف البطاقة"
+  },
+  "delete_card_confirm": {
+    "en": "Are you sure you want to delete this card?",
+    "ar": "هل تريد حذف هذه البطاقة؟"
+  },
+  "bank_name_label": {
+    "en": "Bank Name",
+    "ar": "اسم البنك"
+  },
+  "add_bank_account": {
+    "en": "Add Bank Account",
+    "ar": "إضافة حساب بنكي"
+  },
+  "account_holder_name": {
+    "en": "Account Holder Name",
+    "ar": "اسم صاحب الحساب"
+  },
+  "iban_label": {
+    "en": "IBAN Number",
+    "ar": "رقم الآيبان (IBAN)"
+  },
+  "iban_too_short": {
+    "en": "IBAN is too short",
+    "ar": "الآيبان قصير"
+  },
+  "iban_too_short_full": {
+    "en": "IBAN is too short",
+    "ar": "الآيبان قصير جداً"
+  },
+  "save_account_btn": {
+    "en": "Save Account",
+    "ar": "حفظ الحساب"
+  },
+  "bank_account_saved_success": {
+    "en": "Bank account saved ✓",
+    "ar": "تم حفظ الحساب البنكي ✓"
+  },
+  "card_label": {
+    "en": "Card",
+    "ar": "بطاقة"
+  },
+  "payout_accounts_title": {
+    "en": "Receiving Accounts",
+    "ar": "حسابات الاستلام"
+  },
+  "payout_system_label": {
+    "en": "Payout System",
+    "ar": "نظام الاستلام"
+  },
+  "payout_system_desc": {
+    "en": "Your earnings will be transferred to your bank account after deducting the platform commission (10%) and tax (15%).",
+    "ar": "يتم تحويل أرباحك إلى الحساب البنكي بعد خصم عمولة المنصة (10%) والضريبة (15%) منها."
+  },
+  "your_bank_accounts": {
+    "en": "Your Bank Accounts",
+    "ar": "حساباتك البنكية"
+  },
+  "add_your_bank_account": {
+    "en": "Add Your Bank Account",
+    "ar": "أضف حسابك البنكي"
+  },
+  "add_new_account": {
+    "en": "Add New Account",
+    "ar": "إضافة حساب جديد"
+  },
+  "swift_code_optional": {
+    "en": "Swift Code (optional)",
+    "ar": "كود السويفت (اختياري)"
+  },
+  "set_as_default": {
+    "en": "Set as default account",
+    "ar": "تعيين كحساب افتراضي"
+  },
+  "save_bank_account_btn": {
+    "en": "Save Bank Account",
+    "ar": "حفظ الحساب البنكي"
+  },
+  "delete_account_title": {
+    "en": "Delete Account",
+    "ar": "حذف الحساب"
+  },
+  "delete_account_confirm": {
+    "en": "Are you sure you want to delete this bank account?",
+    "ar": "هل أنت متأكد من حذف هذا الحساب البنكي؟"
+  },
+  "bank_name_required": {
+    "en": "Enter bank name",
+    "ar": "أدخل اسم البنك"
+  },
+  "account_name_required": {
+    "en": "Enter account holder name",
+    "ar": "أدخل اسم صاحب الحساب"
+  },
+  "iban_required": {
+    "en": "Enter IBAN number",
+    "ar": "أدخل رقم الآيبان"
+  },
+  "course_updated_success": {
+    "en": "Course updated successfully ✓",
+    "ar": "تم تحديث الدورة بنجاح ✓"
+  },
+  "course_created_success": {
+    "en": "Course created successfully ✓",
+    "ar": "تم إنشاء الدورة بنجاح ✓"
+  },
+  "error_please_retry": {
+    "en": "An error occurred, please try again",
+    "ar": "حدث خطأ، يرجى المحاولة مجدداً"
+  },
+  "basic_info_card_title": {
+    "en": "Basic Information",
+    "ar": "المعلومات الأساسية"
+  },
+  "course_title_validator": {
+    "en": "Please enter a course title",
+    "ar": "يرجى إدخال عنوان الدورة"
+  },
+  "price_and_duration_title": {
+    "en": "Price & Duration",
+    "ar": "السعر والمدة"
+  },
+  "price_label": {
+    "en": "Price",
+    "ar": "السعر"
+  },
+  "expected_hours_label": {
+    "en": "Expected Hours",
+    "ar": "الساعات المتوقعة"
+  },
+  "hours_label": {
+    "en": "Hours",
+    "ar": "الساعات"
+  },
+  "classification_card_title": {
+    "en": "Classification & Teaching Type",
+    "ar": "التصنيف ونوع التدريس"
+  },
+  "choose_specialization": {
+    "en": "Choose specialization",
+    "ar": "اختر التخصص"
+  },
+  "course_type_label": {
+    "en": "Course Type",
+    "ar": "نوع الدورة"
+  },
+  "course_type_hint": {
+    "en": "Live / Recorded / Both",
+    "ar": "مباشر / مسجل / كلاهما"
+  },
+  "certificates_section": {
+    "en": "Certificates",
+    "ar": "الشهادات"
+  },
+  "add_certificate": {
+    "en": "Add certificate",
+    "ar": "أضف شهادة"
+  },
+  "tools_section": {
+    "en": "Required Tools",
+    "ar": "الأدوات المطلوبة"
+  },
+  "add_tool": {
+    "en": "Add tool",
+    "ar": "أضف أداة"
+  },
+  "prerequisites_section": {
+    "en": "Prerequisites",
+    "ar": "المتطلبات السابقة"
+  },
+  "add_prerequisite": {
+    "en": "Add prerequisite",
+    "ar": "أضف متطلب"
+  },
+  "edit_course_title": {
+    "en": "Edit Course",
+    "ar": "تعديل الدورة"
+  },
+  "create_new_course_title": {
+    "en": "Create New Course",
+    "ar": "إنشاء دورة جديدة"
+  },
+  "edit_badge": {
+    "en": "Edit",
+    "ar": "تعديل"
+  },
+  "new_badge": {
+    "en": "New",
+    "ar": "جديد"
+  },
+  "create_course_btn": {
+    "en": "Create Course",
+    "ar": "إنشاء الدورة"
+  },
+  "no_changes_to_save": {
+    "en": "No changes to save",
+    "ar": "لا يوجد تعديلات للحفظ"
+  },
+  "enter_course_title_first": {
+    "en": "Enter a course title first",
+    "ar": "أدخل عنوان الدورة أولاً"
+  },
+  "my_earnings_title": {
+    "en": "My Earnings",
+    "ar": "أرباحي"
+  },
+  "refresh_tooltip": {
+    "en": "Refresh",
+    "ar": "تحديث"
+  },
+  "available_balance_label": {
+    "en": "Available Balance for Withdrawal",
+    "ar": "الرصيد المتاح للسحب"
+  },
+  "sar_currency": {
+    "en": "SAR",
+    "ar": "ر.س"
+  },
+  "pending_processing": {
+    "en": "Pending processing",
+    "ar": "قيد المعالجة"
+  },
+  "total_earnings_label": {
+    "en": "Total Earnings",
+    "ar": "إجمالي الأرباح"
+  },
+  "withdrawn_label": {
+    "en": "Withdrawn",
+    "ar": "تم سحبه"
+  },
+  "sales_label": {
+    "en": "Sales",
+    "ar": "المبيعات"
+  },
+  "earnings_tab": {
+    "en": "Earnings",
+    "ar": "الأرباح"
+  },
+  "withdrawals_tab": {
+    "en": "Withdrawals",
+    "ar": "السحوبات"
+  },
+  "banks_tab": {
+    "en": "Banks",
+    "ar": "البنوك"
+  },
+  "new_withdrawal_request": {
+    "en": "New Withdrawal Request",
+    "ar": "طلب سحب جديد"
+  },
+  "filter_pending": {
+    "en": "Pending",
+    "ar": "قيد الانتظار"
+  },
+  "filter_settled": {
+    "en": "Settled",
+    "ar": "مُحوّل"
+  },
+  "filter_refunded": {
+    "en": "Refunded",
+    "ar": "مُسترد"
+  },
+  "records_count_suffix": {
+    "en": "records",
+    "ar": "سجل"
+  },
+  "no_earnings_yet": {
+    "en": "No earnings yet",
+    "ar": "لا توجد أرباح حتى الآن"
+  },
+  "course_prefix": {
+    "en": "Course #",
+    "ar": "دورة #"
+  },
+  "commission_prefix": {
+    "en": "Commission:",
+    "ar": "عمولة:"
+  },
+  "earning_status_settled": {
+    "en": "Settled",
+    "ar": "مُحوّل"
+  },
+  "earning_status_refunded": {
+    "en": "Refunded",
+    "ar": "مُسترد"
+  },
+  "earning_status_pending": {
+    "en": "Pending",
+    "ar": "قيد الانتظار"
+  },
+  "withdrawal_status_paid": {
+    "en": "Transferred ✓",
+    "ar": "مُحوّل ✓"
+  },
+  "withdrawal_status_rejected": {
+    "en": "Rejected",
+    "ar": "مرفوض"
+  },
+  "withdrawal_status_approved": {
+    "en": "Approved",
+    "ar": "موافق عليه"
+  },
+  "withdrawal_status_pending": {
+    "en": "Under Review",
+    "ar": "قيد المراجعة"
+  },
+  "rejection_reason_prefix": {
+    "en": "Reason:",
+    "ar": "السبب:"
+  },
+  "bank_reference_prefix": {
+    "en": "Bank Reference:",
+    "ar": "المرجع البنكي:"
+  },
+  "cancel_request_btn": {
+    "en": "Cancel Request",
+    "ar": "إلغاء الطلب"
+  },
+  "no_withdrawals_yet": {
+    "en": "No withdrawal requests yet",
+    "ar": "لا توجد طلبات سحب بعد"
+  },
+  "cancel_withdrawal_title": {
+    "en": "Cancel Withdrawal",
+    "ar": "إلغاء طلب السحب"
+  },
+  "cancel_withdrawal_confirm": {
+    "en": "Do you want to cancel this request? The amount will be returned to your available balance.",
+    "ar": "هل تريد إلغاء هذا الطلب؟ سيعود المبلغ إلى رصيدك المتاح."
+  },
+  "go_back_btn": {
+    "en": "Back",
+    "ar": "تراجع"
+  },
+  "default_account_badge": {
+    "en": "Default",
+    "ar": "الافتراضي"
+  },
+  "no_bank_accounts_msg": {
+    "en": "No bank accounts found. Please add one first.",
+    "ar": "لا توجد حسابات بنكية. يرجى إضافة حساب أولاً."
+  },
+  "available_balance_prefix": {
+    "en": "Available balance:",
+    "ar": "الرصيد المتاح:"
+  },
+  "amount_sar_label": {
+    "en": "Amount (SAR)",
+    "ar": "المبلغ (ر.س)"
+  },
+  "invalid_amount_error": {
+    "en": "Enter a valid amount",
+    "ar": "أدخل مبلغاً صحيحاً"
+  },
+  "min_withdrawal_error": {
+    "en": "Minimum withdrawal is 50 SAR",
+    "ar": "الحد الأدنى للسحب 50 ر.س"
+  },
+  "exceeds_balance_error": {
+    "en": "Exceeds available balance",
+    "ar": "يتجاوز الرصيد المتاح"
+  },
+  "quick_all_btn": {
+    "en": "All",
+    "ar": "الكل"
+  },
+  "receiving_account_label": {
+    "en": "Receiving Account",
+    "ar": "حساب الاستلام"
+  },
+  "admin_note_label": {
+    "en": "Note to Admin (optional)",
+    "ar": "ملاحظة للإدارة (اختياري)"
+  },
+  "admin_note_hint": {
+    "en": "Any comment or special request...",
+    "ar": "أي تعليق أو طلب خاص..."
+  },
+  "sending_label": {
+    "en": "Sending...",
+    "ar": "جارٍ الإرسال..."
+  },
+  "send_withdrawal_btn": {
+    "en": "Send Withdrawal Request",
+    "ar": "إرسال طلب السحب"
+  },
+  "select_bank_account_error": {
+    "en": "Please select a bank account",
+    "ar": "يرجى اختيار حساب بنكي"
+  },
+  "bank_name_example_hint": {
+    "en": "e.g. Al Rajhi Bank",
+    "ar": "مثال: البنك الأهلي السعودي"
+  },
+  "account_holder_full_name_hint": {
+    "en": "Full name",
+    "ar": "الاسم الكامل"
+  },
+  "iban_format_hint": {
+    "en": "SA00 0000 0000 0000 0000 00",
+    "ar": "SA00 0000 0000 0000 0000 00"
+  },
+  "iban_format_error": {
+    "en": "Must start with SA and be at least 22 characters",
+    "ar": "يبدأ بـ SA ولا يقل عن 22 خانة"
+  },
+  "swift_code_optional_field": {
+    "en": "SWIFT Code (optional)",
+    "ar": "SWIFT Code (اختياري)"
+  },
+  "swift_hint": {
+    "en": "BSFASA",
+    "ar": "BSFASA"
+  },
+  "set_as_default_checkbox": {
+    "en": "Set as default account",
+    "ar": "تعيين كحساب افتراضي"
+  },
+  "saving_label": {
+    "en": "Saving...",
+    "ar": "جارٍ الحفظ..."
+  },
+  "save_account_label": {
+    "en": "Save Account",
+    "ar": "حفظ الحساب"
+  },
+  "loading_label": {
+    "en": "Loading...",
+    "ar": "جارٍ التحميل..."
+  },
+  "failed_to_load": {
+    "en": "Failed to load data",
+    "ar": "تعذّر تحميل البيانات"
+  },
+  "retry_btn": {
+    "en": "Retry",
+    "ar": "إعادة المحاولة"
+  },
+  "connection_timeout_error": {
+    "en": "Connection timed out. Check your internet.",
+    "ar": "انتهت مهلة الاتصال. تحقق من الإنترنت."
+  },
+  "connection_error": {
+    "en": "Could not connect to server.",
+    "ar": "تعذّر الاتصال بالخادم."
+  },
+  "server_error_prefix": {
+    "en": "Server error",
+    "ar": "خطأ من الخادم"
+  },
+  "edit_session_title": {
+    "en": "Edit Lesson",
+    "ar": "تعديل الدرس"
+  },
+  "new_session_title": {
+    "en": "New Lesson",
+    "ar": "درس جديد"
+  },
+  "session_edited_success": {
+    "en": "Lesson updated",
+    "ar": "تم تعديل الدرس"
+  },
+  "session_added_success": {
+    "en": "Lesson added",
+    "ar": "تم إضافة الدرس"
+  },
+  "generic_error": {
+    "en": "An error occurred",
+    "ar": "حدث خطأ"
+  },
+  "session_name_label": {
+    "en": "Lesson Name",
+    "ar": "اسم الدرس"
+  },
+  "session_name_validator": {
+    "en": "Enter lesson name",
+    "ar": "أدخل اسم الدرس"
+  },
+  "session_description_label": {
+    "en": "Lesson Description (optional)",
+    "ar": "وصف الدرس (اختياري)"
+  },
+  "duration_minutes_label": {
+    "en": "Duration (minutes)",
+    "ar": "المدة (دقيقة)"
+  },
+  "order_label": {
+    "en": "Order",
+    "ar": "الترتيب"
+  },
+  "pick_live_datetime": {
+    "en": "Choose live session date & time",
+    "ar": "اختر موعد الحصة المباشرة"
+  },
+  "session_type_label": {
+    "en": "Lesson Type",
+    "ar": "نوع الدرس"
+  },
+  "pre_recorded_type": {
+    "en": "Pre-recorded",
+    "ar": "مسجّل مسبقاً"
+  },
+  "live_type": {
+    "en": "Live",
+    "ar": "مباشر"
+  },
+  "lk_publish_title": {
+    "en": "Publish",
+    "ar": "نشر"
+  },
+  "lk_publish_content": {
+    "en": "Would you like to publish your Camera & Mic?",
+    "ar": "هل تريد نشر الكاميرا والميكروفون؟"
+  },
+  "lk_play_audio_title": {
+    "en": "Play Audio",
+    "ar": "تشغيل الصوت"
+  },
+  "lk_play_audio_content": {
+    "en": "You need to manually activate audio PlayBack for iOS Safari!",
+    "ar": "يجب تفعيل تشغيل الصوت يدوياً لـ iOS Safari!"
+  },
+  "lk_unpublish_title": {
+    "en": "UnPublish",
+    "ar": "إيقاف النشر"
+  },
+  "lk_unpublish_content": {
+    "en": "Would you like to un-publish your Camera & Mic?",
+    "ar": "هل تريد إيقاف نشر الكاميرا والميكروفون؟"
+  },
+  "lk_error_title": {
+    "en": "Error",
+    "ar": "خطأ"
+  },
+  "lk_disconnect_title": {
+    "en": "Disconnect",
+    "ar": "قطع الاتصال"
+  },
+  "lk_disconnect_content": {
+    "en": "Are you sure you want to disconnect?",
+    "ar": "هل أنت متأكد من قطع الاتصال؟"
+  },
+  "lk_reconnect_title": {
+    "en": "Reconnect",
+    "ar": "إعادة الاتصال"
+  },
+  "lk_reconnect_content": {
+    "en": "This will force a reconnection",
+    "ar": "سيتم إجبار إعادة الاتصال"
+  },
+  "lk_reconnect_success_content": {
+    "en": "Reconnection was successful.",
+    "ar": "تمت إعادة الاتصال بنجاح."
+  },
+  "lk_send_data_title": {
+    "en": "Send data",
+    "ar": "إرسال البيانات"
+  },
+  "lk_send_data_content": {
+    "en": "This will send a sample data to all participants in the room",
+    "ar": "سيتم إرسال بيانات تجريبية لجميع المشاركين في الغرفة"
+  },
+  "lk_received_data_title": {
+    "en": "Received data",
+    "ar": "البيانات المستلمة"
+  },
+  "lk_recording_reminder_title": {
+    "en": "Room recording reminder",
+    "ar": "تذكير تسجيل الغرفة"
+  },
+  "lk_recording_active": {
+    "en": "Room recording is active.",
+    "ar": "تسجيل الغرفة نشط."
+  },
+  "lk_recording_stopped": {
+    "en": "Room recording is stopped.",
+    "ar": "تم إيقاف تسجيل الغرفة."
+  },
+  "lk_subscribe_permission_title": {
+    "en": "Allow subscription",
+    "ar": "السماح بالاشتراك"
+  },
+  "lk_subscribe_permission_content": {
+    "en": "Allow all participants to subscribe tracks published by local participant?",
+    "ar": "السماح لجميع المشاركين بالاشتراك في المسارات المنشورة من قِبَل المشارك المحلي؟"
+  },
+  "lk_simulate_scenario_title": {
+    "en": "Simulate Scenario",
+    "ar": "محاكاة السيناريو"
+  },
+  "lk_yes": {
+    "en": "YES",
+    "ar": "نعم"
+  },
+  "lk_no": {
+    "en": "NO",
+    "ar": "لا"
+  },
+  "lk_ok": {
+    "en": "OK",
+    "ar": "حسناً"
+  },
+  "lk_ignore": {
+    "en": "Ignore",
+    "ar": "تجاهل"
+  },
+  "lk_play_audio_btn": {
+    "en": "Play Audio",
+    "ar": "تشغيل الصوت"
+  },
+  "lk_send_btn": {
+    "en": "Send",
+    "ar": "إرسال"
+  },
+  "lk_reconnect_btn": {
+    "en": "Reconnect",
+    "ar": "إعادة الاتصال"
+  },
+  "lk_disconnect_btn": {
+    "en": "Disconnect",
+    "ar": "قطع الاتصال"
   }
 }

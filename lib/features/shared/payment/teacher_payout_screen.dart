@@ -1,4 +1,4 @@
-/// teacher_payout_screen.dart
+// teacher_payout_screen.dart
 /// Teacher manages bank accounts for receiving course revenue payouts.
 /// Premium design: deep emerald + gold fintech aesthetic, animated hero card.
 library;
@@ -37,60 +37,60 @@ class _TeacherPayoutView extends StatelessWidget {
   Widget build(BuildContext context) {
     return BasePage(
       useWebCard: true,
-      child:  SafeArea(
-          child: Column(
-            children: [
-              ScreenAppBar(title: 'حسابات الاستلام'),
-              Expanded(
-                child: Consumer<SavedMethodsProvider>(
-                  builder: (context, p, _) {
-                    if (p.isLoading && !p.fetched) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    return SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // ── Info banner ──────────────────────────────────
-                          _InfoBanner(),
-                          const SizedBox(height: 24),
+      child: SafeArea(
+        child: Column(
+          children: [
+            ScreenAppBar(title: 'payout_accounts_title'.tr),
+            Expanded(
+              child: Consumer<SavedMethodsProvider>(
+                builder: (context, p, _) {
+                  if (p.isLoading && !p.fetched) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  return SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // ── Info banner ──────────────────────────────────
+                        _InfoBanner(),
+                        const SizedBox(height: 24),
 
-                          // ── Saved bank accounts ──────────────────────────
-                          if (p.bankAccounts.isNotEmpty) ...[
-                            _SectionHeader(
-                              title: 'حساباتك البنكية',
-                              icon: Icons.account_balance_rounded,
-                            ),
-                            const SizedBox(height: 14),
-                            ...p.bankAccounts.map(
-                              (m) => Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: _BankAccountCard(method: m),
-                              ),
-                            ),
-                            const SizedBox(height: 28),
-                          ],
-
-                          // ── Add new ──────────────────────────────────────
+                        // ── Saved bank accounts ──────────────────────────
+                        if (p.bankAccounts.isNotEmpty) ...[
                           _SectionHeader(
-                            title: p.bankAccounts.isEmpty
-                                ? 'أضف حسابك البنكي'
-                                : 'إضافة حساب جديد',
-                            icon: Icons.add_card_rounded,
+                            title: 'your_bank_accounts'.tr,
+                            icon: Icons.account_balance_rounded,
                           ),
-                          const SizedBox(height: 16),
-                          const _AddBankForm(),
+                          const SizedBox(height: 14),
+                          ...p.bankAccounts.map(
+                                (m) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _BankAccountCard(method: m),
+                            ),
+                          ),
+                          const SizedBox(height: 28),
                         ],
-                      ),
-                    );
-                  },
-                ),
+
+                        // ── Add new ──────────────────────────────────────
+                        _SectionHeader(
+                          title: p.bankAccounts.isEmpty
+                              ? 'add_your_bank_account'.tr
+                              : 'add_new_account'.tr,
+                          icon: Icons.add_card_rounded,
+                        ),
+                        const SizedBox(height: 16),
+                        const _AddBankForm(),
+                      ],
+                    ),
+                  );
+                },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
+      ),
     );
   }
 }
@@ -104,11 +104,8 @@ class _InfoBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            const Color(0xFF1B4332),
-            const Color(0xFF2D6A4F),
-          ],
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1B4332), Color(0xFF2D6A4F)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -138,16 +135,18 @@ class _InfoBanner extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('نظام الاستلام',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14,
-                      fontFamily: 'bahji',
-                    )),
+                Text(
+                  'payout_system_label'.tr,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    fontFamily: 'bahji',
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Text(
-                  'يتم تحويل أرباحك إلى الحساب البنكي بعد خصم عمولة المنصة (10%) والضريبة (15%) منها.',
+                  'payout_system_desc'.tr,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: .8),
                     fontSize: 11,
@@ -224,7 +223,7 @@ class _BankAccountCard extends StatelessWidget {
                   ? const Color(0xFF1B4332).withValues(alpha: .06)
                   : Colors.transparent,
               borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
+              const BorderRadius.vertical(top: Radius.circular(16)),
             ),
             child: Row(
               children: [
@@ -257,14 +256,14 @@ class _BankAccountCard extends StatelessWidget {
                 if (method.isDefault)
                   Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: const Color(0xFF2D6A4F).withValues(alpha: .1),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Text(
-                      'افتراضي',
-                      style: TextStyle(
+                    child: Text(
+                      'default_label'.tr,
+                      style: const TextStyle(
                         color: Color(0xFF2D6A4F),
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -304,15 +303,15 @@ class _BankAccountCard extends StatelessWidget {
                   TextButton.icon(
                     onPressed: () => p.setDefault(method.id),
                     icon: const Icon(Icons.star_border_rounded, size: 16),
-                    label: const Text('افتراضي',
-                        style: TextStyle(fontFamily: 'bahji', fontSize: 12)),
+                    label: Text('default_label'.tr,
+                        style: const TextStyle(fontFamily: 'bahji', fontSize: 12)),
                     style: TextButton.styleFrom(foregroundColor: c.primary),
                   ),
                 IconButton(
                   onPressed: () => _confirmDelete(context, p, method.id),
                   icon: Icon(Icons.delete_outline_rounded,
                       size: 20, color: c.danger),
-                  tooltip: 'حذف',
+                  tooltip: 'btn_delete'.tr,
                 ),
               ],
             ),
@@ -338,17 +337,16 @@ class _BankAccountCard extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('حذف الحساب', style: TextStyle(fontFamily: 'bahji')),
-        content: const Text('هل أنت متأكد من حذف هذا الحساب البنكي؟',
-            style: TextStyle(fontFamily: 'bahji')),
+        title: Text('delete_account_title'.tr, style: const TextStyle(fontFamily: 'bahji')),
+        content: Text('delete_account_confirm'.tr, style: const TextStyle(fontFamily: 'bahji')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء', style: TextStyle(fontFamily: 'bahji')),
+            child: Text('cancel'.tr, style: const TextStyle(fontFamily: 'bahji')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text('حذف',
+            child: Text('btn_delete'.tr,
                 style: TextStyle(
                     color: context.colors.danger, fontFamily: 'bahji')),
           ),
@@ -388,29 +386,29 @@ class _AddBankFormState extends State<_AddBankForm> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    if (mounted) if (mounted) setState(() => _saving = true);
+    if (mounted) setState(() => _saving = true);
     final p = context.read<SavedMethodsProvider>();
     final result = await p.saveBankAccount(
       bankName: _bankCtrl.text.trim(),
       accountName: _nameCtrl.text.trim(),
       iban: _ibanCtrl.text.trim(),
       swiftCode:
-          _swiftCtrl.text.trim().isNotEmpty ? _swiftCtrl.text.trim() : null,
+      _swiftCtrl.text.trim().isNotEmpty ? _swiftCtrl.text.trim() : null,
       setAsDefault: _setAsDefault,
     );
     if (mounted) {
-      if (mounted) setState(() => _saving = false);
+      setState(() => _saving = false);
       if (result != null) {
         _bankCtrl.clear();
         _nameCtrl.clear();
         _ibanCtrl.clear();
         _swiftCtrl.clear();
         ScaffoldMessenger.of(context).showSnackBar(
-          _snack('تم حفظ الحساب البنكي ✓', context.colors.success),
+          _snack('bank_account_saved_success'.tr, context.colors.success),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          _snack(p.errorMessage ?? 'حدث خطأ', context.colors.danger),
+          _snack(p.errorMessage ?? 'error_occurred'.tr, context.colors.danger),
         );
       }
     }
@@ -434,30 +432,30 @@ class _AddBankFormState extends State<_AddBankForm> {
           children: [
             MyTextField(
               controller: _bankCtrl,
-              label: 'اسم البنك',
-              validator: (v) => (v?.isEmpty ?? true) ? 'أدخل اسم البنك' : null,
+              label: 'bank_name_label'.tr,
+              validator: (v) => (v?.isEmpty ?? true) ? 'bank_name_required'.tr : null,
             ),
             const SizedBox(height: 14),
             MyTextField(
               controller: _nameCtrl,
-              label: 'اسم صاحب الحساب',
+              label: 'account_holder_name'.tr,
               validator: (v) =>
-                  (v?.isEmpty ?? true) ? 'أدخل اسم صاحب الحساب' : null,
+              (v?.isEmpty ?? true) ? 'account_name_required'.tr : null,
             ),
             const SizedBox(height: 14),
             MyTextField(
               controller: _ibanCtrl,
-              label: 'رقم الآيبان (IBAN)',
+              label: 'iban_label'.tr,
               validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'أدخل رقم الآيبان';
-                if (v.trim().length < 15) return 'الآيبان قصير جداً';
+                if (v == null || v.trim().isEmpty) return 'iban_required'.tr;
+                if (v.trim().length < 15) return 'iban_too_short_full'.tr;
                 return null;
               },
             ),
             const SizedBox(height: 14),
             MyTextField(
               controller: _swiftCtrl,
-              label: 'كود السويفت (اختياري)',
+              label: 'swift_code_optional'.tr,
             ),
             const SizedBox(height: 16),
             // Set as default toggle
@@ -470,7 +468,7 @@ class _AddBankFormState extends State<_AddBankForm> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text('تعيين كحساب افتراضي',
+                    child: Text('set_as_default'.tr,
                         style: c.label.copyWith(fontSize: 13)),
                   ),
                   Switch.adaptive(
@@ -485,7 +483,7 @@ class _AddBankFormState extends State<_AddBankForm> {
             ),
             const SizedBox(height: 22),
             MyPrimaryButton(
-              label: 'حفظ الحساب البنكي',
+              label: 'save_bank_account_btn'.tr,
               isLoading: _saving,
               onPressed: _save,
             ),
@@ -497,9 +495,9 @@ class _AddBankFormState extends State<_AddBankForm> {
 }
 
 SnackBar _snack(String msg, Color color) => SnackBar(
-      content: Text(msg,
-          style: const TextStyle(fontFamily: 'bahji', color: Colors.white)),
-      backgroundColor: color,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    );
+  content: Text(msg,
+      style: const TextStyle(fontFamily: 'bahji', color: Colors.white)),
+  backgroundColor: color,
+  behavior: SnackBarBehavior.floating,
+  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+);

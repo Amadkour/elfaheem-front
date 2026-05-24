@@ -30,9 +30,9 @@ class CourseFormScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ChangeNotifierProvider(
-        create: (_) => CourseFormProvider(api: ApiClient()),
-        child: _CourseFormInner(course: course),
-      );
+    create: (_) => CourseFormProvider(api: ApiClient()),
+    child: _CourseFormInner(course: course),
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -114,11 +114,8 @@ class _CourseFormInnerState extends State<_CourseFormInner>
 
   bool get _hasChanges {
     if (!_isEdit) {
-      /// create new course
       return _titleCtrl.text.trim().isNotEmpty;
     }
-
-    /// update
     final c = widget.course!;
     final newPrice = double.tryParse(_priceCtrl.text) ?? c.price;
     final newHours = double.tryParse(_hoursCtrl.text) ?? c.totalHours;
@@ -144,7 +141,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
         widget.course!,
         name: _titleCtrl.text.trim(),
         description:
-            _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+        _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
         fees: double.tryParse(_priceCtrl.text),
         totalHours: double.tryParse(_hoursCtrl.text),
         logoFile: _logoFile,
@@ -156,7 +153,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
         title: _titleCtrl.text.trim(),
         type: type,
         description:
-            _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+        _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
         fees: double.tryParse(_priceCtrl.text) ?? 0,
         totalHours: double.tryParse(_hoursCtrl.text),
         logoFile: _logoFile,
@@ -166,21 +163,19 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     if (!mounted) return;
 
     if (result != null) {
-      // Notify the global list provider
       if (_isEdit) {
         listProvider.onCourseUpdated(result);
       } else {
         listProvider.onCourseCreated(result);
       }
-
       _showSnack(
-        _isEdit ? 'تم تحديث الدورة بنجاح ✓' : 'تم إنشاء الدورة بنجاح ✓',
+        _isEdit ? 'course_updated_success'.tr : 'course_created_success'.tr,
         context.colors.success,
       );
       Navigator.pop(context, result);
     } else {
       _showSnack(
-        formProvider.errorMessage ?? 'حدث خطأ، يرجى المحاولة مجدداً',
+        formProvider.errorMessage ?? 'error_please_retry'.tr,
         context.colors.danger,
       );
     }
@@ -208,174 +203,174 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     return BasePage(
       useWebCard: true,
       child: FadeTransition(
-          opacity: _fadeAnim,
-          child: Column(children: [
-            // ── Gradient hero header ───────────────────────────────────────
-            _HeroHeader(
-              isEdit: _isEdit,
-              logoBytes: _logoBytes,
-              imageUrl: widget.course?.imageUrl,
-              logoFile: _logoFile,
-              onChange: (XFile file) async {
-                _logoBytes = await file.readAsBytes();
-                setState(() {
-                  _logoFile = file;
-                });
-              },
-            ),
-            // ── Scrollable form ────────────────────────────────────────────
-            Expanded(
-              child: Form(
-                key: _formKey,
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Basic info card
-                      _FormCard(
-                        icon: Icons.info_outline_rounded,
-                        title: 'المعلومات الأساسية',
-                        children: [
-                          _LabeledField(
-                            label: 'عنوان الدورة',
-                            child: MyTextField(
-                              controller: _titleCtrl,
-                              label: 'عنوان الدورة',
-                              validator: (v) => (v?.trim().isEmpty ?? true)
-                                  ? 'يرجى إدخال عنوان الدورة'
-                                  : null,
+        opacity: _fadeAnim,
+        child: Column(children: [
+          // ── Gradient hero header ───────────────────────────────────────
+          _HeroHeader(
+            isEdit: _isEdit,
+            logoBytes: _logoBytes,
+            imageUrl: widget.course?.imageUrl,
+            logoFile: _logoFile,
+            onChange: (XFile file) async {
+              _logoBytes = await file.readAsBytes();
+              setState(() {
+                _logoFile = file;
+              });
+            },
+          ),
+          // ── Scrollable form ────────────────────────────────────────────
+          Expanded(
+            child: Form(
+              key: _formKey,
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Basic info card
+                    _FormCard(
+                      icon: Icons.info_outline_rounded,
+                      title: 'basic_info_card_title'.tr,
+                      children: [
+                        _LabeledField(
+                          label: 'course_title'.tr,
+                          child: MyTextField(
+                            controller: _titleCtrl,
+                            label: 'course_title'.tr,
+                            validator: (v) => (v?.trim().isEmpty ?? true)
+                                ? 'course_title_validator'.tr
+                                : null,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        _LabeledField(
+                          label: 'course_description'.tr,
+                          child: MyTextField(
+                            controller: _descCtrl,
+                            label: 'course_description'.tr,
+                            maxLine: 4,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Pricing & hours card
+                    _FormCard(
+                      icon: Icons.attach_money_rounded,
+                      title: 'price_and_duration_title'.tr,
+                      children: [
+                        Row(children: [
+                          Expanded(
+                            child: _LabeledField(
+                              label: 'price_label'.tr,
+                              child: MyTextField(
+                                controller: _priceCtrl,
+                                label: 'price_label'.tr,
+                                keyboard:
+                                const TextInputType.numberWithOptions(
+                                    decimal: true),
+                              ),
                             ),
                           ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _LabeledField(
+                              label: 'expected_hours_label'.tr,
+                              child: MyTextField(
+                                controller: _hoursCtrl,
+                                label: 'hours_label'.tr,
+                                keyboard: TextInputType.number,
+                              ),
+                            ),
+                          ),
+                        ]),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Classification card
+                    _FormCard(
+                      icon: Icons.category_rounded,
+                      title: 'classification_card_title'.tr,
+                      children: [
+                        _LabeledField(
+                          label: 'Specialization'.tr,
+                          child: MyPrimaryMenu(
+                            controller: _categoryCtrl,
+                            initValue: provider.selectedSpecialization,
+                            options: provider.specializations,
+                            haveLogo: false,
+                            onChange: (i) => provider.onChangeSpecialization(
+                                i, _categoryCtrl),
+                            label: 'choose_specialization'.tr,
+                          ),
+                        ),
+                        if (!_isEdit) ...[
                           const SizedBox(height: 14),
                           _LabeledField(
-                            label: 'وصف الدورة',
-                            child: MyTextField(
-                              controller: _descCtrl,
-                              label: 'وصف الدورة',
-                              maxLine: 4,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Pricing & hours card
-                      _FormCard(
-                        icon: Icons.attach_money_rounded,
-                        title: 'السعر والمدة',
-                        children: [
-                          Row(children: [
-                            Expanded(
-                              child: _LabeledField(
-                                label: 'السعر',
-                                child: MyTextField(
-                                  controller: _priceCtrl,
-                                  label: 'السعر',
-                                  keyboard:
-                                      const TextInputType.numberWithOptions(
-                                          decimal: true),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _LabeledField(
-                                label: 'الساعات المتوقعة',
-                                child: MyTextField(
-                                  controller: _hoursCtrl,
-                                  label: 'الساعات',
-                                  keyboard: TextInputType.number,
-                                ),
-                              ),
-                            ),
-                          ]),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Classification card
-                      _FormCard(
-                        icon: Icons.category_rounded,
-                        title: 'التصنيف ونوع التدريس',
-                        children: [
-                          _LabeledField(
-                            label: 'التخصص',
+                            label: 'course_type_label'.tr,
                             child: MyPrimaryMenu(
-                              controller: _categoryCtrl,
-                              initValue: provider.selectedSpecialization,
-                              options: provider.specializations,
+                              controller: _typeCtrl,
+                              initValue: provider.selectedTeachingType,
+                              options: provider.teachingTypes
+                                  .cast<Map<String, dynamic>>(),
                               haveLogo: false,
-                              onChange: (i) => provider.onChangeSpecialization(
-                                  i, _categoryCtrl),
-                              label: 'اختر التخصص',
+                              onChange: (i) =>
+                                  provider.onChangeTeachingType(i, _typeCtrl),
+                              label: 'course_type_hint'.tr,
                             ),
                           ),
-                          if (!_isEdit) ...[
-                            const SizedBox(height: 14),
-                            _LabeledField(
-                              label: 'نوع الدورة',
-                              child: MyPrimaryMenu(
-                                controller: _typeCtrl,
-                                initValue: provider.selectedTeachingType,
-                                options: provider.teachingTypes
-                                    .cast<Map<String, dynamic>>(),
-                                haveLogo: false,
-                                onChange: (i) =>
-                                    provider.onChangeTeachingType(i, _typeCtrl),
-                                label: 'مباشر / مسجل / كلاهما',
-                              ),
-                            ),
-                          ],
                         ],
-                      ),
-                      const SizedBox(height: 16),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
 
-                      // Extras cards
-                      SectionCard(
-                        icon: Icons.workspace_premium_rounded,
-                        title: 'الشهادات',
-                        items: provider.form.certificates,
-                        onAdd: () => addItemDialog(
-                            'أضف شهادة', provider.addFormCertificate, context),
-                        onRemove: provider.removeFormCertificate,
-                      ),
-                      const SizedBox(height: 12),
-                      SectionCard(
-                        icon: Icons.build_rounded,
-                        title: 'الأدوات المطلوبة',
-                        items: provider.form.tools,
-                        onAdd: () => addItemDialog(
-                            'أضف أداة', provider.addFormTool, context),
-                        onRemove: provider.removeFormTool,
-                      ),
-                      const SizedBox(height: 12),
-                      SectionCard(
-                        icon: Icons.checklist_rounded,
-                        title: 'المتطلبات السابقة',
-                        items: provider.form.prerequisites,
-                        onAdd: () => addItemDialog(
-                            'أضف متطلب', provider.addFormPrerequisite, context),
-                        onRemove: provider.removeFormPrerequisite,
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-                  ),
+                    // Extras cards
+                    SectionCard(
+                      icon: Icons.workspace_premium_rounded,
+                      title: 'certificates_section'.tr,
+                      items: provider.form.certificates,
+                      onAdd: () => addItemDialog(
+                          'add_certificate'.tr, provider.addFormCertificate, context),
+                      onRemove: provider.removeFormCertificate,
+                    ),
+                    const SizedBox(height: 12),
+                    SectionCard(
+                      icon: Icons.build_rounded,
+                      title: 'tools_section'.tr,
+                      items: provider.form.tools,
+                      onAdd: () => addItemDialog(
+                          'add_tool'.tr, provider.addFormTool, context),
+                      onRemove: provider.removeFormTool,
+                    ),
+                    const SizedBox(height: 12),
+                    SectionCard(
+                      icon: Icons.checklist_rounded,
+                      title: 'prerequisites_section'.tr,
+                      items: provider.form.prerequisites,
+                      onAdd: () => addItemDialog(
+                          'add_prerequisite'.tr, provider.addFormPrerequisite, context),
+                      onRemove: provider.removeFormPrerequisite,
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                 ),
               ),
             ),
+          ),
 
-            // ── Sticky footer ──────────────────────────────────────────────
-            _StickyFooter(
-              isEdit: _isEdit,
-              canSave: canSave,
-              isLoading: provider.isLoading,
-              onSave: _submit,
-              course: widget.course,
-            ),
-          ]),
-        ),
+          // ── Sticky footer ──────────────────────────────────────────────
+          _StickyFooter(
+            isEdit: _isEdit,
+            canSave: canSave,
+            isLoading: provider.isLoading,
+            onSave: _submit,
+            course: widget.course,
+          ),
+        ]),
+      ),
     );
   }
 }
@@ -411,9 +406,7 @@ class _HeroHeader extends StatelessWidget {
         children: [
           // Gradient background
           Positioned(
-            top: 0,
-            right: 0,
-            left: 0,
+            top: 0, right: 0, left: 0,
             child: Container(
               height: unit * 2,
               width: double.infinity,
@@ -431,21 +424,14 @@ class _HeroHeader extends StatelessWidget {
             ),
           ),
           Positioned(
-            bottom: 0,
-            right: 0,
-            left: 0,
-            child: Container(
-              height: unit,
-              color: context.colors.background,
-            ),
+            bottom: 0, right: 0, left: 0,
+            child: Container(height: unit, color: context.colors.background),
           ),
           // Decorative circles
           Positioned(
-            top: -30,
-            left: -30,
+            top: -30, left: -30,
             child: Container(
-              width: 140,
-              height: 140,
+              width: 140, height: 140,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.white.withValues(alpha: 0.06),
@@ -453,30 +439,24 @@ class _HeroHeader extends StatelessWidget {
             ),
           ),
           Positioned(
-            bottom: 30,
-            right: -20,
+            bottom: 30, right: -20,
             child: Container(
-              width: 90,
-              height: 90,
+              width: 90, height: 90,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.white.withValues(alpha: 0.08),
               ),
             ),
           ),
-
           // Back button + title
           Positioned(
-            top: top + 12,
-            right: 16,
-            left: 16,
+            top: top + 12, right: 16, left: 16,
             child: Row(
               children: [
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
                   child: Container(
-                    width: 38,
-                    height: 38,
+                    width: 38, height: 38,
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
@@ -488,7 +468,7 @@ class _HeroHeader extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    isEdit ? 'تعديل الدورة' : 'إنشاء دورة جديدة',
+                    isEdit ? 'edit_course_title'.tr : 'create_new_course_title'.tr,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -499,8 +479,7 @@ class _HeroHeader extends StatelessWidget {
                 ),
                 // Mode badge
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(20),
@@ -508,7 +487,7 @@ class _HeroHeader extends StatelessWidget {
                         color: Colors.white.withValues(alpha: 0.3), width: 1),
                   ),
                   child: Text(
-                    isEdit ? 'تعديل' : 'جديد',
+                    isEdit ? 'edit_badge'.tr : 'new_badge'.tr,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 11,
@@ -520,7 +499,6 @@ class _HeroHeader extends StatelessWidget {
               ],
             ),
           ),
-
           Align(
             alignment: AlignmentGeometry.bottomCenter,
             child: EditableImage(
@@ -551,53 +529,51 @@ class _FormCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        decoration: BoxDecoration(
-          color: context.colors.cardBg,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 18,
-              offset: const Offset(0, 4),
-            ),
-          ],
+    decoration: BoxDecoration(
+      color: context.colors.cardBg,
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.06),
+          blurRadius: 18,
+          offset: const Offset(0, 4),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Card header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-              child: Row(children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    gradient: context.colors.primaryGradient,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(icon, size: 17, color: Colors.white),
-                ),
-                const SizedBox(width: 10),
-                Text(title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      fontFamily: 'bahji',
-                      color: Color(0xFF1A1A2E),
-                    )),
-              ]),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+          child: Row(children: [
+            Container(
+              width: 34, height: 34,
+              decoration: BoxDecoration(
+                gradient: context.colors.primaryGradient,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 17, color: Colors.white),
             ),
-            Divider(height: 1, color: Colors.black.withValues(alpha: 0.06)),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: children),
-            ),
-          ],
+            const SizedBox(width: 10),
+            Text(title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  fontFamily: 'bahji',
+                  color: Color(0xFF1A1A2E),
+                )),
+          ]),
         ),
-      );
+        Divider(height: 1, color: Colors.black.withValues(alpha: 0.06)),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: children),
+        ),
+      ],
+    ),
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -612,19 +588,19 @@ class _LabeledField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'bahji',
-                color: Colors.black.withValues(alpha: 0.55),
-              )),
-          const SizedBox(height: 6),
-          child,
-        ],
-      );
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            fontFamily: 'bahji',
+            color: Colors.black.withValues(alpha: 0.55),
+          )),
+      const SizedBox(height: 6),
+      child,
+    ],
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -673,30 +649,29 @@ class _StickyFooter extends StatelessWidget {
                 gradient: canSave
                     ? context.colors.primaryGradient
                     : const LinearGradient(
-                        colors: [Color(0xFFCDD5E0), Color(0xFFCDD5E0)]),
+                    colors: [Color(0xFFCDD5E0), Color(0xFFCDD5E0)]),
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: canSave ? context.colors.primaryShadow : null,
               ),
               child: Center(
                 child: isLoading
                     ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
+                    width: 20, height: 20,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
                     : Text(
-                        canSave
-                            ? (isEdit ? 'حفظ التعديلات' : 'إنشاء الدورة')
-                            : (isEdit
-                                ? 'لا يوجد تعديلات للحفظ'
-                                : 'أدخل عنوان الدورة أولاً'),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                          fontFamily: 'bahji',
-                        ),
-                      ),
+                  canSave
+                      ? (isEdit ? 'btn_save_edits'.tr : 'create_course_btn'.tr)
+                      : (isEdit
+                      ? 'no_changes_to_save'.tr
+                      : 'enter_course_title_first'.tr),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    fontFamily: 'bahji',
+                  ),
+                ),
               ),
             ),
           ),
@@ -709,8 +684,7 @@ class _StickyFooter extends StatelessWidget {
             onTap: () => Navigator.of(context).push(MaterialPageRoute(
                 builder: (_) => TeacherSchedulesScreen(course: course!))),
             child: Container(
-              width: 52,
-              height: 52,
+              width: 52, height: 52,
               decoration: BoxDecoration(
                 color: context.colors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(14),

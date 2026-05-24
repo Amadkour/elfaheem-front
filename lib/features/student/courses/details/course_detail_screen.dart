@@ -578,10 +578,10 @@ class _CourseMeta extends StatelessWidget {
 
 class _TabBarWidget extends StatelessWidget {
   static final _tabs = [
-    (CourseDetailTab.lessons, 'sessions'.tr, Icons.play_lesson_rounded),
-    (CourseDetailTab.about, 'course_details'.tr, Icons.info_outline_rounded),
     (CourseDetailTab.live, 'live'.tr, Icons.sensors_rounded),
+    (CourseDetailTab.lessons, 'sessions'.tr, Icons.play_lesson_rounded),
     (CourseDetailTab.exam, 'exams'.tr, Icons.assignment),
+    (CourseDetailTab.about, 'course_details'.tr, Icons.info_outline_rounded),
   ];
 
   @override

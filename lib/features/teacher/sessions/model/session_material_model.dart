@@ -15,6 +15,7 @@ class SessionMaterialModel {
   final String? key;
   final int order;
   final DateTime createdAt;
+  final bool completed;
 
   const SessionMaterialModel({
     required this.id,
@@ -26,12 +27,13 @@ class SessionMaterialModel {
     this.fileSize,
     this.key,
     required this.order,
-    required this.createdAt,
+    required this.createdAt, required this.completed,
   });
 
   factory SessionMaterialModel.fromJson(Map<String, dynamic> json) {
     return SessionMaterialModel(
       id:          json['id'] as int,
+      completed:  json['completed'] as bool? ??false,
       sessionId:   json['session_id'] as int,
       name:        json['name'] as String,
       description: json['description'] as String?,

@@ -7,6 +7,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../config/app_config.dart';
 import '../../../../config/app_theme.dart';
 import '../../../../utils/helpers.dart';
 import '../../../../utils/widget/app_bar.dart';
@@ -46,7 +47,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
 
   void _onScroll() {
     if (_scrollCtrl.position.pixels >=
-            _scrollCtrl.position.maxScrollExtent - 200 &&
+        _scrollCtrl.position.maxScrollExtent - 200 &&
         !context.read<ComplaintProvider>().isLoadingList) {
       context.read<ComplaintProvider>().loadComplaints();
     }
@@ -65,52 +66,49 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
     final c    = context.colors;
     final auth = context.read<AuthProvider>();
 
-    return Directionality(
-      textDirection: Helpers.pageDirection,
-      child: BasePage(
-        useWebCard: true,
-        child: SafeArea(
-          child: Column(children: [
-            ScreenAppBar(title: 'الشكاوى والدعم'),
-            // ── Stats banner ──────────────────────────────────────────────
-            _StatsBanner(stats: p.stats),
-            // ── Filters ───────────────────────────────────────────────────
-            _FilterRow(provider: p, searchCtrl: _searchCtrl),
-            // ── List ──────────────────────────────────────────────────────
-            Expanded(
-              child: p.isLoadingList && p.complaints.isEmpty
-                  ? const Center(child: CircularProgressIndicator())
-                  : p.complaints.isEmpty
-                      ? _EmptyState()
-                      : RefreshIndicator(
-                          onRefresh: () => p.loadComplaints(reset: true),
-                          child: ListView.separated(
-                            controller: _scrollCtrl,
-                            padding:
-                                const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                            itemCount: p.complaints.length +
-                                (p.isLoadingList ? 1 : 0),
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 10),
-                            itemBuilder: (_, i) {
-                              if (i >= p.complaints.length) {
-                                return const Center(
-                                    child: Padding(
-                                  padding: EdgeInsets.all(16),
-                                  child: CircularProgressIndicator(),
-                                ));
-                              }
-                              return _ComplaintCard(
-                                complaint: p.complaints[i],
-                                isAdmin: auth.isTeacher || auth.isAdmin,
-                                onTap: () => _openDetail(p.complaints[i].id),
-                              );
-                            },
-                          ),
-                        ),
+    return BasePage(
+      useWebCard: true,
+      child: SafeArea(
+        child: Column(children: [
+          ScreenAppBar(title: 'complaints_and_support'.tr),
+          // ── Stats banner ──────────────────────────────────────────────
+          _StatsBanner(stats: p.stats),
+          // ── Filters ───────────────────────────────────────────────────
+          _FilterRow(provider: p, searchCtrl: _searchCtrl),
+          // ── List ──────────────────────────────────────────────────────
+          Expanded(
+            child: p.isLoadingList && p.complaints.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : p.complaints.isEmpty
+                ? _EmptyState()
+                : RefreshIndicator(
+              onRefresh: () => p.loadComplaints(reset: true),
+              child: ListView.separated(
+                controller: _scrollCtrl,
+                padding:
+                const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                itemCount: p.complaints.length +
+                    (p.isLoadingList ? 1 : 0),
+                separatorBuilder: (_, __) =>
+                const SizedBox(height: 10),
+                itemBuilder: (_, i) {
+                  if (i >= p.complaints.length) {
+                    return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: CircularProgressIndicator(),
+                        ));
+                  }
+                  return _ComplaintCard(
+                    complaint: p.complaints[i],
+                    isAdmin: auth.isTeacher || auth.isAdmin,
+                    onTap: () => _openDetail(p.complaints[i].id),
+                  );
+                },
+              ),
             ),
-          ]),
-        ),
+          ),
+        ]),
       ),
     );
   }
@@ -147,13 +145,13 @@ class _StatsBanner extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _Stat(label: 'الكل',      value: stats.total,      color: Colors.white),
+          _Stat(label: 'stat_all'.tr,              value: stats.total,      color: Colors.white),
           _vDivider,
-          _Stat(label: 'مفتوح',    value: stats.open,       color: const Color(0xFFFFF0B3)),
+          _Stat(label: 'status_open'.tr,           value: stats.open,       color: const Color(0xFFFFF0B3)),
           _vDivider,
-          _Stat(label: 'جاري',     value: stats.inProgress, color: const Color(0xFFB3E5FC)),
+          _Stat(label: 'status_in_progress'.tr,    value: stats.inProgress, color: const Color(0xFFB3E5FC)),
           _vDivider,
-          _Stat(label: 'تم الحل',  value: stats.resolved,   color: const Color(0xFFB9F6CA)),
+          _Stat(label: 'status_resolved_banner'.tr, value: stats.resolved,  color: const Color(0xFFB9F6CA)),
         ],
       ),
     );
@@ -209,7 +207,7 @@ class _FilterRow extends StatelessWidget {
         IconTextField(
           controller: searchCtrl,
           // onChanged: provider.setSearch,
-          label: 'ابحث في الشكاوى...',
+          label: 'search_complaints_hint'.tr,
           icon: Icons.search_rounded,
         ),
         const SizedBox(height: 10),
@@ -218,16 +216,16 @@ class _FilterRow extends StatelessWidget {
           scrollDirection: Axis.horizontal,
           child: Row(children: [
             _FilterChip(
-              label: 'الكل',
+              label: 'stat_all'.tr,
               selected: provider.statusFilter == null,
               onTap: () => provider.setStatusFilter(null),
             ),
             ...ComplaintStatus.values.map((s) => _FilterChip(
-                  label: _statusLabel(s),
-                  selected: provider.statusFilter == s,
-                  color: _statusColor(s),
-                  onTap: () => provider.setStatusFilter(s),
-                )),
+              label: _statusLabel(s),
+              selected: provider.statusFilter == s,
+              color: _statusColor(s),
+              onTap: () => provider.setStatusFilter(s),
+            )),
           ]),
         ),
       ]),
@@ -235,26 +233,26 @@ class _FilterRow extends StatelessWidget {
   }
 
   String _statusLabel(ComplaintStatus s) => switch (s) {
-        ComplaintStatus.open       => 'مفتوح',
-        ComplaintStatus.inProgress => 'جاري',
-        ComplaintStatus.resolved   => 'محلول',
-        ComplaintStatus.closed     => 'مغلق',
-      };
+    ComplaintStatus.open       => 'status_open'.tr,
+    ComplaintStatus.inProgress => 'status_in_progress'.tr,
+    ComplaintStatus.resolved   => 'status_resolved'.tr,
+    ComplaintStatus.closed     => 'status_closed'.tr,
+  };
 
   Color _statusColor(ComplaintStatus s) => switch (s) {
-        ComplaintStatus.open       => const Color(0xFFF59E0B),
-        ComplaintStatus.inProgress => const Color(0xFF3B82F6),
-        ComplaintStatus.resolved   => const Color(0xFF10B981),
-        ComplaintStatus.closed     => const Color(0xFF6B7280),
-      };
+    ComplaintStatus.open       => const Color(0xFFF59E0B),
+    ComplaintStatus.inProgress => const Color(0xFF3B82F6),
+    ComplaintStatus.resolved   => const Color(0xFF10B981),
+    ComplaintStatus.closed     => const Color(0xFF6B7280),
+  };
 }
 
 class _FilterChip extends StatelessWidget {
   const _FilterChip(
       {required this.label,
-      required this.selected,
-      required this.onTap,
-      this.color});
+        required this.selected,
+        required this.onTap,
+        this.color});
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -327,138 +325,138 @@ class _ComplaintCard extends StatelessWidget {
           child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-            // ── Header ──────────────────────────────────────────────────
-            Row(children: [
-              // Priority dot
-              Container(
-                width: 8,
-                height: 8,
-                margin: const EdgeInsets.only(left: 8),
-                decoration: BoxDecoration(
-                    color: _priorityColor(complaint.priority),
-                    shape: BoxShape.circle),
-              ),
-              Expanded(
-                child: Text(
-                  complaint.title,
-                  style: c.h3.copyWith(fontSize: 14),
-                  maxLines: 1,
+                // ── Header ──────────────────────────────────────────────────
+                Row(children: [
+                  // Priority dot
+                  Container(
+                    width: 8,
+                    height: 8,
+                    margin: const EdgeInsets.only(left: 8),
+                    decoration: BoxDecoration(
+                        color: _priorityColor(complaint.priority),
+                        shape: BoxShape.circle),
+                  ),
+                  Expanded(
+                    child: Text(
+                      complaint.title,
+                      style: c.h3.copyWith(fontSize: 14),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (hasUnread)
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration:
+                      BoxDecoration(color: c.primary, shape: BoxShape.circle),
+                    ),
+                ]),
+                const SizedBox(height: 8),
+                // ── Description ─────────────────────────────────────────────
+                Text(
+                  complaint.description,
+                  style: c.caption.copyWith(height: 1.5),
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              if (hasUnread)
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration:
-                      BoxDecoration(color: c.primary, shape: BoxShape.circle),
-                ),
-            ]),
-            const SizedBox(height: 8),
-            // ── Description ─────────────────────────────────────────────
-            Text(
-              complaint.description,
-              style: c.caption.copyWith(height: 1.5),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 10),
-            // ── Footer ──────────────────────────────────────────────────
-            Row(children: [
-              // Status badge
-              Container(
-                padding:
+                const SizedBox(height: 10),
+                // ── Footer ──────────────────────────────────────────────────
+                Row(children: [
+                  // Status badge
+                  Container(
+                    padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusClr.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  _statusLabel(complaint.status),
-                  style: TextStyle(
-                    fontFamily: 'bahji',
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: statusClr,
+                    decoration: BoxDecoration(
+                      color: statusClr.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      _statusLabel(complaint.status),
+                      style: TextStyle(
+                        fontFamily: 'bahji',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: statusClr,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Category badge
-              Container(
-                padding:
+                  const SizedBox(width: 8),
+                  // Category badge
+                  Container(
+                    padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: c.primaryTint,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  _categoryLabel(complaint.category),
-                  style: TextStyle(
-                    fontFamily: 'bahji',
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: c.primary,
+                    decoration: BoxDecoration(
+                      color: c.primaryTint,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      _categoryLabel(complaint.category),
+                      style: TextStyle(
+                        fontFamily: 'bahji',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: c.primary,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              const Spacer(),
-              // Replies count
-              Row(children: [
-                Icon(Icons.chat_bubble_outline_rounded,
-                    size: 14, color: c.textLight),
-                const SizedBox(width: 4),
-                Text('${complaint.repliesCount}',
-                    style: c.caption.copyWith(fontSize: 12)),
+                  const Spacer(),
+                  // Replies count
+                  Row(children: [
+                    Icon(Icons.chat_bubble_outline_rounded,
+                        size: 14, color: c.textLight),
+                    const SizedBox(width: 4),
+                    Text('${complaint.repliesCount}',
+                        style: c.caption.copyWith(fontSize: 12)),
+                  ]),
+                  const SizedBox(width: 12),
+                  // Date
+                  Text(
+                    _formatDate(complaint.updatedAt),
+                    style: c.caption.copyWith(fontSize: 11),
+                  ),
+                ]),
               ]),
-              const SizedBox(width: 12),
-              // Date
-              Text(
-                _formatDate(complaint.updatedAt),
-                style: c.caption.copyWith(fontSize: 11),
-              ),
-            ]),
-          ]),
         ),
       ),
     );
   }
 
   Color _statusColor(ComplaintStatus s) => switch (s) {
-        ComplaintStatus.open       => const Color(0xFFF59E0B),
-        ComplaintStatus.inProgress => const Color(0xFF3B82F6),
-        ComplaintStatus.resolved   => const Color(0xFF10B981),
-        ComplaintStatus.closed     => const Color(0xFF6B7280),
-      };
+    ComplaintStatus.open       => const Color(0xFFF59E0B),
+    ComplaintStatus.inProgress => const Color(0xFF3B82F6),
+    ComplaintStatus.resolved   => const Color(0xFF10B981),
+    ComplaintStatus.closed     => const Color(0xFF6B7280),
+  };
 
   Color _priorityColor(ComplaintPriority p) => switch (p) {
-        ComplaintPriority.urgent => const Color(0xFFEF4444),
-        ComplaintPriority.high   => const Color(0xFFF97316),
-        ComplaintPriority.medium => const Color(0xFFF59E0B),
-        ComplaintPriority.low    => const Color(0xFF10B981),
-      };
+    ComplaintPriority.urgent => const Color(0xFFEF4444),
+    ComplaintPriority.high   => const Color(0xFFF97316),
+    ComplaintPriority.medium => const Color(0xFFF59E0B),
+    ComplaintPriority.low    => const Color(0xFF10B981),
+  };
 
   String _statusLabel(ComplaintStatus s) => switch (s) {
-        ComplaintStatus.open       => 'مفتوح',
-        ComplaintStatus.inProgress => 'جاري',
-        ComplaintStatus.resolved   => 'محلول',
-        ComplaintStatus.closed     => 'مغلق',
-      };
+    ComplaintStatus.open       => 'status_open'.tr,
+    ComplaintStatus.inProgress => 'status_in_progress'.tr,
+    ComplaintStatus.resolved   => 'status_resolved'.tr,
+    ComplaintStatus.closed     => 'status_closed'.tr,
+  };
 
   String _categoryLabel(ComplaintCategory cat) => switch (cat) {
-        ComplaintCategory.technical    => 'تقني',
-        ComplaintCategory.payment      => 'دفع',
-        ComplaintCategory.courseContent => 'محتوى',
-        ComplaintCategory.teacher      => 'مدرس',
-        ComplaintCategory.student      => 'طالب',
-        ComplaintCategory.general      => 'عام',
-      };
+    ComplaintCategory.technical    => 'category_technical'.tr,
+    ComplaintCategory.payment      => 'category_payment'.tr,
+    ComplaintCategory.courseContent => 'category_content'.tr,
+    ComplaintCategory.teacher      => 'category_teacher'.tr,
+    ComplaintCategory.student      => 'category_student'.tr,
+    ComplaintCategory.general      => 'category_general'.tr,
+  };
 
   String _formatDate(DateTime d) {
     final diff = DateTime.now().difference(d);
-    if (diff.inMinutes < 60) return 'منذ ${diff.inMinutes} د';
-    if (diff.inHours < 24) return 'منذ ${diff.inHours} س';
-    return 'منذ ${diff.inDays} يوم';
+    if (diff.inMinutes < 60) return 'ago_minutes_short'.tr.replaceAll('{n}', '${diff.inMinutes}');
+    if (diff.inHours < 24)   return 'ago_hours_short'.tr.replaceAll('{n}', '${diff.inHours}');
+    return 'ago_days'.tr.replaceAll('{n}', '${diff.inDays}');
   }
 }
 
@@ -481,9 +479,9 @@ class _EmptyState extends StatelessWidget {
               size: 44, color: Colors.white),
         ),
         const SizedBox(height: 20),
-        Text('لا توجد شكاوى', style: c.h2),
+        Text('no_complaints'.tr, style: c.h2),
         const SizedBox(height: 8),
-        Text('اضغط + لإرسال شكوى جديدة',
+        Text('no_complaints_hint'.tr,
             style: c.caption.copyWith(color: c.textLight)),
       ]),
     );
@@ -527,9 +525,9 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     _replyCtrl.clear();
 
     await context.read<ComplaintProvider>().addReply(
-          complaintId: widget.complaintId,
-          message: msg,
-        );
+      complaintId: widget.complaintId,
+      message: msg,
+    );
     await Future.delayed(const Duration(milliseconds: 100));
     if (_scrollCtrl.hasClients) {
       _scrollCtrl.animateTo(
@@ -554,41 +552,41 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
         backgroundColor: c.background,
         body: SafeArea(
           child: Column(children: [
-            ScreenAppBar(title: 'تفاصيل الشكوى'),
+            ScreenAppBar(title: 'complaint_details_title'.tr),
             if (p.isLoadingDetail)
               const Expanded(child: Center(child: CircularProgressIndicator()))
             else if (complaint == null)
-              const Expanded(child: Center(child: Text('لم يُعثر على الشكوى')))
+              Expanded(child: Center(child: Text('complaint_not_found'.tr)))
             else ...[
-              Expanded(
-                child: ListView(
-                  controller: _scrollCtrl,
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  children: [
-                    // ── Info card ──────────────────────────────────────────
-                    _InfoCard(complaint: complaint, isAdmin: isAdmin, provider: p),
-                    const SizedBox(height: 16),
-                    // ── Replies ────────────────────────────────────────────
-                    if (complaint.replies.isNotEmpty) ...[
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: Text('الردود', style: c.h3),
-                      ),
-                      ...complaint.replies
-                          .map((r) => _ReplyBubble(reply: r, myId: auth.currentUser?.id ?? 0)),
-                      const SizedBox(height: 8),
+                Expanded(
+                  child: ListView(
+                    controller: _scrollCtrl,
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    children: [
+                      // ── Info card ──────────────────────────────────────────
+                      _InfoCard(complaint: complaint, isAdmin: isAdmin, provider: p),
+                      const SizedBox(height: 16),
+                      // ── Replies ────────────────────────────────────────────
+                      if (complaint.replies.isNotEmpty) ...[
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Text('replies_label'.tr, style: c.h3),
+                        ),
+                        ...complaint.replies
+                            .map((r) => _ReplyBubble(reply: r, myId: auth.currentUser?.id ?? 0)),
+                        const SizedBox(height: 8),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              // ── Reply input ──────────────────────────────────────────────
-              if (complaint.status != ComplaintStatus.closed)
-                _ReplyInput(
-                  controller: _replyCtrl,
-                  isSending: p.isSending,
-                  onSend: _sendReply,
-                ),
-            ],
+                // ── Reply input ──────────────────────────────────────────────
+                if (complaint.status != ComplaintStatus.closed)
+                  _ReplyInput(
+                    controller: _replyCtrl,
+                    isSending: p.isSending,
+                    onSend: _sendReply,
+                  ),
+              ],
           ]),
         ),
       ),
@@ -601,8 +599,8 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
 class _InfoCard extends StatelessWidget {
   const _InfoCard(
       {required this.complaint,
-      required this.isAdmin,
-      required this.provider});
+        required this.isAdmin,
+        required this.provider});
   final ComplaintModel complaint;
   final bool isAdmin;
   final ComplaintProvider provider;
@@ -670,7 +668,7 @@ class _InfoCard extends StatelessWidget {
         // Admin status updater
         if (isAdmin) ...[
           const SizedBox(height: 16),
-          Text('تحديث الحالة:', style: c.caption),
+          Text('update_status_label'.tr, style: c.caption),
           const SizedBox(height: 8),
           Wrap(spacing: 8, children: ComplaintStatus.values.map((s) {
             final selected = complaint.status == s;
@@ -703,37 +701,37 @@ class _InfoCard extends StatelessWidget {
   }
 
   Color _statusColor(ComplaintStatus s) => switch (s) {
-        ComplaintStatus.open       => const Color(0xFFF59E0B),
-        ComplaintStatus.inProgress => const Color(0xFF3B82F6),
-        ComplaintStatus.resolved   => const Color(0xFF10B981),
-        ComplaintStatus.closed     => const Color(0xFF6B7280),
-      };
+    ComplaintStatus.open       => const Color(0xFFF59E0B),
+    ComplaintStatus.inProgress => const Color(0xFF3B82F6),
+    ComplaintStatus.resolved   => const Color(0xFF10B981),
+    ComplaintStatus.closed     => const Color(0xFF6B7280),
+  };
   String _statusLabel(ComplaintStatus s) => switch (s) {
-        ComplaintStatus.open       => 'مفتوح',
-        ComplaintStatus.inProgress => 'جاري',
-        ComplaintStatus.resolved   => 'محلول',
-        ComplaintStatus.closed     => 'مغلق',
-      };
+    ComplaintStatus.open       => 'status_open'.tr,
+    ComplaintStatus.inProgress => 'status_in_progress'.tr,
+    ComplaintStatus.resolved   => 'status_resolved'.tr,
+    ComplaintStatus.closed     => 'status_closed'.tr,
+  };
   String _categoryLabel(ComplaintCategory cat) => switch (cat) {
-        ComplaintCategory.technical    => 'تقني',
-        ComplaintCategory.payment      => 'دفع',
-        ComplaintCategory.courseContent => 'محتوى',
-        ComplaintCategory.teacher      => 'مدرس',
-        ComplaintCategory.student      => 'طالب',
-        ComplaintCategory.general      => 'عام',
-      };
+    ComplaintCategory.technical    => 'category_technical'.tr,
+    ComplaintCategory.payment      => 'category_payment'.tr,
+    ComplaintCategory.courseContent => 'category_content'.tr,
+    ComplaintCategory.teacher      => 'category_teacher'.tr,
+    ComplaintCategory.student      => 'category_student'.tr,
+    ComplaintCategory.general      => 'category_general'.tr,
+  };
   String _priorityLabel(ComplaintPriority p) => switch (p) {
-        ComplaintPriority.urgent => 'عاجل',
-        ComplaintPriority.high   => 'عالي',
-        ComplaintPriority.medium => 'متوسط',
-        ComplaintPriority.low    => 'منخفض',
-      };
+    ComplaintPriority.urgent => 'priority_urgent'.tr,
+    ComplaintPriority.high   => 'priority_high'.tr,
+    ComplaintPriority.medium => 'priority_medium'.tr,
+    ComplaintPriority.low    => 'priority_low'.tr,
+  };
   Color _priorityColor(ComplaintPriority p) => switch (p) {
-        ComplaintPriority.urgent => const Color(0xFFEF4444),
-        ComplaintPriority.high   => const Color(0xFFF97316),
-        ComplaintPriority.medium => const Color(0xFFF59E0B),
-        ComplaintPriority.low    => const Color(0xFF10B981),
-      };
+    ComplaintPriority.urgent => const Color(0xFFEF4444),
+    ComplaintPriority.high   => const Color(0xFFF97316),
+    ComplaintPriority.medium => const Color(0xFFF59E0B),
+    ComplaintPriority.low    => const Color(0xFF10B981),
+  };
 }
 
 class _MetaChip extends StatelessWidget {
@@ -780,7 +778,7 @@ class _ReplyBubble extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         mainAxisAlignment:
-            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[
@@ -794,8 +792,8 @@ class _ReplyBubble extends StatelessWidget {
                   : null,
               child: reply.senderImage == null
                   ? Icon(Icons.person_rounded,
-                      size: 18,
-                      color: reply.isAdmin ? c.primary : c.accent)
+                  size: 18,
+                  color: reply.isAdmin ? c.primary : c.accent)
                   : null,
             ),
             const SizedBox(width: 8),
@@ -809,8 +807,8 @@ class _ReplyBubble extends StatelessWidget {
                 color: isMe
                     ? c.primary
                     : reply.isAdmin
-                        ? c.accentTint
-                        : c.cardBg,
+                    ? c.accentTint
+                    : c.cardBg,
                 borderRadius: BorderRadius.only(
                   topLeft:     const Radius.circular(16),
                   topRight:    const Radius.circular(16),
@@ -822,37 +820,37 @@ class _ReplyBubble extends StatelessWidget {
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                if (!isMe)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Text(
-                      reply.senderName,
+                    if (!isMe)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          reply.senderName,
+                          style: TextStyle(
+                              fontFamily: 'bahji',
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: reply.isAdmin ? c.accent : c.textMedium),
+                        ),
+                      ),
+                    Text(
+                      reply.message,
                       style: TextStyle(
                           fontFamily: 'bahji',
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: reply.isAdmin ? c.accent : c.textMedium),
+                          fontSize: 14,
+                          height: 1.5,
+                          color: isMe ? Colors.white : c.textDark),
                     ),
-                  ),
-                Text(
-                  reply.message,
-                  style: TextStyle(
-                      fontFamily: 'bahji',
-                      fontSize: 14,
-                      height: 1.5,
-                      color: isMe ? Colors.white : c.textDark),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _formatTime(reply.createdAt),
-                  style: TextStyle(
-                      fontFamily: 'bahji',
-                      fontSize: 10,
-                      color: isMe
-                          ? Colors.white60
-                          : c.textLight),
-                ),
-              ]),
+                    const SizedBox(height: 4),
+                    Text(
+                      _formatTime(reply.createdAt),
+                      style: TextStyle(
+                          fontFamily: 'bahji',
+                          fontSize: 10,
+                          color: isMe
+                              ? Colors.white60
+                              : c.textLight),
+                    ),
+                  ]),
             ),
           ),
         ],
@@ -872,8 +870,8 @@ class _ReplyBubble extends StatelessWidget {
 class _ReplyInput extends StatelessWidget {
   const _ReplyInput(
       {required this.controller,
-      required this.isSending,
-      required this.onSend});
+        required this.isSending,
+        required this.onSend});
   final TextEditingController controller;
   final bool isSending;
   final VoidCallback onSend;
@@ -906,11 +904,11 @@ class _ReplyInput extends StatelessWidget {
               textDirection: TextDirection.rtl,
               style: TextStyle(fontFamily: 'bahji', color: c.textDark),
               decoration: InputDecoration(
-                hintText: 'اكتب ردًا...',
+                hintText: 'write_reply_hint'.tr,
                 hintStyle:
-                    TextStyle(fontFamily: 'bahji', color: c.textLight),
+                TextStyle(fontFamily: 'bahji', color: c.textLight),
                 contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 border: InputBorder.none,
               ),
             ),
@@ -930,11 +928,11 @@ class _ReplyInput extends StatelessWidget {
             ),
             child: isSending
                 ? const Padding(
-                    padding: EdgeInsets.all(13),
-                    child: CircularProgressIndicator(
-                        color: Colors.white, strokeWidth: 2))
+                padding: EdgeInsets.all(13),
+                child: CircularProgressIndicator(
+                    color: Colors.white, strokeWidth: 2))
                 : const Icon(Icons.send_rounded,
-                    color: Colors.white, size: 20),
+                color: Colors.white, size: 20),
           ),
         ),
       ]),

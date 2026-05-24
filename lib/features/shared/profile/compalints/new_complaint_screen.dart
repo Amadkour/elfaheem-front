@@ -7,9 +7,11 @@ library;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../config/app_config.dart';
 import '../../../../config/app_theme.dart';
 import '../../../../utils/helpers.dart';
 import '../../../../utils/widget/app_bar.dart';
+import '../../../../utils/widget/base_page.dart';
 import '../../../../utils/widget/primary_button.dart';
 import '../../../../utils/widget/text_field.dart';
 import '../../../auth/auth_widgets.dart';
@@ -64,11 +66,11 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
     if (!_formKey.currentState!.validate()) return;
     final p = context.read<ComplaintProvider>();
     final result = await p.createComplaint(
-      title: _titleCtrl.text.trim(),
-      description: _descCtrl.text.trim(),
-      category: _category,
-      priority: _priority,
-      courseId: widget.courseId
+        title: _titleCtrl.text.trim(),
+        description: _descCtrl.text.trim(),
+        category: _category,
+        priority: _priority,
+        courseId: widget.courseId
     );
     if (!mounted) return;
     if (result != null) {
@@ -79,8 +81,8 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
         _priority = ComplaintPriority.medium;
       });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Text('تم إرسال الشكوى بنجاح',
-            style: TextStyle(fontFamily: 'bahji')),
+        content: Text('complaint_sent_success'.tr,
+            style: const TextStyle(fontFamily: 'bahji')),
         backgroundColor: context.colors.success,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -89,8 +91,8 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
       _tabs.animateTo(1);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Text('حدث خطأ، حاول مرة أخرى',
-            style: TextStyle(fontFamily: 'bahji')),
+        content: Text('error_try_again'.tr,
+            style: const TextStyle(fontFamily: 'bahji')),
         backgroundColor: context.colors.danger,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -118,48 +120,45 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
     final p = context.watch<ComplaintProvider>();
     final c = context.colors;
 
-    return Directionality(
-      textDirection: Helpers.pageDirection,
-      child: Scaffold(
-        backgroundColor: c.background,
-        body: SafeArea(
-          child: Column(children: [
-            ScreenAppBar(title: 'الشكاوى والدعم'),
+    return BasePage(
+      useWebCard:true,
+      child: SafeArea(
+        child: Column(children: [
+          ScreenAppBar(title: 'complaints_and_support'.tr),
 
-            // ── Tab bar ─────────────────────────────────────────────────
-            _TabBar(controller: _tabs, unreadCount: _unreadCount(p)),
+          // ── Tab bar ─────────────────────────────────────────────────
+          _TabBar(controller: _tabs, unreadCount: _unreadCount(p)),
 
-            // ── Tab views ───────────────────────────────────────────────
-            Expanded(
-              child: TabBarView(
-                controller: _tabs,
-                children: [
-                  // ── Tab 0: New complaint form ────────────────────────
-                  _FormTab(
-                    formKey: _formKey,
-                    titleCtrl: _titleCtrl,
-                    descCtrl: _descCtrl,
-                    category: _category,
-                    priority: _priority,
-                    courseTitle: widget.courseTitle,
-                    isSending: p.isSending,
-                    onCategoryChanged: (v) => setState(() => _category = v),
-                    onPriorityChanged: (v) => setState(() => _priority = v),
-                    onSubmit: _submit,
-                  ),
+          // ── Tab views ───────────────────────────────────────────────
+          Expanded(
+            child: TabBarView(
+              controller: _tabs,
+              children: [
+                // ── Tab 0: New complaint form ────────────────────────
+                _FormTab(
+                  formKey: _formKey,
+                  titleCtrl: _titleCtrl,
+                  descCtrl: _descCtrl,
+                  category: _category,
+                  priority: _priority,
+                  courseTitle: widget.courseTitle,
+                  isSending: p.isSending,
+                  onCategoryChanged: (v) => setState(() => _category = v),
+                  onPriorityChanged: (v) => setState(() => _priority = v),
+                  onSubmit: _submit,
+                ),
 
-                  // ── Tab 1: Previous complaints ───────────────────────
-                  _HistoryTab(
-                    provider: p,
-                    expandedIds: _expandedIds,
-                    loadedIds: _loadedIds,
-                    onToggle: _toggle,
-                  ),
-                ],
-              ),
+                // ── Tab 1: Previous complaints ───────────────────────
+                _HistoryTab(
+                  provider: p,
+                  expandedIds: _expandedIds,
+                  loadedIds: _loadedIds,
+                  onToggle: _toggle,
+                ),
+              ],
             ),
-          ]),
-        ),
+          ),
+        ]),
       ),
     );
   }
@@ -204,18 +203,18 @@ class _TabBar extends StatelessWidget {
         unselectedLabelStyle: const TextStyle(
             fontFamily: 'bahji', fontSize: 13, fontWeight: FontWeight.w500),
         tabs: [
-          const Tab(
+          Tab(
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.add_circle_outline_rounded, size: 16),
-              SizedBox(width: 6),
-              Text('شكوى جديدة'),
+              const Icon(Icons.add_circle_outline_rounded, size: 16),
+              const SizedBox(width: 6),
+              Text('new_complaint_tab'.tr),
             ]),
           ),
           Tab(
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               const Icon(Icons.history_rounded, size: 16),
               const SizedBox(width: 6),
-              const Text('شكاواي'),
+              Text('my_complaints_tab'.tr),
               if (unreadCount > 0) ...[
                 const SizedBox(width: 6),
                 _Badge(count: unreadCount),
@@ -294,7 +293,7 @@ class _FormTab extends StatelessWidget {
           if (courseTitle != null) ...[
             Container(
               padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: c.accentTint,
                 borderRadius: BorderRadius.circular(12),
@@ -315,46 +314,46 @@ class _FormTab extends StatelessWidget {
           ],
 
           // ── Title ──────────────────────────────────────────────────────────
-          _Label(text: 'عنوان الشكوى'),
+          _Label(text: 'complaint_title_label'.tr),
           const SizedBox(height: 8),
           MyTextField(
             controller: titleCtrl,
-            label: 'اكتب عنوان الشكوى...',
+            label: 'complaint_title_hint'.tr,
             validator: (v) =>
-                (v == null || v.trim().length < 5) ? 'العنوان قصير جداً' : null,
+            (v == null || v.trim().length < 5) ? 'title_too_short'.tr : null,
           ),
           const SizedBox(height: 20),
 
           // ── Category ───────────────────────────────────────────────────────
-          _Label(text: 'التصنيف'),
+          _Label(text: 'category_label'.tr),
           const SizedBox(height: 8),
           _CategoryPicker(
               selected: category, onChanged: onCategoryChanged),
           const SizedBox(height: 20),
 
           // ── Priority ───────────────────────────────────────────────────────
-          _Label(text: 'الأولوية'),
+          _Label(text: 'priority_label'.tr),
           const SizedBox(height: 8),
           _PriorityPicker(
               selected: priority, onChanged: onPriorityChanged),
           const SizedBox(height: 20),
 
           // ── Description ────────────────────────────────────────────────────
-          _Label(text: 'الوصف التفصيلي'),
+          _Label(text: 'detailed_description_label'.tr),
           const SizedBox(height: 8),
           MyTextField(
             controller: descCtrl,
-            label: 'اشرح مشكلتك بالتفصيل...',
+            label: 'description_complaint_hint'.tr,
             maxLine: 6,
             validator: (v) => (v == null || v.trim().length < 10)
-                ? 'الوصف قصير جداً'
+                ? 'description_too_short'.tr
                 : null,
           ),
           const SizedBox(height: 32),
 
           // ── Submit ─────────────────────────────────────────────────────────
           PrimaryButton(
-            label: 'إرسال الشكوى',
+            label: 'send_complaint_btn'.tr,
             isLoading: isSending,
             onPressed: onSubmit,
             icon: Icons.send_rounded,
@@ -409,9 +408,9 @@ class _HistoryTab extends StatelessWidget {
           // Prefer the fully-loaded version (with replies) from provider
           final fullComplaint = isLoaded
               ? (provider.complaints.firstWhere(
-                  (c) => c.id == complaint.id,
-                  orElse: () => complaint,
-                ))
+                (c) => c.id == complaint.id,
+            orElse: () => complaint,
+          ))
               : complaint;
 
           return _ComplaintHistoryCard(
@@ -457,8 +456,8 @@ class _ComplaintHistoryCard extends StatelessWidget {
         border: hasUnread && !isExpanded
             ? Border.all(color: c.primary.withValues(alpha: 0.45), width: 1.5)
             : isExpanded
-                ? Border.all(color: statusClr.withValues(alpha: 0.4), width: 1.5)
-                : null,
+            ? Border.all(color: statusClr.withValues(alpha: 0.4), width: 1.5)
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -554,34 +553,34 @@ class _ComplaintHistoryCard extends StatelessWidget {
   }
 
   Color _statusColor(ComplaintStatus s) => switch (s) {
-        ComplaintStatus.open       => const Color(0xFFF59E0B),
-        ComplaintStatus.inProgress => const Color(0xFF3B82F6),
-        ComplaintStatus.resolved   => const Color(0xFF10B981),
-        ComplaintStatus.closed     => const Color(0xFF6B7280),
-      };
+    ComplaintStatus.open       => const Color(0xFFF59E0B),
+    ComplaintStatus.inProgress => const Color(0xFF3B82F6),
+    ComplaintStatus.resolved   => const Color(0xFF10B981),
+    ComplaintStatus.closed     => const Color(0xFF6B7280),
+  };
 
   Color _priorityColor(ComplaintPriority p) => switch (p) {
-        ComplaintPriority.urgent => const Color(0xFFEF4444),
-        ComplaintPriority.high   => const Color(0xFFF97316),
-        ComplaintPriority.medium => const Color(0xFFF59E0B),
-        ComplaintPriority.low    => const Color(0xFF10B981),
-      };
+    ComplaintPriority.urgent => const Color(0xFFEF4444),
+    ComplaintPriority.high   => const Color(0xFFF97316),
+    ComplaintPriority.medium => const Color(0xFFF59E0B),
+    ComplaintPriority.low    => const Color(0xFF10B981),
+  };
 
   String _statusLabel(ComplaintStatus s) => switch (s) {
-        ComplaintStatus.open       => 'مفتوح',
-        ComplaintStatus.inProgress => 'جاري',
-        ComplaintStatus.resolved   => 'محلول',
-        ComplaintStatus.closed     => 'مغلق',
-      };
+    ComplaintStatus.open       => 'status_open'.tr,
+    ComplaintStatus.inProgress => 'status_in_progress'.tr,
+    ComplaintStatus.resolved   => 'status_resolved'.tr,
+    ComplaintStatus.closed     => 'status_closed'.tr,
+  };
 
   String _categoryLabel(ComplaintCategory cat) => switch (cat) {
-        ComplaintCategory.technical     => 'تقني',
-        ComplaintCategory.payment       => 'دفع',
-        ComplaintCategory.courseContent => 'محتوى',
-        ComplaintCategory.teacher       => 'مدرس',
-        ComplaintCategory.student       => 'طالب',
-        ComplaintCategory.general       => 'عام',
-      };
+    ComplaintCategory.technical     => 'category_technical'.tr,
+    ComplaintCategory.payment       => 'category_payment'.tr,
+    ComplaintCategory.courseContent => 'category_content'.tr,
+    ComplaintCategory.teacher       => 'category_teacher'.tr,
+    ComplaintCategory.student       => 'category_student'.tr,
+    ComplaintCategory.general       => 'category_general'.tr,
+  };
 }
 
 // ── Expanded body: description + replies ─────────────────────────────────────
@@ -672,7 +671,7 @@ class _ExpandedBody extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'الردود (${complaint.replies.length})',
+                  'replies_count_label'.tr.replaceAll('{count}', '${complaint.replies.length}'),
                   style: c.h3.copyWith(fontSize: 13, color: statusColor),
                 ),
               ]),
@@ -710,9 +709,9 @@ class _ExpandedBody extends StatelessWidget {
 
   String _formatDate(DateTime d) {
     final diff = DateTime.now().difference(d);
-    if (diff.inMinutes < 60) return 'منذ ${diff.inMinutes} دقيقة';
-    if (diff.inHours < 24)  return 'منذ ${diff.inHours} ساعة';
-    if (diff.inDays < 30)   return 'منذ ${diff.inDays} يوم';
+    if (diff.inMinutes < 60) return 'ago_minutes_long'.tr.replaceAll('{n}', '${diff.inMinutes}');
+    if (diff.inHours < 24)   return 'ago_hours_long'.tr.replaceAll('{n}', '${diff.inHours}');
+    if (diff.inDays < 30)    return 'ago_days'.tr.replaceAll('{n}', '${diff.inDays}');
     return '${d.day}/${d.month}/${d.year}';
   }
 }
@@ -733,7 +732,7 @@ class _ReplyBubble extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment:
-            isAdmin ? MainAxisAlignment.start : MainAxisAlignment.end,
+        isAdmin ? MainAxisAlignment.start : MainAxisAlignment.end,
         children: [
           if (isAdmin) ...[
             // Admin avatar
@@ -746,14 +745,14 @@ class _ReplyBubble extends StatelessWidget {
               ),
               child: reply.senderImage != null
                   ? ClipOval(
-                      child: Image.network(reply.senderImage!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(
-                              Icons.support_agent_rounded,
-                              size: 16,
-                              color: Colors.white)))
+                  child: Image.network(reply.senderImage!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(
+                          Icons.support_agent_rounded,
+                          size: 16,
+                          color: Colors.white)))
                   : const Icon(Icons.support_agent_rounded,
-                      size: 16, color: Colors.white),
+                  size: 16, color: Colors.white),
             ),
             const SizedBox(width: 8),
           ],
@@ -789,7 +788,7 @@ class _ReplyBubble extends StatelessWidget {
                             size: 12, color: c.primary),
                       if (isAdmin) const SizedBox(width: 4),
                       Text(
-                        isAdmin ? 'فريق الدعم' : 'أنت',
+                        isAdmin ? 'support_team'.tr : 'you_label'.tr,
                         style: TextStyle(
                           fontFamily: 'bahji',
                           fontSize: 11,
@@ -823,8 +822,8 @@ class _ReplyBubble extends StatelessWidget {
 
   String _formatTime(DateTime d) {
     final diff = DateTime.now().difference(d);
-    if (diff.inMinutes < 60) return 'منذ ${diff.inMinutes} د';
-    if (diff.inHours < 24)  return 'منذ ${diff.inHours} س';
+    if (diff.inMinutes < 60) return 'ago_minutes_short'.tr.replaceAll('{n}', '${diff.inMinutes}');
+    if (diff.inHours < 24)   return 'ago_hours_short'.tr.replaceAll('{n}', '${diff.inHours}');
     return '${d.day}/${d.month}';
   }
 }
@@ -846,7 +845,7 @@ class _NoRepliesNote extends StatelessWidget {
         Icon(Icons.hourglass_empty_rounded, size: 16, color: c.textLight),
         const SizedBox(width: 8),
         Text(
-          'لم يتم الرد بعد، شكراً لصبرك',
+          'no_reply_yet'.tr,
           style: c.caption.copyWith(fontSize: 12),
         ),
       ]),
@@ -875,7 +874,7 @@ class _ResolvedBadge extends StatelessWidget {
             size: 16, color: c.success),
         const SizedBox(width: 8),
         Text(
-          'تم حل الشكوى في ${_fmt(resolvedAt)}',
+          '${'resolved_at_prefix'.tr} ${_fmt(resolvedAt)}',
           style: TextStyle(
               fontFamily: 'bahji',
               fontSize: 12,
@@ -909,10 +908,10 @@ class _EmptyHistory extends StatelessWidget {
               size: 40, color: Colors.white),
         ),
         const SizedBox(height: 18),
-        Text('لا توجد شكاوى سابقة', style: c.h2.copyWith(fontSize: 16)),
+        Text('no_previous_complaints'.tr, style: c.h2.copyWith(fontSize: 16)),
         const SizedBox(height: 8),
         Text(
-          'شكاواك ستظهر هنا بعد إرسالها',
+          'complaints_appear_after_send'.tr,
           style: c.caption.copyWith(color: c.textLight),
         ),
       ]),
@@ -940,18 +939,18 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(label,
-            style: TextStyle(
-                fontFamily: 'bahji',
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: color)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Text(label,
+        style: TextStyle(
+            fontFamily: 'bahji',
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: color)),
+  );
 }
 
 class _CategoryBadge extends StatelessWidget {
@@ -963,18 +962,18 @@ class _CategoryBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: tint,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(label,
-            style: TextStyle(
-                fontFamily: 'bahji',
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: primary)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(
+      color: tint,
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Text(label,
+        style: TextStyle(
+            fontFamily: 'bahji',
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: primary)),
+  );
 }
 
 class _RepliesCountChip extends StatelessWidget {
@@ -984,15 +983,15 @@ class _RepliesCountChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.chat_bubble_outline_rounded,
-              size: 13, color: c.textLight),
-          const SizedBox(width: 3),
-          Text('$count',
-              style: c.caption.copyWith(fontSize: 11)),
-        ],
-      );
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(Icons.chat_bubble_outline_rounded,
+          size: 13, color: c.textLight),
+      const SizedBox(width: 3),
+      Text('$count',
+          style: c.caption.copyWith(fontSize: 11)),
+    ],
+  );
 }
 
 // ── Category picker ───────────────────────────────────────────────────────────
@@ -1003,30 +1002,29 @@ class _CategoryPicker extends StatelessWidget {
   final ComplaintCategory selected;
   final ValueChanged<ComplaintCategory> onChanged;
 
-  static const _labels = {
-    ComplaintCategory.general:       ('عام',    Icons.help_outline_rounded),
-    ComplaintCategory.technical:     ('تقني',   Icons.bug_report_outlined),
-    ComplaintCategory.payment:       ('دفع',    Icons.payment_outlined),
-    ComplaintCategory.courseContent: ('محتوى',  Icons.book_outlined),
-    ComplaintCategory.teacher:       ('مدرس',   Icons.person_outline_rounded),
-    ComplaintCategory.student:       ('طالب',   Icons.school_outlined),
-  };
-
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final labels = {
+      ComplaintCategory.general:       ('category_general'.tr,       Icons.help_outline_rounded),
+      ComplaintCategory.technical:     ('category_technical'.tr,     Icons.bug_report_outlined),
+      ComplaintCategory.payment:       ('category_payment'.tr,       Icons.payment_outlined),
+      ComplaintCategory.courseContent: ('category_content'.tr,       Icons.book_outlined),
+      ComplaintCategory.teacher:       ('category_teacher'.tr,       Icons.person_outline_rounded),
+      ComplaintCategory.student:       ('category_student'.tr,       Icons.school_outlined),
+    };
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: ComplaintCategory.values.map((cat) {
-        final (label, icon) = _labels[cat]!;
+        final (label, icon) = labels[cat]!;
         final sel = selected == cat;
         return GestureDetector(
           onTap: () => onChanged(cat),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
             decoration: BoxDecoration(
               color: sel ? c.primary : c.cardBg,
               borderRadius: BorderRadius.circular(12),
@@ -1061,19 +1059,18 @@ class _PriorityPicker extends StatelessWidget {
   final ComplaintPriority selected;
   final ValueChanged<ComplaintPriority> onChanged;
 
-  static const _meta = {
-    ComplaintPriority.low:    ('منخفض', Color(0xFF10B981)),
-    ComplaintPriority.medium: ('متوسط', Color(0xFFF59E0B)),
-    ComplaintPriority.high:   ('عالي',  Color(0xFFF97316)),
-    ComplaintPriority.urgent: ('عاجل',  Color(0xFFEF4444)),
-  };
-
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final meta = {
+      ComplaintPriority.low:    ('priority_low'.tr,    const Color(0xFF10B981)),
+      ComplaintPriority.medium: ('priority_medium'.tr, const Color(0xFFF59E0B)),
+      ComplaintPriority.high:   ('priority_high'.tr,   const Color(0xFFF97316)),
+      ComplaintPriority.urgent: ('priority_urgent'.tr, const Color(0xFFEF4444)),
+    };
     return Row(
       children: ComplaintPriority.values.map((p) {
-        final (label, color) = _meta[p]!;
+        final (label, color) = meta[p]!;
         final sel = selected == p;
         return Expanded(
           child: GestureDetector(
@@ -1086,7 +1083,7 @@ class _PriorityPicker extends StatelessWidget {
                 color: sel ? color : c.cardBg,
                 borderRadius: BorderRadius.circular(12),
                 border:
-                    Border.all(color: sel ? color : c.divider, width: 1.5),
+                Border.all(color: sel ? color : c.divider, width: 1.5),
               ),
               child: Text(
                 label,

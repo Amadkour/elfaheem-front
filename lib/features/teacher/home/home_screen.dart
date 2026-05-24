@@ -99,7 +99,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                       SizedBox(height: 14),
                       ContentBox(
                         child: loading
-                            ? const _CoursesShimmer()
+                            ? const CoursesShimmer()
                             : CoursesRow(
                                 courses: provider.allCourses
                                     .map((e) => e.toCourseModel)
@@ -294,8 +294,9 @@ class _StatsShimmer extends StatelessWidget {
       );
 }
 
-class _CoursesShimmer extends StatelessWidget {
-  const _CoursesShimmer();
+class CoursesShimmer extends StatelessWidget {
+  const CoursesShimmer({super.key});
+
 
   @override
   Widget build(BuildContext context) => SizedBox(

@@ -11,7 +11,12 @@ enum CourseStatus { all, inProgress, completed }
 enum CourseDetailTab { lessons, about, live, exam }
 
 class SessionModel {
-  final int id, courseId, durationMinutes, order;
+  final int id,
+      courseId,
+      durationMinutes,
+      order,
+      totalMaterial,
+      completeMaterial;
   final String name, type;
   final String? description, recordingStatus;
   final DateTime? scheduledAt;
@@ -19,6 +24,7 @@ class SessionModel {
   String? recordingUrl;
   bool isCompleted;
   final bool isLiveActive;
+  final double progress;
 
   SessionModel(
       {required this.id,
@@ -33,7 +39,10 @@ class SessionModel {
       this.recordingStatus,
       this.isCompleted = false,
       required this.createdAt,
-      required this.isLiveActive});
+      required this.isLiveActive,
+      required this.totalMaterial,
+      required this.completeMaterial,
+      required this.progress});
 
   bool get isLive => type == 'live';
 
@@ -51,33 +60,41 @@ class SessionModel {
   }
 
   factory SessionModel.fromJson(Map<String, dynamic> j) => SessionModel(
-      id: j['id'] as int? ?? -1,
-      courseId: j['course_id'] as int? ?? 0,
-      name: j['name'] as String? ?? '',
-      description: j['description'] as String? ?? '',
-      type: j['type'] as String? ?? 'pre-recorded',
-      durationMinutes: j['duration_minutes'] as int? ?? 0,
-      order: j['order'] as int? ?? 0,
-      isLiveActive: j['is_live_active'] as bool? ?? false,
-      scheduledAt: j['scheduled_at'] != null
-          ? DateTime.parse(j['scheduled_at'] as String)
-          : null,
-      createdAt: j['created_at'] != null
-          ? DateTime.parse(j['created_at'] as String)
-          : DateTime.now(),
-      recordingUrl: j['recording_url'] as String? ?? '',
-      recordingStatus: j['recording_status'] as String? ?? '');
+        id: j['id'] as int? ?? -1,
+        courseId: j['course_id'] as int? ?? 0,
+        name: j['name'] as String? ?? '',
+        description: j['description'] as String? ?? '',
+        type: j['type'] as String? ?? 'pre-recorded',
+        durationMinutes: j['duration_minutes'] as int? ?? 0,
+        order: j['order'] as int? ?? 0,
+        isLiveActive: j['is_live_active'] as bool? ?? false,
+        scheduledAt: j['scheduled_at'] != null
+            ? DateTime.parse(j['scheduled_at'] as String)
+            : null,
+        createdAt: j['created_at'] != null
+            ? DateTime.parse(j['created_at'] as String)
+            : DateTime.now(),
+        recordingUrl: j['recording_url'] as String? ?? '',
+        recordingStatus: j['recording_status'] as String? ?? '',
+        totalMaterial: j['total_materials'] as int? ?? 0,
+        completeMaterial: j['complete_materials'] as int? ?? 0,
+        progress: j['progress'] as double? ?? 0.0,
+      );
 
   TeacherSessionItem get toTeacher => TeacherSessionItem(
-      id: id,
-      courseId: courseId,
-      name: name,
-      description: description,
-      durationMinutes: durationMinutes,
-      order: order,
-      scheduledAt: scheduledAt,
-      isLiveActive: isLiveActive,
-      createdAt: createdAt);
+        id: id,
+        courseId: courseId,
+        name: name,
+        description: description,
+        durationMinutes: durationMinutes,
+        order: order,
+        scheduledAt: scheduledAt,
+        isLiveActive: isLiveActive,
+        createdAt: createdAt,
+        totalMaterial: totalMaterial,
+        completeMaterial: completeMaterial,
+        progress: progress,
+      );
 
   SessionModel copyWith({bool? isCompleted, String? type}) => SessionModel(
       id: id,
@@ -92,17 +109,26 @@ class SessionModel {
       isLiveActive: isLiveActive,
       recordingUrl: recordingUrl,
       recordingStatus: recordingStatus,
-      isCompleted: isCompleted ?? this.isCompleted);
+      isCompleted: isCompleted ?? this.isCompleted,
+      totalMaterial: totalMaterial,
+      completeMaterial: completeMaterial,
+      progress: progress);
 }
 
 // ── TeacherSessionItem ────────────────────────────────────────────────────────
 class TeacherSessionItem {
-  final int id, courseId, durationMinutes, order;
+  final int id,
+      courseId,
+      durationMinutes,
+      order,
+      totalMaterial,
+      completeMaterial;
   final String name;
   final String? description, type, roomUrl, recordingUrl, recordingStatus;
   final bool isLiveActive;
   final DateTime? scheduledAt;
   final DateTime createdAt;
+  final double progress;
 
   const TeacherSessionItem({
     required this.id,
@@ -118,6 +144,9 @@ class TeacherSessionItem {
     this.recordingUrl,
     this.recordingStatus,
     required this.createdAt,
+    required this.totalMaterial,
+    required this.completeMaterial,
+    required this.progress,
   });
 
   bool get isLive => type == 'live';
@@ -137,23 +166,27 @@ class TeacherSessionItem {
 
   factory TeacherSessionItem.fromJson(Map<String, dynamic> j) {
     return TeacherSessionItem(
-        id: j['id'] as int,
-        courseId: j['course_id'] as int? ?? 0,
-        name: j['name'] as String? ?? '',
-        description: j['description'] as String?,
-        type: j['type'] as String?,
-        scheduledAt: j['scheduled_at'] != null
-            ? DateTime.parse(j['scheduled_at'] as String)
-            : null,
-        createdAt: j['created_at'] != null
-            ? DateTime.parse(j['created_at'] as String)
-            : DateTime.now(),
-        durationMinutes: j['duration_minutes'] as int? ?? 0,
-        order: j['order'] as int? ?? 0,
-        isLiveActive: j['is_live_active'] as bool? ?? false,
-        roomUrl: j['room_url'] as String?,
-        recordingUrl: j['recording_url'] as String?,
-        recordingStatus: j['recording_status'] as String?);
+      id: j['id'] as int,
+      courseId: j['course_id'] as int? ?? 0,
+      name: j['name'] as String? ?? '',
+      description: j['description'] as String?,
+      type: j['type'] as String?,
+      scheduledAt: j['scheduled_at'] != null
+          ? DateTime.parse(j['scheduled_at'] as String)
+          : null,
+      createdAt: j['created_at'] != null
+          ? DateTime.parse(j['created_at'] as String)
+          : DateTime.now(),
+      durationMinutes: j['duration_minutes'] as int? ?? 0,
+      order: j['order'] as int? ?? 0,
+      isLiveActive: j['is_live_active'] as bool? ?? false,
+      roomUrl: j['room_url'] as String?,
+      recordingUrl: j['recording_url'] as String?,
+      recordingStatus: j['recording_status'] as String?,
+      totalMaterial: j['total_materials'] as int? ?? 0,
+      completeMaterial: j['complete_materials'] as int? ?? 0,
+      progress: j['progress'] as double? ?? 0.0,
+    );
   }
 
   TeacherSessionItem copyWith(
@@ -168,19 +201,23 @@ class TeacherSessionItem {
           String? recordingUrl,
           String? recordingStatus}) =>
       TeacherSessionItem(
-          id: id,
-          courseId: courseId,
-          name: name ?? this.name,
-          description: description ?? this.description,
-          type: type,
-          scheduledAt: scheduledAt ?? this.scheduledAt,
-          durationMinutes: durationMinutes ?? this.durationMinutes,
-          order: order ?? this.order,
-          isLiveActive: isLiveActive ?? this.isLiveActive,
-          roomUrl: roomUrl ?? this.roomUrl,
-          recordingUrl: recordingUrl ?? this.recordingUrl,
-          recordingStatus: recordingStatus ?? this.recordingStatus,
-          createdAt: createdAt ?? this.createdAt);
+        id: id,
+        courseId: courseId,
+        name: name ?? this.name,
+        description: description ?? this.description,
+        type: type,
+        scheduledAt: scheduledAt ?? this.scheduledAt,
+        durationMinutes: durationMinutes ?? this.durationMinutes,
+        order: order ?? this.order,
+        isLiveActive: isLiveActive ?? this.isLiveActive,
+        roomUrl: roomUrl ?? this.roomUrl,
+        recordingUrl: recordingUrl ?? this.recordingUrl,
+        recordingStatus: recordingStatus ?? this.recordingStatus,
+        createdAt: createdAt ?? this.createdAt,
+        totalMaterial: totalMaterial,
+        completeMaterial: completeMaterial,
+        progress: progress,
+      );
 }
 
 class TeacherProfileData {

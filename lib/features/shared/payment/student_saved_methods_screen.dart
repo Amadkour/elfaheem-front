@@ -56,50 +56,50 @@ class _StudentMethodsViewState extends State<_StudentMethodsView>
     return BasePage(
       useWebCard: true,
       child: SafeArea(
-          child: Column(
-            children: [
-              ScreenAppBar(title: 'طرق الدفع المحفوظة'),
-              // ── Tab bar ─────────────────────────────────────────────────
-              Container(
-                margin: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                height: 46,
-                decoration: BoxDecoration(
-                  color:        c.cardBg,
-                  borderRadius: BorderRadius.circular(14),
-                  border:       Border.all(color: c.divider),
-                ),
-                child: TabBar(
-                  controller: _tabs,
-                  indicator:  BoxDecoration(
-                    gradient:     c.primaryGradient,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  indicatorPadding: const EdgeInsets.all(3),
-                  labelColor:   Colors.white,
-                  unselectedLabelColor: c.textMedium,
-                  labelStyle: const TextStyle(
-                      fontFamily:  'bahji',
-                      fontWeight:  FontWeight.w700,
-                      fontSize:    13),
-                  tabs: const [
-                    Tab(text: '💳  بطاقاتي'),
-                    Tab(text: '🏦  حساباتي البنكية'),
-                  ],
-                ),
+        child: Column(
+          children: [
+            ScreenAppBar(title: 'saved_payment_methods_title'.tr),
+            // ── Tab bar ─────────────────────────────────────────────────
+            Container(
+              margin: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+              height: 46,
+              decoration: BoxDecoration(
+                color:        c.cardBg,
+                borderRadius: BorderRadius.circular(14),
+                border:       Border.all(color: c.divider),
               ),
-              const SizedBox(height: 4),
-              Expanded(
-                child: TabBarView(
-                  controller: _tabs,
-                  children: const [
-                    _CardsTab(),
-                    _BankAccountsTab(),
-                  ],
+              child: TabBar(
+                controller: _tabs,
+                indicator:  BoxDecoration(
+                  gradient:     c.primaryGradient,
+                  borderRadius: BorderRadius.circular(12),
                 ),
+                indicatorPadding: const EdgeInsets.all(3),
+                labelColor:   Colors.white,
+                unselectedLabelColor: c.textMedium,
+                labelStyle: const TextStyle(
+                    fontFamily:  'bahji',
+                    fontWeight:  FontWeight.w700,
+                    fontSize:    13),
+                tabs: [
+                  Tab(text: 'my_cards_tab'.tr),
+                  Tab(text: 'my_bank_accounts_tab'.tr),
+                ],
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 4),
+            Expanded(
+              child: TabBarView(
+                controller: _tabs,
+                children: const [
+                  _CardsTab(),
+                  _BankAccountsTab(),
+                ],
+              ),
+            ),
+          ],
         ),
+      ),
     );
   }
 }
@@ -123,9 +123,9 @@ class _CardsTab extends StatelessWidget {
           // ── Saved cards ──────────────────────────────────────────────────
           if (p.cards.isNotEmpty) ...[
             ...p.cards.map((m) => Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
-                  child:   _VisualCard(method: m),
-                )),
+              padding: const EdgeInsets.only(bottom: 14),
+              child:   _VisualCard(method: m),
+            )),
             const SizedBox(height: 24),
           ],
 
@@ -244,7 +244,7 @@ class _VisualCardState extends State<_VisualCard>
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                m.cardBrand?.label ?? 'بطاقة',
+                                m.cardBrand?.label ?? 'card_label'.tr,
                                 style: const TextStyle(
                                   color:      Colors.white,
                                   fontSize:   13,
@@ -273,12 +273,14 @@ class _VisualCardState extends State<_VisualCard>
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('صاحب البطاقة',
-                                    style: TextStyle(
-                                        color: Colors.white.withValues(alpha: .5),
-                                        fontSize: 9,
-                                        fontFamily: 'bahji',
-                                        letterSpacing: 1)),
+                                Text(
+                                  'card_holder_label'.tr,
+                                  style: TextStyle(
+                                      color: Colors.white.withValues(alpha: .5),
+                                      fontSize: 9,
+                                      fontFamily: 'bahji',
+                                      letterSpacing: 1),
+                                ),
                                 const SizedBox(height: 3),
                                 Text(
                                   m.cardHolderName ?? '—',
@@ -295,12 +297,14 @@ class _VisualCardState extends State<_VisualCard>
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                Text('ينتهي',
-                                    style: TextStyle(
-                                        color: Colors.white.withValues(alpha: .5),
-                                        fontSize: 9,
-                                        fontFamily: 'bahji',
-                                        letterSpacing: 1)),
+                                Text(
+                                  'expires_label'.tr,
+                                  style: TextStyle(
+                                      color: Colors.white.withValues(alpha: .5),
+                                      fontSize: 9,
+                                      fontFamily: 'bahji',
+                                      letterSpacing: 1),
+                                ),
                                 const SizedBox(height: 3),
                                 Text(
                                   '${m.cardExpiryMonth}/${m.cardExpiryYear?.substring(2) ?? ''}',
@@ -339,12 +343,14 @@ class _VisualCardState extends State<_VisualCard>
                 children: [
                   Icon(Icons.star_rounded, size: 12, color: Colors.amber[700]),
                   const SizedBox(width: 4),
-                  Text('افتراضية',
-                      style: TextStyle(
-                          fontFamily: 'bahji',
-                          fontSize:   11,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.amber[800])),
+                  Text(
+                    'default_card_badge'.tr,
+                    style: TextStyle(
+                        fontFamily: 'bahji',
+                        fontSize:   11,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.amber[800]),
+                  ),
                 ],
               ),
             ),
@@ -358,13 +364,13 @@ class _VisualCardState extends State<_VisualCard>
               if (!m.isDefault)
                 _CardAction(
                   icon:    Icons.star_border_rounded,
-                  tooltip: 'افتراضية',
+                  tooltip: 'default_card_badge'.tr,
                   onTap:   () => p.setDefault(m.id),
                 ),
               const SizedBox(width: 6),
               _CardAction(
                 icon:    Icons.delete_outline_rounded,
-                tooltip: 'حذف',
+                tooltip: 'btn_delete'.tr,
                 onTap:   () => _delete(context, p, m.id),
                 danger:  true,
               ),
@@ -415,19 +421,18 @@ class _VisualCardState extends State<_VisualCard>
     final ok = await showDialog<bool>(
       context: ctx,
       builder: (_) => AlertDialog(
-        title:   const Text('حذف البطاقة', style: TextStyle(fontFamily: 'bahji')),
-        content: const Text('هل تريد حذف هذه البطاقة؟',
-            style: TextStyle(fontFamily: 'bahji')),
+        title:   Text('delete_card_title'.tr, style: const TextStyle(fontFamily: 'bahji')),
+        content: Text('delete_card_confirm'.tr, style: const TextStyle(fontFamily: 'bahji')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('إلغاء', style: TextStyle(fontFamily: 'bahji')),
+            child: Text('cancel'.tr, style: const TextStyle(fontFamily: 'bahji')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text('حذف',
+            child: Text('btn_delete'.tr,
                 style: TextStyle(
-                    color:      ctx.colors.danger, fontFamily: 'bahji')),
+                    color: ctx.colors.danger, fontFamily: 'bahji')),
           ),
         ],
       ),
@@ -451,26 +456,26 @@ class _CardAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width:  34,
-          height: 34,
-          decoration: BoxDecoration(
-            color:  Colors.white.withValues(alpha: .9),
-            shape:  BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withValues(alpha: .15),
-                  blurRadius: 6),
-            ],
-          ),
-          child: Icon(icon,
-              size:  16,
-              color: danger
-                  ? context.colors.danger
-                  : context.colors.primary),
-        ),
-      );
+    onTap: onTap,
+    child: Container(
+      width:  34,
+      height: 34,
+      decoration: BoxDecoration(
+        color:  Colors.white.withValues(alpha: .9),
+        shape:  BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: .15),
+              blurRadius: 6),
+        ],
+      ),
+      child: Icon(icon,
+          size:  16,
+          color: danger
+              ? context.colors.danger
+              : context.colors.primary),
+    ),
+  );
 }
 
 // ── Moyasar Notice ────────────────────────────────────────────────────────────
@@ -493,7 +498,7 @@ class _MoyasarNotice extends StatelessWidget {
             children: [
               Icon(Icons.shield_rounded, color: c.primary, size: 20),
               const SizedBox(width: 8),
-              Text('دفع آمن عبر Moyasar',
+              Text('moyasar_secure_payment'.tr,
                   style: c.h3.copyWith(fontSize: 14, color: c.primary)),
             ],
           ),
@@ -505,7 +510,7 @@ class _MoyasarNotice extends StatelessWidget {
           _FeeRow(brand: 'Apple Pay',   fee: '2.9% + 1 ر.س'),
           const SizedBox(height: 8),
           Text(
-            'يتم حفظ بطاقتك بشكل آمن عبر Moyasar. لا تُحفظ بيانات بطاقتك لدينا.',
+            'moyasar_card_save_notice'.tr,
             style: c.caption.copyWith(fontSize: 10, height: 1.5),
           ),
         ],
@@ -550,7 +555,7 @@ class _FeeRow extends StatelessWidget {
           ),
           if (isLowest) ...[
             const SizedBox(width: 4),
-            Text('الأقل', style: c.caption.copyWith(color: c.success, fontSize: 10)),
+            Text('fee_lowest'.tr, style: c.caption.copyWith(color: c.success, fontSize: 10)),
           ],
         ],
       ),
@@ -579,14 +584,14 @@ class _AddCardGuide extends StatelessWidget {
             children: [
               Icon(Icons.add_card_rounded, color: c.primary, size: 22),
               const SizedBox(width: 8),
-              Text('كيف أحفظ بطاقتي؟', style: c.h3.copyWith(fontSize: 14)),
+              Text('how_to_save_card'.tr, style: c.h3.copyWith(fontSize: 14)),
             ],
           ),
           const SizedBox(height: 14),
-          _Step(n: '1', text: 'اذهب إلى أي كورس مدفوع واضغط "اشترك الآن"'),
-          _Step(n: '2', text: 'اختر طريقة الدفع (مدى / فيزا / ماستركارد)'),
-          _Step(n: '3', text: 'أدخل بيانات بطاقتك في صفحة Moyasar الآمنة'),
-          _Step(n: '4', text: 'تُحفظ البطاقة تلقائياً لعمليات قادمة بنقرة واحدة'),
+          _Step(n: '1', text: 'save_card_step1'.tr),
+          _Step(n: '2', text: 'save_card_step2'.tr),
+          _Step(n: '3', text: 'save_card_step3'.tr),
+          _Step(n: '4', text: 'save_card_step4'.tr),
         ],
       ),
     );
@@ -647,9 +652,9 @@ class _BankAccountsTab extends StatelessWidget {
         children: [
           if (p.bankAccounts.isNotEmpty) ...[
             ...p.bankAccounts.map((m) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child:   _StudentBankTile(method: m),
-                )),
+              padding: const EdgeInsets.only(bottom: 12),
+              child:   _StudentBankTile(method: m),
+            )),
             const SizedBox(height: 24),
           ],
           _AddStudentBankForm(),
@@ -707,7 +712,7 @@ class _StudentBankTile extends StatelessWidget {
           if (!method.isDefault)
             TextButton(
               onPressed: () => p.setDefault(method.id),
-              child: Text('افتراضي',
+              child: Text('default_label'.tr,
                   style: TextStyle(fontFamily: 'bahji', color: c.primary, fontSize: 12)),
             ),
           IconButton(
@@ -740,7 +745,7 @@ class _AddStudentBankFormState extends State<_AddStudentBankForm> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    if(mounted) if(mounted) setState(() => _saving = true);
+    if (mounted) setState(() => _saving = true);
     final p = context.read<SavedMethodsProvider>();
     final r = await p.saveBankAccount(
       bankName:    _bankCtrl.text.trim(),
@@ -748,13 +753,13 @@ class _AddStudentBankFormState extends State<_AddStudentBankForm> {
       iban:        _ibanCtrl.text.trim(),
     );
     if (mounted) {
-      if(mounted) if(mounted) setState(() => _saving = false);
+      setState(() => _saving = false);
       if (r != null) {
         _bankCtrl.clear(); _nameCtrl.clear(); _ibanCtrl.clear();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('تم حفظ الحساب البنكي ✓',
-                style: TextStyle(fontFamily: 'bahji', color: Colors.white)),
+            content: Text('bank_account_saved_success'.tr,
+                style: const TextStyle(fontFamily: 'bahji', color: Colors.white)),
             backgroundColor: context.colors.success,
             behavior:        SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -784,24 +789,33 @@ class _AddStudentBankFormState extends State<_AddStudentBankForm> {
             Row(children: [
               Icon(Icons.add_rounded, color: c.primary, size: 20),
               const SizedBox(width: 8),
-              Text('إضافة حساب بنكي', style: c.h3.copyWith(fontSize: 14)),
+              Text('add_bank_account'.tr, style: c.h3.copyWith(fontSize: 14)),
             ]),
             const SizedBox(height: 16),
-            MyTextField(controller: _bankCtrl, label: 'اسم البنك',
-                validator: (v) => (v?.isEmpty ?? true) ? 'مطلوب' : null),
+            MyTextField(
+              controller: _bankCtrl,
+              label: 'bank_name_label'.tr,
+              validator: (v) => (v?.isEmpty ?? true) ? 'field_required'.tr : null,
+            ),
             const SizedBox(height: 12),
-            MyTextField(controller: _nameCtrl, label: 'اسم صاحب الحساب',
-                validator: (v) => (v?.isEmpty ?? true) ? 'مطلوب' : null),
+            MyTextField(
+              controller: _nameCtrl,
+              label: 'account_holder_name'.tr,
+              validator: (v) => (v?.isEmpty ?? true) ? 'field_required'.tr : null,
+            ),
             const SizedBox(height: 12),
-            MyTextField(controller: _ibanCtrl, label: 'رقم الآيبان (IBAN)',
-                validator: (v) {
-                  if (v?.isEmpty ?? true) return 'مطلوب';
-                  if ((v?.trim().length ?? 0) < 15) return 'الآيبان قصير';
-                  return null;
-                }),
+            MyTextField(
+              controller: _ibanCtrl,
+              label: 'iban_label'.tr,
+              validator: (v) {
+                if (v?.isEmpty ?? true) return 'field_required'.tr;
+                if ((v?.trim().length ?? 0) < 15) return 'iban_too_short'.tr;
+                return null;
+              },
+            ),
             const SizedBox(height: 18),
             MyPrimaryButton(
-              label:     'حفظ الحساب',
+              label:     'save_account_btn'.tr,
               isLoading: _saving,
               onPressed: _save,
             ),
@@ -834,18 +848,18 @@ class _ArcPainter extends CustomPainter {
 class _Chip extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
-        width:  44,
-        height: 34,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(6),
-          gradient: const LinearGradient(
-            colors: [Color(0xFFD4AF37), Color(0xFFF5C842)],
-            begin:  Alignment.topLeft,
-            end:    Alignment.bottomRight,
-          ),
-        ),
-        child: CustomPaint(painter: _ChipPainter()),
-      );
+    width:  44,
+    height: 34,
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(6),
+      gradient: const LinearGradient(
+        colors: [Color(0xFFD4AF37), Color(0xFFF5C842)],
+        begin:  Alignment.topLeft,
+        end:    Alignment.bottomRight,
+      ),
+    ),
+    child: CustomPaint(painter: _ChipPainter()),
+  );
 }
 
 class _ChipPainter extends CustomPainter {

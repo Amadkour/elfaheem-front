@@ -49,6 +49,7 @@ class CourseDetailProvider extends BaseProvider {
     }
   }
   List<SessionModel> sessions=[];
+  List<SessionModel> get liveSessions=>sessions.where((e)=>e.isLiveActive).toList();
   Future<void> fetchSessions(String courseId) async {
     final result =
     await run(() => _api.get('/api/v1/courses/$courseId/sessions'));
@@ -74,8 +75,8 @@ class CourseDetailProvider extends BaseProvider {
     course = course.copyWith(isFavorite: !was);
     notifyListeners();
     final r = was
-        ? await run(() => _api.delete('/api/v1/courses/${course.id}/favorite'))
-        : await run(() => _api.post('/api/v1/courses/${course.id}/favorite'));
+        ? await _api.delete('/api/v1/courses/${course.id}/favorite')
+        : await _api.post('/api/v1/courses/${course.id}/favorite');
     if (r == null && hasError) {
       course = course.copyWith(isFavorite: was);
       notifyListeners();
@@ -90,41 +91,6 @@ class CourseDetailProvider extends BaseProvider {
     if (r != null) c.isEnrolled = true;
     notifyListeners();
   }
-
-  // ── Student progress ──────────────────────────────────────────────────────
-
-  /// Fetches the full per-session / per-material breakdown from the backend
-  /// and updates [progressPercentage], [completedMaterialIds],
-  /// [completedSessionIds] in one shot.
-  ///
-  /// Endpoint: GET /api/v1/courses/{courseId}/my-progress
-  // Future<void> fetchProgress(String courseId) async {
-  //   final r = await run(
-  //           () => _api.get('/api/v1/courses/$courseId/my-progress', auth: true));
-  //   if (r is Map<String, dynamic>) {
-  //     progressPercentage =
-  //         (r['overall_percentage'] as num?)?.toDouble() ?? 0.0;
-  //
-  //     completedMaterialIds.clear();
-  //     completedSessionIds.clear();
-  //
-  //     final sessions = r['sessions'] as List? ?? [];
-  //     for (final s in sessions) {
-  //       final sMap = s as Map<String, dynamic>;
-  //       if (sMap['is_session_complete'] == true) {
-  //         completedSessionIds.add(sMap['session_id'] as int);
-  //       }
-  //       final materials = sMap['materials'] as List? ?? [];
-  //       for (final m in materials) {
-  //         final mMap = m as Map<String, dynamic>;
-  //         if (mMap['is_completed'] == true) {
-  //           completedMaterialIds.add(mMap['material_id'] as int);
-  //         }
-  //       }
-  //     }
-  //     notifyListeners();
-  //   }
-  // }
 
   // ── Student material completion ───────────────────────────────────────────
 

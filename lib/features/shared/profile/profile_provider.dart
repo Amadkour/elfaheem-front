@@ -207,6 +207,16 @@ class ProfileProvider extends BaseProvider {
 
   List<CourseModel> get favourites => List.unmodifiable(_favourites);
 
+  Future<void> fetchMyFavorites() async {
+    final r=await run(()=>_api.get('/api/v1/my-favorites'));
+    if(r is List){
+      _favourites=r.map((e){
+        return CourseModel.fromJson(e);
+      }).toList();
+      notifyListeners();
+    }
+  }
+
   Future<void> logout(context) async {
     await _api.clearTokens();
     _favourites = [];

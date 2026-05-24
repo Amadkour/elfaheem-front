@@ -7,7 +7,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../config/app_config.dart';
 import '../../../config/app_theme.dart';
 import '../../../utils/widget/rating_widget.dart';
-import '../../../utils/widget/video_screen.dart';
 import '../../teacher/analysis/attendance/teacher_attendance_screen.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import '../../student/courses/details/course_detail_provider.dart';
@@ -162,7 +161,6 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
       builder: (_) => _RtlDialog(
         title: 'delete_session'.tr,
         content: Text(
-          // 'delete_confirm_message'.trParams({'name': _session.name}),
           'delete_confirm_message'.tr,
           style: context.colors.body,
         ),
@@ -181,7 +179,6 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
 
   // ── Sub-widgets ───────────────────────────────────────────────────────────
 
-  /// Icon button used for edit / delete actions at the bottom of the card.
   Widget _buildIconAction({
     required IconData icon,
     required Color color,
@@ -199,7 +196,6 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
         ),
       );
 
-  /// The row (or wrap) of action buttons below the session info.
   Widget _buildActionsRow(List<SessionMaterialModel> materials) {
     final isLiveType = _session.type == 'live';
 
@@ -208,7 +204,6 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
       runSpacing: 8,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        // Teacher-only controls
         if (widget.isTeacher) ...[
           _ActionBtn(
             icon: Icons.how_to_reg_rounded,
@@ -225,8 +220,6 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
             outlined: true,
           ),
         ],
-
-        // Live session button — teacher controls start/end, student joins
         if (isLiveType && widget.isTeacher)
           _ActionBtn(
             icon: CupertinoIcons.video_camera_solid,
@@ -239,7 +232,6 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
             onTap: _toggleLive,
             outlined: true,
           ),
-
         if (_session.isLiveActive && !widget.isTeacher)
           _ActionBtn(
             icon: CupertinoIcons.video_camera_solid,
@@ -248,8 +240,6 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
             onTap: _joinLive,
             outlined: true,
           ),
-
-        // Materials toggle / add shortcut
         if (materials.isNotEmpty)
           _MaterialsToggleButton(
             count: materials.length,
@@ -259,6 +249,183 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
         else if (widget.isTeacher)
           _AddMaterialButton(sessionId: _session.id),
       ],
+    );
+  }
+
+  // ── Premium progress section ───────────────────────────────────────────────
+
+  Widget _buildProgressSection() {
+    final total = _session.totalMaterial;
+    if (total == 0 || widget.isTeacher) return const SizedBox.shrink();
+
+    final done = _session.completeMaterial;
+    final ratio = (done / total).clamp(0.0, 1.0);
+    final isFinished = done == total;
+
+    final Color fillStart = isFinished
+        ? const Color(0xFF00C48C)
+        : const Color(0xFF4DA6FF);
+    final Color fillEnd = isFinished
+        ? const Color(0xFF00E5A0)
+        : const Color(0xFF845EF7);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              fillStart.withValues(alpha: 0.06),
+              fillEnd.withValues(alpha: 0.04),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: fillStart.withValues(alpha: 0.18),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Label row ─────────────────────────────────────────────────
+            Row(
+              children: [
+                // Animated completion badge
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 350),
+                  transitionBuilder: (child, anim) => ScaleTransition(
+                    scale: anim,
+                    child: FadeTransition(opacity: anim, child: child),
+                  ),
+                  child: isFinished
+                      ? Container(
+                    key: const ValueKey('done'),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [
+                        Color(0xFF00C48C),
+                        Color(0xFF00E5A0),
+                      ]),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF00C48C)
+                              .withValues(alpha: 0.35),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.verified_rounded,
+                            size: 12, color: Colors.white),
+                        const SizedBox(width: 4),
+                        Text(
+                          'completed'.tr,
+                          style: const TextStyle(
+                            fontFamily: 'bahji',
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                      : Container(
+                    key: const ValueKey('progress'),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: fillStart.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                          color: fillStart.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.auto_stories_rounded,
+                            size: 11, color: fillStart),
+                        const SizedBox(width: 4),
+                        Text(
+                          'you_progress'.tr,
+                          style: TextStyle(
+                            fontFamily: 'bahji',
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: fillStart,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                // Fraction counter
+                RichText(
+                  text: TextSpan(
+                    children: [
+                      TextSpan(
+                        text: '$done',
+                        style: TextStyle(
+                          fontFamily: 'bahji',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: fillStart,
+                        ),
+                      ),
+                      TextSpan(
+                        text: ' / $total',
+                        style: TextStyle(
+                          fontFamily: 'bahji',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: context.colors.textLight,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 6),
+                // Percentage pill
+                Container(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                        colors: [fillStart, fillEnd]),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${(ratio * 100).toInt()}%',
+                    style: const TextStyle(
+                      fontFamily: 'bahji',
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 8),
+
+            // ── Segmented progress track ───────────────────────────────────
+            _SegmentedProgressBar(
+              total: total,
+              done: done,
+              fillStart: fillStart,
+              fillEnd: fillEnd,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -341,11 +508,11 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
 
                 const SizedBox(height: 10),
                 const Divider(height: 1),
+                _buildProgressSection(),
                 const SizedBox(height: 10),
 
                 // Action buttons
                 _buildActionsRow(materials),
-
                 const Divider(height: 20),
 
                 // Rating + edit/delete
@@ -402,6 +569,104 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
         ],
       ),
     );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Premium segmented progress bar
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SegmentedProgressBar extends StatelessWidget {
+  final int total;
+  final int done;
+  final Color fillStart;
+  final Color fillEnd;
+
+  const _SegmentedProgressBar({
+    required this.total,
+    required this.done,
+    required this.fillStart,
+    required this.fillEnd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // For small counts show individual segments, otherwise a smooth bar
+    if (total <= 12) {
+      return Row(
+        children: List.generate(total, (i) {
+          final filled = i < done;
+          final isLast = i == total - 1;
+          return Expanded(
+            child: Container(
+              margin: EdgeInsets.only(right: isLast ? 0 : 3),
+              height: 7,
+              decoration: BoxDecoration(
+                gradient: filled
+                    ? LinearGradient(
+                  colors: [fillStart, fillEnd],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                )
+                    : null,
+                color: filled
+                    ? null
+                    : context.colors.textLight.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(4),
+                boxShadow: filled
+                    ? [
+                  BoxShadow(
+                    color: fillStart.withValues(alpha: 0.30),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+                    : null,
+              ),
+            ),
+          );
+        }),
+      );
+    }
+
+    // Smooth gradient bar for large material counts
+    final ratio = (done / total).clamp(0.0, 1.0);
+    return LayoutBuilder(builder: (_, constraints) {
+      return Stack(
+        children: [
+          // Track
+          Container(
+            height: 8,
+            decoration: BoxDecoration(
+              color: context.colors.textLight.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          // Fill
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeOutCubic,
+            height: 8,
+            width: constraints.maxWidth * ratio,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [fillStart, fillEnd],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: fillStart.withValues(alpha: 0.40),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    });
   }
 }
 
@@ -547,7 +812,6 @@ class _MaterialGrid extends StatelessWidget {
     SessionMaterialType.link: Color(0xFF9C27B0),
   };
 
-  // Translation keys — resolved at call-site with .tr
   static const _typeLabelKeys = {
     SessionMaterialType.image: 'material_type_image',
     SessionMaterialType.video: 'material_type_video',
@@ -582,7 +846,6 @@ class _MaterialGrid extends StatelessWidget {
       );
     }
 
-    // Multi-column grid
     final rows = <Widget>[];
     for (int i = 0; i < materials.length; i += columns) {
       final end = (i + columns).clamp(0, materials.length);
@@ -608,107 +871,164 @@ class _MaterialGrid extends StatelessWidget {
   Widget _buildMaterialTile(BuildContext context, SessionMaterialModel m) {
     final icon = _typeIcons[m.type] ?? Icons.attach_file_rounded;
     final color = _typeColors[m.type] ?? context.colors.primary;
-    final labelKey =
-        _typeLabelKeys[m.type] ?? 'material_type_link';
+    final labelKey = _typeLabelKeys[m.type] ?? 'material_type_link';
 
-    final isCompleted = !isTeacher &&
-        context
-            .watch<CourseDetailProvider>()
-            .completedMaterialIds
-            .contains(m.id);
+    // Use m.completed directly from the model — no provider watch needed
+    final isCompleted = m.completed;
 
     return GestureDetector(
       onTap: () => _onTapMaterial(context, m, isCompleted),
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: context.colors.cardBg,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isCompleted
-                ? context.colors.success.withValues(alpha: 0.4)
-                : color.withValues(alpha: 0.2),
+                ? const Color(0xFF00C48C).withValues(alpha: 0.35)
+                : color.withValues(alpha: 0.18),
+            width: isCompleted ? 1.5 : 1.0,
           ),
           boxShadow: [
             BoxShadow(
               color: isCompleted
-                  ? context.colors.success.withValues(alpha: 0.08)
+                  ? const Color(0xFF00C48C).withValues(alpha: 0.10)
                   : color.withValues(alpha: 0.06),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
-        child: Row(children: [
-          // Icon with optional completion badge
-          _MaterialIcon(
-              icon: icon, color: color, isCompleted: isCompleted),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        m.name,
-                        style: context.colors.body.copyWith(
-                            fontWeight: FontWeight.w600, fontSize: 13,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Column(
+            children: [
+              // ── Completion shimmer strip at top ───────────────────────────
+              if (isCompleted)
+                Container(
+                  height: 3,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF00C48C), Color(0xFF00E5A0)],
+                    ),
+                  ),
+                ),
+
+              Padding(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Row(children: [
+                  // Icon with completion badge
+                  _MaterialIcon(
+                      icon: icon, color: color, isCompleted: isCompleted),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                m.name,
+                                style: context.colors.body.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                  // Subtle strikethrough tint when done
+                                  color: isCompleted
+                                      ? context.colors.textMedium
+                                      : null,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            // Age always shown; completion badge added alongside
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (isCompleted && !isTeacher) ...[
+                                  const _CompletedBadge(),
+                                  const SizedBox(width: 5),
+                                ],
+                                Text(
+                                  m.createdAt.age,
+                                  style: context.colors.navLabelUnselected,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        const SizedBox(height: 3),
+                        Row(children: [
+                          _Pill(labelKey.tr, color),
+                          if (m.fileSize != null) ...[
+                            const SizedBox(width: 6),
+                            Text(
+                              m.sizeLabel,
+                              style: context.colors.caption
+                                  .copyWith(fontSize: 10),
+                            ),
+                          ],
+                        ]),
+                        RatingWidget(
+                          type: RateType.material,
+                          sourceId: m.id.toString(),
+                          canEdit: !isTeacher,
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Actions
+                  if (isTeacher)
+                    Row(children: [
+                      _iconBtn(
+                        icon: CupertinoIcons.settings_solid,
+                        color: context.colors.textMedium,
+                        onTap: () => _showEditMaterialDialog(context, m),
                       ),
+                      _iconBtn(
+                        icon: CupertinoIcons.minus_circle_fill,
+                        color: context.colors.danger,
+                        onTap: () => _showDeleteMaterialDialog(context, m),
+                      ),
+                    ])
+                  else
+                  // open_in_new always visible; check_circle appears alongside when done
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          transitionBuilder: (child, anim) => ScaleTransition(
+                            scale: anim,
+                            child: FadeTransition(opacity: anim, child: child),
+                          ),
+                          child: isCompleted
+                              ? const Padding(
+                            key: ValueKey('check'),
+                            padding: EdgeInsets.only(right: 5),
+                            child: Icon(
+                              Icons.check_circle_rounded,
+                              size: 15,
+                              color: Color(0xFF00C48C),
+                            ),
+                          )
+                              : const SizedBox.shrink(key: ValueKey('empty')),
+                        ),
+                        Icon(Icons.open_in_new_rounded,
+                            size: 16, color: context.colors.textLight),
+                      ],
                     ),
-                    const SizedBox(width: 5),
-                    Text(
-                      m.createdAt.age,
-                      style: context.colors.navLabelUnselected,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 3),
-                Row(children: [
-                  _Pill(labelKey.tr, color),
-                  if (m.fileSize != null) ...[
-                    const SizedBox(width: 6),
-                    Text(
-                      m.sizeLabel,
-                      style:
-                      context.colors.caption.copyWith(fontSize: 10),
-                    ),
-                  ],
                 ]),
-                RatingWidget(
-                  type: RateType.material,
-                  sourceId: m.id.toString(),
-                  canEdit: !isTeacher,
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-          // Actions
-          if (isTeacher)
-            Row(children: [
-              _iconBtn(
-                icon: CupertinoIcons.settings_solid,
-                color: context.colors.textMedium,
-                onTap: () => _showEditMaterialDialog(context, m),
-              ),
-              _iconBtn(
-                icon: CupertinoIcons.minus_circle_fill,
-                color: context.colors.danger,
-                onTap: () => _showDeleteMaterialDialog(context, m),
-              ),
-            ])
-          else
-            Icon(Icons.open_in_new_rounded,
-                size: 16, color: context.colors.textLight),
-        ]),
+        ),
       ),
     );
   }
@@ -721,7 +1041,6 @@ class _MaterialGrid extends StatelessWidget {
     final uri = Uri.parse(m.url);
 
     if (m.type == SessionMaterialType.video) {
-
       Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => VideoPlayerScreen(
@@ -732,24 +1051,6 @@ class _MaterialGrid extends StatelessWidget {
           ),
         ),
       );
-      // await Navigator.push(
-      //   context,
-      //   MaterialPageRoute(
-      //     builder: (_) => VideoScreen(
-      //       uri: uri,
-      //       session: session,
-      //       onComplete: isTeacher
-      //           ? null
-      //           : () async {
-      //         if (context.mounted) {
-      //           await context
-      //               .read<CourseDetailProvider>()
-      //               .markMaterialComplete(session.id, m.id);
-      //         }
-      //       },
-      //     ),
-      //   ),
-      // );
     } else if (m.type == SessionMaterialType.image) {
       await showDialog<void>(
         context: context,
@@ -836,7 +1137,6 @@ class _MaterialGrid extends StatelessWidget {
       builder: (_) => _RtlDialog(
         title: 'delete_material'.tr,
         content: Text(
-          // 'delete_confirm_message'.trParams({'name': m.name}),
           'delete_confirm_message'.tr,
           style: context.colors.body,
         ),
@@ -855,7 +1155,51 @@ class _MaterialGrid extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Material icon with optional completion badge
+// Premium "Completed" inline badge for material tile
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CompletedBadge extends StatelessWidget {
+  const _CompletedBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF00C48C), Color(0xFF00E5A0)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF00C48C).withValues(alpha: 0.30),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: const [
+          Icon(Icons.check_rounded, size: 9, color: Colors.white),
+          SizedBox(width: 3),
+          Text(
+            '✓',
+            style: TextStyle(
+              fontFamily: 'bahji',
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Material icon with completion badge
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _MaterialIcon extends StatelessWidget {
@@ -871,7 +1215,7 @@ class _MaterialIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveColor = isCompleted ? context.colors.success : color;
+    final effectiveColor = isCompleted ? const Color(0xFF00C48C) : color;
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -879,26 +1223,42 @@ class _MaterialIcon extends StatelessWidget {
           width: 38,
           height: 38,
           decoration: BoxDecoration(
-            color: effectiveColor.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(9),
-          ),
-          child: Icon(icon, color: effectiveColor, size: 20),
-        ),
-        if (isCompleted)
-          Positioned(
-            top: -4,
-            right: -4,
-            child: Container(
-              width: 16,
-              height: 16,
-              decoration: BoxDecoration(
-                color: context.colors.success,
-                shape: BoxShape.circle,
-                border:
-                Border.all(color: context.colors.cardBg, width: 1.5),
+            gradient: isCompleted
+                ? const LinearGradient(
+              colors: [Color(0xFF00C48C), Color(0xFF00E5A0)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            )
+                : null,
+            color: isCompleted ? null : effectiveColor.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: isCompleted
+                ? [
+              BoxShadow(
+                color: const Color(0xFF00C48C).withValues(alpha: 0.30),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
               ),
-              child: const Icon(Icons.check_rounded,
-                  size: 10, color: Colors.white),
+            ]
+                : null,
+          ),
+          child: Icon(
+            isCompleted ? Icons.check_rounded : icon,
+            color: isCompleted ? Colors.white : effectiveColor,
+            size: isCompleted ? 20 : 20,
+          ),
+        ),
+        // Outer ring pulse when completed
+        if (isCompleted)
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: const Color(0xFF00C48C).withValues(alpha: 0.25),
+                  width: 2,
+                ),
+              ),
             ),
           ),
       ],
@@ -973,7 +1333,6 @@ class _AddMaterialSheetState extends State<_AddMaterialSheet> {
   final _descCtrl = TextEditingController();
   final _urlCtrl = TextEditingController();
 
-  // File type options — labels resolved via .tr at build time
   static const _fileTypeOptions = [
     _FileTypeOption(
         labelKey: 'material_type_image',
@@ -1003,8 +1362,6 @@ class _AddMaterialSheetState extends State<_AddMaterialSheet> {
     _urlCtrl.dispose();
     super.dispose();
   }
-
-  // ── Actions ───────────────────────────────────────────────────────────────
 
   Future<void> _pickFile() async {
     final opt = _fileTypeOptions[_fileTypeIdx];
@@ -1086,8 +1443,6 @@ class _AddMaterialSheetState extends State<_AddMaterialSheet> {
     ));
   }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
@@ -1104,7 +1459,6 @@ class _AddMaterialSheetState extends State<_AddMaterialSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Drag handle
             Center(
               child: Container(
                 width: 40,
@@ -1116,26 +1470,20 @@ class _AddMaterialSheetState extends State<_AddMaterialSheet> {
                 ),
               ),
             ),
-
             Text('add_material_title'.tr, style: context.colors.h3),
             const SizedBox(height: 16),
-
-            // File / Link toggle
             _ModeToggle(
               selected: _mode,
               onChanged: (v) => setState(() => _mode = v),
             ),
             const SizedBox(height: 16),
-
             if (_mode == 0) ...[
-              // File type selector
               _FileTypeSelector(
                 options: _fileTypeOptions,
                 selectedIndex: _fileTypeIdx,
                 onChanged: (i) => setState(() => _fileTypeIdx = i),
               ),
               const SizedBox(height: 14),
-              // File picker
               _FilePicker(
                 pickedFile: _pickedFile,
                 onTap: _pickFile,
@@ -1143,7 +1491,6 @@ class _AddMaterialSheetState extends State<_AddMaterialSheet> {
             ] else ...[
               _Field(ctrl: _urlCtrl, label: 'url_label'.tr, context: context),
             ],
-
             const SizedBox(height: 12),
             _Field(ctrl: _nameCtrl, label: 'name_label'.tr, context: context),
             const SizedBox(height: 10),
@@ -1152,8 +1499,6 @@ class _AddMaterialSheetState extends State<_AddMaterialSheet> {
                 label: 'description_optional'.tr,
                 context: context),
             const SizedBox(height: 20),
-
-            // Submit button
             SizedBox(
               width: double.infinity,
               child: AnimatedSwitcher(
@@ -1164,7 +1509,8 @@ class _AddMaterialSheetState extends State<_AddMaterialSheet> {
                   key: const ValueKey('submit'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: context.colors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding:
+                    const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
                   ),
@@ -1230,9 +1576,8 @@ class _FileTypeSelector extends StatelessWidget {
               ),
               child: Column(children: [
                 Icon(opt.icon,
-                    color: selected
-                        ? opt.color
-                        : context.colors.textLight,
+                    color:
+                    selected ? opt.color : context.colors.textLight,
                     size: 22),
                 const SizedBox(height: 4),
                 Text(
@@ -1241,7 +1586,8 @@ class _FileTypeSelector extends StatelessWidget {
                     fontFamily: 'bahji',
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: selected ? opt.color : context.colors.textLight,
+                    color:
+                    selected ? opt.color : context.colors.textLight,
                   ),
                 ),
               ]),
@@ -1632,7 +1978,6 @@ class _Field extends StatelessWidget {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // In-app image viewer (full-screen, pinch-to-zoom)
-// Dismissing this dialog signals the student has viewed the image.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ImageViewerDialog extends StatelessWidget {
@@ -1668,7 +2013,6 @@ class _ImageViewerDialog extends StatelessWidget {
               ),
             ),
           ),
-          // Top bar: close + title
           Positioned(
             top: 0,
             left: 0,
@@ -1729,7 +2073,7 @@ class _ImageViewerDialog extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _FileTypeOption {
-  final String labelKey; // translation key, use .tr at build time
+  final String labelKey;
   final IconData icon;
   final FileType fileType;
   final Color color;

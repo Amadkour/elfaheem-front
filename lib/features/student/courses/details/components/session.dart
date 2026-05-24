@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/session/session_material_widget.dart';
 import 'package:provider/provider.dart';
-import '../../../../../config/app_config.dart';
 import '../../../../../config/app_theme.dart';
 import '../../../../shared/session/progress_banner.dart';
+import '../../../models.dart';
 import '../course_detail_provider.dart';
 class SessionsTab extends StatelessWidget {
-  const SessionsTab({super.key});
-
+  const SessionsTab({super.key, required this.presented, required this.provider});
+  final List<SessionModel> presented;
+  final CourseDetailProvider provider;
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<CourseDetailProvider>();
     if (provider.isLoading) {
       return Padding(
         padding: EdgeInsets.all(48),
@@ -22,8 +22,7 @@ class SessionsTab extends StatelessWidget {
         ),
       );
     }
-
-    if (provider.sessions.isEmpty) {
+    if (presented.isEmpty) {
       return Padding(
         padding: const EdgeInsets.all(48),
         child: Center(
@@ -63,11 +62,11 @@ class SessionsTab extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           physics: const NeverScrollableScrollPhysics(),
           shrinkWrap: true,
-          itemCount: provider.sessions.length,
+          itemCount: presented.length,
           itemBuilder: (_, i) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: SessionMaterialCard(
-                session: provider.sessions[i].toTeacher,
+                session: presented[i].toTeacher,
                 course: provider.course.toTeacherModel,
                 isTeacher: false,
               )

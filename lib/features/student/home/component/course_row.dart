@@ -13,13 +13,14 @@ import '../../../shared/profile/course_instractor_profile.dart';
 class CoursesRow extends StatelessWidget {
   final List<CourseModel> courses;
   final bool isTeacher;
+  final bool isFullScreen;
   final void Function(CourseModel course) onTap;
 
   const CoursesRow(
       {super.key,
       required this.courses,
       required this.isTeacher,
-      required this.onTap});
+      required this.onTap,  this.isFullScreen=false});
 
   @override
   Widget build(BuildContext context) {
@@ -38,10 +39,10 @@ class CoursesRow extends StatelessWidget {
       child: ListView.separated(
         controller: controller,
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        scrollDirection: Axis.horizontal,
+        scrollDirection: isFullScreen?Axis.vertical: Axis.horizontal,
         itemCount: courses.length,
         separatorBuilder: (_, __) => const SizedBox(width: 14),
-        itemBuilder: (_, i) => _CourseCard(
+        itemBuilder: (_, i) => CourseCard(
             course: courses[i],
             fixedWidth: 188,
             isTeacher: isTeacher,
@@ -61,14 +62,14 @@ class CoursesRow extends StatelessWidget {
 // ────────────────────────────────────────────────────────────────────────────
 // Course Card — full data display
 // ────────────────────────────────────────────────────────────────────────────
-class _CourseCard extends StatelessWidget {
+class CourseCard extends StatelessWidget {
   final CourseModel course;
   final double? fixedWidth;
   final bool isTeacher;
   final void Function(CourseModel course) onTap;
 
-  const _CourseCard(
-      {required this.course,
+  const CourseCard(
+      {super.key, required this.course,
       this.fixedWidth,
       required this.isTeacher,
       required this.onTap});

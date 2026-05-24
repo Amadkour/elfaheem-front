@@ -5,11 +5,12 @@ import '../../../../config/app_theme.dart';
 class SettingsGroup extends StatelessWidget {
   final String title;
   final List<Widget> children;
-
+  final Color? itemBackground;
   const SettingsGroup({
     super.key,
     required this.title,
-    required this.children,
+    required this.children,  this.itemBackground,
+
   });
 
   @override
@@ -27,7 +28,7 @@ class SettingsGroup extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: 0),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           decoration: BoxDecoration(
-            color: context.colors.cardBg,
+            color:itemBackground?? context.colors.cardBg,
             borderRadius: BorderRadius.circular(context.colors.radiusMedium),
             boxShadow: context.colors.cardShadow,
           ),
