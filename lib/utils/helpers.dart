@@ -70,22 +70,33 @@ class Helpers {
 
   static TextDirection get pageDirection => AppConfig.lang=='ar'? TextDirection.rtl:TextDirection.ltr;
 
-  static Future<bool?> confirmLogout(BuildContext context) => showDialog<bool>(
+  static Future<bool?> confirmDialog(BuildContext context,{
+    String? title,
+    String? confirm,
+    String? cancel,
+    void Function()? onConfirm,
+    void Function()? onCancel
+  }) => showDialog<bool>(
     context: context,
     builder: (_) => Directionality(
       textDirection: Helpers.pageDirection,
       child: AlertDialog(
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(context.colors.radiusMedium)),
-        title:  Text('logout'.tr,
+        title:  Text(confirm?? 'logout'.tr,
             style: const TextStyle(
                 fontFamily: 'Tajawal', fontWeight: FontWeight.w700)),
-        content: const Text('هل أنت متأكد أنك تريد تسجيل الخروج؟',
+        content:  Text(title??'هل أنت متأكد أنك تريد تسجيل الخروج؟',
             style: TextStyle(fontFamily: 'bahji')),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child:  Text('cancel'.tr,
+            onPressed: () {
+              if(onConfirm!=null){
+                onConfirm.call();
+              }else{
+                Navigator.pop(context, false);
+              }            },
+            child:  Text(cancel??'cancel'.tr,
                 style:  TextStyle(
                     fontFamily: 'Tajawal', color: context.colors.textMedium)),
           ),
@@ -95,8 +106,14 @@ class Helpers {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
             ),
-            onPressed: () => Navigator.pop(context, true),
-            child:  Text('exit'.tr,
+            onPressed: () {
+              if(onConfirm!=null){
+                onConfirm.call();
+              }else{
+                Navigator.pop(context, true);
+              }
+            },
+            child:  Text(confirm??'exit'.tr,
                 style: const TextStyle(
                     fontFamily: 'Tajawal',
                     color: Colors.white,

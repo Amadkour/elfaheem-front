@@ -260,7 +260,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                           iconColor: Colors.white,
                           label: 'logout'.tr,
                          onTap:() async {
-                           final ok = await Helpers.confirmLogout(context);
+                           final ok = await Helpers.confirmDialog(context);
                            if (ok == true && context.mounted) {
                              await context.read<ProfileProvider>().logout(context);
                            }
@@ -272,9 +272,11 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                           iconColor: Colors.white,
                           label: 'delete_account_title'.tr,
                           onTap:() async {
-                            final ok = await Helpers.confirmLogout(context);
+                            final ok = await Helpers.confirmDialog(context,title: "are_you_share_to_delete_account".tr,confirm: "delete");
                             if (ok == true && context.mounted) {
-                              await context.read<ProfileProvider>().logout(context);
+                              Helpers.showMessage(context, 'your_account_will_deleted_successfully_through_14_days'.tr);
+                              await Future.delayed(Duration(seconds: 5));
+                              await context.read<ProfileProvider>().deleteAccount(context);
                             }
                           },
                         ),

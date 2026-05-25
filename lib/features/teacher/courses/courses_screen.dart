@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart'
     show TeacherCourseStatus, TeacherCourse;
@@ -42,15 +43,13 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
       textDirection: Helpers.pageDirection,
       child: BasePage(
         useWebCard: true,
+        appBar: ScreenAppBar(title: 'my_courses'.tr,showBack: !kIsWeb,),
         floatingActionButton: isWide ? null : _FloatingAddBtn(),
         child: SafeArea(
           bottom: false,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              isWide
-                  ? const _WebHeader()
-                  : ScreenAppBar(title: 'my_courses'.tr),
               const SizedBox(height: 4),
               const _FilterTabs(),
               const SizedBox(height: 10),
@@ -700,7 +699,7 @@ class _StatsGrid extends StatelessWidget {
         ),
         (
           Icons.star_rounded,
-          c.averageRating.toStringAsFixed(1),
+          c.rateSummary?.average.toStringAsFixed(1),
           context.colors.accent
         ),
       ],
@@ -719,7 +718,7 @@ class _StatsGrid extends StatelessWidget {
               return Expanded(
                 child: Padding(
                   padding: EdgeInsets.only(left: isLastInRow ? 0 : 4),
-                  child: _StatCell(icon, label, color),
+                  child: _StatCell(icon, label??'', color),
                 ),
               );
             }).toList(),

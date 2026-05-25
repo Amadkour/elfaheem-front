@@ -7,7 +7,7 @@ import 'package:timeago/timeago.dart' as timeago;
 
 /// Application configuration and context.colors.
 class AppConfig {
-  static const String baseUrl = 'https://longest-removable-perspectives-len.trycloudflare.com';
+  static const String baseUrl = 'https://delaware-canvas-vancouver-psychological.trycloudflare.com';
   static String lang = 'ar';
 
 }

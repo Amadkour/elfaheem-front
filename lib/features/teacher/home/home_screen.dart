@@ -33,7 +33,9 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      context.read<TeacherProvider>().init();
+      if(context.read<TeacherProvider>().allCourses.isEmpty) {
+        context.read<TeacherProvider>().init();
+      }
     });
   }
 
@@ -113,6 +115,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                                           builder: (_) => TeacherSessionsScreen(
                                               course: c.toTeacherModel)));
                                 },
+                                pageName: 'teacher-home-my-courses',
                               ),
                       ),
                       SizedBox(height: 26),
@@ -296,7 +299,6 @@ class _StatsShimmer extends StatelessWidget {
 
 class CoursesShimmer extends StatelessWidget {
   const CoursesShimmer({super.key});
-
 
   @override
   Widget build(BuildContext context) => SizedBox(

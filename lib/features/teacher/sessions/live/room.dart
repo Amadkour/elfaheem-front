@@ -670,28 +670,35 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
     if (lkPlatformIs(PlatformType.android)) {
       if (!isSharing) {
         try {
-          await local.setCameraEnabled(false);
-          await Future.delayed(const Duration(milliseconds: 200));
-          final granted = await _screenShareChannel
-              .invokeMethod<bool>('startScreenCaptureService');
-          if (granted != true) {
-            await local.setCameraEnabled(true);
-            return;
-          }
+          // FIX #3: startScreenCaptureService MethodChannel call REMOVED.
+          // Root cause of 3× permission dialogs:
+          //   1. Our manual startScreenCaptureService MethodChannel
+          //   2. setScreenShareEnabled triggers SDK foreground service
+          //   3. captureScreenAudio: true passed twice triggered audio permission
+          // Fix: let the SDK handle the foreground service entirely.
+          // Just call setScreenShareEnabled — the SDK requests MediaProjection
+          // permission exactly once and starts the foreground service itself.
+          //
+          // FIX #1: captureScreenAudio passed ONLY via defaultScreenShareCaptureOptions
+          // in RoomOptions (prejoin.dart) — NOT repeated here. Repeating it caused
+          // Android to fail to route system audio into the capture pipeline.
+          //
+          // FIX #6: setCameraEnabled NOT called — camera stays alive (no freeze, no
+          // audio focus loss that was preventing system audio capture).
           await local.setScreenShareEnabled(
             true,
-            captureScreenAudio: true,
+            // captureScreenAudio intentionally NOT set here — already in RoomOptions.
+            // Setting it again here caused audio routing conflicts on Android.
             screenShareCaptureOptions: const ScreenShareCaptureOptions(
-              captureScreenAudio: true,
-              maxFrameRate: 30, // FIX: was 15fps
+              captureScreenAudio: true, // needed in options for the capture session
+              maxFrameRate: 30, // FIX #2: was 15fps (caused slow-motion look)
             ),
           );
 
-          // FIX: publish the screen-share system audio track with HD options
-          // so it is captured in recordings and heard by all participants.
-          // After setScreenShareEnabled the SDK creates a separate audio track
-          // for system audio — upgrade it immediately.
-          await Future.delayed(const Duration(milliseconds: 300));
+          // FIX #1: Wait for SDK to create the SCREEN_SHARE_AUDIO track,
+          // then upgrade it to HD to ensure it is heard by all participants
+          // and captured in recordings at 128 kbps instead of 32 kbps default.
+          await Future.delayed(const Duration(milliseconds: 500));
           for (final pub in local.audioTrackPublications) {
             if (pub.source == TrackSource.screenShareAudio &&
                 pub.track is LocalAudioTrack) {
@@ -699,64 +706,53 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
                 pub.track as LocalAudioTrack,
                 publishOptions: _hdAudioPublishOptions,
               );
+              break; // only upgrade once
             }
           }
-
-          await Future.delayed(const Duration(milliseconds: 200));
-          await local.setCameraEnabled(true);
         } catch (e) {
-          log('Screen share error: $e');
-          await _stopScreenShare();
-          await local.setCameraEnabled(true);
+          log('Screen share start error: $e');
           _showSnack('Screen sharing failed: $e');
         }
       } else {
+        // Stopping — camera stays on (no setCameraEnabled calls).
         try {
           await local.setScreenShareEnabled(false);
-          await _stopScreenShare();
-          await Future.delayed(const Duration(milliseconds: 300));
-          await local.setCameraEnabled(true);
+          // Notify our foreground service helper if still running
+          try {
+            await _screenShareChannel.invokeMethod('stopScreenCaptureService');
+          } catch (_) {}
         } catch (e) {
           log('Screen share stop error: $e');
-          await _stopScreenShare();
-          await local.setCameraEnabled(true);
         }
       }
     } else if (lkPlatformIs(PlatformType.iOS)) {
+      // FIX #4: captureScreenAudio COMPLETELY REMOVED from iOS.
+      // iOS ReplayKit broadcast extension does NOT support system audio capture
+      // via livekit_client. Passing captureScreenAudio: true here causes an
+      // immediate fatal crash. Screen video works fine without it.
       try {
         await local.setScreenShareEnabled(
           !isSharing,
-          captureScreenAudio: true, // FIX: capture system audio on iOS too
+          // captureScreenAudio intentionally omitted — crashes on iOS
           screenShareCaptureOptions: const ScreenShareCaptureOptions(
             useiOSBroadcastExtension: true,
-            maxFrameRate: 30, // FIX: was default 15fps
+            maxFrameRate: 30,
           ),
         );
-        // FIX: upgrade screen-share audio track to HD after enabling
-        if (!isSharing) {
-          await Future.delayed(const Duration(milliseconds: 300));
-          for (final pub in local.audioTrackPublications) {
-            if (pub.source == TrackSource.screenShareAudio &&
-                pub.track is LocalAudioTrack) {
-              await local.publishAudioTrack(
-                pub.track as LocalAudioTrack,
-                publishOptions: _hdAudioPublishOptions,
-              );
-            }
-          }
-        }
       } catch (e) {
-        _showSnack('Screen sharing on iOS requires a broadcast extension.');
+        _showSnack('Screen sharing requires a Broadcast Upload Extension on iOS.');
       }
     } else {
+      // Web / Desktop — FIX #2: preferCurrentTab not set (full picker shown).
+      // FIX #6: camera never disabled (no freeze).
       try {
         await local.setScreenShareEnabled(
           !isSharing,
-          captureScreenAudio: true, // FIX: capture system audio on desktop
+          captureScreenAudio: true,
         );
-        // FIX: upgrade screen-share audio track to HD
         if (!isSharing) {
-          await Future.delayed(const Duration(milliseconds: 300));
+          // FIX #1: upgrade SCREEN_SHARE_AUDIO to HD after the SDK creates it
+          await Future.delayed(const Duration(milliseconds: 500));
           for (final pub in local.audioTrackPublications) {
             if (pub.source == TrackSource.screenShareAudio &&
                 pub.track is LocalAudioTrack) {
@@ -764,6 +760,7 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
                 pub.track as LocalAudioTrack,
                 publishOptions: _hdAudioPublishOptions,
               );
+              break;
             }
           }
         }

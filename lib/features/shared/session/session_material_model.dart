@@ -2,6 +2,8 @@
 // ─────────────────────────────────────────────────────────
 // Mirrors the Python SessionMaterial ORM / SessionMaterialResponse schema.
 
+import 'package:flutter_education_app/utils/widget/rating_widget.dart';
+
 enum SessionMaterialType { image, video, pdf, document, link }
 
 class SessionMaterialModel {
@@ -17,6 +19,8 @@ class SessionMaterialModel {
   final DateTime createdAt;
   final bool completed;
 
+  final RatingSummary? rateSummary;
+
   const SessionMaterialModel({
     required this.id,
     required this.sessionId,
@@ -27,42 +31,57 @@ class SessionMaterialModel {
     this.fileSize,
     this.key,
     required this.order,
-    required this.createdAt, required this.completed,
+    required this.createdAt,
+    required this.completed,
+    this.rateSummary,
   });
 
   factory SessionMaterialModel.fromJson(Map<String, dynamic> json) {
     return SessionMaterialModel(
-      id:          json['id'] as int,
-      completed:  json['completed'] as bool? ??false,
-      sessionId:   json['session_id'] as int,
-      name:        json['name'] as String,
+      id: json['id'] as int,
+      rateSummary: json.containsKey('rate') && json['rate'] != null
+          ? RatingSummary.fromJson(json['rate'] as Map<String, dynamic>)
+          : null,
+      completed: json['completed'] as bool? ?? false,
+      sessionId: json['session_id'] as int,
+      name: json['name'] as String,
       description: json['description'] as String?,
-      type:        _parseType(json['type'] as String),
-      url:         json['url'] as String,
-      fileSize:    json['file_size'] as int?,
-      key:         json['key'] as String?,
-      order:       json['order'] as int? ?? 0,
-      createdAt:   DateTime.parse(json['created_at'] as String),
+      type: _parseType(json['type'] as String),
+      url: json['url'] as String,
+      fileSize: json['file_size'] as int?,
+      key: json['key'] as String?,
+      order: json['order'] as int? ?? 0,
+      createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
 
   static SessionMaterialType _parseType(String t) {
     switch (t) {
-      case 'image':    return SessionMaterialType.image;
-      case 'video':    return SessionMaterialType.video;
-      case 'pdf':      return SessionMaterialType.pdf;
-      case 'document': return SessionMaterialType.document;
-      default:         return SessionMaterialType.link;
+      case 'image':
+        return SessionMaterialType.image;
+      case 'video':
+        return SessionMaterialType.video;
+      case 'pdf':
+        return SessionMaterialType.pdf;
+      case 'document':
+        return SessionMaterialType.document;
+      default:
+        return SessionMaterialType.link;
     }
   }
 
   String get typeLabel {
     switch (type) {
-      case SessionMaterialType.image:    return 'صورة';
-      case SessionMaterialType.video:    return 'فيديو';
-      case SessionMaterialType.pdf:      return 'PDF';
-      case SessionMaterialType.document: return 'مستند';
-      case SessionMaterialType.link:     return 'رابط';
+      case SessionMaterialType.image:
+        return 'صورة';
+      case SessionMaterialType.video:
+        return 'فيديو';
+      case SessionMaterialType.pdf:
+        return 'PDF';
+      case SessionMaterialType.document:
+        return 'مستند';
+      case SessionMaterialType.link:
+        return 'رابط';
     }
   }
 

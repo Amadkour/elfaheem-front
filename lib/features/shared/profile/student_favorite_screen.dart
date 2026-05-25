@@ -3,15 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
 import 'package:provider/provider.dart';
-import '../../../config/app_theme.dart';
+import '../../../config/app_config.dart';
 import '../../../utils/widget/app_bar.dart';
-import '../../../utils/widget/app_network_image.dart';
 import '../../../utils/widget/base_page.dart';
+import '../../../utils/widget/search_text_field.dart';
 import '../../student/courses/details/course_detail_screen.dart';
-import '../../student/home/component/course_row.dart';
 import '../../student/models.dart';
-import '../../teacher/home/home_screen.dart';
-import 'course_instractor_profile.dart';
 
 class FavouriteCoursesScreen extends StatefulWidget {
   const FavouriteCoursesScreen({super.key});
@@ -21,6 +18,14 @@ class FavouriteCoursesScreen extends StatefulWidget {
 }
 
 class _FavouriteCoursesScreenState extends State<FavouriteCoursesScreen> {
+  final _search = TextEditingController();
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -34,12 +39,27 @@ class _FavouriteCoursesScreenState extends State<FavouriteCoursesScreen> {
     final provider = context.watch<ProfileProvider>();
     return BasePage(
       useWebCard: true,
-      child:HomeCourseList(hasMore: false, courses: provider.favourites, onTap:  (CourseModel c) {
-        Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) => CourseDetailScreen(course: c)));
-      }, isTeacher: false)
+      appBar: ScreenAppBar(title: 'favorite'.tr),
+      child: Column(children: [
+        MySearchBar(
+          controller: _search,
+          hint: 'search_course_by_name_description',
+          onChanged: context.read<ProfileProvider>().setQuery,
+        ),
+        Expanded(
+            child: HomeCourseList(
+          hasMore: false,
+          pageName: 'favorite',
+          courses: provider.favourites,
+          onTap: (CourseModel c) {
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => CourseDetailScreen(course: c)));
+          },
+          isTeacher: false,
+        ))
+      ]),
     );
   }
 }

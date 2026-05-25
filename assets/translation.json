@@ -2808,5 +2808,97 @@
   "lk_disconnect_btn": {
     "en": "Disconnect",
     "ar": "قطع الاتصال"
+  },
+  "strength_weak": {
+    "en": "Weak",
+    "ar": "ضعيف"
+  },
+  "strength_fair": {
+    "en": "Fair",
+    "ar": "مقبول"
+  },
+  "strength_strong": {
+    "en": "Strong",
+    "ar": "قوي"
+  },
+  "strength_very_strong": {
+    "en": "Very Strong",
+    "ar": "قوي جداً"
+  },
+  "password_changed_success": {
+    "en": "Password changed successfully",
+    "ar": "تم تغيير كلمة المرور بنجاح"
+  },
+  "wrong_current_password": {
+    "en": "Current password is incorrect",
+    "ar": "كلمة المرور الحالية غير صحيحة"
+  },
+  "change_password_subtitle": {
+    "en": "Change Password",
+    "ar": "تغيير كلمة المرور"
+  },
+  "change_password_hint": {
+    "en": "Enter your current password then the new one",
+    "ar": "أدخل كلمتك الحالية ثم الجديدة"
+  },
+  "current_password_section": {
+    "en": "Current Password",
+    "ar": "كلمة المرور الحالية"
+  },
+  "new_password_section": {
+    "en": "New Password",
+    "ar": "كلمة المرور الجديدة"
+  },
+  "requirements_label": {
+    "en": "Requirements",
+    "ar": "المتطلبات"
+  },
+  "req_min_length": {
+    "en": "At least 6 characters",
+    "ar": "٦ أحرف على الأقل"
+  },
+  "req_uppercase": {
+    "en": "At least one uppercase letter (A-Z)",
+    "ar": "حرف كبير واحد على الأقل (A-Z)"
+  },
+  "req_digit": {
+    "en": "At least one digit (0-9)",
+    "ar": "رقم واحد على الأقل (0-9)"
+  },
+  "req_different": {
+    "en": "Different from the current password",
+    "ar": "مختلفة عن كلمة المرور الحالية"
+  },
+  "req_match": {
+    "en": "Matches the new password",
+    "ar": "تطابق كلمة المرور الجديدة"
+  },
+  "your_name_placeholder": {
+    "en": "Your Name",
+    "ar": "اسمك"
+  },
+  "role_teacher": {
+    "en": "Teacher",
+    "ar": "معلم"
+  },
+  "role_student": {
+    "en": "Student",
+    "ar": "طالب"
+  },
+  "personal_info_section": {
+    "en": "Personal Information",
+    "ar": "المعلومات الشخصية"
+  },
+  "bio_section": {
+    "en": "Personal Bio",
+    "ar": "نبذة شخصية"
+  },
+  "no_changes_yet": {
+    "en": "You haven't made any changes yet",
+    "ar": "لم تُجرِ أي تغييرات بعد"
+  },
+  "search_course_by_name_description": {
+    "en": "Search by name or description...",
+    "ar": "...البحث باسم الدورة او الوصف"
   }
 }

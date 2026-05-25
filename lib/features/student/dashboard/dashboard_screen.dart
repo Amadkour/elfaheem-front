@@ -57,7 +57,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           CupertinoIcons.book_fill,
           'my_courses',
           context.read<MyCoursesProvider>().fetchMyEnrollments,
-          const MyCoursesScreen()),
+           MyCoursesScreen(courses:context.read<HomeProvider>().myCourses)),
       DashboardItem(
         Icons.calendar_month_outlined,
         Icons.calendar_month_rounded,

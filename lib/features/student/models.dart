@@ -3,8 +3,10 @@ library;
 
 import 'package:flutter_education_app/features/category/categories_provider.dart';
 
+import '../../utils/widget/rating_widget.dart';
 import '../category/model.dart';
 import '../teacher/home/teacher_models.dart';
+import '../shared/session/session_material_model.dart';
 
 enum CourseStatus { all, inProgress, completed }
 
@@ -25,24 +27,27 @@ class SessionModel {
   bool isCompleted;
   final bool isLiveActive;
   final double progress;
+  final RatingSummary? rateSummary;
 
-  SessionModel(
-      {required this.id,
-      required this.courseId,
-      required this.name,
-      required this.type,
-      required this.durationMinutes,
-      required this.order,
-      this.description,
-      this.scheduledAt,
-      this.recordingUrl,
-      this.recordingStatus,
-      this.isCompleted = false,
-      required this.createdAt,
-      required this.isLiveActive,
-      required this.totalMaterial,
-      required this.completeMaterial,
-      required this.progress});
+  SessionModel({
+    required this.id,
+    required this.courseId,
+    required this.name,
+    required this.type,
+    required this.durationMinutes,
+    required this.order,
+    this.description,
+    this.scheduledAt,
+    this.recordingUrl,
+    this.recordingStatus,
+    this.isCompleted = false,
+    required this.createdAt,
+    required this.isLiveActive,
+    required this.totalMaterial,
+    required this.completeMaterial,
+    required this.progress,
+    this.rateSummary,
+  });
 
   bool get isLive => type == 'live';
 
@@ -68,6 +73,9 @@ class SessionModel {
         durationMinutes: j['duration_minutes'] as int? ?? 0,
         order: j['order'] as int? ?? 0,
         isLiveActive: j['is_live_active'] as bool? ?? false,
+        rateSummary: j.containsKey('rate') && j['rate'] != null
+            ? RatingSummary.fromJson(j['rate'] as Map<String, dynamic>)
+            : null,
         scheduledAt: j['scheduled_at'] != null
             ? DateTime.parse(j['scheduled_at'] as String)
             : null,
@@ -85,6 +93,7 @@ class SessionModel {
         id: id,
         courseId: courseId,
         name: name,
+        rateSummary: rateSummary,
         description: description,
         durationMinutes: durationMinutes,
         order: order,
@@ -97,22 +106,23 @@ class SessionModel {
       );
 
   SessionModel copyWith({bool? isCompleted, String? type}) => SessionModel(
-      id: id,
-      courseId: courseId,
-      name: name,
-      type: type ?? this.type,
-      durationMinutes: durationMinutes,
-      order: order,
-      description: description,
-      scheduledAt: scheduledAt,
-      createdAt: createdAt,
-      isLiveActive: isLiveActive,
-      recordingUrl: recordingUrl,
-      recordingStatus: recordingStatus,
-      isCompleted: isCompleted ?? this.isCompleted,
-      totalMaterial: totalMaterial,
-      completeMaterial: completeMaterial,
-      progress: progress);
+        id: id,
+        courseId: courseId,
+        name: name,
+        type: type ?? this.type,
+        durationMinutes: durationMinutes,
+        order: order,
+        description: description,
+        scheduledAt: scheduledAt,
+        createdAt: createdAt,
+        isLiveActive: isLiveActive,
+        recordingUrl: recordingUrl,
+        recordingStatus: recordingStatus,
+        isCompleted: isCompleted ?? this.isCompleted,
+        totalMaterial: totalMaterial,
+        completeMaterial: completeMaterial,
+        progress: progress,
+      );
 }
 
 // ── TeacherSessionItem ────────────────────────────────────────────────────────
@@ -129,6 +139,7 @@ class TeacherSessionItem {
   final DateTime? scheduledAt;
   final DateTime createdAt;
   final double progress;
+  final RatingSummary? rateSummary;
 
   const TeacherSessionItem({
     required this.id,
@@ -147,6 +158,7 @@ class TeacherSessionItem {
     required this.totalMaterial,
     required this.completeMaterial,
     required this.progress,
+    this.rateSummary,
   });
 
   bool get isLive => type == 'live';
@@ -186,6 +198,9 @@ class TeacherSessionItem {
       totalMaterial: j['total_materials'] as int? ?? 0,
       completeMaterial: j['complete_materials'] as int? ?? 0,
       progress: j['progress'] as double? ?? 0.0,
+      rateSummary: j.containsKey('rate') && j['rate'] != null
+        ? RatingSummary.fromJson(j['rate'] as Map<String, dynamic>)
+        : null,
     );
   }
 
@@ -206,6 +221,7 @@ class TeacherSessionItem {
         name: name ?? this.name,
         description: description ?? this.description,
         type: type,
+        rateSummary: rateSummary,
         scheduledAt: scheduledAt ?? this.scheduledAt,
         durationMinutes: durationMinutes ?? this.durationMinutes,
         order: order ?? this.order,
@@ -316,7 +332,7 @@ class TeacherProfileDetail {
 class CourseModel {
   final String id, name, imageUrl, type;
   final String? categoryId, categoryName, description;
-  final double price, averageRating, totalHours;
+  final double price, totalHours;
   final int studentsCount, sessionsCount;
   final bool isPublished;
   bool isEnrolled;
@@ -334,6 +350,7 @@ class CourseModel {
   final List<CourseTool> tools;
   final List<CoursePrerequisite> prerequisites;
   final TeacherProfileData? teacher;
+  final RatingSummary? rateSummary;
 
   CourseModel(
       {required this.id,
@@ -344,7 +361,6 @@ class CourseModel {
       this.categoryId,
       this.categoryName,
       this.description,
-      this.averageRating = 0.0,
       this.studentsCount = 0,
       this.sessionsCount = 0,
       this.totalHours = 0.0,
@@ -360,11 +376,10 @@ class CourseModel {
       required this.isEnrolled,
       this.teacher,
       required this.isPublished,
-      required this.expectedHours});
+      required this.expectedHours, this.rateSummary});
 
   String get title => name;
 
-  double? get rate => averageRating > 0 ? averageRating : null;
 
   int get hoursCount => totalHours.round();
 
@@ -374,7 +389,6 @@ class CourseModel {
       categoryId: cat.categoryId,
       imageUrl: cat.imageUrl,
       price: cat.price,
-      averageRating: cat.rating,
       type: 'recorded',
       certificates: [],
       tools: [],
@@ -395,9 +409,6 @@ class CourseModel {
               j['category_name'] as String? ??
               '',
       price: (j['fees'] as num?)?.toDouble() ?? 0.0,
-      averageRating: (j['average_rating'] as num?)?.toDouble() ??
-          (j['rating'] as num?)?.toDouble() ??
-          0.0,
       studentsCount:
           j['students_count'] as int? ?? j['enrollment_count'] as int? ?? 0,
       sessionsCount: j['sessions_count'] as int? ?? 0,
@@ -426,11 +437,16 @@ class CourseModel {
           .map((e) => CoursePrerequisite.fromJson(e as Map<String, dynamic>))
           .toList(),
       isEnrolled: j['is_enrolled'],
-      isPublished: j['is_published']);
+      isPublished: j['is_published'],
+    rateSummary: j.containsKey('rate') && j['rate'] != null
+        ? RatingSummary.fromJson(j['rate'] as Map<String, dynamic>)
+        : null,
+  );
 
   TeacherCourse get toTeacherModel => TeacherCourse(
       id: int.parse(id),
       title: title,
+      rateSummary: rateSummary,
       progress: progress,
       imageUrl: imageUrl,
       totalHours: totalHours,
@@ -442,7 +458,6 @@ class CourseModel {
       studentsCount: studentsCount,
       sessionsCount: sessionsCount,
       tools: tools,
-      averageRating: averageRating,
       isPublished: true,
       price: price,
       type: type,
@@ -455,7 +470,6 @@ class CourseModel {
           int? materialsCompleted,
           List<SessionModel>? sessions,
           String? categoryName,
-          double? averageRating,
           int? studentsCount}) =>
       CourseModel(
           id: id,
@@ -465,7 +479,7 @@ class CourseModel {
           type: type,
           categoryId: categoryId,
           categoryName: categoryName ?? this.categoryName,
-          averageRating: averageRating ?? this.averageRating,
+          rateSummary: rateSummary,
           studentsCount: studentsCount ?? this.studentsCount,
           sessionsCount: sessionsCount,
           totalHours: totalHours,

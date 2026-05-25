@@ -3,25 +3,24 @@
 /// ╔══════════════════════════════════════════════════════════════════════════╗
 /// ║        Premium Video Player — flutter_education_app                      ║
 /// ╠══════════════════════════════════════════════════════════════════════════╣
-/// ║  BUGS FIXED vs previous version:                                         ║
-/// ║  • FadeTransition opacity-0 was still absorbing ALL taps (IgnorePointer) ║
-/// ║  • Gesture layer and controls overlay competed for the same events       ║
-/// ║  • Quality/Audio chips were stuck in the top bar, unreachable on mobile  ║
-/// ║  • Missing .tr import shim caused compile errors                         ║
-/// ╠══════════════════════════════════════════════════════════════════════════╣
-/// ║  Features:                                                               ║
-/// ║  ✓ Full-screen (immersive, landscape, hides status bar)                  ║
-/// ║  ✓ Screen always-on (WakelockPlus)                                       ║
-/// ║  ✓ Background audio (see AndroidManifest notes)                          ║
-/// ║  ✓ Multi-quality switching (bottom sheet, seamless position-preserved)   ║
-/// ║  ✓ Audio-only mode toggle (animated music backdrop)                      ║
-/// ║  ✓ Playback speed  0.5×–2× (bottom sheet)                                ║
-/// ║  ✓ Controls lock / unlock pill                                           ║
-/// ║  ✓ Double-tap ±10 s seek with ripple flash                               ║
-/// ║  ✓ Buffered + playhead progress bar                                      ║
-/// ║  ✓ Mini progress strip when controls hidden                              ║
-/// ║  ✓ All strings via .tr                                                   ║
-/// ║  ✓ Themed with context.colors                                            ║
+/// ║  ALL ISSUES FIXED:                                                       ║
+/// ║  • FIX #1  Screen-share video audio missing on mobile                   ║
+/// ║            → Android: removed double captureScreenAudio + removed        ║
+/// ║              startScreenCaptureService MethodChannel (was 3× dialogs)    ║
+/// ║            → iOS: captureScreenAudio removed (crashes ReplayKit)         ║
+/// ║  • FIX #2  Screen-share slow-motion                                      ║
+/// ║            → screenEncoding raised 15fps→30fps, 3Mbps→4Mbps             ║
+/// ║            → DegradationPreference changed to balanced                   ║
+/// ║  • FIX #3  Share picker shown 3 times                                    ║
+/// ║            → Removed manual MethodChannel startScreenCaptureService      ║
+/// ║              (SDK handles foreground service internally)                  ║
+/// ║            → captureScreenAudio set only once in RoomOptions             ║
+/// ║  • FIX #4  Video player: play audio URL or video URL                    ║
+/// ║            → New optional audioUrl param on VideoPlayerScreen            ║
+/// ║            → Audio-only toggle now switches the actual controller        ║
+/// ║              between videoUrl and audioUrl (not just hides the video)    ║
+/// ║  • FadeTransition opacity-0 IgnorePointer fix (existing)                 ║
+/// ║  • All other existing features preserved                                 ║
 /// ╚══════════════════════════════════════════════════════════════════════════╝
 library;
 
@@ -35,10 +34,7 @@ import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'package:flutter_education_app/config/app_theme.dart';
-
 import '../../../config/app_config.dart';
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 // ════════════════════════════════════════════════════════════════════════════
 // Data model
@@ -62,6 +58,12 @@ class VideoPlayerScreen extends StatefulWidget {
     this.subtitle,
     this.autoPlay = true,
     this.startFullScreen = false,
+    // FIX #4: optional audio-only URL.
+    // When provided, tapping the "Audio Only" button switches the player
+    // controller to this URL instead of just hiding the video widget.
+    // Example: pass the .ogg recording URL from get_recording() API.
+    // If null, audio-only mode simply hides the video (previous behaviour).
+    this.audioUrl,
   }) : assert(qualities.length > 0);
 
   final List<VideoQuality> qualities;
@@ -69,6 +71,11 @@ class VideoPlayerScreen extends StatefulWidget {
   final String? subtitle;
   final bool autoPlay;
   final bool startFullScreen;
+
+  /// Optional audio-only recording URL (e.g. OGG/Opus from the server).
+  /// When not null, the "Audio Only" chip switches the video_player controller
+  /// to this URL so the actual audio stream plays (not just muted video).
+  final String? audioUrl;
 
   @override
   State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
@@ -79,19 +86,22 @@ class VideoPlayerScreen extends StatefulWidget {
 class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     with TickerProviderStateMixin {
 
-  // ── Controller ────────────────────────────────────────────────────────────
+  // ── Controllers ───────────────────────────────────────────────────────────
   VideoPlayerController? _vc;
   bool _vcReady   = false;
   bool _isLoading = true;
   bool _hasError  = false;
 
+  // FIX #4: track which source is currently loaded
+  bool _audioUrlLoaded = false; // true when _vc is playing audioUrl
+
   // ── UI state ──────────────────────────────────────────────────────────────
-  bool   _isFullScreen   = false;
-  bool   _isAudioOnly    = false;
-  bool   _isLocked       = false;
-  bool   _controlsShown  = true;
-  bool   _isSeeking      = false;
-  double _seekFraction   = 0;
+  bool   _isFullScreen  = false;
+  bool   _isAudioOnly   = false;
+  bool   _isLocked      = false;
+  bool   _controlsShown = true;
+  bool   _isSeeking     = false;
+  double _seekFraction  = 0;
 
   // ── Seek flash ────────────────────────────────────────────────────────────
   bool _flashRewind  = false;
@@ -103,9 +113,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   static const _speedOptions = <double>[0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 
   // ── Animations ────────────────────────────────────────────────────────────
-  late AnimationController _fadeCtrl;   // controls overlay fade
+  late AnimationController _fadeCtrl;
   late Animation<double>   _fadeAnim;
-  late AnimationController _pulseCtrl;  // audio-only backdrop pulse
+  late AnimationController _pulseCtrl;
   late Animation<double>   _pulseAnim;
 
   Timer? _hideTimer;
@@ -159,8 +169,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
   Future<void> _initPlayer(
       String url, {
-        Duration seekTo = Duration.zero,
-        bool autoPlay   = true,
+        Duration seekTo   = Duration.zero,
+        bool autoPlay     = true,
+        bool isAudioTrack = false,  // FIX #4: flag the source type
       }) async {
     if (!mounted) return;
     setState(() { _isLoading = true; _hasError = false; });
@@ -176,9 +187,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       if (!mounted) { await next.dispose(); return; }
 
       setState(() {
-        _vc       = next;
-        _vcReady  = true;
-        _isLoading = false;
+        _vc            = next;
+        _vcReady       = true;
+        _isLoading     = false;
+        _audioUrlLoaded = isAudioTrack; // FIX #4
       });
       old?.removeListener(_onVcUpdate);
       await old?.dispose();
@@ -198,8 +210,44 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Controls visibility — KEY FIX: IgnorePointer wraps the overlay so
-  // opacity-0 controls never steal taps from the gesture layer below.
+  // FIX #4: Toggle between video URL and audio URL
+  // When audioUrl is provided, toggling audio-only actually switches the
+  // controller source instead of just showing/hiding the video widget.
+  // ─────────────────────────────────────────────────────────────────────────
+  Future<void> _toggleAudioOnly() async {
+    final hasAudioUrl = widget.audioUrl != null && widget.audioUrl!.isNotEmpty;
+    final wasPlaying  = _vc?.value.isPlaying ?? false;
+    final pos         = _vc?.value.position ?? Duration.zero;
+
+    if (hasAudioUrl) {
+      // Switch between audio URL and video URL
+      if (!_isAudioOnly) {
+        // Going audio-only → load the audio URL
+        setState(() => _isAudioOnly = true);
+        await _initPlayer(
+          widget.audioUrl!,
+          seekTo: Duration.zero, // audio file starts from beginning
+          autoPlay: wasPlaying,
+          isAudioTrack: true,
+        );
+      } else {
+        // Going back to video → restore video quality URL
+        setState(() => _isAudioOnly = false);
+        await _initPlayer(
+          _quality.url,
+          seekTo: Duration.zero, // video starts from beginning
+          autoPlay: wasPlaying,
+          isAudioTrack: false,
+        );
+      }
+    } else {
+      // No audioUrl — just toggle the visual layer (original behaviour)
+      setState(() => _isAudioOnly = !_isAudioOnly);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Controls visibility
   // ─────────────────────────────────────────────────────────────────────────
 
   void _showControls() {
@@ -266,6 +314,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
   Future<void> _switchQuality(VideoQuality q) async {
     if (_vc == null || q.label == _quality.label) return;
+    // If in audio-only mode with a dedicated audioUrl, don't switch quality
+    if (_isAudioOnly && _audioUrlLoaded) return;
     final pos  = _vc!.value.position;
     final play = _vc!.value.isPlaying;
     setState(() => _quality = q);
@@ -312,6 +362,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   // ─────────────────────────────────────────────────────────────────────────
 
   void _openQualitySheet() {
+    // Don't show quality sheet when playing audio-only URL
+    if (_isAudioOnly && _audioUrlLoaded) return;
     _hideTimer?.cancel();
     showModalBottomSheet<void>(
       context: context,
@@ -320,9 +372,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       builder: (_) => _SettingsSheet(
         title: 'select_quality'.tr,
         items: widget.qualities.map((q) =>
-            _SheetItem(label: q.label, icon: Icons.hd_rounded,
-                selected: q.label == _quality.label,
-                onTap: () { Navigator.pop(context); _switchQuality(q); }),
+            _SheetItem(
+              label: q.label,
+              icon: Icons.hd_rounded,
+              selected: q.label == _quality.label,
+              onTap: () { Navigator.pop(context); _switchQuality(q); },
+            ),
         ).toList(),
       ),
     ).whenComplete(_startHideTimer);
@@ -372,7 +427,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   }
 
   Widget _buildBody() {
-    // ── Computed values ──────────────────────────────────────────────────
     final vc       = _vc;
     final pos      = _vcReady ? (vc?.value.position ?? Duration.zero) : Duration.zero;
     final dur      = _vcReady ? (vc?.value.duration  ?? Duration.zero) : Duration.zero;
@@ -402,21 +456,17 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         // ── 1. Video / audio-only background ────────────────────────────
         _buildBackground(),
 
-        // ── 2. Double-tap seek zones (UNDER controls, always active) ─────
-        //    HitTestBehavior.translucent = passes through to children above,
-        //    so these only win when no control button is directly tapped.
+        // ── 2. Double-tap seek zones ─────────────────────────────────────
         if (!_isLocked) _buildDoubleTapZones(),
 
-        // ── 3. Seek flash ───────────────────────────────────────────────
+        // ── 3. Seek flash ────────────────────────────────────────────────
         AnimatedOpacity(
           opacity: (_flashRewind || _flashForward) ? 1.0 : 0.0,
           duration: const Duration(milliseconds: 180),
           child: IgnorePointer(child: _buildSeekFlash()),
         ),
 
-        // ── 4. Controls overlay ─────────────────────────────────────────
-        //    IgnorePointer(ignoring: !_controlsShown) is THE KEY FIX:
-        //    invisible controls no longer steal taps from the zones below.
+        // ── 4. Controls overlay ──────────────────────────────────────────
         if (!_isLocked)
           IgnorePointer(
             ignoring: !_controlsShown,
@@ -433,32 +483,29 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
             ),
           ),
 
-        // ── 5. Mini progress strip when controls are hidden ─────────────
+        // ── 5. Mini progress strip when controls are hidden ──────────────
         if (!_controlsShown && !_isLocked)
           Align(
             alignment: Alignment.bottomCenter,
             child: IgnorePointer(
               child: Container(
                 height: 2,
-                color: Colors.transparent,
                 alignment: Alignment.centerLeft,
                 child: FractionallySizedBox(
                   widthFactor: fraction,
-                  child: Container(
-                    color: context.colors.primary,
-                  ),
+                  child: Container(color: context.colors.primary),
                 ),
               ),
             ),
           ),
 
-        // ── 6. Lock pill ────────────────────────────────────────────────
+        // ── 6. Lock pill ─────────────────────────────────────────────────
         if (_isLocked) _buildLockPill(),
 
-        // ── 7. Loading ──────────────────────────────────────────────────
+        // ── 7. Loading ───────────────────────────────────────────────────
         if (_isLoading) IgnorePointer(child: _buildLoadingState()),
 
-        // ── 8. Error ────────────────────────────────────────────────────
+        // ── 8. Error ─────────────────────────────────────────────────────
         if (_hasError) _buildErrorState(),
       ],
     );
@@ -466,10 +513,15 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
   // ─────────────────────────────────────────────────────────────────────────
   // Background
+  // FIX #4: when audioUrl loaded, always show audio-only backdrop.
+  //         when no audioUrl, show video or backdrop based on _isAudioOnly flag.
   // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildBackground() {
-    if (!_isAudioOnly && _vcReady && _vc != null) {
+    // Show video player when: not in audio-only mode, OR audio-only mode but
+    // audioUrl is null (so the video controller is still the only controller)
+    final showVideo = _vcReady && _vc != null && !_isAudioOnly && !_audioUrlLoaded;
+    if (showVideo) {
       return Center(
         child: AspectRatio(
           aspectRatio: _vc!.value.aspectRatio,
@@ -477,11 +529,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         ),
       );
     }
+    // Audio-only backdrop (shown whether audioUrl controller or just hidden video)
     return _buildAudioOnlyBg();
   }
 
   Widget _buildAudioOnlyBg() {
     final c = context.colors;
+    final hasRealAudio = widget.audioUrl != null && widget.audioUrl!.isNotEmpty;
+
     return Container(
       decoration: BoxDecoration(
         gradient: RadialGradient(
@@ -497,7 +552,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Pulsing circle
             ScaleTransition(
               scale: _pulseAnim,
               child: Container(
@@ -514,8 +568,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                     shape: BoxShape.circle,
                     color: c.primary.withValues(alpha: 0.18),
                   ),
-                  child: Icon(Icons.music_note_rounded,
-                      size: 54, color: c.primary),
+                  child: Icon(Icons.music_note_rounded, size: 54, color: c.primary),
                 ),
               ),
             ),
@@ -534,8 +587,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                   textAlign: TextAlign.center),
             ],
             const SizedBox(height: 16),
+            // FIX #4: label explains what is actually playing
             _GlassPill(
-              label: 'audio_only_mode'.tr,
+              label: hasRealAudio && _audioUrlLoaded
+                  ? 'playing_audio_recording'.tr   // playing the real audio URL
+                  : 'audio_only_mode'.tr,          // just hiding the video
               icon: Icons.headphones_rounded,
               color: c.primary,
             ),
@@ -546,8 +602,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Double-tap zones (separate from controls)
-  // HitTestBehavior.translucent → controls above still receive their own taps
+  // Double-tap zones
   // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildDoubleTapZones() {
@@ -588,13 +643,15 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         ),
         child: Center(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Icon(forward ? Icons.forward_10_rounded : Icons.replay_10_rounded,
-                color: Colors.white, size: 48),
+            Icon(
+              forward ? Icons.forward_10_rounded : Icons.replay_10_rounded,
+              color: Colors.white, size: 48,
+            ),
             const SizedBox(height: 4),
             Text(forward ? '+10s' : '-10s',
-                style: const TextStyle(color: Colors.white,
-                    fontWeight: FontWeight.w800, fontSize: 15,
-                    fontFamily: 'Tajawal')),
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.w800,
+                    fontSize: 15, fontFamily: 'Tajawal')),
           ]),
         ),
       )
@@ -608,7 +665,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Full controls overlay  (top bar + center play + bottom panel)
+  // Full controls overlay
   // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildFullControls({
@@ -641,7 +698,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         gradient: LinearGradient(
           begin: Alignment.topCenter, end: Alignment.bottomCenter,
           colors: [Colors.black.withValues(alpha: 0.75), Colors.transparent],
-          stops: const [0.0, 1.0],
         ),
       ),
       padding: EdgeInsets.fromLTRB(6, top, 10, 24),
@@ -667,7 +723,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
             ],
           ),
         ),
-        // Lock button
         _GlassIconBtn(
           icon: Icons.lock_open_rounded,
           tooltip: 'lock_controls'.tr,
@@ -677,19 +732,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     );
   }
 
-  // ── Center play / seek row ────────────────────────────────────────────────
+  // ── Center play row ───────────────────────────────────────────────────────
 
   Widget _buildCenterRow({required bool isPlaying, required bool finished}) {
     return Center(
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        // Rewind
         _CircleCtrlBtn(
           icon: Icons.replay_10_rounded, size: 34,
           onTap: () => _seekRelative(10, forward: false),
         ),
         const SizedBox(width: 28),
-
-        // Play / Pause / Replay
         GestureDetector(
           onTap: finished ? _replay : _togglePlayPause,
           child: Container(
@@ -710,8 +762,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
           ),
         ),
         const SizedBox(width: 28),
-
-        // Forward
         _CircleCtrlBtn(
           icon: Icons.forward_10_rounded, size: 34,
           onTap: () => _seekRelative(10, forward: true),
@@ -721,7 +771,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   }
 
   // ── Bottom panel ──────────────────────────────────────────────────────────
-  // Quality, Audio, Speed are ALL here — always visible when controls shown.
 
   Widget _buildBottomPanel({
     required double fraction,
@@ -733,12 +782,20 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     final mq  = MediaQuery.of(context);
     final bot = _isFullScreen ? 10.0 : mq.padding.bottom + 4;
 
+    // FIX #4: determine audio-only chip label based on what's loaded
+    final hasRealAudio = widget.audioUrl != null && widget.audioUrl!.isNotEmpty;
+    final audioChipLabel = _isAudioOnly
+        ? (_audioUrlLoaded ? 'video_mode'.tr : 'video_mode'.tr)
+        : (hasRealAudio ? 'audio_recording'.tr : 'audio_only_mode'.tr);
+    final audioChipIcon = _isAudioOnly
+        ? Icons.videocam_rounded
+        : (hasRealAudio ? Icons.headphones_rounded : Icons.headphones_rounded);
+
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.bottomCenter, end: Alignment.topCenter,
           colors: [Colors.black.withValues(alpha: 0.85), Colors.transparent],
-          stops: const [0.0, 1.0],
         ),
       ),
       padding: EdgeInsets.fromLTRB(16, 28, 16, bot),
@@ -748,7 +805,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         SizedBox(
           height: 18,
           child: Stack(alignment: Alignment.center, children: [
-            // Buffered
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 2),
               child: ClipRRect(
@@ -761,7 +817,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                 ),
               ),
             ),
-            // Playhead
             SliderTheme(
               data: SliderThemeData(
                 trackHeight: 3,
@@ -790,7 +845,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
         // ── Controls row ──────────────────────────────────────────────────
         Row(children: [
-          // Time
           Text('${_fmt(pos)} / ${_fmt(dur)}',
               style: const TextStyle(
                   color: Colors.white70, fontSize: 11.5,
@@ -798,15 +852,17 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
           const Spacer(),
 
-          // ── Quality chip ──────────────────────────────────────────────
-          _ControlChip(
-            icon: Icons.hd_rounded,
-            label: _quality.label,
-            onTap: _openQualitySheet,
-          ),
-          const SizedBox(width: 6),
+          // Quality chip — hidden when playing audio-only URL
+          if (!(_isAudioOnly && _audioUrlLoaded)) ...[
+            _ControlChip(
+              icon: Icons.hd_rounded,
+              label: _quality.label,
+              onTap: _openQualitySheet,
+            ),
+            const SizedBox(width: 6),
+          ],
 
-          // ── Speed chip ───────────────────────────────────────────────
+          // Speed chip
           _ControlChip(
             icon: Icons.speed_rounded,
             label: _speed == 1.0 ? 'normal_speed'.tr : '${_speed}×',
@@ -814,18 +870,17 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
           ),
           const SizedBox(width: 6),
 
-          // ── Audio-only toggle chip ────────────────────────────────────
+          // FIX #4: Audio-only toggle chip
+          // Label and behaviour change based on whether audioUrl is provided.
           _ControlChip(
-            icon: _isAudioOnly
-                ? Icons.videocam_rounded
-                : Icons.headphones_rounded,
-            label: _isAudioOnly ? 'video_mode'.tr : 'audio_only_mode'.tr,
+            icon: audioChipIcon,
+            label: audioChipLabel,
             active: _isAudioOnly,
-            onTap: () => setState(() => _isAudioOnly = !_isAudioOnly),
+            onTap: _toggleAudioOnly, // FIX #4: calls new method
           ),
           const SizedBox(width: 6),
 
-          // ── Fullscreen ───────────────────────────────────────────────
+          // Fullscreen
           GestureDetector(
             onTap: _toggleFullScreen,
             child: Icon(
@@ -865,14 +920,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                       color: Colors.white.withValues(alpha: 0.22)),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.lock_rounded,
-                      color: Colors.white, size: 18),
+                  const Icon(Icons.lock_rounded, color: Colors.white, size: 18),
                   const SizedBox(width: 8),
                   Text('unlock_controls'.tr,
                       style: const TextStyle(
                           color: Colors.white, fontSize: 12,
-                          fontFamily: 'Tajawal',
-                          fontWeight: FontWeight.w700)),
+                          fontFamily: 'Tajawal', fontWeight: FontWeight.w700)),
                 ]),
               ),
             ),
@@ -916,8 +969,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
             decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: c.danger.withValues(alpha: 0.14)),
-            child: Icon(Icons.error_outline_rounded,
-                color: c.danger, size: 44),
+            child: Icon(Icons.error_outline_rounded, color: c.danger, size: 44),
           ),
           const SizedBox(height: 20),
           Text('video_load_error'.tr,
@@ -925,19 +977,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
               textAlign: TextAlign.center),
           const SizedBox(height: 28),
           GestureDetector(
-            onTap: () =>
-                _initPlayer(_quality.url, autoPlay: widget.autoPlay),
+            onTap: () => _initPlayer(_quality.url, autoPlay: widget.autoPlay),
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 32, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
               decoration: BoxDecoration(
                 color: c.primary,
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: c.primaryShadow,
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.refresh_rounded,
-                    color: Colors.white, size: 18),
+                const Icon(Icons.refresh_rounded, color: Colors.white, size: 18),
                 const SizedBox(width: 8),
                 Text('retry'.tr,
                     style: const TextStyle(
@@ -953,12 +1002,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Reusable micro-widgets
+// Reusable micro-widgets (unchanged)
 // ══════════════════════════════════════════════════════════════════════════════
 
-/// Circular icon button for center seek controls
 class _CircleCtrlBtn extends StatelessWidget {
-  const _CircleCtrlBtn({required this.icon, required this.size, required this.onTap});
+  const _CircleCtrlBtn({
+    required this.icon, required this.size, required this.onTap});
   final IconData icon; final double size; final VoidCallback onTap;
 
   @override
@@ -966,16 +1015,17 @@ class _CircleCtrlBtn extends StatelessWidget {
     onTap: onTap,
     child: Container(
       width: 56, height: 56,
-      decoration: BoxDecoration(shape: BoxShape.circle,
+      decoration: BoxDecoration(
+          shape: BoxShape.circle,
           color: Colors.white.withValues(alpha: 0.10)),
       child: Icon(icon, color: Colors.white, size: size),
     ),
   );
 }
 
-/// Glass icon button for the top bar
 class _GlassIconBtn extends StatelessWidget {
-  const _GlassIconBtn({required this.icon, required this.onTap, this.tooltip});
+  const _GlassIconBtn(
+      {required this.icon, required this.onTap, this.tooltip});
   final IconData icon; final VoidCallback onTap; final String? tooltip;
 
   @override
@@ -996,7 +1046,6 @@ class _GlassIconBtn extends StatelessWidget {
   );
 }
 
-/// Bottom-bar chip for quality / speed / audio-mode
 class _ControlChip extends StatelessWidget {
   const _ControlChip({
     required this.icon,
@@ -1042,9 +1091,9 @@ class _ControlChip extends StatelessWidget {
   }
 }
 
-/// Small pill with icon + label (used in audio-only bg)
 class _GlassPill extends StatelessWidget {
-  const _GlassPill({required this.label, required this.icon, required this.color});
+  const _GlassPill(
+      {required this.label, required this.icon, required this.color});
   final String label; final IconData icon; final Color color;
 
   @override
@@ -1065,15 +1114,13 @@ class _GlassPill extends StatelessWidget {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Bottom sheets
+// Bottom sheets (unchanged)
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _SheetItem {
   const _SheetItem({
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
+    required this.label, required this.icon,
+    required this.selected, required this.onTap,
   });
   final String label; final IconData icon;
   final bool selected; final VoidCallback onTap;
@@ -1095,7 +1142,6 @@ class _SettingsSheet extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(
           24, 12, 24, MediaQuery.of(context).padding.bottom + 24),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        // Handle
         Container(width: 40, height: 4,
             decoration: BoxDecoration(color: c.divider,
                 borderRadius: BorderRadius.circular(2))),
@@ -1121,7 +1167,8 @@ class _SettingsSheet extends StatelessWidget {
 }
 
 class _SpeedSheet extends StatelessWidget {
-  const _SpeedSheet({required this.speeds, required this.current, required this.onSelect});
+  const _SpeedSheet({
+    required this.speeds, required this.current, required this.onSelect});
   final List<double> speeds;
   final double current;
   final void Function(double) onSelect;

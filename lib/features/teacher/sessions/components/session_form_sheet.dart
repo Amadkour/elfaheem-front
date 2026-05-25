@@ -19,10 +19,10 @@ class SessionFormSheet extends StatefulWidget {
 }
 
 class _SessionFormSheetState extends State<SessionFormSheet> {
-  final _formKey  = GlobalKey<FormState>();
-  final _nameCtrl = TextEditingController();
-  final _descCtrl = TextEditingController();
-  final _durCtrl  = TextEditingController(text: '60');
+  final _formKey   = GlobalKey<FormState>();
+  final _nameCtrl  = TextEditingController();
+  final _descCtrl  = TextEditingController();
+  final _durCtrl   = TextEditingController(text: '60');
   final _orderCtrl = TextEditingController(text: '0');
   String _type = 'pre-recorded';
   DateTime? _scheduled;
@@ -39,7 +39,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
       _durCtrl.text   = s.durationMinutes.toString();
       _orderCtrl.text = s.order.toString();
       _type = s.type ?? 'pre-recorded';
-      _scheduled =s.scheduledAt;
+      _scheduled = s.scheduledAt;
     }
   }
 
@@ -60,7 +60,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
       lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme:  ColorScheme.light(primary: context.colors.primary),
+          colorScheme: ColorScheme.light(primary: context.colors.primary),
         ),
         child: child!,
       ),
@@ -71,14 +71,15 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
       initialTime: TimeOfDay.fromDateTime(_scheduled ?? DateTime.now()),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme:  ColorScheme.light(primary: context.colors.primary),
+          colorScheme: ColorScheme.light(primary: context.colors.primary),
         ),
         child: child!,
       ),
     );
     if (time == null || !mounted) return;
-    if(mounted) setState(() => _scheduled =
-        DateTime(date.year, date.month, date.day, time.hour, time.minute));
+    if (mounted)
+      setState(() => _scheduled = DateTime(
+          date.year, date.month, date.day, time.hour, time.minute));
   }
 
   Future<void> _submit() async {
@@ -89,7 +90,9 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
       final r = await p.updateSession(
         widget.existing!.id,
         name: _nameCtrl.text.trim(),
-        description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+        description: _descCtrl.text.trim().isEmpty
+            ? null
+            : _descCtrl.text.trim(),
         type: _type,
         scheduledAt: _scheduled?.toUtc().toIso8601String(),
         durationMinutes: int.tryParse(_durCtrl.text),
@@ -101,7 +104,9 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
         courseId: widget.courseId,
         name: _nameCtrl.text.trim(),
         type: _type,
-        description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+        description: _descCtrl.text.trim().isEmpty
+            ? null
+            : _descCtrl.text.trim(),
         scheduledAt: _scheduled?.toUtc().toIso8601String(),
         durationMinutes: int.tryParse(_durCtrl.text) ?? 60,
         order: int.tryParse(_orderCtrl.text) ?? 0,
@@ -112,28 +117,38 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Row(children: [
-          Icon(ok ? Icons.check_circle_rounded : Icons.error_rounded,
-              color: Colors.white, size: 18),
+          Icon(
+            ok ? Icons.check_circle_rounded : Icons.error_rounded,
+            color: Colors.white,
+            size: 18,
+          ),
           const SizedBox(width: 10),
           Text(
-            ok ? (_isEdit ? 'تم تعديل الدرس' : 'تم إضافة الدرس') : 'حدث خطأ',
+            ok
+                ? (_isEdit
+                ? 'session_edited_success'.tr
+                : 'session_added_success'.tr)
+                : 'generic_error'.tr,
             style: const TextStyle(
                 fontFamily: 'Tajawal',
                 color: Colors.white,
                 fontWeight: FontWeight.w600),
           ),
         ]),
-        backgroundColor: ok ? context.colors.success : context.colors.danger,
+        backgroundColor:
+        ok ? context.colors.success : context.colors.danger,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = context.watch<TeacherSessionsProvider>().isLoading;
+    final isLoading =
+        context.watch<TeacherSessionsProvider>().isLoading;
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Container(
@@ -145,8 +160,8 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
         ),
         decoration: BoxDecoration(
           color: context.colors.surface,
-          borderRadius:
-           BorderRadius.vertical(top: Radius.circular(context.colors.radiusXL)),
+          borderRadius: BorderRadius.vertical(
+              top: Radius.circular(context.colors.radiusXL)),
         ),
         child: Form(
           key: _formKey,
@@ -185,7 +200,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  _isEdit ? 'تعديل الدرس' : 'درس جديد',
+                  _isEdit ? 'edit_session_title'.tr : 'new_session_title'.tr,
                   style: context.colors.h2,
                 ),
               ]),
@@ -195,13 +210,14 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
               // Fields
               MyTextField(
                 controller: _nameCtrl,
-                label: 'اسم الدرس',
-                validator: (v) => (v?.isEmpty ?? true) ? 'أدخل اسم الدرس' : null,
+                label: 'session_name_label'.tr,
+                validator: (v) =>
+                (v?.isEmpty ?? true) ? 'session_name_validator'.tr : null,
               ),
               const SizedBox(height: 14),
               MyTextField(
                 controller: _descCtrl,
-                label: 'وصف الدرس (اختياري)',
+                label: 'session_description_label'.tr,
                 maxLine: 2,
               ),
               const SizedBox(height: 14),
@@ -209,7 +225,9 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
               // Type selector
               _TypeSelector(
                 selected: _type,
-                onChanged: (t) { if(mounted) setState(() => _type = t);},
+                onChanged: (t) {
+                  if (mounted) setState(() => _type = t);
+                },
               ),
 
               const SizedBox(height: 14),
@@ -219,7 +237,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                 Expanded(
                   child: MyTextField(
                     controller: _durCtrl,
-                    label: 'المدة (دقيقة)',
+                    label: 'duration_minutes_label'.tr,
                     keyboard: TextInputType.number,
                   ),
                 ),
@@ -227,7 +245,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                 Expanded(
                   child: MyTextField(
                     controller: _orderCtrl,
-                    label: 'الترتيب',
+                    label: 'order_label'.tr,
                     keyboard: TextInputType.number,
                   ),
                 ),
@@ -246,11 +264,12 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                       color: _scheduled != null
                           ? context.colors.primaryLight
                           : context.colors.background,
-                      borderRadius:
-                      BorderRadius.circular(context.colors.radiusMedium),
+                      borderRadius: BorderRadius.circular(
+                          context.colors.radiusMedium),
                       border: Border.all(
                         color: _scheduled != null
-                            ? context.colors.primary.withValues(alpha: 0.35)
+                            ? context.colors.primary
+                            .withValues(alpha: 0.35)
                             : context.colors.divider,
                         width: _scheduled != null ? 1.5 : 1,
                       ),
@@ -260,10 +279,11 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                         width: 32,
                         height: 32,
                         decoration: BoxDecoration(
-                          color: context.colors.primary.withValues(alpha: 0.1),
+                          color: context.colors.primary
+                              .withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(9),
                         ),
-                        child:  Icon(Icons.event_rounded,
+                        child: Icon(Icons.event_rounded,
                             color: context.colors.primary, size: 17),
                       ),
                       const SizedBox(width: 12),
@@ -271,7 +291,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                         child: Text(
                           _scheduled != null
                               ? '${_scheduled!.day}/${_scheduled!.month}/${_scheduled!.year}  ${_scheduled!.hour.toString().padLeft(2, '0')}:${_scheduled!.minute.toString().padLeft(2, '0')}'
-                              : 'اختر موعد الحصة المباشرة',
+                              : 'pick_live_datetime'.tr,
                           style: context.colors.label.copyWith(
                             color: _scheduled != null
                                 ? context.colors.primary
@@ -307,93 +327,99 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
   }
 }
 
-// ── Type Selector ──────────────────────────────────────────────────────────────
+// ── Type Selector ─────────────────────────────────────────────────────────────
 class _TypeSelector extends StatelessWidget {
   final String selected;
   final ValueChanged<String> onChanged;
 
   const _TypeSelector({required this.selected, required this.onChanged});
 
-  static const _types = [
-    ('pre-recorded', 'مسجّل مسبقاً', Icons.play_circle_outline_rounded),
-    ('live', 'مباشر', Icons.live_tv_rounded),
-  ];
-
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text('نوع الدرس',
-          style: context.colors.label.copyWith(
-              color: context.colors.textDark, fontWeight: FontWeight.w700)),
-      const SizedBox(height: 10),
-      Row(
-        children: _types.map((t) {
-          final (v, l, i) = t;
-          final isSelected = selected == v;
-          final isLast = v == 'live';
+  Widget build(BuildContext context) {
+    final types = [
+      ('pre-recorded', 'pre_recorded_type'.tr, Icons.play_circle_outline_rounded),
+      ('live', 'live_type'.tr, Icons.live_tv_rounded),
+    ];
 
-          return Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(
-                left: isLast ? 0 : 6,
-                right: isLast ? 6 : 0,
-              ),
-              child: GestureDetector(
-                onTap: () => onChanged(v),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(vertical: 13),
-                  decoration: BoxDecoration(
-                    gradient: isSelected
-                        ? (v == 'live'
-                        ? context.colors.dangerGradient
-                        : context.colors.primaryGradient)
-                        : null,
-                    color: isSelected ? null : context.colors.background,
-                    borderRadius:
-                    BorderRadius.circular(context.colors.radiusMedium),
-                    border: isSelected
-                        ? null
-                        : Border.all(color: context.colors.divider, width: 1),
-                    boxShadow: isSelected
-                        ? [
-                      BoxShadow(
-                        color: (v == 'live'
-                            ? context.colors.danger
-                            : context.colors.primary)
-                            .withValues(alpha: 0.28),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      )
-                    ]
-                        : [],
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(i,
-                          size: 17,
-                          color: isSelected
-                              ? Colors.white
-                              : context.colors.textMedium),
-                      const SizedBox(width: 7),
-                      Text(l,
-                          style: context.colors.label.copyWith(
-                              color: isSelected
-                                  ? Colors.white
-                                  : context.colors.textMedium,
-                              fontWeight: isSelected
-                                  ? FontWeight.w700
-                                  : FontWeight.w500)),
-                    ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('session_type_label'.tr,
+            style: context.colors.label.copyWith(
+                color: context.colors.textDark,
+                fontWeight: FontWeight.w700)),
+        const SizedBox(height: 10),
+        Row(
+          children: types.map((t) {
+            final (v, l, i) = t;
+            final isSelected = selected == v;
+            final isLast = v == 'live';
+
+            return Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: isLast ? 0 : 6,
+                  right: isLast ? 6 : 0,
+                ),
+                child: GestureDetector(
+                  onTap: () => onChanged(v),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    decoration: BoxDecoration(
+                      gradient: isSelected
+                          ? (v == 'live'
+                          ? context.colors.dangerGradient
+                          : context.colors.primaryGradient)
+                          : null,
+                      color: isSelected
+                          ? null
+                          : context.colors.background,
+                      borderRadius: BorderRadius.circular(
+                          context.colors.radiusMedium),
+                      border: isSelected
+                          ? null
+                          : Border.all(
+                          color: context.colors.divider, width: 1),
+                      boxShadow: isSelected
+                          ? [
+                        BoxShadow(
+                          color: (v == 'live'
+                              ? context.colors.danger
+                              : context.colors.primary)
+                              .withValues(alpha: 0.28),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        )
+                      ]
+                          : [],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(i,
+                            size: 17,
+                            color: isSelected
+                                ? Colors.white
+                                : context.colors.textMedium),
+                        const SizedBox(width: 7),
+                        Text(l,
+                            style: context.colors.label.copyWith(
+                                color: isSelected
+                                    ? Colors.white
+                                    : context.colors.textMedium,
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500)),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          );
-        }).toList(),
-      ),
-    ],
-  );
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
 }

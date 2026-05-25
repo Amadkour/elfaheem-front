@@ -1,10 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/student/models.dart'
     show CourseModel;
-import 'package:provider/provider.dart';
 import '../../../../config/app_config.dart';
 import '../../../../config/app_theme.dart';
 import '../../../../utils/widget/app_network_image.dart';
@@ -14,13 +12,15 @@ class CoursesRow extends StatelessWidget {
   final List<CourseModel> courses;
   final bool isTeacher;
   final bool isFullScreen;
+  final String pageName;
   final void Function(CourseModel course) onTap;
 
   const CoursesRow(
       {super.key,
       required this.courses,
       required this.isTeacher,
-      required this.onTap,  this.isFullScreen=false});
+      required this.onTap,
+      this.isFullScreen = false, required this.pageName});
 
   @override
   Widget build(BuildContext context) {
@@ -39,14 +39,16 @@ class CoursesRow extends StatelessWidget {
       child: ListView.separated(
         controller: controller,
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        scrollDirection: isFullScreen?Axis.vertical: Axis.horizontal,
+        scrollDirection: isFullScreen ? Axis.vertical : Axis.horizontal,
         itemCount: courses.length,
         separatorBuilder: (_, __) => const SizedBox(width: 14),
         itemBuilder: (_, i) => CourseCard(
             course: courses[i],
             fixedWidth: 188,
             isTeacher: isTeacher,
-            onTap: onTap),
+            onTap: onTap,
+        pageName: pageName,
+        ),
       ),
     );
     if (!kIsWeb) return list;
@@ -66,13 +68,17 @@ class CourseCard extends StatelessWidget {
   final CourseModel course;
   final double? fixedWidth;
   final bool isTeacher;
+  final bool fullScreen;
+  final String pageName;
   final void Function(CourseModel course) onTap;
 
   const CourseCard(
-      {super.key, required this.course,
+      {super.key,
+      required this.course,
       this.fixedWidth,
       required this.isTeacher,
-      required this.onTap});
+      required this.onTap,
+      this.fullScreen = false, required this.pageName});
 
   @override
   Widget build(BuildContext context) {
@@ -100,7 +106,11 @@ class CourseCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            _Thumbnail(course: course, isTeacher: isTeacher),
+            _Thumbnail(
+              course: course,
+              isTeacher: isTeacher,
+              fullScreen: fullScreen, pageName: pageName,
+            ),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 11),
@@ -120,7 +130,7 @@ class CourseCard extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          if (course.rate != null) _StatsRow(course: course),
+                          if (course.rateSummary?.average != null) _StatsRow(course: course),
                         ],
                       ),
                       if (course.description != null &&
@@ -223,12 +233,13 @@ class CourseCard extends StatelessWidget {
 
                       // Text(course.progress.toString()),
                       // Progress bar — only when enrolled
-                        if ((course.isEnrolled || isTeacher) && course.progress > 0) ...[
-                          _ProgressBar(progress: course.progress),
-                          Spacer(
-                            flex: 2,
-                          ),
-                        ]
+                      if ((course.isEnrolled || isTeacher) &&
+                          course.progress > 0) ...[
+                        _ProgressBar(progress: course.progress),
+                        Spacer(
+                          flex: 2,
+                        ),
+                      ]
                     ]),
               ),
             ),
@@ -243,8 +254,12 @@ class CourseCard extends StatelessWidget {
 class _Thumbnail extends StatelessWidget {
   final CourseModel course;
   final bool isTeacher;
-
-  const _Thumbnail({required this.course, required this.isTeacher});
+  final bool fullScreen;
+  final String pageName;
+  const _Thumbnail(
+      {required this.course,
+      required this.isTeacher,
+      required this.fullScreen, required this.pageName});
 
   @override
   Widget build(BuildContext context) {
@@ -253,8 +268,8 @@ class _Thumbnail extends StatelessWidget {
         AppNetworkImage(
           url: course.imageUrl,
           width: double.infinity,
-          height: context.height / 6 > 150 ? 150 : context.height / 8,
-          heroTag: "course-row-card-${course.id}",
+          height: (context.height / 6) > 150 || fullScreen ? 150 : 150,
+          heroTag: "course-row-card-$pageName-${course.id}",
         ),
         // Bottom dark gradient for readability
         Positioned.fill(
@@ -408,7 +423,7 @@ class _StatsRow extends StatelessWidget {
         Icon(Icons.star_rounded, color: context.colors.accent, size: 13),
         const SizedBox(width: 3),
         Text(
-          course.rate?.toStringAsFixed(1) ?? '–',
+          course.rateSummary?.average.toStringAsFixed(1) ?? '',
           style: context.colors.caption.copyWith(
             color: context.colors.textDark,
             fontWeight: FontWeight.w700,

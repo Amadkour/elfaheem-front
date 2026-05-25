@@ -7,6 +7,7 @@ library;
 
 import 'package:flutter_education_app/features/student/models.dart';
 
+import '../../../utils/widget/rating_widget.dart';
 import '../courses/component/teacher_stats.dart';
 
 class CourseSchedule {
@@ -240,13 +241,14 @@ class ScheduleSession {
 class TeacherCourse {
   final int id, studentsCount, sessionsCount;
   final String title, imageUrl, type;
-  final double totalHours, averageRating, price, progress,expectedHours;
+  final double totalHours, price, progress, expectedHours;
   final String? categoryName, description;
   final bool isPublished;
   final List<CourseSchedule> schedules;
   final List<CourseCertificate> certificates;
   final List<CourseTool> tools;
   final List<CoursePrerequisite> prerequisites;
+  final RatingSummary? rateSummary;
 
   const TeacherCourse({
     required this.id,
@@ -256,7 +258,6 @@ class TeacherCourse {
     required this.type,
     this.studentsCount = 0,
     this.sessionsCount = 0,
-    this.averageRating = 0.0,
     this.price = 0,
     this.categoryName,
     this.isPublished = false,
@@ -267,6 +268,7 @@ class TeacherCourse {
     this.prerequisites = const [],
     required this.progress,
     required this.expectedHours,
+    this.rateSummary,
   });
 
   factory TeacherCourse.fromJson(Map<String, dynamic> j) => TeacherCourse(
@@ -276,7 +278,6 @@ class TeacherCourse {
         studentsCount: j['students_count'] as int? ?? 0,
         expectedHours: j['expected_hours'] as double? ?? 0.0,
         sessionsCount: j['sessions_count'] as int? ?? 0,
-        averageRating: (j['average_rating'] as num?)?.toDouble() ?? 0.0,
         totalHours: (j['total_hours'] as num?)?.toDouble() ?? 0,
         price: (j['fees'] as num?)?.toDouble() ?? 0,
         progress: (j['progress'] as num?)?.toDouble() ?? 0.0,
@@ -297,6 +298,9 @@ class TeacherCourse {
         prerequisites: (j['prerequisites'] as List? ?? [])
             .map((e) => CoursePrerequisite.fromJson(e as Map<String, dynamic>))
             .toList(),
+        rateSummary: j.containsKey('rate') && j['rate'] != null
+            ? RatingSummary.fromJson(j['rate'] as Map<String, dynamic>)
+            : null,
       );
 
   CourseModel get toCourseModel => CourseModel(
@@ -304,10 +308,10 @@ class TeacherCourse {
         name: title,
         imageUrl: imageUrl,
         price: price,
+        rateSummary: rateSummary,
         progress: progress,
         type: type,
         isEnrolled: false,
-        averageRating: averageRating,
         certificates: certificates,
         tools: tools,
         prerequisites: prerequisites,
@@ -338,7 +342,6 @@ class TeacherCourse {
           expectedHours: expectedHours,
           studentsCount: studentsCount,
           sessionsCount: sessionsCount,
-          averageRating: averageRating,
           price: price,
           categoryName: categoryName,
           isPublished: isPublished ?? this.isPublished,

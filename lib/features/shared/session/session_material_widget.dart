@@ -13,7 +13,7 @@ import '../../student/courses/details/course_detail_provider.dart';
 import '../../student/models.dart';
 import '../../teacher/analysis/exam/teacher_exam_hub_screen.dart';
 import '../../teacher/home/teacher_models.dart';
-import '../../teacher/sessions/model/session_material_model.dart';
+import 'session_material_model.dart';
 import '../../teacher/sessions/sessions_provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -54,10 +54,10 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
     _expandAnim =
         CurvedAnimation(parent: _animController, curve: Curves.easeInOutCubic);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
+    WidgetsBinding.instance.addPostFrameCallback((_)  {
+
         context.read<TeacherSessionsProvider>().fetchMaterials(_session.id);
-      }
+
     });
   }
 
@@ -70,6 +70,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
   // ── Expand / collapse materials panel ─────────────────────────────────────
 
   void _toggleExpanded() {
+
     setState(() => _expanded = !_expanded);
     _expanded ? _animController.forward() : _animController.reverse();
   }
@@ -126,8 +127,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
 
   void _showEditSessionDialog() {
     final nameCtrl = TextEditingController(text: _session.name);
-    final descCtrl =
-    TextEditingController(text: _session.description ?? '');
+    final descCtrl = TextEditingController(text: _session.description ?? '');
 
     showDialog(
       context: context,
@@ -142,12 +142,11 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
         onConfirm: () async {
           Navigator.pop(context);
           await context.read<TeacherSessionsProvider>().updateSession(
-            _session.id,
-            name: nameCtrl.text.trim(),
-            description: descCtrl.text.trim().isEmpty
-                ? null
-                : descCtrl.text.trim(),
-          );
+                _session.id,
+                name: nameCtrl.text.trim(),
+                description:
+                    descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
+              );
         },
         confirmLabel: 'save'.tr,
         confirmColor: context.colors.primary,
@@ -223,9 +222,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
         if (isLiveType && widget.isTeacher)
           _ActionBtn(
             icon: CupertinoIcons.video_camera_solid,
-            label: _session.isLiveActive
-                ? 'end_session'.tr
-                : 'meet_now'.tr,
+            label: _session.isLiveActive ? 'end_session'.tr : 'meet_now'.tr,
             color: _session.isLiveActive
                 ? context.colors.danger
                 : context.colors.success,
@@ -262,12 +259,10 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
     final ratio = (done / total).clamp(0.0, 1.0);
     final isFinished = done == total;
 
-    final Color fillStart = isFinished
-        ? const Color(0xFF00C48C)
-        : const Color(0xFF4DA6FF);
-    final Color fillEnd = isFinished
-        ? const Color(0xFF00E5A0)
-        : const Color(0xFF845EF7);
+    final Color fillStart =
+        isFinished ? const Color(0xFF00C48C) : const Color(0xFF4DA6FF);
+    final Color fillEnd =
+        isFinished ? const Color(0xFF00E5A0) : const Color(0xFF845EF7);
 
     return Padding(
       padding: const EdgeInsets.only(top: 12),
@@ -300,70 +295,70 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
                   ),
                   child: isFinished
                       ? Container(
-                    key: const ValueKey('done'),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [
-                        Color(0xFF00C48C),
-                        Color(0xFF00E5A0),
-                      ]),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF00C48C)
-                              .withValues(alpha: 0.35),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.verified_rounded,
-                            size: 12, color: Colors.white),
-                        const SizedBox(width: 4),
-                        Text(
-                          'completed'.tr,
-                          style: const TextStyle(
-                            fontFamily: 'bahji',
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
+                          key: const ValueKey('done'),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(colors: [
+                              Color(0xFF00C48C),
+                              Color(0xFF00E5A0),
+                            ]),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF00C48C)
+                                    .withValues(alpha: 0.35),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
-                  )
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.verified_rounded,
+                                  size: 12, color: Colors.white),
+                              const SizedBox(width: 4),
+                              Text(
+                                'completed'.tr,
+                                style: const TextStyle(
+                                  fontFamily: 'bahji',
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
                       : Container(
-                    key: const ValueKey('progress'),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: fillStart.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                          color: fillStart.withValues(alpha: 0.3)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.auto_stories_rounded,
-                            size: 11, color: fillStart),
-                        const SizedBox(width: 4),
-                        Text(
-                          'you_progress'.tr,
-                          style: TextStyle(
-                            fontFamily: 'bahji',
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: fillStart,
+                          key: const ValueKey('progress'),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: fillStart.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                                color: fillStart.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.auto_stories_rounded,
+                                  size: 11, color: fillStart),
+                              const SizedBox(width: 4),
+                              Text(
+                                'you_progress'.tr,
+                                style: TextStyle(
+                                  fontFamily: 'bahji',
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: fillStart,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
                 ),
                 const Spacer(),
                 // Fraction counter
@@ -395,10 +390,9 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
                 // Percentage pill
                 Container(
                   padding:
-                  const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                        colors: [fillStart, fillEnd]),
+                    gradient: LinearGradient(colors: [fillStart, fillEnd]),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -523,6 +517,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
                       type: RateType.session,
                       sourceId: _session.id.toString(),
                       canEdit: !widget.isTeacher,
+                      rateSummary: _session.rateSummary,
                     ),
                     if (widget.isTeacher)
                       Row(children: [
@@ -551,8 +546,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
               child: LinearProgressIndicator(
                 color: context.colors.primary,
-                backgroundColor:
-                context.colors.primary.withValues(alpha: 0.1),
+                backgroundColor: context.colors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -604,10 +598,10 @@ class _SegmentedProgressBar extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: filled
                     ? LinearGradient(
-                  colors: [fillStart, fillEnd],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                )
+                        colors: [fillStart, fillEnd],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      )
                     : null,
                 color: filled
                     ? null
@@ -615,12 +609,12 @@ class _SegmentedProgressBar extends StatelessWidget {
                 borderRadius: BorderRadius.circular(4),
                 boxShadow: filled
                     ? [
-                  BoxShadow(
-                    color: fillStart.withValues(alpha: 0.30),
-                    blurRadius: 4,
-                    offset: const Offset(0, 1),
-                  ),
-                ]
+                        BoxShadow(
+                          color: fillStart.withValues(alpha: 0.30),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ]
                     : null,
               ),
             ),
@@ -711,8 +705,7 @@ class _MaterialsPanel extends StatelessWidget {
             Text(
               'attachments'.tr,
               style: context.colors.caption.copyWith(
-                  color: context.colors.primary,
-                  fontWeight: FontWeight.w700),
+                  color: context.colors.primary, fontWeight: FontWeight.w700),
             ),
             const Spacer(),
             if (isTeacher) _AddMaterialButton(sessionId: session.id),
@@ -721,7 +714,7 @@ class _MaterialsPanel extends StatelessWidget {
           _MaterialGrid(
             session: session,
             materials: materials,
-            columns: context.isMobile ? 1 : 2,
+            columns: context.width > 800 ? 2 : 1,
             isTeacher: isTeacher,
           ),
         ],
@@ -840,9 +833,7 @@ class _MaterialGrid extends StatelessWidget {
 
     if (columns == 1) {
       return Column(
-        children: materials
-            .map((m) => _buildMaterialTile(context, m))
-            .toList(),
+        children: materials.map((m) => _buildMaterialTile(context, m)).toList(),
       );
     }
 
@@ -916,115 +907,121 @@ class _MaterialGrid extends StatelessWidget {
 
               Padding(
                 padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                child: Row(children: [
-                  // Icon with completion badge
-                  _MaterialIcon(
-                      icon: icon, color: color, isCompleted: isCompleted),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Icon with completion badge
+                      _MaterialIcon(
+                          icon: icon, color: color, isCompleted: isCompleted),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Flexible(
-                              child: Text(
-                                m.name,
-                                style: context.colors.body.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                  // Subtle strikethrough tint when done
-                                  color: isCompleted
-                                      ? context.colors.textMedium
-                                      : null,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 5),
-                            // Age always shown; completion badge added alongside
                             Row(
-                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                if (isCompleted && !isTeacher) ...[
-                                  const _CompletedBadge(),
-                                  const SizedBox(width: 5),
-                                ],
-                                Text(
-                                  m.createdAt.age,
-                                  style: context.colors.navLabelUnselected,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                Expanded(
+                                  child: Text(
+                                    m.name,
+                                    style: context.colors.body.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                      // Subtle strikethrough tint when done
+                                      color: isCompleted
+                                          ? context.colors.textMedium
+                                          : null,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 5),
+                                // Age always shown; completion badge added alongside
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (isCompleted && !isTeacher) ...[
+                                      const _CompletedBadge(),
+                                      const SizedBox(width: 5),
+                                    ],
+                                    Text(
+                                      m.createdAt.age,
+                                      style: context.colors.navLabelUnselected,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
+                            const SizedBox(height: 3),
+                            Row(children: [
+                              _Pill(labelKey.tr, color),
+                              if (m.fileSize != null) ...[
+                                const SizedBox(width: 6),
+                                Text(
+                                  m.sizeLabel,
+                                  style: context.colors.caption
+                                      .copyWith(fontSize: 10),
+                                ),
+                              ],
+                            ]),
+                            RatingWidget(
+                              type: RateType.material,
+                              sourceId: m.id.toString(),
+                              canEdit: !isTeacher,
+                              rateSummary: m.rateSummary,
+                            ),
                           ],
                         ),
-                        const SizedBox(height: 3),
+                      ),
+                      // Actions
+                      if (isTeacher)
                         Row(children: [
-                          _Pill(labelKey.tr, color),
-                          if (m.fileSize != null) ...[
-                            const SizedBox(width: 6),
-                            Text(
-                              m.sizeLabel,
-                              style: context.colors.caption
-                                  .copyWith(fontSize: 10),
-                            ),
-                          ],
-                        ]),
-                        RatingWidget(
-                          type: RateType.material,
-                          sourceId: m.id.toString(),
-                          canEdit: !isTeacher,
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Actions
-                  if (isTeacher)
-                    Row(children: [
-                      _iconBtn(
-                        icon: CupertinoIcons.settings_solid,
-                        color: context.colors.textMedium,
-                        onTap: () => _showEditMaterialDialog(context, m),
-                      ),
-                      _iconBtn(
-                        icon: CupertinoIcons.minus_circle_fill,
-                        color: context.colors.danger,
-                        onTap: () => _showDeleteMaterialDialog(context, m),
-                      ),
-                    ])
-                  else
-                  // open_in_new always visible; check_circle appears alongside when done
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 300),
-                          transitionBuilder: (child, anim) => ScaleTransition(
-                            scale: anim,
-                            child: FadeTransition(opacity: anim, child: child),
+                          _iconBtn(
+                            icon: CupertinoIcons.settings_solid,
+                            color: context.colors.textMedium,
+                            onTap: () => _showEditMaterialDialog(context, m),
                           ),
-                          child: isCompleted
-                              ? const Padding(
-                            key: ValueKey('check'),
-                            padding: EdgeInsets.only(right: 5),
-                            child: Icon(
-                              Icons.check_circle_rounded,
-                              size: 15,
-                              color: Color(0xFF00C48C),
+                          _iconBtn(
+                            icon: CupertinoIcons.minus_circle_fill,
+                            color: context.colors.danger,
+                            onTap: () => _showDeleteMaterialDialog(context, m),
+                          ),
+                        ])
+                      else
+                        // open_in_new always visible; check_circle appears alongside when done
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 300),
+                              transitionBuilder: (child, anim) =>
+                                  ScaleTransition(
+                                scale: anim,
+                                child:
+                                    FadeTransition(opacity: anim, child: child),
+                              ),
+                              child: isCompleted
+                                  ? const Padding(
+                                      key: ValueKey('check'),
+                                      padding: EdgeInsets.only(right: 5),
+                                      child: Icon(
+                                        Icons.check_circle_rounded,
+                                        size: 15,
+                                        color: Color(0xFF00C48C),
+                                      ),
+                                    )
+                                  : const SizedBox.shrink(
+                                      key: ValueKey('empty')),
                             ),
-                          )
-                              : const SizedBox.shrink(key: ValueKey('empty')),
+                            Icon(Icons.open_in_new_rounded,
+                                size: 16, color: context.colors.textLight),
+                          ],
                         ),
-                        Icon(Icons.open_in_new_rounded,
-                            size: 16, color: context.colors.textLight),
-                      ],
-                    ),
-                ]),
+                    ]),
               ),
             ],
           ),
@@ -1034,10 +1031,10 @@ class _MaterialGrid extends StatelessWidget {
   }
 
   Future<void> _onTapMaterial(
-      BuildContext context,
-      SessionMaterialModel m,
-      bool isCompleted,
-      ) async {
+    BuildContext context,
+    SessionMaterialModel m,
+    bool isCompleted,
+  ) async {
     final uri = Uri.parse(m.url);
 
     if (m.type == SessionMaterialType.video) {
@@ -1113,16 +1110,15 @@ class _MaterialGrid extends StatelessWidget {
         onConfirm: () async {
           Navigator.pop(context);
           await context.read<TeacherSessionsProvider>().updateMaterial(
-            session.id,
-            m.id,
-            name: nameCtrl.text.trim(),
-            description: descCtrl.text.trim().isEmpty
-                ? null
-                : descCtrl.text.trim(),
-            url: m.type == SessionMaterialType.link
-                ? urlCtrl.text.trim()
-                : null,
-          );
+                session.id,
+                m.id,
+                name: nameCtrl.text.trim(),
+                description:
+                    descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
+                url: m.type == SessionMaterialType.link
+                    ? urlCtrl.text.trim()
+                    : null,
+              );
         },
         confirmLabel: 'save'.tr,
         confirmColor: context.colors.primary,
@@ -1130,8 +1126,7 @@ class _MaterialGrid extends StatelessWidget {
     );
   }
 
-  void _showDeleteMaterialDialog(
-      BuildContext context, SessionMaterialModel m) {
+  void _showDeleteMaterialDialog(BuildContext context, SessionMaterialModel m) {
     showDialog(
       context: context,
       builder: (_) => _RtlDialog(
@@ -1225,21 +1220,21 @@ class _MaterialIcon extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: isCompleted
                 ? const LinearGradient(
-              colors: [Color(0xFF00C48C), Color(0xFF00E5A0)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            )
+                    colors: [Color(0xFF00C48C), Color(0xFF00E5A0)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
                 : null,
             color: isCompleted ? null : effectiveColor.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(10),
             boxShadow: isCompleted
                 ? [
-              BoxShadow(
-                color: const Color(0xFF00C48C).withValues(alpha: 0.30),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              ),
-            ]
+                    BoxShadow(
+                      color: const Color(0xFF00C48C).withValues(alpha: 0.30),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
                 : null,
           ),
           child: Icon(
@@ -1289,8 +1284,8 @@ class _AddMaterialButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: context.colors.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-              color: context.colors.primary.withValues(alpha: 0.3)),
+          border:
+              Border.all(color: context.colors.primary.withValues(alpha: 0.3)),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.add_rounded, size: 14, color: context.colors.primary),
@@ -1352,7 +1347,14 @@ class _AddMaterialSheetState extends State<_AddMaterialSheet> {
   ];
 
   static const _documentExtensions = [
-    'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'
+    'pdf',
+    'doc',
+    'docx',
+    'xls',
+    'xlsx',
+    'ppt',
+    'pptx',
+    'txt'
   ];
 
   @override
@@ -1368,14 +1370,13 @@ class _AddMaterialSheetState extends State<_AddMaterialSheet> {
     final result = await FilePicker.pickFiles(
       type: opt.fileType,
       allowedExtensions:
-      opt.fileType == FileType.custom ? _documentExtensions : null,
+          opt.fileType == FileType.custom ? _documentExtensions : null,
       withData: true,
     );
     if (result != null && result.files.isNotEmpty && mounted) {
       setState(() => _pickedFile = result.files.first);
       if (_nameCtrl.text.isEmpty) {
-        _nameCtrl.text =
-            _pickedFile!.name.replaceAll(RegExp(r'\.[^.]+$'), '');
+        _nameCtrl.text = _pickedFile!.name.replaceAll(RegExp(r'\.[^.]+$'), '');
       }
     }
   }
@@ -1406,9 +1407,8 @@ class _AddMaterialSheetState extends State<_AddMaterialSheet> {
           fileName: _pickedFile!.name,
           fileBytes: bytes,
           name: name,
-          description: _descCtrl.text.trim().isEmpty
-              ? null
-              : _descCtrl.text.trim(),
+          description:
+              _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
         );
       } else {
         final url = _urlCtrl.text.trim();
@@ -1420,9 +1420,8 @@ class _AddMaterialSheetState extends State<_AddMaterialSheet> {
           sessionId: widget.sessionId,
           name: name,
           url: url,
-          description: _descCtrl.text.trim().isEmpty
-              ? null
-              : _descCtrl.text.trim(),
+          description:
+              _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
         );
       }
       if (mounted) Navigator.pop(context);
@@ -1434,12 +1433,10 @@ class _AddMaterialSheetState extends State<_AddMaterialSheet> {
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg,
-          style:
-          const TextStyle(fontFamily: 'bahji', color: Colors.white)),
+          style: const TextStyle(fontFamily: 'bahji', color: Colors.white)),
       backgroundColor: context.colors.danger,
       behavior: SnackBarBehavior.floating,
-      shape:
-      RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ));
   }
 
@@ -1506,25 +1503,24 @@ class _AddMaterialSheetState extends State<_AddMaterialSheet> {
                 child: _saving
                     ? const Center(child: CircularProgressIndicator())
                     : ElevatedButton(
-                  key: const ValueKey('submit'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: context.colors.primary,
-                    padding:
-                    const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: _submit,
-                  child: Text(
-                    'add_material_btn'.tr,
-                    style: const TextStyle(
-                      fontFamily: 'bahji',
-                      fontSize: 14,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
+                        key: const ValueKey('submit'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: context.colors.primary,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: _submit,
+                        child: Text(
+                          'add_material_btn'.tr,
+                          style: const TextStyle(
+                            fontFamily: 'bahji',
+                            fontSize: 14,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
               ),
             ),
           ],
@@ -1560,8 +1556,7 @@ class _FileTypeSelector extends StatelessWidget {
             onTap: () => onChanged(i),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
-              margin: EdgeInsets.only(
-                  left: i < options.length - 1 ? 8 : 0),
+              margin: EdgeInsets.only(left: i < options.length - 1 ? 8 : 0),
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
                 color: selected
@@ -1576,8 +1571,7 @@ class _FileTypeSelector extends StatelessWidget {
               ),
               child: Column(children: [
                 Icon(opt.icon,
-                    color:
-                    selected ? opt.color : context.colors.textLight,
+                    color: selected ? opt.color : context.colors.textLight,
                     size: 22),
                 const SizedBox(height: 4),
                 Text(
@@ -1586,8 +1580,7 @@ class _FileTypeSelector extends StatelessWidget {
                     fontFamily: 'bahji',
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color:
-                    selected ? opt.color : context.colors.textLight,
+                    color: selected ? opt.color : context.colors.textLight,
                   ),
                 ),
               ]),
@@ -1631,21 +1624,17 @@ class _FilePicker extends StatelessWidget {
         ),
         child: Column(children: [
           Icon(
-            picked
-                ? Icons.check_circle_rounded
-                : Icons.upload_file_rounded,
+            picked ? Icons.check_circle_rounded : Icons.upload_file_rounded,
             size: 28,
-            color:
-            picked ? context.colors.success : context.colors.textMedium,
+            color: picked ? context.colors.success : context.colors.textMedium,
           ),
           const SizedBox(height: 6),
           Text(
             picked ? pickedFile!.name : 'tap_to_pick_file'.tr,
             style: context.colors.body.copyWith(
               fontSize: 13,
-              color: picked
-                  ? context.colors.success
-                  : context.colors.textMedium,
+              color:
+                  picked ? context.colors.success : context.colors.textMedium,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -1683,8 +1672,7 @@ class _RtlDialog extends StatelessWidget {
       textDirection: TextDirection.rtl,
       child: AlertDialog(
         backgroundColor: context.colors.cardBg,
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(title, style: context.colors.h3),
         content: content,
         actions: [
@@ -1773,8 +1761,8 @@ class _ActionBtnState extends State<_ActionBtn>
     final bg = widget.filled
         ? widget.color
         : widget.outlined
-        ? Colors.transparent
-        : widget.color.withValues(alpha: 0.09);
+            ? Colors.transparent
+            : widget.color.withValues(alpha: 0.09);
 
     final border = widget.outlined
         ? Border.all(color: widget.color.withValues(alpha: 0.40), width: 1.2)
@@ -1800,12 +1788,12 @@ class _ActionBtnState extends State<_ActionBtn>
             border: border,
             boxShadow: widget.filled
                 ? [
-              BoxShadow(
-                color: widget.color.withValues(alpha: 0.30),
-                blurRadius: 12,
-                offset: const Offset(0, 5),
-              ),
-            ]
+                    BoxShadow(
+                      color: widget.color.withValues(alpha: 0.30),
+                      blurRadius: 12,
+                      offset: const Offset(0, 5),
+                    ),
+                  ]
                 : null,
           ),
           child: Row(
@@ -1848,8 +1836,8 @@ class _ModeToggle extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.colors.background,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-            color: context.colors.textLight.withValues(alpha: 0.15)),
+        border:
+            Border.all(color: context.colors.textLight.withValues(alpha: 0.15)),
       ),
       child: Row(children: [
         _segment('file_mode'.tr, 0, Icons.upload_file_rounded, context),
@@ -1871,8 +1859,7 @@ class _ModeToggle extends StatelessWidget {
             color: sel ? context.colors.primary : Colors.transparent,
             borderRadius: BorderRadius.circular(9),
           ),
-          child:
-          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             Icon(icon,
                 size: 15,
                 color: sel ? Colors.white : context.colors.textMedium),
@@ -1924,21 +1911,21 @@ class _Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(4),
-    ),
-    child: Text(
-      label,
-      style: TextStyle(
-        fontFamily: 'bahji',
-        fontSize: 9,
-        color: color,
-        fontWeight: FontWeight.w700,
-      ),
-    ),
-  );
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'bahji',
+            fontSize: 9,
+            color: color,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
 }
 
 class _Field extends StatelessWidget {
@@ -1951,29 +1938,29 @@ class _Field extends StatelessWidget {
 
   @override
   Widget build(BuildContext ctx) => TextField(
-    controller: ctrl,
-    style: ctx.colors.body,
-    decoration: InputDecoration(
-      labelText: label,
-      labelStyle: ctx.colors.caption,
-      filled: true,
-      fillColor: ctx.colors.background,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(
-            color: ctx.colors.textLight.withValues(alpha: 0.2)),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(
-            color: ctx.colors.textLight.withValues(alpha: 0.2)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: ctx.colors.primary),
-      ),
-    ),
-  );
+        controller: ctrl,
+        style: ctx.colors.body,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: ctx.colors.caption,
+          filled: true,
+          fillColor: ctx.colors.background,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide:
+                BorderSide(color: ctx.colors.textLight.withValues(alpha: 0.2)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide:
+                BorderSide(color: ctx.colors.textLight.withValues(alpha: 0.2)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: ctx.colors.primary),
+          ),
+        ),
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2003,8 +1990,7 @@ class _ImageViewerDialog extends StatelessWidget {
                 loadingBuilder: (_, child, progress) => progress == null
                     ? child
                     : const Center(
-                    child: CircularProgressIndicator(
-                        color: Colors.white)),
+                        child: CircularProgressIndicator(color: Colors.white)),
                 errorBuilder: (_, __, ___) => const Icon(
                   Icons.broken_image_rounded,
                   color: Colors.white54,

@@ -274,34 +274,43 @@ class _PreJoinPageState extends State<PreJoinPage>
     try {
       const cameraEncoding =
       VideoEncoding(maxBitrate: 5 * 1000 * 1000, maxFramerate: 60);
+
+      // FIX #2: raised from 15 → 30 fps — 15fps was causing slow-motion look.
+      // FIX #2: bitrate raised to 4 Mbps for sharper screen content.
       const screenEncoding =
-      VideoEncoding(maxBitrate: 3 * 1000 * 1000, maxFramerate: 15);
+      VideoEncoding(maxBitrate: 4 * 1000 * 1000, maxFramerate: 30);
 
       final room = Room(
         roomOptions: RoomOptions(
           adaptiveStream: args.adaptiveStream,
           dynacast: args.dynacast,
-          defaultAudioPublishOptions:
-          const AudioPublishOptions(name: 'custom_audio_track_name'),
+          defaultAudioPublishOptions: const AudioPublishOptions(
+            // FIX audio quality: 128 kbps, RED for packet-loss recovery
+            encoding: AudioEncoding(maxBitrate: 128000),
+            dtx: false,
+            red: true,
+          ),
           defaultCameraCaptureOptions: const CameraCaptureOptions(
             cameraPosition: CameraPosition.front,
             maxFrameRate: 60,
-            params:
-            VideoParameters(dimensions: VideoDimensionsPresets.h1080_169),
+            params: VideoParameters(dimensions: VideoDimensionsPresets.h1080_169),
           ),
           defaultScreenShareCaptureOptions: const ScreenShareCaptureOptions(
+            // FIX #2: preferCurrentTab REMOVED — shows full picker (Screen/Window/Tab).
+            // FIX #3: captureScreenAudio set here at room level only (not repeated
+            //         in setScreenShareEnabled call) — prevents double-permission dialog.
             captureScreenAudio: true,
-            preferCurrentTab: true,
-            maxFrameRate: 15,
+            maxFrameRate: 30,  // FIX #2: was 15fps
             params: VideoParametersPresets.screenShareH1080FPS15,
           ),
           defaultVideoPublishOptions: VideoPublishOptions(
             simulcast: args.simulcast,
             videoCodec: args.preferredCodec,
-            degradationPreference:
-            DegradationPreference.maintainFramerateAndResolution,
-            backupVideoCodec:
-            BackupVideoCodec(enabled: args.enableBackupVideoCodec),
+            // FIX #2: changed from maintainFramerateAndResolution which conflicts
+            // with a 15fps cap and causes the encoder to throttle. BALANCED lets
+            // the encoder maintain quality at the requested framerate.
+            degradationPreference: DegradationPreference.balanced,
+            backupVideoCodec: BackupVideoCodec(enabled: args.enableBackupVideoCodec),
             videoEncoding: cameraEncoding,
             screenShareEncoding: screenEncoding,
           ),

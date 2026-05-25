@@ -3,14 +3,11 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/student/analysis/student_analytics_provider.dart';
 import 'package:flutter_education_app/features/student/attendance/attendance_provider.dart';
 import 'package:flutter_education_app/features/student/courses/details/course_detail_provider.dart';
-import 'package:flutter_education_app/features/shared/exams_provider.dart';
 import 'package:provider/provider.dart';
-
 import '../config/storage_service.dart' show StorageService;
 import '../features/auth/auth_provider.dart';
 import '../features/category/categories_provider.dart';
 import '../features/notification/notifications_provider.dart';
-import '../features/shared/attendance_provider.dart';
 import '../features/shared/profile/about/about_terms_provider.dart';
 import '../features/shared/profile/profile_provider.dart';
 import '../features/student/analysis/exam/student_exam_provider.dart';
@@ -51,14 +48,15 @@ List<SingleChildWidget> appProviders(
       // ── Domain providers (all share the ApiClient singleton) ─────────────────
       ChangeNotifierProvider<TeacherSchedulesProvider>(
         create: (_) => TeacherSchedulesProvider(),
-
-      ), ChangeNotifierProvider<AboutTermsProvider>(
+      ),
+      ChangeNotifierProvider<AboutTermsProvider>(
         create: (_) => AboutTermsProvider(),
       ),
       // ── Domain providers (all share the ApiClient singleton) ─────────────────
       ChangeNotifierProvider<TeacherSessionsProvider>(
         create: (_) => TeacherSessionsProvider(),
-      ), ChangeNotifierProvider<StudentAnalyticsProvider>(
+      ),
+      ChangeNotifierProvider<StudentAnalyticsProvider>(
         create: (_) => StudentAnalyticsProvider(),
       ),
       ChangeNotifierProvider<MyCoursesProvider>(
@@ -96,12 +94,6 @@ List<SingleChildWidget> appProviders(
       ),
       ChangeNotifierProvider<EnrolledStudentsProvider>(
         create: (_) => EnrolledStudentsProvider(api: api),
-      ),
-      ChangeNotifierProvider<ExamsProvider>(
-        create: (_) => ExamsProvider(),
-      ),
-      ChangeNotifierProvider<AttendanceProvider>(
-        create: (_) => AttendanceProvider(),
       ),
       ChangeNotifierProvider<StudentAttendanceProvider>(
         create: (_) => StudentAttendanceProvider(),

@@ -6,9 +6,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
-import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:http/http.dart' hide MultipartFile;
 import '../../../config/storage_service.dart';
+import '../../auth/auth_provider.dart';
 import '../../auth/login_screen.dart';
 import '../../student/models.dart';
 import 'package:path/path.dart' as p;
@@ -30,13 +30,12 @@ class ProfileProvider extends BaseProvider {
       darkMode = saved;
     }
   }
+
   Future<void> changeMode(bool isDark) async {
     await _storage.saveMode(isDark);
-    darkMode=isDark;
+    darkMode = isDark;
     notifyListeners();
   }
-
-  // ProfileProvider({ApiClient? api}) : _api = api ?? ApiClient();
 
   void initData(UserModel? u) {
     isLoading = true;
@@ -53,14 +52,14 @@ class ProfileProvider extends BaseProvider {
     notifyListeners();
   }
 
-  // ── Fields populated after login / GET /me ─────────────────────────────
+  // ── Fields ────────────────────────────────────────────────────────────────
   XFile? imageFile;
   Uint8List? imageByte;
   int id = 0;
   String name = '';
-  String email = ''; // gmail – never editable by user
+  String email = '';
   String phone = '';
-  String dob = ''; // stored as 'yyyy-MM-dd' string for UI
+  String dob = '';
   String bio = '';
   String country = '';
   String imageUrl = '';
@@ -94,7 +93,7 @@ class ProfileProvider extends BaseProvider {
   Future<UserModel?> uploadImage() async {
     try {
       final ext =
-          p.extension(imageFile!.path).replaceFirst('.', '').toLowerCase();
+      p.extension(imageFile!.path).replaceFirst('.', '').toLowerCase();
       final mimeType = switch (ext) {
         'png' => 'image/png',
         'webp' => 'image/webp',
@@ -114,7 +113,7 @@ class ProfileProvider extends BaseProvider {
         ),
       });
       final response =
-          await _api.dio.post('/api/v1/auth/me/image', data: formData);
+      await _api.dio.post('/api/v1/auth/me/image', data: formData);
       if (response.statusCode != 200) return null;
       return UserModel.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
@@ -128,13 +127,13 @@ class ProfileProvider extends BaseProvider {
 
   Future<bool> resendOtp(String email) async {
     final result = await run(
-      () => _api.post('/api/v1/auth/resend-otp2',
+          () => _api.post('/api/v1/auth/resend-otp2',
           body: {'gmail': email}, auth: false),
     );
     return result != null;
   }
 
-  // ── Update account (name, phone, dob, bio, country) ────────────────────
+  // ── Update profile ────────────────────────────────────────────────────────
   Future<UserModel?> updateProfile({
     String? name,
     String? phone,
@@ -151,12 +150,8 @@ class ProfileProvider extends BaseProvider {
       if (bio != null && bio.isNotEmpty) body['bio'] = bio;
       if (country != null && country.isNotEmpty) body['country'] = country;
       final r = await run(
-        () => ApiClient().put(
-          '/api/v1/auth/me',
-          body: body,
-        ),
+            () => ApiClient().put('/api/v1/auth/me', body: body),
       );
-
       if (r != null && r is Map) {
         _setLoading(false);
         return UserModel.fromJson(r as Map<String, dynamic>);
@@ -168,7 +163,7 @@ class ProfileProvider extends BaseProvider {
     }
   }
 
-  // ── Change password ─────────────────────────────────────────────────────
+  // ── Change password ───────────────────────────────────────────────────────
   Future<String?> changePassword({
     required String oldPassword,
     required String newPassword,
@@ -176,7 +171,7 @@ class ProfileProvider extends BaseProvider {
     _setLoading(true);
     try {
       final r = await run(
-        () => ApiClient().put('/api/v1/auth/change-password', body: {
+            () => ApiClient().put('/api/v1/auth/change-password', body: {
           'gmail': email,
           'old_password': oldPassword,
           'new_password': newPassword,
@@ -200,30 +195,116 @@ class ProfileProvider extends BaseProvider {
 
   final ApiClient _api;
 
-  // ── Favourites ────────────────────────────────────────────────────────────────
+  // ── Favourites ────────────────────────────────────────────────────────────
   List<CourseModel> _favourites = [];
 
   bool darkMode = false;
 
-  List<CourseModel> get favourites => List.unmodifiable(_favourites);
-
   Future<void> fetchMyFavorites() async {
-    final r=await run(()=>_api.get('/api/v1/my-favorites'));
-    if(r is List){
-      _favourites=r.map((e){
-        return CourseModel.fromJson(e);
-      }).toList();
+    final r = await run(() => _api.get('/api/v1/my-favorites'));
+    if (r is List) {
+      _favourites = r.map((e) => CourseModel.fromJson(e)).toList();
       notifyListeners();
     }
   }
 
-  Future<void> logout(context) async {
+  // ── Logout ────────────────────────────────────────────────────────────────
+  /// Calls POST /api/v1/auth/logout, clears local state, and navigates to
+  /// the login screen.
+  ///
+  /// Pass [fcmToken] if you want to remove only this device's push token;
+  /// omit it to remove all devices (full logout).
+  Future<void> logout(BuildContext context, {String? fcmToken}) async {
+    try {
+      // final headers = fcmToken != null ? {'fcm_token': fcmToken} : null;
+      await _api.post(
+        '/api/v1/auth/logout',
+        body: {},
+        // headers: headers,
+      );
+    } catch (e) {
+      // Even if the server call fails, proceed with local logout
+      log('logout server call failed: $e');
+    }
+
     await _api.clearTokens();
+    _reset();
+
+    if (context.mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+      );
+    }
+  }
+
+  // ── Delete account ────────────────────────────────────────────────────────
+  /// Sends DELETE /api/v1/auth/me.
+  ///
+  /// On success the account is deactivated for 14 days, after which it is
+  /// permanently deleted server-side. Returns the ISO-8601 `delete_after`
+  /// date string, or null on failure.
+  ///
+  /// The caller should show a confirmation dialog BEFORE calling this.
+  Future<String?> deleteAccount(BuildContext context) async {
+    _setLoading(true);
+    try {
+      final r = await run(() => _api.delete('/api/v1/auth/me'));
+      if (r != null && r is Map) {
+        final deleteAfter = r['delete_after'] as String?;
+
+        // Clear local tokens and state exactly like logout
+        await _api.clearTokens();
+        _reset();
+
+        if (context.mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (route) => false,
+          );
+        }
+        return deleteAfter;
+      }
+      return null;
+    } catch (e) {
+      log('deleteAccount ❌ $e');
+      return null;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  void _reset() {
     _favourites = [];
+    imageFile = null;
+    imageByte = null;
+    id = 0;
+    name = '';
+    email = '';
+    phone = '';
+    dob = '';
+    bio = '';
+    country = '';
+    imageUrl = '';
+    role = '';
     notifyListeners();
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (route) => false,
-    );
+  }
+
+//   ================================[favorite]=====================
+  void setQuery(String q) {
+    _query = q;
+    notifyListeners();
+  }
+  String _query = '';
+
+  List<CourseModel> get favourites {
+    if (_query.isEmpty) return List.unmodifiable(_favourites);
+    final q = _query.toLowerCase();
+    return _favourites
+        .where((s) =>
+    s.name.toLowerCase().contains(q) ||
+      (  s.description?.toLowerCase().contains(q)??false))
+        .toList();
   }
 }

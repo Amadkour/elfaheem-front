@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../../config/app_config.dart';
 import '../../../../config/app_theme.dart';
 import '../../../auth/auth_provider.dart';
+import '../../dashboard/dashboard_screen.dart';
 
 class TopBar extends StatelessWidget {
   const TopBar({super.key});
@@ -12,40 +13,18 @@ class TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().currentUser;
     final name = user?.name ?? 'sir'.tr;
-    final initial = name.isNotEmpty ? name[0] : '؟';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Gradient avatar with glow
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: context.colors.primaryGradient,
-              boxShadow: [
-                BoxShadow(
-                  color: context.colors.primary.withValues(alpha:0.40),
-                  blurRadius: 14,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              initial,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                fontFamily: 'bahji',
-              ),
-            ),
+          if(user!=null)
+          UserChipButton(
+            user: user,
+            showLabel: false,
           ),
-          const SizedBox(width: 12),
-
           // Greeting + name
           Expanded(
             child: Column(

@@ -181,9 +181,9 @@ class NotificationsProvider extends BaseProvider {
         'unread_only': unreadOnly,
       },
     ));
-    result=result['items'];
-    if (result is List) {
-      final page = result
+    if (result is Map<dynamic,dynamic> && result.containsKey('items') && result is List) {
+      result=result['items'];
+      List<NotificationModel> page = result
           .map((e) => NotificationModel.fromJson(e as Map<String, dynamic>))
           .toList();
 

@@ -16,7 +16,6 @@
 /// ─────────────────────────────────────────────────────────────────────────────
 library;
 
-
 import 'package:cross_file/cross_file.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -80,7 +79,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
     super.dispose();
   }
 
-  // ── Has anything changed? ──────────────────────────────────────────────────
+  // ── Has anything changed? ─────────────────────────────────────────────────
   bool get _isChanged =>
       _nameCtrl.text  != _p.name  ||
           _phoneCtrl.text != _p.phone ||
@@ -91,7 +90,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
   // ── Save ──────────────────────────────────────────────────────────────────
   Future<void> _save() async {
     if (!_isChanged || _saving) return;
-    if(mounted) setState(() => _saving = true);
+    if (mounted) setState(() => _saving = true);
 
     try {
       // 1. Upload image first (if changed)
@@ -129,7 +128,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
     } catch (e) {
       if (mounted) _showSnack(e.toString(), context.colors.danger);
     } finally {
-      if (mounted) if(mounted) setState(() => _saving = false);
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -145,18 +144,18 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final p  = context.watch<ProfileProvider>();
-    final c  = context.colors;
+    final p      = context.watch<ProfileProvider>();
+    final c      = context.colors;
     final isWide = context.showSidebar;
 
     return Directionality(
       textDirection: Helpers.pageDirection,
-      child: BasePage(child: SafeArea(
+      child: BasePage(
+        child: SafeArea(
           child: Column(
             children: [
               // ── App bar ────────────────────────────────────────────────────
-              if(isWide)
-              ScreenAppBar(title: 'update_account'.tr),
+              if (isWide) ScreenAppBar(title: 'update_account'.tr),
 
               // ── Body ───────────────────────────────────────────────────────
               Expanded(
@@ -182,7 +181,8 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
         // ── Left: sticky profile card ──────────────────────────────────────
         SizedBox(
           width: 300,
-          child: _ProfileSideCard(p: p, c: c, isTeacher: widget.isTeacher),
+          child: _ProfileSideCard(
+              p: p, c: c, isTeacher: widget.isTeacher),
         ),
 
         // ── Divider ────────────────────────────────────────────────────────
@@ -196,7 +196,8 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 560),
                 child: _FormCard(
-                  p: p, c: c,
+                  p: p,
+                  c: c,
                   nameCtrl:  _nameCtrl,
                   emailCtrl: _emailCtrl,
                   phoneCtrl: _phoneCtrl,
@@ -228,16 +229,20 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
       child: Column(
         children: [
           // ── Hero header ────────────────────────────────────────────────
-          _MobileHero(p: p, c: c, onImageChange: (f) async {
-            await p.changeImage(f);
-            setState(() {});
-          }),
+          _MobileHero(
+              p: p,
+              c: c,
+              onImageChange: (f) async {
+                await p.changeImage(f);
+                setState(() {});
+              }),
 
           // ── Form ───────────────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
             child: _FormCard(
-              p: p, c: c,
+              p: p,
+              c: c,
               nameCtrl:  _nameCtrl,
               emailCtrl: _emailCtrl,
               phoneCtrl: _phoneCtrl,
@@ -246,7 +251,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
               isChanged: _isChanged,
               isSaving:  _saving,
               onSave:    _save,
-              showAvatar: false,   // avatar is in the hero, not the card
+              showAvatar: false, // avatar is in the hero, not the card
               onImageChange: (f) async {
                 await p.changeImage(f);
                 setState(() {});
@@ -305,7 +310,7 @@ class _ProfileSideCard extends StatelessWidget {
 
           // ── Name ────────────────────────────────────────────────────────
           Text(
-            p.name.isNotEmpty ? p.name : 'اسمك',
+            p.name.isNotEmpty ? p.name : 'your_name_placeholder'.tr,
             style: c.h3,
             textAlign: TextAlign.center,
           ),
@@ -324,13 +329,15 @@ class _ProfileSideCard extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  isTeacher ? Icons.school_rounded : Icons.person_rounded,
+                  isTeacher
+                      ? Icons.school_rounded
+                      : Icons.person_rounded,
                   size: 14,
                   color: isTeacher ? c.accent : c.primary,
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  isTeacher ? 'معلم' : 'طالب',
+                  isTeacher ? 'role_teacher'.tr : 'role_student'.tr,
                   style: c.label.copyWith(
                     color: isTeacher ? c.accent : c.primary,
                     fontSize: 12,
@@ -345,11 +352,14 @@ class _ProfileSideCard extends StatelessWidget {
           const SizedBox(height: 24),
 
           // ── Info rows ───────────────────────────────────────────────────
-          _InfoRow(icon: Icons.phone_rounded,      label: p.phone, c: c),
+          _InfoRow(icon: Icons.phone_rounded,       label: p.phone, c: c),
           const SizedBox(height: 12),
           _InfoRow(icon: Icons.cake_rounded,        label: p.dob,   c: c),
           const SizedBox(height: 12),
-          _InfoRow(icon: Icons.info_outline_rounded, label: p.bio.isNotEmpty ? p.bio : '—', c: c),
+          _InfoRow(
+              icon: Icons.info_outline_rounded,
+              label: p.bio.isNotEmpty ? p.bio : '—',
+              c: c),
         ],
       ),
     );
@@ -360,7 +370,8 @@ class _InfoRow extends StatelessWidget {
   final IconData icon;
   final String label;
   final AppColors c;
-  const _InfoRow({required this.icon, required this.label, required this.c});
+  const _InfoRow(
+      {required this.icon, required this.label, required this.c});
 
   @override
   Widget build(BuildContext context) {
@@ -403,10 +414,7 @@ class _MobileHero extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 36),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            c.primary,
-            c.primaryBlue,
-          ],
+          colors: [c.primary, c.primaryBlue],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -424,10 +432,10 @@ class _MobileHero extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // ── Tappable avatar ────────────────────────────────────────────
+          // ── Back button ────────────────────────────────────────────────
           Align(
-            alignment: Alignment.topRight  ,
-            child:  GestureDetector(
+            alignment: Alignment.topRight,
+            child: GestureDetector(
               onTap: () => Navigator.of(context).maybePop(),
               child: Container(
                 width: 42,
@@ -437,14 +445,14 @@ class _MobileHero extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: context.colors.cardShadow,
                 ),
-                child:  Icon(
+                child: Icon(
                   CupertinoIcons.back,
                   color: context.colors.textDark,
                   size: 22,
                 ),
               ),
             ),
-                ),
+          ),
 
           Center(
             child: EditableImage(
@@ -452,7 +460,7 @@ class _MobileHero extends StatelessWidget {
               imageFile: p.imageFile,
               imageByte: p.imageByte,
               imageUrl:  p.imageUrl,
-              size:      context.height/8,
+              size:      context.height / 8,
               isCircle:  true,
             ),
           ),
@@ -492,7 +500,8 @@ class _AvatarCircle extends StatelessWidget {
   final AppColors c;
   final double size;
 
-  const _AvatarCircle({required this.p, required this.c, required this.size});
+  const _AvatarCircle(
+      {required this.p, required this.c, required this.size});
 
   @override
   Widget build(BuildContext context) {
@@ -571,7 +580,6 @@ class _FormCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-
           // ── Avatar (web only — on mobile it's in the hero) ──────────────
           if (showAvatar) ...[
             Center(
@@ -580,7 +588,7 @@ class _FormCard extends StatelessWidget {
                 imageFile: p.imageFile,
                 imageByte: p.imageByte,
                 imageUrl:  p.imageUrl,
-                size:      context.height/8,
+                size:      context.height / 8,
                 isCircle:  true,
               ),
             ),
@@ -588,7 +596,7 @@ class _FormCard extends StatelessWidget {
           ],
 
           // ── Section: Personal info ───────────────────────────────────────
-          _SectionHeader(label: 'المعلومات الشخصية', c: c),
+          _SectionHeader(label: 'personal_info_section'.tr, c: c),
           const SizedBox(height: 16),
 
           MyTextField(controller: nameCtrl,  label: 'name_label'.tr),
@@ -596,7 +604,7 @@ class _FormCard extends StatelessWidget {
           MyTextField(
             controller: emailCtrl,
             label:  'email_label'.tr,
-            enable: false,         // email cannot be changed
+            enable: false, // email cannot be changed
           ),
           const SizedBox(height: 14),
           MyTextField(
@@ -610,7 +618,7 @@ class _FormCard extends StatelessWidget {
           const SizedBox(height: 24),
 
           // ── Section: Bio ─────────────────────────────────────────────────
-          _SectionHeader(label: 'نبذة شخصية', c: c),
+          _SectionHeader(label: 'bio_section'.tr, c: c),
           const SizedBox(height: 16),
           MyTextField(
             controller: bioCtrl,
@@ -636,7 +644,7 @@ class _FormCard extends StatelessWidget {
             const SizedBox(height: 10),
             Center(
               child: Text(
-                'لم تُجرِ أي تغييرات بعد',
+                'no_changes_yet'.tr,
                 style: c.caption,
               ),
             ),
@@ -668,7 +676,8 @@ class _SectionHeader extends StatelessWidget {
         ),
       ),
       const SizedBox(width: 8),
-      Text(label, style: c.label.copyWith(fontSize: 14, color: c.textDark)),
+      Text(label,
+          style: c.label.copyWith(fontSize: 14, color: c.textDark)),
     ]);
   }
 }

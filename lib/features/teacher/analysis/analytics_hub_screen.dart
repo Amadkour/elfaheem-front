@@ -31,7 +31,9 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen>
   @override
   void initState() {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await context.read<TeacherProvider>().init();
+      if(context.read<TeacherProvider>().allCourses.isEmpty) {
+        await context.read<TeacherProvider>().init();
+      }
     });
     super.initState();
   }

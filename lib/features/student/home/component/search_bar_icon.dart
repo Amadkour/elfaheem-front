@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/student/models.dart';
 import '../../../../config/app_config.dart';
 import '../../../../config/app_theme.dart';
 import '../../courses/list/courses_list_screen.dart';
 
 class SearchBarIcon extends StatelessWidget {
-  const SearchBarIcon({super.key});
+  const SearchBarIcon({super.key, required this.courses});
+
+  final List<CourseModel> courses;
 
   @override
   Widget build(BuildContext context) {
@@ -13,7 +16,11 @@ class SearchBarIcon extends StatelessWidget {
       child: GestureDetector(
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => const CoursesListScreen(openSearch: true),
+            builder: (_) => CoursesListScreen(
+              openSearch: true,
+              homeCourses: courses,
+              forMyCourses: false,
+            ),
           ),
         ),
         child: Container(
@@ -23,7 +30,7 @@ class SearchBarIcon extends StatelessWidget {
             borderRadius: BorderRadius.circular(context.colors.radiusLarge),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha:0.06),
+                color: Colors.black.withValues(alpha: 0.06),
                 blurRadius: 12,
                 offset: const Offset(0, 2),
               ),
@@ -31,7 +38,7 @@ class SearchBarIcon extends StatelessWidget {
           ),
           child: Row(
             children: [
-               Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16),
                 child: Icon(
                   Icons.search_rounded,

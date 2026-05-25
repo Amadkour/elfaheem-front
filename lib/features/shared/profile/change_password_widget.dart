@@ -39,12 +39,12 @@ class ChangePasswordScreen extends StatefulWidget {
 }
 
 class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
-  final _oldCtrl = TextEditingController();
-  final _newCtrl = TextEditingController();
+  final _oldCtrl  = TextEditingController();
+  final _newCtrl  = TextEditingController();
   final _confCtrl = TextEditingController();
 
-  bool _obscureOld = true;
-  bool _obscureNew = true;
+  bool _obscureOld  = true;
+  bool _obscureNew  = true;
   bool _obscureConf = true;
 
   @override
@@ -67,27 +67,21 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   // ── Requirements ──────────────────────────────────────────────────────────
 
-  String get _old => _oldCtrl.text.trim();
-
-  String get _new => _newCtrl.text.trim();
-
+  String get _old  => _oldCtrl.text.trim();
+  String get _new  => _newCtrl.text.trim();
   String get _conf => _confCtrl.text.trim();
 
-  bool get _reqMinLength => _new.length >= 6;
-
-  bool get _reqUppercase => _new.contains(RegExp(r'[A-Z]'));
-
-  bool get _reqDigit => _new.contains(RegExp(r'[0-9]'));
-
-  bool get _reqDifferent => _new.isNotEmpty && _new != _old;
-
-  bool get _reqMatch => _new.isNotEmpty && _new == _conf;
+  bool get _reqMinLength  => _new.length >= 6;
+  bool get _reqUppercase  => _new.contains(RegExp(r'[A-Z]'));
+  bool get _reqDigit      => _new.contains(RegExp(r'[0-9]'));
+  bool get _reqDifferent  => _new.isNotEmpty && _new != _old;
+  bool get _reqMatch      => _new.isNotEmpty && _new == _conf;
 
   bool get _canSubmit =>
       (_old.isNotEmpty || !widget.fromProfile) &&
-      _reqMinLength &&
-      _reqDifferent &&
-      _reqMatch;
+          _reqMinLength &&
+          _reqDifferent &&
+          _reqMatch;
 
   // ── Strength 0..4 ─────────────────────────────────────────────────────────
 
@@ -103,31 +97,21 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   Color _strengthColor(AppColors c) {
     switch (_strength) {
-      case 1:
-        return c.danger;
-      case 2:
-        return c.warning;
-      case 3:
-        return c.success;
-      case 4:
-        return c.primaryBlue;
-      default:
-        return c.divider;
+      case 1: return c.danger;
+      case 2: return c.warning;
+      case 3: return c.success;
+      case 4: return c.primaryBlue;
+      default: return c.divider;
     }
   }
 
   String _strengthLabel() {
     switch (_strength) {
-      case 1:
-        return 'ضعيف';
-      case 2:
-        return 'مقبول';
-      case 3:
-        return 'قوي';
-      case 4:
-        return 'قوي جداً';
-      default:
-        return '';
+      case 1: return 'strength_weak'.tr;
+      case 2: return 'strength_fair'.tr;
+      case 3: return 'strength_strong'.tr;
+      case 4: return 'strength_very_strong'.tr;
+      default: return '';
     }
   }
 
@@ -137,17 +121,17 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     if (!_canSubmit) return;
 
     final result = await context.read<ProfileProvider>().changePassword(
-          oldPassword: _old,
-          newPassword: _new,
-        );
+      oldPassword: _old,
+      newPassword: _new,
+    );
 
     if (!mounted) return;
 
     if (result != null) {
-      _showSnack('تم تغيير كلمة المرور بنجاح', context.colors.success);
+      _showSnack('password_changed_success'.tr, context.colors.success);
       Navigator.of(context).pop();
     } else {
-      _showSnack('كلمة المرور الحالية غير صحيحة', context.colors.danger);
+      _showSnack('wrong_current_password'.tr, context.colors.danger);
     }
   }
 
@@ -158,7 +142,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     final success = await authProvider.changePassword(
       email: widget.email!,
       password: _newCtrl.text,
-      code: widget.code!, // adjust if backend expects old password
+      code: widget.code!,
     );
 
     if (!mounted) return;
@@ -166,12 +150,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     if (success) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (route) => false,
+            (route) => false,
       );
     } else {
       Helpers.showMessage(
         context,
-        authProvider.errorMessage ?? 'Change failed',
+        authProvider.errorMessage ?? 'error_occurred'.tr,
         isError: true,
       );
     }
@@ -191,8 +175,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final p = context.watch<ProfileProvider>();
+    final c      = context.colors;
+    final p      = context.watch<ProfileProvider>();
     final isWide = context.showSidebar;
 
     return BasePage(
@@ -227,7 +211,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         Expanded(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
+              padding:
+              const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 600),
                 child: w,
@@ -242,53 +227,54 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   // ══════════════════════════════════════════════════════════════════════════
   // MOBILE — full scroll
   // ══════════════════════════════════════════════════════════════════════════
-  Widget _buildForm(ProfileProvider p, AppColors c) => Column(
-        children: [
-          // ── Security icon badge ──────────────────────────────────────────
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              gradient: c.primaryGradient,
-              shape: BoxShape.circle,
-              boxShadow: c.primaryShadow,
-            ),
-            child:
-                const Icon(Icons.lock_rounded, color: Colors.white, size: 38),
-          ),
-          const SizedBox(height: 14),
-          Text('تغيير كلمة المرور', style: c.h3),
-          const SizedBox(height: 4),
-          Text('أدخل كلمتك الحالية ثم الجديدة', style: c.caption),
-          const SizedBox(height: 28),
 
-          _PasswordCard(
-            p: p,
-            c: c,
-            oldCtrl: _oldCtrl,
-            newCtrl: _newCtrl,
-            confCtrl: _confCtrl,
-            obscureOld: _obscureOld,
-            obscureNew: _obscureNew,
-            obscureConf: _obscureConf,
-            onToggleOld:    () { if(mounted) setState(() => _obscureOld = !_obscureOld);},
-            onToggleNew: () { if(mounted) setState(() => _obscureNew = !_obscureNew);},
-            onToggleConf: () { if(mounted) setState(() => _obscureConf = !_obscureConf);},
-            strength: _strength,
-            strengthColor: _strengthColor(c),
-            strengthLabel: _strengthLabel(),
-            reqMinLength: _reqMinLength,
-            reqUppercase: _reqUppercase,
-            reqDigit: _reqDigit,
-            reqDifferent: _reqDifferent,
-            reqMatch: _reqMatch,
-            canSubmit: _canSubmit,
-            onSubmit: _submit,
-            onSubmitForget: _resetPassword,
-            fromProfile: widget.fromProfile,
-          ),
-        ],
-      );
+  Widget _buildForm(ProfileProvider p, AppColors c) => Column(
+    children: [
+      // ── Security icon badge ──────────────────────────────────────────
+      Container(
+        width: 80,
+        height: 80,
+        decoration: BoxDecoration(
+          gradient: c.primaryGradient,
+          shape: BoxShape.circle,
+          boxShadow: c.primaryShadow,
+        ),
+        child: const Icon(Icons.lock_rounded,
+            color: Colors.white, size: 38),
+      ),
+      const SizedBox(height: 14),
+      Text('change_password_subtitle'.tr, style: c.h3),
+      const SizedBox(height: 4),
+      Text('change_password_hint'.tr, style: c.caption),
+      const SizedBox(height: 28),
+
+      _PasswordCard(
+        p: p,
+        c: c,
+        oldCtrl:       _oldCtrl,
+        newCtrl:       _newCtrl,
+        confCtrl:      _confCtrl,
+        obscureOld:    _obscureOld,
+        obscureNew:    _obscureNew,
+        obscureConf:   _obscureConf,
+        onToggleOld:  () { if (mounted) setState(() => _obscureOld  = !_obscureOld); },
+        onToggleNew:  () { if (mounted) setState(() => _obscureNew  = !_obscureNew); },
+        onToggleConf: () { if (mounted) setState(() => _obscureConf = !_obscureConf); },
+        strength:       _strength,
+        strengthColor:  _strengthColor(c),
+        strengthLabel:  _strengthLabel(),
+        reqMinLength:   _reqMinLength,
+        reqUppercase:   _reqUppercase,
+        reqDigit:       _reqDigit,
+        reqDifferent:   _reqDifferent,
+        reqMatch:       _reqMatch,
+        canSubmit:      _canSubmit,
+        onSubmit:       _submit,
+        onSubmitForget: _resetPassword,
+        fromProfile:    widget.fromProfile,
+      ),
+    ],
+  );
 
   Widget _mobileLayout(ProfileProvider p, AppColors c) {
     return SingleChildScrollView(
@@ -371,7 +357,7 @@ class _PasswordCard extends StatelessWidget {
         children: [
           // ── Section: Current password ─────────────────────────────────────
           if (fromProfile) ...[
-            _SectionLabel(label: 'كلمة المرور الحالية', c: c),
+            _SectionLabel(label: 'current_password_section'.tr, c: c),
             const SizedBox(height: 12),
             MyPasswordTextField(
               controller: oldCtrl,
@@ -383,7 +369,7 @@ class _PasswordCard extends StatelessWidget {
           ],
 
           // ── Section: New password ─────────────────────────────────────────
-          _SectionLabel(label: 'كلمة المرور الجديدة', c: c),
+          _SectionLabel(label: 'new_password_section'.tr, c: c),
           const SizedBox(height: 12),
           MyPasswordTextField(
             controller: newCtrl,
@@ -423,20 +409,15 @@ class _PasswordCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('المتطلبات', style: c.label.copyWith(fontSize: 12)),
+                Text('requirements_label'.tr,
+                    style: c.label.copyWith(fontSize: 12)),
                 const SizedBox(height: 10),
-                PasswordReq(met: reqMinLength, label: '٦ أحرف على الأقل', c: c),
-                PasswordReq(
-                    met: reqUppercase,
-                    label: 'حرف كبير واحد على الأقل (A-Z)',
-                    c: c),
-                PasswordReq(met: reqDigit, label: 'رقم واحد على الأقل (0-9)', c: c),
+                PasswordReq(met: reqMinLength, label: 'req_min_length'.tr,  c: c),
+                PasswordReq(met: reqUppercase, label: 'req_uppercase'.tr,   c: c),
+                PasswordReq(met: reqDigit,     label: 'req_digit'.tr,       c: c),
                 if (fromProfile)
-                  PasswordReq(
-                      met: reqDifferent,
-                      label: 'مختلفة عن كلمة المرور الحالية',
-                      c: c),
-                PasswordReq(met: reqMatch, label: 'تطابق كلمة المرور الجديدة', c: c),
+                  PasswordReq(met: reqDifferent, label: 'req_different'.tr, c: c),
+                PasswordReq(met: reqMatch,     label: 'req_match'.tr,       c: c),
               ],
             ),
           ),
@@ -451,7 +432,7 @@ class _PasswordCard extends StatelessWidget {
               label: 'change_password'.tr,
               isLoading: p.isLoading,
               onPressed:
-                  canSubmit ? (fromProfile ? onSubmit : onSubmitForget) : null,
+              canSubmit ? (fromProfile ? onSubmit : onSubmitForget) : null,
             ),
           ),
         ],
@@ -461,7 +442,7 @@ class _PasswordCard extends StatelessWidget {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// _StrengthBar
+// StrengthBar
 // ═════════════════════════════════════════════════════════════════════════════
 
 class StrengthBar extends StatelessWidget {
@@ -470,7 +451,8 @@ class StrengthBar extends StatelessWidget {
   final String strengthLabel;
   final AppColors c;
 
-  const StrengthBar({super.key,
+  const StrengthBar({
+    super.key,
     required this.strength,
     required this.strengthColor,
     required this.strengthLabel,
@@ -515,7 +497,7 @@ class StrengthBar extends StatelessWidget {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// _Req — single requirement row
+// PasswordReq — single requirement row
 // ═════════════════════════════════════════════════════════════════════════════
 
 class PasswordReq extends StatelessWidget {
@@ -523,7 +505,8 @@ class PasswordReq extends StatelessWidget {
   final String label;
   final AppColors c;
 
-  const PasswordReq({super.key, required this.met, required this.label, required this.c});
+  const PasswordReq(
+      {super.key, required this.met, required this.label, required this.c});
 
   @override
   Widget build(BuildContext context) {
@@ -578,7 +561,8 @@ class _SectionLabel extends StatelessWidget {
         ),
       ),
       const SizedBox(width: 8),
-      Text(label, style: c.label.copyWith(fontSize: 13, color: c.textDark)),
+      Text(label,
+          style: c.label.copyWith(fontSize: 13, color: c.textDark)),
     ]);
   }
 }

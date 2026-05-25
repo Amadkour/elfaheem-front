@@ -33,9 +33,6 @@ class AppRoutes {
       case home:
         return MaterialPageRoute(builder: (_) => const DashboardScreen());
 
-      case coursesList:
-        return MaterialPageRoute(builder: (_) => const CoursesListScreen());
-
       case courseDetail:
         final course = settings.arguments as CourseModel;
         return MaterialPageRoute(

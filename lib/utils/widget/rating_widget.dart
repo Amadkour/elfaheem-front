@@ -153,6 +153,7 @@ class RatingWidget extends StatefulWidget {
 
   /// Called after a successful submission.
   final void Function(RateResponse rate)? onRated;
+  final RatingSummary? rateSummary;
 
   const RatingWidget({
     super.key,
@@ -160,7 +161,7 @@ class RatingWidget extends StatefulWidget {
     required this.sourceId,
     required this.canEdit,
     this.compact = true,
-    this.onRated,
+    this.onRated, this.rateSummary,
   });
 
   @override
@@ -198,7 +199,15 @@ class _RatingWidgetState extends State<RatingWidget>
       duration: const Duration(milliseconds: 400),
     );
     _popScale = CurvedAnimation(parent: _popAnim, curve: Curves.elasticOut);
-    _load();
+    if(widget.rateSummary==null) {
+      _load();
+    }else{
+      _summary=widget.rateSummary;
+      setState(() {
+        _loading = false;
+        _error = null;
+      });
+    }
   }
 
   @override

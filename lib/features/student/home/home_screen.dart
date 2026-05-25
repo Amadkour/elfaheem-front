@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/category/categories_provider.dart';
 import 'package:flutter_education_app/features/category/categories_screen.dart';
 import 'package:flutter_education_app/features/student/courses/details/course_detail_screen.dart';
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
@@ -136,10 +137,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       slivers: [
                         // ── Top bar ──────────────────────────────────────────────
                         SliverToBoxAdapter(child: TopBar()),
-                        const SliverToBoxAdapter(child: SizedBox(height: 18)),
 
                         // ── Search bar ───────────────────────────────────────────
-                        const SliverToBoxAdapter(child: SearchBarIcon()),
+                        SliverToBoxAdapter(
+                            child: SearchBarIcon(
+                          courses: provider.otherCourses,
+                        )),
                         const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
                         // ── Upcoming session banner ──────────────────────────────
@@ -147,39 +150,45 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SliverToBoxAdapter(child: SizedBox(height: 28)),
 
                         // ── Categories ───────────────────────────────────────────
-                        SliverToBoxAdapter(
-                          child: SectionHeader(
-                            title: 'categories'.tr,
-                            actionLabel: 'show_more'.tr,
-                            onAction: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                  builder: (_) => const CategoriesScreen()),
+                        if (context
+                                .read<CategoriesProvider>()
+                                .categories
+                                .length >
+                            5)
+                          SliverToBoxAdapter(
+                            child: SectionHeader(
+                              title: 'categories'.tr,
+                              actionLabel: 'show_more'.tr,
+                              onAction: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                    builder: (_) => const CategoriesScreen()),
+                              ),
                             ),
                           ),
-                        ),
                         const SliverToBoxAdapter(child: SizedBox(height: 16)),
                         const SliverToBoxAdapter(child: CategoriesRow()),
                         const SliverToBoxAdapter(child: SizedBox(height: 28)),
 
                         // ── Courses ──────────────────────────────────────────────
-                        if (context
-                            .read<HomeProvider>()
-                            .myCourses
-                            .isNotEmpty) ...[
+                        if (provider.myCourses.isNotEmpty) ...[
                           SliverToBoxAdapter(
                             child: SectionHeader(
                               title: 'my_courses'.tr,
                               actionLabel: 'show_more'.tr,
                               onAction: () => Navigator.of(context).push(
                                 MaterialPageRoute(
-                                    builder: (_) => const CoursesListScreen()),
+                                    builder: (_) => CoursesListScreen(
+                                          homeCourses: provider.myCourses,
+                                          forMyCourses: true,
+                                        )),
                               ),
                             ),
                           ),
                           const SliverToBoxAdapter(child: SizedBox(height: 16)),
                           SliverToBoxAdapter(
                             child: CoursesRow(
-                              courses: context.read<HomeProvider>().myCourses,
+                              courses: provider.myCourses,
+                              pageName: 'home-my-courses',
                               isTeacher: false,
                               onTap: (CourseModel c) {
                                 Navigator.push(
@@ -191,10 +200,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                         ],
-                        if (context
-                            .read<HomeProvider>()
-                            .otherCourses
-                            .isNotEmpty) ...[
+                        if (provider.otherCourses.isNotEmpty) ...[
                           const SliverToBoxAdapter(child: SizedBox(height: 28)),
                           // ── Courses ──────────────────────────────────────────────
                           SliverToBoxAdapter(
@@ -203,14 +209,18 @@ class _HomeScreenState extends State<HomeScreen> {
                               actionLabel: 'show_more'.tr,
                               onAction: () => Navigator.of(context).push(
                                 MaterialPageRoute(
-                                    builder: (_) => const CoursesListScreen()),
+                                    builder: (_) => CoursesListScreen(
+                                          homeCourses: provider.otherCourses,
+                                          forMyCourses: false,
+                                        )),
                               ),
                             ),
                           ),
                           const SliverToBoxAdapter(child: SizedBox(height: 16)),
                           SliverToBoxAdapter(
                               child: CoursesRow(
-                            courses: context.read<HomeProvider>().otherCourses,
+                            pageName: 'home-other-courses',
+                            courses: provider.otherCourses,
                             isTeacher: false,
                             onTap: (CourseModel c) {
                               Navigator.push(
@@ -332,13 +342,8 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
         final next = _schedProv.nextSlot;
         final isOngoing = next?.isOngoing ?? false;
 
-        // Ongoing = red gradient, upcoming = primary, no session = softer purple
         final gradient = isOngoing
-            ? const LinearGradient(
-                colors: [Color(0xFFC0392B), Color(0xFFE57373)],
-                begin: Alignment.centerRight,
-                end: Alignment.centerLeft,
-              )
+            ? context.colors.dangerGradient
             : next != null
                 ? context.colors.primaryGradient
                 : context.colors.successGradient;
@@ -353,7 +358,7 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
               boxShadow: [
                 BoxShadow(
                   color: (isOngoing
-                          ? const Color(0xFFC0392B)
+                          ?  context.colors.danger
                           : context.colors.primary)
                       .withValues(alpha: 0.38),
                   blurRadius: 24,
@@ -480,38 +485,25 @@ class _BannerContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Tag pill
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.22),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Text(
-            tag,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontFamily: 'bahji',
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-        const SizedBox(height: 9),
-        Text(
-          title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
-            fontSize: 16,
-            fontFamily: 'bahji',
-            letterSpacing: -0.3,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        const SizedBox(height: 5),
         Row(
           children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.22),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                tag,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontFamily: 'bahji',
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            SizedBox(width: 5,),
             Icon(Icons.access_time_rounded,
                 color: Colors.white.withValues(alpha: 0.75), size: 13),
             const SizedBox(width: 5),
@@ -525,8 +517,22 @@ class _BannerContent extends StatelessWidget {
             ),
           ],
         ),
+
+        const SizedBox(height: 5),
+        Text(
+          title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+            fontSize: 16,
+            fontFamily: 'bahji',
+            letterSpacing: -0.3,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+
         if (countdown != null) ...[
-          const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(

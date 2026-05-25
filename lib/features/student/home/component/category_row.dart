@@ -40,16 +40,16 @@ class CategoriesRow extends StatelessWidget {
             ),
           );
         }
-
+       final List<CategoryModel> categories=provider.categories.take(5).toList();
         return SizedBox(
           height: 112,
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             scrollDirection: Axis.horizontal,
-            itemCount: provider.categories.length,
+            itemCount: categories.length,
             separatorBuilder: (_, __) => const SizedBox(width: 14),
             itemBuilder: (_, i) {
-              final cat = provider.categories[i];
+              final cat =categories[i];
               final isSelected = provider.selectedCategoryId == cat.id;
 
               return GestureDetector(

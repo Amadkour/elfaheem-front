@@ -178,7 +178,6 @@ class ApiClient {
     final int statusCode;
     final String requestPath;
     dynamic body;
-
     if (res is http.Response) {
       statusCode = res.statusCode;
       requestPath = res.request?.url.path ?? '';

@@ -2,8 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/courses/course_form_screen.dart';
 import 'package:flutter_education_app/features/teacher/sessions/students/course_student_screen.dart';
+import 'package:flutter_education_app/utils/widget/refresh_button.dart';
 import 'package:provider/provider.dart';
-import 'package:video_player/video_player.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../config/app_theme.dart';
 import '../../../utils/widget/base_page.dart';
@@ -33,7 +33,6 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
     super.initState();
     _course = widget.course;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<TeacherSessionsProvider>().fetchSessions(widget.course.id);
       _refreshCourse();
     });
   }
@@ -41,8 +40,12 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
   Future<void> _refreshCourse() async {
     final updated =
         await context.read<TeacherProvider>().fetchCourseById(widget.course.id);
+        await context.read<TeacherSessionsProvider>().fetchSessions(widget.course.id);
+
     if (updated != null && mounted) {
-      if (mounted) setState(() => _course = updated);
+      if (mounted) {
+        setState(() => _course = updated);
+      }
     }
   }
 
@@ -110,10 +113,7 @@ class _SessionsList extends StatelessWidget {
       color: context.colors.primary,
       backgroundColor: context.colors.surface,
       onRefresh: () async {
-        await Future.wait([
-          provider.fetchSessions(course.id),
-          onRefreshCourse(),
-        ]);
+        await onRefreshCourse();
       },
       child: CustomScrollView(
         physics: const BouncingScrollPhysics(),
@@ -123,6 +123,7 @@ class _SessionsList extends StatelessWidget {
               course: course,
               onBack: () => Navigator.maybePop(context),
               onEditCourse: onEditCourse,
+              onRefreshCourse: onRefreshCourse,
             ),
           ),
           SliverToBoxAdapter(
@@ -575,11 +576,13 @@ class _CourseHero extends StatelessWidget {
   final TeacherCourse course;
   final VoidCallback onBack;
   final VoidCallback onEditCourse;
+  final Future<void> Function() onRefreshCourse;
 
   const _CourseHero({
     required this.course,
     required this.onBack,
     required this.onEditCourse,
+    required this.onRefreshCourse,
   });
 
   @override
@@ -596,13 +599,14 @@ class _CourseHero extends StatelessWidget {
           left: 16,
           right: 16,
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _CircleBtn(icon: Icons.arrow_back_ios_new_rounded, onTap: onBack),
+              Spacer(),
+              RefreshButton(onTap: () async => await onRefreshCourse.call()),
+              SizedBox(width: 10,),
               _CircleBtn(
-                icon: Icons.edit_rounded,
+                icon: CupertinoIcons.settings,
                 onTap: onEditCourse,
-                label: 'update'.tr,
               ),
             ],
           ),

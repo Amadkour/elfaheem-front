@@ -13,7 +13,7 @@ import '../../auth/auth_provider.dart';
 import '../../student/models.dart';
 import 'live/prejoin.dart';
 import 'model/live_response_model.dart';
-import 'model/session_material_model.dart';
+import '../../shared/session/session_material_model.dart';
 
 class TeacherSessionsProvider extends BaseProvider {
   final ApiClient _api;
@@ -24,6 +24,7 @@ class TeacherSessionsProvider extends BaseProvider {
   List<AttendanceRecord> _attendance = [];
   bool _attendanceLoading = false;
   final Map<int, List<SessionMaterialModel>> _materials = {};
+  final Map<int, bool> materialLoaded = {};
   final Map<int, bool> _uploadingMaterial = {};
 
   List<TeacherSessionItem> get sessions => List.unmodifiable(_sessions);
@@ -41,8 +42,9 @@ class TeacherSessionsProvider extends BaseProvider {
   // ── Fetch sessions ────────────────────────────────────────────────────────
 
   Future<void> fetchSessions(int courseId) async {
+    makeLoading();
     final result =
-    await run(() => _api.get('/api/v1/courses/$courseId/sessions'));
+        await run(() => _api.get('/api/v1/courses/$courseId/sessions'));
     if (result is List) {
       _sessions = result
           .map((e) => TeacherSessionItem.fromJson(e as Map<String, dynamic>))
@@ -64,14 +66,14 @@ class TeacherSessionsProvider extends BaseProvider {
     int order = 0,
   }) async {
     final result = await run(() => _api.post('/api/v1/sessions', body: {
-      'course_id': courseId,
-      'name': name,
-      'type': type,
-      if (description != null) 'description': description,
-      if (scheduledAt != null) 'scheduled_at': scheduledAt,
-      'duration_minutes': durationMinutes,
-      'order': order,
-    }));
+          'course_id': courseId,
+          'name': name,
+          'type': type,
+          if (description != null) 'description': description,
+          if (scheduledAt != null) 'scheduled_at': scheduledAt,
+          'duration_minutes': durationMinutes,
+          'order': order,
+        }));
     if (result is Map<String, dynamic>) {
       final s = TeacherSessionItem.fromJson(result);
       _sessions = [..._sessions, s]..sort((a, b) => a.order.compareTo(b.order));
@@ -82,23 +84,23 @@ class TeacherSessionsProvider extends BaseProvider {
   }
 
   Future<TeacherSessionItem?> updateSession(
-      int sessionId, {
-        String? name,
-        String? description,
-        String? type,
-        String? scheduledAt,
-        int? durationMinutes,
-        int? order,
-      }) async {
+    int sessionId, {
+    String? name,
+    String? description,
+    String? type,
+    String? scheduledAt,
+    int? durationMinutes,
+    int? order,
+  }) async {
     final result =
-    await run(() => _api.put('/api/v1/sessions/$sessionId', body: {
-      if (name != null) 'name': name,
-      if (description != null) 'description': description,
-      if (type != null) 'type': type,
-      if (scheduledAt != null) 'scheduled_at': scheduledAt,
-      if (durationMinutes != null) 'duration_minutes': durationMinutes,
-      if (order != null) 'order': order,
-    }));
+        await run(() => _api.put('/api/v1/sessions/$sessionId', body: {
+              if (name != null) 'name': name,
+              if (description != null) 'description': description,
+              if (type != null) 'type': type,
+              if (scheduledAt != null) 'scheduled_at': scheduledAt,
+              if (durationMinutes != null) 'duration_minutes': durationMinutes,
+              if (order != null) 'order': order,
+            }));
     if (result is Map<String, dynamic>) {
       final updated = TeacherSessionItem.fromJson(result);
       _sessions =
@@ -123,13 +125,17 @@ class TeacherSessionsProvider extends BaseProvider {
   // ── Materials ─────────────────────────────────────────────────────────────
 
   Future<void> fetchMaterials(int sessionId) async {
-    final r =
-    await run(() => _api.get('/api/v1/sessions/$sessionId/materials'));
-    if (r is List) {
-      _materials[sessionId] = r
-          .map((e) => SessionMaterialModel.fromJson(e as Map<String, dynamic>))
-          .toList();
-      notifyListeners();
+    if (!(materialLoaded[sessionId] ?? false)) {
+      final r =
+          await run(() => _api.get('/api/v1/sessions/$sessionId/materials'));
+      if (r is List) {
+        _materials[sessionId] = r
+            .map(
+                (e) => SessionMaterialModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+        materialLoaded[sessionId] = true;
+        notifyListeners();
+      }
     }
   }
 
@@ -146,20 +152,18 @@ class TeacherSessionsProvider extends BaseProvider {
     _uploadingMaterial[sessionId] = true;
     notifyListeners();
     try {
-
       print(fileName);
       print(fileBytes!.length);
       final result =
-      await _api.postMultipart('/api/v1/sessions/$sessionId/materials/file',
-          fields: {
-            'name': name,
-            if (description != null) 'description': description,
-            'order': order.toString(),
-          },
-          fileField: 'file',
-          fileName: fileName,
-          fileBytes:fileBytes!
-      );
+          await _api.postMultipart('/api/v1/sessions/$sessionId/materials/file',
+              fields: {
+                'name': name,
+                if (description != null) 'description': description,
+                'order': order.toString(),
+              },
+              fileField: 'file',
+              fileName: fileName,
+              fileBytes: fileBytes!);
       if (result is Map<String, dynamic>) {
         final mat = SessionMaterialModel.fromJson(result);
         _materials[sessionId] = [...(_materials[sessionId] ?? []), mat]
@@ -183,16 +187,16 @@ class TeacherSessionsProvider extends BaseProvider {
     int order = 0,
   }) async {
     final r = await run(() => _api.post(
-      '/api/v1/sessions/$sessionId/materials/link',
-      body: {
-        'session_id': sessionId,
-        'name': name,
-        'url': url,
-        'type': 'link',
-        if (description != null) 'description': description,
-        'order': order,
-      },
-    ));
+          '/api/v1/sessions/$sessionId/materials/link',
+          body: {
+            'session_id': sessionId,
+            'name': name,
+            'url': url,
+            'type': 'link',
+            if (description != null) 'description': description,
+            'order': order,
+          },
+        ));
     if (r is Map<String, dynamic>) {
       final mat = SessionMaterialModel.fromJson(r);
       _materials[sessionId] = [...(_materials[sessionId] ?? []), mat]
@@ -205,22 +209,22 @@ class TeacherSessionsProvider extends BaseProvider {
 
   /// Update material metadata.
   Future<bool> updateMaterial(
-      int sessionId,
-      int materialId, {
-        String? name,
-        String? description,
-        String? url,
-        int? order,
-      }) async {
+    int sessionId,
+    int materialId, {
+    String? name,
+    String? description,
+    String? url,
+    int? order,
+  }) async {
     final r = await run(() => _api.put(
-      '/api/v1/sessions/$sessionId/materials/$materialId',
-      body: {
-        if (name != null) 'name': name,
-        if (description != null) 'description': description,
-        if (url != null) 'url': url,
-        if (order != null) 'order': order,
-      },
-    ));
+          '/api/v1/sessions/$sessionId/materials/$materialId',
+          body: {
+            if (name != null) 'name': name,
+            if (description != null) 'description': description,
+            if (url != null) 'url': url,
+            if (order != null) 'order': order,
+          },
+        ));
     if (r is Map<String, dynamic>) {
       final updated = SessionMaterialModel.fromJson(r);
       _materials[sessionId] = (_materials[sessionId] ?? [])
@@ -235,7 +239,7 @@ class TeacherSessionsProvider extends BaseProvider {
   /// Delete material.
   Future<bool> deleteMaterial(int sessionId, int materialId) async {
     await run(
-            () => _api.delete('/api/v1/sessions/$sessionId/materials/$materialId'));
+        () => _api.delete('/api/v1/sessions/$sessionId/materials/$materialId'));
     if (state == ProviderState.success) {
       _materials[sessionId] = (_materials[sessionId] ?? [])
           .where((m) => m.id != materialId)
@@ -249,18 +253,18 @@ class TeacherSessionsProvider extends BaseProvider {
   // ── Live ──────────────────────────────────────────────────────────────────
 
   Future<LiveResponseModel?> startLive(
-      int sessionId, {
-        bool enableRecording = true,
-        int durationHours = 24,
-      }) async {
+    int sessionId, {
+    bool enableRecording = true,
+    int durationHours = 24,
+  }) async {
     final result = await run(() => _api.post(
-      '/api/v1/live-sessions/start',
-      queryParams: {
-        'session_id': sessionId,
-        'enable_recording': enableRecording,
-        'duration_hours': durationHours,
-      },
-    ));
+          '/api/v1/live-sessions/start',
+          queryParams: {
+            'session_id': sessionId,
+            'enable_recording': enableRecording,
+            'duration_hours': durationHours,
+          },
+        ));
     if (result is Map<String, dynamic>) {
       final url = LiveResponseModel(
         sessionId: sessionId,
@@ -269,8 +273,8 @@ class TeacherSessionsProvider extends BaseProvider {
       );
       _sessions = _sessions
           .map((s) => s.id == sessionId
-          ? s.copyWith(isLiveActive: true, roomUrl: url.url)
-          : s)
+              ? s.copyWith(isLiveActive: true, roomUrl: url.url)
+              : s)
           .toList();
       notifyListeners();
       return url;
@@ -280,17 +284,17 @@ class TeacherSessionsProvider extends BaseProvider {
 
   Future<bool> endLive(int sessionId, {bool saveRecording = true}) async {
     final result = await run(() => _api.post(
-      '/api/v1/live-sessions/$sessionId/end',
-      queryParams: {'save_recording': saveRecording},
-    ));
+          '/api/v1/live-sessions/$sessionId/end',
+          queryParams: {'save_recording': saveRecording},
+        ));
     if (result != null) {
       _sessions = _sessions
           .map((s) => s.id == sessionId
-          ? s.copyWith(
-          isLiveActive: false,
-          roomUrl: null,
-          recordingStatus: saveRecording ? 'pending' : null)
-          : s)
+              ? s.copyWith(
+                  isLiveActive: false,
+                  roomUrl: null,
+                  recordingStatus: saveRecording ? 'pending' : null)
+              : s)
           .toList();
       notifyListeners();
       return true;
@@ -300,14 +304,14 @@ class TeacherSessionsProvider extends BaseProvider {
 
   Future<String?> fetchRecordingUrl(int sessionId) async {
     final result =
-    await run(() => _api.get('/api/v1/live-sessions/$sessionId/recording'));
+        await run(() => _api.get('/api/v1/live-sessions/$sessionId/recording'));
     if (result is Map<String, dynamic>) {
       final url = result['recording_url'] as String?;
       if (url != null) {
         _sessions = _sessions
             .map((s) => s.id == sessionId
-            ? s.copyWith(recordingUrl: url, recordingStatus: 'uploaded')
-            : s)
+                ? s.copyWith(recordingUrl: url, recordingStatus: 'uploaded')
+                : s)
             .toList();
         notifyListeners();
       }
@@ -322,7 +326,7 @@ class TeacherSessionsProvider extends BaseProvider {
   /// PDF/doc/link open). Hits POST /sessions/{id}/materials/{matId}/complete.
   Future<void> markMaterialComplete(int sessionId, int materialId) async {
     await run(
-          () => _api.post(
+      () => _api.post(
         '/api/v1/sessions/$sessionId/materials/$materialId/complete',
       ),
     );
@@ -332,7 +336,7 @@ class TeacherSessionsProvider extends BaseProvider {
   /// Hits POST /sessions/{id}/complete.
   Future<void> markSessionComplete(int sessionId) async {
     await run(
-          () => _api.post('/api/v1/sessions/$sessionId/complete'),
+      () => _api.post('/api/v1/sessions/$sessionId/complete'),
     );
   }
 
@@ -342,7 +346,7 @@ class TeacherSessionsProvider extends BaseProvider {
     _attendanceLoading = true;
     notifyListeners();
     final result =
-    await run(() => _api.get('/api/v1/sessions/$sessionId/attendance'));
+        await run(() => _api.get('/api/v1/sessions/$sessionId/attendance'));
     _attendanceLoading = false;
     if (result is Map && result['attendance'] is List) {
       _attendance = (result['attendance'] as List)
@@ -357,24 +361,24 @@ class TeacherSessionsProvider extends BaseProvider {
     final user = context.read<AuthProvider>().currentUser;
     Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => PreJoinPage(
-          args: JoinArgs(
-            isTeacher: user!.isTeacher,
-            userId: user.id,
-            userName: user.name,
-            sessionId: sessionId,
-            courseId: courseId,
-            maxStudents: maxParticipants,
-            onEnd: () => _confirmEndSession(user, sessionId, context),
-            // Teachers start the room; students fetch a personal join token.
-            onStart: user.isTeacher
-                ? () => _onStartLive(user, sessionId, context)
-                : () => _onJoinLiveAsStudent(sessionId, context),
-            // Students: automatically mark live session complete when they leave
-            onComplete: user.isTeacher
-                ? null
-                : () => markSessionComplete(sessionId),
-          ),
-        )));
+              args: JoinArgs(
+                isTeacher: user!.isTeacher,
+                userId: user.id,
+                userName: user.name,
+                sessionId: sessionId,
+                courseId: courseId,
+                maxStudents: maxParticipants,
+                onEnd: () => _confirmEndSession(user, sessionId, context),
+                // Teachers start the room; students fetch a personal join token.
+                onStart: user.isTeacher
+                    ? () => _onStartLive(user, sessionId, context)
+                    : () => _onJoinLiveAsStudent(sessionId, context),
+                // Students: automatically mark live session complete when they leave
+                onComplete: user.isTeacher
+                    ? null
+                    : () => markSessionComplete(sessionId),
+              ),
+            )));
   }
 
   Future<void> _confirmEndSession(
@@ -393,7 +397,7 @@ class TeacherSessionsProvider extends BaseProvider {
   Future<LiveResponseModel?> _onJoinLiveAsStudent(
       int sessionId, BuildContext context) async {
     final result =
-    await run(() => _api.get('/api/v1/live-sessions/$sessionId/join'));
+        await run(() => _api.get('/api/v1/live-sessions/$sessionId/join'));
     if (result is Map<String, dynamic>) {
       return LiveResponseModel(
         sessionId: sessionId,

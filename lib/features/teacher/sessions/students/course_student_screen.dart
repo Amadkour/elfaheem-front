@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../../config/app_config.dart';
 import '../../../../config/app_theme.dart';
 import '../../../../utils/widget/base_page.dart';
+import '../../../../utils/widget/search_text_field.dart';
 import '../../../teacher/home/teacher_models.dart';
 import 'course_student_provider.dart';
 
@@ -41,7 +42,11 @@ class _EnrolledStudentsScreenState extends State<EnrolledStudentsScreen> {
           children: [
             _Header(course: widget.course),
             _StatsBar(),
-            _SearchBar(controller: _search),
+            MySearchBar(
+              controller: _search,
+              hint: 'search_student_by_name_email',
+              onChanged: context.read<EnrolledStudentsProvider>().setQuery,
+            ),
             const Expanded(child: _StudentList()),
           ],
         ),
@@ -54,6 +59,7 @@ class _EnrolledStudentsScreenState extends State<EnrolledStudentsScreen> {
 
 class _Header extends StatelessWidget {
   final TeacherCourse course;
+
   const _Header({required this.course});
 
   @override
@@ -159,11 +165,11 @@ class _StatsBar extends StatelessWidget {
 class _Divider extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
-    width: 0.5,
-    height: 36,
-    color: context.colors.divider,
-    margin: const EdgeInsets.symmetric(horizontal: 8),
-  );
+        width: 0.5,
+        height: 36,
+        color: context.colors.divider,
+        margin: const EdgeInsets.symmetric(horizontal: 8),
+      );
 }
 
 class _Stat extends StatelessWidget {
@@ -181,91 +187,40 @@ class _Stat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Expanded(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, size: 16, color: color),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 16, color: color),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              value,
+              style: TextStyle(
+                fontFamily: 'Tajawal',
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: context.colors.textDark,
+              ),
+            ),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'Tajawal',
+                fontSize: 10,
+                color: context.colors.textMedium,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 5),
-        Text(
-          value,
-          style: TextStyle(
-            fontFamily: 'Tajawal',
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-            color: context.colors.textDark,
-          ),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            fontFamily: 'Tajawal',
-            fontSize: 10,
-            color: context.colors.textMedium,
-          ),
-        ),
-      ],
-    ),
-  );
+      );
 }
-
-// ── Search bar ────────────────────────────────────────────────────────────────
-
-class _SearchBar extends StatelessWidget {
-  final TextEditingController controller;
-  const _SearchBar({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: TextField(
-        controller: controller,
-        textDirection: TextDirection.rtl,
-        style: TextStyle(
-          fontFamily: 'Tajawal',
-          fontSize: 14,
-          color: context.colors.textDark,
-        ),
-        decoration: InputDecoration(
-          hintText: 'search_student_by_name_email'.tr,
-          hintStyle: TextStyle(
-            fontFamily: 'Tajawal',
-            color: context.colors.textMedium,
-            fontSize: 13,
-          ),
-          prefixIcon: Icon(Icons.search_rounded,
-              size: 20, color: context.colors.textMedium),
-          filled: true,
-          fillColor: context.colors.surface,
-          contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: context.colors.divider, width: 0.5),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: context.colors.divider, width: 0.5),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: context.colors.primary, width: 1),
-          ),
-        ),
-        onChanged: context.read<EnrolledStudentsProvider>().setQuery,
-      ),
-    );
-  }
-}
-
 // ── List ──────────────────────────────────────────────────────────────────────
 
 class _StudentList extends StatelessWidget {
@@ -333,6 +288,7 @@ class _StudentList extends StatelessWidget {
 
 class _StudentCard extends StatelessWidget {
   final EnrolledStudent student;
+
   const _StudentCard({required this.student});
 
   Color get _progressColor {
@@ -403,8 +359,7 @@ class _StudentCard extends StatelessWidget {
                     value: student.progressPercentage / 100,
                     minHeight: 5,
                     backgroundColor: context.colors.divider,
-                    valueColor:
-                    AlwaysStoppedAnimation(_progressColor),
+                    valueColor: AlwaysStoppedAnimation(_progressColor),
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -436,6 +391,7 @@ class _StudentCard extends StatelessWidget {
 
 class _Avatar extends StatelessWidget {
   final EnrolledStudent student;
+
   const _Avatar({required this.student});
 
   static const List<Color> _palette = [
@@ -466,22 +422,22 @@ class _Avatar extends StatelessWidget {
   }
 
   Widget get _initials => Container(
-    width: 48,
-    height: 48,
-    decoration: BoxDecoration(
-      color: _color.withValues(alpha: 0.15),
-      shape: BoxShape.circle,
-    ),
-    child: Center(
-      child: Text(
-        student.initials,
-        style: TextStyle(
-          fontFamily: 'Tajawal',
-          fontSize: 16,
-          fontWeight: FontWeight.w700,
-          color: _color,
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: _color.withValues(alpha: 0.15),
+          shape: BoxShape.circle,
         ),
-      ),
-    ),
-  );
+        child: Center(
+          child: Text(
+            student.initials,
+            style: TextStyle(
+              fontFamily: 'Tajawal',
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: _color,
+            ),
+          ),
+        ),
+      );
 }

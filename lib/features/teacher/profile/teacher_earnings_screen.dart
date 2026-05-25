@@ -12,14 +12,13 @@ import '../../../core/api_client.dart';
 // ═══════════════════════════════════════════════════════════════════════════
 
 class _ApiService {
-  static ApiClient _api=ApiClient();
-  // GET /api/v1/teacher/earnings/summary
+  static ApiClient _api = ApiClient();
+
   static Future<EarningsSummary> getSummary() async {
     final res = await _api.get('/api/v1/teacher/earnings/summary');
     return EarningsSummary.fromJson(res as Map<String, dynamic>);
   }
 
-  // GET /api/v1/teacher/earnings?skip=&limit=&status=
   static Future<EarningsPage> getEarnings({
     int skip = 0,
     int limit = 20,
@@ -33,7 +32,6 @@ class _ApiService {
     return EarningsPage.fromJson(res as Map<String, dynamic>);
   }
 
-  // GET /api/v1/teacher/withdrawals?skip=&limit=
   static Future<WithdrawalsPage> getWithdrawals(
       {int skip = 0, int limit = 20}) async {
     final res = await _api.get('/api/v1/teacher/withdrawals',
@@ -41,7 +39,6 @@ class _ApiService {
     return WithdrawalsPage.fromJson(res as Map<String, dynamic>);
   }
 
-  // POST /api/v1/teacher/withdrawals
   static Future<WithdrawalRow> requestWithdrawal({
     required double amount,
     required int savedMethodId,
@@ -55,11 +52,9 @@ class _ApiService {
     return WithdrawalRow.fromJson(res as Map<String, dynamic>);
   }
 
-  // DELETE /api/v1/teacher/withdrawals/{id}
   static Future<void> cancelWithdrawal(int id) async =>
       _api.delete('/api/v1/teacher/withdrawals/$id');
 
-  // GET saved bank accounts — adjust path to your actual endpoint
   static Future<List<BankAccount>> getBankAccounts() async {
     final res = await _api.get('/api/v1/payment-methods',
         queryParams: {'type': 'bank_account'});
@@ -68,7 +63,6 @@ class _ApiService {
         .toList();
   }
 
-  // POST /api/v1/payment-methods  (add bank account)
   static Future<BankAccount> addBankAccount({
     required String bankName,
     required String accountName,
@@ -215,8 +209,7 @@ class WithdrawalRow {
         : null,
   );
 
-  String get bankName =>
-      bankSnapshot?['bank_name'] as String? ?? '—';
+  String get bankName => bankSnapshot?['bank_name'] as String? ?? '—';
 
   String get ibanMasked {
     final raw = bankSnapshot?['iban'] as String? ?? '';
@@ -272,10 +265,10 @@ class BankAccount {
 // ═══════════════════════════════════════════════════════════════════════════
 
 String _sar(double v) =>
-    '${NumberFormat('#,##0.00', 'ar').format(v)} ر.س';
+    '${NumberFormat('#,##0.00', 'ar').format(v)} ${'sar_currency'.tr}';
 
 String _sarShort(double v) =>
-    '${NumberFormat('#,##0', 'ar').format(v)} ر.س';
+    '${NumberFormat('#,##0', 'ar').format(v)} ${'sar_currency'.tr}';
 
 String _fmtDate(DateTime d) =>
     DateFormat('yyyy/MM/dd', 'ar').format(d.toLocal());
@@ -285,14 +278,14 @@ String _dioMsg(DioException e) {
   if (data is Map) {
     return data['detail']?.toString() ??
         data['message']?.toString() ??
-        'خطأ من الخادم (${e.response?.statusCode})';
+        '${'server_error_prefix'.tr} (${e.response?.statusCode})';
   }
   return switch (e.type) {
     DioExceptionType.connectionTimeout ||
     DioExceptionType.receiveTimeout =>
-    'انتهت مهلة الاتصال. تحقق من الإنترنت.',
-    DioExceptionType.connectionError => 'تعذّر الاتصال بالخادم.',
-    _ => e.message ?? 'خطأ غير متوقع',
+    'connection_timeout_error'.tr,
+    DioExceptionType.connectionError => 'connection_error'.tr,
+    _ => e.message ?? 'error_occurred'.tr,
   };
 }
 
@@ -382,7 +375,7 @@ class _TeacherEarningsScreenState extends State<TeacherEarningsScreen>
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                     child: _PrimaryButton(
-                      label: 'طلب سحب جديد',
+                      label: 'new_withdrawal_request'.tr,
                       icon: Icons.arrow_circle_down_rounded,
                       onTap: () => _openWithdrawSheet(context),
                     ),
@@ -429,10 +422,10 @@ class _TeacherEarningsScreenState extends State<TeacherEarningsScreen>
         unselectedLabelColor: c.textMedium,
         labelStyle: AppTheme.buttonSmall,
         unselectedLabelStyle: AppTheme.label,
-        tabs: const [
-          Tab(text: 'الأرباح'),
-          Tab(text: 'السحوبات'),
-          Tab(text: 'البنوك'),
+        tabs: [
+          Tab(text: 'earnings_tab'.tr),
+          Tab(text: 'withdrawals_tab'.tr),
+          Tab(text: 'banks_tab'.tr),
         ],
       ),
     ),
@@ -473,8 +466,7 @@ class _AppBarSliver extends StatelessWidget {
       ),
       title: Row(children: [
         Container(
-          width: 38,
-          height: 38,
+          width: 38, height: 38,
           decoration: BoxDecoration(
             gradient: c.primaryGradient,
             borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
@@ -483,13 +475,13 @@ class _AppBarSliver extends StatelessWidget {
               color: Colors.white, size: 20),
         ),
         const SizedBox(width: 12),
-        Text('أرباحي', style: c.h2),
+        Text('my_earnings_title'.tr, style: c.h2),
       ]),
       actions: [
         IconButton(
           icon: Icon(Icons.refresh_rounded, color: c.textMedium),
           onPressed: onRefresh,
-          tooltip: 'تحديث',
+          tooltip: 'refresh_tooltip'.tr,
         ),
         const SizedBox(width: 4),
       ],
@@ -542,7 +534,7 @@ class _SummaryCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'الرصيد المتاح للسحب',
+                  'available_balance_label'.tr,
                   style: AppTheme.caption.copyWith(
                       color: Colors.white.withValues(alpha: 0.75)),
                 ),
@@ -555,10 +547,9 @@ class _SummaryCard extends StatelessWidget {
                   ),
                   Padding(
                     padding: const EdgeInsets.only(bottom: 5, right: 8),
-                    child: Text('ر.س',
+                    child: Text('sar_currency'.tr,
                         style: AppTheme.body.copyWith(
-                            color:
-                            Colors.white.withValues(alpha: 0.75))),
+                            color: Colors.white.withValues(alpha: 0.75))),
                   ),
                 ]),
                 if (s.pendingWithdrawal > 0) ...[
@@ -576,7 +567,7 @@ class _SummaryCard extends StatelessWidget {
                           color: Colors.white, size: 13),
                       const SizedBox(width: 5),
                       Text(
-                        '${_sarShort(s.pendingWithdrawal)} قيد المعالجة',
+                        '${_sarShort(s.pendingWithdrawal)} ${'pending_processing'.tr}',
                         style: AppTheme.caption.copyWith(color: Colors.white),
                       ),
                     ]),
@@ -588,15 +579,15 @@ class _SummaryCard extends StatelessWidget {
                 const SizedBox(height: 18),
                 Row(children: [
                   _SummaryChip(
-                      label: 'إجمالي الأرباح',
+                      label: 'total_earnings_label'.tr,
                       value: _sarShort(s.totalNet)),
                   const SizedBox(width: 10),
                   _SummaryChip(
-                      label: 'تم سحبه',
+                      label: 'withdrawn_label'.tr,
                       value: _sarShort(s.withdrawnTotal)),
                   const SizedBox(width: 10),
                   _SummaryChip(
-                      label: 'المبيعات',
+                      label: 'sales_label'.tr,
                       value: s.earningsCount.toString()),
                 ]),
               ],
@@ -620,7 +611,8 @@ class _SummaryChip extends StatelessWidget {
         color: Colors.white.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      child:
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(label,
             style: AppTheme.caption.copyWith(
                 color: Colors.white.withValues(alpha: 0.7))),
@@ -661,13 +653,6 @@ class _EarningsTabState extends State<_EarningsTab>
   static const _limit = 20;
   final _scroll = ScrollController();
 
-  static const _filters = [
-    ('all', 'الكل'),
-    ('pending', 'قيد الانتظار'),
-    ('settled', 'مُحوّل'),
-    ('refunded', 'مُسترد'),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -686,6 +671,13 @@ class _EarningsTabState extends State<_EarningsTab>
     super.dispose();
   }
 
+  List<(String, String)> get _filters => [
+    ('all', 'stat_all'.tr),
+    ('pending', 'filter_pending'.tr),
+    ('settled', 'filter_settled'.tr),
+    ('refunded', 'filter_refunded'.tr),
+  ];
+
   Future<void> _loadFirst() async {
     setState(() {
       _loading = true;
@@ -697,9 +689,9 @@ class _EarningsTabState extends State<_EarningsTab>
   }
 
   Future<void> _loadMore() async {
-    if(mounted) setState(() => _loadingMore = true);
+    if (mounted) setState(() => _loadingMore = true);
     await _fetch(reset: false);
-    if (mounted) if(mounted) setState(() => _loadingMore = false);
+    if (mounted) setState(() => _loadingMore = false);
   }
 
   Future<void> _fetch({required bool reset}) async {
@@ -748,7 +740,7 @@ class _EarningsTabState extends State<_EarningsTab>
               label: f.$2,
               selected: _filter == f.$1,
               onTap: () {
-                if(mounted) setState(() => _filter = f.$1);
+                if (mounted) setState(() => _filter = f.$1);
                 _loadFirst();
               },
             ),
@@ -762,7 +754,8 @@ class _EarningsTabState extends State<_EarningsTab>
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Align(
               alignment: Alignment.centerRight,
-              child: Text('$_total سجل', style: c.caption)),
+              child: Text('$_total ${'records_count_suffix'.tr}',
+                  style: c.caption)),
         ),
       ],
       const SizedBox(height: 8),
@@ -772,7 +765,8 @@ class _EarningsTabState extends State<_EarningsTab>
             : _error != null
             ? _ErrorPanel(message: _error!, onRetry: _loadFirst)
             : _items.isEmpty
-            ? _EmptyState(message: 'لا توجد أرباح حتى الآن',
+            ? _EmptyState(
+            message: 'no_earnings_yet'.tr,
             icon: Icons.payments_outlined)
             : RefreshIndicator(
           onRefresh: _loadFirst,
@@ -788,7 +782,8 @@ class _EarningsTabState extends State<_EarningsTab>
             itemBuilder: (_, i) {
               if (i == _items.length) {
                 return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
+                  padding:
+                  EdgeInsets.symmetric(vertical: 16),
                   child: Center(child: _Loader()),
                 );
               }
@@ -814,9 +809,9 @@ class _EarningCard extends StatelessWidget {
       _ => AppTheme.accent,
     };
     final statusLabel = switch (e.status) {
-      'settled' => 'مُحوّل',
-      'refunded' => 'مُسترد',
-      _ => 'قيد الانتظار',
+      'settled' => 'earning_status_settled'.tr,
+      'refunded' => 'earning_status_refunded'.tr,
+      _ => 'earning_status_pending'.tr,
     };
     final statusIcon = switch (e.status) {
       'settled' => Icons.check_circle_rounded,
@@ -833,8 +828,7 @@ class _EarningCard extends StatelessWidget {
       ),
       child: Row(children: [
         Container(
-          width: 46,
-          height: 46,
+          width: 46, height: 46,
           decoration: BoxDecoration(
             color: statusColor.withValues(alpha: c.isDark ? 0.2 : 0.1),
             borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
@@ -843,9 +837,11 @@ class _EarningCard extends StatelessWidget {
         ),
         const SizedBox(width: 14),
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child:
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(
-              e.courseName ?? 'دورة #${e.courseId ?? e.id}',
+              e.courseName ??
+                  '${'course_prefix'.tr}${e.courseId ?? e.id}',
               style: c.h4,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -857,7 +853,7 @@ class _EarningCard extends StatelessWidget {
               const SizedBox(width: 4),
               Text(_fmtDate(e.earnedAt), style: c.caption),
               const SizedBox(width: 10),
-              Text('عمولة: ${_sar(e.platformFee)}',
+              Text('${'commission_prefix'.tr} ${_sar(e.platformFee)}',
                   style: c.caption),
             ]),
           ]),
@@ -949,7 +945,7 @@ class _WithdrawalsTabState extends State<_WithdrawalsTab>
 
   void _snack(String msg, {bool isError = false}) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(msg, textDirection:pageDirection),
+        content: Text(msg, textDirection: pageDirection),
         backgroundColor: isError ? AppTheme.danger : AppTheme.success,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
@@ -960,11 +956,10 @@ class _WithdrawalsTabState extends State<_WithdrawalsTab>
   Widget build(BuildContext context) {
     super.build(context);
     if (_loading) return const Center(child: _Loader());
-    if (_error != null)
-      return _ErrorPanel(message: _error!, onRetry: _load);
+    if (_error != null) return _ErrorPanel(message: _error!, onRetry: _load);
     if (_items.isEmpty)
       return _EmptyState(
-          message: 'لا توجد طلبات سحب بعد',
+          message: 'no_withdrawals_yet'.tr,
           icon: Icons.account_balance_outlined);
 
     return RefreshIndicator(
@@ -987,13 +982,12 @@ class _WithdrawalsTabState extends State<_WithdrawalsTab>
     builder: (_) => Directionality(
       textDirection: pageDirection,
       child: AlertDialog(
-        title: const Text('إلغاء طلب السحب'),
-        content: const Text(
-            'هل تريد إلغاء هذا الطلب؟ سيعود المبلغ إلى رصيدك المتاح.'),
+        title: Text('cancel_withdrawal_title'.tr),
+        content: Text('cancel_withdrawal_confirm'.tr),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(_),
-              child: const Text('تراجع')),
+              child: Text('go_back_btn'.tr)),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.danger,
@@ -1002,7 +996,7 @@ class _WithdrawalsTabState extends State<_WithdrawalsTab>
               Navigator.pop(_);
               _cancel(id);
             },
-            child: const Text('إلغاء الطلب'),
+            child: Text('cancel_request_btn'.tr),
           ),
         ],
       ),
@@ -1025,10 +1019,10 @@ class _WithdrawalCard extends StatelessWidget {
       _ => AppTheme.accent,
     };
     final statusLabel = switch (w.status) {
-      'paid' => 'مُحوّل ✓',
-      'rejected' => 'مرفوض',
-      'approved' => 'موافق عليه',
-      _ => 'قيد المراجعة',
+      'paid' => 'withdrawal_status_paid'.tr,
+      'rejected' => 'withdrawal_status_rejected'.tr,
+      'approved' => 'withdrawal_status_approved'.tr,
+      _ => 'withdrawal_status_pending'.tr,
     };
     final statusIcon = switch (w.status) {
       'paid' => Icons.check_circle_rounded,
@@ -1042,8 +1036,8 @@ class _WithdrawalCard extends StatelessWidget {
         color: c.cardBg,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         boxShadow: c.cardShadow,
-        border: Border.all(
-            color: statusColor.withValues(alpha: 0.2), width: 1),
+        border:
+        Border.all(color: statusColor.withValues(alpha: 0.2), width: 1),
       ),
       child: Column(children: [
         Padding(
@@ -1053,8 +1047,7 @@ class _WithdrawalCard extends StatelessWidget {
               width: 46, height: 46,
               decoration: BoxDecoration(
                 color: statusColor.withValues(alpha: 0.1),
-                borderRadius:
-                BorderRadius.circular(AppTheme.radiusSmall),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
               ),
               child: Icon(statusIcon, color: statusColor, size: 22),
             ),
@@ -1063,8 +1056,7 @@ class _WithdrawalCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(_sar(w.amount),
-                      style: c.h3),
+                  Text(_sar(w.amount), style: c.h3),
                   const SizedBox(height: 2),
                   Text('${w.bankName} · ${w.ibanMasked}',
                       style: c.caption),
@@ -1079,30 +1071,27 @@ class _WithdrawalCard extends StatelessWidget {
               ),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 10, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: statusColor.withValues(alpha: 0.1),
-                borderRadius:
-                BorderRadius.circular(AppTheme.radiusSmall),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                 border: Border.all(
                     color: statusColor.withValues(alpha: 0.3), width: 1),
               ),
               child: Text(statusLabel,
                   style: AppTheme.caption.copyWith(
-                      color: statusColor,
-                      fontWeight: FontWeight.w700)),
+                      color: statusColor, fontWeight: FontWeight.w700)),
             ),
           ]),
         ),
         if (w.status == 'rejected' && w.rejectedReason != null)
           _InfoBanner(
-              text: 'السبب: ${w.rejectedReason!}',
+              text: '${'rejection_reason_prefix'.tr} ${w.rejectedReason!}',
               color: AppTheme.danger,
               icon: Icons.error_outline_rounded),
         if (w.status == 'paid' && w.bankReference != null)
           _InfoBanner(
-              text: 'المرجع البنكي: ${w.bankReference!}',
+              text: '${'bank_reference_prefix'.tr} ${w.bankReference!}',
               color: AppTheme.success,
               icon: Icons.receipt_long_rounded),
         if (w.adminNote != null && w.adminNote!.isNotEmpty)
@@ -1116,9 +1105,8 @@ class _WithdrawalCard extends StatelessWidget {
             onPressed: onCancel,
             icon: const Icon(Icons.close_rounded,
                 color: AppTheme.danger, size: 16),
-            label: Text('إلغاء الطلب',
-                style: AppTheme.label
-                    .copyWith(color: AppTheme.danger)),
+            label: Text('cancel_request_btn'.tr,
+                style: AppTheme.label.copyWith(color: AppTheme.danger)),
           ),
         ],
       ]),
@@ -1215,7 +1203,7 @@ class _BankAccountsTabState extends State<_BankAccountsTab>
         OutlinedButton.icon(
           onPressed: () => _openAddSheet(context),
           icon: const Icon(Icons.add_rounded),
-          label: const Text('إضافة حساب بنكي'),
+          label: Text('add_bank_account'.tr),
           style: OutlinedButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 14),
             shape: RoundedRectangleBorder(
@@ -1232,7 +1220,7 @@ class _BankAccountsTabState extends State<_BankAccountsTab>
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (_) => _AddBankSheet(onAdded: (a) {
-      if(mounted) setState(() => _accounts.insert(0, a));
+      if (mounted) setState(() => _accounts.insert(0, a));
     }),
   );
 }
@@ -1259,9 +1247,7 @@ class _BankCard extends StatelessWidget {
         Container(
           width: 48, height: 48,
           decoration: BoxDecoration(
-            color: (account.isDefault
-                ? Colors.white
-                : AppTheme.primary)
+            color: (account.isDefault ? Colors.white : AppTheme.primary)
                 .withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
           ),
@@ -1271,7 +1257,8 @@ class _BankCard extends StatelessWidget {
         ),
         const SizedBox(width: 14),
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child:
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Text(account.bankName,
                   style: account.isDefault
@@ -1286,7 +1273,7 @@ class _BankCard extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Text('الافتراضي',
+                  child: Text('default_account_badge'.tr,
                       style: AppTheme.caption.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.w700)),
@@ -1296,8 +1283,8 @@ class _BankCard extends StatelessWidget {
             const SizedBox(height: 3),
             Text(account.accountName,
                 style: account.isDefault
-                    ? AppTheme.caption.copyWith(
-                    color: Colors.white.withValues(alpha: 0.75))
+                    ? AppTheme.caption
+                    .copyWith(color: Colors.white.withValues(alpha: 0.75))
                     : c.caption),
             const SizedBox(height: 2),
             Text(account.ibanMasked,
@@ -1324,8 +1311,7 @@ class _BankCard extends StatelessWidget {
 class _WithdrawSheet extends StatefulWidget {
   final double maxAmount;
   final VoidCallback onSuccess;
-  const _WithdrawSheet(
-      {required this.maxAmount, required this.onSuccess});
+  const _WithdrawSheet({required this.maxAmount, required this.onSuccess});
 
   @override
   State<_WithdrawSheet> createState() => _WithdrawSheetState();
@@ -1355,7 +1341,7 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
         _loadingAccounts = false;
       });
     }).catchError((_) {
-      if (mounted) if(mounted) setState(() => _loadingAccounts = false);
+      if (mounted) setState(() => _loadingAccounts = false);
     });
   }
 
@@ -1368,17 +1354,17 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
 
   void _setAmount(double v) {
     final clamped = v.clamp(0.0, widget.maxAmount);
-    if(mounted) setState(() => _sliderValue = clamped);
+    if (mounted) setState(() => _sliderValue = clamped);
     _amountCtrl.text = clamped.toStringAsFixed(2);
   }
 
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (_selectedId == null) {
-      _snack('يرجى اختيار حساب بنكي', isError: true);
+      _snack('select_bank_account_error'.tr, isError: true);
       return;
     }
-    if(mounted) setState(() => _submitting = true);
+    if (mounted) setState(() => _submitting = true);
     try {
       await _ApiService.requestWithdrawal(
         amount: double.parse(_amountCtrl.text),
@@ -1392,7 +1378,7 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
       if (!mounted) return;
       _snack(_dioMsg(e), isError: true);
     } finally {
-      if (mounted) if(mounted) setState(() => _submitting = false);
+      if (mounted) setState(() => _submitting = false);
     }
   }
 
@@ -1432,21 +1418,23 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
                         borderRadius: BorderRadius.circular(2))),
               ),
               const SizedBox(height: 24),
-              Text('طلب سحب جديد', style: c.h2),
+              Text('new_withdrawal_request'.tr, style: c.h2),
               const SizedBox(height: 4),
-              Text('الرصيد المتاح: ${_sar(widget.maxAmount)}',
-                  style: c.body),
+              Text(
+                '${'available_balance_prefix'.tr} ${_sar(widget.maxAmount)}',
+                style: c.body,
+              ),
               const SizedBox(height: 28),
 
               // Amount
               Align(
                   alignment: Alignment.centerRight,
-                  child: Text('المبلغ (ر.س)', style: c.label)),
+                  child: Text('amount_sar_label'.tr, style: c.label)),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _amountCtrl,
-                keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true),
+                keyboardType:
+                const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(
                       RegExp(r'^\d+\.?\d{0,2}'))
@@ -1454,20 +1442,19 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
                 textAlign: TextAlign.center,
                 style: c.h2,
                 decoration: InputDecoration(
-                    suffix: Text('ر.س', style: c.body),
+                    suffix: Text('sar_currency'.tr, style: c.body),
                     hintText: '0.00'),
                 validator: (v) {
                   final d = double.tryParse(v ?? '');
-                  if (d == null || d <= 0) return 'أدخل مبلغاً صحيحاً';
-                  if (d < 50) return 'الحد الأدنى للسحب 50 ر.س';
-                  if (d > widget.maxAmount)
-                    return 'يتجاوز الرصيد المتاح';
+                  if (d == null || d <= 0) return 'invalid_amount_error'.tr;
+                  if (d < 50) return 'min_withdrawal_error'.tr;
+                  if (d > widget.maxAmount) return 'exceeds_balance_error'.tr;
                   return null;
                 },
                 onChanged: (v) {
                   final d = double.tryParse(v) ?? 0;
                   if (d <= widget.maxAmount) {
-                    if(mounted) setState(() => _sliderValue = d);
+                    if (mounted) setState(() => _sliderValue = d);
                   }
                 },
               ),
@@ -1479,8 +1466,7 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
                   activeTrackColor: AppTheme.primary,
                   inactiveTrackColor:
                   AppTheme.primary.withValues(alpha: 0.15),
-                  overlayColor:
-                  AppTheme.primary.withValues(alpha: 0.12),
+                  overlayColor: AppTheme.primary.withValues(alpha: 0.12),
                 ),
                 child: Slider(
                   value: widget.maxAmount == 0
@@ -1493,12 +1479,13 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _QuickBtn('50 ر.س', () => _setAmount(50)),
+                  _QuickBtn('50 ${'sar_currency'.tr}',
+                          () => _setAmount(50)),
                   _QuickBtn('25%',
                           () => _setAmount(widget.maxAmount * 0.25)),
                   _QuickBtn('50%',
                           () => _setAmount(widget.maxAmount * 0.5)),
-                  _QuickBtn('الكل',
+                  _QuickBtn('quick_all_btn'.tr,
                           () => _setAmount(widget.maxAmount)),
                 ],
               ),
@@ -1507,7 +1494,7 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
               // Bank picker
               Align(
                   alignment: Alignment.centerRight,
-                  child: Text('حساب الاستلام', style: c.label)),
+                  child: Text('receiving_account_label'.tr, style: c.label)),
               const SizedBox(height: 10),
               if (_loadingAccounts)
                 const Padding(
@@ -1520,15 +1507,14 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
                       color: c.inputBg,
                       borderRadius:
                       BorderRadius.circular(AppTheme.radiusMedium)),
-                  child: Text(
-                      'لا توجد حسابات بنكية. يرجى إضافة حساب أولاً.',
-                      style: c.body,
-                      textAlign: TextAlign.center),
+                  child: Text('no_bank_accounts_msg'.tr,
+                      style: c.body, textAlign: TextAlign.center),
                 )
               else
                 ..._accounts.map((a) => GestureDetector(
                   onTap: () {
-                      if(mounted) setState(() => _selectedId = a.id);},
+                    if (mounted) setState(() => _selectedId = a.id);
+                  },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
                     margin: const EdgeInsets.only(bottom: 10),
@@ -1537,8 +1523,8 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
                       color: _selectedId == a.id
                           ? AppTheme.primary.withValues(alpha: 0.07)
                           : c.cardBg,
-                      borderRadius: BorderRadius.circular(
-                          AppTheme.radiusMedium),
+                      borderRadius:
+                      BorderRadius.circular(AppTheme.radiusMedium),
                       border: Border.all(
                         color: _selectedId == a.id
                             ? AppTheme.primary
@@ -1581,21 +1567,20 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
               const SizedBox(height: 14),
               Align(
                   alignment: Alignment.centerRight,
-                  child: Text('ملاحظة للإدارة (اختياري)',
-                      style: c.label)),
+                  child: Text('admin_note_label'.tr, style: c.label)),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _noteCtrl,
                 maxLines: 2,
-                decoration: const InputDecoration(
-                    hintText: 'أي تعليق أو طلب خاص...'),
+                decoration:
+                InputDecoration(hintText: 'admin_note_hint'.tr),
               ),
               const SizedBox(height: 28),
 
               _PrimaryButton(
                 label: _submitting
-                    ? 'جارٍ الإرسال...'
-                    : 'إرسال طلب السحب',
+                    ? 'sending_label'.tr
+                    : 'send_withdrawal_btn'.tr,
                 icon: Icons.send_rounded,
                 onTap: _submitting ? null : _submit,
               ),
@@ -1639,7 +1624,7 @@ class _AddBankSheetState extends State<_AddBankSheet> {
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    if(mounted) setState(() => _saving = true);
+    if (mounted) setState(() => _saving = true);
     try {
       final account = await _ApiService.addBankAccount(
         bankName: _bankCtrl.text.trim(),
@@ -1660,11 +1645,10 @@ class _AddBankSheetState extends State<_AddBankSheet> {
         backgroundColor: AppTheme.danger,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
-            borderRadius:
-            BorderRadius.circular(AppTheme.radiusMedium)),
+            borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
       ));
     } finally {
-      if (mounted) if(mounted) setState(() => _saving = false);
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -1695,42 +1679,42 @@ class _AddBankSheetState extends State<_AddBankSheet> {
                         borderRadius: BorderRadius.circular(2))),
               ),
               const SizedBox(height: 24),
-              Text('إضافة حساب بنكي', style: c.h2),
+              Text('add_bank_account'.tr, style: c.h2),
               const SizedBox(height: 28),
               _LabelField(
-                label: 'اسم البنك',
+                label: 'bank_name_label'.tr,
                 controller: _bankCtrl,
-                hint: 'مثال: البنك الأهلي السعودي',
+                hint: 'bank_name_example_hint'.tr,
                 validator: (v) =>
-                (v?.trim().isEmpty ?? true) ? 'مطلوب' : null,
+                (v?.trim().isEmpty ?? true) ? 'field_required'.tr : null,
               ),
               const SizedBox(height: 14),
               _LabelField(
-                label: 'اسم صاحب الحساب',
+                label: 'account_holder_name'.tr,
                 controller: _nameCtrl,
-                hint: 'الاسم الكامل',
+                hint: 'account_holder_full_name_hint'.tr,
                 validator: (v) =>
-                (v?.trim().isEmpty ?? true) ? 'مطلوب' : null,
+                (v?.trim().isEmpty ?? true) ? 'field_required'.tr : null,
               ),
               const SizedBox(height: 14),
               _LabelField(
-                label: 'رقم الآيبان (IBAN)',
+                label: 'iban_label'.tr,
                 controller: _ibanCtrl,
-                hint: 'SA00 0000 0000 0000 0000 00',
+                hint: 'iban_format_hint'.tr,
                 validator: (v) {
                   final clean = v?.replaceAll(' ', '') ?? '';
-                  if (clean.isEmpty) return 'مطلوب';
+                  if (clean.isEmpty) return 'field_required'.tr;
                   if (!clean.startsWith('SA') || clean.length < 22) {
-                    return 'يبدأ بـ SA ولا يقل عن 22 خانة';
+                    return 'iban_format_error'.tr;
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 14),
               _LabelField(
-                label: 'SWIFT Code (اختياري)',
+                label: 'swift_code_optional_field'.tr,
                 controller: _swiftCtrl,
-                hint: 'BSFASA',
+                hint: 'swift_hint'.tr,
                 validator: null,
               ),
               const SizedBox(height: 14),
@@ -1738,13 +1722,14 @@ class _AddBankSheetState extends State<_AddBankSheet> {
                 Checkbox(
                     value: _isDefault,
                     onChanged: (v) {
-                        if(mounted) setState(() => _isDefault = v ?? false);}),
+                      if (mounted) setState(() => _isDefault = v ?? false);
+                    }),
                 const SizedBox(width: 8),
-                Text('تعيين كحساب افتراضي', style: c.bodyBold),
+                Text('set_as_default_checkbox'.tr, style: c.bodyBold),
               ]),
               const SizedBox(height: 24),
               _PrimaryButton(
-                label: _saving ? 'جارٍ الحفظ...' : 'حفظ الحساب',
+                label: _saving ? 'saving_label'.tr : 'save_account_label'.tr,
                 icon: Icons.save_rounded,
                 onTap: _saving ? null : _save,
               ),
@@ -1780,13 +1765,12 @@ class _PrimaryButton extends StatelessWidget {
           width: double.infinity,
           height: 54,
           decoration: BoxDecoration(
-            gradient:
-            enabled ? c.primaryGradient : c.disableGradient,
-            borderRadius:
-            BorderRadius.circular(AppTheme.radiusMedium),
+            gradient: enabled ? c.primaryGradient : c.disableGradient,
+            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
             boxShadow: enabled ? c.primaryShadow : [],
           ),
-          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          child:
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             Icon(icon, color: Colors.white, size: 20),
             const SizedBox(width: 10),
             Text(label,
@@ -1824,7 +1808,8 @@ class _FilterChip extends StatelessWidget {
         child: Text(label,
             style: AppTheme.label.copyWith(
                 color: selected ? Colors.white : c.textMedium,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w600)),
+                fontWeight:
+                selected ? FontWeight.w700 : FontWeight.w600)),
       ),
     );
   }
@@ -1883,15 +1868,16 @@ class _Loader extends StatelessWidget {
   const _Loader();
 
   @override
-  Widget build(BuildContext context) => Column(mainAxisSize: MainAxisSize.min, children: [
-    SizedBox(
-      width: 32, height: 32,
-      child: CircularProgressIndicator(
-          strokeWidth: 2.5, color: AppTheme.primary),
-    ),
-    const SizedBox(height: 10),
-    Text('جارٍ التحميل...', style: context.colors.caption),
-  ]);
+  Widget build(BuildContext context) =>
+      Column(mainAxisSize: MainAxisSize.min, children: [
+        SizedBox(
+          width: 32, height: 32,
+          child: CircularProgressIndicator(
+              strokeWidth: 2.5, color: AppTheme.primary),
+        ),
+        const SizedBox(height: 10),
+        Text('loading_label'.tr, style: context.colors.caption),
+      ]);
 }
 
 class _ErrorPanel extends StatelessWidget {
@@ -1908,20 +1894,20 @@ class _ErrorPanel extends StatelessWidget {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
             width: 64, height: 64,
-            decoration: BoxDecoration(
-                color: c.dangerTint, shape: BoxShape.circle),
+            decoration:
+            BoxDecoration(color: c.dangerTint, shape: BoxShape.circle),
             child: const Icon(Icons.wifi_off_rounded,
                 color: AppTheme.danger, size: 30),
           ),
           const SizedBox(height: 16),
-          Text('تعذّر تحميل البيانات', style: c.h3),
+          Text('failed_to_load'.tr, style: c.h3),
           const SizedBox(height: 8),
           Text(message, style: c.body, textAlign: TextAlign.center),
           const SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded),
-            label: const Text('إعادة المحاولة'),
+            label: Text('retry_btn'.tr),
           ),
         ]),
       ),
