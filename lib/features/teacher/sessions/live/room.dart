@@ -493,11 +493,22 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
 
   void _setUpListeners() =>
       _listener..on<RoomDisconnectedEvent>((event) async {
-        if (event.reason != null) {
-          log('Room disconnected: reason => ${event.reason}');
-        }
-        WidgetsBindingCompatible.instance?.addPostFrameCallback(
-                (_) => Navigator.popUntil(context, (r) => r.isFirst));
+        log('Room disconnected: reason => \${event.reason}');
+        // FIX #5: when teacher calls delete_room() server-side, all clients
+        // receive RoomDisconnectedEvent with reason == roomDeleted.
+        // Show students a clear end-of-session dialog before navigating away.
+        final isTeacherEnd = event.reason == DisconnectReason.roomDeleted ||
+            event.reason == DisconnectReason.serverShutdown;
+        WidgetsBindingCompatible.instance?.addPostFrameCallback((_) async {
+          if (isTeacherEnd && !widget.isTeacher && mounted) {
+            await showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (_) => const _SessionEndedDialog(),
+            );
+          }
+          if (mounted) Navigator.popUntil(context, (r) => r.isFirst);
+        });
       })..on<ParticipantEvent>((_) => _sortParticipants())..on<
           RoomRecordingStatusChanged>((event) {
         if(mounted) setState(() => _isRecording = event.activeRecording);
@@ -670,34 +681,46 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
     if (lkPlatformIs(PlatformType.android)) {
       if (!isSharing) {
         try {
-          // FIX #3: startScreenCaptureService MethodChannel call REMOVED.
-          // Root cause of 3× permission dialogs:
-          //   1. Our manual startScreenCaptureService MethodChannel
-          //   2. setScreenShareEnabled triggers SDK foreground service
-          //   3. captureScreenAudio: true passed twice triggered audio permission
-          // Fix: let the SDK handle the foreground service entirely.
-          // Just call setScreenShareEnabled — the SDK requests MediaProjection
-          // permission exactly once and starts the foreground service itself.
+          // STEP 1: Start the foreground service FIRST.
+          // Android requires a running foreground service with
+          // foregroundServiceType="mediaProjection" BEFORE MediaProjection.start().
+          // Without this, the OS throws:
+          //   SecurityException: Media projections require a foreground service
+          //   of type ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
           //
-          // FIX #1: captureScreenAudio passed ONLY via defaultScreenShareCaptureOptions
-          // in RoomOptions (prejoin.dart) — NOT repeated here. Repeating it caused
-          // Android to fail to route system audio into the capture pipeline.
+          // The MethodChannel call starts ScreenCaptureService which immediately
+          // calls startForeground(FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION).
+          final started = await _screenShareChannel
+              .invokeMethod<bool>('startScreenCaptureService');
+          if (started != true) {
+            _showSnack('Could not start screen capture service.');
+            return;
+          }
+
+          // STEP 2: Wait for ScreenCaptureService.onStartCommand() to call
+          // startForeground() — this completes within ~50 ms normally but we
+          // give it 200 ms to be safe on slow devices.
+          await Future.delayed(const Duration(milliseconds: 200));
+
+          // STEP 3: NOW call setScreenShareEnabled. The livekit SDK will:
+          //   a) Show the MediaProjection permission dialog (ONCE — correct)
+          //   b) On grant: call MediaProjection.start() — succeeds because
+          //      the foreground service is already running with the correct type.
           //
-          // FIX #6: setCameraEnabled NOT called — camera stays alive (no freeze, no
-          // audio focus loss that was preventing system audio capture).
+          // FIX audio: captureScreenAudio set ONLY in ScreenShareCaptureOptions,
+          // NOT as a named param (avoids double-setting that caused audio conflicts).
+          // FIX camera: setCameraEnabled never called — no freeze, no audio loss.
           await local.setScreenShareEnabled(
             true,
-            // captureScreenAudio intentionally NOT set here — already in RoomOptions.
-            // Setting it again here caused audio routing conflicts on Android.
             screenShareCaptureOptions: const ScreenShareCaptureOptions(
-              captureScreenAudio: true, // needed in options for the capture session
-              maxFrameRate: 30, // FIX #2: was 15fps (caused slow-motion look)
+              captureScreenAudio: true, // system audio for live stream + recording
+              maxFrameRate: 30,         // was 15fps — caused slow-motion look
             ),
           );
 
-          // FIX #1: Wait for SDK to create the SCREEN_SHARE_AUDIO track,
-          // then upgrade it to HD to ensure it is heard by all participants
-          // and captured in recordings at 128 kbps instead of 32 kbps default.
+          // STEP 4: Upgrade the SCREEN_SHARE_AUDIO track to HD (128 kbps).
+          // The SDK creates this track asynchronously after setScreenShareEnabled.
+          // Wait 500 ms then find it and republish at HD quality.
           await Future.delayed(const Duration(milliseconds: 500));
           for (final pub in local.audioTrackPublications) {
             if (pub.source == TrackSource.screenShareAudio &&
@@ -706,24 +729,29 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
                 pub.track as LocalAudioTrack,
                 publishOptions: _hdAudioPublishOptions,
               );
-              break; // only upgrade once
+              break;
             }
           }
         } catch (e) {
           log('Screen share start error: $e');
-          _showSnack('Screen sharing failed: $e');
-        }
-      } else {
-        // Stopping — camera stays on (no setCameraEnabled calls).
-        try {
-          await local.setScreenShareEnabled(false);
-          // Notify our foreground service helper if still running
+          // Stop the foreground service if screen share failed to start
           try {
             await _screenShareChannel.invokeMethod('stopScreenCaptureService');
           } catch (_) {}
+          _showSnack('Screen sharing failed: $e');
+        }
+      } else {
+        // Stopping screen share.
+        // Camera stays on — setCameraEnabled is never called.
+        try {
+          await local.setScreenShareEnabled(false);
         } catch (e) {
           log('Screen share stop error: $e');
         }
+        // Stop the foreground service (non-fatal if already stopped)
+        try {
+          await _screenShareChannel.invokeMethod('stopScreenCaptureService');
+        } catch (_) {}
       }
     } else if (lkPlatformIs(PlatformType.iOS)) {
       // FIX #4: captureScreenAudio COMPLETELY REMOVED from iOS.
@@ -2632,6 +2660,79 @@ class _AuroraPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_AuroraPainter old) => old.t != t;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FIX #5 — _SessionEndedDialog
+// Shown to students when the teacher ends the session (server deletes the room).
+// ─────────────────────────────────────────────────────────────────────────────
+class _SessionEndedDialog extends StatelessWidget {
+  const _SessionEndedDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.all(28),
+        decoration: BoxDecoration(
+          color: _surfaceHi,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: _glassBdr, width: 1),
+          boxShadow: [
+            BoxShadow(color: _cyan.withValues(alpha: 0.10), blurRadius: 40),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 20),
+          ],
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 72, height: 72,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _rose.withValues(alpha: 0.12),
+              border: Border.all(color: _rose.withValues(alpha: 0.4), width: 2),
+            ),
+            child: const Icon(Icons.meeting_room_rounded, color: _rose, size: 34),
+          ),
+          const SizedBox(height: 20),
+          const Text('Session Ended',
+              style: TextStyle(
+                  color: _textHigh, fontWeight: FontWeight.w800, fontSize: 20)),
+          const SizedBox(height: 10),
+          Text(
+            'The teacher has ended this session.\nThank you for joining!',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                color: _textMid.withValues(alpha: 0.85), fontSize: 14, height: 1.5),
+          ),
+          const SizedBox(height: 24),
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                    colors: [_cyan, _indigo],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(color: _cyan.withValues(alpha: 0.28), blurRadius: 14)
+                ],
+              ),
+              child: const Text('OK',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      color: _textHigh,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15)),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

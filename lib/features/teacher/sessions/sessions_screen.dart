@@ -940,25 +940,30 @@ class _SectionHeader extends StatelessWidget {
 // Loading / Empty states
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared session-list state widgets
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _LoadingState extends StatelessWidget {
   const _LoadingState();
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          SizedBox(
-            width: 40,
-            height: 40,
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation(context.colors.primary),
-              strokeWidth: 3,
-              backgroundColor: context.colors.primaryLight,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text('جاري تحميل الدروس...', style: context.colors.body),
-        ]),
-      );
+    child: Column(mainAxisSize: MainAxisSize.min, children: [
+      SizedBox(
+        width: 40,
+        height: 40,
+        child: CircularProgressIndicator(
+          valueColor:
+          AlwaysStoppedAnimation(context.colors.primary),
+          strokeWidth: 3,
+          backgroundColor: context.colors.primaryLight,
+        ),
+      ),
+      const SizedBox(height: 16),
+      Text('loading_sessions'.tr, style: context.colors.body),
+    ]),
+  );
 }
 
 class _EmptyState extends StatelessWidget {
@@ -968,52 +973,60 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(40),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(
-              width: 90,
-              height: 90,
-              decoration: BoxDecoration(
-                gradient: context.colors.primaryGradient,
-                shape: BoxShape.circle,
-                boxShadow: context.colors.primaryShadow,
-              ),
-              child: const Icon(Icons.video_library_rounded,
-                  size: 40, color: Colors.white),
-            ),
-            const SizedBox(height: 20),
-            Text('لا توجد دروس بعد',
-                style:
-                    context.colors.h3.copyWith(color: context.colors.textDark)),
-            const SizedBox(height: 8),
-            Text('أضف أول درس لتبدأ في تنظيم مواد الكورس',
-                style: context.colors.body, textAlign: TextAlign.center),
-            const SizedBox(height: 28),
-            GestureDetector(
-              onTap: onAdd,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                decoration: BoxDecoration(
-                    gradient: context.colors.primaryGradient,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: context.colors.primaryShadow),
-                child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.add_rounded, color: Colors.white, size: 20),
-                  SizedBox(width: 8),
-                  Text('أضف أول درس',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontFamily: 'Tajawal',
-                          fontSize: 15)),
-                ]),
-              ),
-            ),
-          ]),
+    child: Padding(
+      padding: const EdgeInsets.all(40),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(
+          width: 90, height: 90,
+          decoration: BoxDecoration(
+            gradient: context.colors.primaryGradient,
+            shape: BoxShape.circle,
+            boxShadow: context.colors.primaryShadow,
+          ),
+          child: const Icon(Icons.video_library_rounded,
+              size: 40, color: Colors.white),
         ),
-      );
+        const SizedBox(height: 20),
+        Text(
+          'no_sessions_yet'.tr,
+          style: context.colors.h3
+              .copyWith(color: context.colors.textDark),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'add_first_session_hint'.tr,
+          style: context.colors.body,
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 28),
+        GestureDetector(
+          onTap: onAdd,
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+                horizontal: 28, vertical: 14),
+            decoration: BoxDecoration(
+                gradient: context.colors.primaryGradient,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: context.colors.primaryShadow),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.add_rounded,
+                  color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'add_first_session_btn'.tr,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'Tajawal',
+                  fontSize: 15,
+                ),
+              ),
+            ]),
+          ),
+        ),
+      ]),
+    ),
+  );
 }
 
 class _AddButton extends StatelessWidget {
@@ -1023,25 +1036,28 @@ class _AddButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          height: 36,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: BoxDecoration(
-            gradient: context.colors.primaryGradient,
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: context.colors.primaryShadow,
+    onTap: onTap,
+    child: Container(
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        gradient: context.colors.primaryGradient,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: context.colors.primaryShadow,
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        const Icon(Icons.add_rounded, color: Colors.white, size: 18),
+        const SizedBox(width: 6),
+        Text(
+          'add_session_btn'.tr,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontFamily: 'Tajawal',
+            fontSize: 12,
           ),
-          child: const Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.add_rounded, color: Colors.white, size: 18),
-            SizedBox(width: 6),
-            Text('إضافة درس',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'Tajawal',
-                    fontSize: 12)),
-          ]),
         ),
-      );
+      ]),
+    ),
+  );
 }

@@ -2900,5 +2900,49 @@
   "search_course_by_name_description": {
     "en": "Search by name or description...",
     "ar": "...البحث باسم الدورة او الوصف"
+  },
+  "no_sessions_today_title": {
+    "en": "No sessions today",
+    "ar": "لا توجد حصص اليوم"
+  },
+  "check_weekly_schedule": {
+    "en": "Check your weekly schedule",
+    "ar": "تحقق من جدولك الأسبوعي"
+  },
+  "session_ongoing_tag": {
+    "en": "🔴 Live Now",
+    "ar": "🔴 جارية الآن"
+  },
+  "upcoming_session_tag": {
+    "en": "Upcoming Session",
+    "ar": "الحصة القادمة"
+  },
+  "ends_after_countdown": {
+    "en": "Ends in {t}",
+    "ar": "تنتهي بعد {t}"
+  },
+  "starts_after_countdown": {
+    "en": "Starts in {t}",
+    "ar": "تبدأ بعد {t}"
+  },
+  "loading_sessions": {
+    "en": "Loading lessons...",
+    "ar": "جاري تحميل الدروس..."
+  },
+  "no_sessions_yet": {
+    "en": "No lessons yet",
+    "ar": "لا توجد دروس بعد"
+  },
+  "add_first_session_hint": {
+    "en": "Add your first lesson to start organising course materials",
+    "ar": "أضف أول درس لتبدأ في تنظيم مواد الكورس"
+  },
+  "add_first_session_btn": {
+    "en": "Add First Lesson",
+    "ar": "أضف أول درس"
+  },
+  "add_session_btn": {
+    "en": "Add Lesson",
+    "ar": "إضافة درس"
   }
 }

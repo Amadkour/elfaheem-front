@@ -197,10 +197,10 @@ class TeacherSessionItem {
       recordingStatus: j['recording_status'] as String?,
       totalMaterial: j['total_materials'] as int? ?? 0,
       completeMaterial: j['complete_materials'] as int? ?? 0,
-      progress: j['progress'] as double? ?? 0.0,
+      progress: double.parse((j['progress'].toString()) as String? ?? '0.0'),
       rateSummary: j.containsKey('rate') && j['rate'] != null
-        ? RatingSummary.fromJson(j['rate'] as Map<String, dynamic>)
-        : null,
+          ? RatingSummary.fromJson(j['rate'] as Map<String, dynamic>)
+          : null,
     );
   }
 
@@ -376,10 +376,10 @@ class CourseModel {
       required this.isEnrolled,
       this.teacher,
       required this.isPublished,
-      required this.expectedHours, this.rateSummary});
+      required this.expectedHours,
+      this.rateSummary});
 
   String get title => name;
-
 
   int get hoursCount => totalHours.round();
 
@@ -400,48 +400,48 @@ class CourseModel {
       expectedHours: 0);
 
   factory CourseModel.fromJson(Map<String, dynamic> j) => CourseModel(
-      id: j['id'].toString(),
-      name: j['name'] as String? ?? '',
-      imageUrl: j['image_url'] as String? ?? '',
-      categoryId: j['category_id']?.toString(),
-      categoryName:
-          (j['category'] as Map<String, dynamic>?)?['name'] as String? ??
-              j['category_name'] as String? ??
-              '',
-      price: (j['fees'] as num?)?.toDouble() ?? 0.0,
-      studentsCount:
-          j['students_count'] as int? ?? j['enrollment_count'] as int? ?? 0,
-      sessionsCount: j['sessions_count'] as int? ?? 0,
-      totalHours: (j['total_hours'] as num?)?.toDouble() ?? 0.0,
-      expectedHours: (j['expected_hours'] as num?)?.toDouble() ?? 0.0,
-      teacher: j['teacher'] != null
-          ? TeacherProfileData.fromJson(j['teacher'] as Map<String, dynamic>)
-          : null,
-      description: j['description'] as String? ?? '',
-      type: j['type'] as String? ?? 'recorded',
-      isSubscribed: j['is_subscribed'] as bool? ?? false,
-      isFavorite: j['is_favorite'] as bool? ?? false,
-      progress: (j['progress'] as num?)?.toDouble() ?? 0.0,
-      materialsTotal: j['materials_total'] as int? ?? 0,
-      materialsCompleted: j['materials_completed'] as int? ?? 0,
-      schedules: (j['schedules'] as List? ?? [])
-          .map((e) => CourseSchedule.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      certificates: (j['certificates'] as List? ?? [])
-          .map((e) => CourseCertificate.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      tools: (j['tools'] as List? ?? [])
-          .map((e) => CourseTool.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      prerequisites: (j['prerequisites'] as List? ?? [])
-          .map((e) => CoursePrerequisite.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      isEnrolled: j['is_enrolled'],
-      isPublished: j['is_published'],
-    rateSummary: j.containsKey('rate') && j['rate'] != null
-        ? RatingSummary.fromJson(j['rate'] as Map<String, dynamic>)
-        : null,
-  );
+        id: j['id'].toString(),
+        name: j['name'] as String? ?? '',
+        imageUrl: j['image_url'] as String? ?? '',
+        categoryId: j['category_id']?.toString(),
+        categoryName:
+            (j['category'] as Map<String, dynamic>?)?['name'] as String? ??
+                j['category_name'] as String? ??
+                '',
+        price: (j['fees'] as num?)?.toDouble() ?? 0.0,
+        studentsCount:
+            j['students_count'] as int? ?? j['enrollment_count'] as int? ?? 0,
+        sessionsCount: j['sessions_count'] as int? ?? 0,
+        totalHours: (j['total_hours'] as num?)?.toDouble() ?? 0.0,
+        expectedHours: (j['expected_hours'] as num?)?.toDouble() ?? 0.0,
+        teacher: j['teacher'] != null
+            ? TeacherProfileData.fromJson(j['teacher'] as Map<String, dynamic>)
+            : null,
+        description: j['description'] as String? ?? '',
+        type: j['type'] as String? ?? 'recorded',
+        isSubscribed: j['is_subscribed'] as bool? ?? false,
+        isFavorite: j['is_favorite'] as bool? ?? false,
+        progress: (j['progress'] as num?)?.toDouble() ?? 0.0,
+        materialsTotal: j['materials_total'] as int? ?? 0,
+        materialsCompleted: j['materials_completed'] as int? ?? 0,
+        schedules: (j['schedules'] as List? ?? [])
+            .map((e) => CourseSchedule.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        certificates: (j['certificates'] as List? ?? [])
+            .map((e) => CourseCertificate.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        tools: (j['tools'] as List? ?? [])
+            .map((e) => CourseTool.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        prerequisites: (j['prerequisites'] as List? ?? [])
+            .map((e) => CoursePrerequisite.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        isEnrolled: j['is_enrolled'],
+        isPublished: j['is_published'],
+        rateSummary: j.containsKey('rate') && j['rate'] != null
+            ? RatingSummary.fromJson(j['rate'] as Map<String, dynamic>)
+            : null,
+      );
 
   TeacherCourse get toTeacherModel => TeacherCourse(
       id: int.parse(id),
