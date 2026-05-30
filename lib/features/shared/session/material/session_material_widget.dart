@@ -13,6 +13,7 @@
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../config/app_config.dart';
@@ -166,13 +167,16 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
       builder: (_) => RtlDialog(
         title: 'delete_session'.tr,
         content:
-            Text('delete_confirm_message'.tr, style: context.colors.body),
+            Text('delete_confirm_message'.tr.replaceAll('{name}',_session.name), style: context.colors.body),
         onCancel: () => Navigator.pop(context),
         onConfirm: () async {
           Navigator.pop(context);
-          await context
+        bool result=  await context
               .read<TeacherCourseScreenProvider>()
               .deleteSession(_session.id);
+          if(result){
+            Helpers.showMessage(result? 'delete_session_successfully'.tr:'exam_delete_failed_snack'.tr,isError: !result);
+          }
         },
         confirmLabel: 'delete'.tr,
         confirmColor: context.colors.danger,

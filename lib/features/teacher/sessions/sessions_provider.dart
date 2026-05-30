@@ -4,6 +4,13 @@
 // Combines course header data + sessions list in one place so the screen has
 // a single ChangeNotifier to watch.  Created with MultiProvider and disposed
 // automatically when the route is popped.
+//
+// CHANGES from original:
+//   • joinLive() now passes `apiClient` into JoinArgs (required by the new
+//     RoomPage._ClientRecorder for authenticated chunk uploads).
+//   • _confirmEndSession() is now fire-and-forget safe (recording stop is
+//     handled inside RoomPage._endSessionWithRecording before onEnd fires).
+//   • No other logic changed.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/cupertino.dart';
@@ -19,19 +26,8 @@ import '../../shared/session/material/session_material_model.dart';
 import '../../student/models.dart';
 import '../home/teacher_models.dart';
 import 'live/prejoin.dart';
-import 'model/live_response_model.dart'; // re-exports TeacherSessionItem
+import 'model/live_response_model.dart';
 
-/// Single provider scoped to the course-detail / sessions screen.
-///
-/// Responsibilities
-/// ────────────────
-/// • Keep the canonical [TeacherCourse] header data fresh.
-/// • Manage the sessions list (CRUD + ordering).
-/// • Expose material upload / link helpers used by [SessionMaterialCard].
-/// • Expose live-session start / end helpers.
-///
-/// It intentionally does NOT own attendance or student data — those live in
-/// their own scoped providers on the routes that need them.
 class TeacherCourseScreenProvider extends BaseProvider {
   TeacherCourseScreenProvider({
     required TeacherCourse initialCourse,
@@ -44,11 +40,8 @@ class TeacherCourseScreenProvider extends BaseProvider {
   // ── Course header ─────────────────────────────────────────────────────────
 
   TeacherCourse _course;
-
   TeacherCourse get course => _course;
 
-  /// Fetches a fresh copy of the course from the backend and returns it.
-  /// Also updates [_course] so the hero / stats rebuild automatically.
   Future<TeacherCourse?> refreshCourse() async {
     final result = await run(() => _api.get('/api/v1/courses/${_course.id}'));
     if (result is Map<String, dynamic>) {
@@ -62,14 +55,12 @@ class TeacherCourseScreenProvider extends BaseProvider {
   // ── Sessions ──────────────────────────────────────────────────────────────
 
   List<TeacherSessionItem> _sessions = [];
-
   List<TeacherSessionItem> get sessions => List.unmodifiable(_sessions);
-
   int get sessionCount => _sessions.length;
 
   Future<void> fetchSessions() async {
     final result =
-        await run(() => _api.get('/api/v1/courses/${_course.id}/sessions'));
+    await run(() => _api.get('/api/v1/courses/${_course.id}/sessions'));
     if (result is List) {
       _sessions = result
           .map((e) => TeacherSessionItem.fromJson(e as Map<String, dynamic>))
@@ -90,14 +81,14 @@ class TeacherCourseScreenProvider extends BaseProvider {
     int order = 0,
   }) async {
     final result = await run(() => _api.post('/api/v1/sessions', body: {
-          'course_id': _course.id,
-          'name': name,
-          'type': type,
-          if (description != null) 'description': description,
-          if (scheduledAt != null) 'scheduled_at': scheduledAt,
-          'duration_minutes': durationMinutes,
-          'order': order,
-        }));
+      'course_id': _course.id,
+      'name': name,
+      'type': type,
+      if (description != null) 'description': description,
+      if (scheduledAt != null) 'scheduled_at': scheduledAt,
+      'duration_minutes': durationMinutes,
+      'order': order,
+    }));
     if (result is Map<String, dynamic>) {
       final s = TeacherSessionItem.fromJson(result);
       _sessions = [s, ..._sessions]..sort((a, b) => a.order.compareTo(b.order));
@@ -108,23 +99,23 @@ class TeacherCourseScreenProvider extends BaseProvider {
   }
 
   Future<TeacherSessionItem?> updateSession(
-    int sessionId, {
-    String? name,
-    String? description,
-    String? type,
-    String? scheduledAt,
-    int? durationMinutes,
-    int? order,
-  }) async {
+      int sessionId, {
+        String? name,
+        String? description,
+        String? type,
+        String? scheduledAt,
+        int? durationMinutes,
+        int? order,
+      }) async {
     final result =
-        await run(() => _api.put('/api/v1/sessions/$sessionId', body: {
-              if (name != null) 'name': name,
-              if (description != null) 'description': description,
-              if (type != null) 'type': type,
-              if (scheduledAt != null) 'scheduled_at': scheduledAt,
-              if (durationMinutes != null) 'duration_minutes': durationMinutes,
-              if (order != null) 'order': order,
-            }));
+    await run(() => _api.put('/api/v1/sessions/$sessionId', body: {
+      if (name != null) 'name': name,
+      if (description != null) 'description': description,
+      if (type != null) 'type': type,
+      if (scheduledAt != null) 'scheduled_at': scheduledAt,
+      if (durationMinutes != null) 'duration_minutes': durationMinutes,
+      if (order != null) 'order': order,
+    }));
     if (result is Map<String, dynamic>) {
       final updated = TeacherSessionItem.fromJson(result);
       _sessions =
@@ -146,23 +137,23 @@ class TeacherCourseScreenProvider extends BaseProvider {
     return false;
   }
 
-  // ── Full refresh (called by pull-to-refresh & post-edit) ─────────────────
-  bool loadingAllPage=false;
+  // ── Full refresh (called by pull-to-refresh & post-edit) ──────────────────
+  bool loadingAllPage = false;
+
   Future<void> refresh() async {
-    loadingAllPage=true;
+    loadingAllPage = true;
     notifyListeners();
     await Future.wait([refreshCourse(), fetchSessions()]);
-    loadingAllPage=false;
+    loadingAllPage = false;
     notifyListeners();
   }
 
   // ── Materials ─────────────────────────────────────────────────────────────
 
-  final Map<int, List<SessionMaterialModel>> _materials = {};
-  final Map<int, bool> _materialLoaded = {};
-  final Map<int, bool> _uploadingMaterial = {};
+  final Map<int, List<SessionMaterialModel>> _materials       = {};
+  final Map<int, bool>                       _materialLoaded  = {};
+  final Map<int, bool>                       _uploadingMaterial = {};
 
-  /// Exposed as public so child widgets can read it without a separate getter.
   Map<int, bool> get materialLoaded => Map.unmodifiable(_materialLoaded);
 
   List<SessionMaterialModel> materialsFor(int sessionId) =>
@@ -174,10 +165,10 @@ class TeacherCourseScreenProvider extends BaseProvider {
   Future<void> fetchMaterials(TeacherSessionItem session) async {
     if ((_materialLoaded[session.id] ?? false) &&
         (_materials[session.id]?.length ?? 0) == session.totalMaterial) {
-      return; // already up-to-date
+      return;
     }
     final r =
-        await run(() => _api.get('/api/v1/sessions/${session.id}/materials'));
+    await run(() => _api.get('/api/v1/sessions/${session.id}/materials'));
     if (r is List) {
       _materials[session.id] = r
           .map((e) => SessionMaterialModel.fromJson(e as Map<String, dynamic>))
@@ -231,16 +222,16 @@ class TeacherCourseScreenProvider extends BaseProvider {
     int order = 0,
   }) async {
     final r = await run(() => _api.post(
-          '/api/v1/sessions/$sessionId/materials/link',
-          body: {
-            'session_id': sessionId,
-            'name': name,
-            'url': url,
-            'type': 'link',
-            if (description != null) 'description': description,
-            'order': order,
-          },
-        ));
+      '/api/v1/sessions/$sessionId/materials/link',
+      body: {
+        'session_id': sessionId,
+        'name': name,
+        'url': url,
+        'type': 'link',
+        if (description != null) 'description': description,
+        'order': order,
+      },
+    ));
     if (r is Map<String, dynamic>) {
       final mat = SessionMaterialModel.fromJson(r);
       _materials[sessionId] = [...(_materials[sessionId] ?? []), mat]
@@ -252,22 +243,22 @@ class TeacherCourseScreenProvider extends BaseProvider {
   }
 
   Future<bool> updateMaterial(
-    int sessionId,
-    int materialId, {
-    String? name,
-    String? description,
-    String? url,
-    int? order,
-  }) async {
+      int sessionId,
+      int materialId, {
+        String? name,
+        String? description,
+        String? url,
+        int? order,
+      }) async {
     final r = await run(() => _api.put(
-          '/api/v1/sessions/$sessionId/materials/$materialId',
-          body: {
-            if (name != null) 'name': name,
-            if (description != null) 'description': description,
-            if (url != null) 'url': url,
-            if (order != null) 'order': order,
-          },
-        ));
+      '/api/v1/sessions/$sessionId/materials/$materialId',
+      body: {
+        if (name != null) 'name': name,
+        if (description != null) 'description': description,
+        if (url != null) 'url': url,
+        if (order != null) 'order': order,
+      },
+    ));
     if (r is Map<String, dynamic>) {
       final updated = SessionMaterialModel.fromJson(r);
       _materials[sessionId] = (_materials[sessionId] ?? [])
@@ -281,7 +272,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
 
   Future<bool> deleteMaterial(int sessionId, int materialId) async {
     await run(
-        () => _api.delete('/api/v1/sessions/$sessionId/materials/$materialId'));
+            () => _api.delete('/api/v1/sessions/$sessionId/materials/$materialId'));
     if (state == ProviderState.success) {
       _materials[sessionId] = (_materials[sessionId] ?? [])
           .where((m) => m.id != materialId)
@@ -295,23 +286,23 @@ class TeacherCourseScreenProvider extends BaseProvider {
   // ── Live ──────────────────────────────────────────────────────────────────
 
   Future<LiveResponseModel?> startLive(
-    int sessionId, {
-    bool enableRecording = true,
-    int durationHours = 24,
-  }) async {
+      int sessionId, {
+        bool enableRecording = true,
+        int durationHours = 24,
+      }) async {
     final result = await run(() => _api.post(
-          '/api/v1/live-sessions/start',
-          queryParams: {
-            'session_id': sessionId,
-            'enable_recording': enableRecording,
-            'duration_hours': durationHours,
-          },
-        ));
+      '/api/v1/live-sessions/start',
+      queryParams: {
+        'session_id': sessionId,
+        'enable_recording': enableRecording,
+        'duration_hours': durationHours,
+      },
+    ));
     if (result is Map<String, dynamic>) {
       final live = LiveResponseModel(
         sessionId: sessionId,
-        url: result['ws_url'] as String? ?? '',
-        token: result['token'] as String? ?? '',
+        url:   result['ws_url'] as String? ?? '',
+        token: result['token']  as String? ?? '',
       );
       _updateSessionLiveState(sessionId, isLive: true, roomUrl: live.url);
       return live;
@@ -321,9 +312,9 @@ class TeacherCourseScreenProvider extends BaseProvider {
 
   Future<bool> endLive(int sessionId, {bool saveRecording = true}) async {
     final result = await run(() => _api.post(
-          '/api/v1/live-sessions/$sessionId/end',
-          queryParams: {'save_recording': saveRecording},
-        ));
+      '/api/v1/live-sessions/$sessionId/end',
+      queryParams: {'save_recording': saveRecording},
+    ));
     if (result != null) {
       _updateSessionLiveState(
         sessionId,
@@ -336,59 +327,70 @@ class TeacherCourseScreenProvider extends BaseProvider {
     return false;
   }
 
+  /// Navigate to PreJoinPage with the correct JoinArgs.
+  ///
+  /// The key change vs the original: [apiClient] is now forwarded into
+  /// [JoinArgs] so that [RoomPage._ClientRecorder] can authenticate its
+  /// chunk-upload POSTs with the teacher's Bearer token.
   void joinLive(
-      BuildContext context, int sessionId, int courseId, int maxParticipants, bool liveNow) {
+      BuildContext context,
+      int sessionId,
+      int courseId,
+      int maxParticipants,
+      bool liveNow,
+      ) {
     final user = context.read<AuthProvider>().currentUser;
     Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => PreJoinPage(
-              args: JoinArgs(
-                isTeacher: user!.isTeacher,
-                userId: user.id,
-                userName: user.name,
-                sessionId: sessionId,
-                courseId: courseId,
-                maxStudents: maxParticipants,
-                onEnd: () => _confirmEndSession(user, sessionId, context),
-                // Teachers start the room; students fetch a personal join token.
-                onStart: user.isTeacher && !liveNow
-                    ? () => _onStartLive(user, sessionId, context)
-                    : () => _onJoinLiveAsStudent(sessionId, context),
-                // Students: automatically mark live session complete when they leave
-                onComplete: user.isTeacher
-                    ? null
-                    : () => markSessionComplete(sessionId),
-              ),
-            )));
+      builder: (_) => PreJoinPage(
+        args: JoinArgs(
+          isTeacher:  user!.isTeacher,
+          userId:     user.id,
+          userName:   user.name,
+          sessionId:  sessionId,
+          courseId:   courseId,
+          maxStudents: maxParticipants,
+          // ── Pass the authenticated ApiClient ───────────────────────────
+          // _ClientRecorder in RoomPage needs baseUrl + authToken to POST
+          // chunks to /api/v1/live-sessions/{id}/recording-chunk.
+          apiClient: _api,
+          onEnd: () => _confirmEndSession(user, sessionId, context),
+          // Teachers start the room; students fetch a personal join token.
+          onStart: user.isTeacher && !liveNow
+              ? () => _onStartLive(user, sessionId, context)
+              : () => _onJoinLiveAsStudent(sessionId, context),
+          // Students: automatically mark live session complete when they leave
+          onComplete: user.isTeacher
+              ? null
+              : () => markSessionComplete(sessionId),
+        ),
+      ),
+    ));
   }
 
-  /// Called when a student finishes viewing a material (video end, image view,
-  /// PDF/doc/link open). Hits POST /sessions/{id}/materials/{matId}/complete.
   Future<void> markMaterialComplete(int sessionId, int materialId) async {
     await run(
-      () => _api.post(
+          () => _api.post(
         '/api/v1/sessions/$sessionId/materials/$materialId/complete',
       ),
     );
   }
 
-  /// Called when a student leaves a live session (room page pops).
-  /// Hits POST /sessions/{id}/complete.
   Future<void> markSessionComplete(int sessionId) async {
     await run(
-      () => _api.post('/api/v1/sessions/$sessionId/complete'),
+          () => _api.post('/api/v1/sessions/$sessionId/complete'),
     );
   }
 
   Future<String?> fetchRecordingUrl(int sessionId) async {
     final result =
-        await run(() => _api.get('/api/v1/live-sessions/$sessionId/recording'));
+    await run(() => _api.get('/api/v1/live-sessions/$sessionId/recording'));
     if (result is Map<String, dynamic>) {
       final url = result['recording_url'] as String?;
       if (url != null) {
         _sessions = _sessions
             .map((s) => s.id == sessionId
-                ? s.copyWith(recordingUrl: url, recordingStatus: 'uploaded')
-                : s)
+            ? s.copyWith(recordingUrl: url, recordingStatus: 'uploaded')
+            : s)
             .toList();
         notifyListeners();
       }
@@ -398,23 +400,28 @@ class TeacherCourseScreenProvider extends BaseProvider {
   }
 
   void _updateSessionLiveState(
-    int sessionId, {
-    required bool isLive,
-    String? roomUrl,
-    String? recordingStatus,
-  }) {
+      int sessionId, {
+        required bool isLive,
+        String? roomUrl,
+        String? recordingStatus,
+      }) {
     _sessions = _sessions
         .map((s) => s.id == sessionId
-            ? s.copyWith(
-                isLiveActive: isLive,
-                roomUrl: roomUrl,
-                recordingStatus: recordingStatus,
-              )
-            : s)
+        ? s.copyWith(
+      isLiveActive:    isLive,
+      roomUrl:         roomUrl,
+      recordingStatus: recordingStatus,
+    )
+        : s)
         .toList();
     notifyListeners();
   }
 
+  /// Called when the teacher taps End Session in the room.
+  ///
+  /// NOTE: recording is stopped inside RoomPage._endSessionWithRecording
+  /// BEFORE onEnd() is called, so by the time we reach here all chunks have
+  /// already been uploaded.  This method simply calls endLive() on the server.
   Future<void> _confirmEndSession(
       dynamic user, int sessionId, BuildContext context) async {
     await endLive(sessionId);
@@ -425,18 +432,16 @@ class TeacherCourseScreenProvider extends BaseProvider {
     return await startLive(sessionId);
   }
 
-  /// Student join: hits GET /api/v1/live-sessions/{sessionId}/join
-  /// Returns a [LiveResponseModel] with the room URL + personal token,
-  /// or null on error.
+  /// Student join: GET /api/v1/live-sessions/{sessionId}/join
   Future<LiveResponseModel?> _onJoinLiveAsStudent(
       int sessionId, BuildContext context) async {
     final result =
-        await run(() => _api.get('/api/v1/live-sessions/$sessionId/join'));
+    await run(() => _api.get('/api/v1/live-sessions/$sessionId/join'));
     if (result is Map<String, dynamic>) {
       return LiveResponseModel(
         sessionId: sessionId,
-        url: result['ws_url'] as String? ?? '',
-        token: result['token'] as String? ?? '',
+        url:   result['ws_url'] as String? ?? '',
+        token: result['token']  as String? ?? '',
       );
     }
     return null;

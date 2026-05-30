@@ -986,14 +986,14 @@ class _WithdrawalsTabState extends State<_WithdrawalsTab>
         content: Text('cancel_withdrawal_confirm'.tr),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(_),
+              onPressed: () => Navigator.pop(ctx),
               child: Text('go_back_btn'.tr)),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.danger,
                 foregroundColor: Colors.white),
             onPressed: () {
-              Navigator.pop(_);
+              Navigator.pop(ctx);
               _cancel(id);
             },
             child: Text('cancel_request_btn'.tr),

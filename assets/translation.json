@@ -463,6 +463,10 @@
     "en": "Delete Session",
     "ar": "حذف المحاضرة"
   },
+  "delete_session_successfully": {
+    "en": "Delete Session Successfully",
+    "ar": "تم حذف المحاضرة بنجاح"
+  },
   "attendees": {
     "en": "Attendees",
     "ar": "المشتركون"

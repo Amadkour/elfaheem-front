@@ -3,18 +3,22 @@ import 'dart:developer';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_education_app/config/app_config.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:livekit_client/livekit_client.dart';
 import '../components/exts.dart';
 import 'widgets/controls.dart';
 import 'widgets/participant.dart';
 import 'widgets/participant_info.dart';
+// Web-only: conditional import so mobile builds don't break
+// On non-web platforms this stub is used instead of dart:html
+import 'widgets/recorder_web_stub.dart'
+if (dart.library.html) 'widgets/recorder_web_impl.dart' as web_rec;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Design System
@@ -191,23 +195,15 @@ Future<void> _enableHdAudio(LocalParticipant local) async {
 enum _RecState { idle, starting, recording, uploading, done, error }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _ClientRecorder  — self-contained chunked recording engine
+// _ClientRecorder — platform-aware chunked recording
 //
-// Uses the `camera` package to record raw MP4 chunks on the teacher's device,
-// then POSTs each chunk as multipart to:
-//   POST /api/v1/live-sessions/{sessionId}/recording-chunk
+// Flutter Web  → uses dart:html MediaRecorder (getDisplayMedia / getUserMedia)
+//                Works with no camera (screen share or mic-only)
+// Mobile/Desktop → uses the `camera` package as before
 //
-// Why this beats LiveKit egress:
-//   • No double-compression (WebRTC→compositor→encoder disappears)
-//   • No extra CPU load on the server during the live stream
-//   • Quality is exactly what the camera captures — typically 1080p H.264
-//
-// Camera conflict note:
-//   livekit_client uses the FRONT camera for the live stream.
-//   This recorder defaults to the BACK camera so both can run simultaneously.
-//   Change [useFrontCamera] to true only if you want the same feed as the
-//   live stream AND your device/OS allows two consumers on one camera.
+// The server endpoint accepts both .webm (web) and .mp4 (mobile).
 // ─────────────────────────────────────────────────────────────────────────────
+
 class _ClientRecorder extends ChangeNotifier {
   _ClientRecorder({
     required this.sessionId,
@@ -217,11 +213,11 @@ class _ClientRecorder extends ChangeNotifier {
     this.useFrontCamera = false,
   });
 
-  final int sessionId;
+  final int       sessionId;
   final ApiClient apiClient;
-  final int chunkSeconds;
-  final int maxRetries;
-  final bool useFrontCamera;
+  final int       chunkSeconds;
+  final int       maxRetries;
+  final bool      useFrontCamera;
 
   _RecState _state = _RecState.idle;
   _RecState get state => _state;
@@ -235,7 +231,13 @@ class _ClientRecorder extends ChangeNotifier {
   String? _lastError;
   String? get lastError => _lastError;
 
+  // Mobile recording (camera package)
   CameraController? _cam;
+
+  // Web recording (web_rec abstraction — works with no camera on Flutter Web)
+  web_rec.WebRecorder? _webRecorder;
+  int  _webChunkIndex  = 0;
+
   Timer?            _chunkTimer;
   int               _chunkIndex = 0;
   bool              _stopping   = false;
@@ -246,6 +248,141 @@ class _ClientRecorder extends ChangeNotifier {
   Future<void> start() async {
     if (_state != _RecState.idle) return;
     _set(_RecState.starting);
+    if (kIsWeb) {
+      await _startWeb();
+    } else {
+      await _startMobile();
+    }
+  }
+
+  Future<void> stop() async {
+    if (_state != _RecState.recording) return;
+    _stopping = true;
+    _chunkTimer?.cancel();
+    _chunkTimer = null;
+    _set(_RecState.uploading);
+    if (kIsWeb) {
+      await _stopWeb();
+    } else {
+      await _stopMobile();
+    }
+    await Future.wait(_pending);
+    _set(_RecState.done);
+    log('[REC] done — chunks=$_uploadedChunks bytes=$_totalBytes');
+  }
+
+  @override
+  Future<void> dispose() async {
+    _chunkTimer?.cancel();
+    // Mobile cleanup
+    try {
+      if (_cam?.value.isRecordingVideo == true) {
+        await _cam?.stopVideoRecording();
+      }
+    } catch (_) {}
+    await _cam?.dispose();
+    _cam = null;
+    // Web cleanup
+    await _webRecorder?.stop();
+    _webRecorder = null;
+    super.dispose();
+  }
+
+  // ── Web implementation ─────────────────────────────────────────────────────
+
+  Future<void> _startWeb() async {
+    try {
+      Object? stream;
+
+      // 1. Screen share + audio (best for teaching)
+      try {
+        stream = await web_rec.getDisplayMedia();
+        if (stream != null) log('[REC] Web: screen capture started');
+      } catch (e) {
+        log('[REC] Web: screen capture denied ($e)');
+      }
+
+      // 2. Camera + mic
+      if (stream == null) {
+        try {
+          stream = await web_rec.getUserMedia(video: true);
+          if (stream != null) log('[REC] Web: camera started');
+        } catch (e) {
+          log('[REC] Web: camera denied ($e)');
+        }
+      }
+
+      // 3. Audio-only fallback — works even on machines with no camera
+      if (stream == null) {
+        try {
+          stream = await web_rec.getAudioOnly();
+          if (stream != null) log('[REC] Web: audio-only started');
+        } catch (e) {
+          _setError('No media available: $e');
+          return;
+        }
+      }
+
+      if (stream == null) { _setError('No media stream available'); return; }
+
+      final mime = _webBestMime();
+      log('[REC] Web: using MIME=$mime');
+
+      _webRecorder = web_rec.WebRecorder(
+        onBlob: (size) { _totalBytes += size; notifyListeners(); },
+      );
+      await _webRecorder!.start(stream, mime);
+      _set(_RecState.recording);
+
+      _chunkTimer = Timer.periodic(Duration(seconds: chunkSeconds), (_) async {
+        if (!_stopping && _state == _RecState.recording) {
+          await _flushWebChunks(isFinal: false);
+        }
+      });
+      log('[REC] Web recording started');
+    } catch (e, st) {
+      log('[REC] Web start error: $e\n$st');
+      _setError('Web recording init failed: $e');
+    }
+  }
+
+  Future<void> _stopWeb() async {
+    _chunkTimer?.cancel();
+    _webRecorder?.requestData();
+    await Future.delayed(const Duration(milliseconds: 300));
+    await _webRecorder?.stop();
+    await _flushWebChunks(isFinal: true);
+  }
+
+  Future<void> _flushWebChunks({required bool isFinal}) async {
+    final bytes = await _webRecorder?.drainBlobs();
+    if (bytes == null || bytes.isEmpty) {
+      if (isFinal) log('[REC] Web: no blobs to flush on finalize');
+      return;
+    }
+    final idx = _webChunkIndex++;
+    final ext = _webBestMime().contains('mp4') ? 'mp4' : 'webm';
+    log('[REC] Web: flushing chunk #$idx size=${bytes.length}B final=$isFinal');
+    final f = _uploadChunkBytes(bytes: bytes, index: idx, isFinal: isFinal, ext: ext);
+    _pending.add(f);
+    f.then((_) => _pending.remove(f));
+  }
+
+  String _webBestMime() {
+    for (final mime in [
+      'video/webm;codecs=h264,opus',
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm',
+    ]) {
+      if (web_rec.isTypeSupported(mime)) return mime;
+    }
+    return 'video/webm';
+  }
+
+  // ── Mobile implementation (camera package) ─────────────────────────────────
+
+  Future<void> _startMobile() async {
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) { _setError('No camera found'); return; }
@@ -259,7 +396,7 @@ class _ClientRecorder extends ChangeNotifier {
       _cam = CameraController(desc, ResolutionPreset.high, enableAudio: true);
       await _cam!.initialize();
       log('[REC] camera ready: ${desc.name}');
-      await _startChunk();
+      await _startMobileChunk();
       _set(_RecState.recording);
     } catch (e, st) {
       log('[REC] start error: $e\n$st');
@@ -267,39 +404,15 @@ class _ClientRecorder extends ChangeNotifier {
     }
   }
 
-  /// Stop recording, upload the final chunk, await all pending uploads.
-  Future<void> stop() async {
-    if (_state != _RecState.recording) return;
-    _stopping = true;
-    _chunkTimer?.cancel();
-    _chunkTimer = null;
-    _set(_RecState.uploading);
+  Future<void> _stopMobile() async {
     try {
-      await _stopCurrentChunk(isFinal: true);
+      await _stopMobileChunk(isFinal: true);
     } catch (e) {
       log('[REC] stop error: $e');
     }
-    await Future.wait(_pending);
-    _set(_RecState.done);
-    log('[REC] done — chunks=$_uploadedChunks bytes=$_totalBytes');
   }
 
-  @override
-  Future<void> dispose() async {
-    _chunkTimer?.cancel();
-    try {
-      if (_cam?.value.isRecordingVideo == true) {
-        await _cam?.stopVideoRecording();
-      }
-    } catch (_) {}
-    await _cam?.dispose();
-    _cam = null;
-    super.dispose();
-  }
-
-  // ── Chunk rolling ──────────────────────────────────────────────────────────
-
-  Future<void> _startChunk() async {
+  Future<void> _startMobileChunk() async {
     if (_cam == null || !_cam!.value.isInitialized) return;
     if (_cam!.value.isRecordingVideo) return;
     await _cam!.startVideoRecording();
@@ -307,13 +420,13 @@ class _ClientRecorder extends ChangeNotifier {
     _chunkTimer?.cancel();
     _chunkTimer = Timer(Duration(seconds: chunkSeconds), () async {
       if (!_stopping && _state == _RecState.recording) {
-        await _stopCurrentChunk(isFinal: false);
-        if (!_stopping) await _startChunk();
+        await _stopMobileChunk(isFinal: false);
+        if (!_stopping) await _startMobileChunk();
       }
     });
   }
 
-  Future<void> _stopCurrentChunk({required bool isFinal}) async {
+  Future<void> _stopMobileChunk({required bool isFinal}) async {
     if (_cam == null || !_cam!.value.isRecordingVideo) return;
     XFile? file;
     try {
@@ -328,41 +441,37 @@ class _ClientRecorder extends ChangeNotifier {
     _totalBytes += size;
     notifyListeners();
     log('[REC] chunk #$idx: ${size}B final=$isFinal');
-    final f = _uploadChunk(file: chunkF, index: idx, isFinal: isFinal);
+    final bytes = await chunkF.readAsBytes();
+    final f = _uploadChunkBytes(bytes: bytes, index: idx, isFinal: isFinal, ext: 'mp4');
     _pending.add(f);
     f.then((_) => _pending.remove(f));
+    try { await chunkF.delete(); } catch (_) {}
   }
 
-  // ── Upload ─────────────────────────────────────────────────────────────────
+  // ── Shared upload ──────────────────────────────────────────────────────────
 
-  Future<void> _uploadChunk({
-    required File file,
-    required int index,
-    required bool isFinal,
+  Future<void> _uploadChunkBytes({
+    required Uint8List bytes,
+    required int       index,
+    required bool      isFinal,
+    required String    ext,      // "webm" or "mp4"
   }) async {
     for (int attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        final token=await TokenStorage().accessToken;
-        final uri = Uri.parse(
-            '${AppConfig.baseUrl}/api/v1/live-sessions/$sessionId/recording-chunk');
-        final req = http.MultipartRequest('POST', uri)
-          ..headers['Authorization'] = 'Bearer $token'
-          ..fields['chunk_index'] = index.toString()
-          ..fields['is_final']    = isFinal.toString()
-          ..files.add(await http.MultipartFile.fromPath(
-            'chunk', file.path,
-            filename: 'chunk_${index.toString().padLeft(6, '0')}.mp4',
-          ));
-        final resp = await http.Response.fromStream(
-            await req.send().timeout(const Duration(seconds: 120)));
-        if (resp.statusCode == 200 || resp.statusCode == 201) {
-          _uploadedChunks++;
-          notifyListeners();
-          log('[REC] chunk #$index uploaded (attempt ${attempt + 1})');
-          try { await file.delete(); } catch (_) {}
-          return;
-        }
-        log('[REC] chunk #$index HTTP ${resp.statusCode}: ${resp.body}');
+        final result = await apiClient.postMultipart(
+          '/api/v1/live-sessions/$sessionId/recording-chunk',
+          fields: {
+            'chunk_index': index.toString(),
+            'is_final':    isFinal.toString(),
+          },
+          fileField: 'chunk',
+          fileName:  'chunk_${index.toString().padLeft(6, '0')}.$ext',
+          fileBytes: bytes,
+        );
+        _uploadedChunks++;
+        notifyListeners();
+        log('[REC] chunk #$index uploaded ok (attempt ${attempt + 1}) → $result');
+        return;
       } catch (e) {
         log('[REC] chunk #$index attempt ${attempt + 1} error: $e');
       }
@@ -370,7 +479,7 @@ class _ClientRecorder extends ChangeNotifier {
         await Future.delayed(Duration(seconds: (1 << (attempt + 1))));
       }
     }
-    log('[REC] chunk #$index permanently failed');
+    log('[REC] chunk #$index permanently failed after $maxRetries retries');
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -590,16 +699,18 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
           .get('/api/v1/live-sessions/${widget.sessionId}/participants')
       as List<dynamic>;
       final ids      = participants.map<int>((p) => p['student_id'] as int).toList();
-      final joins    = participants.map<String>((p) => p['join_date']  as String).toList();
-      final leaves   = participants.map<String>((p) => p['leave_date'] as String).toList();
+      final joins    = participants.map<String>((p) => p['join_date']  as String? ?? DateTime.now().toIso8601String()).toList();
+      final leaves   = participants.map<String>((p) => p['leave_date'] as String? ?? DateTime.now().toIso8601String()).toList();
       if (resp['students'] is List) {
-        if (mounted) setState(() {
+        if (mounted) {
+          setState(() {
           _enrolledStudents = (resp['students'] as List)
               .map((e) => EnrolledStudent.fromJson(
               e as Map<String, dynamic>, ids, joins, leaves))
               .toList()
               .cast<EnrolledStudent>();
         });
+        }
       }
     } catch (e) {
       log('fetchEnrolledStudents error: $e');

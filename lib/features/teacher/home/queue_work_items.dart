@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_provider.dart';
@@ -517,6 +518,7 @@ class _InlineStartButton extends StatelessWidget {
               );
             },
             onEnd: () => teacher.endLiveSession(session.sessionId!),
+            apiClient: ApiClient(),
           ),
         ),
       ),
