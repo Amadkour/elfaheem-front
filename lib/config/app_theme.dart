@@ -101,6 +101,15 @@ class AppTheme {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
+  static const LinearGradient sliderGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0xFF0F3A8F),
+      Color(0xFF1A56C4),
+      Color(0xFF2563EB)
+    ],
+  );
   static const LinearGradient tealGradient = LinearGradient(
     colors: [Color(0xFF00C9A7), Color(0xFF5BE8D0)],
     begin: Alignment.topLeft,
@@ -223,6 +232,12 @@ class AppTheme {
   );
   static const TextStyle h4 = TextStyle(
     fontSize: 15,
+    fontWeight: FontWeight.w600,
+    color: textDark,
+    fontFamily: 'Tajawal',
+  );
+  static const TextStyle small = TextStyle(
+    fontSize: 8,
     fontWeight: FontWeight.w600,
     color: textDark,
     fontFamily: 'Tajawal',
@@ -535,9 +550,13 @@ class AppColors {
   LinearGradient get primaryGradient =>
       isDark ? AppTheme.darkSlideBarGradient : AppTheme.primaryGradient;
 
+  LinearGradient get primarySliderGradient =>
+      isDark ? AppTheme.darkSlideBarGradient : AppTheme.sliderGradient;
+
   LinearGradient get disableGradient => AppTheme.disableGradient;
 
   LinearGradient get accentGradient => AppTheme.accentGradient;
+  LinearGradient get sliderGradient => AppTheme.sliderGradient;
 
   LinearGradient get tealGradient => AppTheme.tealGradient;
 

@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/student/dashboard/component/student_schedule_tab.dart';
@@ -57,7 +58,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           CupertinoIcons.book_fill,
           'my_courses',
           context.read<MyCoursesProvider>().fetchMyEnrollments,
-           MyCoursesScreen(courses:context.read<HomeProvider>().myCourses)),
+          MyCoursesScreen(courses: context.read<HomeProvider>().myCourses)),
       DashboardItem(
         Icons.calendar_month_outlined,
         Icons.calendar_month_rounded,
@@ -87,6 +88,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final unread = context.watch<NotificationsProvider>().unreadCount;
         final w = constraints.maxWidth;
         if (w >= 900) {
           return WideShell(
@@ -95,15 +97,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
               if (mounted) setState(() => _currentIndex = i);
             },
             dashboardItems: dashboardItems,
+            unreadCount: unread,
           );
         }
-        if (w >= 600) {
+        if (kIsWeb && w >= 600) {
           return RailShell(
             currentIndex: _currentIndex,
             onTap: (i) {
               if (mounted) setState(() => _currentIndex = i);
             },
             dashboardItems: dashboardItems,
+            unreadCount: unread,
           );
         }
         return MobileShell(
@@ -126,17 +130,18 @@ class WideShell extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
   final List<DashboardItem> dashboardItems;
+  final int unreadCount;
 
   const WideShell({
     super.key,
     required this.currentIndex,
     required this.onTap,
     required this.dashboardItems,
+    required this.unreadCount,
   });
 
   @override
   Widget build(BuildContext context) {
-    final unread = context.watch<NotificationsProvider>().unreadCount;
     final user = context.watch<AuthProvider>().currentUser;
     return BasePage(
       child: Row(
@@ -146,17 +151,8 @@ class WideShell extends StatelessWidget {
             width: 240,
             child: Container(
               width: Breakpoints.sidebarW,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF0F3A8F),
-                    Color(0xFF1A56C4),
-                    Color(0xFF2563EB)
-                  ],
-                ),
-              ),
+              decoration:
+                  BoxDecoration(gradient: context.colors.primarySliderGradient),
               child: Stack(
                 children: [
                   // Decorative circles
@@ -229,7 +225,7 @@ class WideShell extends StatelessWidget {
                           selectedIcon: dashboardItems[i].selectedIcon,
                           label: dashboardItems[i].label.tr,
                           selected: currentIndex == i,
-                          badge: i == 4 && unread > 0 ? unread : 0,
+                          // badge: i == 4 && unread > 0 ? unread : 0,
                           onTap: () => onTap(i),
                         ),
 
@@ -256,8 +252,8 @@ class WideShell extends StatelessWidget {
               children: [
                 // Topbar
                 _WideTopBar(
-                  title: dashboardItems[currentIndex].label,
-                  unread: unread,
+                  title: dashboardItems[currentIndex].label.tr,
+                  unread: unreadCount,
                   onRefresh: dashboardItems[currentIndex].onRefresh,
                 ),
                 // Screen body — IndexedStack preserves state
@@ -371,7 +367,8 @@ class _SidebarTile extends StatelessWidget {
   final IconData selectedIcon;
   final String label;
   final bool selected;
-  final int badge;
+
+  // final int badge;
   final VoidCallback onTap;
 
   const _SidebarTile({
@@ -379,7 +376,7 @@ class _SidebarTile extends StatelessWidget {
     required this.selectedIcon,
     required this.label,
     required this.selected,
-    required this.badge,
+    // required this.badge,
     required this.onTap,
   });
 
@@ -436,19 +433,19 @@ class _SidebarTile extends StatelessWidget {
                 ),
               ),
             ),
-            if (badge > 0)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(
-                    color: context.colors.danger,
-                    borderRadius: BorderRadius.circular(20)),
-                child: Text('$badge',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        fontFamily: 'bahji')),
-              ),
+            // if (badge > 0)
+            //   Container(
+            //     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+            //     decoration: BoxDecoration(
+            //         color: context.colors.danger,
+            //         borderRadius: BorderRadius.circular(20)),
+            //     child: Text('$badge',
+            //         style: const TextStyle(
+            //             color: Colors.white,
+            //             fontSize: 10,
+            //             fontWeight: FontWeight.w800,
+            //             fontFamily: 'bahji')),
+            //   ),
           ],
         ),
       ),
@@ -488,8 +485,10 @@ class _WideTopBar extends StatelessWidget {
           Text(title, style: context.colors.h2),
           const Spacer(),
           if (onRefresh != null) RefreshButton(onTap: onRefresh!),
-          SizedBox(width: 5,),
-          NotificationIcon(haveUnreadNotifications: unread > 0),
+          SizedBox(
+            width: 5,
+          ),
+          NotificationIcon(unreadCount: unread),
         ],
       ),
     );
@@ -497,9 +496,9 @@ class _WideTopBar extends StatelessWidget {
 }
 
 class NotificationIcon extends StatelessWidget {
-  const NotificationIcon({super.key, required this.haveUnreadNotifications});
+  const NotificationIcon({super.key, required this.unreadCount});
 
-  final bool haveUnreadNotifications;
+  final int unreadCount;
 
   @override
   Widget build(BuildContext context) {
@@ -513,18 +512,20 @@ class NotificationIcon extends StatelessWidget {
           color: context.colors.primary,
         ),
         child: Stack(clipBehavior: Clip.none, children: [
-          Icon(Icons.notifications_rounded,
-              color: Colors.white,
-              size: 20),
-          if (haveUnreadNotifications)
+          Icon(Icons.notifications_rounded, color: Colors.white, size: 20),
+          if (unreadCount > 0)
             Positioned(
               top: -2,
               right: -2,
               child: Container(
-                width: 11,
-                height: 11,
+                padding: EdgeInsets.all(2),
+                alignment: AlignmentGeometry.center,
                 decoration: BoxDecoration(
                     color: context.colors.danger, shape: BoxShape.circle),
+                child: Text( unreadCount>99? '99+':
+                unreadCount.toString(),
+                  style: AppTheme.small.copyWith(color: Colors.white),
+                ),
               ),
             ),
         ]),
@@ -541,12 +542,14 @@ class RailShell extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
   final List<DashboardItem> dashboardItems;
+  final int unreadCount;
 
   const RailShell({
     super.key,
     required this.currentIndex,
     required this.onTap,
     required this.dashboardItems,
+    required this.unreadCount,
   });
 
   @override
@@ -554,13 +557,16 @@ class RailShell extends StatelessWidget {
     return BasePage(
       child: Row(
         children: [
-          ColoredBox(
-            color: context.colors.primaryDark,
+          DecoratedBox(
+            decoration:
+                BoxDecoration(gradient: context.colors.primarySliderGradient),
             child: Column(
               children: [
                 Expanded(
                   child: NavigationRail(
-                    backgroundColor: context.colors.primaryDark,
+                    backgroundColor: context.colors.isDark
+                        ? context.colors.cardBg
+                        : context.colors.primaryDark,
                     selectedIndex: currentIndex,
                     onDestinationSelected: onTap,
                     minWidth: 66,
@@ -598,9 +604,20 @@ class RailShell extends StatelessWidget {
           VerticalDivider(
               width: 1, color: Colors.white.withValues(alpha: 0.06)),
           Expanded(
-            child: IndexedStack(
-                index: currentIndex,
-                children: dashboardItems.map((e) => e.screen).toList()),
+            child: Column(
+              children: [
+                _WideTopBar(
+                  title: dashboardItems[currentIndex].label.tr,
+                  unread: unreadCount,
+                  onRefresh: dashboardItems[currentIndex].onRefresh,
+                ),
+                Expanded(
+                  child: IndexedStack(
+                      index: currentIndex,
+                      children: dashboardItems.map((e) => e.screen).toList()),
+                ),
+              ],
+            ),
           ),
         ],
       ),

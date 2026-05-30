@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../../../../core/api_client.dart';
 import '../components/exts.dart';
 import '../model/live_response_model.dart';
 import 'room.dart';
@@ -341,6 +342,7 @@ class _PreJoinPageState extends State<PreJoinPage>
               isTeacher: widget.args.isTeacher,
               courseId: widget.args.courseId,
               sessionId: widget.args.sessionId,
+              apiClient: ApiClient(),
             )),
       );
 

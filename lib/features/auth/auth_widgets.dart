@@ -28,7 +28,7 @@ class AuthSidebar extends StatelessWidget {
     return Container(
       width: context.width/3 >400?400:context.width/3 ,
       decoration:  BoxDecoration(
-        gradient: context.colors.primaryGradient,
+        gradient: context.colors.primarySliderGradient,
       ),
       child: Stack(
         children: [

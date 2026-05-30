@@ -1,6 +1,7 @@
 library;
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -78,19 +79,23 @@ class _State extends State<TeacherDashboardScreen> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final unread = context.watch<NotificationsProvider>().unreadCount;
+
         final w = constraints.maxWidth;
         if (w >= 900) {
           return WideShell(
             currentIndex: _currentIndex,
             onTap: (i) { if(mounted) setState(() => _currentIndex = i);},
             dashboardItems: dashboardItems,
+            unreadCount: unread,
           );
         }
-        if (w >= 600) {
+        if (kIsWeb && w >= 600) {
           return RailShell(
             currentIndex: _currentIndex,
             onTap: (i) { if(mounted) setState(() => _currentIndex = i);},
             dashboardItems: dashboardItems,
+            unreadCount: unread,
           );
         }
         return MobileShell(

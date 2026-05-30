@@ -57,6 +57,7 @@ dependencies:
   firebase_remote_config: ^6.5.1
   video_player: ^2.9.2
   wakelock_plus: ^1.2.10
+  camera: ^0.12.0+1
 dependency_overrides:
   # Pin packages that use Apple APIs unavailable on CI runner's Xcode version.
   connectivity_plus: '>=7.0.0 <7.1.0' # NWPath.isUltraConstrained

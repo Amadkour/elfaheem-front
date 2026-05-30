@@ -71,6 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Consumer<LangProvider>(builder: (context, l, _) {
       return BasePage(
+        background: context.colors.isDark?null:context.colors.cardBg,
         child: isWide ? _buildWideLayout() : _buildNarrowLayout(),
       );
     });
@@ -93,7 +94,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 padding: const EdgeInsets.all(0.0),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(context.colors.radiusXL),
-                  color: context.colors.cardBg,
+                  color:context.colors.isDark? context.colors.cardBg: context.colors.background,
                 ),
                 child: ClipRRect(
                   borderRadius:

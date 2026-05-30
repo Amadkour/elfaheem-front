@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../config/app_config.dart';
@@ -12,6 +13,7 @@ class TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().currentUser;
+    final unread = context.watch<NotificationsProvider>().unreadCount;
     final name = user?.name ?? 'sir'.tr;
 
     return Padding(
@@ -49,52 +51,8 @@ class TopBar extends StatelessWidget {
             ),
           ),
 
-          // Notification bell — elevated card style
-          if(context.width<900)
-          GestureDetector(
-            onTap: () =>
-                Navigator.of(context).popAndPushNamed('/notifications'),
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: context.colors.cardBg,
-                    borderRadius:
-                    BorderRadius.circular(context.colors.radiusMedium),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha:0.08),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child:  Icon(
-                    Icons.notifications_rounded,
-                    color: context.colors.primary,
-                    size: 22,
-                  ),
-                ),
-                Positioned(
-                  top: 9,
-                  right: 9,
-                  child: Container(
-                    width: 9,
-                    height: 9,
-                    decoration: BoxDecoration(
-                      color: context.colors.danger,
-                      shape: BoxShape.circle,
-                      border:
-                      Border.all(color: context.colors.cardBg, width: 1.5),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          NotificationIcon(unreadCount: unread ),
+
         ],
       ),
     );

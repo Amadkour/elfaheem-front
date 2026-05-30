@@ -9,7 +9,9 @@ import '../../../config/app_theme.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../auth/auth_provider.dart';
 import '../../shared/course/home_course_list.dart';
+import '../../shared/notification/notifications_provider.dart';
 import '../../student/courses/details/components/app_responsive.dart';
+import '../../student/dashboard/dashboard_screen.dart';
 import '../../student/home/component/course_row.dart';
 import '../../student/home/component/home_section_header.dart';
 import '../../student/models.dart';
@@ -175,6 +177,8 @@ class _WebTopBar extends StatelessWidget {
 class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final unread = context.watch<NotificationsProvider>().unreadCount;
+
     final name = context.watch<AuthProvider>().currentUser?.name ?? 'sir'.tr;
     final initial = name.isNotEmpty ? name[0] : '؟';
     return Padding(
@@ -211,22 +215,8 @@ class _TopBar extends StatelessWidget {
           ]),
         ),
         // Notification bell
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: context.colors.cardBg,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.07),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2))
-            ],
-          ),
-          child: Icon(Icons.notifications_rounded,
-              color: context.colors.primary, size: 22),
-        ),
+        NotificationIcon(unreadCount: unread ),
+
       ]),
     );
   }
