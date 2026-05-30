@@ -4,6 +4,7 @@ library;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/teacher/home/home_screen.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart'
     show TeacherCourseStatus, TeacherCourse;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -28,34 +29,26 @@ class TeacherCoursesScreen extends StatefulWidget {
 
 class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
   @override
-  void initState() {
-    super.initState();
-    // WidgetsBinding.instance.addPostFrameCallback(
-    //   (_) => context.read<TeacherProvider>().fetchMyCourses(),
-    // );
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final isWide = context.showSidebar;
+    final p = context.watch<TeacherProvider>();
 
-    return Directionality(
-      textDirection: Helpers.pageDirection,
-      child: BasePage(
-        useWebCard: true,
-        appBar: ScreenAppBar(title: 'my_courses'.tr,showBack: !kIsWeb,),
-        floatingActionButton: isWide ? null : _FloatingAddBtn(),
-        child: SafeArea(
-          bottom: false,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 4),
-              const _FilterTabs(),
-              const SizedBox(height: 10),
-              const Expanded(child: _CourseList()),
-            ],
-          ),
+    return BasePage(
+      useWebCard: true,
+      appBar: ScreenAppBar(
+        title: 'my_courses'.tr,
+        showBack: !kIsWeb,
+      ),
+      floatingActionButton: context.showSidebar ? null : _FloatingAddBtn(),
+      child: SafeArea(
+        bottom: false,
+        child: p.isLoading? Center(child:CircularProgressIndicator( strokeWidth: context.width / 120),): Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 4),
+            _FilterTabs(p: p),
+            const SizedBox(height: 10),
+            Expanded(child: _CourseList(p: p)),
+          ],
         ),
       ),
     );
@@ -94,7 +87,8 @@ class _WebHeader extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 10),
-            Text('my_courses'.tr, style: context.colors.h2.copyWith(fontSize: 17)),
+            Text('my_courses'.tr,
+                style: context.colors.h2.copyWith(fontSize: 17)),
             const Spacer(),
             _AddCourseButton(compact: false),
           ],
@@ -172,8 +166,9 @@ class _AddCourseButton extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _FilterTabs extends StatelessWidget {
-  const _FilterTabs();
+  const _FilterTabs({required this.p});
 
+  final TeacherProvider p;
   static const _tabs = [
     (TeacherCourseStatus.all, 'filter_all', Icons.apps_rounded),
     (TeacherCourseStatus.published, 'filter_published', Icons.public_rounded),
@@ -182,7 +177,6 @@ class _FilterTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = context.watch<TeacherProvider>();
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
@@ -261,15 +255,16 @@ class _FilterTabs extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _CourseList extends StatelessWidget {
-  const _CourseList();
+  const _CourseList({required this.p});
+
+  final TeacherProvider p;
 
   @override
   Widget build(BuildContext context) {
-    final p = context.watch<TeacherProvider>();
     final isWide = context.showSidebar;
 
     if (p.isLoading && p.filteredCourses.isEmpty) {
-      return  Center(
+      return Center(
         child: CircularProgressIndicator(
           valueColor: AlwaysStoppedAnimation(context.colors.primary),
           strokeWidth: 2.5,
@@ -378,7 +373,7 @@ class _EmptyState extends StatelessWidget {
                   ),
                   shape: BoxShape.circle,
                 ),
-                child:  Icon(Icons.school_outlined,
+                child: Icon(Icons.school_outlined,
                     size: 40, color: context.colors.primary),
               ),
               const SizedBox(height: 18),
@@ -391,7 +386,8 @@ class _EmptyState extends StatelessWidget {
               const SizedBox(height: 6),
               Text(
                 'add_first_course_hint'.tr,
-                style: context.colors.caption.copyWith(color: context.colors.textLight),
+                style: context.colors.caption
+                    .copyWith(color: context.colors.textLight),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 22),
@@ -461,7 +457,7 @@ class _CourseCardState extends State<_CourseCard> {
             TextButton(
               onPressed: () => Navigator.pop(context, false),
               child: Text('cancel'.tr,
-                  style:  TextStyle(
+                  style: TextStyle(
                       fontFamily: 'bahji', color: context.colors.textMedium)),
             ),
             Container(
@@ -513,12 +509,12 @@ class _CourseCardState extends State<_CourseCard> {
       decoration: BoxDecoration(
         color: context.colors.cardBg,
         borderRadius: BorderRadius.circular(20),
-      //  border: Border.all(color: context.colors.primaryBlue),
+        //  border: Border.all(color: context.colors.primaryBlue),
         boxShadow: [
           BoxShadow(
-            color: context.colors.textLight.withValues(alpha: 0.7),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+            color: context.colors.primary.withValues(alpha: 0.7),
+            blurRadius: 1.5,
+            offset: const Offset(0, 0.4),
           ),
         ],
       ),
@@ -537,7 +533,6 @@ class _CourseCardState extends State<_CourseCard> {
                   width: double.infinity,
                   borderRadius: BorderRadius.zero,
                   heroTag: "courses-screen-${c.id}",
-
                 ),
               ),
             ],
@@ -574,7 +569,9 @@ class _CourseCardState extends State<_CourseCard> {
           // ── Expand toggle ────────────────────────────────────────────
 
           InkWell(
-            onTap: () { if(mounted) setState(() => _expanded = !_expanded);},
+            onTap: () {
+              if (mounted) setState(() => _expanded = !_expanded);
+            },
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               child: Row(
@@ -588,7 +585,7 @@ class _CourseCardState extends State<_CourseCard> {
                   AnimatedRotation(
                     turns: _expanded ? 0.5 : 0,
                     duration: const Duration(milliseconds: 220),
-                    child:  Icon(Icons.keyboard_arrow_down_rounded,
+                    child: Icon(Icons.keyboard_arrow_down_rounded,
                         size: 16, color: context.colors.primary),
                   ),
                 ],
@@ -620,20 +617,20 @@ class _CourseCardState extends State<_CourseCard> {
               children: [
                 Expanded(
                   flex: 3,
-                  child:
-                  _StatusBadge(isDraft: isDraft),
-                     // _PublishButton(isDraft: isDraft, onTap: _togglePublish),
+                  child: _StatusBadge(isDraft: isDraft),
+                  // _PublishButton(isDraft: isDraft, onTap: _togglePublish),
                 ),
-                SizedBox(width: 5,),
+                SizedBox(
+                  width: 5,
+                ),
                 Container(
                     height: 40,
                     width: 40,
                     margin: EdgeInsets.symmetric(vertical: 10, horizontal: 2),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.all(Radius.circular(7)),
-                      border: Border.all(color:Colors.red)
-                    ),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.all(Radius.circular(7)),
+                        border: Border.all(color: Colors.red)),
                     child: IconButton(
                       onPressed: _confirmDelete,
                       icon: Icon(
@@ -642,15 +639,17 @@ class _CourseCardState extends State<_CourseCard> {
                         size: 20,
                       ),
                     )),
-            SizedBox(width: 5,),
+                SizedBox(
+                  width: 5,
+                ),
                 _OverlayBtn(
                   icon: Icons.edit_rounded,
                   color: context.colors.primaryBlue,
                   onTap: () {
                     Navigator.of(context).push(MaterialPageRoute(
                         builder: (_) => CourseFormScreen(
-                          course: c,
-                        )));
+                              course: c,
+                            )));
                   },
                 ),
               ],
@@ -658,8 +657,6 @@ class _CourseCardState extends State<_CourseCard> {
           ),
 
           _PublishButton(isDraft: isDraft, onTap: _togglePublish),
-
-
         ],
       ),
     );
@@ -718,7 +715,7 @@ class _StatsGrid extends StatelessWidget {
               return Expanded(
                 child: Padding(
                   padding: EdgeInsets.only(left: isLastInRow ? 0 : 4),
-                  child: _StatCell(icon, label??'', color),
+                  child: _StatCell(icon, label ?? '', color),
                 ),
               );
             }).toList(),
@@ -772,14 +769,14 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    height: 40,
-
+        height: 40,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color:isDraft ? const Color(0xFFf59e0b) : context.colors.accent2 ),
-
+          border: Border.all(
+              color:
+                  isDraft ? const Color(0xFFf59e0b) : context.colors.accent2),
         ),
         child: Text(
           isDraft ? 'status_draft'.tr : 'status_published'.tr,
@@ -854,7 +851,7 @@ class _PublishButton extends StatelessWidget {
           children: [
             Icon(
               isDraft ? Icons.upload_rounded : Icons.visibility_off_rounded,
-              color:  Colors.white,
+              color: Colors.white,
               size: 16,
             ),
             const SizedBox(width: 7),
@@ -900,7 +897,8 @@ class _ExtrasPanel extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Text('no_extra_details'.tr,
-                  style: context.colors.caption.copyWith(color: context.colors.textLight)),
+                  style: context.colors.caption
+                      .copyWith(color: context.colors.textLight)),
             ),
           if (course.schedules.isNotEmpty)
             _ExtRow(
@@ -980,7 +978,7 @@ class _ExtRow extends StatelessWidget {
                   ),
                 ),
                 if (onTap != null)
-                   Icon(CupertinoIcons.settings,
+                  Icon(CupertinoIcons.settings,
                       size: 16, color: context.colors.primary),
               ],
             ),
@@ -996,14 +994,15 @@ class _ExtRow extends StatelessWidget {
                           child: Container(
                             width: 5,
                             height: 5,
-                            decoration:  BoxDecoration(
+                            decoration: BoxDecoration(
                               color: context.colors.textLight,
                               shape: BoxShape.circle,
                             ),
                           ),
                         ),
                         const SizedBox(width: 7),
-                        Expanded(child: Text(item, style: context.colors.caption)),
+                        Expanded(
+                            child: Text(item, style: context.colors.caption)),
                       ],
                     ),
                   ),

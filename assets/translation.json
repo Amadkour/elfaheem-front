@@ -1369,8 +1369,8 @@
     "ar": "هل تريد حذف \"{name}\"؟ لا يمكن التراجع."
   },
   "meet_now": {
-    "en": "Meet Now",
-    "ar": "انضم الآن"
+    "en": "Live Now",
+    "ar": "بث مباشر"
   },
   "join_live_session": {
     "en": "Join Live",

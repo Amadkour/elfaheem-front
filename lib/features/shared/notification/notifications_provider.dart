@@ -17,8 +17,8 @@
 /// ─────────────────────────────────────────────────────────────────────────────
 library;
 
-import '../../core/api_client.dart';
-import '../../core/base_provider.dart';
+import '../../../core/api_client.dart';
+import '../../../core/base_provider.dart';
 import 'notification_service.dart';
 
 // ── NotifGroup ────────────────────────────────────────────────────────────────
@@ -26,25 +26,26 @@ import 'notification_service.dart';
 /// Time-bucket used by the screen to split notifications into sections.
 /// The screen imports this enum directly from this file.
 enum NotifGroup {
-  today,     // "اليوم"
+  today, // "اليوم"
   yesterday, // "الأمس"
 }
 
 // ── NotificationModel ─────────────────────────────────────────────────────────
 
 class NotificationModel {
-  final String     id;
-  final String     title;
-  final String     body;
+  final String id;
+  final String title;
+  final String body;
 
   /// Icon asset key — read by `_buildIcon()` in the screen:
   ///   'payment' → credit card icon
   ///   'badge'   → premium badge icon
   ///   'new'     → pink NEW badge
   ///   ''        → default bell icon
-  final String     iconAsset;
+  final String iconAsset;
   final NotifGroup group;
-  bool             isRead;
+  bool isRead;
+  final int sourceId;
 
   NotificationModel({
     required this.id,
@@ -52,7 +53,8 @@ class NotificationModel {
     required this.body,
     required this.group,
     this.iconAsset = '',
-    this.isRead    = false,
+    this.isRead = false,
+    required this.sourceId,
   });
 
   // ── fromJson ────────────────────────────────────────────────────────────────
@@ -66,44 +68,43 @@ class NotificationModel {
   ///                   (screen only shows two sections)
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
     // ── Derive group from created_at ──────────────────────────────────────────
-    final raw       = json['created_at'] as String?;
-    final createdAt = raw != null
-        ? DateTime.tryParse(raw) ?? DateTime.now()
-        : DateTime.now();
+    final raw = json['created_at'] as String?;
+    final createdAt =
+        raw != null ? DateTime.tryParse(raw) ?? DateTime.now() : DateTime.now();
 
-    final now         = DateTime.now();
+    final now = DateTime.now();
     final todayMidnight = DateTime(now.year, now.month, now.day);
-    final createdDay    = DateTime(
-        createdAt.year, createdAt.month, createdAt.day);
+    final createdDay = DateTime(createdAt.year, createdAt.month, createdAt.day);
 
     final dayDiff = todayMidnight.difference(createdDay).inDays;
-    final group   = dayDiff == 0 ? NotifGroup.today : NotifGroup.yesterday;
+    final group = dayDiff == 0 ? NotifGroup.today : NotifGroup.yesterday;
 
     // ── Derive iconAsset from API type field ──────────────────────────────────
-    final type      = (json['type'] as String? ?? '').toLowerCase();
+    final type = (json['related_type'] as String? ?? '').toLowerCase();
     final iconAsset = _resolveIconAsset(type);
 
     return NotificationModel(
-      id:        json['id'].toString(),
-      title:     json['title']   as String? ?? '',
-      body:      json['message']    as String?
-          ?? '',
-      isRead:    json['is_read'] as bool? ?? false,
+      id: json['id'].toString(),
+      sourceId: json['related_id'] as int? ?? 0,
+      title: json['title'] as String? ?? '',
+      body: json['message'] as String? ?? '',
+      isRead: json['is_read'] as bool? ?? false,
       iconAsset: iconAsset,
-      group:     group,
+      group: group,
     );
   }
 
   /// Maps API `type` string → icon asset key expected by the screen.
   static String _resolveIconAsset(String type) {
     if (type.contains('payment') || type.contains('pay')) return 'payment';
-    if (type.contains('badge')   ||
+    if (type.contains('badge') ||
         type.contains('certificate') ||
         type.contains('premium')) {
       return 'badge';
     }
-    if (type.contains('new')     ||
-        type.contains('enroll')  ||
+    if (type.contains('new') ||
+        type.contains('enroll') ||
+        type.contains('session') ||
         type.contains('join')) {
       return 'new';
     }
@@ -113,13 +114,14 @@ class NotificationModel {
   // ── Immutable copy ──────────────────────────────────────────────────────────
 
   NotificationModel copyWith({bool? isRead}) => NotificationModel(
-    id:        id,
-    title:     title,
-    body:      body,
-    group:     group,
-    iconAsset: iconAsset,
-    isRead:    isRead ?? this.isRead,
-  );
+        id: id,
+        title: title,
+        body: body,
+        group: group,
+        iconAsset: iconAsset,
+        isRead: isRead ?? this.isRead,
+        sourceId: sourceId,
+      );
 }
 
 // ── NotificationsProvider ─────────────────────────────────────────────────────
@@ -133,7 +135,7 @@ class NotificationsProvider extends BaseProvider {
 
   final List<NotificationModel> _all = [];
 
-  int  _skip    = 0;
+  int _skip = 0;
   bool _hasMore = true;
 
   /// Larger page to ensure both "today" and "yesterday" buckets fill up
@@ -145,7 +147,9 @@ class NotificationsProvider extends BaseProvider {
   /// Notifications belonging to [NotifGroup.today].
   List<NotificationModel> get todayNotifs =>
       _all.where((n) => n.group == NotifGroup.today).toList();
+
   List<NotificationModel> get allNotifs => _all;
+
   /// Notifications belonging to [NotifGroup.yesterday].
   List<NotificationModel> get yesterdayNotifs =>
       _all.where((n) => n.group == NotifGroup.yesterday).toList();
@@ -159,7 +163,7 @@ class NotificationsProvider extends BaseProvider {
 
   /// Load the first page. Clears any existing data.
   Future<void> fetchNotifications({bool unreadOnly = false}) async {
-    _skip    = 0;
+    _skip = 0;
     _hasMore = true;
     _all.clear();
     notifyListeners();
@@ -174,22 +178,25 @@ class NotificationsProvider extends BaseProvider {
 
   Future<void> _loadPage({bool unreadOnly = false}) async {
     dynamic result = await run(() => _api.get(
-      '/api/v1/notifications',
-      queryParams: {
-        'skip':        0,
-        'limit':       20,
-        'unread_only': unreadOnly,
-      },
-    ));
-    if (result is Map<dynamic,dynamic> && result.containsKey('items') && result is List) {
-      result=result['items'];
+          '/api/v1/notifications',
+          queryParams: {
+            'skip': 0,
+            'limit': 20,
+            'unread_only': unreadOnly,
+          },
+        ));
+    if (result is Map<dynamic, dynamic> &&
+        result.containsKey('items') &&
+        result['items'] is List) {
+      result = result['items'];
       List<NotificationModel> page = result
           .map((e) => NotificationModel.fromJson(e as Map<String, dynamic>))
+          .cast<NotificationModel>()
           .toList();
-
+      print('page length is: ${page.length}');
       _all.addAll(page);
-      _skip    += page.length;
-      _hasMore  = page.length == _pageSize;
+      _skip += page.length;
+      _hasMore = page.length == _pageSize;
       notifyListeners();
       for (final notif in page) {
         if (!notif.isRead) {
@@ -212,7 +219,7 @@ class NotificationsProvider extends BaseProvider {
     _updateLocal(id, true);
 
     final result = await run(
-          () => _api.put('/api/v1/notifications/$id/read'),
+      () => _api.put('/api/v1/notifications/$id/read'),
     );
 
     if (result == null && hasError) {
@@ -228,9 +235,7 @@ class NotificationsProvider extends BaseProvider {
   /// Fires all API calls concurrently for speed.
   /// Called by the screen's group header action.
   Future<void> markGroupAsRead(NotifGroup group) async {
-    final unread = _all
-        .where((n) => n.group == group && !n.isRead)
-        .toList();
+    final unread = _all.where((n) => n.group == group && !n.isRead).toList();
 
     if (unread.isEmpty) return;
 
@@ -241,7 +246,8 @@ class NotificationsProvider extends BaseProvider {
 
     // Fire all concurrently — no rollback on partial failure for UX stability
     await Future.wait(
-      unread.map((n) => _api.put('/api/v1/notifications/${n.id}/read')
+      unread.map((n) => _api
+          .put('/api/v1/notifications/${n.id}/read')
           .catchError((_) => null)),
     );
   }
@@ -257,7 +263,8 @@ class NotificationsProvider extends BaseProvider {
     }
 
     await Future.wait(
-      unread.map((n) => _api.put('/api/v1/notifications/${n.id}/read')
+      unread.map((n) => _api
+          .put('/api/v1/notifications/${n.id}/read')
           .catchError((_) => null)),
     );
   }

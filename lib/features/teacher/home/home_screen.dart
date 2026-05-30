@@ -33,7 +33,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if(context.read<TeacherProvider>().allCourses.isEmpty) {
+      if (context.read<TeacherProvider>().allCourses.isEmpty) {
         context.read<TeacherProvider>().init();
       }
     });
@@ -73,10 +73,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: loading
                             ? const _StatsShimmer()
-                            : StatsRow(
-                                stats: provider.stats,
-                                isFull: false,
-                              ),
+                            : StatsRow(stats: provider.stats, isFull: false),
                       ),
                       const SizedBox(height: 20),
 
@@ -298,17 +295,19 @@ class _StatsShimmer extends StatelessWidget {
 }
 
 class CoursesShimmer extends StatelessWidget {
-  const CoursesShimmer({super.key});
-
+  const CoursesShimmer({super.key, this.width, this.height,  this.count});
+  final double? width;
+  final double? height;
+  final int? count;
   @override
   Widget build(BuildContext context) => SizedBox(
         height: 200,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          itemCount: 3,
+          itemCount:count?? 3,
           separatorBuilder: (_, __) => const SizedBox(width: 14),
-          itemBuilder: (_, __) => const Shimmer(width: 170, height: 200),
+          itemBuilder: (_, __) =>  Shimmer(width:width?? 170, height:height?? 200),
         ),
       );
 }

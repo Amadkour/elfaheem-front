@@ -35,8 +35,7 @@ class ChangeLanguageScreen extends StatelessWidget {
                         duration: const Duration(milliseconds: 200),
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color:
-                          isSelected ? context.colors.primary : context.colors.cardBg,
+                          color: context.colors.cardBg,
                           borderRadius: BorderRadius.circular(
                               context.colors.radiusMedium),
                           border: Border.all(

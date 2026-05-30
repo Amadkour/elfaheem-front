@@ -29,7 +29,7 @@ import 'api_client.dart';
 /// Possible states for any async API operation.
 enum ProviderState { idle, loading, success, error }
 
-abstract class BaseProvider extends ChangeNotifier {
+ class BaseProvider extends ChangeNotifier {
   // ── State fields ───────────────────────────────────────────────────────────
   ProviderState _state       = ProviderState.idle;
   String?       _errorMessage;

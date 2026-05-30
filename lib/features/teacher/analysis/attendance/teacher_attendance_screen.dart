@@ -1,5 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_theme.dart';
+import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/app_config.dart';
 import 'attendance_model.dart';
@@ -11,18 +13,18 @@ class TeacherAttendanceScreen extends StatelessWidget {
   final int courseId;
   final String courseTitle;
   final int? sessionId;
-  const TeacherAttendanceScreen({
-    super.key,
-    required this.courseId,
-    required this.courseTitle,
-    this.sessionId
-  });
+
+  const TeacherAttendanceScreen(
+      {super.key,
+      required this.courseId,
+      required this.courseTitle,
+      this.sessionId});
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) =>
-      TeacherAttendanceProvider(courseId: courseId)..loadSessions(sessionId),
+      create: (_) => TeacherAttendanceProvider(courseId: courseId)
+        ..loadSessions(sessionId),
       child: _TeacherAttendanceView(courseTitle: courseTitle),
     );
   }
@@ -32,6 +34,7 @@ class TeacherAttendanceScreen extends StatelessWidget {
 
 class _TeacherAttendanceView extends StatefulWidget {
   final String courseTitle;
+
   const _TeacherAttendanceView({required this.courseTitle});
 
   @override
@@ -50,7 +53,6 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
   static const Color _success = Color(0xFF00C853);
   static const Color _danger = Color(0xFFEF5350);
   static const Color _surface = Color(0xFFF8FAFF);
-  static const Color _cardBg = Colors.white;
 
   @override
   void initState() {
@@ -74,11 +76,11 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
     final prov = context.watch<TeacherAttendanceProvider>();
     final isWide = MediaQuery.of(context).size.width > 720;
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: _surface,
-        body: NestedScrollView(
+    return BasePage(
+      useWebCard: true,
+      maxWith: 1100,
+      child: SafeArea(
+        child: NestedScrollView(
           headerSliverBuilder: (ctx, _) => [_buildSliverHeader(ctx)],
           body: _buildBody(prov, isWide),
         ),
@@ -96,7 +98,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
       leading: Padding(
         padding: const EdgeInsets.all(8),
         child: _GlassButton(
-          icon: Icons.arrow_forward_ios_rounded,
+          icon: Icons.arrow_back_ios_rounded,
           onTap: () => Navigator.pop(ctx),
         ),
       ),
@@ -126,22 +128,24 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
               Positioned(
                 top: -30,
                 right: -30,
-                child: _Circle(size: 160, color: Colors.white.withValues(alpha:.06)),
+                child: _Circle(
+                    size: 160, color: Colors.white.withValues(alpha: .06)),
               ),
               Positioned(
                 bottom: 10,
                 left: -20,
-                child: _Circle(size: 120, color: Colors.white.withValues(alpha:.05)),
+                child: _Circle(
+                    size: 120, color: Colors.white.withValues(alpha: .05)),
               ),
               Positioned(
                 top: 40,
                 right: 80,
-                child: _Circle(size: 60, color: _primaryLight.withValues(alpha:.2)),
+                child: _Circle(
+                    size: 60, color: _primaryLight.withValues(alpha: .2)),
               ),
               // Content
               Padding(
-                padding:
-                const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -151,10 +155,11 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha:.18),
+                        color: Colors.white.withValues(alpha: .18),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                            color: Colors.white.withValues(alpha:.3), width: 1),
+                            color: Colors.white.withValues(alpha: .3),
+                            width: 1),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -201,7 +206,8 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
       return _buildLoadingState();
     }
     if (prov.hasError && prov.sessions.isEmpty) {
-      return _buildError(prov.errorMessage,()async=> prov.loadSessions(null));
+      return _buildError(
+          prov.errorMessage, () async => prov.loadSessions(null));
     }
     return Column(children: [
       _buildSessionFlagBar(prov),
@@ -210,19 +216,16 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
           const Expanded(child: Center(child: CircularProgressIndicator()))
         else if (prov.hasError)
           Expanded(
-              child: _buildError(
-                  prov.errorMessage,
-                      () => prov.selectSession(prov.selectedSession!)))
+              child: _buildError(prov.errorMessage,
+                  () => prov.selectSession(prov.selectedSession!)))
         else ...[
-            _buildStats(prov),
-            _buildSearchBar(prov),
-            Expanded(
-              child: isWide
-                  ? _buildWideGrid(prov)
-                  : _buildList(prov),
-            ),
-            _buildSaveBar(prov),
-          ],
+          _buildStats(prov),
+          _buildSearchBar(prov),
+          Expanded(
+            child: isWide ? _buildWideGrid(prov) : _buildList(prov),
+          ),
+          _buildSaveBar(prov),
+        ],
       ] else
         Expanded(child: _buildSelectSessionHint()),
     ]);
@@ -230,112 +233,109 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
 
   // ── Loading skeleton ──────────────────────────────────────────────────────
   Widget _buildLoadingState() => Expanded(
-    child: Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 52,
-            height: 52,
-            child: CircularProgressIndicator(
-              strokeWidth: 3,
-              valueColor:
-              AlwaysStoppedAnimation<Color>(_primary),
-            ),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 52,
+                height: 52,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(_primary),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'loading_attendance'.tr,
+                style: const TextStyle(
+                    fontFamily: 'bahji', color: Colors.grey, fontSize: 14),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            'loading_attendance'.tr,
-            style: const TextStyle(
-                fontFamily: 'bahji',
-                color: Colors.grey,
-                fontSize: 14),
-          ),
-        ],
-      ),
-    ),
-  );
+        ),
+      );
 
   // ── Select session hint ───────────────────────────────────────────────────
   Widget _buildSelectSessionHint() => Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: _primary.withValues(alpha:.08),
-            shape: BoxShape.circle,
-          ),
-          child:
-          Icon(Icons.touch_app_rounded, size: 48, color: _primary.withValues(alpha:.5)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: _primary.withValues(alpha: .08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.touch_app_rounded,
+                  size: 48, color: _primary.withValues(alpha: .5)),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'select_lecture'.tr,
+              style: TextStyle(
+                  fontFamily: 'bahji',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'select_session_hint_sub'.tr,
+              style: TextStyle(
+                  fontFamily: 'bahji',
+                  fontSize: 13,
+                  color: Colors.grey.shade400),
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
-        Text(
-          'select_lecture'.tr,
-          style: TextStyle(
-              fontFamily: 'bahji',
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey.shade600),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'select_session_hint_sub'.tr,
-          style: TextStyle(
-              fontFamily: 'bahji',
-              fontSize: 13,
-              color: Colors.grey.shade400),
-        ),
-      ],
-    ),
-  );
+      );
 
   // ── Error state ───────────────────────────────────────────────────────────
   Widget _buildError(String? msg, VoidCallback retry) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: _danger.withValues(alpha:.08),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(Icons.wifi_off_rounded,
-              size: 44, color: _danger.withValues(alpha:.7)),
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: _danger.withValues(alpha: .08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.wifi_off_rounded,
+                  size: 44, color: _danger.withValues(alpha: .7)),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              msg ?? 'something-went-wrong'.tr,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  fontFamily: 'bahji', fontSize: 14, color: Colors.grey),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: retry,
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label:
+                  Text('retry'.tr, style: const TextStyle(fontFamily: 'bahji')),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primary,
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+                elevation: 0,
+              ),
+            ),
+          ]),
         ),
-        const SizedBox(height: 16),
-        Text(
-          msg ?? 'something-went-wrong'.tr,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-              fontFamily: 'bahji', fontSize: 14, color: Colors.grey),
-        ),
-        const SizedBox(height: 20),
-        ElevatedButton.icon(
-          onPressed: retry,
-          icon: const Icon(Icons.refresh_rounded, size: 18),
-          label: Text('retry'.tr,
-              style: const TextStyle(fontFamily: 'bahji')),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _primary,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(
-                horizontal: 24, vertical: 12),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14)),
-            elevation: 0,
-          ),
-        ),
-      ]),
-    ),
-  );
+      );
 
   // ── Session flag bar ──────────────────────────────────────────────────────
   Widget _buildSessionFlagBar(TeacherAttendanceProvider prov) {
     return Container(
-      color: _cardBg,
+      color: context.colors.cardBg,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -367,37 +367,35 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
             height: 80,
             child: prov.sessions.isEmpty
                 ? Center(
-              child: Text(
-                'no_sessions_available'.tr,
-                style: const TextStyle(
-                    fontFamily: 'bahji',
-                    color: Colors.grey,
-                    fontSize: 13),
-              ),
-            )
+                    child: Text(
+                      'no_sessions_available'.tr,
+                      style: const TextStyle(
+                          fontFamily: 'bahji',
+                          color: Colors.grey,
+                          fontSize: 13),
+                    ),
+                  )
                 : ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.only(bottom: 4),
-              itemCount: prov.sessions.length,
-              separatorBuilder: (_, __) =>
-              const SizedBox(width: 10),
-              itemBuilder: (_, i) {
-                final s = prov.sessions[i];
-                final sel = prov.selectedSession?.id == s.id;
-                return _SessionFlag(
-                  session: s,
-                  index: i,
-                  isSelected: sel,
-                  onTap: () => prov.selectSession(s),
-                  primaryColor: _primary,
-                  primaryLight: _primaryLight,
-                );
-              },
-            ),
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.only(bottom: 4),
+                    itemCount: prov.sessions.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 10),
+                    itemBuilder: (_, i) {
+                      final s = prov.sessions[i];
+                      final sel = prov.selectedSession?.id == s.id;
+                      return _SessionFlag(
+                        session: s,
+                        index: i,
+                        isSelected: sel,
+                        onTap: () => prov.selectSession(s),
+                        primaryColor: _primary,
+                        primaryLight: _primaryLight,
+                      );
+                    },
+                  ),
           ),
           const SizedBox(height: 4),
-          Divider(
-              color: Colors.grey.shade100, thickness: 1.5, height: 1),
+          Divider(color: Colors.grey.shade100, thickness: 1.5, height: 1),
         ],
       ),
     );
@@ -427,7 +425,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
         ),
         const SizedBox(width: 10),
         _PremiumStatCard(
-          label:'absent'.tr,
+          label: 'absent'.tr,
           value: '${prov.absentCount}',
           icon: Icons.cancel_rounded,
           gradient: const LinearGradient(
@@ -440,54 +438,53 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
 
   // ── Search bar ────────────────────────────────────────────────────────────
   Widget _buildSearchBar(TeacherAttendanceProvider prov) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-    child: Container(
-      decoration: BoxDecoration(
-        color: _cardBg,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha:.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: TextField(
-        controller: _searchCtrl,
-        textDirection: TextDirection.rtl,
-        style:
-        const TextStyle(fontFamily: 'bahji', fontSize: 14),
-        decoration: InputDecoration(
-          hintText: 'search_student'.tr,
-          hintStyle: TextStyle(
-              fontFamily: 'bahji',
-              color: Colors.grey.shade400,
-              fontSize: 13),
-          prefixIcon: Icon(Icons.search_rounded,
-              color: Colors.grey.shade400, size: 20),
-          suffixIcon: prov.search.isNotEmpty
-              ? IconButton(
-              icon: Icon(Icons.close_rounded,
-                  color: Colors.grey.shade400, size: 18),
-              onPressed: () {
-                _searchCtrl.clear();
-                prov.setSearch('');
-              })
-              : null,
-          filled: true,
-          fillColor: Colors.transparent,
-          border: OutlineInputBorder(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        child: Container(
+          decoration: BoxDecoration(
+            color: context.colors.cardBg,
             borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: .06),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16, vertical: 14),
+          child: TextField(
+            controller: _searchCtrl,
+            textDirection: TextDirection.rtl,
+            style: const TextStyle(fontFamily: 'bahji', fontSize: 14),
+            decoration: InputDecoration(
+              hintText: 'search_student'.tr,
+              hintStyle: TextStyle(
+                  fontFamily: 'bahji',
+                  color: Colors.grey.shade400,
+                  fontSize: 13),
+              prefixIcon: Icon(Icons.search_rounded,
+                  color: Colors.grey.shade400, size: 20),
+              suffixIcon: prov.search.isNotEmpty
+                  ? IconButton(
+                      icon: Icon(Icons.close_rounded,
+                          color: Colors.grey.shade400, size: 18),
+                      onPressed: () {
+                        _searchCtrl.clear();
+                        prov.setSearch('');
+                      })
+                  : null,
+              filled: true,
+              fillColor: Colors.transparent,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            ),
+            onChanged: prov.setSearch,
+          ),
         ),
-        onChanged: prov.setSearch,
-      ),
-    ),
-  );
+      );
 
   // ── Lists ─────────────────────────────────────────────────────────────────
   Widget _buildList(TeacherAttendanceProvider prov) {
@@ -495,8 +492,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
     if (list.isEmpty) {
       return Center(
         child: Text('no_search_results'.tr,
-            style: const TextStyle(
-                fontFamily: 'bahji', color: Colors.grey)),
+            style: const TextStyle(fontFamily: 'bahji', color: Colors.grey)),
       );
     }
     return ListView.builder(
@@ -546,10 +542,10 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
   Widget _buildSaveBar(TeacherAttendanceProvider prov) {
     return Container(
       decoration: BoxDecoration(
-        color: _cardBg,
+        color: context.colors.cardBg,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha:.08),
+            color: Colors.black.withValues(alpha: .08),
             blurRadius: 16,
             offset: const Offset(0, -4),
           ),
@@ -566,38 +562,33 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
               onPressed: prov.saving || prov.changes.isEmpty
                   ? null
                   : () async {
-                final ok =
-                await prov.saveAttendance(prov.changes);
-                prov.clearChanges();
-                if (!context.mounted) return;
-                _showSnack(
-                  ok
-                      ? 'attendance_saved'.tr
-                      : 'save_failed'.tr,
-                  ok ? _success : _danger,
-                );
-              },
+                      final ok = await prov.saveAttendance(prov.changes);
+                      prov.clearChanges();
+                      if (!context.mounted) return;
+                      _showSnack(
+                        ok ? 'attendance_saved'.tr : 'save_failed'.tr,
+                        ok ? _success : _danger,
+                      );
+                    },
               icon: prov.saving
                   ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white))
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
                   : const Icon(Icons.save_rounded,
-                  color: Colors.white, size: 18),
-              label: Text(
-                prov.saving
-                    ? 'saving'.tr
-                    : 'save_attendance'.tr,
+                      color: Colors.white, size: 18),
+              label:Padding(padding: EdgeInsetsGeometry.symmetric(vertical: 11),child:  Text(
+                prov.saving ? 'saving'.tr : 'save_attendance'.tr,
                 style: const TextStyle(
                     fontFamily: 'bahji',
                     fontSize: 14,
                     fontWeight: FontWeight.w700),
-              ),
+              ),),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _success,
                 foregroundColor: Colors.white,
-                disabledBackgroundColor: Colors.grey.shade200,
+                disabledBackgroundColor: _success.withAlpha(20),
                 padding: const EdgeInsets.symmetric(vertical: 15),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14)),
@@ -616,9 +607,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
             final ok = await prov.markAll(true);
             if (!context.mounted) return;
             _showSnack(
-              ok
-                  ? 'attendance_saved'.tr
-                  : 'save_failed'.tr,
+              ok ? 'attendance_saved'.tr : 'save_failed'.tr,
               ok ? _success : _danger,
             );
           },
@@ -637,14 +626,11 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
 
   void _showSnack(String msg, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg,
-          style: const TextStyle(fontFamily: 'bahji')),
+      content: Text(msg, style: const TextStyle(fontFamily: 'bahji')),
       backgroundColor: color,
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12)),
-      margin:
-      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     ));
   }
 }
@@ -657,44 +643,46 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
 class _Circle extends StatelessWidget {
   final double size;
   final Color color;
+
   const _Circle({required this.size, required this.color});
 
   @override
   Widget build(BuildContext context) => Container(
-    width: size,
-    height: size,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      color: color,
-    ),
-  );
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: color,
+        ),
+      );
 }
 
 /// Glass icon button for app bar
 class _GlassButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
+
   const _GlassButton({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha:.2),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-                color: Colors.white.withValues(alpha:.3), width: 1),
+        onTap: onTap,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: .2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: Colors.white.withValues(alpha: .3), width: 1),
+              ),
+              child: Icon(icon, color: Colors.white, size: 18),
+            ),
           ),
-          child: Icon(icon, color: Colors.white, size: 18),
         ),
-      ),
-    ),
-  );
+      );
 }
 
 /// Flag-style session chip (vertical card with number + name)
@@ -726,27 +714,25 @@ class _SessionFlag extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: isSelected
               ? LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [primaryColor, primaryLight],
-          )
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [primaryColor, primaryLight],
+                )
               : null,
           color: isSelected ? null : Colors.grey.shade50,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected
-                ? Colors.transparent
-                : Colors.grey.shade200,
+            color: isSelected ? Colors.transparent : Colors.grey.shade200,
             width: 1.5,
           ),
           boxShadow: isSelected
               ? [
-            BoxShadow(
-              color: primaryColor.withValues(alpha:.35),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            )
-          ]
+                  BoxShadow(
+                    color: primaryColor.withValues(alpha: .35),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  )
+                ]
               : [],
         ),
         child: Column(
@@ -759,8 +745,8 @@ class _SessionFlag extends StatelessWidget {
               height: 28,
               decoration: BoxDecoration(
                 color: isSelected
-                    ? Colors.white.withValues(alpha:.25)
-                    : primaryColor.withValues(alpha:.1),
+                    ? Colors.white.withValues(alpha: .25)
+                    : primaryColor.withValues(alpha: .1),
                 shape: BoxShape.circle,
               ),
               child: Center(
@@ -787,8 +773,7 @@ class _SessionFlag extends StatelessWidget {
                   fontFamily: 'bahji',
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color:
-                  isSelected ? Colors.white : Colors.grey.shade700,
+                  color: isSelected ? Colors.white : Colors.grey.shade700,
                   height: 1.3,
                 ),
               ),
@@ -815,56 +800,53 @@ class _PremiumStatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Expanded(
-    child: Container(
-      padding: const EdgeInsets.symmetric(
-          horizontal: 12, vertical: 14),
-      decoration: BoxDecoration(
-        gradient: gradient,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color:
-            gradient.colors.first.withValues(alpha:.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          decoration: BoxDecoration(
+            gradient: gradient,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: gradient.colors.first.withValues(alpha: .3),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha:.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon,
-                color: Colors.white, size: 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: .2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: Colors.white, size: 14),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontFamily: 'bahji',
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                ),
+              ),
+              Text(
+                label,
+                style: TextStyle(
+                  fontFamily: 'bahji',
+                  fontSize: 10,
+                  color: Colors.white.withValues(alpha: .85),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              fontFamily: 'bahji',
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              color: Colors.white,
-            ),
-          ),
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'bahji',
-              fontSize: 10,
-              color: Colors.white.withValues(alpha:.85),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
+        ),
+      );
 }
 
 /// Premium student list tile
@@ -895,43 +877,40 @@ class _PremiumStudentTile extends StatelessWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeOutCubic,
-      margin: compact
-          ? const EdgeInsets.only(bottom: 10)
-          : EdgeInsets.zero,
+      margin: compact ? const EdgeInsets.only(bottom: 10) : EdgeInsets.zero,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.colors.cardBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: statusColor.withValues(alpha:.2), width: 1.5),
+        border:
+            Border.all(color: statusColor.withValues(alpha: .2), width: 1.5),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha:.04),
+              color: Colors.black.withValues(alpha: .04),
               blurRadius: 10,
               offset: const Offset(0, 3))
         ],
       ),
       child: ListTile(
-        contentPadding:
-        const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         leading: Stack(
           clipBehavior: Clip.none,
           children: [
             CircleAvatar(
               radius: 24,
-              backgroundColor: statusColor.withValues(alpha:.1),
+              backgroundColor: statusColor.withValues(alpha: .1),
               backgroundImage: student.imageUrl != null
                   ? NetworkImage(student.imageUrl!)
                   : null,
               child: student.imageUrl == null
                   ? Text(
-                student.name[0],
-                style: TextStyle(
-                  fontFamily: 'bahji',
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                  color: statusColor,
-                ),
-              )
+                      student.name[0],
+                      style: TextStyle(
+                        fontFamily: 'bahji',
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                        color: statusColor,
+                      ),
+                    )
                   : null,
             ),
             Positioned(
@@ -943,8 +922,7 @@ class _PremiumStudentTile extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: statusColor,
                   shape: BoxShape.circle,
-                  border: Border.all(
-                      color: Colors.white, width: 2),
+                  border: Border.all(color: Colors.white, width: 2),
                 ),
               ),
             ),
@@ -960,33 +938,31 @@ class _PremiumStudentTile extends StatelessWidget {
         ),
         subtitle: student.durationMinutes != null
             ? Text(
-          '$durationLabel: ${student.durationMinutes} $minutesLabel',
-          style: const TextStyle(
-              fontFamily: 'bahji',
-              fontSize: 12,
-              color: Colors.grey),
-        )
+                '$durationLabel: ${student.durationMinutes} $minutesLabel',
+                style: const TextStyle(
+                    fontFamily: 'bahji', fontSize: 12, color: Colors.grey),
+              )
             : Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: statusColor.withValues(alpha:.1),
-                borderRadius: BorderRadius.circular(6),
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: .1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      present ? presentLabel : absentLabel,
+                      style: TextStyle(
+                        fontFamily: 'bahji',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: statusColor,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              child: Text(
-                present ? presentLabel : absentLabel,
-                style: TextStyle(
-                  fontFamily: 'bahji',
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: statusColor,
-                ),
-              ),
-            ),
-          ],
-        ),
         trailing: Transform.scale(
           scale: 0.9,
           child: Switch.adaptive(
@@ -1017,31 +993,30 @@ class _QuickActionBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      padding: const EdgeInsets.symmetric(
-          horizontal: 12, vertical: 14),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha:.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha:.3)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 16),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'bahji',
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: color,
-            ),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: .08),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: color.withValues(alpha: .3)),
           ),
-        ],
-      ),
-    ),
-  );
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: color, size: 16),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  fontFamily: 'bahji',
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
 }

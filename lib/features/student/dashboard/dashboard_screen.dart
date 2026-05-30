@@ -19,7 +19,7 @@ import '../../shared/profile/update_account_widget.dart';
 import '../courses/details/components/app_responsive.dart';
 import '../courses/my_courses/my_courses_provider.dart';
 import '../courses/my_courses/my_courses_screen.dart';
-import '../../notification/notifications_provider.dart';
+import '../../shared/notification/notifications_provider.dart';
 import '../home/home_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────

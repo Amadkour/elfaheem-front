@@ -2,7 +2,8 @@ library;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/notification/notifications_provider.dart';
+import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
+import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../analysis/analytics_hub_screen.dart';
@@ -122,7 +123,7 @@ class _TeacherScheduleTabState extends State<TeacherScheduleTab>
     super.initState();
     _prov = context.read<TeacherScheduleOverviewProvider>();
     WidgetsBinding.instance
-        .addPostFrameCallback((_) async => await _prov.fetchOnce());
+        .addPostFrameCallback((_) async => await _prov.fetch());
   }
 
   @override
@@ -132,14 +133,20 @@ class _TeacherScheduleTabState extends State<TeacherScheduleTab>
 
   @override
   Widget build(BuildContext context) {
+    _prov = context.watch<TeacherScheduleOverviewProvider>();
     super.build(context);
-    return ScheduleTabBody(
-      provider: _prov,
-      getData: () => _prov.data,
-      onRefresh: _prov.fetch,
-      title: "time-table".tr,
-      emptyMessage: 'no-time-table'.tr,
-      getLastFetched: () => _prov.lastFetched,
+    return BasePage(
+      useWebCard: true,
+      child: SafeArea(
+        child:_prov.isLoading? Center(child: CircularProgressIndicator(strokeWidth: context.width/120,),): ScheduleTabBody(
+          provider: _prov,
+          getData: () => _prov.data,
+          onRefresh: _prov.fetch,
+          title: "time-table".tr,
+          emptyMessage: 'no-time-table'.tr,
+          getLastFetched: () => _prov.lastFetched,
+        ),
+      ),
     );
   }
 }

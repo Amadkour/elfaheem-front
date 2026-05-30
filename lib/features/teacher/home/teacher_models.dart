@@ -270,7 +270,7 @@ class TeacherCourse {
     required this.expectedHours,
     this.rateSummary,
   });
-
+ factory TeacherCourse.dummy(int courseId)=> TeacherCourse(id: courseId, imageUrl: '', price: 0, type: 'live',  isPublished: false, expectedHours: 0, title: '', totalHours: 0, progress: 0);
   factory TeacherCourse.fromJson(Map<String, dynamic> j) => TeacherCourse(
         id: j['id'] as int,
         title: j['name'] as String? ?? '',

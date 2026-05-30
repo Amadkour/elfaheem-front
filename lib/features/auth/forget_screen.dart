@@ -50,7 +50,6 @@ class _ForgetScreenState extends State<ForgetScreen> {
       );
     } else {
       Helpers.showMessage(
-        context,
         authProvider.errorMessage ?? 'Request failed',
         isError: true,
       );

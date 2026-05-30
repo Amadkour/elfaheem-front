@@ -1,12 +1,13 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
+import 'package:flutter_education_app/features/teacher/sessions/sessions_screen.dart';
 import 'package:provider/provider.dart';
 
-import '../../config/app_config.dart';
-import '../../config/app_theme.dart';
-import '../../utils/helpers.dart';
-import '../../utils/widget/app_bar.dart';
-import '../../utils/widget/base_page.dart';
+import '../../../config/app_config.dart';
+import '../../../config/app_theme.dart';
+import '../../../utils/widget/app_bar.dart';
+import '../../../utils/widget/base_page.dart';
 import 'notifications_provider.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -19,6 +20,7 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   void initState() {
+    super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await context.read<NotificationsProvider>().fetchNotifications();
     });
@@ -26,39 +28,44 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: Helpers.pageDirection,
-      child: BasePage(
-        useWebCard: true,
-        child: SafeArea(
-          child: Column(
-            children: [
-              ScreenAppBar(title: 'notifications'.tr),
-              Expanded(
-                child: context.read<NotificationsProvider>().allNotifs.isEmpty
-                    ? Center(
-                        child: Icon(
-                        Icons.notifications_active_rounded,
-                        size: 50,
-                        color: context.colors.primary,
-                      ))
-                    : ListView(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        physics: const BouncingScrollPhysics(),
-                        children: [
-                          const SizedBox(height: 8),
-                          _NotifGroup(
-                              group: NotifGroup.today, groupTitle: 'today'.tr),
-                          const SizedBox(height: 20),
-                          _NotifGroup(
-                              group: NotifGroup.yesterday,
-                              groupTitle: 'yesterday'.tr),
-                          SizedBox(height: 24),
-                        ],
-                      ),
-              ),
-            ],
+    NotificationsProvider provider = context.watch<NotificationsProvider>();
+    return BasePage(
+      useWebCard: true,
+      child: SafeArea(
+        child: provider.isLoading
+            ? Center(
+          child: CircularProgressIndicator(
+            strokeWidth: context.width / 120,
           ),
+        )
+            : Column(
+          children: [
+            ScreenAppBar(title: 'notifications'.tr),
+            Expanded(
+              child: provider.allNotifs.isEmpty
+                  ? Center(
+                  child: Icon(
+                    Icons.notifications_active_rounded,
+                    size: 50,
+                    color: context.colors.primary,
+                  ))
+                  : ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                physics: const BouncingScrollPhysics(),
+                children: [
+                  const SizedBox(height: 8),
+                  _NotifGroup(
+                      group: NotifGroup.today,
+                      groupTitle: 'today'.tr),
+                  const SizedBox(height: 20),
+                  _NotifGroup(
+                      group: NotifGroup.yesterday,
+                      groupTitle: 'yesterday'.tr),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -88,10 +95,15 @@ class _NotifGroup extends StatelessWidget {
           children: [
             Text(groupTitle, style: context.colors.h2),
             GestureDetector(
-              onTap: () =>
-                  context.read<NotificationsProvider>().markGroupAsRead(group),
+              onTap: () async {
+                // FIX: capture provider before the async gap so we never
+                // access context after notifyListeners() may deactivate
+                // this widget.
+                final p = context.read<NotificationsProvider>();
+                await p.markGroupAsRead(group);
+              },
               child: Text(
-                'تحديد الكل كمقروء',
+                'mark_all_read'.tr,
                 style: context.colors.label
                     .copyWith(color: context.colors.primary),
               ),
@@ -101,7 +113,7 @@ class _NotifGroup extends StatelessWidget {
         const SizedBox(height: 12),
         // Notification tiles
         ...notifs.map(
-          (n) => Padding(
+              (n) => Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: _NotifTile(notif: n),
           ),
@@ -118,7 +130,6 @@ class _NotifTile extends StatelessWidget {
 
   const _NotifTile({required this.notif});
 
-  /// Map iconAsset key → widget
   Widget _buildIcon(String asset, BuildContext context) {
     switch (asset) {
       case 'payment':
@@ -149,7 +160,35 @@ class _NotifTile extends StatelessWidget {
     final isRead = notif.isRead;
 
     return GestureDetector(
-      onTap: () => context.read<NotificationsProvider>().markAsRead(notif.id),
+      onTap: () async {
+        // FIX: The root cause of the error.
+        //
+        // BEFORE (broken):
+        //   await context.read<NotificationsProvider>().markAsRead(notif.id);
+        //   Navigator.push(context, ...);   ← crash: context deactivated
+        //
+        // WHY IT CRASHED:
+        //   markAsRead() calls notifyListeners() → the notification list
+        //   rebuilds → this tile widget is removed from the tree and
+        //   deactivated. The await then completes and Navigator.push tries
+        //   to look up the Navigator via the now-dead context → DartError.
+        //
+        // FIX: capture Navigator.of(context) BEFORE the await, while the
+        // context is still alive. The captured NavigatorState remains valid
+        // even after the widget is deactivated.
+        final navigator = Navigator.of(context);
+        final provider  = context.read<NotificationsProvider>();
+
+        await provider.markAsRead(notif.id);
+
+        navigator.push(
+          MaterialPageRoute(
+            builder: (_) => TeacherSessionsScreen(
+              course: TeacherCourse.dummy(notif.sourceId),
+            ),
+          ),
+        );
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(14),
@@ -169,10 +208,7 @@ class _NotifTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildIcon(notif.iconAsset, context),
-
-            // Content (RTL: title + body on right)
             const SizedBox(width: 12),
-            // Icon badge (LTR: on left for RTL layout)
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -205,7 +241,6 @@ class _NotifTile extends StatelessWidget {
                 ],
               ),
             ),
-
           ],
         ),
       ),

@@ -1,5 +1,9 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../../../config/app_config.dart';
+import '../../../../utils/widget/base_page.dart';
 import '../../../teacher/schedules/schedules_provider.dart';
 import '../../../teacher/schedules/schedules_screen.dart';
 
@@ -14,7 +18,7 @@ class StudentScheduleTabState extends State<StudentScheduleTab>
     with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
-  final StudentSchedulesProvider _prov = StudentSchedulesProvider();
+  StudentSchedulesProvider _prov = StudentSchedulesProvider();
 
   @override
   void dispose() {
@@ -26,22 +30,24 @@ class StudentScheduleTabState extends State<StudentScheduleTab>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await    _prov.fetchOnce();
+      await _prov.fetchOnce();
     });
-
   }
-
 
   @override
   Widget build(BuildContext context) {
+    _prov = context.watch<StudentSchedulesProvider>();
     super.build(context);
-    return ScheduleTabBody(
-      provider: _prov,
-      getData: () => _prov.data,
-      onRefresh: _prov.fetch,
-      title: 'جدولي الأسبوعي',
-      emptyMessage: 'لا توجد مواعيد مضافة للكورسات بعد',
-      getLastFetched:()=> _prov.lastFetched,
-    );
+    return BasePage(
+        useWebCard: true,
+        child: SafeArea(
+            child:_prov.isLoading? Center(child: CircularProgressIndicator(strokeWidth: context.width/120,),): ScheduleTabBody(
+          provider: _prov,
+          getData: () => _prov.data,
+          onRefresh: _prov.fetch,
+          title: 'my_calender'.tr,
+          emptyMessage: 'empty_calender'.tr,
+          getLastFetched: () => _prov.lastFetched,
+        )));
   }
 }

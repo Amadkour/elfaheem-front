@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' show DateFormat;
 import '../config/app_config.dart';
 import '../config/app_theme.dart';
+import '../main.dart';
 
 class Helpers {
   /// Format date to readable string
@@ -58,15 +59,36 @@ class Helpers {
   }
 
   /// Show snackbar message
-  static void showMessage(context, String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red : Colors.green,
-        duration: const Duration(seconds: 3),
-      ),
-    );
+  static void showMessage( String message, {bool isError = false}) {
+    if(navigatorKey.currentContext==null) {
+      return;
+    }
+    BuildContext context= navigatorKey.currentContext!;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Row(children: [
+        Icon(
+          !isError ? Icons.check_circle_rounded : Icons.error_rounded,
+          color: Colors.white,
+          size: 18,
+        ),
+        const SizedBox(width: 10),
+        Text(
+   message,
+          style: const TextStyle(
+              fontFamily: 'Tajawal',
+              color: Colors.white,
+              fontWeight: FontWeight.w600),
+        ),
+      ]),
+      backgroundColor:
+      !isError ? context.colors.success : context.colors.danger,
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.all(16),
+      shape:
+      RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    ));
   }
+
 
   static TextDirection get pageDirection => AppConfig.lang=='ar'? TextDirection.rtl:TextDirection.ltr;
 

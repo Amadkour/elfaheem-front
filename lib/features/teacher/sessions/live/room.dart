@@ -330,7 +330,9 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
 
     // Load enrolled students + start quiz polling
     _fetchEnrolledStudents();
-    _startQuizPolling();
+    if(!widget.isTeacher) {
+      _startQuizPolling();
+    }
 
     // FIX: upgrade microphone to HD audio quality
     WidgetsBinding.instance.addPostFrameCallback((_) async {

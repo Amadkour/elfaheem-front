@@ -89,9 +89,7 @@ class _ScheduleTabBodyState extends State<ScheduleTabBody>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return BasePage(
-      useWebCard: true,
-      child:  SafeArea(child: ListenableBuilder(
+    return  ListenableBuilder(
           listenable: widget.provider,
           builder: (_, __) {
             final data        = widget.getData();
@@ -166,7 +164,6 @@ class _ScheduleTabBodyState extends State<ScheduleTabBody>
               ),
             );
           },
-        )),
     );
   }
 }

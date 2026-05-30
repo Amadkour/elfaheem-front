@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/session/session_material_widget.dart';
 import 'package:provider/provider.dart';
 import '../../../../../config/app_theme.dart';
+import '../../../../shared/session/material/session_material_widget.dart';
 import '../../../../shared/session/progress_banner.dart';
 import '../../../models.dart';
 import '../course_detail_provider.dart';

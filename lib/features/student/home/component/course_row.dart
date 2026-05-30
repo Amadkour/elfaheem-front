@@ -91,7 +91,7 @@ class CourseCard extends StatelessWidget {
       child: Container(
         width: fixedWidth,
         decoration: BoxDecoration(
-          color: context.colors.cardBg,
+          color: context.colors.cardBg2,
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(

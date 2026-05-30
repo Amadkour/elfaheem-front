@@ -197,7 +197,7 @@ class TeacherSessionItem {
       recordingStatus: j['recording_status'] as String?,
       totalMaterial: j['total_materials'] as int? ?? 0,
       completeMaterial: j['complete_materials'] as int? ?? 0,
-      progress: double.parse((j['progress'].toString()) as String? ?? '0.0'),
+      progress:j.containsKey('progress')? double.parse((j['progress'].toString()) as String? ?? '0.0'):0.0,
       rateSummary: j.containsKey('rate') && j['rate'] != null
           ? RatingSummary.fromJson(j['rate'] as Map<String, dynamic>)
           : null,

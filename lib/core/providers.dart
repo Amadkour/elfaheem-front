@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import '../config/storage_service.dart' show StorageService;
 import '../features/auth/auth_provider.dart';
 import '../features/category/categories_provider.dart';
-import '../features/notification/notifications_provider.dart';
+import '../features/shared/notification/notifications_provider.dart';
 import '../features/shared/profile/about/about_terms_provider.dart';
 import '../features/shared/profile/profile_provider.dart';
 import '../features/student/analysis/exam/student_exam_provider.dart';
@@ -52,10 +52,7 @@ List<SingleChildWidget> appProviders(
       ChangeNotifierProvider<AboutTermsProvider>(
         create: (_) => AboutTermsProvider(),
       ),
-      // ── Domain providers (all share the ApiClient singleton) ─────────────────
-      ChangeNotifierProvider<TeacherSessionsProvider>(
-        create: (_) => TeacherSessionsProvider(),
-      ),
+
       ChangeNotifierProvider<StudentAnalyticsProvider>(
         create: (_) => StudentAnalyticsProvider(),
       ),

@@ -9,6 +9,7 @@
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
 import '../courses/component/teacher_stats.dart';
+import '../sessions/sessions_provider.dart';
 import 'teacher_models.dart';
 
 class TeacherProvider extends BaseProvider {
@@ -58,7 +59,6 @@ class TeacherProvider extends BaseProvider {
       notifyListeners();
     }
   }
-
   Future<void> fetchMyCourses({int skip = 0, int limit = 50}) async {
     final result = await run(() => _api.get(
           '/api/v1/my-courses',
@@ -218,4 +218,5 @@ class TeacherProvider extends BaseProvider {
       totalCourses: _allCourses.length,
     );
   }
+
 }

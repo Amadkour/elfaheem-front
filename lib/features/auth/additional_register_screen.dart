@@ -53,7 +53,6 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
       );
     } else {
       Helpers.showMessage(
-        context,
         authProvider.errorMessage ?? 'Registration failed',
         isError: true,
       );

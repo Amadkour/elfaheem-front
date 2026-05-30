@@ -59,7 +59,6 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } else {
       Helpers.showMessage(
-        context,
         authProvider.errorMessage ?? 'Login failed',
         isError: true,
       );

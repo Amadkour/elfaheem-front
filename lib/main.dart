@@ -22,8 +22,8 @@ import 'core/providers.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/register_screen.dart';
 import 'features/auth/verified_screen.dart';
-import 'features/notification/notification_service.dart';
-import 'features/notification/notifications_screen.dart';
+import 'features/shared/notification/notification_service.dart';
+import 'features/shared/notification/notifications_screen.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'features/student/courses/details/course_detail_screen.dart';
 import 'features/student/courses/list/courses_list_screen.dart';
@@ -35,15 +35,20 @@ late StorageService _storage;
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  await _initCore();
-
   if (!kIsWeb) {
-    // Crashlytics is mobile-only — not supported on Flutter Web
-    await _initCrashlytics();
-    runZonedGuarded(_runApp, _onZoneError);
+    runZonedGuarded(() async {
+      WidgetsFlutterBinding.ensureInitialized();
+
+      await _initCore();
+      await _initCrashlytics();
+
+      _runApp();
+    }, _onZoneError);
   } else {
+    WidgetsFlutterBinding.ensureInitialized();
+
+    await _initCore();
+
     _runApp();
   }
 }
@@ -118,7 +123,7 @@ class ElFaheemApp extends StatelessWidget {
     final appName = RemoteConfigService.instance.appName;
 
     return MaterialApp(
-      key: navigatorKey,
+      navigatorKey: navigatorKey,
       title: appName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.themeData,
@@ -133,9 +138,9 @@ class ElFaheemApp extends StatelessWidget {
       ],
       builder: (_, child) => ResponsiveBreakpoints.builder(
         breakpoints: [
-          const Breakpoint(start: 0,    end: 450,            name: MOBILE),
-          const Breakpoint(start: 451,  end: 800,            name: TABLET),
-          const Breakpoint(start: 801,  end: 1920,           name: DESKTOP),
+          const Breakpoint(start: 0, end: 450, name: MOBILE),
+          const Breakpoint(start: 451, end: 800, name: TABLET),
+          const Breakpoint(start: 801, end: 1920, name: DESKTOP),
           const Breakpoint(start: 1921, end: double.infinity, name: '4K'),
         ],
         useShortestSide: true,
@@ -151,31 +156,40 @@ class ElFaheemApp extends StatelessWidget {
 
   Route<dynamic>? _router(RouteSettings settings) {
     switch (settings.name) {
-      case '/login':             return _fade(const LoginScreen());
-      case '/register':          return _fade(const RegisterScreen());
+      case '/login':
+        return _fade(const LoginScreen());
+      case '/register':
+        return _fade(const RegisterScreen());
       case '/otp':
         final args = settings.arguments as List;
         return _fade(OtpVerificationScreen(
-          email: args[0] as String, role: args[1] as String,
+          email: args[0] as String,
+          role: args[1] as String,
         ));
-      case '/forgot-password':   return _fade(const ForgetScreen());
-      case '/home':              return _fade(const _Guard(child: HomeScreen()));
-      case '/dashboard':         return _fade(const _Guard(child: DashboardScreen()));
-      case '/teacher_dashboard': return _fade(const _Guard(child: TeacherDashboardScreen()));
+      case '/forgot-password':
+        return _fade(const ForgetScreen());
+      case '/home':
+        return _fade(const _Guard(child: HomeScreen()));
+      case '/dashboard':
+        return _fade(const _Guard(child: DashboardScreen()));
+      case '/teacher_dashboard':
+        return _fade(const _Guard(child: TeacherDashboardScreen()));
       case '/course-detail':
         final course = settings.arguments as CourseModel;
         return _fade(_Guard(child: CourseDetailScreen(course: course)));
-      case '/notifications':     return _fade(const _Guard(child: NotificationsScreen()));
-      default:                   return _fade(const _NotFoundScreen());
+      case '/notifications':
+        return _fade(const _Guard(child: NotificationsScreen()));
+      default:
+        return _fade(const _NotFoundScreen());
     }
   }
 
   PageRoute _fade(Widget page) => PageRouteBuilder(
-    pageBuilder: (_, __, ___) => page,
-    transitionsBuilder: (_, anim, __, child) =>
-        FadeTransition(opacity: anim, child: child),
-    transitionDuration: const Duration(milliseconds: 300),
-  );
+        pageBuilder: (_, __, ___) => page,
+        transitionsBuilder: (_, anim, __, child) =>
+            FadeTransition(opacity: anim, child: child),
+        transitionDuration: const Duration(milliseconds: 300),
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -184,6 +198,7 @@ class ElFaheemApp extends StatelessWidget {
 
 class _Guard extends StatelessWidget {
   final Widget child;
+
   const _Guard({required this.child});
 
   @override
@@ -214,12 +229,18 @@ class _NotFoundScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('404', style: TextStyle(
-              fontSize: 64, fontWeight: FontWeight.w900, color: c.textDark,
-            )),
-            Text('الصفحة غير موجودة', style: TextStyle(
-              fontFamily: 'Tajawal', fontSize: 16, color: c.textMedium,
-            )),
+            Text('404',
+                style: TextStyle(
+                  fontSize: 64,
+                  fontWeight: FontWeight.w900,
+                  color: c.textDark,
+                )),
+            Text('not_found'.tr,
+                style: TextStyle(
+                  fontFamily: 'Tajawal',
+                  fontSize: 16,
+                  color: c.textMedium,
+                )),
             const SizedBox(height: 20),
             TextButton(
               onPressed: () => Navigator.of(context).pushReplacementNamed(
@@ -227,9 +248,11 @@ class _NotFoundScreen extends StatelessWidget {
                     ? '/teacher_dashboard'
                     : '/dashboard',
               ),
-              child: const Text('الرئيسية', style: TextStyle(
-                fontFamily: 'Tajawal', color: Color(0xFF5B8FFF),
-              )),
+              child: Text('home'.tr,
+                  style: TextStyle(
+                    fontFamily: 'Tajawal',
+                    color: Color(0xFF5B8FFF),
+                  )),
             ),
           ],
         ),

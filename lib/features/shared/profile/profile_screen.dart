@@ -274,7 +274,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                           onTap:() async {
                             final ok = await Helpers.confirmDialog(context,title: "are_you_share_to_delete_account".tr,confirm: "delete");
                             if (ok == true && context.mounted) {
-                              Helpers.showMessage(context, 'your_account_will_deleted_successfully_through_14_days'.tr);
+                              Helpers.showMessage( 'your_account_will_deleted_successfully_through_14_days'.tr);
                               await Future.delayed(Duration(seconds: 5));
                               await context.read<ProfileProvider>().deleteAccount(context);
                             }

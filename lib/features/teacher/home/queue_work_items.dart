@@ -893,8 +893,8 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
     );
     if (context.mounted) {
       context
-          .read<TeacherSessionsProvider>()
-          .joinLive(context, sessionId, widget.session.courseId, 100);
+          .read<TeacherCourseScreenProvider>()
+          .startLive( sessionId);
     }
   }
 

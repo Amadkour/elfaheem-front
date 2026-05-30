@@ -7,7 +7,7 @@ import '../../config/app_theme.dart';
 
 class RefreshButton extends StatefulWidget {
   final Future<void> Function() onTap;
-   RefreshButton({super.key, required this.onTap});
+   const RefreshButton({super.key, required this.onTap});
 
   @override
   State<RefreshButton> createState() => _RefreshButtonState();
@@ -55,12 +55,13 @@ class _RefreshButtonState extends State<RefreshButton>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          gradient: isRefreshing ? null : context.colors.primaryGradient,
+          gradient: isRefreshing ? null : context.colors.primaryGradientOnColor,
           color:    isRefreshing
               ? context.colors.primary.withValues(alpha: 0.1)
               : null,
           borderRadius: BorderRadius.circular(22),
           boxShadow: isRefreshing ? null : context.colors.primaryShadow,
+          // boxShadow: null ,
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           RotationTransition(

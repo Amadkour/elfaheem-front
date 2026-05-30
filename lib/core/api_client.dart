@@ -130,8 +130,8 @@ class ApiClient {
   }
 
   Future<http.Response> _send(
-    Future<http.Response> Function(http.Client) fn,
-  ) async {
+      Future<http.Response> Function(http.Client) fn,
+      ) async {
     final client = http.Client();
     try {
       return await fn(client).timeout(_timeout);
@@ -151,7 +151,7 @@ class ApiClient {
           .replace(queryParameters: {'refresh_token': refresh});
 
       final res = await _send(
-        (c) async => c.post(uri, headers: await _headers(auth: false)),
+            (c) async => c.post(uri, headers: await _headers(auth: false)),
       );
 
       if (res.statusCode == 200) {
@@ -169,12 +169,13 @@ class ApiClient {
 
   Future<void> _redirectToLogin() async {
     await _storage.clear();
+    log("redirect to login===============>");
     navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (_) => false);
   }
 
   // ── Response handler ──────────────────────────────────────────────────────
 
-  dynamic _handle(dynamic res) {
+  Future<dynamic> _handle(dynamic res) async {
     final int statusCode;
     final String requestPath;
     dynamic body;
@@ -189,13 +190,13 @@ class ApiClient {
     } else {
       throw const ApiException(statusCode: 0, message: 'Unknown response type');
     }
-
+    print("-------[$requestPath]---[ status code is ]-----[$statusCode]");
     // ── 204 No Content ────────────────────────────────────────────────────
     if (statusCode == 204) return true;
 
     // ── 401 Unauthorised → clear session → login ──────────────────────────
     if (statusCode == 401) {
-      _redirectToLogin();
+      await _redirectToLogin();
       return null;
     }
 
@@ -233,74 +234,125 @@ class ApiClient {
   // ── GET ───────────────────────────────────────────────────────────────────
 
   Future<dynamic> get(
-    String path, {
-    Map<String, dynamic>? queryParams,
-    bool auth = true,
-  }) async {
-    final res = await _send(
-      (c) async =>
+      String path, {
+        Map<String, dynamic>? queryParams,
+        bool auth = true,
+      }) async {
+    var res = await _send(
+          (c) async =>
           c.get(_uri(path, queryParams), headers: await _headers(auth: auth)),
     );
+    // Mirror the Dio interceptor: on 401 try refresh once then redirect
+    if (res.statusCode == 401 && auth) {
+      if (await _tryRefresh()) {
+        res = await _send(
+              (c) async => c.get(_uri(path, queryParams),
+              headers: await _headers(auth: auth)),
+        );
+      } else {
+        await _redirectToLogin();
+        return null;
+      }
+    }
     return _handle(res);
   }
 
   // ── POST ──────────────────────────────────────────────────────────────────
 
   Future<dynamic> post(
-    String path, {
-    dynamic body,
-    Map<String, dynamic>? queryParams,
-    bool auth = true,
-  }) async {
-    final res = await _send(
-      (c) async => c.post(
+      String path, {
+        dynamic body,
+        Map<String, dynamic>? queryParams,
+        bool auth = true,
+      }) async {
+    var res = await _send(
+          (c) async => c.post(
         _uri(path, queryParams),
         headers: await _headers(auth: auth),
         body: body != null ? jsonEncode(body) : null,
       ),
     );
+    if (res.statusCode == 401 && auth) {
+      if (await _tryRefresh()) {
+        res = await _send(
+              (c) async => c.post(
+            _uri(path, queryParams),
+            headers: await _headers(auth: auth),
+            body: body != null ? jsonEncode(body) : null,
+          ),
+        );
+      } else {
+        await _redirectToLogin();
+        return null;
+      }
+    }
     return _handle(res);
   }
 
   // ── PUT ───────────────────────────────────────────────────────────────────
 
   Future<dynamic> put(
-    String path, {
-    dynamic body,
-    Map<String, dynamic>? queryParams,
-    bool auth = true,
-  }) async {
-    final res = await _send(
-      (c) async => c.put(
+      String path, {
+        dynamic body,
+        Map<String, dynamic>? queryParams,
+        bool auth = true,
+      }) async {
+    var res = await _send(
+          (c) async => c.put(
         _uri(path, queryParams),
         headers: await _headers(auth: auth),
         body: body != null ? jsonEncode(body) : null,
       ),
     );
+    if (res.statusCode == 401 && auth) {
+      if (await _tryRefresh()) {
+        res = await _send(
+              (c) async => c.put(
+            _uri(path, queryParams),
+            headers: await _headers(auth: auth),
+            body: body != null ? jsonEncode(body) : null,
+          ),
+        );
+      } else {
+        await _redirectToLogin();
+        return null;
+      }
+    }
     return _handle(res);
   }
 
   // ── DELETE ────────────────────────────────────────────────────────────────
 
   Future<dynamic> delete(
-    String path, {
-    Map<String, dynamic>? queryParams,
-    bool auth = true,
-  }) async {
-    final res = await _send(
-      (c) async => c.delete(_uri(path, queryParams),
+      String path, {
+        Map<String, dynamic>? queryParams,
+        bool auth = true,
+      }) async {
+    var res = await _send(
+          (c) async => c.delete(_uri(path, queryParams),
           headers: await _headers(auth: auth)),
     );
+    if (res.statusCode == 401 && auth) {
+      if (await _tryRefresh()) {
+        res = await _send(
+              (c) async => c.delete(_uri(path, queryParams),
+              headers: await _headers(auth: auth)),
+        );
+      } else {
+        await _redirectToLogin();
+        return null;
+      }
+    }
     return _handle(res);
   }
 
   // ── Upload image (Dio multipart) ──────────────────────────────────────────
 
   Future<dynamic> uploadImage(
-    String path, {
-    required XFile file,
-    String fieldName = 'file',
-  }) async {
+      String path, {
+        required XFile file,
+        String fieldName = 'file',
+      }) async {
     final ext = p.extension(file.path).replaceFirst('.', '').toLowerCase();
     final mime = _imageMime(ext);
     final bytes = await file.readAsBytes();
@@ -324,12 +376,12 @@ class ApiClient {
   // ── POST multipart (fields + file) ───────────────────────────────────────
 
   Future<dynamic> postMultipart(
-    String path, {
-    required Map<String, String> fields,
-    required String fileField,
-    required String fileName,
-    required Uint8List fileBytes,
-  }) async {
+      String path, {
+        required Map<String, String> fields,
+        required String fileField,
+        required String fileName,
+        required Uint8List fileBytes,
+      }) async {
     final ext = p.extension(fileName).replaceFirst('.', '').toLowerCase();
     final mime = _fileMime(ext);
 
@@ -357,28 +409,28 @@ class ApiClient {
   // ── MIME helpers ──────────────────────────────────────────────────────────
 
   static String _imageMime(String ext) => switch (ext) {
-        'png' => 'image/png',
-        'webp' => 'image/webp',
-        'gif' => 'image/gif',
-        _ => 'image/jpeg',
-      };
+    'png' => 'image/png',
+    'webp' => 'image/webp',
+    'gif' => 'image/gif',
+    _ => 'image/jpeg',
+  };
 
   static String _fileMime(String ext) => switch (ext) {
-        'png' => 'image/png',
-        'webp' => 'image/webp',
-        'gif' => 'image/gif',
-        'jpg' || 'jpeg' => 'image/jpeg',
-        'pdf' => 'application/pdf',
-        'doc' => 'application/msword',
-        'docx' =>
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'xls' => 'application/vnd.ms-excel',
-        'xlsx' =>
-          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'ppt' => 'application/vnd.ms-powerpoint',
-        'pptx' =>
-          'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-        'txt' => 'text/plain',
-        _ => 'application/octet-stream',
-      };
+    'png' => 'image/png',
+    'webp' => 'image/webp',
+    'gif' => 'image/gif',
+    'jpg' || 'jpeg' => 'image/jpeg',
+    'pdf' => 'application/pdf',
+    'doc' => 'application/msword',
+    'docx' =>
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'xls' => 'application/vnd.ms-excel',
+    'xlsx' =>
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'ppt' => 'application/vnd.ms-powerpoint',
+    'pptx' =>
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'txt' => 'text/plain',
+    _ => 'application/octet-stream',
+  };
 }
