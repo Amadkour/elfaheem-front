@@ -23,7 +23,7 @@ import '../../../teacher/analysis/attendance/teacher_attendance_screen.dart';
 import '../../../teacher/analysis/exam/teacher_exam_hub_screen.dart';
 import '../../../teacher/home/teacher_models.dart';
 import '../../../teacher/sessions/sessions_provider.dart';
-import '../session_material_model.dart';
+import 'session_material_model.dart';
 import 'components/add_material_sheet.dart';
 import 'components/session_material_grid.dart';
 import 'components/session_progress_section.dart';

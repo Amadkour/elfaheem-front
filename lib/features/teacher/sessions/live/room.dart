@@ -2602,7 +2602,7 @@ class _StyledDialog extends StatelessWidget {
           child: Text('Cancel', style: TextStyle(color: _textLow)),
         ),
         TextButton(
-          onPressed: () => Navigator.pop(context, true),
+          onPressed: () =>  true,
           child: Text(confirmLabel,
               style: TextStyle(
                 color: isDanger ? _recRed : _cyan,

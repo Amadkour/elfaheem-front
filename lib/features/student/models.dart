@@ -6,7 +6,7 @@ import 'package:flutter_education_app/features/category/categories_provider.dart
 import '../../utils/widget/rating_widget.dart';
 import '../category/model.dart';
 import '../teacher/home/teacher_models.dart';
-import '../shared/session/session_material_model.dart';
+import '../shared/session/material/session_material_model.dart';
 
 enum CourseStatus { all, inProgress, completed }
 

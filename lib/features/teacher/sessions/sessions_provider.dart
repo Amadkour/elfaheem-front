@@ -15,7 +15,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/api_client.dart';
 import '../../../../core/base_provider.dart';
 import '../../auth/auth_provider.dart';
-import '../../shared/session/session_material_model.dart';
+import '../../shared/session/material/session_material_model.dart';
 import '../../student/models.dart';
 import '../home/teacher_models.dart';
 import 'live/prejoin.dart';

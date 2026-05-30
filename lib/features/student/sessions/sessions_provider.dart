@@ -10,7 +10,7 @@ import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
 import '../../auth/auth_provider.dart';
 import '../../teacher/sessions/model/live_response_model.dart';
-import '../../shared/session/session_material_model.dart';
+import '../../shared/session/material/session_material_model.dart';
 import '../models.dart';
 
 class StudentSessionsProvider extends BaseProvider {

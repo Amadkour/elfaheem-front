@@ -2944,5 +2944,22 @@
   "add_session_btn": {
     "en": "Add Lesson",
     "ar": "إضافة درس"
+  },
+
+  "material_type_recorded": {
+    "en": "Recorded",
+    "ar": "مسجّل"
+  },
+  "material_type_recording": {
+    "en": "Recording",
+    "ar": "قيد التسجيل"
+  },
+  "recording_in_progress": {
+    "en": "Recording in progress…",
+    "ar": "جارٍ التسجيل…"
+  },
+  "video_not_available": {
+    "en": "Video is not available yet",
+    "ar": "الفيديو غير متاح بعد"
   }
 }

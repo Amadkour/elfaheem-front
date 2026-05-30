@@ -5,6 +5,8 @@
 // slice, so rebuilds are isolated to this widget tree.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/sessions/components/session_form_sheet.dart';
 import 'package:provider/provider.dart';
@@ -12,7 +14,6 @@ import 'package:provider/provider.dart';
 import '../../../../../config/app_theme.dart';
 import '../../../../config/app_config.dart';
 import '../../../shared/session/material/session_material_widget.dart';
-import '../../../shared/session/session_material_widget.dart';
 import '../../../student/models.dart';
 import '../../home/teacher_models.dart';
 import '../sessions_provider.dart';
@@ -32,7 +33,7 @@ List<Widget> buildSessionsSlivers(BuildContext context,
             padding: const EdgeInsets.only(top: 28.0),
             child: Center(
                     child: CircularProgressIndicator(
-            strokeWidth: context.width / 120,
+            strokeWidth: min( context.width / 120,20),
                     ),
                   ),
           ))
