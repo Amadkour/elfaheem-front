@@ -118,7 +118,7 @@ class _TeacherSessionsView extends StatelessWidget {
                   padding: const EdgeInsets.all(8.0),
                   child: DetailCard(
                     key: Key('${Random().nextDouble()}'),
-                    expanded: expandDetails ?? provider.sessionCount < 2,
+                    expanded: expandDetails ?? provider.sessionCount==0,
                     icon: CupertinoIcons.list_bullet_below_rectangle,
                     title: 'course_details'.tr,
                     color: const Color(0xFF4DA6FF),

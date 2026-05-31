@@ -116,6 +116,7 @@ class _SectionHeader extends StatelessWidget {
             ),
           ),
           Spacer(),
+          if(sessionCount>0)
           _AddButton(onTap: onAdd),
         ],
       ),
