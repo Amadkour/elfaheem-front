@@ -1,15 +1,13 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    id("com.android.application")
     // START: FlutterFire Configuration
     id("com.google.gms.google-services")
     // END: FlutterFire Configuration
-    id("kotlin-android")
+    id("com.android.application")
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.firebase.crashlytics")          // ← NEW: Crashlytics
 }
-
 android {
     namespace = "com.example.flutter_education_app"
     compileSdk = flutter.compileSdkVersion

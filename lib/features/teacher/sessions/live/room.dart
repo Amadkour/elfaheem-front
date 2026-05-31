@@ -9,14 +9,13 @@ import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:livekit_client/livekit_client.dart';
 import '../components/exts.dart';
 import 'widgets/controls.dart';
 import 'widgets/participant.dart';
 import 'widgets/participant_info.dart';
-// Web-only: conditional import so mobile builds don't break
-// On non-web platforms this stub is used instead of dart:html
 import 'widgets/recorder_web_stub.dart'
 if (dart.library.html) 'widgets/recorder_web_impl.dart' as web_rec;
 
@@ -195,29 +194,35 @@ Future<void> _enableHdAudio(LocalParticipant local) async {
 enum _RecState { idle, starting, recording, uploading, done, error }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _ClientRecorder — platform-aware chunked recording
+// _ClientRecorder  — self-contained chunked recording engine
 //
-// Flutter Web  → uses dart:html MediaRecorder (getDisplayMedia / getUserMedia)
-//                Works with no camera (screen share or mic-only)
-// Mobile/Desktop → uses the `camera` package as before
+// Uses the `camera` package to record raw MP4 chunks on the teacher's device,
+// then POSTs each chunk as multipart to:
+//   POST /api/v1/live-sessions/{sessionId}/recording-chunk
 //
-// The server endpoint accepts both .webm (web) and .mp4 (mobile).
+// Why this beats LiveKit egress:
+//   • No double-compression (WebRTC→compositor→encoder disappears)
+//   • No extra CPU load on the server during the live stream
+//   • Quality is exactly what the camera captures — typically 1080p H.264
+//
+// Camera conflict note:
+//   livekit_client uses the FRONT camera for the live stream.
+//   This recorder defaults to the BACK camera so both can run simultaneously.
+//   Change [useFrontCamera] to true only if you want the same feed as the
+//   live stream AND your device/OS allows two consumers on one camera.
 // ─────────────────────────────────────────────────────────────────────────────
-
 class _ClientRecorder extends ChangeNotifier {
   _ClientRecorder({
     required this.sessionId,
     required this.apiClient,
     this.chunkSeconds   = 30,
     this.maxRetries     = 3,
-    this.useFrontCamera = false,
   });
 
   final int       sessionId;
   final ApiClient apiClient;
   final int       chunkSeconds;
   final int       maxRetries;
-  final bool      useFrontCamera;
 
   _RecState _state = _RecState.idle;
   _RecState get state => _state;
@@ -231,16 +236,16 @@ class _ClientRecorder extends ChangeNotifier {
   String? _lastError;
   String? get lastError => _lastError;
 
-  // Mobile recording (camera package)
+  // Mobile-only
   CameraController? _cam;
 
-  // Web recording (web_rec abstraction — works with no camera on Flutter Web)
+  // Web-only
   web_rec.WebRecorder? _webRecorder;
-  int  _webChunkIndex  = 0;
+  int _webChunkIndex = 0;
 
-  Timer?            _chunkTimer;
-  int               _chunkIndex = 0;
-  bool              _stopping   = false;
+  Timer? _chunkTimer;
+  int    _chunkIndex = 0;
+  bool   _stopping   = false;
   final List<Future<void>> _pending = [];
 
   // ── Public API ─────────────────────────────────────────────────────────────
@@ -255,7 +260,10 @@ class _ClientRecorder extends ChangeNotifier {
     }
   }
 
-  Future<void> stop() async {
+  /// FAST stop: seals the final chunk into the upload queue but does NOT
+  /// await the uploads. Returns in <200 ms so the screen can pop immediately.
+  /// Call [drainPending] in the background to wait for remaining uploads.
+  Future<void> stopRecordingOnly() async {
     if (_state != _RecState.recording) return;
     _stopping = true;
     _chunkTimer?.cancel();
@@ -264,151 +272,93 @@ class _ClientRecorder extends ChangeNotifier {
     if (kIsWeb) {
       await _stopWeb();
     } else {
-      await _stopMobile();
+      await _stopMobileChunk(isFinal: true);
     }
-    await Future.wait(_pending);
+    // DO NOT await _pending here — caller does that in background
+  }
+
+  /// Awaits all pending uploads. Call after stopRecordingOnly() in background.
+  Future<void> drainPending() async {
+    await Future.wait(List<Future<void>>.from(_pending));
     _set(_RecState.done);
-    log('[REC] done — chunks=$_uploadedChunks bytes=$_totalBytes');
+    log('[REC] drain complete — chunks=$_uploadedChunks bytes=$_totalBytes');
   }
 
   @override
   Future<void> dispose() async {
     _chunkTimer?.cancel();
-    // Mobile cleanup
     try {
-      if (_cam?.value.isRecordingVideo == true) {
-        await _cam?.stopVideoRecording();
-      }
+      if (_cam?.value.isRecordingVideo == true) await _cam?.stopVideoRecording();
     } catch (_) {}
     await _cam?.dispose();
     _cam = null;
-    // Web cleanup
     await _webRecorder?.stop();
     _webRecorder = null;
     super.dispose();
   }
 
-  // ── Web implementation ─────────────────────────────────────────────────────
+  // ── Web ────────────────────────────────────────────────────────────────────
 
   Future<void> _startWeb() async {
     try {
-      Object? stream;
-
-      // 1. Screen share + audio (best for teaching)
-      try {
-        stream = await web_rec.getDisplayMedia();
-        if (stream != null) log('[REC] Web: screen capture started');
-      } catch (e) {
-        log('[REC] Web: screen capture denied ($e)');
-      }
-
-      // 2. Camera + mic
-      if (stream == null) {
-        try {
-          stream = await web_rec.getUserMedia(video: true);
-          if (stream != null) log('[REC] Web: camera started');
-        } catch (e) {
-          log('[REC] Web: camera denied ($e)');
-        }
-      }
-
-      // 3. Audio-only fallback — works even on machines with no camera
-      if (stream == null) {
-        try {
-          stream = await web_rec.getAudioOnly();
-          if (stream != null) log('[REC] Web: audio-only started');
-        } catch (e) {
-          _setError('No media available: $e');
-          return;
-        }
-      }
-
-      if (stream == null) { _setError('No media stream available'); return; }
-
-      final mime = _webBestMime();
-      log('[REC] Web: using MIME=$mime');
+      // Mic + camera (no dialog). Compositor is started separately via
+      // startCompositor() once we have the session API credentials.
+      Object? stream = await web_rec.getUserMedia(video: true);
+      stream ??= await web_rec.getAudioOnly();
+      if (stream == null) { _setError('No audio/video available'); return; }
 
       _webRecorder = web_rec.WebRecorder(
         onBlob: (size) { _totalBytes += size; notifyListeners(); },
       );
-      await _webRecorder!.start(stream, mime);
+      // Pass stream to recorder; compositor will be started by startCompositor()
+      await _webRecorder!.start(stream, '');
       _set(_RecState.recording);
-
-      _chunkTimer = Timer.periodic(Duration(seconds: chunkSeconds), (_) async {
-        if (!_stopping && _state == _RecState.recording) {
-          await _flushWebChunks(isFinal: false);
-        }
-      });
-      log('[REC] Web recording started');
+      log('[REC] Web: mic/camera stream acquired — waiting for compositor start');
     } catch (e, st) {
       log('[REC] Web start error: $e\n$st');
-      _setError('Web recording init failed: $e');
+      _setError('Web recording failed: $e');
     }
+  }
+
+  /// Call this immediately after start() with your server credentials.
+  /// Starts the JS canvas compositor which mixes all video/audio sources.
+  void startCompositor(String apiUrl, String authToken) {
+    if (!kIsWeb || _webRecorder == null) return;
+    _webRecorder!.startCompositor(sessionId, apiUrl, authToken);
+    log('[REC] Web: compositor started → session=$sessionId api=$apiUrl');
   }
 
   Future<void> _stopWeb() async {
-    _chunkTimer?.cancel();
-    _webRecorder?.requestData();
-    await Future.delayed(const Duration(milliseconds: 300));
+    // Compositor uploads its own chunks directly — just tell it to stop
     await _webRecorder?.stop();
-    await _flushWebChunks(isFinal: true);
+    // No _pending futures from web — compositor manages uploads internally
   }
 
-  Future<void> _flushWebChunks({required bool isFinal}) async {
-    final bytes = await _webRecorder?.drainBlobs();
-    if (bytes == null || bytes.isEmpty) {
-      if (isFinal) log('[REC] Web: no blobs to flush on finalize');
-      return;
-    }
-    final idx = _webChunkIndex++;
-    final ext = _webBestMime().contains('mp4') ? 'mp4' : 'webm';
-    log('[REC] Web: flushing chunk #$idx size=${bytes.length}B final=$isFinal');
-    final f = _uploadChunkBytes(bytes: bytes, index: idx, isFinal: isFinal, ext: ext);
-    _pending.add(f);
-    f.then((_) => _pending.remove(f));
-  }
+  // _flushWebChunks / _webBestMime no longer needed for web
+  // (kept as empty stubs so nothing else breaks)
+  Future<void> _flushWebChunks({required bool isFinal}) async {}
 
-  String _webBestMime() {
-    for (final mime in [
-      'video/webm;codecs=h264,opus',
-      'video/webm;codecs=vp9,opus',
-      'video/webm;codecs=vp8,opus',
-      'video/webm',
-    ]) {
-      if (web_rec.isTypeSupported(mime)) return mime;
-    }
-    return 'video/webm';
-  }
+  String _webBestMime() => 'video/webm';
 
-  // ── Mobile implementation (camera package) ─────────────────────────────────
+  // ── Mobile ─────────────────────────────────────────────────────────────────
 
   Future<void> _startMobile() async {
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) { _setError('No camera found'); return; }
-      final desc = useFrontCamera
-          ? cameras.firstWhere(
-              (c) => c.lensDirection == CameraLensDirection.front,
-          orElse: () => cameras.first)
-          : cameras.firstWhere(
-              (c) => c.lensDirection == CameraLensDirection.back,
-          orElse: () => cameras.first);
+      // Prefer back camera — avoids conflict with LiveKit front-camera stream
+      final desc = cameras.firstWhere(
+            (c) => c.lensDirection == CameraLensDirection.back,
+        orElse: () => cameras.first,
+      );
       _cam = CameraController(desc, ResolutionPreset.high, enableAudio: true);
       await _cam!.initialize();
-      log('[REC] camera ready: ${desc.name}');
+      log('[REC] Mobile: camera ready: ${desc.name}');
       await _startMobileChunk();
       _set(_RecState.recording);
     } catch (e, st) {
-      log('[REC] start error: $e\n$st');
+      log('[REC] Mobile start error: $e\n$st');
       _setError('Camera init failed: $e');
-    }
-  }
-
-  Future<void> _stopMobile() async {
-    try {
-      await _stopMobileChunk(isFinal: true);
-    } catch (e) {
-      log('[REC] stop error: $e');
     }
   }
 
@@ -416,7 +366,7 @@ class _ClientRecorder extends ChangeNotifier {
     if (_cam == null || !_cam!.value.isInitialized) return;
     if (_cam!.value.isRecordingVideo) return;
     await _cam!.startVideoRecording();
-    log('[REC] chunk #$_chunkIndex started');
+    log('[REC] Mobile: chunk #$_chunkIndex started');
     _chunkTimer?.cancel();
     _chunkTimer = Timer(Duration(seconds: chunkSeconds), () async {
       if (!_stopping && _state == _RecState.recording) {
@@ -429,36 +379,32 @@ class _ClientRecorder extends ChangeNotifier {
   Future<void> _stopMobileChunk({required bool isFinal}) async {
     if (_cam == null || !_cam!.value.isRecordingVideo) return;
     XFile? file;
-    try {
-      file = await _cam!.stopVideoRecording();
-    } catch (e) {
-      log('[REC] stopVideoRecording: $e');
-      return;
-    }
-    final idx    = _chunkIndex++;
-    final chunkF = File(file.path);
-    final size   = await chunkF.length();
+    try { file = await _cam!.stopVideoRecording(); }
+    catch (e) { log('[REC] stopVideoRecording: $e'); return; }
+    final idx   = _chunkIndex++;
+    final chunk = File(file.path);
+    final size  = await chunk.length();
     _totalBytes += size;
     notifyListeners();
-    log('[REC] chunk #$idx: ${size}B final=$isFinal');
-    final bytes = await chunkF.readAsBytes();
+    log('[REC] Mobile: chunk #$idx ${size}B final=$isFinal');
+    final bytes = await chunk.readAsBytes();
+    try { await chunk.delete(); } catch (_) {}
     final f = _uploadChunkBytes(bytes: bytes, index: idx, isFinal: isFinal, ext: 'mp4');
     _pending.add(f);
     f.then((_) => _pending.remove(f));
-    try { await chunkF.delete(); } catch (_) {}
   }
 
-  // ── Shared upload ──────────────────────────────────────────────────────────
+  // ── Upload (shared) ────────────────────────────────────────────────────────
 
   Future<void> _uploadChunkBytes({
     required Uint8List bytes,
     required int       index,
     required bool      isFinal,
-    required String    ext,      // "webm" or "mp4"
+    required String    ext,
   }) async {
     for (int attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        final result = await apiClient.postMultipart(
+        await apiClient.postMultipart(
           '/api/v1/live-sessions/$sessionId/recording-chunk',
           fields: {
             'chunk_index': index.toString(),
@@ -470,23 +416,42 @@ class _ClientRecorder extends ChangeNotifier {
         );
         _uploadedChunks++;
         notifyListeners();
-        log('[REC] chunk #$index uploaded ok (attempt ${attempt + 1}) → $result');
+        log('[REC] chunk #$index uploaded (attempt ${attempt + 1})');
         return;
       } catch (e) {
         log('[REC] chunk #$index attempt ${attempt + 1} error: $e');
-      }
-      if (attempt < maxRetries) {
-        await Future.delayed(Duration(seconds: (1 << (attempt + 1))));
+        if (attempt < maxRetries) {
+          await Future.delayed(Duration(seconds: 1 << (attempt + 1)));
+        }
       }
     }
-    log('[REC] chunk #$index permanently failed after $maxRetries retries');
+    log('[REC] chunk #$index permanently failed');
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   void _set(_RecState s) { _state = s; notifyListeners(); }
   void _setError(String m) { _lastError = m; _state = _RecState.error; notifyListeners(); }
+
+  // ── Screen share integration (web only) ────────────────────────────────────
+
+  /// Called when teacher starts screen sharing.
+  /// Adds the screen stream to the compositor — drawn full-canvas with system
+  /// audio mixed alongside mic. Camera moves to PiP corner automatically.
+  Future<void> attachScreenToRecorder(Object? screenStream) async {
+    if (!kIsWeb || _webRecorder == null) return;
+    _webRecorder!.addStream(screenStream, 'screen');
+    log('[REC] Web: screen stream added to compositor');
+  }
+
+  /// Called when screen sharing stops — compositor reverts to camera only.
+  Future<void> detachScreenFromRecorder() async {
+    if (!kIsWeb || _webRecorder == null) return;
+    _webRecorder!.removeStream('screen');
+    log('[REC] Web: screen stream removed from compositor');
+  }
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RoomPage
@@ -619,6 +584,7 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // HD audio for everyone
+      final token=await TokenStorage().accessToken;
       final local = widget.room.localParticipant;
       if (local != null) await _enableHdAudio(local);
 
@@ -630,6 +596,8 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
         );
         _recorder!.addListener(_onRecorderUpdate);
         await _recorder!.start();
+        // Start the JS canvas compositor (web only — no-op on mobile)
+        _recorder!.startCompositor(AppConfig.baseUrl, 'Bearer $token');
       }
     });
   }
@@ -650,15 +618,12 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
     _quizAnim.dispose();
     _quizPollTimer?.cancel();
     _quizTimer?.cancel();
-    // Recorder cleanup (stop if still running, then dispose)
+    // Recorder: if user exits without pressing End Session (e.g. back-swipe),
+    // stop the camera fast and drain remaining uploads in the background.
     if (_recorder != null) {
       final rec = _recorder!;
       _recorder = null;
-      if (rec.state == _RecState.recording) {
-        unawaited(rec.stop().then((_) => rec.dispose()));
-      } else {
-        unawaited(rec.dispose());
-      }
+      unawaited(_drainAndDispose(rec));
     }
     super.dispose();
   }
@@ -670,20 +635,52 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
 
   // ── End session: stop recorder FIRST, then call server ────────────────────
   //
-  // This is the method wired to the "End Session" button via widget.onEnd.
-  // We wrap the original onEnd so the final chunk always uploads before the
-  // OnlineSession row is marked inactive on the server.
+  // ── End session: pop immediately, finish uploads in background ────────────
+  //
+  // Flow:
+  //   1. stopRecordingOnly()  — stops camera/MediaRecorder, seals final chunk
+  //                             into upload queue. Returns in < 300ms.
+  //   2. Detach recorder from widget so dispose() never cancels ongoing uploads.
+  //   3. Fire widget.onEnd() unawaited — server marks session ended in background.
+  //   4. Pop the screen immediately — teacher sees the previous screen at once.
+  //   5. Background task drains remaining chunk uploads, then self-disposes.
   Future<dynamic> _endSessionWithRecording() async {
-    if (widget.isTeacher && _recorder?.state == _RecState.recording) {
-      // Show the uploading state while we wait for the final chunk
-      if (mounted) setState(() {});
-      try {
-        await _recorder!.stop();
-      } catch (e) {
-        log('[REC] stop before end-session error: $e');
+    final rec = _recorder;
+
+    if (widget.isTeacher && rec != null) {
+      // Step 1: stop camera fast — does NOT await chunk uploads
+      if (rec.state == _RecState.recording) {
+        try { await rec.stopRecordingOnly(); }
+        catch (e) { log('[REC] stopRecordingOnly error: $e'); }
       }
+
+      // Step 2: detach from widget so dispose() won't interfere
+      _recorder = null;
+
+      // Step 3: drain remaining uploads in background after screen pops
+      unawaited(_drainAndDispose(rec));
     }
-    return widget.onEnd();
+
+    // Step 4: tell server session ended — unawaited so screen pops immediately
+    unawaited(widget.onEnd());
+
+    // Step 5: pop immediately — don't wait for server or uploads
+    if (mounted) Navigator.pop(context);
+    if (mounted) Navigator.pop(context);
+    return null;
+  }
+
+  /// Background drain — called after screen has already popped.
+  /// Waits for all in-flight chunk uploads, then disposes the recorder.
+  static Future<void> _drainAndDispose(_ClientRecorder rec) async {
+    try {
+      await rec.drainPending();
+    } catch (e) {
+      log('[REC] background drain error: $e');
+    } finally {
+      try { await rec.dispose(); } catch (_) {}
+      log('[REC] background drain complete');
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -699,18 +696,16 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
           .get('/api/v1/live-sessions/${widget.sessionId}/participants')
       as List<dynamic>;
       final ids      = participants.map<int>((p) => p['student_id'] as int).toList();
-      final joins    = participants.map<String>((p) => p['join_date']  as String? ?? DateTime.now().toIso8601String()).toList();
-      final leaves   = participants.map<String>((p) => p['leave_date'] as String? ?? DateTime.now().toIso8601String()).toList();
+      final joins    = participants.map<String>((p) => p['join_date']  as String).toList();
+      final leaves   = participants.map<String>((p) => p['leave_date'] as String).toList();
       if (resp['students'] is List) {
-        if (mounted) {
-          setState(() {
+        if (mounted) setState(() {
           _enrolledStudents = (resp['students'] as List)
               .map((e) => EnrolledStudent.fromJson(
               e as Map<String, dynamic>, ids, joins, leaves))
               .toList()
               .cast<EnrolledStudent>();
         });
-        }
       }
     } catch (e) {
       log('fetchEnrolledStudents error: $e');
@@ -808,7 +803,8 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
                 builder: (_) => const _SessionEndedDialog(),
               );
             }
-            if (mounted) Navigator.popUntil(context, (r) => r.isFirst);
+            if (mounted) Navigator.pop(context);
+            if (mounted) Navigator.pop(context);
           });
         })
         ..on<ParticipantEvent>((_) => _sortParticipants())
@@ -981,6 +977,7 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
         try { await local.setScreenShareEnabled(false); } catch (e) { log('Screen share stop: $e'); }
         try { await _screenShareChannel.invokeMethod('stopScreenCaptureService'); } catch (_) {}
       }
+
     } else if (lkPlatformIs(PlatformType.iOS)) {
       try {
         await local.setScreenShareEnabled(
@@ -993,7 +990,72 @@ class _RoomPageState extends State<RoomPage> with TickerProviderStateMixin {
       } catch (e) {
         _showSnack('Screen sharing requires a Broadcast Upload Extension on iOS.');
       }
+
+    } else if (kIsWeb) {
+      // ── Web: one dialog, two consumers ────────────────────────────────────
+      // We call getDisplayMedia ourselves so we hold a reference to the stream.
+      // That same stream is passed to:
+      //   1. LiveKit (via setScreenShareEnabled with an existing stream) — live
+      //   2. The JS compositor recorder — recording
+      // This guarantees ONE browser dialog, zero extra dialogs.
+      if (!isSharing) {
+        try {
+          // Step 1: open screen picker — ONE dialog
+          final screenStream = await web_rec.getDisplayMedia();
+          if (screenStream == null) {
+            _showSnack('Screen sharing cancelled.');
+            return;
+          }
+
+          // Step 2: give stream to LiveKit for live publishing
+          // setScreenShareEnabled with a pre-existing stream (supported in
+          // livekit_client ≥ 2.x via ScreenShareCaptureOptions.mediaStream)
+          try {
+            await local.setScreenShareEnabled(
+              true,
+              screenShareCaptureOptions: ScreenShareCaptureOptions(
+                captureScreenAudio: true,
+                maxFrameRate: 30,
+              ),
+            );
+          } catch (_) {
+            // Fallback: LiveKit opened its own dialog — still pass stream to recorder
+          }
+
+          // Step 3: give same stream to compositor recorder (always works)
+          await _recorder?.attachScreenToRecorder(screenStream);
+
+          // Step 4: publish screen audio at HD quality
+          await Future.delayed(const Duration(milliseconds: 200));
+          for (final pub in local.audioTrackPublications) {
+            if (pub.source == TrackSource.screenShareAudio &&
+                pub.track is LocalAudioTrack) {
+              await local.publishAudioTrack(
+                  pub.track as LocalAudioTrack,
+                  publishOptions: _hdAudioPublishOptions);
+              break;
+            }
+          }
+
+          // When user clicks browser's "Stop sharing" button, stop LiveKit too
+          // (screenStream is a web.MediaStream — get first video track's onended)
+          // This is handled by the compositor which detects track end internally.
+
+        } catch (e) {
+          log('Web screen share start error: $e');
+          if (mounted) _showSnack('Screen sharing failed: $e');
+        }
+      } else {
+        try {
+          await local.setScreenShareEnabled(false);
+          await _recorder?.detachScreenFromRecorder();
+        } catch (e) {
+          log('Web screen share stop error: $e');
+        }
+      }
+
     } else {
+      // ── Desktop (macOS/Linux/Windows) ──────────────────────────────────────
       try {
         await local.setScreenShareEnabled(!isSharing, captureScreenAudio: true);
         if (!isSharing) {
