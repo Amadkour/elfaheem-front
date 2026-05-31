@@ -3,8 +3,13 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' show DateFormat;
+import 'package:provider/provider.dart';
 import '../config/app_config.dart';
 import '../config/app_theme.dart';
+import '../features/student/models.dart';
+import '../features/teacher/home/teacher_models.dart';
+import '../features/teacher/sessions/components/session_form_sheet.dart';
+import '../features/teacher/sessions/sessions_provider.dart';
 import '../main.dart';
 
 class Helpers {
@@ -65,21 +70,24 @@ class Helpers {
     }
     BuildContext context= navigatorKey.currentContext!;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Row(children: [
-        Icon(
-          !isError ? Icons.check_circle_rounded : Icons.error_rounded,
-          color: Colors.white,
-          size: 18,
-        ),
-        const SizedBox(width: 10),
-        Text(
-   message,
-          style: const TextStyle(
-              fontFamily: 'Tajawal',
-              color: Colors.white,
-              fontWeight: FontWeight.w600),
-        ),
-      ]),
+      content: Directionality(
+        textDirection: pageDirection,
+        child: Row(children: [
+          Icon(
+            !isError ? Icons.check_circle_rounded : Icons.error_rounded,
+            color: Colors.white,
+            size: 18,
+          ),
+          const SizedBox(width: 10),
+          Text(
+           message,
+            style: const TextStyle(
+                fontFamily: 'Tajawal',
+                color: Colors.white,
+                fontWeight: FontWeight.w600),
+          ),
+        ]),
+      ),
       backgroundColor:
       !isError ? context.colors.success : context.colors.danger,
       behavior: SnackBarBehavior.floating,
@@ -150,4 +158,19 @@ class Helpers {
     return context.width >= 1100 ? (maxWith??900) : context.width >= 900 ? 650: context.width >=
         900 ? 500 : context.width >= 600 ? context.width - 70 : context.width;
   }
+
+  static void showAddSessionSheet(BuildContext context, TeacherCourse course,
+      {TeacherSessionItem? existing,bool? openLive}) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      useSafeArea: true,
+      builder: (_) => ChangeNotifierProvider.value(
+        value: context.read<TeacherCourseScreenProvider>(),
+        child: SessionFormSheet(existing: existing, courseId: course.id,openLive:openLive),
+      ),
+    );
+  }
+
 }

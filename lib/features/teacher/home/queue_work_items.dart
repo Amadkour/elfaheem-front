@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
@@ -12,8 +13,10 @@ import 'package:flutter_education_app/features/teacher/sessions/model/live_respo
 import 'package:provider/provider.dart';
 
 import '../../../config/app_theme.dart';
+import '../../../utils/helpers.dart';
 import '../sessions/live/prejoin.dart';
 import '../sessions/sessions_provider.dart';
+import '../sessions/sessions_screen.dart';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -22,14 +25,21 @@ import '../sessions/sessions_provider.dart';
 ({DateTime start, DateTime end}) _sessionDateTimes(ScheduleSession session) {
   final parts = session.startTime.split(':');
   final eParts = session.endTime.split(':');
-  final base = session.scheduledDate;
+  final base = session.scheduledDate??DateTime.now();
+
   final start = DateTime.utc(
-    base.year, base.month, base.day,
-    int.parse(parts[0]), int.parse(parts[1]),
+    base.year,
+    base.month,
+    base.day,
+    int.parse(parts[0]),
+    int.parse(parts[1]),
   );
   final end = DateTime.utc(
-    base.year, base.month, base.day,
-    int.parse(eParts[0]), int.parse(eParts[1]),
+    base.year,
+    base.month,
+    base.day,
+    int.parse(eParts[0]),
+    int.parse(eParts[1]),
   );
   return (start: start, end: end);
 }
@@ -87,7 +97,9 @@ class _ScheduleQueueListState extends State<ScheduleQueueList> {
       // Fire once when we cross the 0-second mark (was positive, now ≤ 0).
       if (untilStart.inSeconds <= 0 && untilStart.inSeconds > -5) {
         _refreshFired.add(scheduleId);
-        log('[SCHEDULE] Session ${session.sessionId} starting — refreshing dashboard');
+        log(
+          '[SCHEDULE] Session ${session.sessionId} starting — refreshing dashboard',
+        );
         context.read<TeacherProvider>().init();
       }
     }
@@ -101,12 +113,13 @@ class _ScheduleQueueListState extends State<ScheduleQueueList> {
 
     final now = DateTime.now().toUtc();
 
-    final sorted = [...widget.sessions]..sort((a, b) {
-      if (a.isOngoing != b.isOngoing) return a.isOngoing ? -1 : 1;
-      if (a.isToday != b.isToday) return a.isToday ? -1 : 1;
-      final dc = a.scheduledDate.compareTo(b.scheduledDate);
-      return dc != 0 ? dc : a.startTime.compareTo(b.startTime);
-    });
+    final sorted = [...widget.sessions]
+      ..sort((a, b) {
+        if (a.isOngoing != b.isOngoing) return a.isOngoing ? -1 : 1;
+        if (a.isToday != b.isToday) return a.isToday ? -1 : 1;
+        final dc = a.scheduledDate!.compareTo(b.scheduledDate!);
+        return dc != 0 ? dc : a.startTime.compareTo(b.startTime);
+      });
 
     final groups = <String, List<ScheduleSession>>{};
     for (final s in sorted) {
@@ -118,11 +131,7 @@ class _ScheduleQueueListState extends State<ScheduleQueueList> {
       children: [
         _QueueHeader(count: widget.sessions.length),
         ...groups.entries.map(
-              (e) => _DayGroup(
-            dayLabel: e.key,
-            sessions: e.value,
-            now: now,
-          ),
+          (e) => _DayGroup(dayLabel: e.key, sessions: e.value, now: now),
         ),
         const SizedBox(height: 8),
       ],
@@ -134,6 +143,7 @@ class _ScheduleQueueListState extends State<ScheduleQueueList> {
 
 class _QueueHeader extends StatelessWidget {
   final int count;
+
   const _QueueHeader({required this.count});
 
   @override
@@ -143,7 +153,7 @@ class _QueueHeader extends StatelessWidget {
       child: Row(
         children: [
           Text(
-            'جدول الأسبوع',
+            'weekly_schedule'.tr,
             style: TextStyle(
               fontFamily: 'bahji',
               fontSize: 13,
@@ -162,7 +172,7 @@ class _QueueHeader extends StatelessWidget {
             ),
             child: Text(
               '$count',
-              style:  TextStyle(
+              style: TextStyle(
                 fontFamily: 'bahji',
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
@@ -207,7 +217,7 @@ class _DayGroup extends StatelessWidget {
             ),
           ),
         ),
-        ...sessions.map((s) => _SessionCard(session: s, now: now)),
+        ...sessions.map((s) => ScheduleSessionCard(session: s, now: now)),
       ],
     );
   }
@@ -215,11 +225,15 @@ class _DayGroup extends StatelessWidget {
 
 // ── Session card ──────────────────────────────────────────────────────────────
 
-class _SessionCard extends StatelessWidget {
+class ScheduleSessionCard extends StatelessWidget {
   final ScheduleSession session;
   final DateTime now;
-
-  const _SessionCard({required this.session, required this.now});
+  final Color? background;
+  const ScheduleSessionCard({
+    super.key,
+    required this.session,
+    required this.now, this.background,
+  });
 
   Color get _accent {
     if (session.isOngoing) return const Color(0xFFE24B4A);
@@ -229,96 +243,104 @@ class _SessionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final TeacherCourse course = TeacherCourse.dummy(session.courseId);
     final (:start, :end) = _sessionDateTimes(session);
     final untilStart = start.difference(now);
-    final untilEnd   = end.difference(now);
+    final untilEnd = end.difference(now);
 
     // Recompute live flags locally so they stay accurate between API refreshes
     final isOngoing = now.isAfter(start) && now.isBefore(end);
     final isUpcoming = !isOngoing && untilStart.inSeconds > 0;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-      child: Container(
-        decoration: BoxDecoration(
-          color: context.colors.background,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isOngoing
-                ? _accent.withValues(alpha: 0.5)
-                : context.colors.divider,
-            width: isOngoing ? 1.2 : 0.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: _accent.withValues(alpha: isOngoing ? 0.12 : 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
+    return ChangeNotifierProvider(
+      create: (_) => TeacherCourseScreenProvider(initialCourse: course),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+        child: Container(
+          decoration: BoxDecoration(
+            color: background??context.colors.background,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isOngoing
+                  ? _accent.withValues(alpha: 0.5)
+                  : context.colors.divider,
+              width: isOngoing ? 1.2 : 0.5,
             ),
-          ],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Accent top bar
-            // Container(
-            //   height: 3,
-            //   decoration: BoxDecoration(
-            //     gradient: LinearGradient(
-            //       colors: [_accent, _accent.withValues(alpha: 0.3)],
-            //     ),
-            //   ),
-            // ),
-
-            // Main row
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    flex: 8,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 15, 10, 10),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          _TimeBlock(session: session, accent: _accent),
-                          const SizedBox(width: 10),
-                          //_CourseImage(session: session),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _CourseInfo(
-                              session: session,
-                              accent: _accent,
-                              isOngoing: isOngoing,
-                            ),
-                          ),
-                        ],
+            boxShadow: [
+              BoxShadow(
+                color: _accent.withValues(alpha: isOngoing ? 0.12 : 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Main row
+              InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ChangeNotifierProvider(
+                        create: (_) =>
+                            TeacherCourseScreenProvider(initialCourse: course),
+                        child: TeacherSessionsScreen(expandDetails: true),
                       ),
                     ),
+                  );
+                },
+                child: IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        flex: 8,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 15, 10, 10),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              _TimeBlock(session: session, accent: _accent),
+                              const SizedBox(width: 10),
+                              //_CourseImage(session: session),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: _CourseInfo(
+                                  session: session,
+                                  accent: _accent,
+                                  isOngoing: isOngoing,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: _InlineStartButton(
+                          session: session,
+                          accent: _accent,
+                        ),
+                      ),
+                    ],
                   ),
-                  Expanded(
-                    flex: 2,
-                    child: _InlineStartButton(
-                      session: session,
-                      accent: _accent,
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
 
-            // ── Countdown / progress row ──────────────────────────────────────
-            if (isOngoing || (session.isToday && isUpcoming))
-              _CountdownBar(
-                accent:      _accent,
-                isOngoing:   isOngoing,
-                untilStart:  untilStart,
-                untilEnd:    untilEnd,
-                totalMinutes: session.durationMinutes,
-              ),
-          ],
+              // ── Countdown / progress row ──────────────────────────────────────
+              if (isOngoing || (session.isToday && isUpcoming))
+                _CountdownBar(
+                  accent: _accent,
+                  isOngoing: isOngoing,
+                  untilStart: untilStart,
+                  untilEnd: untilEnd,
+                  totalMinutes: session.durationMinutes??-1,
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -346,9 +368,11 @@ class _CountdownBar extends StatelessWidget {
   Widget build(BuildContext context) {
     if (isOngoing) {
       // Progress bar + remaining time
-      final totalSec  = totalMinutes * 60;
-      final elapsed   = totalSec - untilEnd.inSeconds.clamp(0, totalSec);
-      final progress  = totalSec > 0 ? (elapsed / totalSec).clamp(0.0, 1.0) : 0.0;
+      final totalSec = totalMinutes * 60;
+      final elapsed = totalSec - untilEnd.inSeconds.clamp(0, totalSec);
+      final progress = totalSec > 0
+          ? (elapsed / totalSec).clamp(0.0, 1.0)
+          : 0.0;
 
       return Container(
         color: accent.withValues(alpha: 0.06),
@@ -359,10 +383,10 @@ class _CountdownBar extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
-                value:           progress,
+                value: progress,
                 backgroundColor: accent.withValues(alpha: 0.15),
-                valueColor:      AlwaysStoppedAnimation(accent),
-                minHeight:       4,
+                valueColor: AlwaysStoppedAnimation(accent),
+                minHeight: 4,
               ),
             ),
             const SizedBox(height: 6),
@@ -370,34 +394,45 @@ class _CountdownBar extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 // Elapsed
-                Row(children: [
-                  Icon(Icons.play_circle_outline_rounded, size: 12, color: accent),
-                  const SizedBox(width: 4),
-                  Text(
-                    'مباشر الآن',
-                    style: TextStyle(
-                      fontFamily: 'bahji',
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
+                Row(
+                  children: [
+                    Icon(
+                      Icons.play_circle_outline_rounded,
+                      size: 12,
                       color: accent,
                     ),
-                  ),
-                ]),
-                // Time remaining
-                Row(children: [
-                  Icon(Icons.timer_outlined, size: 12,
-                      color: accent.withValues(alpha: 0.7)),
-                  const SizedBox(width: 4),
-                  Text(
-                    'ينتهي بعد  ${_fmtCountdown(untilEnd.isNegative ? Duration.zero : untilEnd)}',
-                    style: TextStyle(
-                      fontFamily: 'bahji',
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: accent.withValues(alpha: 0.85),
+                    const SizedBox(width: 4),
+                    Text(
+                      'مباشر الآن',
+                      style: TextStyle(
+                        fontFamily: 'bahji',
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: accent,
+                      ),
                     ),
-                  ),
-                ]),
+                  ],
+                ),
+                // Time remaining
+                Row(
+                  children: [
+                    Icon(
+                      Icons.timer_outlined,
+                      size: 12,
+                      color: accent.withValues(alpha: 0.7),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'ينتهي بعد  ${_fmtCountdown(untilEnd.isNegative ? Duration.zero : untilEnd)}',
+                      style: TextStyle(
+                        fontFamily: 'bahji',
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: accent.withValues(alpha: 0.85),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ],
@@ -412,8 +447,11 @@ class _CountdownBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       child: Row(
         children: [
-          Icon(Icons.hourglass_top_rounded, size: 13,
-              color: accent.withValues(alpha: 0.8)),
+          Icon(
+            Icons.hourglass_top_rounded,
+            size: 13,
+            color: accent.withValues(alpha: 0.8),
+          ),
           const SizedBox(width: 6),
           Text(
             'يبدأ بعد  ${_fmtCountdown(display)}',
@@ -434,9 +472,7 @@ class _CountdownBar extends StatelessWidget {
               height: 6,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: lit
-                    ? accent
-                    : accent.withValues(alpha: 0.2),
+                color: lit ? accent : accent.withValues(alpha: 0.2),
               ),
             );
           }),
@@ -456,13 +492,13 @@ class _InlineStartButton extends StatelessWidget {
 
   IconData get _icon {
     if (session.isOngoing) return Icons.sensors_rounded;
-    if (session.isToday)   return Icons.play_arrow_rounded;
+    if (session.isToday) return Icons.play_arrow_rounded;
     return Icons.sensors_rounded;
   }
 
   String get _label {
     if (session.isOngoing) return 'مباشر';
-    if (session.isToday)   return 'ابدأ';
+    if (session.isToday) return 'ابدأ';
     return 'ابدأ الان';
   }
 
@@ -492,7 +528,12 @@ class _InlineStartButton extends StatelessWidget {
     if (session.canJoinNow) {
       _openPreJoin(context);
     } else {
-      _openCreationSheet(context);
+      Helpers.showAddSessionSheet(
+        context,
+        TeacherCourse.dummy(session.courseId),
+        openLive: true,
+      );
+      // _openCreationSheet(context);
     }
   }
 
@@ -503,18 +544,21 @@ class _InlineStartButton extends StatelessWidget {
       MaterialPageRoute(
         builder: (_) => PreJoinPage(
           args: JoinArgs(
-            sessionId:   session.sessionId!,
-            courseId:    session.courseId,
+            sessionId: session.sessionId!,
+            courseId: session.courseId,
             maxStudents: session.maxStudents,
-            isTeacher:   true,
-            userName:    context.read<AuthProvider>().currentUser?.name ?? 'Teacher',
-            userId:      context.read<AuthProvider>().currentUser?.id   ?? 0,
+            isTeacher: true,
+            userName:
+                context.read<AuthProvider>().currentUser?.name ?? 'Teacher',
+            userId: context.read<AuthProvider>().currentUser?.id ?? 0,
             onStart: () async {
-              log('[PRE-JOIN] session=${session.sessionId} url=${session.joinUrl}');
+              log(
+                '[PRE-JOIN] session=${session.sessionId} url=${session.joinUrl}',
+              );
               return LiveResponseModel(
                 sessionId: session.sessionId!,
-                url:       session.joinUrl!,
-                token:     session.token!,
+                url: session.joinUrl!,
+                token: session.token!,
               );
             },
             onEnd: () => teacher.endLiveSession(session.sessionId!),
@@ -525,14 +569,6 @@ class _InlineStartButton extends StatelessWidget {
     );
   }
 
-  void _openCreationSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _CreateSessionSheet(session: session),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -543,10 +579,7 @@ class _InlineStartButton extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (session.isOngoing) ...[
-              _LiveDot(),
-              const SizedBox(height: 5),
-            ],
+            if (session.isOngoing) ...[_LiveDot(), const SizedBox(height: 5)],
             Icon(_icon, color: Colors.white, size: 20),
             const SizedBox(height: 4),
             Text(
@@ -585,74 +618,34 @@ class _TimeBlock extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(session.startTime,
-              style: TextStyle(
-                fontFamily: 'bahji',
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
-                color: accent,
-              )),
+          Text(
+            session.startTime,
+            style: TextStyle(
+              fontFamily: 'bahji',
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              color: accent,
+            ),
+          ),
           Container(
             margin: const EdgeInsets.symmetric(vertical: 2),
             width: 1.5,
             height: 8,
             color: accent.withValues(alpha: 0.3),
           ),
-          Text(session.endTime,
-              style: TextStyle(
-                fontFamily: 'bahji',
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: accent.withValues(alpha: 0.7),
-              )),
+          Text(
+            session.endTime,
+            style: TextStyle(
+              fontFamily: 'bahji',
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: accent.withValues(alpha: 0.7),
+            ),
+          ),
         ],
       ),
     );
   }
-}
-
-// ── Course image ──────────────────────────────────────────────────────────────
-
-class _CourseImage extends StatelessWidget {
-  final ScheduleSession session;
-  const _CourseImage({required this.session});
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(9),
-      child: Container(
-        width: 38,
-        height: 38,
-        color: context.colors.primary.withValues(alpha: 0.08),
-        child: session.courseImage != null
-            ? Image.network(
-          session.courseImage!,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _Initials(session.courseName),
-        )
-            : _Initials(session.courseName),
-      ),
-    );
-  }
-}
-
-class _Initials extends StatelessWidget {
-  final String name;
-  const _Initials(this.name);
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Text(
-      name.length >= 2 ? name.substring(0, 2).toUpperCase() : name.toUpperCase(),
-      style:  TextStyle(
-        fontFamily: 'bahji',
-        fontSize: 13,
-        fontWeight: FontWeight.w900,
-        color: context.colors.textMedium,
-      ),
-    ),
-  );
 }
 
 // ── Course info ───────────────────────────────────────────────────────────────
@@ -670,7 +663,9 @@ class _CourseInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dur      = session.durationMinutes > 0 ? '${session.durationMinutes}د' : '—';
+    final dur = session.durationMinutes! > 0
+        ? '${session.durationMinutes}د'
+        : '—';
     final students = session.maxStudents != null
         ? '${session.maxStudents} طالب'
         : 'غير محدود';
@@ -679,30 +674,31 @@ class _CourseInfo extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(children: [
-          Expanded(
-            child: Text(
-              session.courseName,
-              style: context.colors.h3.copyWith(fontSize: 13),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                session.courseName,
+                style: context.colors.h3.copyWith(fontSize: 13),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-          ),
-          if (isOngoing) ...[
-            const SizedBox(width: 5),
-            _LiveDot(),
+            if (isOngoing) ...[const SizedBox(width: 5), _LiveDot()],
           ],
-        ]),
+        ),
         const SizedBox(height: 8),
 
-        Row(children: [
-          _MetaChip(Icons.timer_rounded, dur),
-          const SizedBox(width: 5),
-          Text("|"),
-          const SizedBox(width: 5),
+        Row(
+          children: [
+            _MetaChip(Icons.timer_rounded, dur),
+            const SizedBox(width: 5),
+            Text("|"),
+            const SizedBox(width: 5),
 
-          _MetaChip(Icons.group_rounded, students),
-        ]),
+            _MetaChip(Icons.group_rounded, students),
+          ],
+        ),
         Divider(),
         _StatusBadge(session: session, accent: accent, isOngoing: isOngoing),
       ],
@@ -713,6 +709,7 @@ class _CourseInfo extends StatelessWidget {
 class _MetaChip extends StatelessWidget {
   final IconData icon;
   final String label;
+
   const _MetaChip(this.icon, this.label);
 
   @override
@@ -721,12 +718,14 @@ class _MetaChip extends StatelessWidget {
     children: [
       Icon(icon, size: 11, color: context.colors.textMedium),
       const SizedBox(width: 3),
-      Text(label,
-          style:  TextStyle(
-            fontFamily: 'bahji',
-            fontSize: 11,
-            color: context.colors.textMedium,
-          )),
+      Text(
+        label,
+        style: TextStyle(
+          fontFamily: 'bahji',
+          fontSize: 11,
+          color: context.colors.textMedium,
+        ),
+      ),
     ],
   );
 }
@@ -743,8 +742,8 @@ class _StatusBadge extends StatelessWidget {
   });
 
   String get _label {
-    if (isOngoing)        return 'مباشر الآن';
-    if (session.isToday)  return 'اليوم';
+    if (isOngoing) return 'مباشر الآن';
+    if (session.isToday) return 'اليوم';
     return session.dayLabel;
   }
 
@@ -756,13 +755,15 @@ class _StatusBadge extends StatelessWidget {
       borderRadius: BorderRadius.circular(6),
       border: Border.all(color: accent.withValues(alpha: 0.3)),
     ),
-    child: Text(_label,
-        style: TextStyle(
-          fontFamily: 'bahji',
-          fontSize: 10,
-          fontWeight: FontWeight.w800,
-          color: accent,
-        )),
+    child: Text(
+      _label,
+      style: TextStyle(
+        fontFamily: 'bahji',
+        fontSize: 10,
+        fontWeight: FontWeight.w800,
+        color: accent,
+      ),
+    ),
   );
 }
 
@@ -773,7 +774,8 @@ class _LiveDot extends StatefulWidget {
   State<_LiveDot> createState() => _LiveDotState();
 }
 
-class _LiveDotState extends State<_LiveDot> with SingleTickerProviderStateMixin {
+class _LiveDotState extends State<_LiveDot>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<double> _anim;
 
@@ -820,27 +822,36 @@ class _EmptyQueue extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.colors.primary.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: context.colors.primary.withValues(alpha: 0.15)),
+        border: Border.all(
+          color: context.colors.primary.withValues(alpha: 0.15),
+        ),
       ),
-      child: Row(children: [
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: context.colors.primary.withValues(alpha: 0.1),
-            shape: BoxShape.circle,
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: context.colors.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.calendar_today_outlined,
+              color: context.colors.primary,
+              size: 20,
+            ),
           ),
-          child:  Icon(Icons.calendar_today_outlined,
-              color: context.colors.primary, size: 20),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Text(
-            'لا توجد مواعيد خلال الأسبوع القادم',
-            style: context.colors.caption.copyWith(color: context.colors.textMedium),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              'لا توجد مواعيد خلال الأسبوع القادم',
+              style: context.colors.caption.copyWith(
+                color: context.colors.textMedium,
+              ),
+            ),
           ),
-        ),
-      ]),
+        ],
+      ),
     ),
   );
 }
@@ -849,6 +860,7 @@ class _EmptyQueue extends StatelessWidget {
 
 class _CreateSessionSheet extends StatefulWidget {
   final ScheduleSession session;
+
   const _CreateSessionSheet({required this.session});
 
   @override
@@ -867,10 +879,11 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.session.defaultSessionName);
     _descCtrl = TextEditingController();
-    _durCtrl  = TextEditingController(
-        text: widget.session.durationMinutes > 0
-            ? '${widget.session.durationMinutes}'
-            : '60');
+    _durCtrl = TextEditingController(
+      text: widget.session.durationMinutes! > 0
+          ? '${widget.session.durationMinutes}'
+          : '60',
+    );
   }
 
   @override
@@ -883,20 +896,17 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if(mounted) setState(() => _submitting = true);
+    if (mounted) setState(() => _submitting = true);
     final duration =
         int.tryParse(_durCtrl.text.trim()) ?? widget.session.durationMinutes;
     final sessionId = await context.read<TeacherProvider>().createSession(
-      courseId:        widget.session.courseId,
-      name:            _nameCtrl.text.trim(),
-      durationMinutes: duration,
-      description:
-      _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+      courseId: widget.session.courseId,
+      name: _nameCtrl.text.trim(),
+      durationMinutes: duration!,
+      description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
     );
     if (context.mounted) {
-      context
-          .read<TeacherCourseScreenProvider>()
-          .startLive( sessionId);
+      context.read<TeacherCourseScreenProvider>().startLive(sessionId);
     }
   }
 
@@ -905,10 +915,12 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
     textDirection: TextDirection.rtl,
     child: Container(
       padding: EdgeInsets.only(
-        left: 24, right: 24, top: 24,
+        left: 24,
+        right: 24,
+        top: 24,
         bottom: MediaQuery.of(context).viewInsets.bottom + 32,
       ),
-      decoration:  BoxDecoration(
+      decoration: BoxDecoration(
         color: context.colors.cardBg,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -920,7 +932,8 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
           children: [
             Center(
               child: Container(
-                width: 40, height: 4,
+                width: 40,
+                height: 4,
                 decoration: BoxDecoration(
                   color: context.colors.divider,
                   borderRadius: BorderRadius.circular(2),
@@ -928,30 +941,39 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
               ),
             ),
             const SizedBox(height: 18),
-            Row(children: [
-              Container(
-                width: 44, height: 44,
-                decoration: BoxDecoration(
-                  gradient: context.colors.primaryGradient,
-                  borderRadius: BorderRadius.circular(13),
+            Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    gradient: context.colors.primaryGradient,
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  child: const Icon(
+                    Icons.videocam_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
                 ),
-                child: const Icon(Icons.videocam_rounded,
-                    color: Colors.white, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('إنشاء حصة وبدء البث', style: context.colors.h2),
-                    Text(widget.session.courseName,
-                        style: context.colors.caption
-                            .copyWith(color: context.colors.primary),
-                        overflow: TextOverflow.ellipsis),
-                  ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('إنشاء حصة وبدء البث', style: context.colors.h2),
+                      Text(
+                        widget.session.courseName,
+                        style: context.colors.caption.copyWith(
+                          color: context.colors.primary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ]),
+              ],
+            ),
             const SizedBox(height: 18),
             Container(
               padding: const EdgeInsets.all(12),
@@ -959,33 +981,43 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
                 color: context.colors.primary.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                    color: context.colors.primary.withValues(alpha: 0.15)),
-              ),
-              child: Row(children: [
-                 Icon(Icons.schedule_rounded,
-                    color: context.colors.primary, size: 16),
-                const SizedBox(width: 8),
-                Text(
-                  '${widget.session.dayLabel}  '
-                      '${widget.session.startTime} — ${widget.session.endTime}',
-                  style: context.colors.label.copyWith(color: context.colors.primary),
+                  color: context.colors.primary.withValues(alpha: 0.15),
                 ),
-              ]),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.schedule_rounded,
+                    color: context.colors.primary,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${widget.session.dayLabel}  '
+                    '${widget.session.startTime} — ${widget.session.endTime}',
+                    style: context.colors.label.copyWith(
+                      color: context.colors.primary,
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 18),
             TextFormField(
               controller: _nameCtrl,
               textDirection: TextDirection.rtl,
               style: const TextStyle(fontFamily: 'bahji', fontSize: 14),
-              validator: (v) =>
-              (v?.isEmpty ?? true) ? 'أدخل اسم الحصة' : null,
+              validator: (v) => (v?.isEmpty ?? true) ? 'أدخل اسم الحصة' : null,
               decoration: InputDecoration(
                 labelText: 'اسم الحصة',
                 labelStyle: context.colors.caption,
                 border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 14),
+                  horizontal: 16,
+                  vertical: 14,
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -1001,9 +1033,12 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
                 labelText: 'المدة (بالدقائق)',
                 labelStyle: context.colors.caption,
                 border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 14),
+                  horizontal: 16,
+                  vertical: 14,
+                ),
               ),
             ),
             const SizedBox(height: 20),
@@ -1025,28 +1060,34 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
                 child: Center(
                   child: _submitting
                       ? const SizedBox(
-                    width: 22, height: 22,
-                    child: CircularProgressIndicator(
-                        color: Colors.white, strokeWidth: 2.5),
-                  )
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
                       : const Text(
-                    'إنشاء الحصة وبدء البث 🚀',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
-                      fontFamily: 'bahji',
-                    ),
-                  ),
+                          'إنشاء الحصة وبدء البث 🚀',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                            fontFamily: 'bahji',
+                          ),
+                        ),
                 ),
               ),
             ),
             const SizedBox(height: 10),
             TextButton(
               onPressed: _submitting ? null : () => Navigator.pop(context),
-              child: Text('إلغاء',
-                  style:
-                  context.colors.label.copyWith(color: context.colors.textMedium)),
+              child: Text(
+                'إلغاء',
+                style: context.colors.label.copyWith(
+                  color: context.colors.textMedium,
+                ),
+              ),
             ),
           ],
         ),

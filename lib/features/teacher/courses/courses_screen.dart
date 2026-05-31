@@ -1,15 +1,12 @@
-// ignore_for_file: depend_on_referenced_packages, use_build_context_synchronously
 library;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/teacher/home/home_screen.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart'
     show TeacherCourseStatus, TeacherCourse;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
-
 import '../../../config/app_config.dart' as Helpers;
 import '../../../config/app_theme.dart';
 import '../../../utils/widget/app_network_image.dart';
@@ -17,6 +14,7 @@ import '../../../utils/widget/app_bar.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import '../home/teacher_provider.dart';
 import '../schedules/schedules_screen.dart';
+import '../sessions/sessions_provider.dart';
 import '../sessions/sessions_screen.dart';
 import 'course_form_screen.dart';
 
@@ -34,22 +32,25 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
 
     return BasePage(
       useWebCard: true,
-      appBar: ScreenAppBar(
-        title: 'my_courses'.tr,
-        showBack: !kIsWeb,
-      ),
+      appBar: ScreenAppBar(title: 'my_courses'.tr, showBack: !kIsWeb),
       floatingActionButton: context.showSidebar ? null : _FloatingAddBtn(),
       child: SafeArea(
         bottom: false,
-        child: p.isLoading? Center(child:CircularProgressIndicator( strokeWidth: context.width / 120),): Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 4),
-            _FilterTabs(p: p),
-            const SizedBox(height: 10),
-            Expanded(child: _CourseList(p: p)),
-          ],
-        ),
+        child: p.isLoading
+            ? Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: context.width / 120,
+                ),
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 4),
+                  _FilterTabs(p: p),
+                  const SizedBox(height: 10),
+                  Expanded(child: _CourseList(p: p)),
+                ],
+              ),
       ),
     );
   }
@@ -64,57 +65,56 @@ class _WebHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        height: 60,
-        padding: const EdgeInsets.symmetric(horizontal: 28),
-        decoration: BoxDecoration(
-          color: context.colors.cardBg,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 12,
-              offset: const Offset(0, 2),
-            ),
-          ],
+    height: 60,
+    padding: const EdgeInsets.symmetric(horizontal: 28),
+    decoration: BoxDecoration(
+      color: context.colors.cardBg,
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.06),
+          blurRadius: 12,
+          offset: const Offset(0, 2),
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 4,
-              height: 24,
-              decoration: BoxDecoration(
-                gradient: context.colors.primaryGradient,
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text('my_courses'.tr,
-                style: context.colors.h2.copyWith(fontSize: 17)),
-            const Spacer(),
-            _AddCourseButton(compact: false),
-          ],
+      ],
+    ),
+    child: Row(
+      children: [
+        Container(
+          width: 4,
+          height: 24,
+          decoration: BoxDecoration(
+            gradient: context.colors.primaryGradient,
+            borderRadius: BorderRadius.circular(4),
+          ),
         ),
-      );
+        const SizedBox(width: 10),
+        Text('my_courses'.tr, style: context.colors.h2.copyWith(fontSize: 17)),
+        const Spacer(),
+        _AddCourseButton(compact: false),
+      ],
+    ),
+  );
 }
 
 class _FloatingAddBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) => FloatingActionButton(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const CourseFormScreen()),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        child: Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            gradient: context.colors.primaryGradient,
-            shape: BoxShape.circle,
-            boxShadow: context.colors.primaryShadow,
-          ),
-          child: const Icon(Icons.add_rounded, color: Colors.white, size: 26),
-        ),
-      );
+    onPressed: () => Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const CourseFormScreen())),
+    backgroundColor: Colors.transparent,
+    elevation: 0,
+    child: Container(
+      width: 56,
+      height: 56,
+      decoration: BoxDecoration(
+        gradient: context.colors.primaryGradient,
+        shape: BoxShape.circle,
+        boxShadow: context.colors.primaryShadow,
+      ),
+      child: const Icon(Icons.add_rounded, color: Colors.white, size: 26),
+    ),
+  );
 }
 
 class _AddCourseButton extends StatelessWidget {
@@ -124,41 +124,41 @@ class _AddCourseButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const CourseFormScreen()),
-        ),
-        child: Container(
-          height: 38,
-          padding: EdgeInsets.symmetric(horizontal: compact ? 14 : 18),
-          decoration: BoxDecoration(
-            gradient: context.colors.primaryGradient,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: context.colors.primary.withValues(alpha: 0.32),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
+    onTap: () => Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const CourseFormScreen())),
+    child: Container(
+      height: 38,
+      padding: EdgeInsets.symmetric(horizontal: compact ? 14 : 18),
+      decoration: BoxDecoration(
+        gradient: context.colors.primaryGradient,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: context.colors.primary.withValues(alpha: 0.32),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.add_rounded, color: Colors.white, size: 16),
-              const SizedBox(width: 6),
-              Text(
-                compact ? 'add'.tr : 'add_course'.tr,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'bahji',
-                ),
-              ),
-            ],
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.add_rounded, color: Colors.white, size: 16),
+          const SizedBox(width: 6),
+          Text(
+            compact ? 'add'.tr : 'add_course'.tr,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'bahji',
+            ),
           ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -218,11 +218,13 @@ class _FilterTabs extends StatelessWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(icon,
-                            size: 13,
-                            color: active
-                                ? context.colors.primaryBlue
-                                : context.colors.textLight),
+                        Icon(
+                          icon,
+                          size: 13,
+                          color: active
+                              ? context.colors.primaryBlue
+                              : context.colors.textLight,
+                        ),
                         const SizedBox(width: 5),
                         Text(
                           labelKey.tr,
@@ -230,8 +232,9 @@ class _FilterTabs extends StatelessWidget {
                             color: active
                                 ? context.colors.primaryBlue
                                 : context.colors.textLight,
-                            fontWeight:
-                                active ? FontWeight.w700 : FontWeight.w500,
+                            fontWeight: active
+                                ? FontWeight.w700
+                                : FontWeight.w500,
                             fontSize: 12,
                           ),
                         ),
@@ -321,10 +324,12 @@ class _TwoColumnMasonry extends StatelessWidget {
           Expanded(
             child: Column(
               children: left
-                  .map((c) => Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
-                        child: _CourseCard(course: c),
-                      ))
+                  .map(
+                    (c) => Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: _CourseCard(course: c),
+                    ),
+                  )
                   .toList(),
             ),
           ),
@@ -332,10 +337,12 @@ class _TwoColumnMasonry extends StatelessWidget {
           Expanded(
             child: Column(
               children: right
-                  .map((c) => Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
-                        child: _CourseCard(course: c),
-                      ))
+                  .map(
+                    (c) => Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: _CourseCard(course: c),
+                    ),
+                  )
                   .toList(),
             ),
           ),
@@ -354,69 +361,75 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 88,
-                height: 88,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      context.colors.primaryLight.withValues(alpha: 0.5),
-                      context.colors.primaryLight.withValues(alpha: 0.15),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.school_outlined,
-                    size: 40, color: context.colors.primary),
+    child: SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 88,
+            height: 88,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  context.colors.primaryLight.withValues(alpha: 0.5),
+                  context.colors.primaryLight.withValues(alpha: 0.15),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              const SizedBox(height: 18),
-              Text(
-                'no_courses_section'.tr,
-                style: context.colors.body
-                    .copyWith(fontWeight: FontWeight.w600, fontSize: 15),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'add_first_course_hint'.tr,
-                style: context.colors.caption
-                    .copyWith(color: context.colors.textLight),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 22),
-              GestureDetector(
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => const CourseFormScreen())),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                  decoration: BoxDecoration(
-                    gradient: context.colors.primaryGradient,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: context.colors.primaryShadow,
-                  ),
-                  child: Text(
-                    'add_new_course'.tr,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'bahji',
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.school_outlined,
+              size: 40,
+              color: context.colors.primary,
+            ),
           ),
-        ),
-      );
+          const SizedBox(height: 18),
+          Text(
+            'no_courses_section'.tr,
+            style: context.colors.body.copyWith(
+              fontWeight: FontWeight.w600,
+              fontSize: 15,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'add_first_course_hint'.tr,
+            style: context.colors.caption.copyWith(
+              color: context.colors.textLight,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 22),
+          GestureDetector(
+            onTap: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const CourseFormScreen())),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+              decoration: BoxDecoration(
+                gradient: context.colors.primaryGradient,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: context.colors.primaryShadow,
+              ),
+              child: Text(
+                'add_new_course'.tr,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'bahji',
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -442,12 +455,15 @@ class _CourseCardState extends State<_CourseCard> {
         textDirection: Helpers.pageDirection,
         child: AlertDialog(
           backgroundColor: context.colors.cardBg,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: Text(
             'delete_course'.tr,
             style: const TextStyle(
-                fontFamily: 'bahji', fontWeight: FontWeight.w800),
+              fontFamily: 'bahji',
+              fontWeight: FontWeight.w800,
+            ),
           ),
           content: Text(
             '${'delete_course_confirm'.tr} "${widget.course.title}"؟',
@@ -456,21 +472,29 @@ class _CourseCardState extends State<_CourseCard> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: Text('cancel'.tr,
-                  style: TextStyle(
-                      fontFamily: 'bahji', color: context.colors.textMedium)),
+              child: Text(
+                'cancel'.tr,
+                style: TextStyle(
+                  fontFamily: 'bahji',
+                  color: context.colors.textMedium,
+                ),
+              ),
             ),
             Container(
               decoration: BoxDecoration(
-                  color: context.colors.danger,
-                  borderRadius: BorderRadius.circular(10)),
+                color: context.colors.danger,
+                borderRadius: BorderRadius.circular(10),
+              ),
               child: TextButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: Text('delete'.tr,
-                    style: const TextStyle(
-                        fontFamily: 'bahji',
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700)),
+                child: Text(
+                  'delete'.tr,
+                  style: const TextStyle(
+                    fontFamily: 'bahji',
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ),
           ],
@@ -478,17 +502,23 @@ class _CourseCardState extends State<_CourseCard> {
       ),
     );
     if (ok == true && mounted) {
-      final deleted =
-          await context.read<TeacherProvider>().deleteCourse(widget.course.id);
+      final deleted = await context.read<TeacherProvider>().deleteCourse(
+        widget.course.id,
+      );
       if (mounted && deleted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('course_deleted'.tr,
-              style: const TextStyle(fontFamily: 'bahji', color: Colors.white)),
-          backgroundColor: context.colors.success,
-          behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'course_deleted'.tr,
+              style: const TextStyle(fontFamily: 'bahji', color: Colors.white),
+            ),
+            backgroundColor: context.colors.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
       }
     }
   }
@@ -543,7 +573,11 @@ class _CourseCardState extends State<_CourseCard> {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                  builder: (_) => TeacherSessionsScreen(course: c)),
+                builder: (_) => ChangeNotifierProvider(
+                  create: (_) => TeacherCourseScreenProvider(initialCourse: c),
+                  child: TeacherSessionsScreen(),
+                ),
+              ),
             ),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
@@ -553,8 +587,10 @@ class _CourseCardState extends State<_CourseCard> {
                 children: [
                   Text(
                     c.title,
-                    style: context.colors.h3
-                        .copyWith(fontSize: 14, fontWeight: FontWeight.w800),
+                    style: context.colors.h3.copyWith(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -567,7 +603,6 @@ class _CourseCardState extends State<_CourseCard> {
           ),
 
           // ── Expand toggle ────────────────────────────────────────────
-
           InkWell(
             onTap: () {
               if (mounted) setState(() => _expanded = !_expanded);
@@ -578,15 +613,20 @@ class _CourseCardState extends State<_CourseCard> {
                 children: [
                   Text(
                     _expanded ? 'hide_details'.tr : 'show_details'.tr,
-                    style: context.colors.label
-                        .copyWith(color: context.colors.primary, fontSize: 12),
+                    style: context.colors.label.copyWith(
+                      color: context.colors.primary,
+                      fontSize: 12,
+                    ),
                   ),
                   const SizedBox(width: 4),
                   AnimatedRotation(
                     turns: _expanded ? 0.5 : 0,
                     duration: const Duration(milliseconds: 220),
-                    child: Icon(Icons.keyboard_arrow_down_rounded,
-                        size: 16, color: context.colors.primary),
+                    child: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 16,
+                      color: context.colors.primary,
+                    ),
                   ),
                 ],
               ),
@@ -602,8 +642,9 @@ class _CourseCardState extends State<_CourseCard> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Divider(
-                          height: 1,
-                          color: Colors.black.withValues(alpha: 0.07)),
+                        height: 1,
+                        color: Colors.black.withValues(alpha: 0.07),
+                      ),
                       _ExtrasPanel(course: c),
                     ],
                   )
@@ -620,36 +661,31 @@ class _CourseCardState extends State<_CourseCard> {
                   child: _StatusBadge(isDraft: isDraft),
                   // _PublishButton(isDraft: isDraft, onTap: _togglePublish),
                 ),
-                SizedBox(
-                  width: 5,
-                ),
+                SizedBox(width: 5),
                 Container(
-                    height: 40,
-                    width: 40,
-                    margin: EdgeInsets.symmetric(vertical: 10, horizontal: 2),
-                    decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.all(Radius.circular(7)),
-                        border: Border.all(color: Colors.red)),
-                    child: IconButton(
-                      onPressed: _confirmDelete,
-                      icon: Icon(
-                        Icons.delete,
-                        color: Colors.red,
-                        size: 20,
-                      ),
-                    )),
-                SizedBox(
-                  width: 5,
+                  height: 40,
+                  width: 40,
+                  margin: EdgeInsets.symmetric(vertical: 10, horizontal: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.all(Radius.circular(7)),
+                    border: Border.all(color: Colors.red),
+                  ),
+                  child: IconButton(
+                    onPressed: _confirmDelete,
+                    icon: Icon(Icons.delete, color: Colors.red, size: 20),
+                  ),
                 ),
+                SizedBox(width: 5),
                 _OverlayBtn(
                   icon: Icons.edit_rounded,
                   color: context.colors.primaryBlue,
                   onTap: () {
-                    Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => CourseFormScreen(
-                              course: c,
-                            )));
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => CourseFormScreen(course: c),
+                      ),
+                    );
                   },
                 ),
               ],
@@ -680,24 +716,24 @@ class _StatsGrid extends StatelessWidget {
         (
           Icons.people_alt_rounded,
           '${c.studentsCount} ${'student'.tr}',
-          context.colors.primary
+          context.colors.primary,
         ),
         (
           Icons.video_library_rounded,
           '${c.sessionsCount} ${'session'.tr}',
-          const Color(0xFF185FA5)
+          const Color(0xFF185FA5),
         ),
       ],
       [
         (
           Icons.access_time_rounded,
           '${c.totalHours.toStringAsFixed(0)}${'h'.tr}',
-          const Color(0xFFBA7517)
+          const Color(0xFFBA7517),
         ),
         (
           Icons.star_rounded,
           c.rateSummary?.average.toStringAsFixed(1),
-          context.colors.accent
+          context.colors.accent,
         ),
       ],
     ];
@@ -735,27 +771,29 @@ class _StatCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 12, color: color),
-            const SizedBox(width: 5),
-            Flexible(
-              child: Text(
-                label,
-                style: context.colors.caption
-                    .copyWith(fontSize: 11, fontWeight: FontWeight.w600),
-                overflow: TextOverflow.ellipsis,
-              ),
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12, color: color),
+        const SizedBox(width: 5),
+        Flexible(
+          child: Text(
+            label,
+            style: context.colors.caption.copyWith(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
             ),
-          ],
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -769,26 +807,26 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        height: 40,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-              color:
-                  isDraft ? const Color(0xFFf59e0b) : context.colors.accent2),
-        ),
-        child: Text(
-          isDraft ? 'status_draft'.tr : 'status_published'.tr,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: isDraft ? const Color(0xFFf59e0b) : context.colors.accent2,
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            fontFamily: 'bahji',
-          ),
-        ),
-      );
+    height: 40,
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(
+        color: isDraft ? const Color(0xFFf59e0b) : context.colors.accent2,
+      ),
+    ),
+    child: Text(
+      isDraft ? 'status_draft'.tr : 'status_published'.tr,
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        color: isDraft ? const Color(0xFFf59e0b) : context.colors.accent2,
+        fontSize: 16,
+        fontWeight: FontWeight.w800,
+        fontFamily: 'bahji',
+      ),
+    ),
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -800,30 +838,33 @@ class _OverlayBtn extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
 
-  const _OverlayBtn(
-      {required this.icon, required this.color, required this.onTap});
+  const _OverlayBtn({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: context.colors.primaryBlue),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
+    onTap: onTap,
+    child: Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: context.colors.primaryBlue),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
-          child: Icon(icon, color: color, size: 15),
-        ),
-      );
+        ],
+      ),
+      child: Icon(icon, color: color, size: 15),
+    ),
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -843,9 +884,7 @@ class _PublishButton extends StatelessWidget {
       onTap: onTap,
       child: Container(
         height: 40,
-        decoration: BoxDecoration(
-          color: primaryColor,
-        ),
+        decoration: BoxDecoration(color: primaryColor),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -882,7 +921,8 @@ class _ExtrasPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasContent = course.schedules.isNotEmpty ||
+    final hasContent =
+        course.schedules.isNotEmpty ||
         course.certificates.isNotEmpty ||
         course.tools.isNotEmpty ||
         course.prerequisites.isNotEmpty;
@@ -896,9 +936,12 @@ class _ExtrasPanel extends StatelessWidget {
           if (!hasContent)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Text('no_extra_details'.tr,
-                  style: context.colors.caption
-                      .copyWith(color: context.colors.textLight)),
+              child: Text(
+                'no_extra_details'.tr,
+                style: context.colors.caption.copyWith(
+                  color: context.colors.textLight,
+                ),
+              ),
             ),
           if (course.schedules.isNotEmpty)
             _ExtRow(
@@ -909,7 +952,8 @@ class _ExtrasPanel extends StatelessWidget {
                   .toList(),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(
-                    builder: (_) => TeacherSchedulesScreen(course: course)),
+                  builder: (_) => TeacherSchedulesScreen(course: course),
+                ),
               ),
             ),
           if (course.certificates.isNotEmpty) ...[
@@ -953,72 +997,78 @@ class _ExtRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+    onTap: onTap,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 22,
-                  height: 22,
-                  decoration: BoxDecoration(
-                    color: context.colors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Icon(icon, size: 13, color: context.colors.primary),
-                ),
-                const SizedBox(width: 7),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: context.colors.label
-                        .copyWith(color: context.colors.primary, fontSize: 12),
-                  ),
-                ),
-                if (onTap != null)
-                  Icon(CupertinoIcons.settings,
-                      size: 16, color: context.colors.primary),
-              ],
+            Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                color: context.colors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(icon, size: 13, color: context.colors.primary),
             ),
-            const SizedBox(height: 5),
-            ...items.take(3).map(
-                  (item) => Padding(
-                    padding: const EdgeInsets.only(right: 29, bottom: 3),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 5),
-                          child: Container(
-                            width: 5,
-                            height: 5,
-                            decoration: BoxDecoration(
-                              color: context.colors.textLight,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 7),
-                        Expanded(
-                            child: Text(item, style: context.colors.caption)),
-                      ],
-                    ),
-                  ),
+            const SizedBox(width: 7),
+            Expanded(
+              child: Text(
+                label,
+                style: context.colors.label.copyWith(
+                  color: context.colors.primary,
+                  fontSize: 12,
                 ),
-            if (items.length > 3)
-              Padding(
-                padding: const EdgeInsets.only(right: 29, top: 2),
-                child: Text(
-                  '+ ${items.length - 3} ${'others'.tr}',
-                  style: context.colors.caption.copyWith(
-                    color: context.colors.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+              ),
+            ),
+            if (onTap != null)
+              Icon(
+                CupertinoIcons.settings,
+                size: 16,
+                color: context.colors.primary,
               ),
           ],
         ),
-      );
+        const SizedBox(height: 5),
+        ...items
+            .take(3)
+            .map(
+              (item) => Padding(
+                padding: const EdgeInsets.only(right: 29, bottom: 3),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 5),
+                      child: Container(
+                        width: 5,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: context.colors.textLight,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 7),
+                    Expanded(child: Text(item, style: context.colors.caption)),
+                  ],
+                ),
+              ),
+            ),
+        if (items.length > 3)
+          Padding(
+            padding: const EdgeInsets.only(right: 29, top: 2),
+            child: Text(
+              '+ ${items.length - 3} ${'others'.tr}',
+              style: context.colors.caption.copyWith(
+                color: context.colors.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
 }

@@ -3,7 +3,8 @@ library;
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show TeacherCourse, CourseSchedule;
+import 'package:flutter_education_app/features/teacher/home/queue_work_items.dart';
+import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show TeacherCourse, CourseSchedule, ScheduleSession;
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../config/app_theme.dart';
@@ -107,7 +108,7 @@ class _ScheduleTabBodyState extends State<ScheduleTabBody>
                 activeDays.contains(_selectedDay);
             final shownSlots  = dayHasSlots
                 ? data.slotsForDay(_selectedDay!)
-                : <ScheduleSlot>[];
+                : <ScheduleSession>[];
 
             return RefreshIndicator(
               color: context.colors.primary,
@@ -153,10 +154,10 @@ class _ScheduleTabBodyState extends State<ScheduleTabBody>
                       sliver: SliverList.separated(
                         itemCount: shownSlots.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 12),
-                        itemBuilder: (_, i) => ScheduleSlotCard(
-                          slot:               shownSlots[i],
-                          isSelectedDay:      _selectedDay == data.todayDay,
-                          ongoingSecondsLeft: _ongoingSecondsLeft,
+                        itemBuilder: (_, i) =>
+                            ScheduleSessionCard(
+                              background:context.colors.cardBg,
+                              session: shownSlots[i], now: DateTime.now(),
                         ),
                       ),
                     ),
@@ -173,7 +174,7 @@ class _ScheduleTabBodyState extends State<ScheduleTabBody>
 class _Header extends StatelessWidget {
   final String        title;
   final String        todayLabel;
-  final ScheduleSlot? nextSlot;
+  final ScheduleSession? nextSlot;
   final int           epoch;
   final int           ongoingSecondsLeft;
   final DateTime?     lastFetched;
@@ -250,7 +251,7 @@ class _Header extends StatelessWidget {
 // ── Next session banner ───────────────────────────────────────────────────────
 
 class _NextBanner extends StatelessWidget {
-  final ScheduleSlot slot;
+  final ScheduleSession slot;
   final int ongoingSecondsLeft;
 
   const _NextBanner({required this.slot, required this.ongoingSecondsLeft});
@@ -479,7 +480,7 @@ class _WeekStrip extends StatelessWidget {
   final String todayDay;
   final String selectedDay;
   final void Function(String) onSelect;
-  final List<ScheduleSlot> Function(String) slotsForDay;
+  final List<ScheduleSession> Function(String) slotsForDay;
 
   const _WeekStrip({
     required this.activeDays,
@@ -515,7 +516,7 @@ class _WeekStrip extends StatelessWidget {
                 width: 56,
                 decoration: BoxDecoration(
                   gradient: isSel
-                      ? context.colors.primaryGradient
+                      ? context.colors.primaryGradientOnColor
                       : isToday
                       ? LinearGradient(colors: [
                     context.colors.primary.withValues(alpha: 0.13),
@@ -589,273 +590,6 @@ class _WeekStrip extends StatelessWidget {
       ),
     );
   }
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-//  ScheduleSlotCard
-// ══════════════════════════════════════════════════════════════════════════════
-
-class ScheduleSlotCard extends StatelessWidget {
-  final ScheduleSlot slot;
-  final bool isSelectedDay;
-  final int  ongoingSecondsLeft;
-  final bool showCourseName;
-
-  const ScheduleSlotCard({
-    super.key,
-    required this.slot,
-    this.isSelectedDay      = true,
-    this.ongoingSecondsLeft = 0,
-    this.showCourseName     = true,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isNow   = slot.isOngoing;
-    final isToday = slot.isToday;
-
-    final accentColor = isNow
-        ? context.colors.danger
-        : isToday
-        ? context.colors.success
-        : context.colors.primary;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: context.colors.cardBg,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: context.colors.cardShadow,
-        border: Border(
-          right: BorderSide(
-            color: isNow
-                ? context.colors.danger
-                : isToday
-                ? context.colors.success
-                : context.colors.primaryBlue,
-            width: isNow ? 4 : isToday ? 4 : 4,
-          ),
-
-        ),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(children: [
-
-
-        // ── Main row ────────────────────────────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
-            // ── Time block ───────────────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: accentColor.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(children: [
-                Text(slot.startTime,
-                    style: TextStyle(
-                        fontFamily: 'bahji',
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: accentColor)),
-                Container(
-                    margin: const EdgeInsets.symmetric(vertical: 3),
-                    width: 1.5, height: 14,
-                    color: accentColor.withValues(alpha: 0.3)),
-                Text(slot.endTime,
-                    style: TextStyle(
-                        fontFamily: 'bahji',
-                        fontSize: 11,
-                        color: accentColor.withValues(alpha: 0.7))),
-              ]),
-            ),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Container(
-                width: 1,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-
-            // ── Info ─────────────────────────────────────────────────────
-            Expanded(child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (showCourseName)
-                    Text(slot.courseName,
-                        style: context.colors.h3.copyWith(fontSize: 15),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis)
-                  else
-                    Text(slot.dayLabelStr, style: context.colors.label),
-                  const SizedBox(height: 6),
-                  Wrap(spacing: 8, runSpacing: 4, children: [
-                    _InfoChip(Icons.access_time_rounded,
-                        '${slot.calcDuration}${'m'.tr}', accentColor.withValues(alpha: 0.8)),
-                    if (slot.maxStudents != null)
-                      _InfoChip(Icons.people_outline_rounded,
-                          'حتى ${slot.maxStudents}', context.colors.textLight),
-                    if (slot.scheduledDate != null && !isToday)
-                      _InfoChip(Icons.calendar_today_rounded,
-                          slot.scheduledDate!, context.colors.textLight),
-                  ]),
-                  const SizedBox(height: 8),
-                  _StatusRow(
-                      slot: slot,
-                      ongoingSecondsLeft: ongoingSecondsLeft,
-                      accentColor: accentColor),
-                ])),
-
-            // ── Badge ─────────────────────────────────────────────────────
-            const SizedBox(width: 8),
-            _StatusBadge(slot: slot),
-          ]),
-        ),
-
-        // ── Progress bar (ongoing only) ──────────────────────────────────
-        if (isNow)
-          LinearProgressIndicator(
-            value: slot.progressFraction(ongoingSecondsLeft),
-            backgroundColor: context.colors.danger.withValues(alpha: 0.1),
-            valueColor:  AlwaysStoppedAnimation(context.colors.danger),
-            minHeight: 4,
-          ),
-      ]),
-    );
-  }
-}
-
-class _StatusRow extends StatelessWidget {
-  final ScheduleSlot slot;
-  final int          ongoingSecondsLeft;
-  final Color        accentColor;
-
-  const _StatusRow({
-    required this.slot,
-    required this.ongoingSecondsLeft,
-    required this.accentColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (slot.isOngoing) {
-      final pct = ((slot.progressFraction(ongoingSecondsLeft)) * 100).toInt();
-      return Row(children: [
-         Icon(Icons.timer_outlined, size: 13, color: context.colors.danger),
-        const SizedBox(width: 4),
-        Text(slot.countdownLabel(ongoingSecondsLeft),
-            style:  TextStyle(
-                fontFamily: 'bahji',
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: context.colors.danger)),
-        const SizedBox(width: 8),
-        Text('$pct%',
-            style: context.colors.caption.copyWith(color: context.colors.danger)),
-      ]);
-    }
-    if (slot.isToday) {
-      return Row(children: [
-        Icon(Icons.play_circle, size: 13, color: accentColor),
-        const SizedBox(width: 4),
-        Text(slot.countdownLabel(0),
-            style: TextStyle(
-                fontFamily: 'bahji',
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: accentColor)),
-      ]);
-    }
-    return Row(children: [
-       Icon(Icons.calendar_month_outlined,
-          size: 13, color: context.colors.textLight),
-      const SizedBox(width: 4),
-      Text(slot.dayLabelStr,
-          style: context.colors.caption.copyWith(fontWeight: FontWeight.w600)),
-    ]);
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  final ScheduleSlot slot;
-  const _StatusBadge({required this.slot});
-
-  @override
-  Widget build(BuildContext context) {
-    if (slot.isOngoing) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-            color:  context.colors.danger.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-                color: context.colors.danger.withValues(alpha: 0.3))),
-        child:  Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.circle, size: 7, color: context.colors.danger),
-          SizedBox(width: 4),
-          Text('session_type_live'.tr,
-              style: TextStyle(
-                  fontFamily: 'bahji',
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  color: context.colors.danger)),
-        ]),
-      );
-    }
-    if (slot.isToday) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-            color:  context.colors.success.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-            // border: Border.all(
-            //     color: context.colors.success.withValues(alpha: 0.3))
-               ),
-        child:  Text('today'.tr,
-            style: TextStyle(
-                fontFamily: 'bahji',
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: context.colors.success)),
-      );
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-          color: context.colors.primary.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(8)),
-      child: Text(slotDayShort(slot.day),
-          style: TextStyle(
-              fontFamily: 'bahji',
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: context.colors.primary.withValues(alpha: 0.8))),
-    );
-  }
-}
-
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String   label;
-  final Color    color;
-  const _InfoChip(this.icon, this.label, this.color);
-
-  @override
-  Widget build(BuildContext _) =>
-      Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 11, color:  AppTheme.textLight),
-        const SizedBox(width: 3),
-        Text(label,
-            style: TextStyle(
-                fontFamily: 'bahji', fontSize: 11, color: AppTheme.textLight)),
-      ]);
 }
 
 // ── Empty states ──────────────────────────────────────────────────────────────

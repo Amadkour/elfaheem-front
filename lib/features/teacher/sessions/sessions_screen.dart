@@ -4,6 +4,8 @@
 // route only. All rendering is delegated to focused component files.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import 'dart:math';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/sessions/sessions_provider.dart';
@@ -23,17 +25,17 @@ import 'components/course_stats_row.dart';
 import 'components/sessions_section.dart';
 
 class TeacherSessionsScreen extends StatelessWidget {
-  final TeacherCourse course;
 
-  const TeacherSessionsScreen({super.key, required this.course});
+  const TeacherSessionsScreen({super.key, this.expandDetails});
+  final bool? expandDetails;
 
   @override
   Widget build(BuildContext context) {
     // Scope the provider to this route. Disposed automatically on pop.
-    return ChangeNotifierProvider(
-      create: (_) => TeacherCourseScreenProvider(initialCourse: course)
+    return ChangeNotifierProvider.value(
+      value:context.read<TeacherCourseScreenProvider>()
         ..refresh(), // kick off sessions load immediately
-      child: const _TeacherSessionsView(),
+      child:  _TeacherSessionsView(expandDetails:expandDetails,),
     );
   }
 }
@@ -43,7 +45,8 @@ class TeacherSessionsScreen extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _TeacherSessionsView extends StatelessWidget {
-  const _TeacherSessionsView();
+  const _TeacherSessionsView({this.expandDetails});
+  final bool? expandDetails;
 
   // ── Navigation helpers ────────────────────────────────────────────────────
 
@@ -76,16 +79,6 @@ class _TeacherSessionsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<TeacherCourseScreenProvider>();
-
-    // Watch only the course object for the hero / stats / details sections.
-    // Sessions list is watched inside [buildSessionsSlivers] — isolated rebuilds.
-    final course = context.select<TeacherCourseScreenProvider, TeacherCourse>(
-      (p) => p.course,
-    );
-    final sessionCount = context.select<TeacherCourseScreenProvider, int>(
-      (p) => p.sessionCount,
-    );
-
     return BasePage(
       useWebCard: true,
       child: SafeArea(
@@ -99,7 +92,7 @@ class _TeacherSessionsView extends StatelessWidget {
                     // ── Hero ──────────────────────────────────────────────────
                     SliverToBoxAdapter(
                       child: CourseHero(
-                        course: course,
+                        course: provider.course,
                         onBack: () => Navigator.maybePop(context),
                         onEditCourse: () => _openEditCourse(context),
                         onRefresh: () => provider.refresh(),
@@ -109,6 +102,8 @@ class _TeacherSessionsView extends StatelessWidget {
                       child: Padding(
                         padding: const EdgeInsets.all(8.0),
                         child: DetailCard(
+                          key: Key('${Random().nextDouble()}'),
+                          expanded:expandDetails?? provider.sessionCount<2,
                             icon: CupertinoIcons.list_bullet_below_rectangle,
                             title: 'course_details'.tr,
                             color: const Color(0xFF4DA6FF),
@@ -119,7 +114,7 @@ class _TeacherSessionsView extends StatelessWidget {
                                     const EdgeInsets.fromLTRB(16, 14, 16, 0),
                                 child: RatingWidget(
                                   type: RateType.course,
-                                  sourceId: course.id.toString(),
+                                  sourceId: provider.course.id.toString(),
                                   canEdit: false,
                                   compact: false,
                                 ),
@@ -128,17 +123,17 @@ class _TeacherSessionsView extends StatelessWidget {
                                 padding:
                                     const EdgeInsets.fromLTRB(20, 14, 20, 4),
                                 child: ProgressBanner(
-                                  progress: course.progress,
-                                  total: course.expectedHours.toInt(),
-                                  complete: course.totalHours.toInt(),
+                                  progress: provider.course.progress,
+                                  total: provider.course.expectedHours.toInt(),
+                                  complete: provider.course.totalHours.toInt(),
                                 ),
                               ),
                               CourseStatsRow(
-                                course: course,
-                                sessionCount: sessionCount,
+                                course: provider.course,
+                                sessionCount: provider.sessionCount,
                               ),
 
-                              CourseDetailsSection(course: course),
+                              CourseDetailsSection(course: provider.course),
                             ]),
                       ),
                     ),
@@ -146,7 +141,7 @@ class _TeacherSessionsView extends StatelessWidget {
 
                     ...buildSessionsSlivers(
                       context,
-                      course: course,
+                      course: provider.course,
                       provider: provider,
                       onAdd: () => _openAddSheet(context),
                     ),

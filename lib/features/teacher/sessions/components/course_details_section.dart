@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import '../../../../../config/app_theme.dart';
 import '../../../../config/app_config.dart';
 import '../../home/teacher_models.dart';
+
 class CourseDetailsSection extends StatelessWidget {
   final TeacherCourse course;
 
@@ -52,6 +53,7 @@ class CourseDetailsSection extends StatelessWidget {
           // ── Cards ──────────────────────────────────────────────────────
           if (course.schedules.isNotEmpty)
             DetailCard(
+              expanded: false,
               icon: Icons.calendar_month_rounded,
               title: 'weekly_schedule'.tr,
               color: const Color(0xFF4DA6FF),
@@ -63,6 +65,7 @@ class CourseDetailsSection extends StatelessWidget {
           if (course.prerequisites.isNotEmpty) ...[
             const SizedBox(height: 10),
             DetailCard(
+              expanded: false,
               icon: Icons.checklist_rounded,
               title: 'prerequisites'.tr,
               color: const Color(0xFFFF9F43),
@@ -75,17 +78,20 @@ class CourseDetailsSection extends StatelessWidget {
           if (course.tools.isNotEmpty) ...[
             const SizedBox(height: 10),
             DetailCard(
+              expanded: false,
               icon: Icons.build_rounded,
               title: 'required_tools'.tr,
               color: const Color(0xFF1DB954),
-              children:
-                  course.tools.map((t) => _BulletRow(text: t.name)).toList(),
+              children: course.tools
+                  .map((t) => _BulletRow(text: t.name))
+                  .toList(),
             ),
           ],
 
           if (course.certificates.isNotEmpty) ...[
             const SizedBox(height: 10),
             DetailCard(
+              expanded: false,
               icon: Icons.workspace_premium_rounded,
               title: 'certificates'.tr,
               color: const Color(0xFFFFD700),
@@ -111,12 +117,14 @@ class DetailCard extends StatefulWidget {
   final String title;
   final Color color;
   final List<Widget> children;
+  final bool expanded;
 
-  const DetailCard({
+  const DetailCard({super.key,
     required this.icon,
     required this.title,
     required this.color,
     required this.children,
+    required this.expanded,
   });
 
   @override
@@ -137,6 +145,14 @@ class _DetailCardState extends State<DetailCard>
       duration: const Duration(milliseconds: 250),
     );
     _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
+    print("----------------->${widget.expanded}");
+    if (widget.expanded) {
+      _expanded = true;
+      _ctrl.forward();
+    } else {
+      _expanded = false;
+      _ctrl.reverse();
+    }
   }
 
   @override
@@ -179,8 +195,7 @@ class _DetailCardState extends State<DetailCard>
             onTap: _toggle,
             borderRadius: BorderRadius.circular(16),
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Row(
                 children: [
                   Container(
@@ -207,7 +222,9 @@ class _DetailCardState extends State<DetailCard>
                   // Count badge
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: widget.color.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(20),
@@ -252,11 +269,12 @@ class _DetailCardState extends State<DetailCard>
                   padding: const EdgeInsets.fromLTRB(14, 6, 14, 12),
                   child: Column(
                     children: widget.children
-                        .map((child) => Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 4),
-                              child: child,
-                            ))
+                        .map(
+                          (child) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: child,
+                          ),
+                        )
                         .toList(),
                   ),
                 ),
@@ -299,8 +317,11 @@ class _ScheduleRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 10),
-        Icon(Icons.access_time_rounded,
-            size: 13, color: context.colors.textMedium),
+        Icon(
+          Icons.access_time_rounded,
+          size: 13,
+          color: context.colors.textMedium,
+        ),
         const SizedBox(width: 4),
         Text(
           '${schedule.startTime} – ${schedule.endTime}',
@@ -328,8 +349,7 @@ class _BulletRow extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(top: 5),
-          child:
-              Icon(Icons.circle, size: 6, color: context.colors.textMedium),
+          child: Icon(Icons.circle, size: 6, color: context.colors.textMedium),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -373,8 +393,7 @@ class _CertificateRow extends StatelessWidget {
                   color: context.colors.textDark,
                 ),
               ),
-              if (cert.description != null &&
-                  cert.description!.isNotEmpty) ...[
+              if (cert.description != null && cert.description!.isNotEmpty) ...[
                 const SizedBox(height: 2),
                 Text(
                   cert.description!,

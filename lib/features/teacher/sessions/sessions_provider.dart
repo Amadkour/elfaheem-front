@@ -332,15 +332,15 @@ class TeacherCourseScreenProvider extends BaseProvider {
   /// The key change vs the original: [apiClient] is now forwarded into
   /// [JoinArgs] so that [RoomPage._ClientRecorder] can authenticate its
   /// chunk-upload POSTs with the teacher's Bearer token.
-  void joinLive(
+  Future<void> joinLive(
       BuildContext context,
       int sessionId,
       int courseId,
       int maxParticipants,
       bool liveNow,
-      ) {
+      ) async {
     final user = context.read<AuthProvider>().currentUser;
-    Navigator.of(context).push(MaterialPageRoute(
+    await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => PreJoinPage(
         args: JoinArgs(
           isTeacher:  user!.isTeacher,

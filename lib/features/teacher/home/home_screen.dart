@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/courses/course_form_screen.dart';
+import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboard_provider.dart';
 import 'package:flutter_education_app/features/teacher/home/queue_work_items.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_provider.dart';
 import 'package:provider/provider.dart';
@@ -17,6 +18,7 @@ import '../../student/home/component/home_section_header.dart';
 import '../../student/models.dart';
 import '../courses/component/teacher_stats.dart';
 import '../courses/courses_screen.dart';
+import '../sessions/sessions_provider.dart';
 import '../sessions/sessions_screen.dart';
 
 class TeacherHomeScreen extends StatefulWidget {
@@ -56,7 +58,8 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
           onRefresh: () => context.read<TeacherProvider>().init(),
           child: CustomScrollView(
             physics: const BouncingScrollPhysics(
-                parent: AlwaysScrollableScrollPhysics()),
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
             slivers: [
               // ── Top bar ─────────────────────────────────────────
               if (!isWide) SliverToBoxAdapter(child: _TopBar()),
@@ -91,10 +94,9 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                         child: SectionHeader(
                           title: 'courses'.tr,
                           actionLabel: 'show_all'.tr,
-                          onAction: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                  builder: (_) =>
-                                      const TeacherCoursesScreen())),
+                          onAction: () => context
+                              .read<TeacherDashboardProvider>()
+                              .onChangeTab(1),
                         ),
                       ),
                       SizedBox(height: 14),
@@ -105,14 +107,22 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                                 courses: provider.allCourses
                                     .map((e) => e.toCourseModel)
                                     .toList(),
-                                isTeacher:
-                                    context.read<AuthProvider>().isTeacher,
+                                isTeacher: context
+                                    .read<AuthProvider>()
+                                    .isTeacher,
                                 onTap: (CourseModel c) {
                                   Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (_) => TeacherSessionsScreen(
-                                              course: c.toTeacherModel)));
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => ChangeNotifierProvider(
+                                        create: (_) =>
+                                            TeacherCourseScreenProvider(
+                                              initialCourse: c.toTeacherModel,
+                                            ),
+                                        child: TeacherSessionsScreen(),
+                                      ),
+                                    ),
+                                  );
                                 },
                                 pageName: 'teacher-home-my-courses',
                               ),
@@ -124,7 +134,9 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                         child: SectionHeader(
                           title: 'الجدول الزمني',
                           actionLabel: 'المواعيد القادمة',
-                          onAction: () {},
+                          onAction: () => context
+                              .read<TeacherDashboardProvider>()
+                              .onChangeTab(2),
                         ),
                       ),
                       const SizedBox(height: 14),
@@ -132,7 +144,9 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                           ? const _ScheduleShimmer()
                           : ContentBox(
                               child: ScheduleQueueList(
-                                  sessions: provider.schedule)),
+                                sessions: provider.schedule,
+                              ),
+                            ),
                       SizedBox(height: 36),
                     ],
                   ),
@@ -159,15 +173,20 @@ class _WebTopBar extends StatelessWidget {
         color: context.colors.cardBg,
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2)),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
-      child: Row(children: [
-        Text('${'welcome'.tr} $name 👋',
-            style: context.colors.h2.copyWith(fontSize: 16)),
-      ]),
+      child: Row(
+        children: [
+          Text(
+            '${'welcome'.tr} $name 👋',
+            style: context.colors.h2.copyWith(fontSize: 16),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -183,41 +202,50 @@ class _TopBar extends StatelessWidget {
     final initial = name.isNotEmpty ? name[0] : '؟';
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
-      child: Row(children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: context.colors.primaryGradient,
-            boxShadow: [
-              BoxShadow(
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: context.colors.primaryGradient,
+              boxShadow: [
+                BoxShadow(
                   color: context.colors.primary.withValues(alpha: 0.38),
                   blurRadius: 14,
-                  offset: const Offset(0, 4))
-            ],
-          ),
-          alignment: Alignment.center,
-          child: Text(initial,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              initial,
               style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  fontFamily: 'bahji')),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('صباح الخير 🌟',
-                style: context.colors.caption.copyWith(fontSize: 12)),
-            Text(name, style: context.colors.h2.copyWith(fontSize: 18)),
-          ]),
-        ),
-        // Notification bell
-        NotificationIcon(unreadCount: unread ),
-
-      ]),
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                fontFamily: 'bahji',
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'صباح الخير 🌟',
+                  style: context.colors.caption.copyWith(fontSize: 12),
+                ),
+                Text(name, style: context.colors.h2.copyWith(fontSize: 18)),
+              ],
+            ),
+          ),
+          // Notification bell
+          NotificationIcon(unreadCount: unread),
+        ],
+      ),
     );
   }
 }
@@ -242,8 +270,9 @@ class _ShimmerState extends State<Shimmer> with SingleTickerProviderStateMixin {
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1100))
-      ..repeat(reverse: true);
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    )..repeat(reverse: true);
     _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
   }
 
@@ -255,17 +284,20 @@ class _ShimmerState extends State<Shimmer> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
-        animation: _anim,
-        builder: (_, __) => Container(
-          width: widget.width,
-          height: widget.height,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(widget.radius),
-            color: Color.lerp(context.colors.divider,
-                context.colors.divider.withValues(alpha: 0.3), _anim.value),
-          ),
+    animation: _anim,
+    builder: (_, __) => Container(
+      width: widget.width,
+      height: widget.height,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(widget.radius),
+        color: Color.lerp(
+          context.colors.divider,
+          context.colors.divider.withValues(alpha: 0.3),
+          _anim.value,
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class _StatsShimmer extends StatelessWidget {
@@ -273,33 +305,37 @@ class _StatsShimmer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        children: List.generate(
-            3,
-            (i) => Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.only(left: i < 2 ? 12 : 0),
-                    child: const Shimmer(width: double.infinity, height: 90),
-                  ),
-                )),
-      );
+    children: List.generate(
+      3,
+      (i) => Expanded(
+        child: Padding(
+          padding: EdgeInsets.only(left: i < 2 ? 12 : 0),
+          child: const Shimmer(width: double.infinity, height: 90),
+        ),
+      ),
+    ),
+  );
 }
 
 class CoursesShimmer extends StatelessWidget {
-  const CoursesShimmer({super.key, this.width, this.height,  this.count});
+  const CoursesShimmer({super.key, this.width, this.height, this.count});
+
   final double? width;
   final double? height;
   final int? count;
+
   @override
   Widget build(BuildContext context) => SizedBox(
-        height: 200,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          itemCount:count?? 3,
-          separatorBuilder: (_, __) => const SizedBox(width: 14),
-          itemBuilder: (_, __) =>  Shimmer(width:width?? 170, height:height?? 200),
-        ),
-      );
+    height: 200,
+    child: ListView.separated(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      itemCount: count ?? 3,
+      separatorBuilder: (_, __) => const SizedBox(width: 14),
+      itemBuilder: (_, __) =>
+          Shimmer(width: width ?? 170, height: height ?? 200),
+    ),
+  );
 }
 
 class _ScheduleShimmer extends StatelessWidget {
@@ -307,13 +343,14 @@ class _ScheduleShimmer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        children: List.generate(
-            2,
-            (i) => Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
-                  child: const Shimmer(width: double.infinity, height: 150),
-                )),
-      );
+    children: List.generate(
+      2,
+      (i) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+        child: const Shimmer(width: double.infinity, height: 150),
+      ),
+    ),
+  );
 }
 
 // ── Stats row ─────────────────────────────────────────────────────────────────
@@ -322,74 +359,74 @@ class StatsRow extends StatelessWidget {
   final TeacherStats stats;
   final bool isFull;
 
-  const StatsRow({
-    super.key,
-    required this.stats,
-    required this.isFull,
-  });
+  const StatsRow({super.key, required this.stats, required this.isFull});
 
   @override
   Widget build(BuildContext context) {
-    Widget mainW = Row(children: [
-      _StatCard(
-        value: stats.overallRating.toStringAsFixed(1),
-        label: 'overall_rate'.tr,
-        icon: Icons.star_rounded,
-        gradient: const LinearGradient(
-            colors: [Color(0xFFFF9500), Color(0xFFFF9500)]),
-        shadowColor: const Color(0xFFFF9500),
-      ),
-      const SizedBox(width: 12),
-      _StatCard(
-        value: '${stats.totalStudents}',
-        label: 'total_count'.tr,
-        icon: Icons.people_alt_rounded,
-        gradient: const LinearGradient(
-            colors: [Color(0xFFFFD166), Color(0xFFFFD166)]),
-        shadowColor: const Color(0xFFFFD166),
-      ),
-      const SizedBox(width: 12),
-      _StatCard(
-        value: '${stats.totalCourses}',
-        label: 'course_count'.tr,
-        icon: Icons.library_books_rounded,
-        gradient: context.colors.tealGradient,
-        shadowColor: context.colors.accent2,
-      ),
-    ]);
+    Widget mainW = Row(
+      children: [
+        _StatCard(
+          value: stats.overallRating.toStringAsFixed(1),
+          label: 'overall_rate'.tr,
+          icon: Icons.star_rounded,
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFF9500), Color(0xFFFF9500)],
+          ),
+          shadowColor: const Color(0xFFFF9500),
+        ),
+        const SizedBox(width: 12),
+        _StatCard(
+          value: '${stats.totalStudents}',
+          label: 'total_count'.tr,
+          icon: Icons.people_alt_rounded,
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFFD166), Color(0xFFFFD166)],
+          ),
+          shadowColor: const Color(0xFFFFD166),
+        ),
+        const SizedBox(width: 12),
+        _StatCard(
+          value: '${stats.totalCourses}',
+          label: 'course_count'.tr,
+          icon: Icons.library_books_rounded,
+          gradient: context.colors.tealGradient,
+          shadowColor: context.colors.accent2,
+        ),
+      ],
+    );
 
     if (!isFull) return mainW;
     return Column(
       children: [
         mainW,
-        SizedBox(
-          height: 20,
+        SizedBox(height: 20),
+        Row(
+          children: [
+            _StatCard(
+              value: stats.doctorRating.toStringAsFixed(1),
+              label: 'teacher_rate'.tr,
+              icon: Icons.star_rounded,
+              gradient: context.colors.successGradient.withOpacity(.7),
+              shadowColor: context.colors.primary,
+            ),
+            const SizedBox(width: 12),
+            _StatCard(
+              value: stats.courseRating.toStringAsFixed(1),
+              label: 'course_rate'.tr,
+              icon: Icons.star_rounded,
+              gradient: context.colors.dangerGradient,
+              shadowColor: context.colors.textMedium,
+            ),
+            const SizedBox(width: 12),
+            _StatCard(
+              value: stats.materialRating.toStringAsFixed(1),
+              label: 'materials_rate'.tr,
+              icon: Icons.star_rounded,
+              gradient: context.colors.purpleGradient,
+              shadowColor: context.colors.purple,
+            ),
+          ],
         ),
-        Row(children: [
-          _StatCard(
-            value: stats.doctorRating.toStringAsFixed(1),
-            label: 'teacher_rate'.tr,
-            icon: Icons.star_rounded,
-            gradient: context.colors.successGradient.withOpacity(.7),
-            shadowColor: context.colors.primary,
-          ),
-          const SizedBox(width: 12),
-          _StatCard(
-            value: stats.courseRating.toStringAsFixed(1),
-            label: 'course_rate'.tr,
-            icon: Icons.star_rounded,
-            gradient: context.colors.dangerGradient,
-            shadowColor: context.colors.textMedium,
-          ),
-          const SizedBox(width: 12),
-          _StatCard(
-            value: stats.materialRating.toStringAsFixed(1),
-            label: 'materials_rate'.tr,
-            icon: Icons.star_rounded,
-            gradient: context.colors.purpleGradient,
-            shadowColor: context.colors.purple,
-          ),
-        ])
       ],
     );
   }
@@ -411,52 +448,58 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Expanded(
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
-          decoration: BoxDecoration(
-            gradient: gradient,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                  color: shadowColor.withValues(alpha: 0.32),
-                  blurRadius: 16,
-                  offset: const Offset(0, 5)),
-            ],
+    child: Container(
+      padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: shadowColor.withValues(alpha: 0.32),
+            blurRadius: 16,
+            offset: const Offset(0, 5),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Icon(icon, color: Colors.white, size: 18),
-              const SizedBox(height: 10),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(value,
-                    maxLines: 1,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        fontFamily: 'bahji',
-                        overflow: TextOverflow.visible,
-                        height: 1)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(icon, color: Colors.white, size: 18),
+          const SizedBox(height: 10),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                fontFamily: 'bahji',
+                overflow: TextOverflow.visible,
+                height: 1,
               ),
-              const SizedBox(height: 3),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(label,
-                    maxLines: 1,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400,
-                      overflow: TextOverflow.ellipsis,
-                      fontFamily: 'bahji',
-                    )),
-              ),
-            ],
+            ),
           ),
-        ),
-      );
+          const SizedBox(height: 3),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              maxLines: 1,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                overflow: TextOverflow.ellipsis,
+                fontFamily: 'bahji',
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 // ── Add course button ─────────────────────────────────────────────────────────
@@ -464,34 +507,38 @@ class _StatCard extends StatelessWidget {
 class _AddCourseButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: () => Navigator.of(context)
-            .push(MaterialPageRoute(builder: (_) => const CourseFormScreen())),
-        child: Container(
-          height: 54,
-          decoration: BoxDecoration(
-            gradient: AppTheme.primaryGradient,
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: [
-              BoxShadow(
-                  color: context.colors.primary.withValues(alpha: 0.40),
-                  blurRadius: 20,
-                  offset: const Offset(0, 6)),
-            ],
+    onTap: () => Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const CourseFormScreen())),
+    child: Container(
+      height: 54,
+      decoration: BoxDecoration(
+        gradient: AppTheme.primaryGradient,
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            color: context.colors.primary.withValues(alpha: 0.40),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
           ),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.add_circle_outline_rounded,
-                  color: Colors.white, size: 22),
-              SizedBox(width: 10),
-              Text('إضافة دورة جديدة',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                      fontFamily: 'bahji')),
-            ],
+        ],
+      ),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.add_circle_outline_rounded, color: Colors.white, size: 22),
+          SizedBox(width: 10),
+          Text(
+            'إضافة دورة جديدة',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              fontFamily: 'bahji',
+            ),
           ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 }

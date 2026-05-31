@@ -4,6 +4,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
+import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboard_provider.dart';
+import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
@@ -24,8 +26,6 @@ class TeacherDashboardScreen extends StatefulWidget {
 }
 
 class _State extends State<TeacherDashboardScreen> {
-  int _currentIndex = 0;
-
   List<DashboardItem> dashboardItems = [];
 
   @override
@@ -33,7 +33,6 @@ class _State extends State<TeacherDashboardScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await context.read<NotificationsProvider>().fetchNotifications();
-
     });
     TeacherProvider provider = context.read<TeacherProvider>();
     dashboardItems.clear();
@@ -46,11 +45,12 @@ class _State extends State<TeacherDashboardScreen> {
         const TeacherHomeScreen(),
       ),
       DashboardItem(
-          CupertinoIcons.book,
-          CupertinoIcons.book_fill,
-          'my_courses',
-          context.read<TeacherProvider>().fetchMyCourses,
-          const TeacherCoursesScreen()),
+        CupertinoIcons.book,
+        CupertinoIcons.book_fill,
+        'my_courses',
+        context.read<TeacherProvider>().fetchMyCourses,
+        const TeacherCoursesScreen(),
+      ),
       DashboardItem(
         Icons.calendar_month_outlined,
         Icons.calendar_month_rounded,
@@ -77,31 +77,44 @@ class _State extends State<TeacherDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final unread = context.watch<NotificationsProvider>().unreadCount;
+    return ChangeNotifierProvider(
+      create: (_) => TeacherDashboardProvider(),
+      builder: (context, _) {
+        TeacherDashboardProvider provider = context
+            .watch<TeacherDashboardProvider>();
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final unread = context.watch<NotificationsProvider>().unreadCount;
 
-        final w = constraints.maxWidth;
-        if (w >= 900) {
-          return WideShell(
-            currentIndex: _currentIndex,
-            onTap: (i) { if(mounted) setState(() => _currentIndex = i);},
-            dashboardItems: dashboardItems,
-            unreadCount: unread,
-          );
-        }
-        if (kIsWeb && w >= 600) {
-          return RailShell(
-            currentIndex: _currentIndex,
-            onTap: (i) { if(mounted) setState(() => _currentIndex = i);},
-            dashboardItems: dashboardItems,
-            unreadCount: unread,
-          );
-        }
-        return MobileShell(
-          currentIndex: _currentIndex,
-          onTap: (i) { if(mounted) setState(() => _currentIndex = i);},
-          dashboardItems: dashboardItems,
+            final w = constraints.maxWidth;
+            if (w >= 900) {
+              return WideShell(
+                currentIndex: provider.currentTab,
+                onTap: (i) {
+                  if (mounted) provider.onChangeTab(i);
+                },
+                dashboardItems: dashboardItems,
+                unreadCount: unread,
+              );
+            }
+            if (kIsWeb && w >= 600) {
+              return RailShell(
+                currentIndex: provider.currentTab,
+                onTap: (i) {
+                  if (mounted) provider.onChangeTab(i);
+                },
+                dashboardItems: dashboardItems,
+                unreadCount: unread,
+              );
+            }
+            return MobileShell(
+              currentIndex: provider.currentTab,
+              onTap: (i) {
+                if (mounted) provider.onChangeTab(i);
+              },
+              dashboardItems: dashboardItems,
+            );
+          },
         );
       },
     );
@@ -127,8 +140,9 @@ class _TeacherScheduleTabState extends State<TeacherScheduleTab>
   void initState() {
     super.initState();
     _prov = context.read<TeacherScheduleOverviewProvider>();
-    WidgetsBinding.instance
-        .addPostFrameCallback((_) async => await _prov.fetch());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) async => await _prov.fetch(),
+    );
   }
 
   @override
@@ -142,15 +156,22 @@ class _TeacherScheduleTabState extends State<TeacherScheduleTab>
     super.build(context);
     return BasePage(
       useWebCard: true,
+
       child: SafeArea(
-        child:_prov.isLoading? Center(child: CircularProgressIndicator(strokeWidth: context.width/120,),): ScheduleTabBody(
-          provider: _prov,
-          getData: () => _prov.data,
-          onRefresh: _prov.fetch,
-          title: "time-table".tr,
-          emptyMessage: 'no-time-table'.tr,
-          getLastFetched: () => _prov.lastFetched,
-        ),
+        child: _prov.isLoading
+            ? Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: context.width / 120,
+                ),
+              )
+            : ScheduleTabBody(
+                provider: _prov,
+                getData: () => _prov.data,
+                onRefresh: _prov.fetch,
+                title: "time-table".tr,
+                emptyMessage: 'no-time-table'.tr,
+                getLastFetched: () => _prov.lastFetched,
+              ),
       ),
     );
   }
@@ -163,5 +184,10 @@ class DashboardItem {
   final Widget screen;
 
   DashboardItem(
-      this.icon, this.selectedIcon, this.label, this.onRefresh, this.screen);
+    this.icon,
+    this.selectedIcon,
+    this.label,
+    this.onRefresh,
+    this.screen,
+  );
 }

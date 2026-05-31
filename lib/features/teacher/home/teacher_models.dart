@@ -7,6 +7,7 @@ library;
 
 import 'package:flutter_education_app/features/student/models.dart';
 
+import '../../../config/app_config.dart';
 import '../../../utils/widget/rating_widget.dart';
 import '../courses/component/teacher_stats.dart';
 
@@ -151,7 +152,7 @@ class ScheduleSession {
   final bool isOngoing;
   final int? minutesUntilStart;
   final int? minutesUntilEnd;
-
+  final String dayLabelStr;
   // ── NEW: live session fields returned by the updated backend ──────────────
   final int? sessionId; // SessionModel.id  – null if not yet created
   final int? onlineSessionId; // OnlineSession.id – null if not yet created
@@ -161,7 +162,41 @@ class ScheduleSession {
   final String? joinUrl; // OnlineSession.url  (room join URL)
   final String? hostUrl; // OnlineSession.host_url
   final String? token; // OnlineSession.host_url
+  int get startMin {
+    final p = startTime.split(':');
+    return int.parse(p[0]) * 60 + int.parse(p[1]);
+  }
 
+  int get endMin {
+    final p = endTime.split(':');
+    return int.parse(p[0]) * 60 + int.parse(p[1]);
+  }
+
+  int get calcDuration => durationMinutes ?? (endMin - startMin);
+
+  double progressFraction(int liveSecondsLeft) {
+    final totalSec = calcDuration * 60;
+    if (totalSec <= 0) return 0;
+    final elapsed = totalSec - liveSecondsLeft;
+    return (elapsed / totalSec).clamp(0.0, 1.0);
+  }
+
+  String countdownLabel(int liveSecondsLeft) {
+    if (isOngoing) {
+      if (liveSecondsLeft <= 0) return 'end-now'.tr;
+      final m = liveSecondsLeft ~/ 60;
+      final s = liveSecondsLeft % 60;
+      return 'تنتهي ${m.toString().padLeft(2, '0')}:${s.toString().padLeft(
+          2, '0')}';
+    }
+    if (!isToday) return dayLabelStr;
+    final mu = minutesUntilStart ?? 0;
+    if (mu <= 0) return 'start-now'.tr;
+    if (mu < 60) return 'بعد $muد';
+    final h = mu ~/ 60;
+    final m = mu % 60;
+    return 'بعد $hس${m > 0 ? ' $mد' : ''}';
+  }
   static const _labels = {
     'monday': 'الاثنين',
     'tuesday': 'الثلاثاء',
@@ -187,7 +222,7 @@ class ScheduleSession {
     required this.dayLabel,
     required this.startTime,
     required this.endTime,
-    required this.durationMinutes,
+     required this.durationMinutes,
     required this.isToday,
     required this.isOngoing,
     this.courseImage,
@@ -203,7 +238,7 @@ class ScheduleSession {
     this.isLive = false,
     this.joinUrl,
     this.hostUrl,
-    this.token,
+    this.token, required this.dayLabelStr,
   });
 
   factory ScheduleSession.fromJson(Map<String, dynamic> j) {
@@ -212,18 +247,21 @@ class ScheduleSession {
       scheduleId: j['schedule_id'] as int,
       courseId: j['course_id'] as int,
       courseName: j['course_name'] as String,
-      courseImage: j['course_image'] as String?,
-      day: day,
-      dayLabel: j['day_label'] as String? ?? _labels[day] ?? day,
+      day: j['day'] as String,
+      dayLabelStr: j['day_label'] as String? ?? j['day'] as String,
       startTime: j['start_time'] as String,
       endTime: j['end_time'] as String,
-      scheduledDate: DateTime.parse(j['scheduled_date'] as String),
-      durationMinutes: j['duration_minutes'] as int? ?? 0,
-      maxStudents: j['max_students'] as int?,
       isToday: j['is_today'] as bool? ?? false,
       isOngoing: j['is_ongoing'] as bool? ?? false,
       minutesUntilStart: j['minutes_until_start'] as int?,
       minutesUntilEnd: j['minutes_until_end'] as int?,
+      scheduledDate:j['scheduled_date']!=null? DateTime.parse(j['scheduled_date'] as String):DateTime.now(),
+      durationMinutes: j['duration_minutes'] as int? ??0 ,
+      maxStudents: j['max_students'] as int?,
+
+
+      courseImage: j['course_image'] as String?,
+      dayLabel: j['day_label'] as String? ?? _labels[day] ?? day,
       // new
       sessionId: j['session_id'] as int?,
       onlineSessionId: j['online_session_id'] as int?,

@@ -8,6 +8,7 @@ import '../../../config/app_config.dart';
 import '../../../config/app_theme.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/base_page.dart';
+import '../../teacher/sessions/sessions_provider.dart';
 import 'notifications_provider.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -34,39 +35,42 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       child: SafeArea(
         child: provider.isLoading
             ? Center(
-          child: CircularProgressIndicator(
-            strokeWidth: context.width / 120,
-          ),
-        )
+                child: CircularProgressIndicator(
+                  strokeWidth: context.width / 120,
+                ),
+              )
             : Column(
-          children: [
-            ScreenAppBar(title: 'notifications'.tr),
-            Expanded(
-              child: provider.allNotifs.isEmpty
-                  ? Center(
-                  child: Icon(
-                    Icons.notifications_active_rounded,
-                    size: 50,
-                    color: context.colors.primary,
-                  ))
-                  : ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                physics: const BouncingScrollPhysics(),
                 children: [
-                  const SizedBox(height: 8),
-                  _NotifGroup(
-                      group: NotifGroup.today,
-                      groupTitle: 'today'.tr),
-                  const SizedBox(height: 20),
-                  _NotifGroup(
-                      group: NotifGroup.yesterday,
-                      groupTitle: 'yesterday'.tr),
-                  const SizedBox(height: 24),
+                  ScreenAppBar(title: 'notifications'.tr),
+                  Expanded(
+                    child: provider.allNotifs.isEmpty
+                        ? Center(
+                            child: Icon(
+                              Icons.notifications_active_rounded,
+                              size: 50,
+                              color: context.colors.primary,
+                            ),
+                          )
+                        : ListView(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            physics: const BouncingScrollPhysics(),
+                            children: [
+                              const SizedBox(height: 8),
+                              _NotifGroup(
+                                group: NotifGroup.today,
+                                groupTitle: 'today'.tr,
+                              ),
+                              const SizedBox(height: 20),
+                              _NotifGroup(
+                                group: NotifGroup.yesterday,
+                                groupTitle: 'yesterday'.tr,
+                              ),
+                              const SizedBox(height: 24),
+                            ],
+                          ),
+                  ),
                 ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -104,8 +108,9 @@ class _NotifGroup extends StatelessWidget {
               },
               child: Text(
                 'mark_all_read'.tr,
-                style: context.colors.label
-                    .copyWith(color: context.colors.primary),
+                style: context.colors.label.copyWith(
+                  color: context.colors.primary,
+                ),
               ),
             ),
           ],
@@ -113,7 +118,7 @@ class _NotifGroup extends StatelessWidget {
         const SizedBox(height: 12),
         // Notification tiles
         ...notifs.map(
-              (n) => Padding(
+          (n) => Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: _NotifTile(notif: n),
           ),
@@ -177,14 +182,17 @@ class _NotifTile extends StatelessWidget {
         // context is still alive. The captured NavigatorState remains valid
         // even after the widget is deactivated.
         final navigator = Navigator.of(context);
-        final provider  = context.read<NotificationsProvider>();
+        final provider = context.read<NotificationsProvider>();
 
         await provider.markAsRead(notif.id);
 
         navigator.push(
           MaterialPageRoute(
-            builder: (_) => TeacherSessionsScreen(
-              course: TeacherCourse.dummy(notif.sourceId),
+            builder: (_) => ChangeNotifierProvider(
+              create: (_) => TeacherCourseScreenProvider(
+                initialCourse: TeacherCourse.dummy(notif.sourceId),
+              ),
+              child: TeacherSessionsScreen(),
             ),
           ),
         );

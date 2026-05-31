@@ -9,6 +9,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/sessions/components/session_form_sheet.dart';
+import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../config/app_theme.dart';
@@ -42,14 +43,14 @@ List<Widget> buildSessionsSlivers(BuildContext context,
 
   return [
     SliverToBoxAdapter(
-      child: _SectionHeader(onAdd: onAdd),
+      child: _SectionHeader(onAdd: onAdd,sessionCount: provider.sessionCount,),
     ),
     if (provider.sessions.isEmpty)
       SliverToBoxAdapter(
         child: provider.isLoading
             ? const _LoadingState()
             : _EmptyState(
-                onAdd: () => _showAddSheet(context, course),
+                onAdd: () => Helpers.showAddSessionSheet(context, course),
               ),
       ),
     if (provider.sessions.isNotEmpty)
@@ -67,19 +68,6 @@ List<Widget> buildSessionsSlivers(BuildContext context,
   ];
 }
 
-void _showAddSheet(BuildContext context, TeacherCourse course,
-    {TeacherSessionItem? existing}) {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    useSafeArea: true,
-    builder: (_) => ChangeNotifierProvider.value(
-      value: context.read<TeacherCourseScreenProvider>(),
-      child: SessionFormSheet(existing: existing, courseId: course.id),
-    ),
-  );
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Section header
@@ -87,8 +75,8 @@ void _showAddSheet(BuildContext context, TeacherCourse course,
 
 class _SectionHeader extends StatelessWidget {
   final VoidCallback onAdd;
-
-  const _SectionHeader({required this.onAdd});
+  final int sessionCount;
+  const _SectionHeader({required this.onAdd, required this.sessionCount});
 
   @override
   Widget build(BuildContext context) {
@@ -105,12 +93,29 @@ class _SectionHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(
+          Text(
+            'sessions'.tr,
+            style: context.colors.h3.copyWith(fontSize: 15),
+          ),
+          if(sessionCount>0)
+          Container(
+            padding: const EdgeInsets.symmetric(
+                horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: context.colors.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(20),
+            ),
             child: Text(
-              'sessions'.tr,
-              style: context.colors.h3.copyWith(fontSize: 15),
+              '$sessionCount',
+              style: TextStyle(
+                fontFamily: 'Tajawal',
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: context.colors.primary,
+              ),
             ),
           ),
+          Spacer(),
           _AddButton(onTap: onAdd),
         ],
       ),
