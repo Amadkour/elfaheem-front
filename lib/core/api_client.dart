@@ -1,18 +1,17 @@
 library;
 
-import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
-import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/main.dart'; // navigatorKey
+import 'package:flutter_education_app/main.dart';
 
 // ── Exception ─────────────────────────────────────────────────────────────────
 
@@ -34,7 +33,7 @@ class ApiException implements Exception {
 // ── Token Storage ─────────────────────────────────────────────────────────────
 
 class TokenStorage {
-  static const _accessKey = 'access_token';
+  static const _accessKey  = 'access_token';
   static const _refreshKey = 'refresh_token';
 
   Future<void> save({required String access, required String refresh}) async {
@@ -57,87 +56,145 @@ class TokenStorage {
 }
 
 // ── ApiClient ─────────────────────────────────────────────────────────────────
+//
+// Unified: every method (GET, POST, PUT, DELETE, multipart) goes through Dio.
+// No more split between package:http and Dio — one interceptor chain,
+// one timeout configuration, one token-refresh flow.
+//
+// Timeout strategy:
+//   connectTimeout  30s  — time to open the TCP connection
+//   sendTimeout      0   — unlimited send time (large file uploads)
+//   receiveTimeout   0   — unlimited receive time (large file downloads)
+//
+// For normal JSON calls we override receiveTimeout to 30s at the call site.
+// Chunk uploads use the unlimited defaults so Dio never interrupts a slow upload.
 
 class ApiClient {
   ApiClient._();
 
   static final ApiClient instance = ApiClient._();
-
   factory ApiClient() => instance;
 
   static const String _base = AppConfig.baseUrl;
-  static const Duration _timeout = Duration(seconds: 30);
+
+  // Public so room.dart can read the base URL for the JS compositor
+  String get baseUrl => _base;
 
   final _storage = TokenStorage();
 
-  // ── Dio (used for multipart only) ─────────────────────────────────────────
+  // ── Dio instance ──────────────────────────────────────────────────────────
 
-  late final Dio dio = _buildDio();
+  late final Dio _dio = _buildDio();
+
+  /// Kept for external code that accessed `apiClient.dio` directly.
+  Dio get dio => _dio;
 
   Dio _buildDio() {
-    final dio = Dio(BaseOptions(
-      baseUrl: _base,
-      connectTimeout: _timeout,
-      receiveTimeout: _timeout,
+    final d = Dio(BaseOptions(
+      baseUrl:        _base,
+      connectTimeout: const Duration(seconds: 30),
+      // sendTimeout and receiveTimeout default to null (unlimited).
+      // Normal calls override receiveTimeout to 30s via _jsonOpts().
+      // File upload/download calls leave them unlimited.
+      sendTimeout:    null,
+      receiveTimeout: null,
       receiveDataWhenStatusError: true,
+      headers: {
+        HttpHeaders.acceptHeader:          'application/json',
+        HttpHeaders.acceptLanguageHeader:  AppConfig.lang,
+      },
     ));
 
-    dio.interceptors.add(InterceptorsWrapper(
-      // inject token
+    d.interceptors.add(InterceptorsWrapper(
+      // ── Inject Bearer token ────────────────────────────────────────────
       onRequest: (options, handler) async {
         final token = await _storage.accessToken;
-        if (token != null) {
+        if (token != null && options.extra['auth'] != false) {
           options.headers['Authorization'] = 'Bearer $token';
         }
         handler.next(options);
       },
-      // on 401 → refresh once → retry
+
+      // ── 401 → refresh once → retry ────────────────────────────────────
       onError: (error, handler) async {
-        if (error.response?.statusCode == 401) {
+        if (error.response?.statusCode == 401 &&
+            error.requestOptions.extra['auth'] != false &&
+            error.requestOptions.extra['_retried'] != true) {
           if (await _tryRefresh()) {
             try {
-              final retried = await dio.request(
-                error.requestOptions.path,
-                data: error.requestOptions.data,
-                queryParameters: error.requestOptions.queryParameters,
-                options: Options(
-                  method: error.requestOptions.method,
-                  headers: error.requestOptions.headers,
-                ),
-              );
+              final opts = error.requestOptions
+                ..headers['Authorization'] =
+                    'Bearer ${await _storage.accessToken}'
+                ..extra['_retried'] = true;
+              final retried = await _dio.fetch(opts);
               return handler.resolve(retried);
             } catch (_) {}
           }
-          // refresh failed → go to login
           await _redirectToLogin();
         }
         handler.next(error);
       },
+
+      // ── Log responses ─────────────────────────────────────────────────
+      onResponse: (response, handler) {
+        log('[${response.requestOptions.path}] ${response.statusCode} '
+            '${response.data.runtimeType}');
+        handler.next(response);
+      },
     ));
 
-    return dio;
+    return d;
   }
 
-  // ── package:http helpers ──────────────────────────────────────────────────
+  // ── Options helpers ───────────────────────────────────────────────────────
 
-  Future<Map<String, String>> _headers({bool auth = true}) async {
-    return {
-      HttpHeaders.contentTypeHeader: 'application/json',
-      HttpHeaders.acceptHeader: 'application/json',
-      HttpHeaders.acceptLanguageHeader: AppConfig.lang,
-      if (auth) 'Authorization': 'Bearer ${await _storage.accessToken}',
-    };
-  }
+  /// Options for normal JSON calls — 30s receive timeout, JSON content-type.
+  Options _jsonOpts({bool auth = true, String method = 'GET'}) => Options(
+    method:         method,
+    contentType:    Headers.jsonContentType,
+    receiveTimeout: const Duration(seconds: 30),
+    extra:          {'auth': auth},
+  );
 
-  Future<http.Response> _send(
-      Future<http.Response> Function(http.Client) fn,
-      ) async {
-    final client = http.Client();
-    try {
-      return await fn(client).timeout(_timeout);
-    } finally {
-      client.close();
+  /// Options for file uploads/downloads — no receive timeout.
+  Options _fileOpts({bool auth = true, String method = 'POST'}) => Options(
+    method:  method,
+    extra:   {'auth': auth},
+    // sendTimeout / receiveTimeout intentionally left null = unlimited
+  );
+
+  // ── Response handler ──────────────────────────────────────────────────────
+
+  Future<dynamic> _handle(Response res) async {
+    final status = res.statusCode ?? 0;
+    final path   = res.requestOptions.path;
+
+    if (status == 204) return true;
+
+    if (status == 401) {
+      await _redirectToLogin();
+      return null;
     }
+
+    if (status == 403) {
+      navigatorKey.currentState?.pushNamed('/verify');
+      return null;
+    }
+
+    if (status >= 200 && status < 300) {
+      return res.data;
+    }
+
+    // Error response
+    String message = 'Request failed';
+    final body = res.data;
+    if (body is Map && body['detail'] != null) {
+      final detail = body['detail'];
+      message = detail is String
+          ? detail
+          : (detail as List).map((e) => e['msg']).join(', ');
+    }
+    throw ApiException(statusCode: status, message: message, body: body);
   }
 
   // ── Token refresh ─────────────────────────────────────────────────────────
@@ -145,90 +202,28 @@ class ApiClient {
   Future<bool> _tryRefresh() async {
     final refresh = await _storage.refreshToken;
     if (refresh == null) return false;
-
     try {
-      final uri = Uri.parse('$_base/api/v1/auth/refresh')
-          .replace(queryParameters: {'refresh_token': refresh});
-
-      final res = await _send(
-            (c) async => c.post(uri, headers: await _headers(auth: false)),
+      final res = await _dio.post(
+        '/api/v1/auth/refresh',
+        queryParameters: {'refresh_token': refresh},
+        options: Options(extra: {'auth': false, '_retried': true}),
       );
-
       if (res.statusCode == 200) {
-        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        final data = res.data as Map<String, dynamic>;
         await _storage.save(
-          access: data['access_token'] as String,
+          access:  data['access_token']  as String,
           refresh: data['refresh_token'] as String? ?? refresh,
         );
         return true;
       }
     } catch (_) {}
-
     return false;
   }
 
   Future<void> _redirectToLogin() async {
     await _storage.clear();
-    log("redirect to login===============>");
+    log('redirect to login ──────────────────────────────>');
     navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (_) => false);
-  }
-
-  // ── Response handler ──────────────────────────────────────────────────────
-
-  Future<dynamic> _handle(dynamic res) async {
-    final int statusCode;
-    final String requestPath;
-    dynamic body;
-    if (res is http.Response) {
-      statusCode = res.statusCode;
-      requestPath = res.request?.url.path ?? '';
-      body = res.body.isNotEmpty ? jsonDecode(res.body) : null;
-    } else if (res is Response) {
-      statusCode = res.statusCode ?? 0;
-      requestPath = res.realUri.path;
-      body = res.data;
-    } else {
-      throw const ApiException(statusCode: 0, message: 'Unknown response type');
-    }
-    print("-------[$requestPath]---[ status code is ]-----[$statusCode]");
-    // ── 204 No Content ────────────────────────────────────────────────────
-    if (statusCode == 204) return true;
-
-    // ── 401 Unauthorised → clear session → login ──────────────────────────
-    if (statusCode == 401) {
-      await _redirectToLogin();
-      return null;
-    }
-
-    // ── 403 Forbidden → go to OTP / verification screen ──────────────────
-    if (statusCode == 403) {
-      navigatorKey.currentState?.pushNamed('/verify');
-      return null;
-    }
-
-    // ── 2xx success ───────────────────────────────────────────────────────
-    if (statusCode >= 200 && statusCode < 300) {
-      log('[$requestPath] ${body ?? 'null'}');
-      return body;
-    }
-
-    // ── All other errors ──────────────────────────────────────────────────
-    String message = 'Request failed';
-    if (body is Map && body['detail'] != null) {
-      final detail = body['detail'];
-      message = detail is String
-          ? detail
-          : (detail as List).map((e) => e['msg']).join(', ');
-    }
-    throw ApiException(statusCode: statusCode, message: message, body: body);
-  }
-
-  // ── URI builder ───────────────────────────────────────────────────────────
-
-  Uri _uri(String path, [Map<String, dynamic>? params]) {
-    final q = params?.map((k, v) => MapEntry(k, v?.toString() ?? ''));
-    return Uri.parse('$_base$path')
-        .replace(queryParameters: (q?.isEmpty ?? true) ? null : q);
   }
 
   // ── GET ───────────────────────────────────────────────────────────────────
@@ -238,22 +233,11 @@ class ApiClient {
         Map<String, dynamic>? queryParams,
         bool auth = true,
       }) async {
-    var res = await _send(
-          (c) async =>
-          c.get(_uri(path, queryParams), headers: await _headers(auth: auth)),
+    final res = await _dio.get(
+      path,
+      queryParameters: queryParams,
+      options: _jsonOpts(auth: auth),
     );
-    // Mirror the Dio interceptor: on 401 try refresh once then redirect
-    if (res.statusCode == 401 && auth) {
-      if (await _tryRefresh()) {
-        res = await _send(
-              (c) async => c.get(_uri(path, queryParams),
-              headers: await _headers(auth: auth)),
-        );
-      } else {
-        await _redirectToLogin();
-        return null;
-      }
-    }
     return _handle(res);
   }
 
@@ -265,27 +249,12 @@ class ApiClient {
         Map<String, dynamic>? queryParams,
         bool auth = true,
       }) async {
-    var res = await _send(
-          (c) async => c.post(
-        _uri(path, queryParams),
-        headers: await _headers(auth: auth),
-        body: body != null ? jsonEncode(body) : null,
-      ),
+    final res = await _dio.post(
+      path,
+      data:            body,
+      queryParameters: queryParams,
+      options:         _jsonOpts(auth: auth, method: 'POST'),
     );
-    if (res.statusCode == 401 && auth) {
-      if (await _tryRefresh()) {
-        res = await _send(
-              (c) async => c.post(
-            _uri(path, queryParams),
-            headers: await _headers(auth: auth),
-            body: body != null ? jsonEncode(body) : null,
-          ),
-        );
-      } else {
-        await _redirectToLogin();
-        return null;
-      }
-    }
     return _handle(res);
   }
 
@@ -297,27 +266,12 @@ class ApiClient {
         Map<String, dynamic>? queryParams,
         bool auth = true,
       }) async {
-    var res = await _send(
-          (c) async => c.put(
-        _uri(path, queryParams),
-        headers: await _headers(auth: auth),
-        body: body != null ? jsonEncode(body) : null,
-      ),
+    final res = await _dio.put(
+      path,
+      data:            body,
+      queryParameters: queryParams,
+      options:         _jsonOpts(auth: auth, method: 'PUT'),
     );
-    if (res.statusCode == 401 && auth) {
-      if (await _tryRefresh()) {
-        res = await _send(
-              (c) async => c.put(
-            _uri(path, queryParams),
-            headers: await _headers(auth: auth),
-            body: body != null ? jsonEncode(body) : null,
-          ),
-        );
-      } else {
-        await _redirectToLogin();
-        return null;
-      }
-    }
     return _handle(res);
   }
 
@@ -328,109 +282,139 @@ class ApiClient {
         Map<String, dynamic>? queryParams,
         bool auth = true,
       }) async {
-    var res = await _send(
-          (c) async => c.delete(_uri(path, queryParams),
-          headers: await _headers(auth: auth)),
+    final res = await _dio.delete(
+      path,
+      queryParameters: queryParams,
+      options:         _jsonOpts(auth: auth, method: 'DELETE'),
     );
-    if (res.statusCode == 401 && auth) {
-      if (await _tryRefresh()) {
-        res = await _send(
-              (c) async => c.delete(_uri(path, queryParams),
-              headers: await _headers(auth: auth)),
-        );
-      } else {
-        await _redirectToLogin();
-        return null;
-      }
-    }
     return _handle(res);
   }
 
-  // ── Upload image (Dio multipart) ──────────────────────────────────────────
+  // ── Upload image ──────────────────────────────────────────────────────────
 
   Future<dynamic> uploadImage(
       String path, {
         required XFile file,
         String fieldName = 'file',
       }) async {
-    final ext = p.extension(file.path).replaceFirst('.', '').toLowerCase();
+    final ext  = p.extension(file.path).replaceFirst('.', '').toLowerCase();
     final mime = _imageMime(ext);
-    final bytes = await file.readAsBytes();
     final name = p.basename(file.path).isNotEmpty
         ? p.basename(file.path)
         : 'upload.${ext.isEmpty ? 'jpg' : ext}';
+    final bytes = await file.readAsBytes();
 
-    final res = await dio.post(
-      _uri(path).toString(),
+    final res = await _dio.post(
+      path,
       data: FormData.fromMap({
         fieldName: MultipartFile.fromBytes(
           bytes,
-          filename: name,
+          filename:    name,
           contentType: MediaType.parse(mime),
         ),
       }),
+      options: _fileOpts(),
     );
     return _handle(res);
   }
 
-  // ── POST multipart (fields + file) ───────────────────────────────────────
+  // ── POST multipart ────────────────────────────────────────────────────────
+  //
+  // Supports both in-memory bytes and on-disk file streaming.
+  // For chunk uploads always prefer [filePath] — it streams from disk and
+  // never triggers a receive timeout because sendTimeout is unlimited.
+  //
+  // Parameters:
+  //   filePath  — path to a file on disk (preferred: streams, low memory use)
+  //   fileBytes — fallback when no file is on disk (e.g. web blob)
+  //
+  // Both [fileField] + ([filePath] or [fileBytes]) are required.
 
   Future<dynamic> postMultipart(
       String path, {
         required Map<String, String> fields,
         required String fileField,
         required String fileName,
-        required Uint8List fileBytes,
+        String?    filePath,    // preferred: stream from disk, no receive timeout
+        Uint8List? fileBytes,  // fallback: in-memory bytes
+        bool auth = true,
       }) async {
-    final ext = p.extension(fileName).replaceFirst('.', '').toLowerCase();
+    assert(filePath != null || fileBytes != null,
+    'postMultipart: provide filePath or fileBytes');
+
+    final ext  = p.extension(fileName).replaceFirst('.', '').toLowerCase();
     final mime = _fileMime(ext);
 
-    final res = await dio.post(
-      _uri(path).toString(),
-      data: FormData.fromMap({
-        ...fields,
-        fileField: MultipartFile.fromBytes(
-          fileBytes,
-          filename: fileName,
-          contentType: MediaType.parse(mime),
-        ),
-      }),
+    MultipartFile multipartFile;
+    if (filePath != null && File(filePath).existsSync()) {
+      // Stream from disk — memory-efficient and no timeout issues
+      multipartFile = await MultipartFile.fromFile(
+        filePath,
+        filename:    fileName,
+        contentType: MediaType.parse(mime),
+      );
+    } else {
+      // Fallback: bytes (web, or when file was already deleted)
+      multipartFile = MultipartFile.fromBytes(
+        fileBytes!,
+        filename:    fileName,
+        contentType: MediaType.parse(mime),
+      );
+    }
+
+    final form = FormData.fromMap({
+      ...fields,
+      fileField: multipartFile,
+    });
+
+    final res = await _dio.post(
+      path,
+      data:    form,
+      options: _fileOpts(auth: auth),   // unlimited send + receive timeout
     );
     return _handle(res);
   }
 
-  // ── Token helpers (called by AuthProvider) ────────────────────────────────
+  // ── Token helpers ─────────────────────────────────────────────────────────
 
-  Future<void> saveTokens({required String access, required String refresh}) =>
-      _storage.save(access: access, refresh: refresh);
+  Future<void> saveTokens({
+    required String access,
+    required String refresh,
+  }) => _storage.save(access: access, refresh: refresh);
 
   Future<void> clearTokens() => _storage.clear();
+
+  Future<String?> get accessToken => _storage.accessToken;
 
   // ── MIME helpers ──────────────────────────────────────────────────────────
 
   static String _imageMime(String ext) => switch (ext) {
-    'png' => 'image/png',
+    'png'  => 'image/png',
     'webp' => 'image/webp',
-    'gif' => 'image/gif',
-    _ => 'image/jpeg',
+    'gif'  => 'image/gif',
+    _      => 'image/jpeg',
   };
 
   static String _fileMime(String ext) => switch (ext) {
-    'png' => 'image/png',
-    'webp' => 'image/webp',
-    'gif' => 'image/gif',
-    'jpg' || 'jpeg' => 'image/jpeg',
-    'pdf' => 'application/pdf',
-    'doc' => 'application/msword',
-    'docx' =>
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'xls' => 'application/vnd.ms-excel',
-    'xlsx' =>
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'ppt' => 'application/vnd.ms-powerpoint',
-    'pptx' =>
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    'txt' => 'text/plain',
-    _ => 'application/octet-stream',
+    'png'          => 'image/png',
+    'webp'         => 'image/webp',
+    'gif'          => 'image/gif',
+    'jpg' || 'jpeg'=> 'image/jpeg',
+    'pdf'          => 'application/pdf',
+    'doc'          => 'application/msword',
+    'docx'         => 'application/vnd.openxmlformats-officedocument'
+        '.wordprocessingml.document',
+    'xls'          => 'application/vnd.ms-excel',
+    'xlsx'         => 'application/vnd.openxmlformats-officedocument'
+        '.spreadsheetml.sheet',
+    'ppt'          => 'application/vnd.ms-powerpoint',
+    'pptx'         => 'application/vnd.openxmlformats-officedocument'
+        '.presentationml.presentation',
+    'txt'          => 'text/plain',
+    'mp4'          => 'video/mp4',
+    'm4a'          => 'audio/mp4',
+    'webm'         => 'video/webm',
+    'ogg'          => 'audio/ogg',
+    _              => 'application/octet-stream',
   };
 }

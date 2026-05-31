@@ -17,25 +17,39 @@ import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/rating_widget.dart';
 import '../../shared/session/progress_banner.dart';
 import '../../teacher/courses/course_form_screen.dart';
-import '../../teacher/home/teacher_models.dart';
 import '../../teacher/sessions/components/session_form_sheet.dart';
 import 'components/course_details_section.dart';
 import 'components/course_hero.dart';
 import 'components/course_stats_row.dart';
 import 'components/sessions_section.dart';
 
-class TeacherSessionsScreen extends StatelessWidget {
-
+class TeacherSessionsScreen extends StatefulWidget {
   const TeacherSessionsScreen({super.key, this.expandDetails});
+
   final bool? expandDetails;
+
+  @override
+  State<TeacherSessionsScreen> createState() => _TeacherSessionsScreenState();
+}
+
+class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
+  @override
+  void initState() {
+    Future.microtask(() {
+      if (mounted) {
+        context.read<TeacherCourseScreenProvider>().refresh();
+      }
+    });
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
     // Scope the provider to this route. Disposed automatically on pop.
     return ChangeNotifierProvider.value(
-      value:context.read<TeacherCourseScreenProvider>()
-        ..refresh(), // kick off sessions load immediately
-      child:  _TeacherSessionsView(expandDetails:expandDetails,),
+      value: context.read<TeacherCourseScreenProvider>(),
+      // kick off sessions load immediately
+      child: _TeacherSessionsView(expandDetails: widget.expandDetails),
     );
   }
 }
@@ -46,6 +60,7 @@ class TeacherSessionsScreen extends StatelessWidget {
 
 class _TeacherSessionsView extends StatelessWidget {
   const _TeacherSessionsView({this.expandDetails});
+
   final bool? expandDetails;
 
   // ── Navigation helpers ────────────────────────────────────────────────────
@@ -82,72 +97,71 @@ class _TeacherSessionsView extends StatelessWidget {
     return BasePage(
       useWebCard: true,
       child: SafeArea(
-        child:RefreshIndicator(
-                color: context.colors.primary,
-                backgroundColor: context.colors.surface,
-                onRefresh: () => provider.refresh(),
-                child: CustomScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  slivers: [
-                    // ── Hero ──────────────────────────────────────────────────
-                    SliverToBoxAdapter(
-                      child: CourseHero(
-                        course: provider.course,
-                        onBack: () => Navigator.maybePop(context),
-                        onEditCourse: () => _openEditCourse(context),
-                        onRefresh: () => provider.refresh(),
-                      ),
-                    ),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: DetailCard(
-                          key: Key('${Random().nextDouble()}'),
-                          expanded:expandDetails?? provider.sessionCount<2,
-                            icon: CupertinoIcons.list_bullet_below_rectangle,
-                            title: 'course_details'.tr,
-                            color: const Color(0xFF4DA6FF),
-                            children: [
-                              // ── Rating ────────────────────────────────────────────────
-                              Padding(
-                                padding:
-                                    const EdgeInsets.fromLTRB(16, 14, 16, 0),
-                                child: RatingWidget(
-                                  type: RateType.course,
-                                  sourceId: provider.course.id.toString(),
-                                  canEdit: false,
-                                  compact: false,
-                                ),
-                              ),
-                              Padding(
-                                padding:
-                                    const EdgeInsets.fromLTRB(20, 14, 20, 4),
-                                child: ProgressBanner(
-                                  progress: provider.course.progress,
-                                  total: provider.course.expectedHours.toInt(),
-                                  complete: provider.course.totalHours.toInt(),
-                                ),
-                              ),
-                              CourseStatsRow(
-                                course: provider.course,
-                                sessionCount: provider.sessionCount,
-                              ),
-
-                              CourseDetailsSection(course: provider.course),
-                            ]),
-                      ),
-                    ),
-                    // ── Sessions header + list / loading / empty ──────────────
-
-                    ...buildSessionsSlivers(
-                      context,
-                      course: provider.course,
-                      provider: provider,
-                      onAdd: () => _openAddSheet(context),
-                    ),
-                  ],
+        child: RefreshIndicator(
+          color: context.colors.primary,
+          backgroundColor: context.colors.surface,
+          onRefresh: () => provider.refresh(),
+          child: CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              // ── Hero ──────────────────────────────────────────────────
+              SliverToBoxAdapter(
+                child: CourseHero(
+                  course: provider.course,
+                  onBack: () => Navigator.maybePop(context),
+                  onEditCourse: () => _openEditCourse(context),
+                  onRefresh: () => provider.refresh(),
                 ),
               ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: DetailCard(
+                    key: Key('${Random().nextDouble()}'),
+                    expanded: expandDetails ?? provider.sessionCount < 2,
+                    icon: CupertinoIcons.list_bullet_below_rectangle,
+                    title: 'course_details'.tr,
+                    color: const Color(0xFF4DA6FF),
+                    children: [
+                      // ── Rating ────────────────────────────────────────────────
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                        child: RatingWidget(
+                          type: RateType.course,
+                          sourceId: provider.course.id.toString(),
+                          canEdit: false,
+                          compact: false,
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
+                        child: ProgressBanner(
+                          progress: provider.course.progress,
+                          total: provider.course.expectedHours.toInt(),
+                          complete: provider.course.totalHours.toInt(),
+                        ),
+                      ),
+                      CourseStatsRow(
+                        course: provider.course,
+                        sessionCount: provider.sessionCount,
+                      ),
+
+                      CourseDetailsSection(course: provider.course),
+                    ],
+                  ),
+                ),
+              ),
+
+              // ── Sessions header + list / loading / empty ──────────────
+              ...buildSessionsSlivers(
+                context,
+                course: provider.course,
+                provider: provider,
+                onAdd: () => _openAddSheet(context),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

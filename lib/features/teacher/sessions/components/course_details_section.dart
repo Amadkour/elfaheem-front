@@ -145,7 +145,6 @@ class _DetailCardState extends State<DetailCard>
       duration: const Duration(milliseconds: 250),
     );
     _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
-    print("----------------->${widget.expanded}");
     if (widget.expanded) {
       _expanded = true;
       _ctrl.forward();
