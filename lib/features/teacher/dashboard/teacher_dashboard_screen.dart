@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
 import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboard_provider.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
@@ -82,39 +81,45 @@ class _State extends State<TeacherDashboardScreen> {
       builder: (context, _) {
         TeacherDashboardProvider provider = context
             .watch<TeacherDashboardProvider>();
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final unread = context.watch<NotificationsProvider>().unreadCount;
-
-            final w = constraints.maxWidth;
-            if (w >= 900) {
-              return WideShell(
-                currentIndex: provider.currentTab,
-                onTap: (i) {
-                  if (mounted) provider.onChangeTab(i);
-                },
-                dashboardItems: dashboardItems,
-                unreadCount: unread,
-              );
-            }
-            if (kIsWeb && w >= 600) {
-              return RailShell(
-                currentIndex: provider.currentTab,
-                onTap: (i) {
-                  if (mounted) provider.onChangeTab(i);
-                },
-                dashboardItems: dashboardItems,
-                unreadCount: unread,
-              );
-            }
-            return MobileShell(
-              currentIndex: provider.currentTab,
-              onTap: (i) {
-                if (mounted) provider.onChangeTab(i);
-              },
-              dashboardItems: dashboardItems,
-            );
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (_,__){
+            provider.onChangeTab(0);
           },
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final unread = context.watch<NotificationsProvider>().unreadCount;
+
+              final w = constraints.maxWidth;
+              if (w >= 900) {
+                return WideShell(
+                  currentIndex: provider.currentTab,
+                  onTap: (i) {
+                    if (mounted) provider.onChangeTab(i);
+                  },
+                  dashboardItems: dashboardItems,
+                  unreadCount: unread,
+                );
+              }
+              if (kIsWeb && w >= 600) {
+                return RailShell(
+                  currentIndex: provider.currentTab,
+                  onTap: (i) {
+                    if (mounted) provider.onChangeTab(i);
+                  },
+                  dashboardItems: dashboardItems,
+                  unreadCount: unread,
+                );
+              }
+              return MobileShell(
+                currentIndex: provider.currentTab,
+                onTap: (i) {
+                  if (mounted) provider.onChangeTab(i);
+                },
+                dashboardItems: dashboardItems,
+              );
+            },
+          ),
         );
       },
     );
