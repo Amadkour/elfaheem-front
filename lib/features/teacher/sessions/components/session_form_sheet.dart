@@ -30,7 +30,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
   final _descCtrl = TextEditingController();
   final _durCtrl = TextEditingController(text: '60');
   final _orderCtrl = TextEditingController(text: '0');
-  String _type = 'pre-recorded';
+  String _type = 'live';
   DateTime? _scheduled;
 
   bool get _isEdit => widget.existing != null;
@@ -331,12 +331,13 @@ class _TypeSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final types = [
-      (
-        'pre-recorded',
-        'pre_recorded_type'.tr,
-        Icons.play_circle_outline_rounded,
-      ),
+
       ('live', 'live_type'.tr, Icons.live_tv_rounded),
+      (
+      'pre-recorded',
+      'pre_recorded_type'.tr,
+      Icons.play_circle_outline_rounded,
+      ),
     ];
 
     return Column(

@@ -139,6 +139,7 @@ class ApiClient {
       onResponse: (response, handler) {
         log('[${response.requestOptions.path}] ${response.statusCode} '
             '${response.data.runtimeType}');
+        log(response.data.toString());
         handler.next(response);
       },
     ));
