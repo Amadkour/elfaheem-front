@@ -137,9 +137,12 @@ class ApiClient {
 
       // ── Log responses ─────────────────────────────────────────────────
       onResponse: (response, handler) {
-        log('[${response.requestOptions.path}] ${response.statusCode} '
+        if(AppConfig.showLogs) {
+          log('[${response.requestOptions.path}] ${response.statusCode} '
             '${response.data.runtimeType}');
-        log(response.data.toString());
+          log(response.data.toString());
+
+        }
         handler.next(response);
       },
     ));
@@ -223,8 +226,30 @@ class ApiClient {
 
   Future<void> _redirectToLogin() async {
     await _storage.clear();
-    log('redirect to login ──────────────────────────────>');
+    if(AppConfig.showLogs) {
+      log('redirect to login ──────────────────────────────>');
+    }
     navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (_) => false);
+  }
+
+  // ── Version check ─────────────────────────────────────────────────────────
+
+  /// GET /app/version-check?version=x.y.z&platform=android|ios|web
+  /// Returns the raw JSON map from the server.
+  Future<Map<String, dynamic>> checkVersion({
+    required String version,
+    required String platform,
+  }) async {
+    final res = await _dio.get(
+      '/app/version-check',
+      queryParameters: {'version': version, 'platform': platform},
+      options: Options(
+        receiveTimeout: const Duration(seconds: 15),
+        extra: {'auth': false},   // public endpoint — no token needed
+      ),
+    );
+    final data = await _handle(res);
+    return (data as Map<String, dynamic>?) ?? {};
   }
 
   // ── GET ───────────────────────────────────────────────────────────────────
