@@ -4,6 +4,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_theme.dart';
 import '../models.dart';
@@ -118,7 +119,7 @@ class StudentAttendanceWidget extends StatelessWidget {
   String _fmt(String? iso) {
     if (iso == null) return '—';
     try {
-      final dt = DateTime.parse(iso).toLocal();
+      final dt = (iso).toLocalSaTime;
       return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     } catch (_) {
       return iso;

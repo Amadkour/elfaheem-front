@@ -3,10 +3,10 @@ library;
 
 import 'package:flutter_education_app/features/category/categories_provider.dart';
 
+import '../../utils/helpers.dart';
 import '../../utils/widget/rating_widget.dart';
 import '../category/model.dart';
 import '../teacher/home/teacher_models.dart';
-import '../shared/session/material/session_material_model.dart';
 
 enum CourseStatus { all, inProgress, completed }
 
@@ -77,10 +77,10 @@ class SessionModel {
             ? RatingSummary.fromJson(j['rate'] as Map<String, dynamic>)
             : null,
         scheduledAt: j['scheduled_at'] != null
-            ? DateTime.parse(j['scheduled_at'] as String)
+            ? (j['scheduled_at'] as String).toLocalSaTime
             : null,
         createdAt: j['created_at'] != null
-            ? DateTime.parse(j['created_at'] as String)
+            ? (j['created_at'] as String).toLocalSaTime
             : DateTime.now(),
         recordingUrl: j['recording_url'] as String? ?? '',
         recordingStatus: j['recording_status'] as String? ?? '',
@@ -184,10 +184,10 @@ class TeacherSessionItem {
       description: j['description'] as String?,
       type: j['type'] as String?,
       scheduledAt: j['scheduled_at'] != null
-          ? DateTime.parse(j['scheduled_at'] as String)
+          ? (j['scheduled_at'] as String).toLocalSaTime
           : null,
       createdAt: j['created_at'] != null
-          ? DateTime.parse(j['created_at'] as String)
+          ? (j['created_at'] as String).toLocalSaTime
           : DateTime.now(),
       durationMinutes: j['duration_minutes'] as int? ?? 0,
       order: j['order'] as int? ?? 0,
@@ -280,7 +280,7 @@ class TeacherProfileData {
         isActive: j['is_active'] as bool,
         loginTimes: j['login_times'] as int,
         registrationStep: j['registration_step'] as String,
-        createdAt: DateTime.parse(j['created_at'] as String),
+        createdAt: (j['created_at'] as String).toLocalSaTime,
         teacherProfile: j['teacher_profile'] != null
             ? TeacherProfileDetail.fromJson(
                 j['teacher_profile'] as Map<String, dynamic>)
@@ -325,7 +325,7 @@ class TeacherProfileDetail {
         teachingType: j['teaching_type'] as String,
         paymentType: j['payment_type'] as String,
         about: j['about'] as String?,
-        createdAt: DateTime.parse(j['created_at'] as String),
+        createdAt: (j['created_at'] as String).toLocalSaTime,
       );
 }
 

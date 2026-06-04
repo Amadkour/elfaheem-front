@@ -203,7 +203,7 @@ class WideShell extends StatelessWidget {
                                         fontSize: 17)),
                                 Text('منصة التعلم الذكي',
                                     style: TextStyle(
-                                        fontFamily: 'Tajawal',
+                                        fontFamily: 'tajawal',
                                         color:
                                             Colors.white.withValues(alpha: 0.4),
                                         fontSize: 10)),

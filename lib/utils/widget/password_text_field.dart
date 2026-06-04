@@ -32,7 +32,7 @@ class MyPasswordTextField extends StatelessWidget {
         textInputAction: TextInputAction.next,
         obscureText: obscurePassword,
         style:  TextStyle(
-            fontFamily: 'Tajawal',
+            fontFamily: 'tajawal',
             fontWeight: FontWeight.w500,
             fontSize: 15,
             color: context.colors.textDark),
@@ -43,7 +43,7 @@ class MyPasswordTextField extends StatelessWidget {
           hint: Text(
             label,
             style:  TextStyle(
-                fontFamily: 'Tajawal',
+                fontFamily: 'tajawal',
                 fontWeight: FontWeight.w600,
                 color:  context.colors.textDark),
             textDirection: TextDirection.rtl,

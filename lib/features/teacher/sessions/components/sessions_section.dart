@@ -108,7 +108,7 @@ class _SectionHeader extends StatelessWidget {
             child: Text(
               '$sessionCount',
               style: TextStyle(
-                fontFamily: 'Tajawal',
+                fontFamily: 'tajawal',
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color: context.colors.primary,
@@ -153,7 +153,7 @@ class _AddButton extends StatelessWidget {
             style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.w700,
-              fontFamily: 'Tajawal',
+              fontFamily: 'tajawal',
               fontSize: 12,
             ),
           ),
@@ -251,7 +251,7 @@ class _EmptyState extends StatelessWidget {
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
-                    fontFamily: 'Tajawal',
+                    fontFamily: 'tajawal',
                     fontSize: 15,
                   ),
                 ),

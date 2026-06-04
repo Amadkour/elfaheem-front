@@ -41,7 +41,7 @@ class MyPrimaryButton extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 16,
                   color: Colors.white,
-                  fontFamily: 'Tajawal',
+                  fontFamily: 'tajawal',
                   fontWeight: FontWeight.bold,
                 ),
               ),

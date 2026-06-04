@@ -25,85 +25,82 @@ class CourseDetailsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!_hasAny) return const SizedBox.shrink();
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Section label ──────────────────────────────────────────────
-          Row(
-            children: [
-              Container(
-                width: 4,
-                height: 18,
-                decoration: BoxDecoration(
-                  gradient: context.colors.primaryGradient,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Section label ──────────────────────────────────────────────
+        Row(
+          children: [
+            Container(
+              width: 4,
+              height: 18,
+              decoration: BoxDecoration(
+                gradient: context.colors.primaryGradient,
+                borderRadius: BorderRadius.circular(2),
               ),
-              const SizedBox(width: 10),
-              Text(
-                'course_details'.tr,
-                style: context.colors.h3.copyWith(fontSize: 14),
-              ),
-            ],
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'course_details'.tr,
+              style: context.colors.h3.copyWith(fontSize: 14),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // ── Cards ──────────────────────────────────────────────────────
+        if (course.schedules.isNotEmpty)
+          DetailCard(
+            expanded: false,
+            icon: Icons.calendar_month_rounded,
+            title: 'weekly_schedule'.tr,
+            color: const Color(0xFF4DA6FF),
+            children: course.schedules
+                .map((s) => _ScheduleRow(schedule: s))
+                .toList(),
           ),
-          const SizedBox(height: 12),
 
-          // ── Cards ──────────────────────────────────────────────────────
-          if (course.schedules.isNotEmpty)
-            DetailCard(
-              expanded: false,
-              icon: Icons.calendar_month_rounded,
-              title: 'weekly_schedule'.tr,
-              color: const Color(0xFF4DA6FF),
-              children: course.schedules
-                  .map((s) => _ScheduleRow(schedule: s))
-                  .toList(),
-            ),
-
-          if (course.prerequisites.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            DetailCard(
-              expanded: false,
-              icon: Icons.checklist_rounded,
-              title: 'prerequisites'.tr,
-              color: const Color(0xFFFF9F43),
-              children: course.prerequisites
-                  .map((p) => _BulletRow(text: p.title))
-                  .toList(),
-            ),
-          ],
-
-          if (course.tools.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            DetailCard(
-              expanded: false,
-              icon: Icons.build_rounded,
-              title: 'required_tools'.tr,
-              color: const Color(0xFF1DB954),
-              children: course.tools
-                  .map((t) => _BulletRow(text: t.name))
-                  .toList(),
-            ),
-          ],
-
-          if (course.certificates.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            DetailCard(
-              expanded: false,
-              icon: Icons.workspace_premium_rounded,
-              title: 'certificates'.tr,
-              color: const Color(0xFFFFD700),
-              children: course.certificates
-                  .map((c) => _CertificateRow(cert: c))
-                  .toList(),
-            ),
-          ],
-
-          const SizedBox(height: 4),
+        if (course.prerequisites.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          DetailCard(
+            expanded: false,
+            icon: Icons.checklist_rounded,
+            title: 'prerequisites'.tr,
+            color: const Color(0xFFFF9F43),
+            children: course.prerequisites
+                .map((p) => _BulletRow(text: p.title))
+                .toList(),
+          ),
         ],
-      ),
+
+        if (course.tools.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          DetailCard(
+            expanded: false,
+            icon: Icons.build_rounded,
+            title: 'required_tools'.tr,
+            color: const Color(0xFF1DB954),
+            children: course.tools
+                .map((t) => _BulletRow(text: t.name))
+                .toList(),
+          ),
+        ],
+
+        if (course.certificates.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          DetailCard(
+            expanded: false,
+            icon: Icons.workspace_premium_rounded,
+            title: 'certificates'.tr,
+            color: const Color(0xFFFFD700),
+            children: course.certificates
+                .map((c) => _CertificateRow(cert: c))
+                .toList(),
+          ),
+        ],
+
+        const SizedBox(height: 4),
+      ],
     );
   }
 }
@@ -211,7 +208,7 @@ class _DetailCardState extends State<DetailCard>
                     child: Text(
                       widget.title,
                       style: TextStyle(
-                        fontFamily: 'Tajawal',
+                        fontFamily: 'tajawal',
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         color: context.colors.textDark,
@@ -231,7 +228,7 @@ class _DetailCardState extends State<DetailCard>
                     child: Text(
                       '${widget.children.length}',
                       style: TextStyle(
-                        fontFamily: 'Tajawal',
+                        fontFamily: 'tajawal',
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: widget.color,
@@ -308,7 +305,7 @@ class _ScheduleRow extends StatelessWidget {
           child: Text(
             schedule.dayLabel,
             style: const TextStyle(
-              fontFamily: 'Tajawal',
+              fontFamily: 'tajawal',
               fontSize: 12,
               fontWeight: FontWeight.w700,
               color: Color(0xFF4DA6FF),
@@ -325,7 +322,7 @@ class _ScheduleRow extends StatelessWidget {
         Text(
           '${schedule.startTime} – ${schedule.endTime}',
           style: TextStyle(
-            fontFamily: 'Tajawal',
+            fontFamily: 'tajawal',
             fontSize: 12,
             fontWeight: FontWeight.w600,
             color: context.colors.textDark,
@@ -355,7 +352,7 @@ class _BulletRow extends StatelessWidget {
           child: Text(
             text,
             style: TextStyle(
-              fontFamily: 'Tajawal',
+              fontFamily: 'tajawal',
               fontSize: 13,
               color: context.colors.textDark,
               height: 1.4,
@@ -386,7 +383,7 @@ class _CertificateRow extends StatelessWidget {
               Text(
                 cert.title,
                 style: TextStyle(
-                  fontFamily: 'Tajawal',
+                  fontFamily: 'tajawal',
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: context.colors.textDark,
@@ -397,7 +394,7 @@ class _CertificateRow extends StatelessWidget {
                 Text(
                   cert.description!,
                   style: TextStyle(
-                    fontFamily: 'Tajawal',
+                    fontFamily: 'tajawal',
                     fontSize: 11,
                     color: context.colors.textMedium,
                     height: 1.4,

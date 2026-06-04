@@ -18,10 +18,22 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
 
-    <!-- ── Foreground Service + Screen Share (Android 14+ mandatory) ── -->
+    <!-- ── Foreground Service + Screen Share / Recording (Android 14+ mandatory) ── -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- Required on Android 14+ for mic-only phase-1 recording (ACTION_START_MIC_ONLY). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+
+    <!--
+        CAPTURE_AUDIO_OUTPUT — required for AudioPlaybackCaptureConfiguration
+        (internal/system audio capture on Android 10+).
+        This is a *signature* permission: it is only granted on release builds
+        signed with the same certificate as the system, OR on debug builds on
+        devices that grant it (most Android 10+ devices do in debug mode).
+        On production you must request this via the Play Console Media capability.
+    -->
+    <uses-permission android:name="android.permission.CAPTURE_AUDIO_OUTPUT" />
 
     <!-- ── Screen always-on + battery ── -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -81,22 +93,30 @@
             </intent-filter>
         </activity>
 
-        <!-- ── Screen recording service (existing) ── -->
+        <!--
+            ScreenCaptureService — handles BOTH:
+              • LiveKit FGS screen-share (existing, started with plain Intent)
+              • Native screen+audio recorder (new, started with ACTION_START + MediaProjection data)
+
+            foregroundServiceType must include BOTH mediaProjection AND mediaProjection
+            already covers screen capture. dataSync is kept for the chunk-upload work.
+        -->
+        <!--
+            foregroundServiceType breakdown:
+              mediaProjection — screen capture (ACTION_START / screen-share FGS)
+              microphone      — mic-only phase-1 recording (ACTION_START_MIC_ONLY)
+                                REQUIRED on Android 14+ or the FGS start throws
+              dataSync        — chunk upload HTTP work
+        -->
         <service
             android:name=".ScreenCaptureService"
             android:exported="false"
-            android:foregroundServiceType="dataSync|mediaProjection" />
+            android:foregroundServiceType="mediaProjection|microphone|dataSync" />
 
-        <!-- ══════════════════════════════════════════════════════════════
-             Background AUDIO playback service (video_player package)
-             Required so VideoPlayerController keeps playing when the app
-             is minimised or the screen is locked.
-
-             foregroundServiceType="mediaPlayback" tells Android 10+
-             that this is a legitimate media playback service and grants
-             it permission to continue in the background without being
-             killed by battery-optimisation policies.
-             ══════════════════════════════════════════════════════════════ -->
+        <!--
+            Background AUDIO playback service (video_player / ExoPlayer).
+            foregroundServiceType="mediaPlayback" keeps it alive when minimised.
+        -->
         <service
             android:name="com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector"
             android:exported="false"

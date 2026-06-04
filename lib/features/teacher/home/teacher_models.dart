@@ -8,6 +8,7 @@ library;
 import 'package:flutter_education_app/features/student/models.dart';
 
 import '../../../config/app_config.dart';
+import '../../../utils/helpers.dart';
 import '../../../utils/widget/rating_widget.dart';
 import '../courses/component/teacher_stats.dart';
 
@@ -255,7 +256,7 @@ class ScheduleSession {
       isOngoing: j['is_ongoing'] as bool? ?? false,
       minutesUntilStart: j['minutes_until_start'] as int?,
       minutesUntilEnd: j['minutes_until_end'] as int?,
-      scheduledDate:j['scheduled_date']!=null? DateTime.parse(j['scheduled_date'] as String):DateTime.now(),
+      scheduledDate:j['scheduled_date']!=null? (j['scheduled_date'] as String).toLocalSaTime:DateTime.now(),
       durationMinutes: j['duration_minutes'] as int? ??0 ,
       maxStudents: j['max_students'] as int?,
 

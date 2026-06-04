@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../config/storage_service.dart';
 import '../../core/api_client.dart';
 import '../../core/base_provider.dart';
+import '../../utils/helpers.dart';
 import '../category/categories_provider.dart';
 import '../shared/notification/notification_service.dart';
 
@@ -48,7 +49,7 @@ class UserModel {
         phone: j['phone'] as String?,
         lastLogin: j['last_login'] == null
             ? DateTime.now()
-            : DateTime.parse(j['last_login'] as String),
+            : (j['last_login'] as String).toLocalSaTime,
         country: j['country'] as String?,
         dob: j['dob'] as String?,
         bio: j['bio'] as String?,

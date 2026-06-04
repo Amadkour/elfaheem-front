@@ -2965,5 +2965,13 @@
   "video_not_available": {
     "en": "Video is not available yet",
     "ar": "الفيديو غير متاح بعد"
+  },
+  "are_you_sure_to_delete_account": {
+    "en": "Are you sure to delete your account ؟",
+    "ar": "هل انت متاكد من حذف الحساب ؟"
+  },
+  "your_account_will_deleted_successfully_through_14_days": {
+    "en": "Your account will deleted successfully through 14 days",
+    "ar": "سوف يتم حذف الحساب نهائيا خلال 14  يوم"
   }
 }

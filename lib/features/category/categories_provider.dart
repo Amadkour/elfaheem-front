@@ -18,6 +18,8 @@
 library;
 
 
+import 'package:flutter_education_app/config/app_config.dart';
+
 import '../../core/api_client.dart';
 import '../../core/base_provider.dart';
 import 'model.dart';
@@ -42,7 +44,7 @@ class CategoryModel {
   factory CategoryModel.fromJson(Map<String, dynamic> json) {
     return CategoryModel(
       id: json['id'].toString(),
-      name: json['name'] as String? ?? '',
+      name: json['name_${AppConfig.lang}'] as String? ?? '',
       imageUrl: json['image_url'] as String? ?? '',
     );
   }
@@ -57,7 +59,7 @@ class CategoryModel {
       Map<String, dynamic> json) {
     return {
       'id': json['id'].toString(),
-      'text': json['name'] as String? ?? '',
+      'text':json['name_${AppConfig.lang}'] as String? ?? '',
       'logo': json['image_url'] as String? ?? ''
     };
   }

@@ -46,7 +46,6 @@ class CourseHero extends StatelessWidget {
                 onTap: onBack,
               ),
               const Spacer(),
-              if (kIsWeb)
                 RefreshButton(onTap: () async => onRefresh()),
               const SizedBox(width: 10),
               _CircleBtn(
@@ -76,7 +75,7 @@ class CourseHero extends StatelessWidget {
                   child: Text(
                     course.categoryName ?? course.type,
                     style: const TextStyle(
-                      fontFamily: 'Tajawal',
+                      fontFamily: 'tajawal',
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
@@ -86,7 +85,7 @@ class CourseHero extends StatelessWidget {
               Text(
                 course.title,
                 style: const TextStyle(
-                  fontFamily: 'Tajawal',
+                  fontFamily: 'tajawal',
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
                   color: Colors.white,
@@ -101,7 +100,7 @@ class CourseHero extends StatelessWidget {
                 Text(
                   course.description!,
                   style: TextStyle(
-                    fontFamily: 'Tajawal',
+                    fontFamily: 'tajawal',
                     fontSize: 12,
                     color: Colors.white.withValues(alpha: 0.80),
                     height: 1.45,
@@ -141,7 +140,7 @@ class CourseHero extends StatelessWidget {
           ),
           child: Image.network(
             imageUrl,
-            fit: BoxFit.contain,
+            fit: BoxFit.fitWidth,
             errorBuilder: (_, __, ___) => const _GradientBackground(),
           ),
         ),
@@ -205,7 +204,7 @@ class _CircleBtn extends StatelessWidget {
               Text(
                 label!,
                 style: const TextStyle(
-                  fontFamily: 'Tajawal',
+                  fontFamily: 'tajawal',
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: Colors.white,

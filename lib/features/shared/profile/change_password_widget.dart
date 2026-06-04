@@ -482,7 +482,7 @@ class StrengthBar extends StatelessWidget {
               strengthLabel,
               key: ValueKey(strengthLabel),
               style: TextStyle(
-                fontFamily: 'Tajawal',
+                fontFamily: 'tajawal',
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: strengthColor,
@@ -527,7 +527,7 @@ class PasswordReq extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            fontFamily: 'Tajawal',
+            fontFamily: 'tajawal',
             fontSize: 12,
             color: met ? c.textDark : c.textLight,
             fontWeight: met ? FontWeight.w600 : FontWeight.w400,

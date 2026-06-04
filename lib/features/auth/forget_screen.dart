@@ -117,7 +117,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
                 Text(
                   'login'.tr,
                   style: TextStyle(
-                    fontFamily: 'Tajawal',
+                    fontFamily: 'tajawal',
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
                     color: context.colors.textDark,
@@ -132,7 +132,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
           Text(
             'forget'.tr,
             style: TextStyle(
-              fontFamily: 'Tajawal',
+              fontFamily: 'tajawal',
               fontSize: 26,
               fontWeight: FontWeight.bold,
               color: context.colors.textDark,),
@@ -141,7 +141,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
           Text(
             'forget_welcome'.tr,
             style: TextStyle(
-              fontFamily: 'Tajawal',
+              fontFamily: 'tajawal',
               fontSize: 14,
               color: context.colors.secondText,
               height: 1.6,
@@ -167,7 +167,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
               Text(
                 'reset_link_hint'.tr,
                 style: TextStyle(
-                  fontFamily: 'Tajawal',
+                  fontFamily: 'tajawal',
                   fontSize: 12,
                   color: context.colors.primaryBlue,
                 ),

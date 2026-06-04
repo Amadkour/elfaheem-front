@@ -12,20 +12,66 @@ import '../features/teacher/sessions/components/session_form_sheet.dart';
 import '../features/teacher/sessions/sessions_provider.dart';
 import '../main.dart';
 
+// ══════════════════════════════════════════════════════════════════════════════
+//  Saudi Arabia Timezone  (AST = UTC+3, no DST)
+// ══════════════════════════════════════════════════════════════════════════════
+
+/// The fixed UTC+3 offset used in Saudi Arabia (and Egypt Standard Time).
+const Duration _kAstOffset = Duration(hours: 3);
+
+/// Extension on [String] — drop-in replacement for [DateTime.parse] that
+/// returns a [DateTime] in Saudi Arabia / Egypt local time (UTC+3).
+///
+/// Usage:
+///   final dt = '2025-06-01T10:00:00Z'.toLocalSaTime();
+///   // dt is 2025-06-01 13:00:00.000+03:00
+extension SaudiDateTimeString on String {
+  /// Parse this ISO-8601 string and convert to AST (UTC+3).
+  /// Returns [DateTime.now()] in AST if parsing fails.
+  DateTime get toLocalSaTime{
+    try {
+      final parsed = DateTime.parse(this);
+      return parsed.toAst();
+    } catch (_) {
+      return DateTime.now().toAst();
+    }
+  }
+}
+
+/// Extension on [DateTime] for Saudi Arabia / Egypt time conversions.
+extension SaudiDateTime on DateTime {
+  static final _astTimeZone = DateTime.now().timeZoneOffset; // unused – kept for docs
+
+  /// Convert any [DateTime] (UTC or local) to AST (UTC+3).
+  DateTime toAst() {
+    final utc = isUtc ? this : toUtc();
+    return utc.add(_kAstOffset);
+  }
+
+  /// Format this datetime in AST and return a display string.
+  /// Falls back to the raw value if [pattern] is invalid.
+  String toAstString([String pattern = 'MMM dd, yyyy hh:mm a']) {
+    return DateFormat(pattern).format(toAst());
+  }
+
+  /// true if this datetime is in AST (offset == +03:00).
+  bool get isAst => timeZoneOffset == _kAstOffset;
+}
+
 class Helpers {
-  /// Format date to readable string
+  /// Format date to readable string (AST)
   static String formatDate(DateTime date) {
-    return DateFormat('MMM dd, yyyy').format(date);
+    return DateFormat('MMM dd, yyyy').format(date.toAst());
   }
 
-  /// Format datetime to readable string
+  /// Format datetime to readable string (AST)
   static String formatDateTime(DateTime date) {
-    return DateFormat('MMM dd, yyyy hh:mm a').format(date);
+    return DateFormat('MMM dd, yyyy hh:mm a').format(date.toAst());
   }
 
-  /// Format time
+  /// Format time (AST)
   static String formatTime(DateTime date) {
-    return DateFormat('hh:mm a').format(date);
+    return DateFormat('hh:mm a').format(date.toAst());
   }
 
   /// Format currency
@@ -72,21 +118,21 @@ class Helpers {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Directionality(
         textDirection: pageDirection,
-        child: Row(children: [
-          Icon(
-            !isError ? Icons.check_circle_rounded : Icons.error_rounded,
-            color: Colors.white,
-            size: 18,
-          ),
-          const SizedBox(width: 10),
-          Text(
-           message,
-            style: const TextStyle(
-                fontFamily: 'Tajawal',
-                color: Colors.white,
-                fontWeight: FontWeight.w600),
-          ),
-        ]),
+        child: Wrap(children: [
+            Icon(
+              !isError ? Icons.check_circle_rounded : Icons.error_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
+            const SizedBox(width: 10),
+            Text(
+              message,
+              style: const TextStyle(
+                  fontFamily: 'tajawal',
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600),
+            ),
+          ]),
       ),
       backgroundColor:
       !isError ? context.colors.success : context.colors.danger,
@@ -115,7 +161,7 @@ class Helpers {
             borderRadius: BorderRadius.circular(context.colors.radiusMedium)),
         title:  Text(confirm?? 'logout'.tr,
             style: const TextStyle(
-                fontFamily: 'Tajawal', fontWeight: FontWeight.w700)),
+                fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
         content:  Text(title??'هل أنت متأكد أنك تريد تسجيل الخروج؟',
             style: TextStyle(fontFamily: 'bahji')),
         actions: [
@@ -128,7 +174,7 @@ class Helpers {
               }            },
             child:  Text(cancel??'cancel'.tr,
                 style:  TextStyle(
-                    fontFamily: 'Tajawal', color: context.colors.textMedium)),
+                    fontFamily: 'tajawal', color: context.colors.textMedium)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -145,7 +191,7 @@ class Helpers {
             },
             child:  Text(confirm??'exit'.tr,
                 style: const TextStyle(
-                    fontFamily: 'Tajawal',
+                    fontFamily: 'tajawal',
                     color: Colors.white,
                     fontWeight: FontWeight.w700)),
           ),

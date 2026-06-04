@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_theme.dart';
 import '../../core/api_client.dart'; // adjust import path as needed
@@ -64,7 +65,7 @@ class RateResponse {
         type: RateType.values.firstWhere((e) => e.value == j['type']),
         value: j['value'] as int,
         review: j['review'] as String?,
-        createdAt: DateTime.parse(j['created_at'] as String),
+        createdAt: (j['created_at'] as String).toLocalSaTime,
       );
 }
 
@@ -447,7 +448,7 @@ class _RatingWidgetState extends State<RatingWidget>
                   Text(
                     summary.average.toStringAsFixed(1),
                     style: TextStyle(
-                      fontFamily: 'Tajawal',
+                      fontFamily: 'tajawal',
                       fontSize: 48,
                       fontWeight: FontWeight.w900,
                       color: AppTheme.accent,

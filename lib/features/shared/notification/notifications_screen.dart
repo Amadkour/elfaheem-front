@@ -300,7 +300,7 @@ class _NewBadgeIcon extends StatelessWidget {
             color: Colors.white,
             fontWeight: FontWeight.w900,
             fontSize: 12,
-            fontFamily: 'Tajawal',
+            fontFamily: 'tajawal',
           ),
         ),
       ),

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../../config/app_theme.dart';
 import '../../../core/api_client.dart';
+import '../../../utils/helpers.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 1.  API SERVICE
@@ -145,9 +146,9 @@ class EarningRow {
     platformFee: (j['platform_fee'] as num).toDouble(),
     netAmount: (j['net_amount'] as num).toDouble(),
     status: j['status'] as String,
-    earnedAt: DateTime.parse(j['earned_at'] as String),
+    earnedAt: (j['earned_at'] as String).toLocalSaTime,
     settledAt: j['settled_at'] != null
-        ? DateTime.parse(j['settled_at'] as String)
+        ? (j['settled_at'] as String).toLocalSaTime
         : null,
   );
 }
@@ -203,9 +204,9 @@ class WithdrawalRow {
     rejectedReason: j['rejected_reason'] as String?,
     bankSnapshot: j['bank_snapshot'] as Map<String, dynamic>?,
     earningsCount: (j['earnings_count'] as num?)?.toInt() ?? 0,
-    requestedAt: DateTime.parse(j['requested_at'] as String),
+    requestedAt: (j['requested_at'] as String).toLocalSaTime,
     processedAt: j['processed_at'] != null
-        ? DateTime.parse(j['processed_at'] as String)
+        ? (j['processed_at'] as String).toLocalSaTime
         : null,
   );
 

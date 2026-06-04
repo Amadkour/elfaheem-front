@@ -648,7 +648,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                             color: Colors.white,
                             fontWeight: FontWeight.w800,
                             fontSize: 15,
-                            fontFamily: 'Tajawal')),
+                            fontFamily: 'tajawal')),
                   ])),
                 )
               : const SizedBox.expand(),
@@ -844,7 +844,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
               style: const TextStyle(
                   color: Colors.white70,
                   fontSize: 11.5,
-                  fontFamily: 'Tajawal',
+                  fontFamily: 'tajawal',
                   fontWeight: FontWeight.w500)),
           const Spacer(),
 
@@ -910,7 +910,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                       style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,
-                          fontFamily: 'Tajawal',
+                          fontFamily: 'tajawal',
                           fontWeight: FontWeight.w700)),
                 ]),
               ),
@@ -935,7 +935,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       const SizedBox(height: 14),
       Text('loading_video'.tr,
           style: const TextStyle(
-              color: Colors.white60, fontSize: 13, fontFamily: 'Tajawal')),
+              color: Colors.white60, fontSize: 13, fontFamily: 'tajawal')),
     ]));
   }
 
@@ -974,7 +974,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                     style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
-                        fontFamily: 'Tajawal',
+                        fontFamily: 'tajawal',
                         fontSize: 14)),
               ]),
             ),
@@ -1251,7 +1251,7 @@ class _QualityBadge extends StatelessWidget {
           color: tierColor,
           fontSize: 10,
           fontWeight: FontWeight.w800,
-          fontFamily: 'Tajawal',
+          fontFamily: 'tajawal',
           letterSpacing: 0.4,
         ),
       ),
@@ -1290,7 +1290,7 @@ class _ActiveStreamBadge extends StatelessWidget {
                 color: color,
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
-                fontFamily: 'Tajawal')),
+                fontFamily: 'tajawal')),
       ]),
     );
   }
@@ -1386,7 +1386,7 @@ class _ControlChip extends StatelessWidget {
               style: TextStyle(
                   color: active ? Colors.white : Colors.white70,
                   fontSize: 11,
-                  fontFamily: 'Tajawal',
+                  fontFamily: 'tajawal',
                   fontWeight: FontWeight.w700)),
         ]),
       ),
@@ -1417,7 +1417,7 @@ class _GlassPill extends StatelessWidget {
               style: TextStyle(
                   color: color,
                   fontSize: 12,
-                  fontFamily: 'Tajawal',
+                  fontFamily: 'tajawal',
                   fontWeight: FontWeight.w700)),
         ]),
       );

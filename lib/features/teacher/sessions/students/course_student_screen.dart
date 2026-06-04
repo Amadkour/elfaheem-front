@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/app_config.dart';
 import '../../../../config/app_theme.dart';
+import '../../../../utils/helpers.dart';
 import '../../../../utils/widget/base_page.dart';
 import '../../../../utils/widget/search_text_field.dart';
 import '../../../teacher/home/teacher_models.dart';
@@ -101,7 +102,7 @@ class _Header extends StatelessWidget {
                 Text(
                   course.title,
                   style: TextStyle(
-                    fontFamily: 'Tajawal',
+                    fontFamily: 'tajawal',
                     fontSize: 12,
                     color: context.colors.textMedium,
                   ),
@@ -203,7 +204,7 @@ class _Stat extends StatelessWidget {
             Text(
               value,
               style: TextStyle(
-                fontFamily: 'Tajawal',
+                fontFamily: 'tajawal',
                 fontSize: 15,
                 fontWeight: FontWeight.w800,
                 color: context.colors.textDark,
@@ -212,7 +213,7 @@ class _Stat extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontFamily: 'Tajawal',
+                fontFamily: 'tajawal',
                 fontSize: 10,
                 color: context.colors.textMedium,
               ),
@@ -261,7 +262,7 @@ class _StudentList extends StatelessWidget {
             Text(
               'no_students_hint'.tr,
               style: TextStyle(
-                fontFamily: 'Tajawal',
+                fontFamily: 'tajawal',
                 fontSize: 13,
                 color: context.colors.textMedium,
               ),
@@ -320,7 +321,7 @@ class _StudentCard extends StatelessWidget {
                       child: Text(
                         student.name,
                         style: TextStyle(
-                          fontFamily: 'Tajawal',
+                          fontFamily: 'tajawal',
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                           color: context.colors.textDark,
@@ -333,7 +334,7 @@ class _StudentCard extends StatelessWidget {
                     Text(
                       '${student.progressPercentage.toStringAsFixed(0)}%',
                       style: TextStyle(
-                        fontFamily: 'Tajawal',
+                        fontFamily: 'tajawal',
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
                         color: _progressColor,
@@ -345,7 +346,7 @@ class _StudentCard extends StatelessWidget {
                 Text(
                   student.gmail,
                   style: TextStyle(
-                    fontFamily: 'Tajawal',
+                    fontFamily: 'tajawal',
                     fontSize: 11,
                     color: context.colors.textMedium,
                   ),
@@ -366,7 +367,7 @@ class _StudentCard extends StatelessWidget {
                 Text(
                   '${'joined'.tr} ${_formatDate(student.enrolledAt)}',
                   style: TextStyle(
-                    fontFamily: 'Tajawal',
+                    fontFamily: 'tajawal',
                     fontSize: 10,
                     color: context.colors.textMedium,
                   ),
@@ -381,7 +382,7 @@ class _StudentCard extends StatelessWidget {
 
   String _formatDate(String raw) {
     try {
-      final dt = DateTime.parse(raw).toLocal();
+      final dt = raw.toLocalSaTime;
       return '${dt.day}/${dt.month}/${dt.year}';
     } catch (_) {
       return raw;
@@ -432,7 +433,7 @@ class _Avatar extends StatelessWidget {
           child: Text(
             student.initials,
             style: TextStyle(
-              fontFamily: 'Tajawal',
+              fontFamily: 'tajawal',
               fontSize: 16,
               fontWeight: FontWeight.w700,
               color: _color,

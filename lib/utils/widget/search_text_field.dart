@@ -19,14 +19,14 @@ class MySearchBar extends StatelessWidget {
         controller: controller,
         textDirection: TextDirection.rtl,
         style: TextStyle(
-          fontFamily: 'Tajawal',
+          fontFamily: 'tajawal',
           fontSize: 14,
           color: context.colors.textDark,
         ),
         decoration: InputDecoration(
           hintText: hint.tr,
           hintStyle: TextStyle(
-            fontFamily: 'Tajawal',
+            fontFamily: 'tajawal',
             color: context.colors.textMedium,
             fontSize: 13,
           ),

@@ -367,14 +367,14 @@ class _PreJoinPageState extends State<PreJoinPage> with TickerProviderStateMixin
 
   // ── Device option lists ───────────────────────────────────────────────────
 
-  List<Map<String, dynamic>> get _videoOptions => _videoInputs.map((d) => {
+  List<Map<String, dynamic>> get _videoOptions => _videoInputs.map<Map<String, dynamic>>((d) => <String, dynamic>{
     'text':     d.label.isNotEmpty ? d.label : 'Camera',
     'value':    d.toString(),
     'is_front': d.label.toLowerCase().contains('front'),
     'device_id': d.deviceId,
   }).toList();
 
-  List<Map<String, dynamic>> get _audioOptions => _audioInputs.map((d) => {
+  List<Map<String, dynamic>> get _audioOptions => _audioInputs.map<Map<String, dynamic>>((d) => <String, dynamic>{
     'text':      d.label.isNotEmpty ? d.label : 'Microphone',
     'value':     d.toString(),
     'device_id': d.deviceId,
@@ -541,6 +541,7 @@ class _PreJoinPageState extends State<PreJoinPage> with TickerProviderStateMixin
                   ? 'No camera — screen share will be recorded'
                   : 'Camera is off'),
               style: TextStyle(
+                  fontFamily: 'tajawal',
                   color: _DS.textLow,
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
@@ -570,6 +571,7 @@ class _PreJoinPageState extends State<PreJoinPage> with TickerProviderStateMixin
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Ready to join?',
               style: TextStyle(
+                  fontFamily: 'tajawal',
                   color: _DS.textHigh,
                   fontSize: 19,
                   fontWeight: FontWeight.w700,
@@ -578,6 +580,7 @@ class _PreJoinPageState extends State<PreJoinPage> with TickerProviderStateMixin
           const SizedBox(height: 2),
           Text('Check your devices below',
               style: TextStyle(
+                  fontFamily: 'tajawal',
                   color: _DS.textLow,
                   fontSize: 12,
                   fontWeight: FontWeight.w400)),
@@ -609,6 +612,7 @@ class _PreJoinPageState extends State<PreJoinPage> with TickerProviderStateMixin
               const SizedBox(width: 4),
               const Text('1080p',
                   style: TextStyle(
+                      fontFamily: 'tajawal',
                       color: _DS.cyan,
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
@@ -663,6 +667,7 @@ class _PreJoinPageState extends State<PreJoinPage> with TickerProviderStateMixin
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text('ALL SET?',
                 style: TextStyle(
+                    fontFamily: 'tajawal',
                     color: _DS.textLow,
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
@@ -757,6 +762,7 @@ class _PreJoinPageState extends State<PreJoinPage> with TickerProviderStateMixin
           Text(
             sublabel,
             style: TextStyle(
+              fontFamily: 'tajawal',
               color: isActive
                   ? gradColors.first.withValues(alpha: 0.85)
                   : _DS.textLow,
@@ -850,6 +856,7 @@ class _PreJoinPageState extends State<PreJoinPage> with TickerProviderStateMixin
                   const SizedBox(width: 10),
                   const Text('Join Session',
                       style: TextStyle(
+                          fontFamily: 'tajawal',
                           color: Colors.white,
                           fontSize: 17,
                           fontWeight: FontWeight.w800,

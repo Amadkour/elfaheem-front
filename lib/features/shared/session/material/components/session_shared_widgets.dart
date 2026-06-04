@@ -230,7 +230,7 @@ class SessionActionBtn extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontFamily: 'Tajawal',
+                fontFamily: 'tajawal',
                 fontSize: 11.5,
                 fontWeight: FontWeight.w700,
                 color: textColor,

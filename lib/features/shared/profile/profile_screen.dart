@@ -5,6 +5,7 @@
 /// ─────────────────────────────────────────────────────────────────────────────
 library;
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/profile/components/setting_group.dart';
 import 'package:flutter_education_app/features/shared/profile/student_favorite_screen.dart';
@@ -252,12 +253,12 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: SettingsGroup(
                       title: 'exit'.tr,
-                      itemBackground:c.dangerTint,
+                      itemBackground:c.danger.withAlpha(30),
                       children: [
                         SettingsTile(
                           icon: Icons.logout,
-                          iconBg: c.danger.withValues(alpha:0.6),
-                          iconColor: Colors.white,
+                          iconBg: c.dangerTint,
+                          iconColor: c.danger,
                           label: 'logout'.tr,
                          onTap:() async {
                            final ok = await Helpers.confirmDialog(context);
@@ -268,11 +269,11 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                         ),
                         SettingsTile(
                           icon: Icons.delete,
-                          iconBg: c.danger.withValues(alpha:0.6),
-                          iconColor: Colors.white,
+                          iconBg: c.dangerTint,
+                          iconColor: c.danger,
                           label: 'delete_account_title'.tr,
                           onTap:() async {
-                            final ok = await Helpers.confirmDialog(context,title: "are_you_share_to_delete_account".tr,confirm: "delete");
+                            final ok = await Helpers.confirmDialog(context,title: "are_you_sure_to_delete_account".tr,confirm: "delete".tr);
                             if (ok == true && context.mounted) {
                               Helpers.showMessage( 'your_account_will_deleted_successfully_through_14_days'.tr);
                               await Future.delayed(Duration(seconds: 5));

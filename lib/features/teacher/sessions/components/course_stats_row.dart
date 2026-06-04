@@ -57,7 +57,6 @@ class CourseStatsRow extends StatelessWidget {
     ];
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: context.colors.surface,
@@ -121,7 +120,7 @@ class _StatChip extends StatelessWidget {
         Text(
           item.value,
           style: TextStyle(
-            fontFamily: 'Tajawal',
+            fontFamily: 'tajawal',
             fontSize: 14,
             fontWeight: FontWeight.w800,
             color: context.colors.textDark,
@@ -131,7 +130,7 @@ class _StatChip extends StatelessWidget {
         Text(
           item.label,
           style: TextStyle(
-            fontFamily: 'Tajawal',
+            fontFamily: 'tajawal',
             fontSize: 10,
             decoration:
                 item.onTap == null ? null : TextDecoration.underline,

@@ -470,7 +470,7 @@ class _MobileHero extends StatelessWidget {
           Text(
             p.name.isNotEmpty ? p.name : '—',
             style: const TextStyle(
-              fontFamily: 'Tajawal',
+              fontFamily: 'tajawal',
               fontSize: 20,
               fontWeight: FontWeight.w700,
               color: Colors.white,
@@ -480,7 +480,7 @@ class _MobileHero extends StatelessWidget {
           Text(
             p.email,
             style: TextStyle(
-              fontFamily: 'Tajawal',
+              fontFamily: 'tajawal',
               fontSize: 13,
               color: Colors.white.withValues(alpha: 0.75),
             ),
@@ -525,7 +525,7 @@ class _AvatarCircle extends StatelessWidget {
       child: Text(
         initial,
         style: TextStyle(
-          fontFamily: 'Tajawal',
+          fontFamily: 'tajawal',
           fontSize: size * 0.38,
           fontWeight: FontWeight.w700,
           color: c.primary,

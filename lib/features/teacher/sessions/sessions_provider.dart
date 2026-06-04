@@ -57,7 +57,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
   List<TeacherSessionItem> _sessions = [];
   List<TeacherSessionItem> get sessions => List.unmodifiable(_sessions);
   int get sessionCount => _sessions.length;
-
+  bool get openCourseDetails=> !isLoading && sessionCount==0;
   Future<void> fetchSessions() async {
     final result =
     await run(() => _api.get('/api/v1/courses/${_course.id}/sessions'));

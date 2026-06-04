@@ -193,7 +193,6 @@ class NotificationsProvider extends BaseProvider {
           .map((e) => NotificationModel.fromJson(e as Map<String, dynamic>))
           .cast<NotificationModel>()
           .toList();
-      print('page length is: ${page.length}');
       _all.addAll(page);
       _skip += page.length;
       _hasMore = page.length == _pageSize;

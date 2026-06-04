@@ -158,7 +158,7 @@ class _LoginScreenState extends State<LoginScreen> {
           Text(
             'login'.tr,
             style: TextStyle(
-              fontFamily: 'Tajawal',
+              fontFamily: 'tajawal',
               fontSize: 26,
               fontWeight: FontWeight.bold,
               color: context.colors.textDark,
@@ -167,7 +167,7 @@ class _LoginScreenState extends State<LoginScreen> {
           Text(
             'login_welcome'.tr,
             style: TextStyle(
-              fontFamily: 'Tajawal',
+              fontFamily: 'tajawal',
               fontSize: 22,
               fontWeight: FontWeight.bold,
               color: context.colors.secondText,
@@ -202,7 +202,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Text(
                 'forget_password'.tr,
                 style: TextStyle(
-                  fontFamily: 'Tajawal',
+                  fontFamily: 'tajawal',
                   fontSize: 13,
                   color: context.colors.primaryBlue,
                   fontWeight: FontWeight.w500,

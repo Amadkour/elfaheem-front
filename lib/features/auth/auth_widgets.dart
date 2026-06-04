@@ -79,7 +79,7 @@ class AuthSidebar extends StatelessWidget {
                               color: Colors.white,
                               fontSize: 18,
                               fontWeight: FontWeight.w600,
-                              fontFamily: 'Tajawal',
+                              fontFamily: 'tajawal',
                             ),
                           ),
                           Text(
@@ -88,7 +88,7 @@ class AuthSidebar extends StatelessWidget {
                               color: Colors.white.withValues(alpha: 0.5),
                               fontSize: 11,
                               letterSpacing: 1.2,
-                              fontFamily: 'Tajawal',
+                              fontFamily: 'tajawal',
                             ),
                           ),
                         ],
@@ -105,7 +105,7 @@ class AuthSidebar extends StatelessWidget {
                       color: Colors.white,
                       fontSize: 36,
                       fontWeight: FontWeight.bold,
-                      fontFamily: 'Tajawal',
+                      fontFamily: 'tajawal',
                       height: 1.2,
                     ),
                   ),
@@ -115,7 +115,7 @@ class AuthSidebar extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.65),
                       fontSize: 14,
-                      fontFamily: 'Tajawal',
+                      fontFamily: 'tajawal',
                       height: 1.7,
                     ),
                   ),
@@ -201,7 +201,7 @@ class _SidebarFeature extends StatelessWidget {
               style: TextStyle(
                 color: Colors.white.withValues(alpha:0.8),
                 fontSize: 13,
-                fontFamily:  'Tajawal',
+                fontFamily:  'tajawal',
               ),
             ),
           ),
@@ -239,7 +239,7 @@ class _TrustBadge extends StatelessWidget {
               style: TextStyle(
                 color: Colors.white.withValues(alpha:0.7),
                 fontSize: 11,
-                fontFamily:  'Tajawal',
+                fontFamily:  'tajawal',
               ),
             ),
           ],
@@ -290,7 +290,7 @@ class IconTextField extends StatelessWidget {
           controller: controller,
           keyboardType: keyboard,
           style:  TextStyle(
-            fontFamily: 'Tajawal',
+            fontFamily: 'tajawal',
             fontSize: 14,
             color: context.colors.textDark,
 
@@ -299,7 +299,7 @@ class IconTextField extends StatelessWidget {
             prefixIcon: Icon(icon, size: 18, color: const Color(0xFF9CA3AF)),
             hintText: label,
             hintStyle:  TextStyle(
-              fontFamily: 'Tajawal',
+              fontFamily: 'tajawal',
               fontSize: 14,
               color: context.colors.textDark,
 
@@ -367,7 +367,7 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
           controller: widget.controller,
           obscureText: _obscure,
           style:  TextStyle(
-            fontFamily: 'Tajawal',
+            fontFamily: 'tajawal',
             fontSize: 14,
             color: context.colors.textDark,
           ),
@@ -392,7 +392,7 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
             ),
             hintText: '••••••••',
             hintStyle:  TextStyle(
-              fontFamily: 'Tajawal',
+              fontFamily: 'tajawal',
               fontSize: 14,
               color: context.colors.textDark,
 
@@ -469,7 +469,7 @@ class PrimaryButton extends StatelessWidget {
                   Text(
                     label,
                     style: const TextStyle(
-                      fontFamily: 'Tajawal',
+                      fontFamily: 'tajawal',
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
@@ -493,7 +493,7 @@ class SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) => Text(
         label.toUpperCase(),
         style: const TextStyle(
-          fontFamily: 'Tajawal',
+          fontFamily: 'tajawal',
           fontSize: 11,
           fontWeight: FontWeight.w600,
           color: _kMuted,
@@ -521,7 +521,7 @@ class LinkRow extends StatelessWidget {
           Text(
             message,
             style: const TextStyle(
-              fontFamily: 'Tajawal',
+              fontFamily: 'tajawal',
               fontSize: 14,
               color: _kMuted,
             ),
@@ -532,7 +532,7 @@ class LinkRow extends StatelessWidget {
             child: Text(
               linkText,
               style:  TextStyle(
-                fontFamily: 'Tajawal',
+                fontFamily: 'tajawal',
                 fontSize: 14,
                 color: context.colors.primaryBlue,
                 fontWeight: FontWeight.w500,
@@ -626,7 +626,7 @@ class RolePicker extends StatelessWidget {
                     Text(
                       role['text'].toString().tr,
                       style: TextStyle(
-                        fontFamily: 'Tajawal',
+                        fontFamily: 'tajawal',
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                         color: isSelected ? context.colors.primary : context.colors.textDark,
@@ -732,7 +732,7 @@ class LangRow extends StatelessWidget {
                   Text(
                     l.tr,
                     style: TextStyle(
-                      fontFamily: 'Tajawal',
+                      fontFamily: 'tajawal',
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                       color: isActive ? context.colors.primary : _kMuted,

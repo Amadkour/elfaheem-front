@@ -216,7 +216,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(width: 4),
               Text('login'.tr,
                   style: TextStyle(
-                      fontFamily: 'Tajawal',
+                      fontFamily: 'tajawal',
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
                       color: c.textDark)),
@@ -226,14 +226,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
           Text('create_account'.tr,
               style: TextStyle(
-                  fontFamily: 'Tajawal',
+                  fontFamily: 'tajawal',
                   fontSize: 26,
                   fontWeight: FontWeight.bold,
                   color: c.textDark)),
           const SizedBox(height: 6),
           Text('registration_welcome'.tr,
               style: TextStyle(
-                  fontFamily: 'Tajawal',
+                  fontFamily: 'tajawal',
                   fontSize: 14,
                   color: c.secondText,
                   height: 1.5)),
@@ -462,7 +462,7 @@ class _TermsAcceptRow extends StatelessWidget {
             child: Text.rich(
               TextSpan(
                 style: TextStyle(
-                    fontFamily: 'Tajawal',
+                    fontFamily: 'tajawal',
                     fontSize: 13,
                     color: c.textMedium,
                     height: 1.5),
@@ -475,7 +475,7 @@ class _TermsAcceptRow extends StatelessWidget {
                       child: Text(
                         'الشروط والأحكام',
                         style: TextStyle(
-                          fontFamily: 'Tajawal',
+                          fontFamily: 'tajawal',
                           fontSize: 13,
                           color: c.primary,
                           fontWeight: FontWeight.w700,
@@ -503,7 +503,7 @@ class _TermsAcceptRow extends StatelessWidget {
               child: Text(
                 accepted ? 'إعادة القراءة' : 'اقرأ الآن',
                 style: const TextStyle(
-                    fontFamily: 'Tajawal',
+                    fontFamily: 'tajawal',
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     color: Colors.white),
@@ -677,7 +677,7 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
             onPressed: () => p.loadTerms(context, forceRefresh: true),
             icon: const Icon(Icons.refresh_rounded),
             label: const Text('إعادة المحاولة',
-                style: TextStyle(fontFamily: 'Tajawal')),
+                style: TextStyle(fontFamily: 'tajawal')),
           ),
         ]),
       );
@@ -849,7 +849,7 @@ class _ScrollHintState extends State<_ScrollHint>
           child: Text(
             'يرجى قراءة جميع الشروط والتمرير إلى الأسفل لتفعيل زر القبول',
             style: TextStyle(
-                fontFamily: 'Tajawal',
+                fontFamily: 'tajawal',
                 fontSize: 12,
                 color: c.primary,
                 fontWeight: FontWeight.w600),
@@ -915,7 +915,7 @@ class _BottomBar extends StatelessWidget {
                     child: Text(
                       'لقد قرأت جميع الشروط، يمكنك الموافقة الآن',
                       style: TextStyle(
-                          fontFamily: 'Tajawal',
+                          fontFamily: 'tajawal',
                           fontSize: 12,
                           color: c.success,
                           fontWeight: FontWeight.w600),
@@ -939,7 +939,7 @@ class _BottomBar extends StatelessWidget {
                   label: const Text(
                     'أوافق على الشروط والأحكام',
                     style: TextStyle(
-                        fontFamily: 'Tajawal',
+                        fontFamily: 'tajawal',
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: Colors.white),
@@ -963,7 +963,7 @@ class _BottomBar extends StatelessWidget {
                 label: Text(
                   'انتقل إلى نهاية الشروط',
                   style: TextStyle(
-                      fontFamily: 'Tajawal',
+                      fontFamily: 'tajawal',
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: c.primary),

@@ -212,7 +212,7 @@ class AppTheme {
     fontSize: 28,
     fontWeight: FontWeight.w800,
     color: textDark,
-    fontFamily: 'Tajawal',
+    fontFamily: 'tajawal',
     letterSpacing: -0.5,
     height: 1.2,
   );
@@ -220,70 +220,70 @@ class AppTheme {
     fontSize: 22,
     fontWeight: FontWeight.w700,
     color: textDark,
-    fontFamily: 'Tajawal',
+    fontFamily: 'tajawal',
     letterSpacing: -0.3,
   );
   static const TextStyle h3 = TextStyle(
     fontSize: 17,
     fontWeight: FontWeight.w700,
     color: textDark,
-    fontFamily: 'Tajawal',
+    fontFamily: 'tajawal',
     letterSpacing: -0.2,
   );
   static const TextStyle h4 = TextStyle(
     fontSize: 15,
     fontWeight: FontWeight.w600,
     color: textDark,
-    fontFamily: 'Tajawal',
+    fontFamily: 'tajawal',
   );
   static const TextStyle small = TextStyle(
     fontSize: 8,
     fontWeight: FontWeight.w600,
     color: textDark,
-    fontFamily: 'Tajawal',
+    fontFamily: 'tajawal',
   );
   static const TextStyle body = TextStyle(
     fontSize: 14,
     fontWeight: FontWeight.w400,
     color: textMedium,
-    fontFamily: 'Tajawal',
+    fontFamily: 'tajawal',
     height: 1.65,
   );
   static const TextStyle bodyBold = TextStyle(
     fontSize: 14,
     fontWeight: FontWeight.w700,
     color: textDark,
-    fontFamily: 'Tajawal',
+    fontFamily: 'tajawal',
     height: 1.65,
   );
   static const TextStyle caption = TextStyle(
     fontSize: 12,
     color: textLight,
-    fontFamily: 'Tajawal',
+    fontFamily: 'tajawal',
     height: 1.4,
   );
   static const TextStyle label = TextStyle(
     fontSize: 13,
     fontWeight: FontWeight.w600,
     color: textMedium,
-    fontFamily: 'Tajawal',
+    fontFamily: 'tajawal',
   );
   static const TextStyle navLabelSelected = TextStyle(
-    fontFamily: 'Tajawal',
+    fontFamily: 'tajawal',
     fontWeight: FontWeight.w700,
     fontSize: 11,
   );
   static const TextStyle navLabelUnselected = TextStyle(
-    fontFamily: 'Tajawal',
+    fontFamily: 'tajawal',
     fontSize: 11,
   );
   static const TextStyle button = TextStyle(
-    fontFamily: 'Tajawal',
+    fontFamily: 'tajawal',
     fontWeight: FontWeight.w700,
     fontSize: 16,
   );
   static const TextStyle buttonSmall = TextStyle(
-    fontFamily: 'Tajawal',
+    fontFamily: 'tajawal',
     fontWeight: FontWeight.w600,
     fontSize: 14,
   );
@@ -296,7 +296,7 @@ class AppTheme {
   static ThemeData _build(Brightness brightness) {
     final dark = brightness == Brightness.dark;
     return ThemeData(
-      fontFamily: 'Tajawal',
+      fontFamily: 'tajawal',
       useMaterial3: true,
       brightness: brightness,
       scaffoldBackgroundColor: dark ? darkBackground : background,
@@ -330,11 +330,11 @@ class AppTheme {
         indicatorColor: primary,
         labelStyle: const TextStyle(
           fontWeight: FontWeight.w700,
-          fontFamily: 'Tajawal',
+          fontFamily: 'tajawal',
           fontSize: 14,
         ),
         unselectedLabelStyle:
-            const TextStyle(fontFamily: 'Tajawal', fontSize: 14),
+            const TextStyle(fontFamily: 'tajawal', fontSize: 14),
       ),
       checkboxTheme: CheckboxThemeData(
         fillColor: WidgetStateProperty.resolveWith((s) =>
@@ -382,13 +382,13 @@ class AppTheme {
         ),
         labelStyle: TextStyle(
           color: dark ? darkTextLight : textLight,
-          fontFamily: 'Tajawal',
+          fontFamily: 'tajawal',
         ),
         floatingLabelStyle:
-            const TextStyle(color: primary, fontFamily: 'Tajawal'),
+            const TextStyle(color: primary, fontFamily: 'tajawal'),
         hintStyle: TextStyle(
           color: dark ? darkTextLight : textLight,
-          fontFamily: 'Tajawal',
+          fontFamily: 'tajawal',
         ),
       );
 

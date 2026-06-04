@@ -6,6 +6,7 @@
 //      recording migration).
 //      `availableQualities` computed getter returns all playable variants.
 
+import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/rating_widget.dart';
 
 enum SessionMaterialType { image, video, pdf, document, link,recorded,recording }
@@ -146,7 +147,7 @@ class SessionMaterialModel {
       fileSize:    json['file_size']   as int?,
       key:         json['key']         as String?,
       order:       json['order']       as int? ?? 0,
-      createdAt:   DateTime.parse(json['created_at'] as String),
+      createdAt:   (json['created_at'] as String).toLocalSaTime,
       completed:   json['completed']   as bool? ?? false,
       rateSummary: json.containsKey('rate') && json['rate'] != null
           ? RatingSummary.fromJson(json['rate'] as Map<String, dynamic>)

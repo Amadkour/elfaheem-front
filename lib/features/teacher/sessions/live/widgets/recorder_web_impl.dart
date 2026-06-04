@@ -1,56 +1,61 @@
 // recorder_web_impl.dart
 // ignore_for_file: avoid_web_libraries_in_flutter
-//
-// All recording is delegated to window._ElFaheemCompositor (injected via
-// web/recorder_compositor.js). The compositor runs a canvas draw loop at
-// 30 fps mixing every active source (camera, screen, system audio, mic) into
-// one MediaRecorder, then uploads chunks directly from JS.
-//
-// Dart only needs to:
-//   • call compositor.start / stop
-//   • pass new MediaStream objects when sources appear/disappear
-//   • read back blob data for fallback (not needed — JS uploads directly)
 
 import 'dart:async';
 import 'dart:js_interop';
 import 'dart:typed_data';
+
 import 'package:web/web.dart' as web;
 
-// ── JS interop: bind to window._ElFaheemCompositor ───────────────────────────
+// ── Single top-level dispatcher ───────────────────────────────────────────────
+// recorder_compositor.js exposes window._elfaheemCompositor(cmd, ...args).
+// dart:js_interop @JS() can only bind top-level global names (no dots).
+@JS('_elfaheemCompositor')
+external JSAny? _dispatch(String cmd,
+    [JSAny? a1, JSAny? a2, JSAny? a3]);
 
-@JS('window._ElFaheemCompositor.start')
-external void _compositorStart(int sessionId, String apiUrl, String authToken);
-
-@JS('window._ElFaheemCompositor.addStream')
-external void _compositorAddStream(JSAny stream, String label);
-
-@JS('window._ElFaheemCompositor.removeStream')
-external void _compositorRemoveStream(String label);
-
-@JS('window._ElFaheemCompositor.stop')
-external JSPromise<JSAny?> _compositorStop();
-
-@JS('window._ElFaheemCompositor.isActive')
-external bool _compositorIsActive();
-
-@JS('window._ElFaheemCompositorDone')
+// JS sets this to true once all chunk uploads have finished.
+@JS('_ElFaheemCompositorDone')
 external bool get _compositorDone;
 
 @JS('MediaRecorder.isTypeSupported')
 external bool _isTypeSupported(String mimeType);
 
-// getDisplayMedia is not yet typed in package:web
 extension _MediaDevicesExt on web.MediaDevices {
   external JSPromise<web.MediaStream> getDisplayMedia([JSAny? constraints]);
 }
 
-// ── Public helpers (called from room.dart via web_rec.*) ─────────────────────
+// ── Typed compositor wrappers ─────────────────────────────────────────────────
+
+void _compositorStart(int sessionId, String apiUrl, String authToken) {
+  _dispatch('start', sessionId.toJS, apiUrl.toJS, authToken.toJS);
+}
+
+void _compositorAddStream(web.MediaStream stream, String label) {
+  _dispatch('addStream', stream as JSAny, label.toJS);
+}
+
+void _compositorRemoveStream(String label) {
+  _dispatch('removeStream', label.toJS);
+}
+
+void _compositorStop() {
+  // JS stop() is async internally; Dart polls _compositorDone below.
+  _log("----------------sss-----------------------");
+  _dispatch('stop');
+}
+
+bool _compositorIsActive() {
+  final r = _dispatch('isActive');
+  return r?.dartify() == true;
+}
+
+// ── Public helpers ────────────────────────────────────────────────────────────
 
 bool isTypeSupported(String mime) {
   try { return _isTypeSupported(mime); } catch (_) { return false; }
 }
 
-/// Mic + camera — no dialog, used at session start.
 Future<web.MediaStream?> getUserMedia({bool video = true}) async {
   final devices = web.window.navigator.mediaDevices;
   if (video) {
@@ -58,18 +63,21 @@ Future<web.MediaStream?> getUserMedia({bool video = true}) async {
       return await devices.getUserMedia(web.MediaStreamConstraints(
         audio: true.toJS,
         video: {
-          'width':     {'ideal': 1920},
-          'height':    {'ideal': 1080},
+          'width':     {'ideal': 1280},
+          'height':    {'ideal': 720},
           'frameRate': {'ideal': 30},
         }.jsify()!,
       )).toDart;
     } catch (_) {}
+    try {
+      return await devices.getUserMedia(
+        web.MediaStreamConstraints(audio: true.toJS, video: true.toJS),
+      ).toDart;
+    } catch (e) {
+      _log('getUserMedia failed: $e');
+    }
   }
-  try {
-    return await devices.getUserMedia(web.MediaStreamConstraints(
-      audio: true.toJS, video: false.toJS,
-    )).toDart;
-  } catch (_) { return null; }
+  return getAudioOnly();
 }
 
 Future<web.MediaStream?> getAudioOnly() async {
@@ -77,133 +85,139 @@ Future<web.MediaStream?> getAudioOnly() async {
     return await web.window.navigator.mediaDevices.getUserMedia(
       web.MediaStreamConstraints(audio: true.toJS, video: false.toJS),
     ).toDart;
-  } catch (_) { return null; }
+  } catch (e) {
+    _log('getAudioOnly failed: $e');
+    return null;
+  }
 }
 
-/// Screen share — only called when teacher clicks Share button.
 Future<web.MediaStream?> getDisplayMedia() async {
   try {
     final opts = web.DisplayMediaStreamOptions(
       video: web.MediaTrackConstraints(
-        width: 1920.toJS, height: 1080.toJS, frameRate: 30.toJS,
+        width: 1280.toJS, height: 720.toJS, frameRate: 30.toJS,
       ),
-      audio: true.toJS, // system audio (granted on Chrome/Edge)
+      audio: true.toJS,
     );
-
     return await web.window.navigator.mediaDevices
-        .getDisplayMedia(opts)
-        .toDart;
-  } catch (_) { return null; }
+        .getDisplayMedia(opts).toDart;
+  } catch (e) {
+    _log('getDisplayMedia failed (user cancelled?): $e');
+    return null;
+  }
 }
 
-/// Safe Object? → web.MediaStream cast across the conditional-import boundary.
 web.MediaStream? toWebMediaStream(Object? obj) {
   if (obj == null) return null;
-  try { return obj as web.MediaStream; } catch (_) { return null; }
+  try { return obj as web.MediaStream; }
+  catch (e) { _log('toWebMediaStream cast failed: $e'); return null; }
 }
 
-/// Extract a web.MediaStream from a LiveKit track Object? (dynamic dispatch).
-Object? streamFromLivekitTrack(Object? lkTrack) {
-  if (lkTrack == null) return null;
-  try {
-    final dynamic d = lkTrack;
-    // Try common LiveKit track properties
-    for (final prop in ['mediaStream', 'stream']) {
-      try {
-        final v = d[prop];
-        if (v != null) return toWebMediaStream(v);
-      } catch (_) {}
-    }
-    try {
-      final ms = d.mediaStreamTrack?.stream;
-      if (ms != null) return toWebMediaStream(ms);
-    } catch (_) {}
-  } catch (_) {}
-  return null;
+Object? streamFromLivekitTrack(Object? lkTrack) => null;
+
+void _log(String msg) {
+  // ignore: avoid_print
+  print('[web_rec] $msg');
 }
 
-// ── WebRecorder — thin Dart wrapper around the JS compositor ─────────────────
+// ── WebRecorder ───────────────────────────────────────────────────────────────
 
 class WebRecorder {
   final void Function(int size) onBlob;
 
-  int  _sessionId  = 0;
-  String _apiUrl   = '';
-  String _authToken = '';
-  bool _started    = false;
+  bool    _started       = false;
+  Object? _pendingStream;
 
   WebRecorder({required this.onBlob});
 
-  // ── Start: initialise compositor with mic/camera stream ───────────────────
-
   Future<bool> start(Object? micCamStream, String mimeType) async {
-    // Compositor is started lazily when we have the sessionId/auth.
-    // store stream for later; actual start() called from startCompositor().
-    _pendingMicCamStream = micCamStream;
+    _pendingStream = micCamStream;
     return true;
   }
 
-  Object? _pendingMicCamStream;
-
-  /// Called from _ClientRecorder.startCompositor() once we know the session.
   void startCompositor(int sessionId, String apiUrl, String authToken) {
-    _sessionId  = sessionId;
-    _apiUrl     = apiUrl;
-    _authToken  = authToken;
-    _started    = true;
-
-    _compositorStart(sessionId, apiUrl, authToken);
-
-    // Add initial mic/camera stream
-    final s = _pendingMicCamStream;
-    if (s is web.MediaStream) {
-      _compositorAddStream(s as JSAny, 'camera');
+    _started = true;
+    _log('calling compositor start() sessionId=$sessionId apiUrl=$apiUrl');
+    try {
+      _compositorStart(sessionId, apiUrl, authToken);
+    } catch (e) {
+      _log('compositorStart error: $e — is recorder_compositor.js loaded in index.html?');
+      return;
     }
-    _pendingMicCamStream = null;
-  }
 
-  // ── Add/remove sources dynamically ────────────────────────────────────────
+    final s = _pendingStream;
+    _pendingStream = null;
+    if (s is web.MediaStream) {
+      _log('adding initial camera/mic stream to compositor');
+      try { _compositorAddStream(s, 'camera'); }
+      catch (e) { _log('addStream(camera) error: $e'); }
+    } else {
+      _log('no initial media stream — compositor in screen-only mode (OK)');
+    }
+  }
 
   void addStream(Object? stream, String label) {
     if (!_started || stream == null) return;
-    try { _compositorAddStream(stream as JSAny, label); } catch (_) {}
+    try {
+      _compositorAddStream(stream as web.MediaStream, label);
+      _log('addStream($label) sent');
+    } catch (e) { _log('addStream($label) error: $e'); }
   }
 
   void removeStream(String label) {
     if (!_started) return;
-    try { _compositorRemoveStream(label); } catch (_) {}
+    try { _compositorRemoveStream(label); }
+    catch (e) { _log('removeStream($label) error: $e'); }
   }
-
-  // ── Screen share ──────────────────────────────────────────────────────────
 
   Future<void> attachScreenStream(Object? stream) async {
     if (!_started || stream == null) return;
-    // Remove old screen source, add new one
     try { _compositorRemoveStream('screen'); } catch (_) {}
-    try { _compositorAddStream(stream as JSAny, 'screen'); } catch (_) {}
+    try {
+      _compositorAddStream(stream as web.MediaStream, 'screen');
+      _log('screen stream attached to compositor');
+    } catch (e) { _log('attachScreenStream error: $e'); }
   }
 
   Future<void> detachScreenStream() async {
     if (!_started) return;
-    try { _compositorRemoveStream('screen'); } catch (_) {}
+    try { _compositorRemoveStream('screen'); _log('screen detached'); }
+    catch (e) { _log('detachScreenStream error: $e'); }
   }
 
-  // ── Stop ──────────────────────────────────────────────────────────────────
+  void requestData() {}
 
-  void requestData() {}   // compositor handles internally
-
+  /// Stop recording and wait until ALL chunks have been uploaded to the server.
+  /// This MUST complete before room.dart calls onEnd(), otherwise the server
+  /// closes the session and rejects in-flight chunk uploads with 4xx.
   Future<void> stop() async {
     if (!_started) return;
     _started = false;
-    try { await _compositorStop().toDart; } catch (_) {}
-    // Wait up to 5 min for JS uploads to complete
-    final deadline = DateTime.now().add(const Duration(minutes: 5));
+    _log('sending stop to compositor — waiting for all chunks to upload...');
+
+    try {
+      _compositorStop();
+    } catch (e) {
+      _log('compositorStop error: $e');
+    }
+
+    // Poll _ElFaheemCompositorDone — the JS sets this only after:
+    //   1. MediaRecorder has stopped (all data flushed)
+    //   2. Every pending fetch() upload has resolved
+    // Timeout: 5 minutes (same as JS side)
+    const timeout = Duration(minutes: 5);
+    final deadline = DateTime.now().add(timeout);
+
     while (!_compositorDone && DateTime.now().isBefore(deadline)) {
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
+
+    if (_compositorDone) {
+      _log('compositor drained — all chunks uploaded ✅');
+    } else {
+      _log('compositor drain TIMED OUT after 5 min ⚠️');
     }
   }
-
-  // ── drainBlobs — not used (JS uploads directly) ────────────────────────────
 
   Future<Uint8List?> drainBlobs() async => null;
 }

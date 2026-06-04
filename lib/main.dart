@@ -6,6 +6,7 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/version_check_service.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/auth/forget_screen.dart';
 import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart';
@@ -103,9 +104,22 @@ void _runApp() {
 // App widget
 // ─────────────────────────────────────────────────────────────────────────────
 
-class ElFaheemApp extends StatelessWidget {
+class ElFaheemApp extends StatefulWidget {
   const ElFaheemApp({super.key});
 
+  @override
+  State<ElFaheemApp> createState() => _ElFaheemAppState();
+}
+
+class _ElFaheemAppState extends State<ElFaheemApp> {
+  @override
+  void initState() {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // ── Version check – blocks launch if a force-update is required ──────────
+      await VersionCheckService.instance.checkOnStartup();
+    });
+    super.initState();
+  }
   @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
@@ -185,11 +199,11 @@ class ElFaheemApp extends StatelessWidget {
   }
 
   PageRoute _fade(Widget page) => PageRouteBuilder(
-        pageBuilder: (_, __, ___) => page,
-        transitionsBuilder: (_, anim, __, child) =>
-            FadeTransition(opacity: anim, child: child),
-        transitionDuration: const Duration(milliseconds: 300),
-      );
+    pageBuilder: (_, __, ___) => page,
+    transitionsBuilder: (_, anim, __, child) =>
+        FadeTransition(opacity: anim, child: child),
+    transitionDuration: const Duration(milliseconds: 300),
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -237,7 +251,7 @@ class _NotFoundScreen extends StatelessWidget {
                 )),
             Text('not_found'.tr,
                 style: TextStyle(
-                  fontFamily: 'Tajawal',
+                  fontFamily: 'tajawal',
                   fontSize: 16,
                   color: c.textMedium,
                 )),
@@ -250,7 +264,7 @@ class _NotFoundScreen extends StatelessWidget {
               ),
               child: Text('home'.tr,
                   style: TextStyle(
-                    fontFamily: 'Tajawal',
+                    fontFamily: 'tajawal',
                     color: Color(0xFF5B8FFF),
                   )),
             ),

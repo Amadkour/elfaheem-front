@@ -115,31 +115,25 @@ class _TeacherSessionsView extends StatelessWidget {
               ),
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.all(8.0),
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
                   child: DetailCard(
                     key: Key('${Random().nextDouble()}'),
-                    expanded:provider.sessionCount==0,
+                    expanded:provider.openCourseDetails,
                     icon: CupertinoIcons.list_bullet_below_rectangle,
                     title: 'course_details'.tr,
                     color: const Color(0xFF4DA6FF),
                     children: [
                       // ── Rating ────────────────────────────────────────────────
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-                        child: RatingWidget(
-                          type: RateType.course,
-                          sourceId: provider.course.id.toString(),
-                          canEdit: false,
-                          compact: false,
-                        ),
+                      RatingWidget(
+                        type: RateType.course,
+                        sourceId: provider.course.id.toString(),
+                        canEdit: false,
+                        compact: false,
                       ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
-                        child: ProgressBanner(
-                          progress: provider.course.progress,
-                          total: provider.course.expectedHours.toInt(),
-                          complete: provider.course.totalHours.toInt(),
-                        ),
+                      ProgressBanner(
+                        progress: provider.course.progress,
+                        total: provider.course.expectedHours.toInt(),
+                        complete: provider.course.totalHours.toInt(),
                       ),
                       CourseStatsRow(
                         course: provider.course,

@@ -131,7 +131,7 @@ class _CategoryGrid extends StatelessWidget {
                 child: Text(cat.name,
                     style: context.colors.caption.copyWith(
                       color: isSelected ? context.colors.primary : context.colors.textDark,
-                      fontFamily: 'Tajawal',
+                      fontFamily: 'tajawal',
                       overflow: TextOverflow.ellipsis,
                       fontWeight:
                           isSelected ? FontWeight.w700 : FontWeight.w400,
