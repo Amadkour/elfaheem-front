@@ -160,19 +160,20 @@ class MainActivity : FlutterActivity() {
                             }
                         }
 
-                        // FIX 3: Release service VirtualDisplay so flutter_webrtc can create
-                        // its own without conflict (two VirtualDisplays on one MediaProjection
-                        // causes silent frame drops or a crash on many devices).
-                        // Called from Dart AFTER upgradeToScreenRecording() and BEFORE
-                        // setScreenShareEnabled(true).
-                        "releaseVirtualDisplay" -> {
+                        // Downgrade screen+audio → mic-only specifically because LiveKit
+                        // screen share is about to start. This cleanly stops the screen
+                        // recording loop so mediaProjection has no active VirtualDisplay
+                        // when flutter_webrtc calls createVirtualDisplay(). The service
+                        // emits "micReadyForShare" when the mic loop is running and it
+                        // is safe to call setScreenShareEnabled(true).
+                        "downgradeToMicForShare" -> {
                             try {
                                 startService(Intent(this, ScreenCaptureService::class.java).apply {
-                                    action = ScreenCaptureService.ACTION_RELEASE_VIRTUAL_DISPLAY
+                                    action = ScreenCaptureService.ACTION_DOWNGRADE_TO_MIC_FOR_SHARE
                                 })
-                                Log.d(TAG, "releaseVirtualDisplay: ACTION_RELEASE_VIRTUAL_DISPLAY sent")
+                                Log.d(TAG, "downgradeToMicForShare: ACTION_DOWNGRADE_TO_MIC_FOR_SHARE sent")
                             } catch (e: Exception) {
-                                Log.e(TAG, "releaseVirtualDisplay: ${e.message}", e)
+                                Log.e(TAG, "downgradeToMicForShare: ${e.message}", e)
                             }
                             result.success(null)
                         }

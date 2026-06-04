@@ -33,6 +33,7 @@
 //   Screen content is captured live by LiveKit and stored via server-side egress
 //   or client-side from the LiveKit track (see recorder_web_impl for web path).
 
+import 'dart:async';
 import 'dart:developer';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -85,7 +86,24 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
     }
   }
 
-  // ── Android (Option B + FIX 3) ────────────────────────────────────────────
+  // ── Android (correct VirtualDisplay-free approach) ────────────────────────
+  //
+  // CORRECT FLOW:
+  //   1. Get MediaProjection grant (one dialog).
+  //   2. upgradeToScreenRecording() — service runs screen+audio loop briefly
+  //      to confirm the MediaProjection is working, emits "screenLoopStarted".
+  //   3. _downgradeToMicForShare() — sends ACTION_DOWNGRADE_TO_MIC_FOR_SHARE,
+  //      BLOCKS until service emits "micReadyForShare". At this point the screen
+  //      loop is fully stopped, the VirtualDisplay is released, and
+  //      mediaProjection has NO active VirtualDisplay.
+  //   4. setScreenShareEnabled(true) — flutter_webrtc creates its OWN
+  //      VirtualDisplay on the same running FGS. No conflict. No second dialog.
+  //
+  // WHY NOT releaseVirtualDisplay() while loop keeps running?
+  //   When the VirtualDisplay is released, the MediaCodec input surface is
+  //   detached. The next signalEndOfInputStream() or dequeueOutputBuffer()
+  //   throws, the loop catches it, sets recording=false, emits a tiny
+  //   isFinal=true chunk, and the service stops — killing the recording session.
 
   Future<void> _toggleScreenShareAndroid(
       LocalParticipant local,
@@ -99,10 +117,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
           await Future.delayed(const Duration(milliseconds: 200));
         }
 
-        // Step 2: show the ONE MediaProjection dialog (or skip if grant held).
-        // FIX 1: This now returns only AFTER startForeground(MEDIA_PROJECTION)
-        // AND getMediaProjection() have both completed in the service, so
-        // hasProjectionGrant is guaranteed true when we proceed.
+        // Step 2: One dialog — get the MediaProjection grant.
         final started = await _screenShareChannel.invokeMethod<bool>(
           'startScreenCaptureService',
         );
@@ -112,25 +127,20 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
         }
         log('[SS] Android: projection grant obtained');
 
-        // Step 3: upgrade recorder mic-only → screen+audio.
-        // Blocks until service emits "screenLoopStarted" (VirtualDisplay live).
+        // Step 3: Upgrade to screen+audio briefly — confirms the grant works
+        // and sets recMode=SCREEN_AUDIO so the service knows to release
+        // a VirtualDisplay on the next downgrade.
         await recorder?.upgradeToScreenRecording();
         log('[SS] Android: VirtualDisplay confirmed live');
 
-        // Step 4 (FIX 3): Release service VirtualDisplay BEFORE flutter_webrtc
-        // creates its own. Android only supports ONE VirtualDisplay per
-        // MediaProjection at a time on most devices. Without this release,
-        // flutter_webrtc's createVirtualDisplay() either fails silently
-        // (black/missing frames in the recording) or throws an exception that
-        // crashes the app. The service audio loop continues unaffected.
-        await _releaseServiceVirtualDisplay();
-        log('[SS] Android: service VirtualDisplay released — safe for flutter_webrtc');
+        // Step 4: Downgrade back to mic-only, BLOCKING until the screen loop
+        // is fully stopped and the VirtualDisplay is released.
+        // ONLY after this returns is it safe to call setScreenShareEnabled(true).
+        await _downgradeToMicForShare();
+        log('[SS] Android: screen loop stopped — mediaProjection free for flutter_webrtc');
 
-        // Step 5: tell LiveKit to enable screen share.
-        // flutter_webrtc now sees:
-        //   ✓ FGS running with MEDIA_PROJECTION type
-        //   ✓ No competing VirtualDisplay
-        // → No second dialog, no conflict.
+        // Step 5: Now flutter_webrtc can create its own VirtualDisplay.
+        // No conflict, no second dialog.
         await _safeNegotiate(() => local.setScreenShareEnabled(
           true,
           screenShareCaptureOptions: const ScreenShareCaptureOptions(
@@ -154,35 +164,72 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
           }
         }
 
-        log('[SS] Android: screen share fully active');
+        log('[SS] Android: screen share fully active (recording mic-only during share)');
       } catch (e) {
         log('[SS] Android start error: $e');
         showSnack('Screen sharing failed: $e');
       }
     } else {
-      // Stop screen share
+      // Stop screen share — LiveKit releases its VirtualDisplay.
       try {
         await _safeNegotiate(() => local.setScreenShareEnabled(false));
         log('[SS] Android: LiveKit screen share disabled');
       } catch (e) {
         log('[SS] Android stop setScreenShareEnabled: $e');
       }
-      // Downgrade recorder: blocks until micLoopStarted event received.
-      await recorder?.downgradeToMicOnly();
-      log('[SS] Android: screen share stopped, mic-only confirmed');
+
+      // Small delay to let flutter_webrtc fully release its VirtualDisplay
+      // before we try to create a new one via upgradeToScreenRecording().
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      // Resume screen+audio recording now that LiveKit's VirtualDisplay is gone.
+      await recorder?.upgradeToScreenRecording();
+      log('[SS] Android: screen recording resumed after share stopped');
     }
   }
 
-  // ── Release service VirtualDisplay (FIX 3) ───────────────────────────────
+  // ── Downgrade to mic-only for share (blocking) ───────────────────────────
+  //
+  // Sends ACTION_DOWNGRADE_TO_MIC_FOR_SHARE and blocks until the service emits
+  // "micReadyForShare", confirming the screen loop is stopped and the
+  // VirtualDisplay is released. flutter_webrtc must NOT call
+  // setScreenShareEnabled(true) until this returns.
 
-  Future<void> _releaseServiceVirtualDisplay() async {
+  Future<void> _downgradeToMicForShare() async {
+    final completer = Completer<void>();
+    StreamSubscription<dynamic>? sub;
+
+    const eventChannel = EventChannel(
+      'com.example.flutter_education_app/rec_events',
+    );
+    sub = eventChannel.receiveBroadcastStream().listen((event) {
+      if (event is Map && event['event'] == 'micReadyForShare') {
+        if (!completer.isCompleted) completer.complete();
+        sub?.cancel();
+      }
+    }, onError: (e) {
+      if (!completer.isCompleted) completer.completeError(e);
+      sub?.cancel();
+    });
+
     try {
-      await _recChannel.invokeMethod<void>('releaseVirtualDisplay');
+      await _recChannel.invokeMethod<void>('downgradeToMicForShare');
     } catch (e) {
-      // Non-fatal: if the service already released it (e.g. chunk boundary
-      // already passed), we just proceed.
-      log('[SS] releaseVirtualDisplay non-fatal: $e');
+      sub.cancel();
+      log('[SS] downgradeToMicForShare invoke error: $e');
+      // Non-fatal: proceed anyway — worst case flutter_webrtc races but
+      // that's no worse than the old releaseVirtualDisplay approach.
+      return;
     }
+
+    // Wait up to 15 seconds (chunkSecs=5 + 2s deadline + margin).
+    await completer.future.timeout(
+      const Duration(seconds: 15),
+      onTimeout: () {
+        sub?.cancel();
+        log('[SS] downgradeToMicForShare: timeout — proceeding anyway');
+      },
+    );
   }
 
   // ── Web ───────────────────────────────────────────────────────────────────

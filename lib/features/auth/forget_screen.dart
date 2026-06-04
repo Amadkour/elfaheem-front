@@ -25,7 +25,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
   @override
   void initState() {
     super.initState();
-    _emailController.text = 'ahmed@gmail.com';
+    // _emailController.text = 'ahmed@gmail.com';
   }
 
   @override

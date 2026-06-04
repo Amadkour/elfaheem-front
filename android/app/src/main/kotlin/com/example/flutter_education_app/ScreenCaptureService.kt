@@ -53,14 +53,16 @@ class ScreenCaptureService : Service() {
         const val CHANNEL_ID              = "screen_capture_channel"
         const val CHANNEL_NAME            = "Screen Capture"
         const val NOTIFICATION_ID         = 1001
-        const val ACTION_STOP                    = "com.example.flutter_education_app.STOP_SCREEN_CAPTURE"
-        const val ACTION_START_MIC_ONLY          = "com.example.flutter_education_app.START_MIC_ONLY"
-        const val ACTION_STORE_PROJECTION        = "com.example.flutter_education_app.STORE_PROJECTION"
-        const val ACTION_UPGRADE_TO_SCREEN       = "com.example.flutter_education_app.UPGRADE_TO_SCREEN"
-        const val ACTION_DOWNGRADE_TO_MIC        = "com.example.flutter_education_app.DOWNGRADE_TO_MIC"
-        // FIX 3: new action — releases service VirtualDisplay before flutter_webrtc
-        // creates its own, preventing the dual-VirtualDisplay crash/blackout.
-        const val ACTION_RELEASE_VIRTUAL_DISPLAY = "com.example.flutter_education_app.RELEASE_VIRTUAL_DISPLAY"
+        const val ACTION_STOP                          = "com.example.flutter_education_app.STOP_SCREEN_CAPTURE"
+        const val ACTION_START_MIC_ONLY                = "com.example.flutter_education_app.START_MIC_ONLY"
+        const val ACTION_STORE_PROJECTION              = "com.example.flutter_education_app.STORE_PROJECTION"
+        const val ACTION_UPGRADE_TO_SCREEN             = "com.example.flutter_education_app.UPGRADE_TO_SCREEN"
+        const val ACTION_DOWNGRADE_TO_MIC              = "com.example.flutter_education_app.DOWNGRADE_TO_MIC"
+        // Downgrade to mic-only specifically because LiveKit screen share is about
+        // to start. Identical to ACTION_DOWNGRADE_TO_MIC but emits "micReadyForShare"
+        // instead of "micLoopStarted", so Dart knows to call setScreenShareEnabled(true)
+        // next rather than just continuing mic-only recording.
+        const val ACTION_DOWNGRADE_TO_MIC_FOR_SHARE    = "com.example.flutter_education_app.DOWNGRADE_TO_MIC_FOR_SHARE"
         const val EXTRA_RESULT_CODE       = "resultCode"
         const val EXTRA_DATA              = "data"
         const val EXTRA_SESSION_ID        = "sessionId"
@@ -259,30 +261,53 @@ class ScreenCaptureService : Service() {
                 return START_STICKY
             }
 
-            // ── FIX 3: Release VirtualDisplay before flutter_webrtc creates its own ──
-            // Android allows only one active VirtualDisplay per MediaProjection on
-            // most devices. If our service holds a VirtualDisplay when
-            // setScreenShareEnabled(true) is called, flutter_webrtc's VirtualDisplay
-            // creation either fails silently (black recording) or crashes.
-            // Dart calls this AFTER upgradeToScreenRecording() and BEFORE
-            // setScreenShareEnabled(true).
+            // ── Downgrade to mic-only BEFORE LiveKit screen share starts ─────
+            // This is the correct fix for the dual-VirtualDisplay problem.
+            // Instead of releasing the VirtualDisplay while the screen loop keeps
+            // running (which breaks the codec and causes a tiny isFinal chunk that
+            // kills the service), we cleanly stop the entire screen+audio loop
+            // first, then emit "micReadyForShare" so Dart knows it is safe to call
+            // setScreenShareEnabled(true). flutter_webrtc will then create its own
+            // VirtualDisplay with no conflict and no second dialog.
             //
-            // The screen+audio loop continues to run after the VirtualDisplay is
-            // released — it will produce chunks with audio only until the next chunk
-            // boundary, then the loop will exit on the next stopping.set(true) from
-            // ACTION_DOWNGRADE_TO_MIC when screen share stops. This is acceptable:
-            // the primary recording source during screen share is the LiveKit egress
-            // or the client capture from the track, not the VirtualDisplay.
-            //
-            // If you want to keep recording screen during the share phase, see the
-            // comment on ACTION_DOWNGRADE_TO_MIC below — you can re-create the
-            // VirtualDisplay from the same mediaProjection after LiveKit releases its
-            // own, but that requires knowing when LiveKit has released it.
-            ACTION_RELEASE_VIRTUAL_DISPLAY -> {
-                Log.d(TAG, "ACTION_RELEASE_VIRTUAL_DISPLAY — releasing service VirtualDisplay")
-                virtualDisplay?.release()
-                virtualDisplay = null
-                // No change to recording/recMode — audio loop continues.
+            // Recording during LiveKit screen share phase = mic-only.
+            // Screen content is captured by LiveKit. When screen share ends, Dart
+            // calls upgradeToScreenRecording() again to resume screen recording.
+            ACTION_DOWNGRADE_TO_MIC_FOR_SHARE -> {
+                Log.d(TAG, "ACTION_DOWNGRADE_TO_MIC_FOR_SHARE recMode=$recMode")
+                when (recMode) {
+                    RecMode.MIC_ONLY -> {
+                        // Already mic-only — just confirm immediately.
+                        mainHandler.post { emitMicReadyForShare() }
+                    }
+                    RecMode.SCREEN_AUDIO -> {
+                        isUpgrading = true
+                        stopping.set(true)
+                        Thread {
+                            val deadline = System.currentTimeMillis() + (chunkSecs + 2) * 1000L
+                            while (recording.get() && System.currentTimeMillis() < deadline) {
+                                Thread.sleep(30)
+                            }
+                            if (recording.get()) {
+                                recording.set(false)
+                                Log.w(TAG, "DOWNGRADE_FOR_SHARE: deadline exceeded, forcing")
+                            }
+                            mainHandler.post { startForegroundNotification(isMicOnly = true) }
+                            recording.set(true)
+                            stopping.set(false)
+                            recMode = RecMode.MIC_ONLY
+                            isUpgrading = false
+                            Thread({ micOnlyLoop() }, "MicOnlyRecorder").start()
+                            // Emit AFTER mic loop is started, so Dart knows the
+                            // screen loop is fully stopped and mediaProjection is free.
+                            mainHandler.post { emitMicReadyForShare() }
+                            Log.d(TAG, "DOWNGRADE_FOR_SHARE: mic-only loop running, mediaProjection free")
+                        }.start()
+                    }
+                    RecMode.NONE -> {
+                        mainHandler.post { emitMicReadyForShare() }
+                    }
+                }
                 return START_STICKY
             }
 
@@ -388,11 +413,10 @@ class ScreenCaptureService : Service() {
                 break
             }
             if (outFile.exists() && outFile.length() > 0) {
-                // FIX: isUpgrading=true means this is a mode-switch drain chunk,
-                // NOT the final chunk of the recording. Marking it isFinal=true
-                // would cause Dart to cancel its EventChannel subscription and
-                // enter RecState.done mid-session, silently dropping all subsequent
-                // chunk events. Only set isFinal=true when we are truly stopping.
+                // Only mark isFinal=true when WE are truly stopping (not during
+                // a mode switch). During a mode switch isUpgrading=true and the
+                // recording will continue in the next loop, so this chunk is NOT
+                // the final chunk of the session.
                 val isFinal = (!recording.get() || stopping.get()) && !isUpgrading
                 uploadChunkAsync(outFile, chunkIndex, isFinal)
             }
@@ -429,8 +453,9 @@ class ScreenCaptureService : Service() {
                 break
             }
             if (outFile.exists() && outFile.length() > 0) {
-                // FIX: isUpgrading=true means this is a mode-switch drain chunk
-                // (downgrade screen→mic), not the true end of recording.
+                // Only mark isFinal=true on a real stop, not on a mode switch
+                // (downgrade to mic or downgrade-for-share). isUpgrading=true
+                // means another loop will continue after this one.
                 val isFinal = (!recording.get() || stopping.get()) && !isUpgrading
                 uploadChunkAsync(outFile, chunkIndex, isFinal)
             }
@@ -799,6 +824,11 @@ class ScreenCaptureService : Service() {
     private fun emitScreenLoopStarted() {
         Log.d(TAG, "emitScreenLoopStarted — Dart may now call releaseVirtualDisplay + setScreenShareEnabled")
         eventSink?.success(mapOf("event" to "screenLoopStarted"))
+    }
+
+    private fun emitMicReadyForShare() {
+        Log.d(TAG, "emitMicReadyForShare — screen loop stopped, mediaProjection free for flutter_webrtc")
+        eventSink?.success(mapOf("event" to "micReadyForShare"))
     }
 
     private fun emitMicLoopStarted() {

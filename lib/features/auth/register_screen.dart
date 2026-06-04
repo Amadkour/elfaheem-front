@@ -57,14 +57,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void initState() {
     super.initState();
-    _emailController.text = 'Ahmed.Madkour@it-ranks.com';
-    _fullNameController.text = 'Ahmed Madkour';
-    _phoneController.text = '01110672232';
-    _passwordController.text = 'Aa@@aA2291996';
-    _confirmedPasswordController.text = 'Aa@@aA2291996';
-
-    _passwordController.addListener(() => setState(() {}));
-    _confirmedPasswordController.addListener(() => setState(() {}));
+    // _emailController.text = 'Ahmed.Madkour@it-ranks.com';
+    // _fullNameController.text = 'Ahmed Madkour';
+    // _phoneController.text = '01110672232';
+    // _passwordController.text = 'Aa@@aA2291996';
+    // _confirmedPasswordController.text = 'Aa@@aA2291996';
+    //
+    // _passwordController.addListener(() => setState(() {}));
+    // _confirmedPasswordController.addListener(() => setState(() {}));
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AuthProvider>().loadSpecialization(context);

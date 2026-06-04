@@ -293,18 +293,25 @@ class ClientRecorder extends ChangeNotifier {
           _micLoopCompleter!.complete();
         }
 
+    // Service has stopped the screen loop and is mic-only, ready for
+    // flutter_webrtc to create its own VirtualDisplay (screen share).
+    // This event is handled in room_screen_share.dart via its own listener;
+    // we just log it here so the recorder state stays consistent.
+      case 'micReadyForShare':
+        log('[REC] micReadyForShare received — screen loop stopped, recorder mic-only');
+        _screenRecording = false;
+        notifyListeners();
+
       case 'chunkUploaded':
         _uploadedChunks++;
         _totalBytes += (event['bytes'] as int? ?? 0);
         notifyListeners();
         log('[REC] chunk #${event['chunkIndex']} uploaded '
             '(${event['bytes']}B isFinal=${event['isFinal']})');
-        // FIX: only tear down when WE initiated the stop (_stopping=true).
+        // Only tear down the event subscription when WE requested the stop.
         // The service also emits isFinal=true on mode-switch drain chunks
-        // (upgrade mic→screen, downgrade screen→mic). Without this guard,
-        // those transition chunks would cancel the EventChannel subscription
-        // mid-session, silently dropping all subsequent chunkUploaded events
-        // and causing the room to disconnect and restart.
+        // (upgrade/downgrade transitions). Without this guard those transition
+        // chunks would cancel the subscription mid-session.
         if (event['isFinal'] == true && _stopping) {
           _set(RecState.done);
           _recEventSub?.cancel();
