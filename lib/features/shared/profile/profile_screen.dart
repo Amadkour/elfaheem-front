@@ -120,10 +120,10 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                         ),
                         if (context.read<AuthProvider>().isTeacher) ...[
                           SettingsTile(
-                            icon: Icons.security,
+                            icon: Icons.wallet_outlined,
                             iconBg: c.tealTint,
                             iconColor: c.accent2,
-                            label: 'bank_accounts'.tr,
+                            label: 'my_earnings_title'.tr,
                             onTap: () => _push(const TeacherEarningsScreen()),
                           ),
                           SettingsTile(

@@ -41,7 +41,6 @@ void _compositorRemoveStream(String label) {
 
 void _compositorStop() {
   // JS stop() is async internally; Dart polls _compositorDone below.
-  _log("----------------sss-----------------------");
   _dispatch('stop');
 }
 

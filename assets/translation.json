@@ -2973,5 +2973,13 @@
   "your_account_will_deleted_successfully_through_14_days": {
     "en": "Your account will deleted successfully through 14 days",
     "ar": "سوف يتم حذف الحساب نهائيا خلال 14  يوم"
+  },
+  "donnot_have_schedule": {
+    "en": "Donn't Have Appointments",
+    "ar": "لا يوجد مواعيد اسبوعية"
+  },
+  "add_schedule": {
+    "en": "Add Schedule",
+    "ar": "اضافة ميعاد"
   }
 }

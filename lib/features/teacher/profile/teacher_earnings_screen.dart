@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../config/app_theme.dart';
 import '../../../core/api_client.dart';
 import '../../../utils/helpers.dart';
+import '../../../utils/widget/base_page.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 1.  API SERVICE
@@ -353,11 +354,9 @@ class _TeacherEarningsScreenState extends State<TeacherEarningsScreen>
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Directionality(
-      textDirection: pageDirection,
-      child: Scaffold(
-        backgroundColor: c.background,
-        body: CustomScrollView(
+    return BasePage(
+      useWebCard: true,
+      child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
             _AppBarSliver(onRefresh: _loadSummary),
@@ -397,7 +396,6 @@ class _TeacherEarningsScreenState extends State<TeacherEarningsScreen>
               ],
           ],
         ),
-      ),
     );
   }
 
