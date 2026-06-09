@@ -79,11 +79,10 @@ class ScreenCaptureService : Service() {
         const val EXTRA_IS_FINAL     = "isFinal"
         const val EXTRA_CHUNK_INDEX  = "chunkIndex"
 
-        private const val TAG         = "ScreenCaptureService"
-        private const val VIDEO_WIDTH = 1280
-        private const val VIDEO_BPS   = 2_000_000
-        private const val VIDEO_FPS   = 15
-        private const val AUDIO_BPS   = 128_000
+        private const val TAG       = "ScreenCaptureService"
+        private const val VIDEO_BPS = 2_000_000
+        private const val VIDEO_FPS = 15
+        private const val AUDIO_BPS = 128_000
 
         @Volatile var eventSink: EventChannel.EventSink? = null
         @Volatile var isRunning: Boolean = false
@@ -91,8 +90,6 @@ class ScreenCaptureService : Service() {
         @Volatile var onProjectionGrantStored: (() -> Unit)? = null
         @Volatile var onFgsPromoted: (() -> Unit)? = null
 
-        // Tracks in-flight uploadChunkAsync threads so recordLoop() keeps the
-        // FGS alive until every chunk has been uploaded before calling stopSelf().
         val pendingUploads = java.util.concurrent.atomic.AtomicInteger(0)
     }
 
@@ -112,8 +109,9 @@ class ScreenCaptureService : Service() {
     private var chunkSecs  = 5
     private var chunkIndex = 0
 
-    private var screenWidth  = VIDEO_WIDTH
-    private var screenHeight = 720
+    private var screenWidth  = 1280
+//    private var screenHeight = 720
+    private var screenHeight = 1280 * 2
     private var screenDpi    = 320
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -167,14 +165,13 @@ class ScreenCaptureService : Service() {
                     @Suppress("DEPRECATION") intent.getParcelableExtra(EXTRA_DATA)
 
                 Log.d(TAG, "ACTION_STORE_PROJECTION: resultCode=$resultCode uploadUrl=$uploadUrl")
-                // Promote FGS type to include MEDIA_PROJECTION — must happen
-                // after dialog approval and before getMediaProjection().
+                // Promote to mic+mediaProjection type now that the user has approved.
                 promoteForegroundToProjection()
                 isRunning = true
 
                 if (resultCode != 0 && data != null && !recording.get()) {
                     if (uploadUrl.isEmpty()) {
-                        Log.e(TAG, "ACTION_STORE_PROJECTION: uploadUrl empty — session params missing")
+                        Log.e(TAG, "ACTION_STORE_PROJECTION: uploadUrl empty")
                         mainHandler.post {
                             emitError("Projection received before session params")
                             onProjectionGrantStored?.invoke()
@@ -189,8 +186,7 @@ class ScreenCaptureService : Service() {
                     Thread({ recordLoop() }, "ScreenRecorder").start()
                 }
 
-                // Unblock Dart AFTER recordLoop() is launched so upgradeToScreenRecording()
-                // waits for the real screenLoopStarted, not a fake one.
+                // Unblock Dart AFTER recordLoop() thread is started.
                 mainHandler.post {
                     onProjectionGrantStored?.invoke()
                     onProjectionGrantStored = null
@@ -208,7 +204,12 @@ class ScreenCaptureService : Service() {
             // the Dart completers so the share flow isn't stuck waiting.
 
             ACTION_UPGRADE_TO_SCREEN -> {
-                Log.d(TAG, "ACTION_UPGRADE_TO_SCREEN: emitting screenLoopStarted")
+                // Called when the service is already running (reused session) and
+                // flutter_webrtc is about to call getMediaProjection() for screen share.
+                // We must promote the FGS type to include MEDIA_PROJECTION here so
+                // Android 14 allows the projection grant to be used.
+                Log.d(TAG, "ACTION_UPGRADE_TO_SCREEN: promoting FGS type and emitting screenLoopStarted")
+                promoteForegroundToProjection()
                 mainHandler.post { emitScreenLoopStarted() }
             }
 
@@ -241,9 +242,9 @@ class ScreenCaptureService : Service() {
     // ── FGS notification ──────────────────────────────────────────────────────
 
     /**
-     * Phase 1 — called during ACTION_START_MIC_ONLY, before the projection
-     * dialog.  Declares ONLY microphone type.  Android 14 rejects mediaProjection
-     * type here because the user hasn't approved the dialog yet.
+     * Phase 1 — ACTION_START_MIC_ONLY (before dialog approval).
+     * Must declare ONLY microphone. Android 14 throws SecurityException if
+     * mediaProjection type is declared before the user approves the dialog.
      */
     private fun startForegroundMicOnly() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -257,15 +258,13 @@ class ScreenCaptureService : Service() {
     }
 
     /**
-     * Phase 2 — called during ACTION_STORE_PROJECTION, after dialog approval.
-     * Promotes the running FGS to include MEDIA_PROJECTION type by calling
-     * startForeground() again with the wider OR'd type set.
+     * Phase 2 — ACTION_STORE_PROJECTION or ACTION_UPGRADE_TO_SCREEN (after approval).
+     * Promotes the running FGS to include MEDIA_PROJECTION by re-calling
+     * startForeground() with the wider OR'd type.
      *
-     * IMPORTANT: Do NOT call stopForeground() here.  Stopping the foreground
-     * state even briefly causes flutter_webrtc's FlutterRTCMediaProjectionService
-     * to lose its own FGS type, crashing the app when the teacher tries to share
-     * their screen.  Simply re-calling startForeground() with an expanded type
-     * set is the correct Android 14 promotion pattern for an already-running FGS.
+     * Do NOT call stopForeground() before this — doing so drops the FGS state
+     * and causes flutter_webrtc's FlutterRTCMediaProjectionService to crash
+     * with SecurityException when it tries to call getMediaProjection().
      */
     private fun promoteForegroundToProjection() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -288,32 +287,25 @@ class ScreenCaptureService : Service() {
 
     private fun resolveScreenMetrics() {
         val wm = getSystemService(WINDOW_SERVICE) as WindowManager
+        val rawW: Int
+        val rawH: Int
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val b = wm.currentWindowMetrics.bounds
-            var w = b.width()
-            var h = b.height()
-            if (w > VIDEO_WIDTH) {
-                val scale = VIDEO_WIDTH.toDouble() / w
-                w = VIDEO_WIDTH
-                h = (h * scale).toInt() and 0xFFFE
-            }
-            screenWidth  = w
-            screenHeight = h
+            rawW = b.width(); rawH = b.height()
         } else {
             val dm = DisplayMetrics()
             @Suppress("DEPRECATION") wm.defaultDisplay.getMetrics(dm)
-            var w = dm.widthPixels
-            var h = dm.heightPixels
-            if (w > VIDEO_WIDTH) {
-                val scale = VIDEO_WIDTH.toDouble() / w
-                w = VIDEO_WIDTH
-                h = (h * scale).toInt() and 0xFFFE
-            }
-            screenWidth  = w
-            screenHeight = h
-            screenDpi    = dm.densityDpi
+            rawW = dm.widthPixels; rawH = dm.heightPixels
+            screenDpi = dm.densityDpi
         }
-        Log.d(TAG, "Screen metrics: ${screenWidth}x${screenHeight} dpi=$screenDpi")
+        // Cap the longer edge at 1280, then align both dims to multiples of 16.
+        // H264 uses 16×16 macroblocks; a non-multiple-of-16 VirtualDisplay size
+        // causes the encoder's internal buffer to differ, producing stretching.
+        val scale = if (maxOf(rawW, rawH) > 1280) 1280.0 / maxOf(rawW, rawH) else 1.0
+        fun align16(v: Int) = (v and 0xFFF0).coerceAtLeast(16)
+        screenWidth  = align16((rawW * scale).toInt())
+        screenHeight = align16((rawH * scale).toInt())
+        Log.d(TAG, "Screen metrics: raw=${rawW}x${rawH} → recorded=${screenWidth}x${screenHeight} dpi=$screenDpi")
     }
 
     // ── Main recording loop ───────────────────────────────────────────────────
@@ -361,16 +353,13 @@ class ScreenCaptureService : Service() {
         virtualDisplay?.release()
         virtualDisplay = null
 
-        // Keep the FGS alive until every uploadChunkAsync thread finishes.
-        // Without this, Android may kill the process while chunks are still
-        // being POSTed when stopSelf() is called.
-        val drainDeadline = System.currentTimeMillis() + 120_000L
-        while (pendingUploads.get() > 0 && System.currentTimeMillis() < drainDeadline) {
+        // Keep FGS alive until all upload threads finish (max 120s).
+        val deadline = System.currentTimeMillis() + 120_000L
+        while (pendingUploads.get() > 0 && System.currentTimeMillis() < deadline) {
             Thread.sleep(200)
         }
-        if (pendingUploads.get() > 0) {
-            Log.w(TAG, "recordLoop: ${pendingUploads.get()} upload(s) still in-flight after 120s — giving up")
-        }
+        if (pendingUploads.get() > 0)
+            Log.w(TAG, "recordLoop: ${pendingUploads.get()} upload(s) still in-flight after 120s")
 
         isRunning = false
         stopSelf()
@@ -398,11 +387,11 @@ class ScreenCaptureService : Service() {
         // Attach (or reattach) the VirtualDisplay to the recorder's surface.
         val surface = recorder.surface
         if (virtualDisplay == null) {
-            // Android 14 requires a callback to be registered before createVirtualDisplay().
+            // Android 14 requires a callback registered before createVirtualDisplay().
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 mediaProjection!!.registerCallback(object : MediaProjection.Callback() {
                     override fun onStop() {
-                        Log.d(TAG, "MediaProjection.onStop — releasing virtual display")
+                        Log.d(TAG, "MediaProjection.onStop")
                         virtualDisplay?.release()
                         virtualDisplay = null
                     }
