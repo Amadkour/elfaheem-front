@@ -118,14 +118,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                           label: 'change_password'.tr,
                           onTap: () => _push(const ChangePasswordScreen()),
                         ),
-                        if (context.read<AuthProvider>().isTeacher) ...[
-                          SettingsTile(
-                            icon: Icons.wallet_outlined,
-                            iconBg: c.tealTint,
-                            iconColor: c.accent2,
-                            label: 'my_earnings_title'.tr,
-                            onTap: () => _push(const TeacherEarningsScreen()),
-                          ),
+                        if (context.read<AuthProvider>().isTeacher)
                           SettingsTile(
                             icon: Icons.person_rounded,
                             iconBg: c.dangerTint,
@@ -140,7 +133,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               stats: context.read<TeacherProvider>().stats,
                             )),
                           )
-                        ] else
+                        else
                           SettingsTile(
                             icon: Icons.favorite_rounded,
                             iconBg: c.dangerTint,
@@ -152,13 +145,8 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                           icon: Icons.account_balance_wallet_rounded,
                           iconBg: c.successTint,
                           iconColor: c.success,
-                          label: context.read<AuthProvider>().isTeacher
-                              ? 'receiving-account'.tr
-                              : 'payment-method'.tr,
-                          onTap: () => _push(
-                            context.read<AuthProvider>().isTeacher
-                                ? const TeacherPayoutScreen()
-                                : const StudentSavedMethodsScreen(),
+                          label:  'payment-method'.tr,
+                          onTap: () => _push( const StudentSavedMethodsScreen(),
                           ),
                         ),
                       ],

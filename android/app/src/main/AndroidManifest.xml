@@ -1,50 +1,45 @@
 <manifest xmlns:tools="http://schemas.android.com/tools"
     xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- ── Camera & Microphone ── -->
+    <!-- Camera & Microphone -->
     <uses-feature android:name="android.hardware.camera" />
     <uses-feature android:name="android.hardware.camera.autofocus" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
-    <!-- ── Network ── -->
+    <!-- Network -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
 
-    <!-- ── Bluetooth ── -->
+    <!-- Bluetooth -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
 
-    <!-- ── Foreground Service + Screen Share / Recording (Android 14+ mandatory) ── -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-    <!-- Required on Android 14+ for mic-only phase-1 recording (ACTION_START_MIC_ONLY). -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
-
     <!--
-        CAPTURE_AUDIO_OUTPUT — required for AudioPlaybackCaptureConfiguration
-        (internal/system audio capture on Android 10+).
-        This is a *signature* permission: it is only granted on release builds
-        signed with the same certificate as the system, OR on debug builds on
-        devices that grant it (most Android 10+ devices do in debug mode).
-        On production you must request this via the Play Console Media capability.
-    -->
-    <uses-permission android:name="android.permission.CAPTURE_AUDIO_OUTPUT" />
+        Foreground Service permissions.
 
-    <!-- ── Screen always-on + battery ── -->
+        MICROPHONE: for audio recording in ScreenCaptureService.
+        MEDIA_PROJECTION: required on Android 14+ when using MediaProjection API.
+            The user sees the standard "Allow screen capture?" dialog once.
+            ScreenCaptureService declares foregroundServiceType="mediaProjection|microphone".
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+
+    <!-- Screen always-on + battery -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
-    <!-- ── Notifications (Android 13+) ── -->
+    <!-- Notifications (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- ── Exact alarms ── -->
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
+    <!-- Exact alarms -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
     <application
         android:usesCleartextTraffic="true"
@@ -52,33 +47,28 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
-        <!-- FCM default notification channel -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="elfaheem_main"/>
-
-        <!-- FCM default notification icon -->
+            android:value="elfaheem_main" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
-            android:resource="@mipmap/ic_launcher"/>
+            android:resource="@mipmap/ic_launcher" />
 
-        <!-- Local notifications receivers -->
         <receiver
-            android:exported="false"
-            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"/>
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"
+            android:exported="false" />
         <receiver
-            android:exported="false"
-            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
+            android:exported="false">
             <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED"/>
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
 
-        <!-- Main activity -->
         <activity
-            android:exported="true"
             android:name=".MainActivity"
+            android:exported="true"
             android:launchMode="singleTop"
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
@@ -94,37 +84,32 @@
         </activity>
 
         <!--
-            ScreenCaptureService — handles BOTH:
-              • LiveKit FGS screen-share (existing, started with plain Intent)
-              • Native screen+audio recorder (new, started with ACTION_START + MediaProjection data)
-
-            foregroundServiceType must include BOTH mediaProjection AND mediaProjection
-            already covers screen capture. dataSync is kept for the chunk-upload work.
-        -->
-        <!--
-            foregroundServiceType breakdown:
-              mediaProjection — screen capture (ACTION_START / screen-share FGS)
-              microphone      — mic-only phase-1 recording (ACTION_START_MIC_ONLY)
-                                REQUIRED on Android 14+ or the FGS start throws
-              dataSync        — chunk upload HTTP work
+            ScreenCaptureService: MediaProjection + MediaRecorder.
+            foregroundServiceType must include mediaProjection on Android 14+
+            because MediaProjection.getMediaProjection() is called from within
+            this service's context.
         -->
         <service
             android:name=".ScreenCaptureService"
-            android:exported="false"
-            android:foregroundServiceType="mediaProjection|microphone|dataSync" />
+            android:foregroundServiceType="mediaProjection|microphone"
+            android:exported="false" />
 
         <!--
-            Background AUDIO playback service (video_player / ExoPlayer).
-            foregroundServiceType="mediaPlayback" keeps it alive when minimised.
+            flutter_webrtc screen share FGS — required on Android 14.
+            flutter_webrtc starts this service before calling getMediaProjection()
+            for the live stream share. It manages its own projection token
+            independently of ScreenCaptureService's recording token.
+            Requires flutter_webrtc >= 0.9.47.
         -->
         <service
-            android:name="com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector"
-            android:exported="false"
-            android:foregroundServiceType="mediaPlayback" />
+            android:name="com.cloudwebrtc.webrtc.FlutterRTCMediaProjectionService"
+            android:foregroundServiceType="mediaProjection"
+            android:exported="false" />
 
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
     </application>
 
     <queries>

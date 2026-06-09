@@ -1,18 +1,45 @@
 package com.example.flutter_education_app
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ScreenCaptureService — Standard MediaProjection recording pipeline
+//
+// DESIGN:
+//   Uses Android's MediaProjection API (the standard approach) to record
+//   the device screen. A system dialog is shown once when the teacher starts
+//   the session; after approval the service records continuously in 5-second
+//   MP4 chunks and uploads each chunk to the server.
+//
+// RECORDING PIPELINE:
+//   MediaProjection → VirtualDisplay → MediaRecorder → .mp4 chunk → upload
+//   MIC audio is captured by MediaRecorder directly (AudioSource.MIC).
+//
+// PERMISSIONS REQUIRED (in AndroidManifest.xml):
+//   RECORD_AUDIO, FOREGROUND_SERVICE, FOREGROUND_SERVICE_MICROPHONE,
+//   FOREGROUND_SERVICE_MEDIA_PROJECTION (Android 14+)
+//   Service foregroundServiceType: mediaProjection|microphone
+//
+// CHUNK FLOW:
+//   1. Dart calls startMicRecording (ACTION_START_MIC_ONLY) with session info.
+//   2. MainActivity shows the MediaProjection permission dialog.
+//   3. On user approval, onActivityResult stores the projection intent and
+//      fires ACTION_STORE_PROJECTION to this service.
+//   4. Service starts recording and emits "screenLoopStarted" to Dart.
+//   5. Every chunkSeconds the current MediaRecorder is stopped, its file
+//      uploaded, and a new MediaRecorder starts for the next chunk.
+//   6. On ACTION_STOP the final chunk is finalized and uploaded with isFinal=true.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
 import android.media.AudioFormat
 import android.media.AudioRecord
-import android.media.MediaCodec
-import android.media.MediaCodecInfo
-import android.media.MediaFormat
-import android.media.MediaMuxer
+import android.media.MediaRecorder
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
@@ -27,80 +54,57 @@ import io.flutter.plugin.common.EventChannel
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ScreenCaptureService — Option B: synchronous upgrade with EventChannel callback
-//
-// UPGRADE FLOW (mic-only → screen+audio → LiveKit screen share):
-//
-//   1. ACTION_START_MIC_ONLY  → mic-only loop starts, no MediaProjection needed
-//   2. ACTION_STORE_PROJECTION → dialog grant stored, FGS upgraded to
-//      MEDIA_PROJECTION, onProjectionGrantStored callback fires to Dart
-//      (FIX 1: callback fires AFTER getMediaProjection() completes, not before)
-//   3. ACTION_UPGRADE_TO_SCREEN → mic loop drains, screen loop starts,
-//      createVirtualDisplay() called, "screenLoopStarted" event emitted
-//   4. ACTION_RELEASE_VIRTUAL_DISPLAY → service releases its VirtualDisplay
-//      (FIX 3: prevents dual-VirtualDisplay conflict with flutter_webrtc)
-//   5. Dart calls setScreenShareEnabled(true) → flutter_webrtc creates its own
-//      VirtualDisplay safely, no second dialog, no conflict
-//   6. ACTION_DOWNGRADE_TO_MIC → screen loop drains, mic loop restarts,
-//      "micLoopStarted" event emitted
-//   7. ACTION_STOP → stopping flag set, loops drain cleanly, resources released
-//      (FIX 2: recording flag NOT force-cleared; loops drain and release properly)
-// ─────────────────────────────────────────────────────────────────────────────
 class ScreenCaptureService : Service() {
 
     companion object {
-        const val CHANNEL_ID              = "screen_capture_channel"
-        const val CHANNEL_NAME            = "Screen Capture"
-        const val NOTIFICATION_ID         = 1001
-        const val ACTION_STOP                          = "com.example.flutter_education_app.STOP_SCREEN_CAPTURE"
-        const val ACTION_START_MIC_ONLY                = "com.example.flutter_education_app.START_MIC_ONLY"
-        const val ACTION_STORE_PROJECTION              = "com.example.flutter_education_app.STORE_PROJECTION"
-        const val ACTION_UPGRADE_TO_SCREEN             = "com.example.flutter_education_app.UPGRADE_TO_SCREEN"
-        const val ACTION_DOWNGRADE_TO_MIC              = "com.example.flutter_education_app.DOWNGRADE_TO_MIC"
-        // Downgrade to mic-only specifically because LiveKit screen share is about
-        // to start. Identical to ACTION_DOWNGRADE_TO_MIC but emits "micReadyForShare"
-        // instead of "micLoopStarted", so Dart knows to call setScreenShareEnabled(true)
-        // next rather than just continuing mic-only recording.
-        const val ACTION_DOWNGRADE_TO_MIC_FOR_SHARE    = "com.example.flutter_education_app.DOWNGRADE_TO_MIC_FOR_SHARE"
-        const val EXTRA_RESULT_CODE       = "resultCode"
-        const val EXTRA_DATA              = "data"
-        const val EXTRA_SESSION_ID        = "sessionId"
-        const val EXTRA_UPLOAD_URL        = "uploadUrl"
-        const val EXTRA_AUTH_TOKEN        = "authToken"
-        const val EXTRA_CHUNK_SECS        = "chunkSeconds"
-        const val EXTRA_IS_FINAL          = "isFinal"
-        const val EXTRA_CHUNK_INDEX       = "chunkIndex"
+        const val CHANNEL_ID      = "screen_capture_channel"
+        const val CHANNEL_NAME    = "Screen Capture"
+        const val NOTIFICATION_ID = 1001
 
-        private const val TAG = "ScreenCaptureService"
+        const val ACTION_STOP             = "com.example.flutter_education_app.STOP_SCREEN_CAPTURE"
+        const val ACTION_START_MIC_ONLY   = "com.example.flutter_education_app.START_MIC_ONLY"
+        const val ACTION_STORE_PROJECTION = "com.example.flutter_education_app.STORE_PROJECTION"
+        // Screen-share lifecycle signals (no-ops here; flutter_webrtc owns its projection)
+        const val ACTION_UPGRADE_TO_SCREEN          = "com.example.flutter_education_app.UPGRADE_TO_SCREEN"
+        const val ACTION_DOWNGRADE_TO_MIC_FOR_SHARE = "com.example.flutter_education_app.DOWNGRADE_TO_MIC_FOR_SHARE"
+        const val ACTION_DOWNGRADE_TO_MIC           = "com.example.flutter_education_app.DOWNGRADE_TO_MIC"
+        const val ACTION_PROMOTE_FOR_SHARE          = "com.example.flutter_education_app.PROMOTE_FOR_SHARE"
 
-        private enum class RecMode { NONE, MIC_ONLY, SCREEN_AUDIO }
-        @Volatile private var recMode = RecMode.NONE
+        const val EXTRA_RESULT_CODE  = "resultCode"
+        const val EXTRA_DATA         = "data"
+        const val EXTRA_SESSION_ID   = "sessionId"
+        const val EXTRA_UPLOAD_URL   = "uploadUrl"
+        const val EXTRA_AUTH_TOKEN   = "authToken"
+        const val EXTRA_CHUNK_SECS   = "chunkSeconds"
+        const val EXTRA_IS_FINAL     = "isFinal"
+        const val EXTRA_CHUNK_INDEX  = "chunkIndex"
+
+        private const val TAG         = "ScreenCaptureService"
+        private const val VIDEO_WIDTH = 1280
+        private const val VIDEO_BPS   = 2_000_000
+        private const val VIDEO_FPS   = 15
+        private const val AUDIO_BPS   = 128_000
 
         @Volatile var eventSink: EventChannel.EventSink? = null
+        @Volatile var isRunning: Boolean = false
+        @Volatile var currentChunkIndex: Int = 0
+        @Volatile var onProjectionGrantStored: (() -> Unit)? = null
+        @Volatile var onFgsPromoted: (() -> Unit)? = null
 
-        @Volatile var isRunning: Boolean         = false
-        @Volatile var hasProjectionGrant: Boolean = false
-        @Volatile var currentChunkIndex: Int      = 0
-
-        @Volatile private var isUpgrading = false
+        // Tracks in-flight uploadChunkAsync threads so recordLoop() keeps the
+        // FGS alive until every chunk has been uploaded before calling stopSelf().
+        val pendingUploads = java.util.concurrent.atomic.AtomicInteger(0)
     }
 
     // ── Instance state ────────────────────────────────────────────────────────
-    private var mediaProjection: MediaProjection? = null
-    private var virtualDisplay:  VirtualDisplay?  = null
 
-    private var videoCodec:  MediaCodec?  = null
-    private var audioCodec:  MediaCodec?  = null
-    private var audioRecord: AudioRecord? = null
-    private var muxer:       MediaMuxer?  = null
+    private var projectionManager: MediaProjectionManager? = null
+    private var mediaProjection:   MediaProjection? = null
+    private var virtualDisplay:    VirtualDisplay? = null
+    private var mediaRecorder:     MediaRecorder? = null
 
-    private var videoTrackIndex = -1
-    private var audioTrackIndex = -1
-    private var muxerStarted    = false
-
-    private val recording = AtomicBoolean(false)
-    private val stopping  = AtomicBoolean(false)
+    private val recording  = AtomicBoolean(false)
+    private val stopping   = AtomicBoolean(false)
 
     private var sessionId  = 0
     private var uploadUrl  = ""
@@ -108,267 +112,173 @@ class ScreenCaptureService : Service() {
     private var chunkSecs  = 5
     private var chunkIndex = 0
 
-    private var screenWidth  = 1280
+    private var screenWidth  = VIDEO_WIDTH
     private var screenHeight = 720
-    private var screenDpi    = 160
+    private var screenDpi    = 320
 
     private val mainHandler = Handler(Looper.getMainLooper())
+
+    // Stored projection grant from onActivityResult
+    private var pendingResultCode = 0
+    private var pendingData: Intent? = null
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     override fun onCreate() {
         super.onCreate()
+        projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         createNotificationChannel()
     }
+
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onDestroy() {
+        stopRecordingClean()
+        isRunning = false
+        super.onDestroy()
+    }
+
+    // ── onStartCommand ────────────────────────────────────────────────────────
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
 
-            // ── FIX 2: Stop everything cleanly ───────────────────────────────
-            // Previously this force-cleared recording=false, which races with the
-            // loop threads still writing/uploading. Now we only set stopping=true
-            // and let the loops exit naturally and call release themselves.
-            // isUpgrading=false ensures the loops know this is a real stop
-            // (not a mode switch) and will call releaseAllResources()/stopSelf().
-            ACTION_STOP -> {
-                val isFinal = intent.getBooleanExtra(EXTRA_IS_FINAL, true)
-                Log.d(TAG, "ACTION_STOP isFinal=$isFinal")
-                isUpgrading = false   // not a mode switch — loops must fully release
-                stopping.set(true)
-                // Do NOT set recording=false here. The active loop checks stopping
-                // on its next iteration, finalises the current chunk, uploads it,
-                // calls release*Resources(), and then stopSelf(). Force-clearing
-                // recording here races with the muxer still writing sample data.
-                return START_NOT_STICKY
-            }
-
-            // ── Phase 1: mic-only ─────────────────────────────────────────────
             ACTION_START_MIC_ONLY -> {
+                // Called by Dart to configure the session and start the FGS.
+                // Actual recording begins after the projection dialog is approved
+                // and ACTION_STORE_PROJECTION arrives.
                 sessionId  = intent.getIntExtra(EXTRA_SESSION_ID, 0)
                 uploadUrl  = intent.getStringExtra(EXTRA_UPLOAD_URL) ?: ""
                 authToken  = intent.getStringExtra(EXTRA_AUTH_TOKEN) ?: ""
                 chunkSecs  = intent.getIntExtra(EXTRA_CHUNK_SECS, 5)
                 chunkIndex = intent.getIntExtra(EXTRA_CHUNK_INDEX, 0)
-
-                Log.d(TAG, "ACTION_START_MIC_ONLY session=$sessionId chunkSecs=$chunkSecs")
-                startForegroundNotification(isMicOnly = true)
+                Log.d(TAG, "ACTION_START_MIC_ONLY: session=$sessionId chunkSecs=$chunkSecs")
+                resolveScreenMetrics()
+                startForegroundMicOnly()
                 isRunning = true
-
-                if (!recording.get()) {
-                    recording.set(true)
-                    stopping.set(false)
-                    recMode = RecMode.MIC_ONLY
-                    Thread({ micOnlyLoop() }, "MicOnlyRecorder").start()
-                }
             }
 
-            // ── Store MediaProjection grant ───────────────────────────────────
-            // FIX 1: We now call MainActivity.onProjectionGrantStored AFTER both
-            // startForeground(MEDIA_PROJECTION) and getMediaProjection() have
-            // completed. Previously MainActivity used Handler.post to reply to Dart
-            // after only a single looper tick, which could return before
-            // onStartCommand ran, meaning hasProjectionGrant was still false when
-            // Dart called upgradeToScreenRecording().
             ACTION_STORE_PROJECTION -> {
-                val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, -1)
-                val data: Intent? = if (Build.VERSION.SDK_INT >= 33)
+                // Receives the approved MediaProjection result from MainActivity.
+                val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, 0)
+                val data       = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
                     intent.getParcelableExtra(EXTRA_DATA, Intent::class.java)
                 else
                     @Suppress("DEPRECATION") intent.getParcelableExtra(EXTRA_DATA)
 
-                // Step 1: upgrade FGS type BEFORE obtaining the grant (Android 14 requirement).
-                startForegroundNotification(isMicOnly = false)
+                Log.d(TAG, "ACTION_STORE_PROJECTION: resultCode=$resultCode uploadUrl=$uploadUrl")
+                // Promote FGS type to include MEDIA_PROJECTION — must happen
+                // after dialog approval and before getMediaProjection().
+                promoteForegroundToProjection()
                 isRunning = true
 
-                // Step 2: obtain the MediaProjection grant.
-                if (data != null && mediaProjection == null) {
-                    val mpm = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-                    mediaProjection = mpm.getMediaProjection(resultCode, data)
-                    mediaProjection!!.registerCallback(object : MediaProjection.Callback() {
-                        override fun onStop() {
-                            Log.d(TAG, "MediaProjection stopped externally")
-                            stopping.set(true)
-                            recording.set(false)
-                            hasProjectionGrant = false
+                if (resultCode != 0 && data != null && !recording.get()) {
+                    if (uploadUrl.isEmpty()) {
+                        Log.e(TAG, "ACTION_STORE_PROJECTION: uploadUrl empty — session params missing")
+                        mainHandler.post {
+                            emitError("Projection received before session params")
+                            onProjectionGrantStored?.invoke()
+                            onProjectionGrantStored = null
                         }
-                    }, mainHandler)
-                    hasProjectionGrant = true
-                    Log.d(TAG, "STORE_PROJECTION: grant stored, FGS=MEDIA_PROJECTION")
+                        return START_STICKY
+                    }
+                    pendingResultCode = resultCode
+                    pendingData       = data
+                    recording.set(true)
+                    stopping.set(false)
+                    Thread({ recordLoop() }, "ScreenRecorder").start()
                 }
 
-                // Step 3: NOW reply to Dart. Both startForeground() and
-                // getMediaProjection() are done — hasProjectionGrant is true.
+                // Unblock Dart AFTER recordLoop() is launched so upgradeToScreenRecording()
+                // waits for the real screenLoopStarted, not a fake one.
                 mainHandler.post {
-                    MainActivity.onProjectionGrantStored?.invoke()
-                    MainActivity.onProjectionGrantStored = null
+                    onProjectionGrantStored?.invoke()
+                    onProjectionGrantStored = null
                 }
-                return START_STICKY
             }
 
-            // ── Upgrade mic-only → screen+audio ──────────────────────────────
+            ACTION_STOP -> {
+                Log.d(TAG, "ACTION_STOP: finalising recording")
+                stopping.set(true)
+                // Recording loop will detect this and finalise the last chunk.
+            }
+
+            // ── Screen-share lifecycle signals ─────────────────────────────────
+            // flutter_webrtc manages its own projection token.  We just unblock
+            // the Dart completers so the share flow isn't stuck waiting.
+
             ACTION_UPGRADE_TO_SCREEN -> {
-                Log.d(TAG, "ACTION_UPGRADE_TO_SCREEN recMode=$recMode")
-                when (recMode) {
-                    RecMode.SCREEN_AUDIO -> {
-                        Log.d(TAG, "Already SCREEN_AUDIO — emitting screenLoopStarted")
-                        mainHandler.post { emitScreenLoopStarted() }
-                    }
-                    RecMode.MIC_ONLY -> {
-                        if (mediaProjection == null) {
-                            Log.e(TAG, "UPGRADE_TO_SCREEN: no projection grant — emitting error")
-                            mainHandler.post { emitError("upgradeToScreen: no MediaProjection grant") }
-                            return START_STICKY
-                        }
-                        startForegroundNotification(isMicOnly = false)
-
-                        isUpgrading = true
-                        stopping.set(true)
-
-                        Thread {
-                            val deadline = System.currentTimeMillis() + (chunkSecs + 2) * 1000L
-                            while (recording.get() && System.currentTimeMillis() < deadline) {
-                                Thread.sleep(30)
-                            }
-                            if (recording.get()) {
-                                Log.w(TAG, "Mic loop deadline exceeded, forcing upgrade")
-                                recording.set(false)
-                            }
-
-                            resolveScreenMetrics()
-                            recording.set(true)
-                            stopping.set(false)
-                            recMode = RecMode.SCREEN_AUDIO
-                            isUpgrading = false
-                            Thread({ recordLoop() }, "ScreenRecorder").start()
-                            Log.d(TAG, "Screen+audio loop launched from chunk #$chunkIndex")
-                        }.start()
-                    }
-                    RecMode.NONE -> {
-                        if (mediaProjection == null) {
-                            Log.e(TAG, "UPGRADE_TO_SCREEN (NONE): no projection grant")
-                            mainHandler.post { emitError("upgradeToScreen: no MediaProjection grant") }
-                            return START_STICKY
-                        }
-                        startForegroundNotification(isMicOnly = false)
-                        resolveScreenMetrics()
-                        recording.set(true)
-                        stopping.set(false)
-                        recMode = RecMode.SCREEN_AUDIO
-                        Thread({ recordLoop() }, "ScreenRecorder").start()
-                        Log.d(TAG, "Screen+audio loop launched (from NONE) chunk #$chunkIndex")
-                    }
-                }
-                return START_STICKY
+                Log.d(TAG, "ACTION_UPGRADE_TO_SCREEN: emitting screenLoopStarted")
+                mainHandler.post { emitScreenLoopStarted() }
             }
 
-            // ── Downgrade to mic-only BEFORE LiveKit screen share starts ─────
-            // This is the correct fix for the dual-VirtualDisplay problem.
-            // Instead of releasing the VirtualDisplay while the screen loop keeps
-            // running (which breaks the codec and causes a tiny isFinal chunk that
-            // kills the service), we cleanly stop the entire screen+audio loop
-            // first, then emit "micReadyForShare" so Dart knows it is safe to call
-            // setScreenShareEnabled(true). flutter_webrtc will then create its own
-            // VirtualDisplay with no conflict and no second dialog.
-            //
-            // Recording during LiveKit screen share phase = mic-only.
-            // Screen content is captured by LiveKit. When screen share ends, Dart
-            // calls upgradeToScreenRecording() again to resume screen recording.
             ACTION_DOWNGRADE_TO_MIC_FOR_SHARE -> {
-                Log.d(TAG, "ACTION_DOWNGRADE_TO_MIC_FOR_SHARE recMode=$recMode")
-                when (recMode) {
-                    RecMode.MIC_ONLY -> {
-                        // Already mic-only — just confirm immediately.
-                        mainHandler.post { emitMicReadyForShare() }
-                    }
-                    RecMode.SCREEN_AUDIO -> {
-                        isUpgrading = true
-                        stopping.set(true)
-                        Thread {
-                            val deadline = System.currentTimeMillis() + (chunkSecs + 2) * 1000L
-                            while (recording.get() && System.currentTimeMillis() < deadline) {
-                                Thread.sleep(30)
-                            }
-                            if (recording.get()) {
-                                recording.set(false)
-                                Log.w(TAG, "DOWNGRADE_FOR_SHARE: deadline exceeded, forcing")
-                            }
-                            mainHandler.post { startForegroundNotification(isMicOnly = true) }
-                            recording.set(true)
-                            stopping.set(false)
-                            recMode = RecMode.MIC_ONLY
-                            isUpgrading = false
-                            Thread({ micOnlyLoop() }, "MicOnlyRecorder").start()
-                            // Emit AFTER mic loop is started, so Dart knows the
-                            // screen loop is fully stopped and mediaProjection is free.
-                            mainHandler.post { emitMicReadyForShare() }
-                            Log.d(TAG, "DOWNGRADE_FOR_SHARE: mic-only loop running, mediaProjection free")
-                        }.start()
-                    }
-                    RecMode.NONE -> {
-                        mainHandler.post { emitMicReadyForShare() }
-                    }
-                }
-                return START_STICKY
+                Log.d(TAG, "ACTION_DOWNGRADE_TO_MIC_FOR_SHARE: recording continues; emitting micReadyForShare")
+                mainHandler.post { emitMicReadyForShare() }
             }
 
-            // ── Downgrade screen+audio → mic-only ────────────────────────────
             ACTION_DOWNGRADE_TO_MIC -> {
-                Log.d(TAG, "ACTION_DOWNGRADE_TO_MIC recMode=$recMode")
-                if (recMode == RecMode.SCREEN_AUDIO && recording.get()) {
-                    isUpgrading = true
-                    stopping.set(true)
+                Log.d(TAG, "ACTION_DOWNGRADE_TO_MIC: share ended; emitting micLoopStarted")
+                mainHandler.post { emitMicLoopStarted() }
+            }
 
-                    Thread {
-                        val deadline = System.currentTimeMillis() + (chunkSecs + 2) * 1000L
-                        while (recording.get() && System.currentTimeMillis() < deadline) {
-                            Thread.sleep(30)
-                        }
-                        if (recording.get()) {
-                            recording.set(false)
-                            Log.w(TAG, "Screen loop deadline exceeded, forcing downgrade")
-                        }
-                        mainHandler.post { startForegroundNotification(isMicOnly = true) }
-                        recording.set(true)
-                        stopping.set(false)
-                        recMode = RecMode.MIC_ONLY
-                        isUpgrading = false
-                        Thread({ micOnlyLoop() }, "MicOnlyRecorder").start()
-                        mainHandler.post { emitMicLoopStarted() }
-                        Log.d(TAG, "Downgraded to mic-only from chunk #$chunkIndex")
-                    }.start()
-                } else {
-                    mainHandler.post { emitMicLoopStarted() }
+            ACTION_PROMOTE_FOR_SHARE -> {
+                Log.d(TAG, "ACTION_PROMOTE_FOR_SHARE: no-op; unblocking Dart")
+                mainHandler.post {
+                    onFgsPromoted?.invoke()
+                    onFgsPromoted = null
                 }
-                return START_STICKY
             }
 
             else -> {
-                startForegroundNotification(isMicOnly = true)
+                startForegroundMicOnly()
                 isRunning = true
             }
         }
         return START_STICKY
     }
 
-    override fun onBind(intent: Intent?): IBinder? = null
-
-    override fun onDestroy() {
-        stopping.set(true)
-        recording.set(false)
-        super.onDestroy()
-    }
-
     // ── FGS notification ──────────────────────────────────────────────────────
 
-    private fun startForegroundNotification(isMicOnly: Boolean) {
+    /**
+     * Phase 1 — called during ACTION_START_MIC_ONLY, before the projection
+     * dialog.  Declares ONLY microphone type.  Android 14 rejects mediaProjection
+     * type here because the user hasn't approved the dialog yet.
+     */
+    private fun startForegroundMicOnly() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val serviceType = if (isMicOnly) {
-                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-            } else {
-                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or
-                        android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-            }
-            startForeground(NOTIFICATION_ID, buildNotification(), serviceType)
+            startForeground(
+                    NOTIFICATION_ID, buildNotification(),
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE,
+            )
+        } else {
+            startForeground(NOTIFICATION_ID, buildNotification())
+        }
+    }
+
+    /**
+     * Phase 2 — called during ACTION_STORE_PROJECTION, after dialog approval.
+     * Promotes the running FGS to include MEDIA_PROJECTION type by calling
+     * startForeground() again with the wider OR'd type set.
+     *
+     * IMPORTANT: Do NOT call stopForeground() here.  Stopping the foreground
+     * state even briefly causes flutter_webrtc's FlutterRTCMediaProjectionService
+     * to lose its own FGS type, crashing the app when the teacher tries to share
+     * their screen.  Simply re-calling startForeground() with an expanded type
+     * set is the correct Android 14 promotion pattern for an already-running FGS.
+     */
+    private fun promoteForegroundToProjection() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(
+                    NOTIFICATION_ID, buildNotification(),
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or
+                            android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION,
+            )
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(
+                    NOTIFICATION_ID, buildNotification(),
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE,
+            )
         } else {
             startForeground(NOTIFICATION_ID, buildNotification())
         }
@@ -380,413 +290,182 @@ class ScreenCaptureService : Service() {
         val wm = getSystemService(WINDOW_SERVICE) as WindowManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val b = wm.currentWindowMetrics.bounds
-            screenWidth  = b.width()
-            screenHeight = b.height()
+            var w = b.width()
+            var h = b.height()
+            if (w > VIDEO_WIDTH) {
+                val scale = VIDEO_WIDTH.toDouble() / w
+                w = VIDEO_WIDTH
+                h = (h * scale).toInt() and 0xFFFE
+            }
+            screenWidth  = w
+            screenHeight = h
         } else {
             val dm = DisplayMetrics()
             @Suppress("DEPRECATION") wm.defaultDisplay.getMetrics(dm)
-            screenWidth  = dm.widthPixels
-            screenHeight = dm.heightPixels
+            var w = dm.widthPixels
+            var h = dm.heightPixels
+            if (w > VIDEO_WIDTH) {
+                val scale = VIDEO_WIDTH.toDouble() / w
+                w = VIDEO_WIDTH
+                h = (h * scale).toInt() and 0xFFFE
+            }
+            screenWidth  = w
+            screenHeight = h
             screenDpi    = dm.densityDpi
         }
-        if (screenWidth > 1920) {
-            val scale = 1920.0 / screenWidth
-            screenWidth  = 1920
-            screenHeight = (screenHeight * scale).toInt() and 0xFFFE
-        }
-        screenDpi = resources.displayMetrics.densityDpi
-        Log.d(TAG, "Screen metrics: ${screenWidth}x${screenHeight}@${screenDpi}dpi")
+        Log.d(TAG, "Screen metrics: ${screenWidth}x${screenHeight} dpi=$screenDpi")
     }
 
-    // ── Mic-only loop ─────────────────────────────────────────────────────────
+    // ── Main recording loop ───────────────────────────────────────────────────
 
-    private fun micOnlyLoop() {
-        while (recording.get() && !stopping.get()) {
-            val outFile = File(cacheDir, "chunk_${chunkIndex.toString().padStart(6,'0')}.mp4")
-            Log.d(TAG, "MIC chunk #$chunkIndex → ${outFile.name}")
-            try {
-                recordMicChunk(outFile, chunkSecs * 1_000L)
-            } catch (e: Exception) {
-                Log.e(TAG, "recordMicChunk error: ${e.message}", e)
-                mainHandler.post { emitError("recordMicChunk: ${e.message}") }
-                recording.set(false)
-                break
-            }
-            if (outFile.exists() && outFile.length() > 0) {
-                // Only mark isFinal=true when WE are truly stopping (not during
-                // a mode switch). During a mode switch isUpgrading=true and the
-                // recording will continue in the next loop, so this chunk is NOT
-                // the final chunk of the session.
-                val isFinal = (!recording.get() || stopping.get()) && !isUpgrading
-                uploadChunkAsync(outFile, chunkIndex, isFinal)
-            }
-            chunkIndex++
-            currentChunkIndex = chunkIndex
-        }
-
-        if (isUpgrading) {
-            Log.d(TAG, "micOnlyLoop: exiting for mode switch")
-            recording.set(false)
+    private fun recordLoop() {
+        // Obtain the MediaProjection from the stored grant.
+        mediaProjection = projectionManager!!.getMediaProjection(pendingResultCode, pendingData!!)
+        if (mediaProjection == null) {
+            Log.e(TAG, "getMediaProjection returned null — aborting")
+            mainHandler.post { emitError("MediaProjection grant invalid") }
             return
         }
 
-        releaseMicResources()
-        isRunning = false
-        recMode = RecMode.NONE
-        stopSelf()
-    }
+        Log.d(TAG, "recordLoop started: chunkSecs=$chunkSecs")
 
-    // ── Screen+audio loop ─────────────────────────────────────────────────────
+        // Notify Dart that video recording is live.
+        mainHandler.post { emitScreenLoopStarted() }
 
-    private fun recordLoop() {
         var firstChunk = true
         while (recording.get() && !stopping.get()) {
-            val outFile = File(cacheDir, "chunk_${chunkIndex.toString().padStart(6,'0')}.mp4")
-            Log.d(TAG, "SCREEN chunk #$chunkIndex → ${outFile.name}")
+            val outFile = File(cacheDir, "chunk_${chunkIndex.toString().padStart(6, '0')}.mp4")
+            Log.d(TAG, "CHUNK #$chunkIndex → ${outFile.name}")
             try {
-                recordChunk(outFile, chunkSecs * 1_000L, notifyStarted = firstChunk)
+                recordChunk(outFile, chunkSecs * 1_000L, firstChunk)
                 firstChunk = false
             } catch (e: Exception) {
                 Log.e(TAG, "recordChunk error: ${e.message}", e)
                 mainHandler.post { emitError("recordChunk: ${e.message}") }
-                recording.set(false)
                 break
             }
+            val isFinal = !recording.get() || stopping.get()
             if (outFile.exists() && outFile.length() > 0) {
-                // Only mark isFinal=true on a real stop, not on a mode switch
-                // (downgrade to mic or downgrade-for-share). isUpgrading=true
-                // means another loop will continue after this one.
-                val isFinal = (!recording.get() || stopping.get()) && !isUpgrading
                 uploadChunkAsync(outFile, chunkIndex, isFinal)
             }
             chunkIndex++
             currentChunkIndex = chunkIndex
+
+            if (isFinal) break
         }
 
-        if (isUpgrading) {
-            Log.d(TAG, "recordLoop: exiting for downgrade")
-            releaseScreenResources()
-            recording.set(false)
-            return
+        // Handle the final chunk if stopping was requested mid-loop.
+        cleanupRecorder()
+        mediaProjection?.stop()
+        mediaProjection = null
+        virtualDisplay?.release()
+        virtualDisplay = null
+
+        // Keep the FGS alive until every uploadChunkAsync thread finishes.
+        // Without this, Android may kill the process while chunks are still
+        // being POSTed when stopSelf() is called.
+        val drainDeadline = System.currentTimeMillis() + 120_000L
+        while (pendingUploads.get() > 0 && System.currentTimeMillis() < drainDeadline) {
+            Thread.sleep(200)
+        }
+        if (pendingUploads.get() > 0) {
+            Log.w(TAG, "recordLoop: ${pendingUploads.get()} upload(s) still in-flight after 120s — giving up")
         }
 
-        releaseAllResources()
-        hasProjectionGrant = false
         isRunning = false
-        recMode = RecMode.NONE
         stopSelf()
+        Log.d(TAG, "recordLoop ended — all uploads drained, service stopping")
     }
 
-    // ── Record one mic-only chunk ─────────────────────────────────────────────
+    // ── Record one chunk ──────────────────────────────────────────────────────
 
-    private fun recordMicChunk(outFile: File, durationMs: Long) {
-        val sampleRate  = 44100
-        val channelMask = AudioFormat.CHANNEL_IN_MONO
-        val audioFmt    = AudioFormat.ENCODING_PCM_16BIT
-        val minBuf      = AudioRecord.getMinBufferSize(sampleRate, channelMask, audioFmt)
+    private fun recordChunk(outFile: File, durationMs: Long, isFirst: Boolean) {
+        val recorder = MediaRecorder(this).also { mediaRecorder = it }
 
-        val ar = AudioRecord(
-                android.media.MediaRecorder.AudioSource.MIC,
-                sampleRate, channelMask, audioFmt, minBuf * 4
-        )
-        if (ar.state != AudioRecord.STATE_INITIALIZED) {
-            ar.release()
-            throw IllegalStateException("AudioRecord (mic) failed to init")
+        recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
+        recorder.setVideoSource(MediaRecorder.VideoSource.SURFACE)
+        recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+        recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+        recorder.setAudioEncodingBitRate(AUDIO_BPS)
+        recorder.setAudioSamplingRate(44100)
+        recorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264)
+        recorder.setVideoEncodingBitRate(VIDEO_BPS)
+        recorder.setVideoFrameRate(VIDEO_FPS)
+        recorder.setVideoSize(screenWidth, screenHeight)
+        recorder.setOutputFile(outFile.absolutePath)
+        recorder.prepare()
+
+        // Attach (or reattach) the VirtualDisplay to the recorder's surface.
+        val surface = recorder.surface
+        if (virtualDisplay == null) {
+            // Android 14 requires a callback to be registered before createVirtualDisplay().
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                mediaProjection!!.registerCallback(object : MediaProjection.Callback() {
+                    override fun onStop() {
+                        Log.d(TAG, "MediaProjection.onStop — releasing virtual display")
+                        virtualDisplay?.release()
+                        virtualDisplay = null
+                    }
+                }, mainHandler)
+            }
+            virtualDisplay = mediaProjection!!.createVirtualDisplay(
+                    "ScreenCapture",
+                    screenWidth, screenHeight, screenDpi,
+                    DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                    surface, null, null
+            )
+        } else {
+            virtualDisplay!!.surface = surface
         }
 
-        val aFmt = MediaFormat.createAudioFormat(
-                MediaFormat.MIMETYPE_AUDIO_AAC, sampleRate, 1
-        ).apply {
-            setInteger(MediaFormat.KEY_AAC_PROFILE,
-                    MediaCodecInfo.CodecProfileLevel.AACObjectLC)
-            setInteger(MediaFormat.KEY_BIT_RATE, 128_000)
-            setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, minBuf)
-        }
-        val codec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC).also {
-            it.configure(aFmt, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-            it.start()
-        }
-        ar.startRecording()
+        recorder.start()
+        Log.d(TAG, "MediaRecorder started for chunk #$chunkIndex")
 
-        val mux      = MediaMuxer(outFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
-        var trackIdx = -1
-        var muxOk    = false
-        val info     = MediaCodec.BufferInfo()
-        val startMs  = System.currentTimeMillis()
+        // Wait for the chunk duration (or until stop is requested).
+        val t0 = System.currentTimeMillis()
+        while (System.currentTimeMillis() - t0 < durationMs) {
+            if (stopping.get() || !recording.get()) break
+            Thread.sleep(100)
+        }
 
+        // Stop the recorder cleanly.
         try {
-            while (true) {
-                val elapsed   = System.currentTimeMillis() - startMs
-                val shouldEnd = elapsed >= durationMs || stopping.get() || !recording.get()
-
-                val ibIdx = codec.dequeueInputBuffer(0)
-                if (ibIdx >= 0) {
-                    val ib   = codec.getInputBuffer(ibIdx)!!
-                    ib.clear()
-                    val read = ar.read(ib, ib.capacity())
-                    if (read > 0) {
-                        codec.queueInputBuffer(ibIdx, 0, read, elapsed * 1000,
-                                if (shouldEnd) MediaCodec.BUFFER_FLAG_END_OF_STREAM else 0)
-                    } else {
-                        codec.queueInputBuffer(ibIdx, 0, 0, 0, 0)
-                    }
-                }
-
-                var eos   = false
-                val obIdx = codec.dequeueOutputBuffer(info, 10_000L)
-                when {
-                    obIdx == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                        trackIdx = mux.addTrack(codec.outputFormat)
-                        mux.start(); muxOk = true
-                    }
-                    obIdx >= 0 -> {
-                        val buf = codec.getOutputBuffer(obIdx)
-                        if (muxOk && buf != null &&
-                                (info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 0)
-                            mux.writeSampleData(trackIdx, buf, info)
-                        eos = (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0
-                        codec.releaseOutputBuffer(obIdx, false)
-                    }
-                }
-                if (shouldEnd && eos) break
-                if (elapsed > durationMs * 2) break
-            }
-        } finally {
-            try { ar.stop() } catch (_: Exception) {}
-            ar.release()
-            try { codec.stop() } catch (_: Exception) {}
-            codec.release()
-            if (muxOk) try { mux.stop() } catch (_: Exception) {}
-            mux.release()
+            recorder.stop()
+        } catch (e: Exception) {
+            Log.w(TAG, "recorder.stop() exception (chunk may be incomplete): ${e.message}")
         }
+        recorder.release()
+        mediaRecorder = null
     }
 
-    // ── Record one screen+audio chunk ─────────────────────────────────────────
-    //
-    // notifyStarted=true → emits "screenLoopStarted" after createVirtualDisplay().
-    // This unblocks Dart's upgradeToScreenRecording() Completer, after which Dart
-    // calls releaseVirtualDisplay() then setScreenShareEnabled(true).
-
-    private fun recordChunk(outFile: File, durationMs: Long, notifyStarted: Boolean = false) {
-        // ── Video codec ───────────────────────────────────────────────────────
-        val vFmt = MediaFormat.createVideoFormat(
-                MediaFormat.MIMETYPE_VIDEO_AVC, screenWidth, screenHeight
-        ).apply {
-            setInteger(MediaFormat.KEY_BIT_RATE, 4_000_000)
-            setInteger(MediaFormat.KEY_FRAME_RATE, 30)
-            setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 2)
-            setInteger(MediaFormat.KEY_COLOR_FORMAT,
-                    MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
-        }
-        videoCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC).also {
-            it.configure(vFmt, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-        }
-        val inputSurface = videoCodec!!.createInputSurface()
-
-        // ── VirtualDisplay ────────────────────────────────────────────────────
-        // Creates the display capture surface. This will be released shortly after
-        // via ACTION_RELEASE_VIRTUAL_DISPLAY so flutter_webrtc can create its own.
-        virtualDisplay = mediaProjection!!.createVirtualDisplay(
-                "ElFaheemCapture",
-                screenWidth, screenHeight, screenDpi,
-                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                inputSurface, null, null
-        )
-        videoCodec!!.start()
-
-        // ── Notify Dart that VirtualDisplay is live ───────────────────────────
-        // Dart's Completer unblocks, then Dart calls releaseVirtualDisplay()
-        // and only then calls setScreenShareEnabled(true).
-        if (notifyStarted) {
-            mainHandler.post { emitScreenLoopStarted() }
-        }
-
-        // ── Audio codec + AudioRecord ─────────────────────────────────────────
-        val sampleRate  = 44100
-        val channelMask = AudioFormat.CHANNEL_IN_STEREO
-        val audioFmt    = AudioFormat.ENCODING_PCM_16BIT
-        val minBuf      = AudioRecord.getMinBufferSize(sampleRate, channelMask, audioFmt)
-
-        val audioCapture = buildAudioRecord(sampleRate, channelMask, audioFmt, minBuf)
-        val aFmt = MediaFormat.createAudioFormat(
-                MediaFormat.MIMETYPE_AUDIO_AAC, sampleRate, 2
-        ).apply {
-            setInteger(MediaFormat.KEY_AAC_PROFILE,
-                    MediaCodecInfo.CodecProfileLevel.AACObjectLC)
-            setInteger(MediaFormat.KEY_BIT_RATE, 192_000)
-            setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, minBuf)
-        }
-        audioCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC).also {
-            it.configure(aFmt, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-            it.start()
-        }
-        audioRecord = audioCapture
-        audioCapture?.startRecording()
-
-        // ── Muxer ─────────────────────────────────────────────────────────────
-        muxer           = MediaMuxer(outFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
-        videoTrackIndex = -1
-        audioTrackIndex = -1
-        muxerStarted    = false
-
-        val startTime  = System.currentTimeMillis()
-        val videoInfo  = MediaCodec.BufferInfo()
-        val audioInfo  = MediaCodec.BufferInfo()
-        val TIMEOUT_US = 10_000L
-
-        while (true) {
-            val elapsed   = System.currentTimeMillis() - startTime
-            val shouldEnd = elapsed >= durationMs || stopping.get() || !recording.get()
-
-            // Feed PCM → audio codec
-            if (audioCapture != null &&
-                    audioCapture.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
-                val ibIdx = audioCodec!!.dequeueInputBuffer(0)
-                if (ibIdx >= 0) {
-                    val ib   = audioCodec!!.getInputBuffer(ibIdx)!!
-                    ib.clear()
-                    val read = audioCapture.read(ib, ib.capacity())
-                    if (read > 0) {
-                        audioCodec!!.queueInputBuffer(ibIdx, 0, read, elapsed * 1000,
-                                if (shouldEnd) MediaCodec.BUFFER_FLAG_END_OF_STREAM else 0)
-                    } else {
-                        audioCodec!!.queueInputBuffer(ibIdx, 0, 0, 0, 0)
-                    }
-                }
-            }
-
-            if (shouldEnd) {
-                try { videoCodec!!.signalEndOfInputStream() } catch (_: Exception) {}
-            }
-
-            // Drain video
-            var videoEos = false
-            val vIdx = videoCodec!!.dequeueOutputBuffer(videoInfo, TIMEOUT_US)
-            when {
-                vIdx == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                    if (!muxerStarted) {
-                        videoTrackIndex = muxer!!.addTrack(videoCodec!!.outputFormat)
-                        if (audioTrackIndex >= 0) { muxer!!.start(); muxerStarted = true }
-                    }
-                }
-                vIdx >= 0 -> {
-                    val buf = videoCodec!!.getOutputBuffer(vIdx)
-                    if (muxerStarted && buf != null &&
-                            (videoInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 0)
-                        muxer!!.writeSampleData(videoTrackIndex, buf, videoInfo)
-                    videoEos = (videoInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0
-                    videoCodec!!.releaseOutputBuffer(vIdx, false)
-                }
-            }
-
-            // Drain audio
-            var audioEos = false
-            val aIdx = audioCodec!!.dequeueOutputBuffer(audioInfo, TIMEOUT_US)
-            when {
-                aIdx == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                    if (!muxerStarted) {
-                        audioTrackIndex = muxer!!.addTrack(audioCodec!!.outputFormat)
-                        if (videoTrackIndex >= 0) { muxer!!.start(); muxerStarted = true }
-                    }
-                }
-                aIdx >= 0 -> {
-                    val buf = audioCodec!!.getOutputBuffer(aIdx)
-                    if (muxerStarted && buf != null &&
-                            (audioInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 0)
-                        muxer!!.writeSampleData(audioTrackIndex, buf, audioInfo)
-                    audioEos = (audioInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0
-                    audioCodec!!.releaseOutputBuffer(aIdx, false)
-                }
-            }
-
-            if (shouldEnd && videoEos && audioEos) break
-            if (elapsed > durationMs * 2) break
-        }
-
-        // Release per-chunk resources
-        audioCapture?.stop(); audioCapture?.release(); audioRecord = null
-        try { videoCodec?.stop() } catch (_: Exception) {}
-        videoCodec?.release(); videoCodec = null
-        try { audioCodec?.stop() } catch (_: Exception) {}
-        audioCodec?.release(); audioCodec = null
-        // NOTE: virtualDisplay may already be null if ACTION_RELEASE_VIRTUAL_DISPLAY
-        // fired during this chunk. The null-safe release here is intentional.
-        virtualDisplay?.release(); virtualDisplay = null
-        if (muxerStarted) try { muxer?.stop() } catch (_: Exception) {}
-        muxer?.release(); muxer = null; muxerStarted = false
+    private fun cleanupRecorder() {
+        try { mediaRecorder?.stop() } catch (_: Exception) {}
+        mediaRecorder?.release()
+        mediaRecorder = null
     }
 
-    // ── AudioRecord builder ───────────────────────────────────────────────────
-
-    private fun buildAudioRecord(
-            sampleRate: Int, channelMask: Int, audioFmt: Int, bufSize: Int
-    ): AudioRecord? {
-        for (src in listOf(
-                android.media.MediaRecorder.AudioSource.VOICE_COMMUNICATION,
-                android.media.MediaRecorder.AudioSource.MIC
-        )) {
-            try {
-                val ar = AudioRecord(src, sampleRate, channelMask, audioFmt, bufSize * 4)
-                if (ar.state == AudioRecord.STATE_INITIALIZED) {
-                    Log.d(TAG, "AudioRecord source=$src OK")
-                    return ar
-                }
-                ar.release()
-            } catch (e: Exception) {
-                Log.w(TAG, "AudioRecord source=$src failed: ${e.message}")
-            }
-        }
-        Log.e(TAG, "buildAudioRecord: all sources failed")
-        return null
-    }
-
-    // ── Release helpers ───────────────────────────────────────────────────────
-
-    private fun releaseScreenResources() {
-        try { audioRecord?.stop(); audioRecord?.release() } catch (_: Exception) {}
-        audioRecord = null
-        try { videoCodec?.stop(); videoCodec?.release() } catch (_: Exception) {}
-        videoCodec = null
-        try { audioCodec?.stop(); audioCodec?.release() } catch (_: Exception) {}
-        audioCodec = null
-        virtualDisplay?.release(); virtualDisplay = null
-        if (muxerStarted) try { muxer?.stop() } catch (_: Exception) {}
-        muxer?.release(); muxer = null; muxerStarted = false
-    }
-
-    private fun releaseMicResources() {
-        try { audioRecord?.stop(); audioRecord?.release() } catch (_: Exception) {}
-        audioRecord = null
-        try { audioCodec?.stop(); audioCodec?.release() } catch (_: Exception) {}
-        audioCodec = null
-        if (muxerStarted) try { muxer?.stop() } catch (_: Exception) {}
-        muxer?.release(); muxer = null; muxerStarted = false
-    }
-
-    private fun releaseAllResources() {
-        releaseScreenResources()
-        mediaProjection?.stop(); mediaProjection = null
-    }
-
-    // ── Upload ────────────────────────────────────────────────────────────────
+    // ── Chunk upload ──────────────────────────────────────────────────────────
 
     private fun uploadChunkAsync(file: File, index: Int, isFinal: Boolean) {
-        val fileSize = file.length()
+        val size = file.length()
+        pendingUploads.incrementAndGet()
         Thread({
             var attempt = 0
             while (attempt <= 3) {
                 try {
                     uploadChunk(file, index, isFinal)
                     file.delete()
-                    mainHandler.post { emitChunkUploaded(index, fileSize, isFinal) }
+                    pendingUploads.decrementAndGet()
+                    mainHandler.post { emitChunkUploaded(index, size, isFinal) }
                     return@Thread
                 } catch (e: Exception) {
-                    Log.e(TAG, "Upload #$index attempt ${attempt+1}: ${e.message}")
+                    Log.e(TAG, "Upload #$index attempt ${attempt + 1}: ${e.message}")
                     attempt++
                     if (attempt <= 3) Thread.sleep(1000L * (1 shl attempt))
                 }
             }
             file.delete()
+            pendingUploads.decrementAndGet()
             mainHandler.post { emitError("chunk #$index upload permanently failed") }
         }, "ChunkUpload-$index").start()
     }
@@ -800,17 +479,15 @@ class ScreenCaptureService : Service() {
         conn.readTimeout    = 120_000
         conn.setRequestProperty("Authorization", authToken)
         conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
-
-        val out = conn.outputStream
-        fun w(s: String) = out.write(s.toByteArray(Charsets.UTF_8))
-        w("--$boundary\r\nContent-Disposition: form-data; name=\"chunk_index\"\r\n\r\n$index\r\n")
-        w("--$boundary\r\nContent-Disposition: form-data; name=\"is_final\"\r\n\r\n${if (isFinal) "1" else "0"}\r\n")
-        w("--$boundary\r\nContent-Disposition: form-data; name=\"chunk\"; ")
-        w("filename=\"chunk_${index.toString().padStart(6,'0')}.mp4\"\r\nContent-Type: video/mp4\r\n\r\n")
-        file.inputStream().use { it.copyTo(out) }
-        w("\r\n--$boundary--\r\n")
-        out.flush(); out.close()
-
+        conn.outputStream.use { out ->
+            fun w(s: String) = out.write(s.toByteArray(Charsets.UTF_8))
+            w("--$boundary\r\nContent-Disposition: form-data; name=\"chunk_index\"\r\n\r\n$index\r\n")
+            w("--$boundary\r\nContent-Disposition: form-data; name=\"is_final\"\r\n\r\n${if (isFinal) "1" else "0"}\r\n")
+            w("--$boundary\r\nContent-Disposition: form-data; name=\"chunk\"; ")
+            w("filename=\"chunk_${index.toString().padStart(6, '0')}.mp4\"\r\nContent-Type: video/mp4\r\n\r\n")
+            file.inputStream().use { it.copyTo(out) }
+            w("\r\n--$boundary--\r\n")
+        }
         val code = conn.responseCode
         if (code !in 200..299) {
             val body = try { conn.errorStream?.bufferedReader()?.readText() } catch (_: Exception) { "" }
@@ -819,22 +496,28 @@ class ScreenCaptureService : Service() {
         conn.disconnect()
     }
 
+    private fun stopRecordingClean() {
+        recording.set(false)
+        stopping.set(true)
+        cleanupRecorder()
+        try { virtualDisplay?.release() } catch (_: Exception) {}
+        virtualDisplay = null
+        try { mediaProjection?.stop() } catch (_: Exception) {}
+        mediaProjection = null
+    }
+
     // ── EventChannel helpers ──────────────────────────────────────────────────
 
     private fun emitScreenLoopStarted() {
-        Log.d(TAG, "emitScreenLoopStarted — Dart may now call releaseVirtualDisplay + setScreenShareEnabled")
+        Log.d(TAG, "emitScreenLoopStarted")
         eventSink?.success(mapOf("event" to "screenLoopStarted"))
     }
-
     private fun emitMicReadyForShare() {
-        Log.d(TAG, "emitMicReadyForShare — screen loop stopped, mediaProjection free for flutter_webrtc")
         eventSink?.success(mapOf("event" to "micReadyForShare"))
     }
-
     private fun emitMicLoopStarted() {
         eventSink?.success(mapOf("event" to "micLoopStarted"))
     }
-
     private fun emitChunkUploaded(index: Int, bytes: Long, isFinal: Boolean) {
         eventSink?.success(mapOf(
                 "event"      to "chunkUploaded",
@@ -843,7 +526,6 @@ class ScreenCaptureService : Service() {
                 "isFinal"    to isFinal,
         ))
     }
-
     private fun emitError(msg: String) {
         eventSink?.error("REC_ERROR", msg, null)
     }
@@ -854,7 +536,10 @@ class ScreenCaptureService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val ch = NotificationChannel(
                     CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_LOW
-            ).apply { description = "Active while session is being recorded"; setShowBadge(false) }
+            ).apply {
+                description = "Active while session is being recorded"
+                setShowBadge(false)
+            }
             getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
         }
     }
@@ -862,7 +547,7 @@ class ScreenCaptureService : Service() {
     private fun buildNotification(): Notification =
             NotificationCompat.Builder(this, CHANNEL_ID)
                     .setContentTitle("Recording session")
-                    .setContentText("Audio + screen recording in progress")
+                    .setContentText("Session recording in progress")
                     .setSmallIcon(android.R.drawable.ic_menu_camera)
                     .setPriority(NotificationCompat.PRIORITY_LOW)
                     .setOngoing(true)

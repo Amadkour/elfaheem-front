@@ -1,37 +1,21 @@
-// room_screen_share.dart
+// room_screen_share.dart — Standard MediaProjection screen share flow
 //
-// Option B Android flow — guaranteed no double dialog, no race condition,
-// no dual-VirtualDisplay conflict:
+// Screen share on Android uses flutter_webrtc's own MediaProjection token
+// (its dialog appears when the teacher taps the Share Screen button).
+// Our ScreenCaptureService holds a separate token for continuous recording —
+// both coexist without conflict.
 //
-//   1. startScreenCaptureService()         → ONE dialog → FGS upgraded to
-//                                            MEDIA_PROJECTION, grant stored.
-//                                            Dart awaits fully before continuing.
-//                                            (FIX 1: service replies AFTER
-//                                            getMediaProjection() completes)
+// START sharing:
+//   1. promoteForShare() — no-op; flutter_webrtc manages its own FGS type.
+//   2. _stopScreenForShare() — tells native to emit micReadyForShare so the
+//      recording's chunk boundary is clean before the share begins.
+//   3. setScreenShareEnabled(true) — flutter_webrtc shows ITS OWN dialog
+//      and begins streaming the screen to live participants.
+//   4. After sharing, upgradeToScreenRecording() re-confirms recording is live.
 //
-//   2. recorder.upgradeToScreenRecording() → sends ACTION_UPGRADE_TO_SCREEN
-//                                          → service creates VirtualDisplay,
-//                                            BLOCKS until "screenLoopStarted"
-//                                            event confirms it is live
-//                                          → returns
-//
-//   3. _releaseVirtualDisplay()            → sends ACTION_RELEASE_VIRTUAL_DISPLAY
-//                                          → service releases its VirtualDisplay
-//                                            (FIX 3: only ONE VirtualDisplay per
-//                                            MediaProjection at a time allowed)
-//
-//   4. setScreenShareEnabled(true)         → flutter_webrtc creates its own
-//                                            VirtualDisplay on the same grant
-//                                            → NO second dialog, NO conflict
-//                                            → LiveKit screen share publishes
-//
-// Recording during screen share phase:
-//   The service screen+audio loop continues after VirtualDisplay is released —
-//   it records audio-only for the remainder of that chunk. On the NEXT chunk
-//   boundary the loop has stopped (stopping=true from ACTION_DOWNGRADE_TO_MIC
-//   when screen share ends), so subsequent chunks are mic-only again.
-//   Screen content is captured live by LiveKit and stored via server-side egress
-//   or client-side from the LiveKit track (see recorder_web_impl for web path).
+// STOP sharing:
+//   1. setScreenShareEnabled(false)
+//   2. _stopShareAndReUpgrade() — waits for micLoopStarted, then re-confirms.
 
 import 'dart:async';
 import 'dart:developer';
@@ -50,12 +34,6 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
   bool get isTeacher;
   void showSnack(String msg);
 
-  static const _screenShareChannel = MethodChannel(
-    'com.example.flutter_education_app/screen_share',
-  );
-
-  // FIX 3: separate channel call to release service VirtualDisplay before
-  // flutter_webrtc creates its own on the same MediaProjection grant.
   static const _recChannel = MethodChannel(
     'com.example.flutter_education_app/native_recorder',
   );
@@ -86,61 +64,33 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
     }
   }
 
-  // ── Android (correct VirtualDisplay-free approach) ────────────────────────
-  //
-  // CORRECT FLOW:
-  //   1. Get MediaProjection grant (one dialog).
-  //   2. upgradeToScreenRecording() — service runs screen+audio loop briefly
-  //      to confirm the MediaProjection is working, emits "screenLoopStarted".
-  //   3. _downgradeToMicForShare() — sends ACTION_DOWNGRADE_TO_MIC_FOR_SHARE,
-  //      BLOCKS until service emits "micReadyForShare". At this point the screen
-  //      loop is fully stopped, the VirtualDisplay is released, and
-  //      mediaProjection has NO active VirtualDisplay.
-  //   4. setScreenShareEnabled(true) — flutter_webrtc creates its OWN
-  //      VirtualDisplay on the same running FGS. No conflict. No second dialog.
-  //
-  // WHY NOT releaseVirtualDisplay() while loop keeps running?
-  //   When the VirtualDisplay is released, the MediaCodec input surface is
-  //   detached. The next signalEndOfInputStream() or dequeueOutputBuffer()
-  //   throws, the loop catches it, sets recording=false, emits a tiny
-  //   isFinal=true chunk, and the service stops — killing the recording session.
+  // ── Android ───────────────────────────────────────────────────────────────
 
   Future<void> _toggleScreenShareAndroid(
       LocalParticipant local,
       bool isSharing,
       ) async {
     if (!isSharing) {
+      // ── START screen share ────────────────────────────────────────────────
       try {
-        // Step 1: mic must be publishing before screen share starts.
         if (!local.isMicrophoneEnabled()) {
           await local.setMicrophoneEnabled(true);
           await Future.delayed(const Duration(milliseconds: 200));
         }
 
-        // Step 2: One dialog — get the MediaProjection grant.
-        final started = await _screenShareChannel.invokeMethod<bool>(
-          'startScreenCaptureService',
-        );
-        if (started != true) {
-          showSnack('Screen share permission denied.');
-          return;
+        // Step 1: promoteForShare — no-op on our side; unblocks any Dart waiter.
+        try {
+          await _recChannel.invokeMethod<void>('promoteForShare');
+        } catch (e) {
+          log('[SS] promoteForShare error (non-fatal): $e');
         }
-        log('[SS] Android: projection grant obtained');
 
-        // Step 3: Upgrade to screen+audio briefly — confirms the grant works
-        // and sets recMode=SCREEN_AUDIO so the service knows to release
-        // a VirtualDisplay on the next downgrade.
-        await recorder?.upgradeToScreenRecording();
-        log('[SS] Android: VirtualDisplay confirmed live');
+        // Step 2: Signal the recording service to emit micReadyForShare so
+        // the chunk boundary is clean before the share session begins.
+        await _stopScreenForShare();
+        log('[SS] Android: share preparation complete');
 
-        // Step 4: Downgrade back to mic-only, BLOCKING until the screen loop
-        // is fully stopped and the VirtualDisplay is released.
-        // ONLY after this returns is it safe to call setScreenShareEnabled(true).
-        await _downgradeToMicForShare();
-        log('[SS] Android: screen loop stopped — mediaProjection free for flutter_webrtc');
-
-        // Step 5: Now flutter_webrtc can create its own VirtualDisplay.
-        // No conflict, no second dialog.
+        // Step 3: flutter_webrtc shows ITS OWN projection dialog and streams.
         await _safeNegotiate(() => local.setScreenShareEnabled(
           true,
           screenShareCaptureOptions: const ScreenShareCaptureOptions(
@@ -150,8 +100,8 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
         ));
         log('[SS] Android: LiveKit screen share enabled');
 
-        // Step 6: publish screen audio track if captured.
-        await Future.delayed(const Duration(milliseconds: 400));
+        // Step 4: Publish screen audio track if available.
+        await Future.delayed(const Duration(milliseconds: 300));
         for (final pub in local.audioTrackPublications) {
           if (pub.source == TrackSource.screenShareAudio &&
               pub.track is LocalAudioTrack) {
@@ -163,73 +113,54 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
             break;
           }
         }
-
-        log('[SS] Android: screen share fully active (recording mic-only during share)');
       } catch (e) {
         log('[SS] Android start error: $e');
         showSnack('Screen sharing failed: $e');
       }
     } else {
-      // Stop screen share — LiveKit releases its VirtualDisplay.
+      // ── STOP screen share ─────────────────────────────────────────────────
       try {
         await _safeNegotiate(() => local.setScreenShareEnabled(false));
         log('[SS] Android: LiveKit screen share disabled');
       } catch (e) {
         log('[SS] Android stop setScreenShareEnabled: $e');
       }
-
-      // Small delay to let flutter_webrtc fully release its VirtualDisplay
-      // before we try to create a new one via upgradeToScreenRecording().
-      await Future.delayed(const Duration(milliseconds: 300));
-
-      // Resume screen+audio recording now that LiveKit's VirtualDisplay is gone.
-      await recorder?.upgradeToScreenRecording();
-      log('[SS] Android: screen recording resumed after share stopped');
+      await _stopShareAndReUpgrade();
+      log('[SS] Android: recording confirmed after share ended');
     }
   }
 
-  // ── Downgrade to mic-only for share (blocking) ───────────────────────────
-  //
-  // Sends ACTION_DOWNGRADE_TO_MIC_FOR_SHARE and blocks until the service emits
-  // "micReadyForShare", confirming the screen loop is stopped and the
-  // VirtualDisplay is released. flutter_webrtc must NOT call
-  // setScreenShareEnabled(true) until this returns.
+  // ── Blocking helpers ──────────────────────────────────────────────────────
 
-  Future<void> _downgradeToMicForShare() async {
-    final completer = Completer<void>();
-    StreamSubscription<dynamic>? sub;
-
-    const eventChannel = EventChannel(
-      'com.example.flutter_education_app/rec_events',
-    );
-    sub = eventChannel.receiveBroadcastStream().listen((event) {
-      if (event is Map && event['event'] == 'micReadyForShare') {
-        if (!completer.isCompleted) completer.complete();
-        sub?.cancel();
-      }
-    }, onError: (e) {
-      if (!completer.isCompleted) completer.completeError(e);
-      sub?.cancel();
-    });
-
+  /// Signals the service to emit micReadyForShare (clean chunk boundary).
+  Future<void> _stopScreenForShare() async {
+    recorder?.prepareMicReadyForShareWait();
     try {
       await _recChannel.invokeMethod<void>('downgradeToMicForShare');
     } catch (e) {
-      sub.cancel();
-      log('[SS] downgradeToMicForShare invoke error: $e');
-      // Non-fatal: proceed anyway — worst case flutter_webrtc races but
-      // that's no worse than the old releaseVirtualDisplay approach.
+      log('[SS] downgradeToMicForShare error: $e');
       return;
     }
-
-    // Wait up to 15 seconds (chunkSecs=5 + 2s deadline + margin).
-    await completer.future.timeout(
-      const Duration(seconds: 15),
-      onTimeout: () {
-        sub?.cancel();
-        log('[SS] downgradeToMicForShare: timeout — proceeding anyway');
-      },
+    await recorder?.micReadyForShareCompleter?.future.timeout(
+      const Duration(seconds: 5),
+      onTimeout: () => log('[SS] stopScreenForShare: timeout'),
     );
+  }
+
+  /// After share ends: waits for micLoopStarted, then re-confirms recording.
+  Future<void> _stopShareAndReUpgrade() async {
+    recorder?.prepareMicLoopStartedWait();
+    try {
+      await _recChannel.invokeMethod<void>('stopScreenCapture');
+    } catch (e) {
+      log('[SS] stopScreenCapture error: $e');
+    }
+    await recorder?.micLoopStartedCompleter?.future.timeout(
+      const Duration(seconds: 5),
+      onTimeout: () => log('[SS] _stopShareAndReUpgrade: micLoopStarted timeout'),
+    );
+    await recorder?.upgradeToScreenRecording();
+    log('[SS] re-upgrade confirmed after share');
   }
 
   // ── Web ───────────────────────────────────────────────────────────────────
@@ -296,8 +227,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
             maxFrameRate: 30,
           ),
         ));
-        await recorder?.upgradeToScreenRecording();
-        log('[SS] iOS: screen share + recording active');
+        log('[SS] iOS: screen share active');
       } catch (e) {
         log('[SS] iOS start error: $e');
         showSnack('Screen sharing requires a Broadcast Upload Extension on iOS.');
@@ -308,8 +238,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
       } catch (e) {
         log('[SS] iOS stop: $e');
       }
-      await recorder?.downgradeToMicOnly();
-      log('[SS] iOS: screen share stopped, mic-only restored');
+      log('[SS] iOS: screen share stopped');
     }
   }
 
@@ -360,25 +289,23 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// RecordingPlaceholderOverlay
-//
-// Show this in the room UI when the teacher is recording in mic-only mode
-// (before screen share starts). Add to room.dart build():
-//
-//   if (widget.isTeacher &&
-//       _recorder?.state == RecState.recording &&
-//       !(_recorder?.isScreenRecording ?? false))
-//     const RecordingPlaceholderOverlay(),
+// RecordingStatusBanner
 // ─────────────────────────────────────────────────────────────────────────────
-class RecordingPlaceholderOverlay extends StatefulWidget {
-  const RecordingPlaceholderOverlay({super.key});
+class RecordingStatusBanner extends StatefulWidget {
+  const RecordingStatusBanner({
+    super.key,
+    required this.isScreenRecording,
+    required this.isSharing,
+  });
+
+  final bool isScreenRecording;
+  final bool isSharing;
+
   @override
-  State<RecordingPlaceholderOverlay> createState() =>
-      _RecordingPlaceholderOverlayState();
+  State<RecordingStatusBanner> createState() => _RecordingStatusBannerState();
 }
 
-class _RecordingPlaceholderOverlayState
-    extends State<RecordingPlaceholderOverlay>
+class _RecordingStatusBannerState extends State<RecordingStatusBanner>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulse;
   late Animation<double> _opacity;
@@ -395,26 +322,39 @@ class _RecordingPlaceholderOverlayState
   }
 
   @override
-  void dispose() { _pulse.dispose(); super.dispose(); }
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final isActive    = widget.isScreenRecording;
+    final dotColor    = isActive ? const Color(0xFF22C55E) : const Color(0xFFF59E0B);
+    final borderColor = isActive
+        ? const Color(0xFF22C55E).withValues(alpha: 0.45)
+        : const Color(0xFFF59E0B).withValues(alpha: 0.45);
+    final shadowColor = isActive
+        ? const Color(0xFF22C55E).withValues(alpha: 0.12)
+        : const Color(0xFFF59E0B).withValues(alpha: 0.12);
+    final iconColor   = isActive ? const Color(0xFF22C55E) : const Color(0xFFF59E0B);
+    final icon        = isActive ? Icons.videocam : Icons.mic;
+
+    final title    = isActive ? 'Recording — Video + Audio' : 'Recording — Audio Only';
+    final subtitle = isActive
+        ? (widget.isSharing
+        ? 'Capturing session with shared screen'
+        : 'Capturing session video and audio')
+        : 'Starting recorder…';
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: const Color(0xFF0E1120),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFFF4F72).withValues(alpha: 0.45),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFFF4F72).withValues(alpha: 0.12),
-            blurRadius: 20,
-          ),
-        ],
+        border: Border.all(color: borderColor, width: 1.2),
+        boxShadow: [BoxShadow(color: shadowColor, blurRadius: 20)],
       ),
       child: Row(
         children: [
@@ -424,24 +364,21 @@ class _RecordingPlaceholderOverlayState
               opacity: _opacity.value,
               child: Container(
                 width: 10, height: 10,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFFFF4F72),
-                ),
+                decoration: BoxDecoration(shape: BoxShape.circle, color: dotColor),
               ),
             ),
           ),
           const SizedBox(width: 10),
-          const Icon(Icons.mic, color: Color(0xFFFF4F72), size: 18),
+          Icon(icon, color: iconColor, size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'Recording — Audio Only',
-                  style: TextStyle(
+                Text(
+                  title,
+                  style: const TextStyle(
                     fontFamily: 'tajawal',
                     color: Color(0xFFFFFFFF),
                     fontWeight: FontWeight.w700,
@@ -450,7 +387,7 @@ class _RecordingPlaceholderOverlayState
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Start screen share to also capture video',
+                  subtitle,
                   style: TextStyle(
                     fontFamily: 'tajawal',
                     color: const Color(0xFFFFFFFF).withValues(alpha: 0.55),
@@ -463,12 +400,14 @@ class _RecordingPlaceholderOverlayState
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: const Color(0xFFFF4F72).withValues(alpha: 0.12),
+              color: iconColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(
-              Icons.screen_share_outlined,
-              color: Color(0xFFFF4F72),
+            child: Icon(
+              widget.isSharing
+                  ? Icons.screen_share_outlined
+                  : Icons.fiber_manual_record,
+              color: iconColor,
               size: 16,
             ),
           ),

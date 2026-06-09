@@ -1,11 +1,13 @@
-// room_recorder.dart
+// room_recorder.dart — Standard MediaProjection recording pipeline
 //
-// Option B upgrade flow:
-//   upgradeToScreenRecording() sends ACTION_UPGRADE_TO_SCREEN then BLOCKS
-//   on a Completer until the service emits "screenLoopStarted" on the
-//   EventChannel. Only then does it return — guaranteeing that
-//   createVirtualDisplay() has already been called before Dart calls
-//   setScreenShareEnabled(true).
+// Flow:
+//   1. start()       → sends ACTION_START_MIC_ONLY to configure the service.
+//   2. startScreenCaptureService (via screen_share channel) → shows the
+//      "Allow screen capture?" system dialog.
+//   3. On user approval, ScreenCaptureService begins recording and emits
+//      "screenLoopStarted". upgradeToScreenRecording() resolves.
+//   4. Recording runs in 5-second MP4 chunks, each uploaded automatically.
+//   5. stopRecordingOnly() → sends ACTION_STOP, waits for isFinal chunk.
 
 import 'dart:async';
 import 'dart:developer';
@@ -15,19 +17,13 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'recorder_web_stub.dart'
 if (dart.library.html) 'recorder_web_impl.dart' as web_rec;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// RecState
-// ─────────────────────────────────────────────────────────────────────────────
 enum RecState { idle, starting, recording, uploading, done, error }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ClientRecorder
-// ─────────────────────────────────────────────────────────────────────────────
 class ClientRecorder extends ChangeNotifier {
   ClientRecorder({
     required this.sessionId,
     required this.apiClient,
-    this.chunkSeconds = 5, // ← 5-second chunks for Option B
+    this.chunkSeconds = 5,
   });
 
   final int sessionId;
@@ -46,38 +42,49 @@ class ClientRecorder extends ChangeNotifier {
   String? _lastError;
   String? get lastError => _lastError;
 
-  bool _stopping       = false;
+  bool _stopping = false;
+
   bool _screenRecording = false;
   bool get isScreenRecording => _screenRecording;
 
-  // ── Native channels ────────────────────────────────────────────────────────
   static const _recChannel = MethodChannel(
     'com.example.flutter_education_app/native_recorder',
   );
   static const _recEventChannel = EventChannel(
     'com.example.flutter_education_app/rec_events',
   );
+
   StreamSubscription<dynamic>? _recEventSub;
 
-  // ── Option B: Completers for synchronous upgrade/downgrade ─────────────────
-  // These are set when we start waiting for a mode-switch confirmation event.
+  // Completers for screen-share lifecycle synchronisation.
   Completer<void>? _screenLoopCompleter;
-  Completer<void>? _micLoopCompleter;
+  Completer<void>? _micReadyForShareCompleter;
+  Completer<void>? _micLoopStartedCompleter;
 
-  // ── Web recorder ──────────────────────────────────────────────────────────
+  Completer<void>? get micReadyForShareCompleter => _micReadyForShareCompleter;
+  Completer<void>? get micLoopStartedCompleter   => _micLoopStartedCompleter;
+
+  void prepareMicReadyForShareWait() =>
+      _micReadyForShareCompleter = Completer<void>();
+
+  void prepareMicLoopStartedWait() =>
+      _micLoopStartedCompleter = Completer<void>();
+
   web_rec.WebRecorder? _webRecorder;
   web_rec.WebRecorder? get webRecorder => _webRecorder;
 
   // ── Public API ────────────────────────────────────────────────────────────
 
-  /// Phase 1: start mic-only recording. No permission dialog. No screen capture.
+  /// Phase 1: configure the recording service.
+  /// The MediaProjection dialog has NOT been shown yet — that happens
+  /// in room.dart via startScreenCaptureService + upgradeToScreenRecording().
   Future<void> start() async {
     if (_state != RecState.idle) return;
     _set(RecState.starting);
     if (kIsWeb) {
       await _startWeb();
     } else {
-      await _startMicOnly();
+      await _startRecording();
     }
   }
 
@@ -87,47 +94,41 @@ class ClientRecorder extends ChangeNotifier {
     _webRecorder!.startCompositor(sessionId, apiClient.baseUrl, 'Bearer $token');
   }
 
-  /// Phase 2 (Android/iOS): upgrade mic-only → screen+audio.
-  ///
-  /// Option B behaviour on Android:
-  ///   • Sends ACTION_UPGRADE_TO_SCREEN to the service.
-  ///   • Blocks until "screenLoopStarted" event is received (service emits
-  ///     this only AFTER createVirtualDisplay() returns).
-  ///   • Returns — caller can now safely call setScreenShareEnabled(true).
-  ///
-  /// Timeout: chunkSeconds + 4 seconds. If the service doesn't reply in time
-  /// (shouldn't happen with 5-second chunks), we return anyway so the UI
-  /// doesn't freeze.
+  /// Phase 3: called after startScreenCaptureService resolves (dialog approved).
+  /// Waits for "screenLoopStarted" which confirms MediaRecorder is running.
   Future<void> upgradeToScreenRecording() async {
-    if (kIsWeb || _stopping || _screenRecording) return;
-    await _startScreenCapture();
-  }
-
-  /// Downgrade screen+audio → mic-only. Blocks until "micLoopStarted" is received.
-  Future<void> downgradeToMicOnly() async {
-    if (kIsWeb || _stopping || !_screenRecording) return;
-    _screenRecording = false;
+    if (kIsWeb) return;
+    if (_screenRecording) {
+      log('[REC] upgradeToScreenRecording: already recording — no-op');
+      return;
+    }
     try {
-      // Set up completer BEFORE sending the intent so we don't miss the event.
-      _micLoopCompleter = Completer<void>();
-      await _recChannel.invokeMethod('stopScreenCapture');
-
-      // Wait for service to confirm mic loop has restarted.
-      await _micLoopCompleter!.future.timeout(
-        Duration(seconds: chunkSeconds + 4),
-        onTimeout: () {
-          log('[REC] downgradeToMicOnly: timeout waiting for micLoopStarted');
-        },
-      );
-      _micLoopCompleter = null;
-      log('[REC] Mobile: downgraded to mic-only confirmed');
+      _screenLoopCompleter = Completer<void>();
+      final ok = await _recChannel.invokeMethod<bool>('upgradeToScreenRecording');
+      if (ok == true) {
+        await _screenLoopCompleter!.future.timeout(
+          const Duration(seconds: 15),
+          onTimeout: () => log('[REC] upgradeToScreenRecording: timeout waiting for screenLoopStarted'),
+        );
+      }
+      _screenLoopCompleter = null;
+      _screenRecording = true;
+      notifyListeners();
+      log('[REC] upgradeToScreenRecording: confirmed');
     } catch (e) {
-      _micLoopCompleter = null;
-      log('[REC] downgradeToMicOnly error: $e');
+      _screenLoopCompleter = null;
+      log('[REC] upgradeToScreenRecording error: $e');
     }
   }
 
-  // Web helpers
+  /// Called when screen share ends. Recording continues uninterrupted;
+  /// we just clear the flag and let RoomScreenShareMixin call
+  /// upgradeToScreenRecording() to re-confirm.
+  Future<void> downgradeToMicOnly() async {
+    if (kIsWeb) return;
+    log('[REC] downgradeToMicOnly: recording continues');
+  }
+
   Future<void> attachScreenToRecorder(Object? screenStream) async {
     if (!kIsWeb || _webRecorder == null) return;
     _webRecorder!.addStream(screenStream, 'screen');
@@ -150,35 +151,56 @@ class ClientRecorder extends ChangeNotifier {
   }
 
   Future<void> drainPending() async {
-    _set(RecState.done);
+    if (kIsWeb) {
+      _set(RecState.done);
+      log('[REC] drain complete (web) — chunks=$_uploadedChunks bytes=$_totalBytes');
+      return;
+    }
+    // On mobile the native FGS is still uploading chunks in background threads.
+    // Poll until the isFinal=true chunkUploaded event arrives (which sets
+    // RecState.done in _onNativeEvent), or until 120s timeout.
+    // This keeps _recEventSub alive so native events are not dropped.
+    const maxWait = Duration(seconds: 120);
+    final deadline = DateTime.now().add(maxWait);
+    while (_state != RecState.done &&
+        _state != RecState.error &&
+        DateTime.now().isBefore(deadline)) {
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
+    if (_state != RecState.done) {
+      _set(RecState.done); // timeout — force done so dispose() can proceed
+    }
     log('[REC] drain complete — chunks=$_uploadedChunks bytes=$_totalBytes');
   }
 
   @override
   Future<void> dispose() async {
     _recEventSub?.cancel();
-    _recEventSub = null;
-    _screenLoopCompleter = null;
-    _micLoopCompleter    = null;
+    _recEventSub               = null;
+    _screenLoopCompleter       = null;
+    _micReadyForShareCompleter = null;
+    _micLoopStartedCompleter   = null;
     try { await _webRecorder?.stop(); } catch (_) {}
     _webRecorder = null;
     super.dispose();
   }
 
-  // ── Web ────────────────────────────────────────────────────────────────────
+  // ── Web ───────────────────────────────────────────────────────────────────
 
   Future<void> _startWeb() async {
     try {
       Object? stream = await web_rec.getUserMedia(video: true);
       stream ??= await web_rec.getAudioOnly();
       if (stream == null) {
-        log('[REC] Web: no camera/mic — compositor runs in screen-only mode');
+        log('[REC] Web: no camera/mic — compositor in screen-only mode');
       }
       _webRecorder = web_rec.WebRecorder(
         onBlob: (size) { _totalBytes += size; notifyListeners(); },
       );
       await _webRecorder!.start(stream, '');
       _set(RecState.recording);
+      _screenRecording = true;
+      notifyListeners();
       log('[REC] Web: recorder started');
     } catch (e, st) {
       log('[REC] Web start error: $e\n$st');
@@ -186,15 +208,15 @@ class ClientRecorder extends ChangeNotifier {
     }
   }
 
-  // ── Mobile phase 1: mic-only ──────────────────────────────────────────────
+  // ── Android: configure the recording service ──────────────────────────────
 
-  Future<void> _startMicOnly() async {
+  Future<void> _startRecording() async {
     try {
-      final token      = (await apiClient.accessToken) ?? '';
-      final uploadUrl  =
+      final token     = (await apiClient.accessToken) ?? '';
+      final uploadUrl =
           '${apiClient.baseUrl}/api/v1/live-sessions/$sessionId/recording-chunk';
 
-      // Start listening BEFORE starting the service so we don't miss early events.
+      // Open the EventChannel subscription before starting the service.
       _recEventSub?.cancel();
       _recEventSub = _recEventChannel.receiveBroadcastStream().listen(
         _onNativeEvent,
@@ -202,61 +224,23 @@ class ClientRecorder extends ChangeNotifier {
       );
 
       final ok = await _recChannel.invokeMethod<bool>('startMicRecording', {
-        'sessionId':   sessionId,
-        'uploadUrl':   uploadUrl,
-        'authToken':   'Bearer $token',
+        'sessionId':    sessionId,
+        'uploadUrl':    uploadUrl,
+        'authToken':    'Bearer $token',
         'chunkSeconds': chunkSeconds,
       });
 
       if (ok == true) {
         _set(RecState.recording);
-        log('[REC] Mobile: mic-only started (chunkSeconds=$chunkSeconds)');
+        log('[REC] Android: service configured, awaiting projection approval');
       } else {
         _setError('startMicRecording returned false');
       }
     } on PlatformException catch (e) {
-      _setError('Mic recording failed: ${e.message}');
+      _setError('Recording failed: ${e.message}');
     } catch (e, st) {
-      log('[REC] startMicRecording error: $e\n$st');
-      _setError('Mic recording failed: $e');
-    }
-  }
-
-  // ── Mobile phase 2: upgrade to screen+audio (Option B) ────────────────────
-
-  Future<void> _startScreenCapture() async {
-    try {
-      // Set up the completer BEFORE sending the intent so we cannot miss the
-      // "screenLoopStarted" event even if the service responds instantly.
-      _screenLoopCompleter = Completer<void>();
-
-      final ok = await _recChannel.invokeMethod<bool>('upgradeToScreenRecording');
-      if (ok != true) {
-        _screenLoopCompleter = null;
-        log('[REC] upgradeToScreenRecording returned false — staying on mic');
-        return;
-      }
-
-      log('[REC] Mobile: waiting for screenLoopStarted event...');
-
-      // Block until the service confirms the screen loop + VirtualDisplay are live.
-      // Timeout = chunkSeconds + 4s (with 5-second chunks, max wait = 9s).
-      await _screenLoopCompleter!.future.timeout(
-        Duration(seconds: chunkSeconds + 4),
-        onTimeout: () {
-          log('[REC] upgradeToScreenRecording: timeout — proceeding anyway');
-        },
-      );
-      _screenLoopCompleter = null;
-
-      _screenRecording = true;
-      log('[REC] Mobile: upgraded to screen+audio — VirtualDisplay confirmed live');
-    } on PlatformException catch (e) {
-      _screenLoopCompleter = null;
-      log('[REC] upgradeToScreenRecording PlatformException: ${e.code} ${e.message}');
-    } catch (e) {
-      _screenLoopCompleter = null;
-      log('[REC] upgradeToScreenRecording error: $e');
+      log('[REC] _startRecording error: $e\n$st');
+      _setError('Recording failed: $e');
     }
   }
 
@@ -276,31 +260,27 @@ class ClientRecorder extends ChangeNotifier {
     final type = event['event'] as String?;
 
     switch (type) {
-
-    // Option B: service has called createVirtualDisplay() — screen is live.
-    // Completing this unblocks _startScreenCapture() so Dart returns from
-    // upgradeToScreenRecording() and the caller can call setScreenShareEnabled.
       case 'screenLoopStarted':
-        log('[REC] screenLoopStarted received — VirtualDisplay is live');
-        if (_screenLoopCompleter != null && !_screenLoopCompleter!.isCompleted) {
+        log('[REC] screenLoopStarted — MediaProjection recording active');
+        if (_screenLoopCompleter?.isCompleted == false) {
           _screenLoopCompleter!.complete();
         }
-
-    // Service has restarted the mic loop after a downgrade.
-      case 'micLoopStarted':
-        log('[REC] micLoopStarted received');
-        if (_micLoopCompleter != null && !_micLoopCompleter!.isCompleted) {
-          _micLoopCompleter!.complete();
-        }
-
-    // Service has stopped the screen loop and is mic-only, ready for
-    // flutter_webrtc to create its own VirtualDisplay (screen share).
-    // This event is handled in room_screen_share.dart via its own listener;
-    // we just log it here so the recorder state stays consistent.
-      case 'micReadyForShare':
-        log('[REC] micReadyForShare received — screen loop stopped, recorder mic-only');
-        _screenRecording = false;
+        _screenRecording = true;
         notifyListeners();
+
+      case 'micReadyForShare':
+        log('[REC] micReadyForShare');
+        if (_micReadyForShareCompleter?.isCompleted == false) {
+          _micReadyForShareCompleter!.complete();
+        }
+        _micReadyForShareCompleter = null;
+
+      case 'micLoopStarted':
+        log('[REC] micLoopStarted');
+        if (_micLoopStartedCompleter?.isCompleted == false) {
+          _micLoopStartedCompleter!.complete();
+        }
+        _micLoopStartedCompleter = null;
 
       case 'chunkUploaded':
         _uploadedChunks++;
@@ -308,10 +288,6 @@ class ClientRecorder extends ChangeNotifier {
         notifyListeners();
         log('[REC] chunk #${event['chunkIndex']} uploaded '
             '(${event['bytes']}B isFinal=${event['isFinal']})');
-        // Only tear down the event subscription when WE requested the stop.
-        // The service also emits isFinal=true on mode-switch drain chunks
-        // (upgrade/downgrade transitions). Without this guard those transition
-        // chunks would cancel the subscription mid-session.
         if (event['isFinal'] == true && _stopping) {
           _set(RecState.done);
           _recEventSub?.cancel();
@@ -325,13 +301,12 @@ class ClientRecorder extends ChangeNotifier {
 
   void _onNativeError(dynamic error) {
     log('[REC] Native error: $error');
-    // Complete any pending completers with an error so callers don't hang.
-    if (_screenLoopCompleter != null && !_screenLoopCompleter!.isCompleted) {
+    if (_screenLoopCompleter?.isCompleted == false)
       _screenLoopCompleter!.completeError(error ?? 'native error');
-    }
-    if (_micLoopCompleter != null && !_micLoopCompleter!.isCompleted) {
-      _micLoopCompleter!.completeError(error ?? 'native error');
-    }
+    if (_micReadyForShareCompleter?.isCompleted == false)
+      _micReadyForShareCompleter!.completeError(error ?? 'native error');
+    if (_micLoopStartedCompleter?.isCompleted == false)
+      _micLoopStartedCompleter!.completeError(error ?? 'native error');
     _setError(error?.toString() ?? 'Native recorder error');
   }
 
@@ -341,7 +316,7 @@ class ClientRecorder extends ChangeNotifier {
 
   void _setError(String m) {
     _lastError = m;
-    _state = RecState.error;
+    _state     = RecState.error;
     notifyListeners();
   }
 }

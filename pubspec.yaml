@@ -31,9 +31,8 @@ dependencies:
   logging: ^1.0.1
   flutter_svg: ^2.0.5
   collection: '>=1.16.0'
-  livekit_client: ^2.7.0
   nested: any
-  flutter_webrtc: any
+  flutter_webrtc: ^1.4.0
   mime: any
   responsive_framework: ^1.5.1
   moyasar: ^3.0.2
@@ -48,6 +47,7 @@ dependencies:
   firebase_remote_config: ^6.5.1
   video_player: ^2.9.2
   wakelock_plus: ^1.2.10
+  livekit_client: ^2.8.0
 dependency_overrides:
   # Pin packages that use Apple APIs unavailable on CI runner's Xcode version.
   connectivity_plus: '>=7.0.0 <7.1.0' # NWPath.isUltraConstrained

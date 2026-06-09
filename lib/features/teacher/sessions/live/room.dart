@@ -5,7 +5,7 @@ import 'dart:math' as math;
 import 'dart:convert';
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide ConnectionState;
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:livekit_client/livekit_client.dart';
@@ -14,6 +14,7 @@ import 'widgets/controls.dart';
 import 'widgets/participant.dart';
 import 'widgets/participant_info.dart';
 import 'widgets/room_recorder.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'widgets/room_screen_share.dart';
 import 'widgets/recorder_web_stub.dart'
 if (dart.library.html) 'widgets/recorder_web_impl.dart' as web_rec;
@@ -207,6 +208,8 @@ class RoomPage extends StatefulWidget {
   final int courseId;
   final int sessionId;
   final ApiClient apiClient;
+  final bool enableAudio;
+  final bool enableVideo;
 
   const RoomPage(
       this.room,
@@ -218,6 +221,8 @@ class RoomPage extends StatefulWidget {
         required this.courseId,
         required this.sessionId,
         required this.apiClient,
+        this.enableAudio = true,
+        this.enableVideo = true,
       });
 
   @override
@@ -284,16 +289,36 @@ class _RoomPageState extends State<RoomPage>
 
   // _screenShareChannel → RoomScreenShareMixin
 
+  Future<void> _requestPermissions() async {
+    if (kIsWeb) return;
+    if (!lkPlatformIs(PlatformType.android)) return;
+    try {
+      // Request both at once — Android shows them sequentially.
+      final statuses = await [
+        Permission.camera,
+        Permission.microphone,
+      ].request();
+
+      if (statuses[Permission.camera] != PermissionStatus.granted) {
+        log('[PERM] Camera permission denied — recording will have no camera PiP');
+      }
+      if (statuses[Permission.microphone] != PermissionStatus.granted) {
+        log('[PERM] Microphone permission denied — recording will have no audio');
+      }
+    } catch (e) {
+      log('[PERM] _requestPermissions error: $e');
+    }
+  }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 2.  initState()
+// ═══════════════════════════════════════════════════════════════════════════
   @override
   void initState() {
     super.initState();
     _setUpListeners();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (widget.isTeacher) {
-        // If the room is already connected, start the recorder now.
-        await _startRecorderOnce();
-      }
-    });
+
+    // ── Animations ────────────────────────────────────────────────────────────
     _thumbBarAnim = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 350),
@@ -307,10 +332,9 @@ class _RoomPageState extends State<RoomPage>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
-    _recDotOpacity = Tween<double>(
-      begin: 1.0,
-      end: 0.25,
-    ).animate(CurvedAnimation(parent: _recDotAnim, curve: Curves.easeInOut));
+    _recDotOpacity = Tween<double>(begin: 1.0, end: 0.25).animate(
+      CurvedAnimation(parent: _recDotAnim, curve: Curves.easeInOut),
+    );
 
     _auroraAnim = AnimationController(
       vsync: this,
@@ -341,7 +365,10 @@ class _RoomPageState extends State<RoomPage>
       vsync: this,
       duration: const Duration(milliseconds: 350),
     );
-    _quizSlide = CurvedAnimation(parent: _quizAnim, curve: Curves.easeOutBack);
+    _quizSlide = CurvedAnimation(
+      parent: _quizAnim,
+      curve: Curves.easeOutBack,
+    );
 
     _serverRecording = widget.room.isRecording;
     widget.room.addListener(_onRoomDidUpdate);
@@ -355,13 +382,26 @@ class _RoomPageState extends State<RoomPage>
     if (!widget.isTeacher) _startQuizPolling();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      // HD audio for everyone
+      // ── Step 1: request runtime permissions ───────────────────────────────
+      // CAMERA and MICROPHONE are dangerous permissions on Android 6+.
+      // PixelCopy itself needs no permission, but camera PiP and mic
+      // recording require these to be granted at runtime.
+      if (widget.isTeacher) {
+        await _requestPermissions();
+      }
+
+      // ── Step 2: enable HD audio ────────────────────────────────────────────
       final local = widget.room.localParticipant;
       if (local != null) await _enableHdAudio(local);
-      // Recording is started in _onRoomConnected once the room is fully ready.
+
+      // ── Step 3: start recorder if room is already connected ────────────────
+      // Handles the race where the room connected before initState() ran.
+      if (widget.isTeacher &&
+          widget.room.connectionState == ConnectionState.connected) {
+        await _startRecorderOnce();
+      }
     });
   }
-
   void _onRecorderUpdate() {
     if (mounted) setState(() {});
   }
@@ -393,81 +433,49 @@ class _RoomPageState extends State<RoomPage>
     await widget.room.dispose();
   }
 
-  // ── End session: stop recorder FIRST, then call server ────────────────────
+  // ── End session ───────────────────────────────────────────────────────────
   //
-  // ── End session: pop immediately, finish uploads in background ────────────
+  // Mobile: stopRecordingOnly() → ACTION_STOP (fast, < 200ms) → pop immediately.
+  //   The native FGS drains remaining uploads independently and calls stopSelf()
+  //   only after all pendingUploads reach zero (up to 120s).
+  //   _drainAndDispose runs unawaited and waits for RecState.done via polling.
   //
-  // Flow:
-  //   1. stopRecordingOnly()  — stops camera/MediaRecorder, seals final chunk
-  //                             into upload queue. Returns in < 300ms.
-  //   2. Detach recorder from widget so dispose() never cancels ongoing uploads.
-  //   3. Fire widget.onEnd() unawaited — server marks session ended in background.
-  //   4. Pop the screen immediately — teacher sees the previous screen at once.
-  //   5. Background task drains remaining chunk uploads, then self-disposes.
+  // Web: stopRecordingOnly() → WebRecorder.stop() which internally polls
+  //   _compositorDone for up to 5 min. Must be fully awaited before onEnd()
+  //   so the server doesn't reject in-flight uploads with 4xx.
   Future<dynamic> _endSessionWithRecording() async {
-    if (_endingSession) return null; // prevent double-tap
+    if (_endingSession) return null;
     if (mounted) setState(() => _endingSession = true);
 
     final rec = _recorder;
-    _recorder = null; // detach early so dispose() won't interfere
+    _recorder = null; // detach so dispose() never interferes
 
     if (widget.isTeacher && rec != null && rec.state == RecState.recording) {
-      // ── Step 1: stop the recorder and wait for ALL chunks to upload.
-      //
-      // On WEB:  stopRecordingOnly() calls WebRecorder.stop() which polls
-      //          _ElFaheemCompositorDone for up to 5 min.  We MUST await this
-      //          fully before calling onEnd(), otherwise the server ends the
-      //          session and rejects in-flight chunk uploads with 4xx.
-      //
-      // On MOBILE: same — wait for is_final=true EventChannel confirmation
-      //            before calling onEnd().
       try {
-        // stopRecordingOnly() on web already polls _compositorDone internally
-        // inside WebRecorder.stop(), so this await is sufficient for both paths.
         await rec.stopRecordingOnly();
-
-        if (!kIsWeb) {
-          // Wait for is_final=true chunkUploaded event (or timeout).
-          const maxWait = Duration(seconds: 85);
-          final deadline = DateTime.now().add(maxWait);
-          while (rec.state != RecState.done &&
-              rec.state != RecState.error &&
-              DateTime.now().isBefore(deadline)) {
-            await Future.delayed(const Duration(seconds: 2));
-          }
-          log(
-            '[REC] Final chunk state=${rec.state.name} '
-                'chunks=${rec.uploadedChunks} bytes=${rec.totalBytes}',
-          );
-        } else {
-          // Web: stopRecordingOnly() returns only after _compositorDone=true
-          // (all chunks uploaded). Log confirmation.
-          log('[REC] Web: compositor drained — all chunks uploaded before onEnd()');
+        if (kIsWeb) {
+          log('[REC] Web: compositor drained — all chunks uploaded');
         }
+        // Mobile: don't block here — native FGS handles the upload drain.
       } catch (e) {
         log('[REC] stopRecordingOnly error: $e');
       }
-
-      // ── Step 2: drain any remaining Dart-side futures.
       unawaited(_drainAndDispose(rec));
     }
 
-    // ── Step 3: tell server to end session.
-    // Server waits up to 90s for the recording before deleting the room.
     try {
       await widget.onEnd();
     } catch (e) {
       log('[REC] onEnd error: $e');
     }
 
-    // ── Step 4: pop to root
     if (mounted) Navigator.pop(context);
     if (mounted) Navigator.pop(context);
     return null;
   }
 
-  /// Background drain — called after screen has already popped.
-  /// Waits for all in-flight chunk uploads, then disposes the recorder.
+  /// Waits for all in-flight chunk uploads (RecState.done) then disposes.
+  /// Runs in background after screen has already popped.
   static Future<void> _drainAndDispose(ClientRecorder rec) async {
     try {
       await rec.drainPending();
@@ -657,6 +665,8 @@ class _RoomPageState extends State<RoomPage>
         unawaited(_autoEndSession());
       }
     })
+    ..on<TrackMutedEvent>((_) => _sortParticipants())
+    ..on<TrackUnmutedEvent>((_) => _sortParticipants())
     ..on<TrackE2EEStateEvent>((e) => log('e2ee: $e'))
     ..on<ParticipantNameUpdatedEvent>((e) {
       log('Name: ${e.participant.identity} → ${e.name}');
@@ -678,21 +688,52 @@ class _RoomPageState extends State<RoomPage>
       }
     });
 
-  /// Start the client-side recorder exactly once per session.
-  /// Phase 1: mic-only — no permission dialog, starts silently.
-  /// Phase 2: upgraded to screen when teacher presses Share Screen.
+
   Future<void> _startRecorderOnce() async {
     if (_recorderStarted) return;
     _recorderStarted = true;
+
     _recorder = ClientRecorder(
       sessionId: widget.sessionId,
       apiClient: widget.apiClient,
     );
     _recorder!.addListener(_onRecorderUpdate);
+
+    // Step 1: Configure the service with session params.
+    // No dialog is shown yet; the service enters its ready state.
     await _recorder!.start();
-    if (kIsWeb) await _recorder!.startWebCompositor();
-    log('[REC] Recorder started (phase 1 — mic only)');
+    log('[REC] Recorder service configured');
+
+    if (kIsWeb) {
+      await _recorder!.startWebCompositor();
+      return;
+    }
+
+    if (!lkPlatformIs(PlatformType.android)) return;
+
+    // Step 2: Show the "Allow screen capture?" system dialog.
+    // This returns true when the user approves and ScreenCaptureService
+    // has stored the MediaProjection grant.
+    try {
+      final granted = await const MethodChannel(
+        'com.example.flutter_education_app/screen_share',
+      ).invokeMethod<bool>('startScreenCaptureService');
+
+      if (granted == true) {
+        // Step 3: Wait for "screenLoopStarted" — confirms MediaRecorder is live.
+        await _recorder!.upgradeToScreenRecording();
+        log('[REC] Screen recording confirmed active');
+        if (mounted) setState(() {});
+      } else {
+        log('[REC] startScreenCaptureService: user denied or returned false — recording skipped');
+      }
+    } on PlatformException catch (e) {
+      log('[REC] startScreenCaptureService PlatformException: ${e.code} ${e.message}');
+    } catch (e) {
+      log('[REC] startScreenCaptureService error: $e');
+    }
   }
+
   Future<void> _autoEndSession() async {
     try {
       await widget.onEnd();
@@ -717,15 +758,16 @@ class _RoomPageState extends State<RoomPage>
 
     for (final p in widget.room.remoteParticipants.values) {
       for (final t in p.videoTrackPublications) {
-        if (!_hasVideoTrack(t)) continue;
         if (t.isScreenShare) {
+          // Include screen shares even before the track object is loaded
+          // (_PremiumScreenShareView handles the null-track loading state).
           screenTracks.add(
             ParticipantTrack(
               participant: p,
               type: ParticipantTrackType.kScreenShare,
             ),
           );
-        } else {
+        } else if (_hasVideoTrack(t)) {
           userMedia.add(ParticipantTrack(participant: p));
         }
       }
@@ -750,15 +792,15 @@ class _RoomPageState extends State<RoomPage>
     final localPubs = widget.room.localParticipant?.videoTrackPublications;
     if (localPubs != null) {
       for (final t in localPubs) {
-        if (!_hasVideoTrack(t)) continue;
         if (t.isScreenShare) {
+          // Include local screen share even before track object loads.
           localScreen.add(
             ParticipantTrack(
               participant: widget.room.localParticipant!,
               type: ParticipantTrackType.kScreenShare,
             ),
           );
-        } else {
+        } else if (_hasVideoTrack(t)) {
           localCamera = ParticipantTrack(
             participant: widget.room.localParticipant!,
           );
@@ -781,14 +823,20 @@ class _RoomPageState extends State<RoomPage>
 
   VideoTrack? _resolveScreenTrack(Participant p) {
     for (final pub in p.videoTrackPublications) {
-      if (pub.isScreenShare && _hasVideoTrack(pub)) return _getVideoTrack(pub);
+      if (pub.isScreenShare) {
+        final t = pub.track;
+        if (t is VideoTrack) return t;
+      }
     }
     return null;
   }
 
   VideoTrack? _resolveCameraTrack(Participant p) {
     for (final pub in p.videoTrackPublications) {
-      if (!pub.isScreenShare && _hasVideoTrack(pub)) return _getVideoTrack(pub);
+      if (!pub.isScreenShare) {
+        final t = pub.track;
+        if (t is VideoTrack) return t;
+      }
     }
     return null;
   }
@@ -1030,7 +1078,19 @@ class _RoomPageState extends State<RoomPage>
 
   // ── Main video ─────────────────────────────────────────────────────────────
   Widget _buildMainVideo() {
-    if (participantTracks.isEmpty) return const _WaitingPlaceholder();
+    if (participantTracks.isEmpty) {
+      // Premium placeholder — show teacher name and active speaker info
+      final local = widget.room.localParticipant;
+      final teacherName = local?.name ?? local?.identity ?? 'Teacher';
+      final isMicOn = local?.isMicrophoneEnabled() ?? false;
+      final isCamOn = local?.isCameraEnabled() ?? false;
+      return _PremiumWaitingPlaceholder(
+        teacherName: teacherName,
+        isMicOn: isMicOn,
+        isCamOn: isCamOn,
+        auroraAnim: _auroraAnim,
+      );
+    }
     final main = participantTracks.first;
     if (main.type == ParticipantTrackType.kScreenShare) {
       return _PremiumScreenShareView(
@@ -2738,6 +2798,316 @@ class _ScreenShareAuroraPainter extends CustomPainter {
   bool shouldRepaint(_ScreenShareAuroraPainter old) => old.t != t;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// _PremiumWaitingPlaceholder  — Teams-style no-content placeholder
+// Shows teacher avatar, name, A/V status chips, and a "Waiting for students"
+// message with animated aurora + pulse ring — all matching the room design.
+// ─────────────────────────────────────────────────────────────────────────────
+class _PremiumWaitingPlaceholder extends StatefulWidget {
+  const _PremiumWaitingPlaceholder({
+    required this.teacherName,
+    required this.isMicOn,
+    required this.isCamOn,
+    required this.auroraAnim,
+  });
+
+  final String teacherName;
+  final bool isMicOn;
+  final bool isCamOn;
+  final AnimationController auroraAnim;
+
+  @override
+  State<_PremiumWaitingPlaceholder> createState() =>
+      _PremiumWaitingPlaceholderState();
+}
+
+class _PremiumWaitingPlaceholderState
+    extends State<_PremiumWaitingPlaceholder>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ringAnim;
+  late Animation<double> _ringScale;
+  late Animation<double> _ringOpacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _ringAnim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat();
+    _ringScale = Tween<double>(begin: 1.0, end: 1.55).animate(
+      CurvedAnimation(parent: _ringAnim, curve: Curves.easeOut),
+    );
+    _ringOpacity = Tween<double>(begin: 0.45, end: 0.0).animate(
+      CurvedAnimation(parent: _ringAnim, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ringAnim.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final initials = widget.teacherName.isNotEmpty
+        ? widget.teacherName
+        .trim()
+        .split(RegExp(r'\s+'))
+        .take(2)
+        .map((w) => w[0].toUpperCase())
+        .join()
+        : '?';
+
+    return Container(
+      color: _bg,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Aurora background
+          AnimatedBuilder(
+            animation: widget.auroraAnim,
+            builder: (_, __) => CustomPaint(
+              painter: _AuroraPainter(widget.auroraAnim.value),
+              child: const SizedBox.expand(),
+            ),
+          ),
+
+          // Center content
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Avatar with pulsing ring
+                SizedBox(
+                  width: 120,
+                  height: 120,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Pulse ring
+                      AnimatedBuilder(
+                        animation: _ringAnim,
+                        builder: (_, __) => Transform.scale(
+                          scale: _ringScale.value,
+                          child: Opacity(
+                            opacity: _ringOpacity.value,
+                            child: Container(
+                              width: 96,
+                              height: 96,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: _cyan,
+                                  width: 2.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Avatar
+                      Container(
+                        width: 88,
+                        height: 88,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFF00D4FF), Color(0xFF6B6EF9)],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _cyan.withValues(alpha: 0.35),
+                              blurRadius: 28,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            initials,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 32,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Name
+                Text(
+                  widget.teacherName,
+                  style: const TextStyle(
+                    fontFamily: 'tajawal',
+                    color: _textHigh,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.2,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+
+                const SizedBox(height: 6),
+
+                // Role chip
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _cyan.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: _cyan.withValues(alpha: 0.35), width: 1),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.school_rounded,
+                          color: _cyan, size: 12),
+                      SizedBox(width: 5),
+                      Text(
+                        'Teacher',
+                        style: TextStyle(
+                          fontFamily: 'tajawal',
+                          color: _cyan,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 22),
+
+                // A/V status row
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _AVChip(
+                      icon: widget.isMicOn
+                          ? Icons.mic_rounded
+                          : Icons.mic_off_rounded,
+                      label: widget.isMicOn ? 'Mic On' : 'Mic Off',
+                      active: widget.isMicOn,
+                      activeColor: const Color(0xFF00E5A0),
+                      inactiveColor: _rose,
+                    ),
+                    const SizedBox(width: 10),
+                    _AVChip(
+                      icon: widget.isCamOn
+                          ? Icons.videocam_rounded
+                          : Icons.videocam_off_rounded,
+                      label: widget.isCamOn ? 'Cam On' : 'Cam Off',
+                      active: widget.isCamOn,
+                      activeColor: const Color(0xFF00E5A0),
+                      inactiveColor: _textLow,
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 36),
+
+                // Waiting message
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: _glass10,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: _glassBdr, width: 1),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.8,
+                          color: _cyan.withValues(alpha: 0.7),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Waiting for students to join…',
+                        style: TextStyle(
+                          fontFamily: 'tajawal',
+                          color: _textMid,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AVChip extends StatelessWidget {
+  const _AVChip({
+    required this.icon,
+    required this.label,
+    required this.active,
+    required this.activeColor,
+    required this.inactiveColor,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool active;
+  final Color activeColor;
+  final Color inactiveColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = active ? activeColor : inactiveColor;
+    return Container(
+      padding:
+      const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border:
+        Border.all(color: color.withValues(alpha: 0.4), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'tajawal',
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Old _WaitingPlaceholder kept as fallback ──────────────────────────────────
 class _WaitingPlaceholder extends StatelessWidget {
   const _WaitingPlaceholder({this.message = 'Waiting for participants…'});
 

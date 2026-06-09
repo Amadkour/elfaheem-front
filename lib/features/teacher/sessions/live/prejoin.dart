@@ -341,13 +341,16 @@ class _PreJoinPageState extends State<PreJoinPage> with TickerProviderStateMixin
             room,
             listener,
             fastConnection: true,
-            onEnd:      args.onEnd,
-            isTeacher:  args.isTeacher,
-            courseId:   args.courseId,
-            sessionId:  args.sessionId,
+            onEnd:       args.onEnd,
+            isTeacher:   args.isTeacher,
+            courseId:    args.courseId,
+            sessionId:   args.sessionId,
             // ── Passes the authenticated ApiClient so _ClientRecorder can
             //    upload chunks with the correct Bearer token ─────────────────
-            apiClient:  args.apiClient,
+            apiClient:   args.apiClient,
+            // ── Prejoin audio/video toggle state ─────────────────────────────
+            enableAudio: _enableAudio,
+            enableVideo: _enableVideo,
           ),
         ),
       );
