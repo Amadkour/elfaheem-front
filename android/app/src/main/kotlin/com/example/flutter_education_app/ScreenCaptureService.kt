@@ -1,34 +1,5 @@
 package com.example.flutter_education_app
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ScreenCaptureService — Standard MediaProjection recording pipeline
-//
-// DESIGN:
-//   Uses Android's MediaProjection API (the standard approach) to record
-//   the device screen. A system dialog is shown once when the teacher starts
-//   the session; after approval the service records continuously in 5-second
-//   MP4 chunks and uploads each chunk to the server.
-//
-// RECORDING PIPELINE:
-//   MediaProjection → VirtualDisplay → MediaRecorder → .mp4 chunk → upload
-//   MIC audio is captured by MediaRecorder directly (AudioSource.MIC).
-//
-// PERMISSIONS REQUIRED (in AndroidManifest.xml):
-//   RECORD_AUDIO, FOREGROUND_SERVICE, FOREGROUND_SERVICE_MICROPHONE,
-//   FOREGROUND_SERVICE_MEDIA_PROJECTION (Android 14+)
-//   Service foregroundServiceType: mediaProjection|microphone
-//
-// CHUNK FLOW:
-//   1. Dart calls startMicRecording (ACTION_START_MIC_ONLY) with session info.
-//   2. MainActivity shows the MediaProjection permission dialog.
-//   3. On user approval, onActivityResult stores the projection intent and
-//      fires ACTION_STORE_PROJECTION to this service.
-//   4. Service starts recording and emits "screenLoopStarted" to Dart.
-//   5. Every chunkSeconds the current MediaRecorder is stopped, its file
-//      uploaded, and a new MediaRecorder starts for the next chunk.
-//   6. On ACTION_STOP the final chunk is finalized and uploaded with isFinal=true.
-// ─────────────────────────────────────────────────────────────────────────────
-
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -37,8 +8,6 @@ import android.content.Context
 import android.content.Intent
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
-import android.media.AudioFormat
-import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
@@ -53,6 +22,7 @@ import androidx.core.app.NotificationCompat
 import io.flutter.plugin.common.EventChannel
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 class ScreenCaptureService : Service() {
 
@@ -61,47 +31,54 @@ class ScreenCaptureService : Service() {
         const val CHANNEL_NAME    = "Screen Capture"
         const val NOTIFICATION_ID = 1001
 
-        const val ACTION_STOP             = "com.example.flutter_education_app.STOP_SCREEN_CAPTURE"
-        const val ACTION_START_MIC_ONLY   = "com.example.flutter_education_app.START_MIC_ONLY"
-        const val ACTION_STORE_PROJECTION = "com.example.flutter_education_app.STORE_PROJECTION"
-        // Screen-share lifecycle signals (no-ops here; flutter_webrtc owns its projection)
+        const val ACTION_START_MIC_ONLY             = "com.example.flutter_education_app.START_MIC_ONLY"
+        const val ACTION_STORE_PROJECTION           = "com.example.flutter_education_app.STORE_PROJECTION"
+        const val ACTION_STOP                       = "com.example.flutter_education_app.STOP_SCREEN_CAPTURE"
         const val ACTION_UPGRADE_TO_SCREEN          = "com.example.flutter_education_app.UPGRADE_TO_SCREEN"
         const val ACTION_DOWNGRADE_TO_MIC_FOR_SHARE = "com.example.flutter_education_app.DOWNGRADE_TO_MIC_FOR_SHARE"
         const val ACTION_DOWNGRADE_TO_MIC           = "com.example.flutter_education_app.DOWNGRADE_TO_MIC"
         const val ACTION_PROMOTE_FOR_SHARE          = "com.example.flutter_education_app.PROMOTE_FOR_SHARE"
 
-        const val EXTRA_RESULT_CODE  = "resultCode"
-        const val EXTRA_DATA         = "data"
-        const val EXTRA_SESSION_ID   = "sessionId"
-        const val EXTRA_UPLOAD_URL   = "uploadUrl"
-        const val EXTRA_AUTH_TOKEN   = "authToken"
-        const val EXTRA_CHUNK_SECS   = "chunkSeconds"
-        const val EXTRA_IS_FINAL     = "isFinal"
-        const val EXTRA_CHUNK_INDEX  = "chunkIndex"
+        const val EXTRA_RESULT_CODE = "resultCode"
+        const val EXTRA_DATA        = "data"
+        const val EXTRA_SESSION_ID  = "sessionId"
+        const val EXTRA_UPLOAD_URL  = "uploadUrl"
+        const val EXTRA_AUTH_TOKEN  = "authToken"
+        const val EXTRA_CHUNK_SECS  = "chunkSeconds"
+        const val EXTRA_IS_FINAL    = "isFinal"
+        const val EXTRA_CHUNK_INDEX = "chunkIndex"
 
         private const val TAG       = "ScreenCaptureService"
-        private const val VIDEO_BPS = 2_000_000
+        private const val VIDEO_BPS = 8_000_000
         private const val VIDEO_FPS = 15
         private const val AUDIO_BPS = 128_000
 
-        @Volatile var eventSink: EventChannel.EventSink? = null
-        @Volatile var isRunning: Boolean = false
-        @Volatile var currentChunkIndex: Int = 0
-        @Volatile var onProjectionGrantStored: (() -> Unit)? = null
-        @Volatile var onFgsPromoted: (() -> Unit)? = null
+        @Volatile var isRunning:               Boolean                 = false
+        // Set to true only after ACTION_STORE_PROJECTION successfully starts
+        // recordLoop().  Used by MainActivity to distinguish a mic-only service
+        // (isRunning=true, isProjectionGranted=false) from a fully-recording one.
+        @Volatile var isProjectionGranted:     Boolean                 = false
+        @Volatile var currentChunkIndex:       Int                     = 0
+        @Volatile var eventSink:               EventChannel.EventSink? = null
+        @Volatile var onProjectionGrantStored: (() -> Unit)?           = null
+        @Volatile var onFgsPromoted:           (() -> Unit)?           = null
 
-        val pendingUploads = java.util.concurrent.atomic.AtomicInteger(0)
+        val pendingUploads = AtomicInteger(0)
     }
 
-    // ── Instance state ────────────────────────────────────────────────────────
+    // ── recording state ───────────────────────────────────────────────────────
+    // shouldRecord: set true when recording starts, false only by ACTION_STOP or onDestroy.
+    //               The chunk loop checks this to know when to emit isFinal=true.
+    // shouldStop:   set true only by ACTION_STOP or onDestroy — never by the loop itself.
+    // projectionRevoked: set by MediaProjection.Callback.onStop().
+    private val shouldRecord       = AtomicBoolean(false)
+    private val shouldStop         = AtomicBoolean(false)
+    private val projectionRevoked  = AtomicBoolean(false)
 
     private var projectionManager: MediaProjectionManager? = null
-    private var mediaProjection:   MediaProjection? = null
-    private var virtualDisplay:    VirtualDisplay? = null
-    private var mediaRecorder:     MediaRecorder? = null
-
-    private val recording  = AtomicBoolean(false)
-    private val stopping   = AtomicBoolean(false)
+    private var mediaProjection:   MediaProjection?        = null
+    private var virtualDisplay:    VirtualDisplay?         = null
+    private var mediaRecorder:     MediaRecorder?          = null
 
     private var sessionId  = 0
     private var uploadUrl  = ""
@@ -109,18 +86,16 @@ class ScreenCaptureService : Service() {
     private var chunkSecs  = 5
     private var chunkIndex = 0
 
-    private var screenWidth  = 1280
-//    private var screenHeight = 720
-    private var screenHeight = 1280 * 2
-    private var screenDpi    = 320
+    private var screenWidth  = 1080
+    private var screenHeight = 1920
+    private var screenDpi    = 420
 
-    private val mainHandler = Handler(Looper.getMainLooper())
-
-    // Stored projection grant from onActivityResult
     private var pendingResultCode = 0
     private var pendingData: Intent? = null
 
-    // ── Lifecycle ─────────────────────────────────────────────────────────────
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    // ── lifecycle ─────────────────────────────────────────────────────────────
 
     override fun onCreate() {
         super.onCreate()
@@ -131,8 +106,14 @@ class ScreenCaptureService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
-        stopRecordingClean()
+        // Signal the chunk loop to stop at the next 100 ms tick.
+        shouldStop.set(true)
+        shouldRecord.set(false)
+        // Release media objects immediately — the loop will see null refs
+        // and exit gracefully on its next iteration.
+        safeReleaseMedia()
         isRunning = false
+        isProjectionGranted = false
         super.onDestroy()
     }
 
@@ -142,51 +123,62 @@ class ScreenCaptureService : Service() {
         when (intent?.action) {
 
             ACTION_START_MIC_ONLY -> {
-                // Called by Dart to configure the session and start the FGS.
-                // Actual recording begins after the projection dialog is approved
-                // and ACTION_STORE_PROJECTION arrives.
-                sessionId  = intent.getIntExtra(EXTRA_SESSION_ID, 0)
+                sessionId  = intent.getIntExtra(EXTRA_SESSION_ID,  0)
                 uploadUrl  = intent.getStringExtra(EXTRA_UPLOAD_URL) ?: ""
                 authToken  = intent.getStringExtra(EXTRA_AUTH_TOKEN) ?: ""
-                chunkSecs  = intent.getIntExtra(EXTRA_CHUNK_SECS, 5)
-                chunkIndex = intent.getIntExtra(EXTRA_CHUNK_INDEX, 0)
-                Log.d(TAG, "ACTION_START_MIC_ONLY: session=$sessionId chunkSecs=$chunkSecs")
+                chunkSecs  = intent.getIntExtra(EXTRA_CHUNK_SECS,   5)
+                chunkIndex = intent.getIntExtra(EXTRA_CHUNK_INDEX,  0)
+                Log.d(TAG, "ACTION_START_MIC_ONLY session=$sessionId chunkSecs=$chunkSecs")
                 resolveScreenMetrics()
                 startForegroundMicOnly()
                 isRunning = true
             }
 
             ACTION_STORE_PROJECTION -> {
-                // Receives the approved MediaProjection result from MainActivity.
                 val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, 0)
-                val data       = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-                    intent.getParcelableExtra(EXTRA_DATA, Intent::class.java)
-                else
-                    @Suppress("DEPRECATION") intent.getParcelableExtra(EXTRA_DATA)
+                val data: Intent? =
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+                            intent.getParcelableExtra(EXTRA_DATA, Intent::class.java)
+                        else
+                            @Suppress("DEPRECATION") intent.getParcelableExtra(EXTRA_DATA)
 
-                Log.d(TAG, "ACTION_STORE_PROJECTION: resultCode=$resultCode uploadUrl=$uploadUrl")
-                // Promote to mic+mediaProjection type now that the user has approved.
+                Log.d(TAG, "ACTION_STORE_PROJECTION resultCode=$resultCode")
                 promoteForegroundToProjection()
                 isRunning = true
 
-                if (resultCode != 0 && data != null && !recording.get()) {
-                    if (uploadUrl.isEmpty()) {
-                        Log.e(TAG, "ACTION_STORE_PROJECTION: uploadUrl empty")
-                        mainHandler.post {
-                            emitError("Projection received before session params")
-                            onProjectionGrantStored?.invoke()
-                            onProjectionGrantStored = null
-                        }
-                        return START_STICKY
+                if (resultCode == 0 || data == null) {
+                    Log.e(TAG, "invalid grant — aborting")
+                    mainHandler.post {
+                        emitError("MediaProjection grant invalid")
+                        onProjectionGrantStored?.invoke(); onProjectionGrantStored = null
                     }
-                    pendingResultCode = resultCode
-                    pendingData       = data
-                    recording.set(true)
-                    stopping.set(false)
-                    Thread({ recordLoop() }, "ScreenRecorder").start()
+                    return START_STICKY
+                }
+                if (uploadUrl.isEmpty()) {
+                    Log.e(TAG, "uploadUrl empty — aborting")
+                    mainHandler.post {
+                        emitError("uploadUrl not set")
+                        onProjectionGrantStored?.invoke(); onProjectionGrantStored = null
+                    }
+                    return START_STICKY
+                }
+                if (shouldRecord.get()) {
+                    Log.w(TAG, "already recording — ignoring duplicate STORE_PROJECTION")
+                    mainHandler.post { onProjectionGrantStored?.invoke(); onProjectionGrantStored = null }
+                    return START_STICKY
                 }
 
-                // Unblock Dart AFTER recordLoop() thread is started.
+                pendingResultCode = resultCode
+                pendingData       = data
+                projectionRevoked.set(false)
+                shouldStop.set(false)
+                shouldRecord.set(true)
+                isProjectionGranted = true
+
+                Thread({ recordLoop() }, "ScreenRecorder").start()
+
+                // Unblock Dart AFTER the thread is started so screenLoopStarted
+                // is guaranteed to arrive before Dart sends any follow-up commands.
                 mainHandler.post {
                     onProjectionGrantStored?.invoke()
                     onProjectionGrantStored = null
@@ -194,41 +186,33 @@ class ScreenCaptureService : Service() {
             }
 
             ACTION_STOP -> {
-                Log.d(TAG, "ACTION_STOP: finalising recording")
-                stopping.set(true)
-                // Recording loop will detect this and finalise the last chunk.
+                Log.d(TAG, "ACTION_STOP — signalling chunk loop")
+                // Only set the flags — never touch media objects here.
+                // The chunk loop will finish the current chunk, upload it as
+                // isFinal=true, drain all uploads, then call stopSelf().
+                shouldStop.set(true)
+                shouldRecord.set(false)
             }
 
-            // ── Screen-share lifecycle signals ─────────────────────────────────
-            // flutter_webrtc manages its own projection token.  We just unblock
-            // the Dart completers so the share flow isn't stuck waiting.
-
             ACTION_UPGRADE_TO_SCREEN -> {
-                // Called when the service is already running (reused session) and
-                // flutter_webrtc is about to call getMediaProjection() for screen share.
-                // We must promote the FGS type to include MEDIA_PROJECTION here so
-                // Android 14 allows the projection grant to be used.
-                Log.d(TAG, "ACTION_UPGRADE_TO_SCREEN: promoting FGS type and emitting screenLoopStarted")
+                Log.d(TAG, "ACTION_UPGRADE_TO_SCREEN")
                 promoteForegroundToProjection()
                 mainHandler.post { emitScreenLoopStarted() }
             }
 
             ACTION_DOWNGRADE_TO_MIC_FOR_SHARE -> {
-                Log.d(TAG, "ACTION_DOWNGRADE_TO_MIC_FOR_SHARE: recording continues; emitting micReadyForShare")
+                Log.d(TAG, "ACTION_DOWNGRADE_TO_MIC_FOR_SHARE")
                 mainHandler.post { emitMicReadyForShare() }
             }
 
             ACTION_DOWNGRADE_TO_MIC -> {
-                Log.d(TAG, "ACTION_DOWNGRADE_TO_MIC: share ended; emitting micLoopStarted")
+                Log.d(TAG, "ACTION_DOWNGRADE_TO_MIC")
                 mainHandler.post { emitMicLoopStarted() }
             }
 
             ACTION_PROMOTE_FOR_SHARE -> {
-                Log.d(TAG, "ACTION_PROMOTE_FOR_SHARE: no-op; unblocking Dart")
-                mainHandler.post {
-                    onFgsPromoted?.invoke()
-                    onFgsPromoted = null
-                }
+                Log.d(TAG, "ACTION_PROMOTE_FOR_SHARE")
+                mainHandler.post { onFgsPromoted?.invoke(); onFgsPromoted = null }
             }
 
             else -> {
@@ -239,136 +223,150 @@ class ScreenCaptureService : Service() {
         return START_STICKY
     }
 
-    // ── FGS notification ──────────────────────────────────────────────────────
+    // ── FGS helpers ───────────────────────────────────────────────────────────
 
-    /**
-     * Phase 1 — ACTION_START_MIC_ONLY (before dialog approval).
-     * Must declare ONLY microphone. Android 14 throws SecurityException if
-     * mediaProjection type is declared before the user approves the dialog.
-     */
     private fun startForegroundMicOnly() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(
-                    NOTIFICATION_ID, buildNotification(),
-                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE,
-            )
-        } else {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+            startForeground(NOTIFICATION_ID, buildNotification(),
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+        else
             startForeground(NOTIFICATION_ID, buildNotification())
-        }
     }
 
-    /**
-     * Phase 2 — ACTION_STORE_PROJECTION or ACTION_UPGRADE_TO_SCREEN (after approval).
-     * Promotes the running FGS to include MEDIA_PROJECTION by re-calling
-     * startForeground() with the wider OR'd type.
-     *
-     * Do NOT call stopForeground() before this — doing so drops the FGS state
-     * and causes flutter_webrtc's FlutterRTCMediaProjectionService to crash
-     * with SecurityException when it tries to call getMediaProjection().
-     */
     private fun promoteForegroundToProjection() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(
-                    NOTIFICATION_ID, buildNotification(),
-                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or
-                            android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION,
-            )
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(
-                    NOTIFICATION_ID, buildNotification(),
-                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE,
-            )
-        } else {
-            startForeground(NOTIFICATION_ID, buildNotification())
+        when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE ->
+                startForeground(NOTIFICATION_ID, buildNotification(),
+                        android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or
+                                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ->
+                startForeground(NOTIFICATION_ID, buildNotification(),
+                        android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+            else ->
+                startForeground(NOTIFICATION_ID, buildNotification())
         }
     }
 
-    // ── Screen metrics ────────────────────────────────────────────────────────
+    // ── screen metrics ────────────────────────────────────────────────────────
 
     private fun resolveScreenMetrics() {
         val wm = getSystemService(WINDOW_SERVICE) as WindowManager
-        val rawW: Int
-        val rawH: Int
+        val rawW: Int; val rawH: Int
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val b = wm.currentWindowMetrics.bounds
             rawW = b.width(); rawH = b.height()
+            screenDpi = resources.displayMetrics.densityDpi
         } else {
             val dm = DisplayMetrics()
             @Suppress("DEPRECATION") wm.defaultDisplay.getMetrics(dm)
-            rawW = dm.widthPixels; rawH = dm.heightPixels
-            screenDpi = dm.densityDpi
+            rawW = dm.widthPixels; rawH = dm.heightPixels; screenDpi = dm.densityDpi
         }
-        // Cap the longer edge at 1280, then align both dims to multiples of 16.
-        // H264 uses 16×16 macroblocks; a non-multiple-of-16 VirtualDisplay size
-        // causes the encoder's internal buffer to differ, producing stretching.
-        val scale = if (maxOf(rawW, rawH) > 1280) 1280.0 / maxOf(rawW, rawH) else 1.0
         fun align16(v: Int) = (v and 0xFFF0).coerceAtLeast(16)
-        screenWidth  = align16((rawW * scale).toInt())
-        screenHeight = align16((rawH * scale).toInt())
-        Log.d(TAG, "Screen metrics: raw=${rawW}x${rawH} → recorded=${screenWidth}x${screenHeight} dpi=$screenDpi")
+        screenWidth  = align16(rawW)
+        screenHeight = align16(rawH)
+        Log.d(TAG, "screen: raw=${rawW}x${rawH} → ${screenWidth}x${screenHeight} dpi=$screenDpi")
     }
 
-    // ── Main recording loop ───────────────────────────────────────────────────
+    // ── main recording loop ───────────────────────────────────────────────────
 
     private fun recordLoop() {
-        // Obtain the MediaProjection from the stored grant.
-        mediaProjection = projectionManager!!.getMediaProjection(pendingResultCode, pendingData!!)
+        // ── 1. obtain projection ──────────────────────────────────────────────
+        mediaProjection = try {
+            projectionManager!!.getMediaProjection(pendingResultCode, pendingData!!)
+        } catch (e: Exception) {
+            Log.e(TAG, "getMediaProjection failed: ${e.message}", e); null
+        }
+
         if (mediaProjection == null) {
-            Log.e(TAG, "getMediaProjection returned null — aborting")
-            mainHandler.post { emitError("MediaProjection grant invalid") }
+            Log.e(TAG, "null MediaProjection — aborting")
+            mainHandler.post { emitError("Could not obtain MediaProjection") }
+            shouldRecord.set(false)
+            isRunning = false
+            stopSelf()
             return
         }
 
-        Log.d(TAG, "recordLoop started: chunkSecs=$chunkSecs")
+        // ── 2. register revocation callback once ──────────────────────────────
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            mediaProjection!!.registerCallback(object : MediaProjection.Callback() {
+                override fun onStop() {
+                    Log.w(TAG, "MediaProjection revoked by system")
+                    projectionRevoked.set(true)
+                    shouldStop.set(true)
+                    shouldRecord.set(false)
+                }
+            }, mainHandler)
+        }
 
-        // Notify Dart that video recording is live.
+        Log.d(TAG, "recordLoop started — ${screenWidth}x${screenHeight} chunkSecs=$chunkSecs")
         mainHandler.post { emitScreenLoopStarted() }
 
-        var firstChunk = true
-        while (recording.get() && !stopping.get()) {
+        // ── 3. chunk loop ─────────────────────────────────────────────────────
+        //
+        // Loop invariant: shouldRecord=true AND shouldStop=false means keep going.
+        // Only ACTION_STOP / onDestroy / projectionRevoked flip these flags.
+        // The loop itself NEVER touches shouldRecord or shouldStop.
+        //
+        while (shouldRecord.get() && !shouldStop.get()) {
             val outFile = File(cacheDir, "chunk_${chunkIndex.toString().padStart(6, '0')}.mp4")
-            Log.d(TAG, "CHUNK #$chunkIndex → ${outFile.name}")
-            try {
-                recordChunk(outFile, chunkSecs * 1_000L, firstChunk)
-                firstChunk = false
-            } catch (e: Exception) {
-                Log.e(TAG, "recordChunk error: ${e.message}", e)
-                mainHandler.post { emitError("recordChunk: ${e.message}") }
-                break
+            Log.d(TAG, "recording chunk #$chunkIndex → ${outFile.name}")
+
+            val recordOk = runCatching { recordChunk(outFile, chunkSecs * 1_000L) }
+
+            if (recordOk.isFailure) {
+                val msg = recordOk.exceptionOrNull()?.message ?: "unknown"
+                Log.e(TAG, "recordChunk #$chunkIndex exception: $msg")
+                if (!shouldStop.get()) mainHandler.post { emitError("chunk #$chunkIndex failed: $msg") }
+                // Salvage partial file if anything was written.
+                if (outFile.exists() && outFile.length() > 0L) {
+                    uploadChunkAsync(outFile, chunkIndex, isFinal = true)
+                    chunkIndex++; currentChunkIndex = chunkIndex
+                }
+                break   // exit loop — do not attempt further chunks
             }
-            val isFinal = !recording.get() || stopping.get()
-            if (outFile.exists() && outFile.length() > 0) {
+
+            // Determine isFinal AFTER recordChunk returns so we pick up any
+            // stop signal that arrived during the recording window.
+            val isFinal = !shouldRecord.get() || shouldStop.get()
+
+            if (outFile.exists() && outFile.length() > 0L) {
+                Log.d(TAG, "chunk #$chunkIndex ready: ${outFile.length()}B isFinal=$isFinal — queuing upload")
                 uploadChunkAsync(outFile, chunkIndex, isFinal)
+            } else {
+                Log.w(TAG, "chunk #$chunkIndex is 0 bytes — skipping upload")
             }
+
             chunkIndex++
             currentChunkIndex = chunkIndex
 
             if (isFinal) break
+            // continue → next iteration creates chunk #(chunkIndex) immediately
         }
 
-        // Handle the final chunk if stopping was requested mid-loop.
-        cleanupRecorder()
-        mediaProjection?.stop()
-        mediaProjection = null
-        virtualDisplay?.release()
-        virtualDisplay = null
+        // ── 4. release media objects ──────────────────────────────────────────
+        // Do this BEFORE draining uploads so the projection / display are freed
+        // as soon as recording ends, not held for up to 120 s.
+        safeReleaseMedia()
 
-        // Keep FGS alive until all upload threads finish (max 120s).
+        // ── 5. drain pending uploads (keep FGS alive, max 120 s) ─────────────
+        Log.d(TAG, "all chunks recorded — waiting for ${pendingUploads.get()} upload(s)…")
         val deadline = System.currentTimeMillis() + 120_000L
         while (pendingUploads.get() > 0 && System.currentTimeMillis() < deadline) {
             Thread.sleep(200)
         }
         if (pendingUploads.get() > 0)
-            Log.w(TAG, "recordLoop: ${pendingUploads.get()} upload(s) still in-flight after 120s")
+            Log.w(TAG, "${pendingUploads.get()} upload(s) unfinished after 120 s")
 
         isRunning = false
         stopSelf()
-        Log.d(TAG, "recordLoop ended — all uploads drained, service stopping")
+        Log.d(TAG, "recordLoop done")
     }
 
-    // ── Record one chunk ──────────────────────────────────────────────────────
+    // ── record one chunk ──────────────────────────────────────────────────────
 
-    private fun recordChunk(outFile: File, durationMs: Long, isFirst: Boolean) {
+    private fun recordChunk(outFile: File, durationMs: Long) {
+        // Fresh MediaRecorder for every chunk — reusing a stopped recorder
+        // causes IllegalStateException on Android 12+.
         val recorder = MediaRecorder(this).also { mediaRecorder = it }
 
         recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
@@ -384,153 +382,138 @@ class ScreenCaptureService : Service() {
         recorder.setOutputFile(outFile.absolutePath)
         recorder.prepare()
 
-        // Attach (or reattach) the VirtualDisplay to the recorder's surface.
         val surface = recorder.surface
+
+        // VirtualDisplay is created ONCE per session (first chunk) and then
+        // only its surface is swapped.  Re-creating it every chunk causes
+        // Android 14+ to produce a silent 0-byte file on the second chunk.
         if (virtualDisplay == null) {
-            // Android 14 requires a callback registered before createVirtualDisplay().
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                mediaProjection!!.registerCallback(object : MediaProjection.Callback() {
-                    override fun onStop() {
-                        Log.d(TAG, "MediaProjection.onStop")
-                        virtualDisplay?.release()
-                        virtualDisplay = null
-                    }
-                }, mainHandler)
-            }
             virtualDisplay = mediaProjection!!.createVirtualDisplay(
                     "ScreenCapture",
                     screenWidth, screenHeight, screenDpi,
                     DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                    surface, null, null
+                    surface, null, null,
             )
+            Log.d(TAG, "VirtualDisplay created ${screenWidth}x${screenHeight}@${screenDpi}dpi")
         } else {
             virtualDisplay!!.surface = surface
         }
 
         recorder.start()
-        Log.d(TAG, "MediaRecorder started for chunk #$chunkIndex")
+        Log.d(TAG, "MediaRecorder.start() chunk #$chunkIndex")
 
-        // Wait for the chunk duration (or until stop is requested).
+        // Wait for chunk duration in short ticks so we catch stop signals fast.
         val t0 = System.currentTimeMillis()
         while (System.currentTimeMillis() - t0 < durationMs) {
-            if (stopping.get() || !recording.get()) break
-            Thread.sleep(100)
+            if (shouldStop.get() || !shouldRecord.get() || projectionRevoked.get()) break
+            Thread.sleep(50)
         }
 
-        // Stop the recorder cleanly.
         try {
             recorder.stop()
+            Log.d(TAG, "MediaRecorder.stop() chunk #$chunkIndex size=${outFile.length()}B")
         } catch (e: Exception) {
-            Log.w(TAG, "recorder.stop() exception (chunk may be incomplete): ${e.message}")
+            // stop() throws if no frames were encoded yet (< ~100 ms recording).
+            Log.w(TAG, "recorder.stop() warning on chunk #$chunkIndex: ${e.message}")
+        } finally {
+            recorder.release()
+            mediaRecorder = null
         }
-        recorder.release()
-        mediaRecorder = null
     }
 
-    private fun cleanupRecorder() {
-        try { mediaRecorder?.stop() } catch (_: Exception) {}
-        mediaRecorder?.release()
-        mediaRecorder = null
-    }
-
-    // ── Chunk upload ──────────────────────────────────────────────────────────
+    // ── upload ────────────────────────────────────────────────────────────────
 
     private fun uploadChunkAsync(file: File, index: Int, isFinal: Boolean) {
         val size = file.length()
         pendingUploads.incrementAndGet()
         Thread({
             var attempt = 0
+            var lastErr = "unknown"
             while (attempt <= 3) {
                 try {
                     uploadChunk(file, index, isFinal)
                     file.delete()
                     pendingUploads.decrementAndGet()
                     mainHandler.post { emitChunkUploaded(index, size, isFinal) }
+                    Log.d(TAG, "chunk #$index uploaded (attempt ${attempt + 1})")
                     return@Thread
                 } catch (e: Exception) {
-                    Log.e(TAG, "Upload #$index attempt ${attempt + 1}: ${e.message}")
+                    lastErr = e.message ?: "unknown"
+                    Log.e(TAG, "chunk #$index attempt ${attempt + 1} failed: $lastErr")
                     attempt++
-                    if (attempt <= 3) Thread.sleep(1000L * (1 shl attempt))
+                    if (attempt <= 3) Thread.sleep(1_000L * (1 shl attempt)) // 2 s, 4 s, 8 s
                 }
             }
+            Log.e(TAG, "chunk #$index permanently failed: $lastErr")
             file.delete()
             pendingUploads.decrementAndGet()
-            mainHandler.post { emitError("chunk #$index upload permanently failed") }
-        }, "ChunkUpload-$index").start()
+            mainHandler.post { emitError("chunk #$index failed after 3 retries: $lastErr") }
+        }, "Upload-$index").start()
     }
 
     private fun uploadChunk(file: File, index: Int, isFinal: Boolean) {
         val boundary = "----ElFaheemBoundary${System.currentTimeMillis()}"
-        val conn = java.net.URL(uploadUrl).openConnection() as java.net.HttpURLConnection
-        conn.requestMethod  = "POST"
-        conn.doOutput       = true
-        conn.connectTimeout = 15_000
-        conn.readTimeout    = 120_000
-        conn.setRequestProperty("Authorization", authToken)
-        conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+        val conn = (java.net.URL(uploadUrl).openConnection() as java.net.HttpURLConnection).apply {
+            requestMethod  = "POST"
+            doOutput       = true
+            connectTimeout = 15_000
+            readTimeout    = 120_000
+            setRequestProperty("Authorization", authToken)
+            setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+        }
         conn.outputStream.use { out ->
-            fun w(s: String) = out.write(s.toByteArray(Charsets.UTF_8))
-            w("--$boundary\r\nContent-Disposition: form-data; name=\"chunk_index\"\r\n\r\n$index\r\n")
-            w("--$boundary\r\nContent-Disposition: form-data; name=\"is_final\"\r\n\r\n${if (isFinal) "1" else "0"}\r\n")
-            w("--$boundary\r\nContent-Disposition: form-data; name=\"chunk\"; ")
-            w("filename=\"chunk_${index.toString().padStart(6, '0')}.mp4\"\r\nContent-Type: video/mp4\r\n\r\n")
+            fun field(name: String, value: String) =
+                    out.write("--$boundary\r\nContent-Disposition: form-data; name=\"$name\"\r\n\r\n$value\r\n".toByteArray())
+            field("chunk_index", index.toString())
+            field("is_final",    if (isFinal) "1" else "0")
+            out.write(("--$boundary\r\nContent-Disposition: form-data; name=\"chunk\";" +
+                    " filename=\"chunk_${index.toString().padStart(6,'0')}.mp4\"\r\n" +
+                    "Content-Type: video/mp4\r\n\r\n").toByteArray())
             file.inputStream().use { it.copyTo(out) }
-            w("\r\n--$boundary--\r\n")
+            out.write("\r\n--$boundary--\r\n".toByteArray())
         }
         val code = conn.responseCode
-        if (code !in 200..299) {
-            val body = try { conn.errorStream?.bufferedReader()?.readText() } catch (_: Exception) { "" }
-            throw Exception("HTTP $code: $body")
-        }
         conn.disconnect()
+        if (code !in 200..299) throw Exception("HTTP $code")
     }
 
-    private fun stopRecordingClean() {
-        recording.set(false)
-        stopping.set(true)
-        cleanupRecorder()
+    // ── teardown ──────────────────────────────────────────────────────────────
+
+    /** Releases recorder / virtualDisplay / mediaProjection without touching
+     *  shouldRecord / shouldStop flags — safe to call from any context. */
+    private fun safeReleaseMedia() {
+        try { mediaRecorder?.stop()    } catch (_: Exception) {}
+        try { mediaRecorder?.release() } catch (_: Exception) {}
+        mediaRecorder = null
         try { virtualDisplay?.release() } catch (_: Exception) {}
         virtualDisplay = null
-        try { mediaProjection?.stop() } catch (_: Exception) {}
+        try { mediaProjection?.stop()   } catch (_: Exception) {}
         mediaProjection = null
     }
 
-    // ── EventChannel helpers ──────────────────────────────────────────────────
+    // ── EventChannel ──────────────────────────────────────────────────────────
 
     private fun emitScreenLoopStarted() {
-        Log.d(TAG, "emitScreenLoopStarted")
+        Log.d(TAG, "emit screenLoopStarted")
         eventSink?.success(mapOf("event" to "screenLoopStarted"))
     }
-    private fun emitMicReadyForShare() {
-        eventSink?.success(mapOf("event" to "micReadyForShare"))
-    }
-    private fun emitMicLoopStarted() {
-        eventSink?.success(mapOf("event" to "micLoopStarted"))
-    }
-    private fun emitChunkUploaded(index: Int, bytes: Long, isFinal: Boolean) {
-        eventSink?.success(mapOf(
-                "event"      to "chunkUploaded",
-                "chunkIndex" to index,
-                "bytes"      to bytes,
-                "isFinal"    to isFinal,
-        ))
-    }
-    private fun emitError(msg: String) {
-        eventSink?.error("REC_ERROR", msg, null)
-    }
+    private fun emitMicReadyForShare()  = eventSink?.success(mapOf("event" to "micReadyForShare"))
+    private fun emitMicLoopStarted()    = eventSink?.success(mapOf("event" to "micLoopStarted"))
+    private fun emitChunkUploaded(index: Int, bytes: Long, isFinal: Boolean) =
+            eventSink?.success(mapOf("event" to "chunkUploaded", "chunkIndex" to index,
+                    "bytes" to bytes, "isFinal" to isFinal))
+    private fun emitError(msg: String) = eventSink?.error("REC_ERROR", msg, null)
 
-    // ── Notification ──────────────────────────────────────────────────────────
+    // ── notification ─────────────────────────────────────────────────────────
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val ch = NotificationChannel(
-                    CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Active while session is being recorded"
-                setShowBadge(false)
-            }
-            getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
-        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            getSystemService(NotificationManager::class.java)
+                    .createNotificationChannel(NotificationChannel(
+                            CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_LOW).apply {
+                        description = "Active while session is being recorded"
+                        setShowBadge(false)
+                    })
     }
 
     private fun buildNotification(): Notification =
