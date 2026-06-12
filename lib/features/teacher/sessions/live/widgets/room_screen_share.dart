@@ -296,10 +296,12 @@ class RecordingStatusBanner extends StatefulWidget {
     super.key,
     required this.isScreenRecording,
     required this.isSharing,
+    this.isPaused = false,   // NEW
   });
 
   final bool isScreenRecording;
   final bool isSharing;
+  final bool isPaused;  // NEW
 
   @override
   State<RecordingStatusBanner> createState() => _RecordingStatusBannerState();
@@ -329,23 +331,43 @@ class _RecordingStatusBannerState extends State<RecordingStatusBanner>
 
   @override
   Widget build(BuildContext context) {
-    final isActive    = widget.isScreenRecording;
-    final dotColor    = isActive ? const Color(0xFF22C55E) : const Color(0xFFF59E0B);
-    final borderColor = isActive
-        ? const Color(0xFF22C55E).withValues(alpha: 0.45)
-        : const Color(0xFFF59E0B).withValues(alpha: 0.45);
-    final shadowColor = isActive
-        ? const Color(0xFF22C55E).withValues(alpha: 0.12)
-        : const Color(0xFFF59E0B).withValues(alpha: 0.12);
-    final iconColor   = isActive ? const Color(0xFF22C55E) : const Color(0xFFF59E0B);
-    final icon        = isActive ? Icons.videocam : Icons.mic;
+    // ── colour / icon logic ──────────────────────────────────────────────────
+    // Priority: paused > audio-only (starting) > screen+video active
+    final Color dotColor;
+    final Color borderColor;
+    final Color shadowColor;
+    final Color iconColor;
+    final IconData icon;
+    final String title;
+    final String subtitle;
 
-    final title    = isActive ? 'Recording — Video + Audio' : 'Recording — Audio Only';
-    final subtitle = isActive
-        ? (widget.isSharing
-        ? 'Capturing session with shared screen'
-        : 'Capturing session video and audio')
-        : 'Starting recorder…';
+    if (widget.isPaused) {
+      dotColor    = const Color(0xFFFFB800);
+      borderColor = const Color(0xFFFFB800).withValues(alpha: 0.45);
+      shadowColor = const Color(0xFFFFB800).withValues(alpha: 0.12);
+      iconColor   = const Color(0xFFFFB800);
+      icon        = Icons.pause_circle_outline;
+      title       = 'Recording — Paused';
+      subtitle    = 'Tap Resume to continue recording';
+    } else if (widget.isScreenRecording) {
+      dotColor    = const Color(0xFF22C55E);
+      borderColor = const Color(0xFF22C55E).withValues(alpha: 0.45);
+      shadowColor = const Color(0xFF22C55E).withValues(alpha: 0.12);
+      iconColor   = const Color(0xFF22C55E);
+      icon        = Icons.videocam;
+      title       = 'Recording — Video + Audio';
+      subtitle    = widget.isSharing
+          ? 'Capturing session with shared screen'
+          : 'Capturing session video and audio';
+    } else {
+      dotColor    = const Color(0xFFF59E0B);
+      borderColor = const Color(0xFFF59E0B).withValues(alpha: 0.45);
+      shadowColor = const Color(0xFFF59E0B).withValues(alpha: 0.12);
+      iconColor   = const Color(0xFFF59E0B);
+      icon        = Icons.mic;
+      title       = 'Recording — Audio Only';
+      subtitle    = 'Starting recorder…';
+    }
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -359,9 +381,10 @@ class _RecordingStatusBannerState extends State<RecordingStatusBanner>
       child: Row(
         children: [
           AnimatedBuilder(
-            animation: _opacity,
+            animation: _pulse,
             builder: (_, __) => Opacity(
-              opacity: _opacity.value,
+              // Paused: solid dot (no pulse). Active: pulsing dot.
+              opacity: widget.isPaused ? 1.0 : _opacity.value,
               child: Container(
                 width: 10, height: 10,
                 decoration: BoxDecoration(shape: BoxShape.circle, color: dotColor),
@@ -404,7 +427,9 @@ class _RecordingStatusBannerState extends State<RecordingStatusBanner>
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
-              widget.isSharing
+              widget.isPaused
+                  ? Icons.pause_rounded
+                  : widget.isSharing
                   ? Icons.screen_share_outlined
                   : Icons.fiber_manual_record,
               color: iconColor,

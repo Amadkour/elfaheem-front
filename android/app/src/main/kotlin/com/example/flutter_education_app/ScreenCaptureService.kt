@@ -40,6 +40,14 @@ class ScreenCaptureService : Service() {
         const val ACTION_DOWNGRADE_TO_MIC           = "com.example.flutter_education_app.DOWNGRADE_TO_MIC"
         const val ACTION_PROMOTE_FOR_SHARE          = "com.example.flutter_education_app.PROMOTE_FOR_SHARE"
 
+        // ── NEW: pause / resume recording ────────────────────────────────────
+        // PAUSE  → finish current chunk (isFinal=false), stop encoding,
+        //          park the projection, emit "recordingPaused".
+        // RESUME → re-enter the chunk loop from where we left off,
+        //          emit "recordingResumed".
+        const val ACTION_PAUSE_RECORDING  = "com.example.flutter_education_app.PAUSE_RECORDING"
+        const val ACTION_RESUME_RECORDING = "com.example.flutter_education_app.RESUME_RECORDING"
+
         const val EXTRA_RESULT_CODE = "resultCode"
         const val EXTRA_DATA        = "data"
         const val EXTRA_SESSION_ID  = "sessionId"
@@ -52,13 +60,11 @@ class ScreenCaptureService : Service() {
         private const val TAG       = "ScreenCaptureService"
         private const val VIDEO_BPS = 8_000_000
         private const val VIDEO_FPS = 15
-        private const val AUDIO_BPS = 128_000
+        private const val AUDIO_BPS = 192_000   // raised from 128k for cleaner chunk boundaries
 
         @Volatile var isRunning:               Boolean                 = false
-        // Set to true only after ACTION_STORE_PROJECTION successfully starts
-        // recordLoop().  Used by MainActivity to distinguish a mic-only service
-        // (isRunning=true, isProjectionGranted=false) from a fully-recording one.
         @Volatile var isProjectionGranted:     Boolean                 = false
+        @Volatile var isPaused:                Boolean                 = false   // NEW
         @Volatile var currentChunkIndex:       Int                     = 0
         @Volatile var eventSink:               EventChannel.EventSink? = null
         @Volatile var onProjectionGrantStored: (() -> Unit)?           = null
@@ -66,29 +72,24 @@ class ScreenCaptureService : Service() {
 
         val pendingUploads = AtomicInteger(0)
 
-        // Single-threaded executor for chunk uploads.
-        // Chunks are enqueued in order and uploaded one-at-a-time so chunk N
-        // always reaches the server BEFORE chunk N+1.  Without this, a large
-        // chunk 0 and a tiny chunk 1 (is_final) race — chunk 1 can arrive first
-        // and trigger server-side assembly before chunk 0 is saved to disk.
+        // Single-threaded executor — chunks always reach the server in order.
         val uploadExecutor = Executors.newSingleThreadExecutor { r ->
             Thread(r, "ChunkUploader").also { it.isDaemon = true }
         }
     }
 
     // ── recording state ───────────────────────────────────────────────────────
-    // shouldRecord: set true when recording starts, false only by ACTION_STOP or onDestroy.
-    //               The chunk loop checks this to know when to emit isFinal=true.
-    // shouldStop:   set true only by ACTION_STOP or onDestroy — never by the loop itself.
-    // projectionRevoked: set by MediaProjection.Callback.onStop().
-    private val shouldRecord       = AtomicBoolean(false)
-    private val shouldStop         = AtomicBoolean(false)
-    private val projectionRevoked  = AtomicBoolean(false)
+    private val shouldRecord      = AtomicBoolean(false)
+    private val shouldStop        = AtomicBoolean(false)
+    private val shouldPause       = AtomicBoolean(false)   // NEW
+    private val projectionRevoked = AtomicBoolean(false)
 
     private var projectionManager: MediaProjectionManager? = null
     private var mediaProjection:   MediaProjection?        = null
     private var virtualDisplay:    VirtualDisplay?         = null
-    private var mediaRecorder:     MediaRecorder?          = null
+
+    // Active recorder for the current chunk (may be swapped during ping-pong).
+    private var mediaRecorder: MediaRecorder? = null
 
     private var sessionId  = 0
     private var uploadUrl  = ""
@@ -116,21 +117,13 @@ class ScreenCaptureService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
-        // Signal the chunk loop to stop at the next 100 ms tick.
         shouldStop.set(true)
         shouldRecord.set(false)
-        // Release media objects immediately — the loop will see null refs
-        // and exit gracefully on its next iteration.
+        shouldPause.set(false)
         safeReleaseMedia()
         isRunning = false
         isProjectionGranted = false
-        // Do NOT delete the session directory here.  uploadChunkAsync deletes
-        // each chunk file individually after upload (success or permanent failure).
-        // Calling deleteRecursively() here races with in-flight upload tasks on
-        // the uploadExecutor thread — chunks that are still queued will have their
-        // files deleted before the upload attempt, causing ENOENT on every retry
-        // and silently losing those chunks.  Stale dirs from crashed previous
-        // sessions are swept at the start of ACTION_START_MIC_ONLY instead.
+        isPaused = false
         super.onDestroy()
     }
 
@@ -145,14 +138,8 @@ class ScreenCaptureService : Service() {
                 authToken  = intent.getStringExtra(EXTRA_AUTH_TOKEN) ?: ""
                 chunkSecs  = intent.getIntExtra(EXTRA_CHUNK_SECS,   5)
                 chunkIndex = intent.getIntExtra(EXTRA_CHUNK_INDEX,  0)
-                // Reset the static upload counter so a stale value from a previous
-                // session (which may still be draining) does not confuse this one.
                 pendingUploads.set(0)
                 Log.d(TAG, "ACTION_START_MIC_ONLY session=$sessionId chunkSecs=$chunkSecs")
-                // Sweep leftover session dirs from any previously-crashed sessions.
-                // We deliberately skip the current sessionId so that a service restart
-                // mid-session (e.g. process death + START_STICKY re-delivery) does not
-                // delete chunks that are still being uploaded on a surviving executor thread.
                 try {
                     cacheDir.listFiles()?.forEach { f ->
                         if (f.isDirectory && f.name.startsWith("session_") &&
@@ -205,13 +192,13 @@ class ScreenCaptureService : Service() {
                 pendingData       = data
                 projectionRevoked.set(false)
                 shouldStop.set(false)
+                shouldPause.set(false)
                 shouldRecord.set(true)
                 isProjectionGranted = true
+                isPaused = false
 
                 Thread({ recordLoop() }, "ScreenRecorder").start()
 
-                // Unblock Dart AFTER the thread is started so screenLoopStarted
-                // is guaranteed to arrive before Dart sends any follow-up commands.
                 mainHandler.post {
                     onProjectionGrantStored?.invoke()
                     onProjectionGrantStored = null
@@ -220,11 +207,11 @@ class ScreenCaptureService : Service() {
 
             ACTION_STOP -> {
                 Log.d(TAG, "ACTION_STOP — signalling chunk loop")
-                // Only set the flags — never touch media objects here.
-                // The chunk loop will finish the current chunk, upload it as
-                // isFinal=true, drain all uploads, then call stopSelf().
                 shouldStop.set(true)
                 shouldRecord.set(false)
+                shouldPause.set(false)
+                // If currently paused, wake the park-loop so it can exit cleanly.
+                synchronized(this) { (this as Object).notifyAll() }
             }
 
             ACTION_UPGRADE_TO_SCREEN -> {
@@ -246,6 +233,43 @@ class ScreenCaptureService : Service() {
             ACTION_PROMOTE_FOR_SHARE -> {
                 Log.d(TAG, "ACTION_PROMOTE_FOR_SHARE")
                 mainHandler.post { onFgsPromoted?.invoke(); onFgsPromoted = null }
+            }
+
+            // ── NEW: PAUSE ────────────────────────────────────────────────────
+            // Signals the chunk loop to finish the current chunk, upload it with
+            // isFinal=false, then park (sleep) until RESUME or STOP arrives.
+            ACTION_PAUSE_RECORDING -> {
+                if (!shouldRecord.get() || shouldStop.get()) {
+                    Log.w(TAG, "PAUSE ignored — not recording")
+                    return START_STICKY
+                }
+                if (shouldPause.get()) {
+                    Log.w(TAG, "PAUSE ignored — already paused")
+                    return START_STICKY
+                }
+                Log.d(TAG, "ACTION_PAUSE_RECORDING")
+                shouldPause.set(true)
+                // The chunk loop's 50 ms tick loop will see shouldPause and
+                // break out of the current chunk early, finishing it cleanly.
+            }
+
+            // ── NEW: RESUME ───────────────────────────────────────────────────
+            // Clears the pause flag and wakes the parked chunk loop.
+            ACTION_RESUME_RECORDING -> {
+                if (!isProjectionGranted || shouldStop.get()) {
+                    Log.w(TAG, "RESUME ignored — not in a pauseable state")
+                    return START_STICKY
+                }
+                if (!shouldPause.get()) {
+                    Log.w(TAG, "RESUME ignored — not paused")
+                    return START_STICKY
+                }
+                Log.d(TAG, "ACTION_RESUME_RECORDING")
+                shouldRecord.set(true)
+                shouldPause.set(false)
+                isPaused = false
+                // Wake the park-loop in recordLoop().
+                synchronized(this) { (this as Object).notifyAll() }
             }
 
             else -> {
@@ -301,6 +325,21 @@ class ScreenCaptureService : Service() {
     }
 
     // ── main recording loop ───────────────────────────────────────────────────
+    //
+    // Uses a PING-PONG (dual-buffer) MediaRecorder strategy to eliminate the
+    // audio gap between chunks:
+    //
+    //   1. Prepare recorder N+1 WHILE recorder N is still encoding.
+    //   2. Call recorderNext.start() first (audio capture begins immediately).
+    //   3. Swap virtualDisplay.surface to the new recorder's surface.
+    //   4. Only then call recorderCurrent.stop() — the gap is now microseconds.
+    //
+    // On PAUSE: finish the in-progress chunk, upload it (isFinal=false), release
+    //   the MediaRecorder but keep the VirtualDisplay/Projection alive so RESUME
+    //   can re-enter without a second system dialog.
+    //
+    // On RESUME: re-enter the while-loop; a fresh MediaRecorder is prepared and
+    //   recording continues from the next chunk index.
 
     private fun recordLoop() {
         // ── 1. obtain projection ──────────────────────────────────────────────
@@ -327,65 +366,154 @@ class ScreenCaptureService : Service() {
                     projectionRevoked.set(true)
                     shouldStop.set(true)
                     shouldRecord.set(false)
+                    shouldPause.set(false)
+                    synchronized(this@ScreenCaptureService) {
+                        (this@ScreenCaptureService as Object).notifyAll()
+                    }
                 }
             }, mainHandler)
         }
 
         Log.d(TAG, "recordLoop started — ${screenWidth}x${screenHeight} chunkSecs=$chunkSecs")
+
+        val sessionDir = File(cacheDir, "session_$sessionId").also { it.mkdirs() }
+        val chunkDurationMs = chunkSecs * 1_000L
+
+        // Prepare the very first recorder before signalling Dart, so that
+        // emitScreenLoopStarted() fires only when audio is truly capturing.
+        var currentRecorder = prepareRecorder(sessionDir, chunkIndex)
+        currentRecorder.start()
+        Log.d(TAG, "MediaRecorder.start() chunk #$chunkIndex (first)")
         mainHandler.post { emitScreenLoopStarted() }
 
         // ── 3. chunk loop ─────────────────────────────────────────────────────
-        //
-        // Loop invariant: shouldRecord=true AND shouldStop=false means keep going.
-        // Only ACTION_STOP / onDestroy / projectionRevoked flip these flags.
-        // The loop itself NEVER touches shouldRecord or shouldStop.
-        //
-        // Session-scoped chunk directory prevents files from one session overwriting
-        // a concurrent upload from the previous session (cacheDir is app-global).
-        val sessionDir = File(cacheDir, "session_$sessionId").also { it.mkdirs() }
+        outer@ while (true) {
 
-        while (shouldRecord.get() && !shouldStop.get()) {
-            val outFile = File(sessionDir, "chunk_${chunkIndex.toString().padStart(6, '0')}.mp4")
-            Log.d(TAG, "recording chunk #$chunkIndex → ${outFile.absolutePath}")
-
-            val recordOk = runCatching { recordChunk(outFile, chunkSecs * 1_000L) }
-
-            if (recordOk.isFailure) {
-                val msg = recordOk.exceptionOrNull()?.message ?: "unknown"
-                Log.e(TAG, "recordChunk #$chunkIndex exception: $msg")
-                if (!shouldStop.get()) mainHandler.post { emitError("chunk #$chunkIndex failed: $msg") }
-                // Salvage partial file if anything was written.
-                if (outFile.exists() && outFile.length() > 0L) {
-                    uploadChunkAsync(outFile, chunkIndex, isFinal = true)
-                    chunkIndex++; currentChunkIndex = chunkIndex
+            // ── 3a. chunk timing window ───────────────────────────────────────
+            val t0 = System.currentTimeMillis()
+            while (System.currentTimeMillis() - t0 < chunkDurationMs) {
+                when {
+                    shouldStop.get()  -> break
+                    projectionRevoked.get() -> break
+                    shouldPause.get() -> break   // exit timing window early on pause
                 }
-                break   // exit loop — do not attempt further chunks
+                Thread.sleep(50)
             }
 
-            // Determine isFinal AFTER recordChunk returns so we pick up any
-            // stop signal that arrived during the recording window.
-            val isFinal = !shouldRecord.get() || shouldStop.get()
+            val outFile = chunkFile(sessionDir, chunkIndex)
+            val tmpFile = tmpFile(sessionDir, chunkIndex)
+
+            // Determine final BEFORE ping-pong so we pick up any stop/pause
+            // signal that arrived during the timing window.
+            val stopping = shouldStop.get() || projectionRevoked.get()
+            val pausing  = shouldPause.get() && !stopping
+            val isFinal  = stopping   // isFinal=true only on hard stop
+
+            // ── 3b. ping-pong: start next recorder BEFORE stopping current ────
+            var nextRecorder: MediaRecorder? = null
+            if (!stopping && !pausing) {
+                // Seamless transition — prepare next chunk recorder while
+                // current is still encoding (zero-gap swap).
+                try {
+                    nextRecorder = prepareRecorder(sessionDir, chunkIndex + 1)
+                    nextRecorder.start()
+                    Log.d(TAG, "MediaRecorder.start() chunk #${chunkIndex + 1} (next)")
+                    // Swap surface so video also switches atomically.
+                    virtualDisplay?.surface = nextRecorder.surface
+                } catch (e: Exception) {
+                    Log.e(TAG, "ping-pong prepare failed: ${e.message} — will stop after this chunk")
+                    nextRecorder?.release()
+                    nextRecorder = null
+                }
+            }
+
+            // ── 3c. stop and finalise the current chunk ───────────────────────
+            var stopOk = false
+            try {
+                currentRecorder.stop()
+                stopOk = true
+                Log.d(TAG, "MediaRecorder.stop() chunk #$chunkIndex (${tmpFile.length()}B)")
+            } catch (e: Exception) {
+                Log.w(TAG, "recorder.stop() chunk #$chunkIndex failed: ${e.message} — discarding")
+            } finally {
+                currentRecorder.release()
+                mediaRecorder = null
+            }
+
+            if (stopOk && tmpFile.exists() && tmpFile.length() > 0L) {
+                tmpFile.renameTo(outFile)
+                Log.d(TAG, "chunk #$chunkIndex finalised → ${outFile.name} (${outFile.length()}B)")
+            } else {
+                tmpFile.delete()
+            }
 
             if (outFile.exists() && outFile.length() > 0L) {
-                Log.d(TAG, "chunk #$chunkIndex ready: ${outFile.length()}B isFinal=$isFinal — queuing upload")
+                Log.d(TAG, "queuing upload chunk #$chunkIndex isFinal=$isFinal pausing=$pausing")
                 uploadChunkAsync(outFile, chunkIndex, isFinal)
             } else {
-                Log.w(TAG, "chunk #$chunkIndex is 0 bytes — skipping upload")
+                Log.w(TAG, "chunk #$chunkIndex is empty — skipping upload")
             }
 
             chunkIndex++
             currentChunkIndex = chunkIndex
 
-            if (isFinal) break
-            // continue → next iteration creates chunk #(chunkIndex) immediately
+            // ── 3d. decide what comes next ────────────────────────────────────
+            when {
+                stopping -> {
+                    // Hard stop — exit loop, drain, quit.
+                    nextRecorder?.release()
+                    break@outer
+                }
+                pausing -> {
+                    // Soft pause — park this thread until RESUME or STOP.
+                    isPaused = true
+                    mainHandler.post { emitRecordingPaused() }
+                    Log.d(TAG, "recording PAUSED at chunk #$chunkIndex")
+
+                    synchronized(this) {
+                        while (shouldPause.get() && !shouldStop.get() && !projectionRevoked.get()) {
+                            try { (this as Object).wait(1_000) }
+                            catch (_: InterruptedException) { break }
+                        }
+                    }
+
+                    if (shouldStop.get() || projectionRevoked.get()) {
+                        Log.d(TAG, "exiting from paused state — stop/revoke received")
+                        break@outer
+                    }
+
+                    // RESUME received — re-enter the chunk loop.
+                    Log.d(TAG, "recording RESUMED at chunk #$chunkIndex")
+                    mainHandler.post { emitRecordingResumed() }
+
+                    // Prepare the first recorder of the new recording segment.
+                    try {
+                        currentRecorder = prepareRecorder(sessionDir, chunkIndex)
+                        currentRecorder.start()
+                        Log.d(TAG, "MediaRecorder.start() chunk #$chunkIndex (resumed)")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "resume: prepareRecorder failed: ${e.message}")
+                        mainHandler.post { emitError("Resume failed: ${e.message}") }
+                        break@outer
+                    }
+                    // Continue outer loop — surface swap handled by prepareRecorder.
+                }
+                nextRecorder != null -> {
+                    // Seamless continuation — swap to the next recorder that is
+                    // already running.
+                    currentRecorder = nextRecorder
+                }
+                else -> {
+                    // ping-pong prepare failed earlier; exit gracefully.
+                    break@outer
+                }
+            }
         }
 
         // ── 4. release media objects ──────────────────────────────────────────
-        // Do this BEFORE draining uploads so the projection / display are freed
-        // as soon as recording ends, not held for up to 120 s.
         safeReleaseMedia()
 
-        // ── 5. drain pending uploads (keep FGS alive, max 120 s) ─────────────
+        // ── 5. drain pending uploads (max 120 s) ──────────────────────────────
         Log.d(TAG, "all chunks recorded — waiting for ${pendingUploads.get()} upload(s)…")
         val deadline = System.currentTimeMillis() + 120_000L
         while (pendingUploads.get() > 0 && System.currentTimeMillis() < deadline) {
@@ -395,25 +523,25 @@ class ScreenCaptureService : Service() {
             Log.w(TAG, "${pendingUploads.get()} upload(s) unfinished after 120 s")
 
         isRunning = false
+        isProjectionGranted = false
+        isPaused = false
         stopSelf()
         Log.d(TAG, "recordLoop done")
     }
 
-    // ── record one chunk ──────────────────────────────────────────────────────
+    // ── Prepare a fresh MediaRecorder for one chunk ───────────────────────────
+    //
+    // Always writes to a .tmp file; the caller renames it to the final .mp4
+    // only after recorder.stop() succeeds (guarantees a valid moov atom).
+    //
+    // For the very first chunk: creates the VirtualDisplay.
+    // For subsequent chunks:    swaps the surface on the existing VirtualDisplay.
 
-    private fun recordChunk(outFile: File, durationMs: Long) {
-        // Write to a .tmp file first; rename to outFile only after stop() succeeds.
-        // This guarantees outFile is always a complete, moov-finalised MP4.
-        // If stop() throws (e.g. < 100 ms of frames), the .tmp is deleted and
-        // outFile never appears — the chunk loop sees outFile.exists()==false and
-        // skips the upload rather than sending a corrupt file to the server.
-        val tmpFile = File(outFile.parent, "${outFile.name}.tmp")
-        tmpFile.delete() // clean up any stale .tmp from a previous crash
+    private fun prepareRecorder(sessionDir: File, index: Int): MediaRecorder {
+        val tmp = tmpFile(sessionDir, index)
+        tmp.delete()
 
-        // Fresh MediaRecorder for every chunk — reusing a stopped recorder
-        // causes IllegalStateException on Android 12+.
         val recorder = MediaRecorder(this).also { mediaRecorder = it }
-
         recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
         recorder.setVideoSource(MediaRecorder.VideoSource.SURFACE)
         recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
@@ -424,70 +552,37 @@ class ScreenCaptureService : Service() {
         recorder.setVideoEncodingBitRate(VIDEO_BPS)
         recorder.setVideoFrameRate(VIDEO_FPS)
         recorder.setVideoSize(screenWidth, screenHeight)
-        recorder.setOutputFile(tmpFile.absolutePath)  // write to .tmp
+        recorder.setOutputFile(tmp.absolutePath)
         recorder.prepare()
 
-        val surface = recorder.surface
-
-        // VirtualDisplay is created ONCE per session (first chunk) and then
-        // only its surface is swapped.  Re-creating it every chunk causes
-        // Android 14+ to produce a silent 0-byte file on the second chunk.
         if (virtualDisplay == null) {
+            // First chunk — create the VirtualDisplay.
             virtualDisplay = mediaProjection!!.createVirtualDisplay(
                     "ScreenCapture",
                     screenWidth, screenHeight, screenDpi,
                     DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                    surface, null, null,
+                    recorder.surface, null, null,
             )
             Log.d(TAG, "VirtualDisplay created ${screenWidth}x${screenHeight}@${screenDpi}dpi")
         } else {
-            // Swap surface on existing VirtualDisplay — do NOT release/recreate it.
-            virtualDisplay!!.surface = surface
+            // Swap surface on the existing VirtualDisplay — keeps projection alive.
+            virtualDisplay!!.surface = recorder.surface
         }
 
-        recorder.start()
-        Log.d(TAG, "MediaRecorder.start() chunk #$chunkIndex")
-
-        // Wait for chunk duration in short ticks so we catch stop signals fast.
-        val t0 = System.currentTimeMillis()
-        while (System.currentTimeMillis() - t0 < durationMs) {
-            if (shouldStop.get() || !shouldRecord.get() || projectionRevoked.get()) break
-            Thread.sleep(50)
-        }
-
-        var stopOk = false
-        try {
-            recorder.stop()
-            stopOk = true
-            Log.d(TAG, "MediaRecorder.stop() chunk #$chunkIndex size=${tmpFile.length()}B")
-        } catch (e: Exception) {
-            // stop() throws RuntimeException when no frames were encoded yet
-            // (recording was shorter than ~100 ms, or the surface had no frames).
-            // This means the tmp file has no valid moov atom — discard it.
-            Log.w(TAG, "recorder.stop() failed on chunk #$chunkIndex (${e.message}) — discarding")
-        } finally {
-            recorder.release()
-            mediaRecorder = null
-        }
-
-        if (stopOk && tmpFile.length() > 0L) {
-            // Atomic rename: outFile now exists and is a complete, valid MP4.
-            tmpFile.renameTo(outFile)
-            Log.d(TAG, "chunk #$chunkIndex finalised → ${outFile.name} (${outFile.length()}B)")
-        } else {
-            tmpFile.delete()
-            // Leave outFile absent — the chunk loop's outFile.exists() check skips upload.
-        }
+        return recorder
     }
+
+    // ── File path helpers ─────────────────────────────────────────────────────
+
+    private fun chunkFile(dir: File, index: Int) =
+            File(dir, "chunk_${index.toString().padStart(6, '0')}.mp4")
+
+    private fun tmpFile(dir: File, index: Int) =
+            File(dir, "chunk_${index.toString().padStart(6, '0')}.mp4.tmp")
 
     // ── upload ────────────────────────────────────────────────────────────────
 
     private fun uploadChunkAsync(file: File, index: Int, isFinal: Boolean) {
-        // Enqueue into the single-threaded executor so uploads are sent in
-        // strict chunk-index order.  A raw Thread.start() per chunk lets large
-        // chunks (chunk 0) lose the race to small final chunks (chunk 1),
-        // causing the server to assemble with only the final chunk and discard
-        // all earlier data.
         val size = file.length()
         pendingUploads.incrementAndGet()
         uploadExecutor.execute {
@@ -505,7 +600,7 @@ class ScreenCaptureService : Service() {
                     lastErr = e.message ?: "unknown"
                     Log.e(TAG, "chunk #$index attempt ${attempt + 1} failed: $lastErr")
                     attempt++
-                    if (attempt <= 3) Thread.sleep(1_000L * (1 shl attempt)) // 2 s, 4 s, 8 s
+                    if (attempt <= 3) Thread.sleep(1_000L * (1 shl attempt))
                 }
             }
             Log.e(TAG, "chunk #$index permanently failed: $lastErr")
@@ -543,8 +638,6 @@ class ScreenCaptureService : Service() {
 
     // ── teardown ──────────────────────────────────────────────────────────────
 
-    /** Releases recorder / virtualDisplay / mediaProjection without touching
-     *  shouldRecord / shouldStop flags — safe to call from any context. */
     private fun safeReleaseMedia() {
         try { mediaRecorder?.stop()    } catch (_: Exception) {}
         try { mediaRecorder?.release() } catch (_: Exception) {}
@@ -566,6 +659,17 @@ class ScreenCaptureService : Service() {
     private fun emitChunkUploaded(index: Int, bytes: Long, isFinal: Boolean) =
             eventSink?.success(mapOf("event" to "chunkUploaded", "chunkIndex" to index,
                     "bytes" to bytes, "isFinal" to isFinal))
+
+    // NEW events ──────────────────────────────────────────────────────────────
+    private fun emitRecordingPaused()  {
+        Log.d(TAG, "emit recordingPaused")
+        eventSink?.success(mapOf("event" to "recordingPaused"))
+    }
+    private fun emitRecordingResumed() {
+        Log.d(TAG, "emit recordingResumed")
+        eventSink?.success(mapOf("event" to "recordingResumed"))
+    }
+
     private fun emitError(msg: String) = eventSink?.error("REC_ERROR", msg, null)
 
     // ── notification ─────────────────────────────────────────────────────────
@@ -583,7 +687,9 @@ class ScreenCaptureService : Service() {
     private fun buildNotification(): Notification =
             NotificationCompat.Builder(this, CHANNEL_ID)
                     .setContentTitle("Recording session")
-                    .setContentText("Session recording in progress")
+                    .setContentText(
+                            if (isPaused) "Recording paused" else "Session recording in progress"
+                    )
                     .setSmallIcon(android.R.drawable.ic_menu_camera)
                     .setPriority(NotificationCompat.PRIORITY_LOW)
                     .setOngoing(true)

@@ -271,6 +271,37 @@ class MainActivity : FlutterActivity() {
                             result.success(null)
                         }
 
+                        // ── NEW: pauseRecording ───────────────────────────────
+                        // Signals the chunk loop to finish the current chunk,
+                        // upload it, then park until resumeRecording arrives.
+                        // Safe to call even if already paused (no-op in that case).
+                        "pauseRecording" -> {
+                            try {
+                                startService(Intent(this, ScreenCaptureService::class.java).apply {
+                                    action = ScreenCaptureService.ACTION_PAUSE_RECORDING
+                                })
+                                Log.d(TAG, "pauseRecording sent")
+                            } catch (e: Exception) {
+                                Log.e(TAG, "pauseRecording: ${e.message}", e)
+                            }
+                            result.success(null)
+                        }
+
+                        // ── NEW: resumeRecording ──────────────────────────────
+                        // Clears the pause flag and wakes the parked loop.
+                        // Safe to call even if not paused (no-op in that case).
+                        "resumeRecording" -> {
+                            try {
+                                startService(Intent(this, ScreenCaptureService::class.java).apply {
+                                    action = ScreenCaptureService.ACTION_RESUME_RECORDING
+                                })
+                                Log.d(TAG, "resumeRecording sent")
+                            } catch (e: Exception) {
+                                Log.e(TAG, "resumeRecording: ${e.message}", e)
+                            }
+                            result.success(null)
+                        }
+
                         else -> result.notImplemented()
                     }
                 }

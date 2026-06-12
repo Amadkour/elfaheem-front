@@ -8,6 +8,14 @@
 //      "screenLoopStarted". upgradeToScreenRecording() resolves.
 //   4. Recording runs in 5-second MP4 chunks, each uploaded automatically.
 //   5. stopRecordingOnly() → sends ACTION_STOP, waits for isFinal chunk.
+//
+// NEW — pause / resume:
+//   pauseRecording()  → sends ACTION_PAUSE_RECORDING.  The chunk loop
+//     finishes the current chunk (isFinal=false), uploads it, then parks.
+//     Native emits "recordingPaused" → state transitions to RecState.paused.
+//   resumeRecording() → sends ACTION_RESUME_RECORDING.  The parked loop
+//     wakes, prepares a new MediaRecorder, and keeps chunking from the next
+//     index.  Native emits "recordingResumed" → state → RecState.recording.
 
 import 'dart:async';
 import 'dart:developer';
@@ -17,7 +25,19 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'recorder_web_stub.dart'
 if (dart.library.html) 'recorder_web_impl.dart' as web_rec;
 
-enum RecState { idle, starting, recording, uploading, done, error }
+// ── Recording state ───────────────────────────────────────────────────────────
+
+enum RecState {
+  idle,
+  starting,
+  recording,
+  paused,     // NEW — chunk loop is parked; projection still alive
+  uploading,
+  done,
+  error,
+}
+
+// ── ClientRecorder ────────────────────────────────────────────────────────────
 
 class ClientRecorder extends ChangeNotifier {
   ClientRecorder({
@@ -47,6 +67,10 @@ class ClientRecorder extends ChangeNotifier {
   bool _screenRecording = false;
   bool get isScreenRecording => _screenRecording;
 
+  // NEW: whether the recording is currently paused
+  bool _isPaused = false;
+  bool get isPaused => _isPaused;
+
   static const _recChannel = MethodChannel(
     'com.example.flutter_education_app/native_recorder',
   );
@@ -60,6 +84,10 @@ class ClientRecorder extends ChangeNotifier {
   Completer<void>? _screenLoopCompleter;
   Completer<void>? _micReadyForShareCompleter;
   Completer<void>? _micLoopStartedCompleter;
+
+  // NEW: completers for pause / resume confirmation
+  Completer<void>? _pauseCompleter;
+  Completer<void>? _resumeCompleter;
 
   Completer<void>? get micReadyForShareCompleter => _micReadyForShareCompleter;
   Completer<void>? get micLoopStartedCompleter   => _micLoopStartedCompleter;
@@ -139,6 +167,79 @@ class ClientRecorder extends ChangeNotifier {
     _webRecorder!.removeStream('screen');
   }
 
+  // ── NEW: pauseRecording ───────────────────────────────────────────────────
+  //
+  // Sends ACTION_PAUSE_RECORDING to the native service and waits (up to 15 s)
+  // for the "recordingPaused" event, which signals that the chunk loop has
+  // actually parked.  Returns immediately if already paused, stopping, or on
+  // the web (where pause/resume is not yet implemented).
+  //
+  // State machine: recording → paused
+  Future<void> pauseRecording() async {
+    if (kIsWeb) {
+      log('[REC] pauseRecording: not supported on web — no-op');
+      return;
+    }
+    if (_state != RecState.recording) {
+      log('[REC] pauseRecording: state=$_state — no-op');
+      return;
+    }
+    if (_stopping) {
+      log('[REC] pauseRecording: stopping in progress — no-op');
+      return;
+    }
+    log('[REC] pauseRecording: sending ACTION_PAUSE_RECORDING');
+    try {
+      _pauseCompleter = Completer<void>();
+      await _recChannel.invokeMethod<void>('pauseRecording');
+      // Wait for the native "recordingPaused" event (emitted after the last
+      // in-progress chunk is finalised and uploaded).
+      await _pauseCompleter!.future.timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          log('[REC] pauseRecording: timeout — assuming paused');
+          _applyPaused();
+        },
+      );
+    } catch (e) {
+      log('[REC] pauseRecording error: $e');
+    } finally {
+      _pauseCompleter = null;
+    }
+  }
+
+  // ── NEW: resumeRecording ──────────────────────────────────────────────────
+  //
+  // Sends ACTION_RESUME_RECORDING and waits (up to 15 s) for "recordingResumed".
+  //
+  // State machine: paused → recording
+  Future<void> resumeRecording() async {
+    if (kIsWeb) {
+      log('[REC] resumeRecording: not supported on web — no-op');
+      return;
+    }
+    if (_state != RecState.paused) {
+      log('[REC] resumeRecording: state=$_state — no-op');
+      return;
+    }
+    log('[REC] resumeRecording: sending ACTION_RESUME_RECORDING');
+    try {
+      _resumeCompleter = Completer<void>();
+      await _recChannel.invokeMethod<void>('resumeRecording');
+      await _resumeCompleter!.future.timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          log('[REC] resumeRecording: timeout — assuming resumed');
+          _applyResumed();
+        },
+      );
+    } catch (e) {
+      log('[REC] resumeRecording error: $e');
+    } finally {
+      _resumeCompleter = null;
+    }
+  }
+
   Future<void> stopRecordingOnly() async {
     if (_state == RecState.done || _state == RecState.error || _stopping) return;
     _stopping = true;
@@ -166,8 +267,7 @@ class ClientRecorder extends ChangeNotifier {
     // isFinal chunkUploaded event regardless, and only give up on timeout.
     const maxWait = Duration(seconds: 180);
     final deadline = DateTime.now().add(maxWait);
-    while (_state != RecState.done &&
-        DateTime.now().isBefore(deadline)) {
+    while (_state != RecState.done && DateTime.now().isBefore(deadline)) {
       await Future.delayed(const Duration(milliseconds: 200));
     }
     if (_state != RecState.done) {
@@ -183,6 +283,8 @@ class ClientRecorder extends ChangeNotifier {
     _screenLoopCompleter       = null;
     _micReadyForShareCompleter = null;
     _micLoopStartedCompleter   = null;
+    _pauseCompleter            = null;
+    _resumeCompleter           = null;
     try { await _webRecorder?.stop(); } catch (_) {}
     _webRecorder = null;
     super.dispose();
@@ -297,6 +399,22 @@ class ClientRecorder extends ChangeNotifier {
           _recEventSub = null;
         }
 
+    // ── NEW: pause / resume events ──────────────────────────────────────
+
+      case 'recordingPaused':
+        log('[REC] recordingPaused — chunk loop is parked');
+        _applyPaused();
+        if (_pauseCompleter?.isCompleted == false) {
+          _pauseCompleter!.complete();
+        }
+
+      case 'recordingResumed':
+        log('[REC] recordingResumed — chunk loop is running');
+        _applyResumed();
+        if (_resumeCompleter?.isCompleted == false) {
+          _resumeCompleter!.complete();
+        }
+
       default:
         log('[REC] unknown event: $type');
     }
@@ -310,6 +428,11 @@ class ClientRecorder extends ChangeNotifier {
       _micReadyForShareCompleter!.completeError(error ?? 'native error');
     if (_micLoopStartedCompleter?.isCompleted == false)
       _micLoopStartedCompleter!.completeError(error ?? 'native error');
+    // Complete pause/resume completers with an error so their callers unblock.
+    if (_pauseCompleter?.isCompleted == false)
+      _pauseCompleter!.completeError(error ?? 'native error');
+    if (_resumeCompleter?.isCompleted == false)
+      _resumeCompleter!.completeError(error ?? 'native error');
     // Only transition to error state if we are NOT already draining/stopping.
     // A single chunk upload failure (emitError from Kotlin) must not abort
     // drainPending() — the native service keeps uploading remaining chunks and
@@ -323,7 +446,17 @@ class ClientRecorder extends ChangeNotifier {
     }
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
+  // ── Internal state helpers ────────────────────────────────────────────────
+
+  void _applyPaused() {
+    _isPaused = true;
+    _set(RecState.paused);
+  }
+
+  void _applyResumed() {
+    _isPaused = false;
+    _set(RecState.recording);
+  }
 
   void _set(RecState s) { _state = s; notifyListeners(); }
 

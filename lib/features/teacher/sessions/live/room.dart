@@ -250,7 +250,9 @@ class _RoomPageState extends State<RoomPage>
   // ── Client-side recorder (teacher only) ──────────────────────────────────
   ClientRecorder? _recorder;
   bool _recorderStarted = false; // guard: prevents multiple start() calls
-  bool _endingSession = false; // true while awaiting final chunk before onEnd()
+  bool _endingSession = false;     // true while awaiting final chunk before onEnd()
+  bool _isPausingRecording = false; // true while pauseRecording() is in flight
+  bool _isResumingRecording = false; // true while resumeRecording() is in flight
 
   // Participant panel
   bool _showParticipants = false;
@@ -450,9 +452,10 @@ class _RoomPageState extends State<RoomPage>
     final rec = _recorder;
     _recorder = null; // detach so dispose() never interferes
 
-    // Stop recording for any active state (recording, starting, or uploading).
+    // Stop recording for any active state (recording, paused, starting, or uploading).
     // We must attempt stop even in 'starting' state — the native service may
     // already be recording chunks even if the Dart state hasn't transitioned yet.
+    // If currently paused, the native service will wake and finalise normally.
     if (widget.isTeacher &&
         rec != null &&
         rec.state != RecState.done &&
@@ -480,6 +483,41 @@ class _RoomPageState extends State<RoomPage>
     if (mounted) Navigator.pop(context);
     if (mounted) Navigator.pop(context);
     return null;
+  }
+
+  // ── NEW: pause recording ──────────────────────────────────────────────────
+  //
+  // Tells the native chunk loop to finish the current chunk and park.
+  // Guarded so double-taps and rapid UI re-renders are safe.
+  Future<void> _pauseRecording() async {
+    final rec = _recorder;
+    if (rec == null || rec.state != RecState.recording) return;
+    if (_isPausingRecording || _endingSession) return;
+    if (mounted) setState(() => _isPausingRecording = true);
+    try {
+      await rec.pauseRecording();
+    } catch (e) {
+      log('[REC] _pauseRecording error: $e');
+    } finally {
+      if (mounted) setState(() => _isPausingRecording = false);
+    }
+  }
+
+  // ── NEW: resume recording ─────────────────────────────────────────────────
+  //
+  // Wakes the parked chunk loop and resumes chunking from the next index.
+  Future<void> _resumeRecording() async {
+    final rec = _recorder;
+    if (rec == null || rec.state != RecState.paused) return;
+    if (_isResumingRecording || _endingSession) return;
+    if (mounted) setState(() => _isResumingRecording = true);
+    try {
+      await rec.resumeRecording();
+    } catch (e) {
+      log('[REC] _resumeRecording error: $e');
+    } finally {
+      if (mounted) setState(() => _isResumingRecording = false);
+    }
   }
 
   /// Waits for all in-flight chunk uploads (RecState.done) then disposes.
@@ -1266,6 +1304,10 @@ class _RoomPageState extends State<RoomPage>
           dotColor = _emerald;
           label = '● LOCAL REC ${rec.uploadedChunks}↑ ${mb}MB';
           break;
+        case RecState.paused:
+          dotColor = const Color(0xFFFFB800);
+          label = '⏸ PAUSED ${rec.uploadedChunks}↑ ${mb}MB';
+          break;
         case RecState.uploading:
           dotColor = const Color(0xFFFFB800);
           label = 'Uploading… ${rec.uploadedChunks}↑';
@@ -1311,6 +1353,8 @@ class _RoomPageState extends State<RoomPage>
                   color: dotColor.withValues(
                     alpha: state == RecState.recording
                         ? (0.3 + 0.4 * _recDotOpacity.value)
+                        : state == RecState.paused
+                        ? 0.55
                         : 0.4,
                   ),
                   width: 1,
@@ -1328,6 +1372,8 @@ class _RoomPageState extends State<RoomPage>
                           ? dotColor.withValues(
                         alpha: 0.4 + 0.6 * _recDotOpacity.value,
                       )
+                          : state == RecState.paused
+                          ? dotColor.withValues(alpha: 0.9)
                           : dotColor,
                     ),
                   ),
@@ -1370,7 +1416,7 @@ class _RoomPageState extends State<RoomPage>
   Widget _buildControlsBar() {
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 6, 12, 10),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 10),
       decoration: BoxDecoration(
         color: _surfaceHi.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(24),
@@ -1384,21 +1430,32 @@ class _RoomPageState extends State<RoomPage>
           BoxShadow(color: _cyan.withValues(alpha: 0.05), blurRadius: 20),
         ],
       ),
-      child: Row(
-        children: [
-          if (widget.room.localParticipant != null)
-            Expanded(
-              child: ControlsWidget(
-                widget.room,
-                widget.room.localParticipant!,
-                // End session goes through our recorder-aware wrapper
-                onEndSession: _endSessionWithRecording,
-                isTeacher: widget.isTeacher,
-                onToggleScreenShare: toggleScreenShare,
-              ),
-            ),
-        ],
-      ),
+      child:
+        ControlsWidget(
+          widget.room,
+          widget.room.localParticipant!,
+          // End session goes through our recorder-aware wrapper
+          onEndSession: _endSessionWithRecording,
+          isTeacher: widget.isTeacher,
+          onToggleScreenShare: toggleScreenShare,
+          // ── NEW: pause / resume ──────────────────────────────────
+          // Null when the action is not available (wrong state, or
+          // a transition is already in flight) — ControlsWidget
+          // disables the button automatically when the callback is null.
+          onPauseRecording: (widget.isTeacher &&
+              _recorder?.state == RecState.recording &&
+              !_isPausingRecording &&
+              !_endingSession)
+              ? _pauseRecording
+              : null,
+          onResumeRecording: (widget.isTeacher &&
+              _recorder?.state == RecState.paused &&
+              !_isResumingRecording &&
+              !_endingSession)
+              ? _resumeRecording
+              : null,
+          recorderState: widget.isTeacher ? _recorder?.state : null,
+        ),
     );
   }
 
