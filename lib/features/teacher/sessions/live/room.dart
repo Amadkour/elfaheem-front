@@ -450,13 +450,21 @@ class _RoomPageState extends State<RoomPage>
     final rec = _recorder;
     _recorder = null; // detach so dispose() never interferes
 
-    if (widget.isTeacher && rec != null && rec.state == RecState.recording) {
+    // Stop recording for any active state (recording, starting, or uploading).
+    // We must attempt stop even in 'starting' state — the native service may
+    // already be recording chunks even if the Dart state hasn't transitioned yet.
+    if (widget.isTeacher &&
+        rec != null &&
+        rec.state != RecState.done &&
+        rec.state != RecState.error) {
       try {
         await rec.stopRecordingOnly();
         if (kIsWeb) {
           log('[REC] Web: compositor drained — all chunks uploaded');
         }
-        // Mobile: don't block here — native FGS handles the upload drain.
+        // Mobile: don't block here — native FGS drains uploads independently.
+        // _drainAndDispose runs unawaited so the UI pops immediately while
+        // the background task waits for RecState.done (all chunks confirmed).
       } catch (e) {
         log('[REC] stopRecordingOnly error: $e');
       }

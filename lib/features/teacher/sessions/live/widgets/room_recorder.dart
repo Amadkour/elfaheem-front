@@ -140,7 +140,7 @@ class ClientRecorder extends ChangeNotifier {
   }
 
   Future<void> stopRecordingOnly() async {
-    if (_state == RecState.done || _state == RecState.error) return;
+    if (_state == RecState.done || _state == RecState.error || _stopping) return;
     _stopping = true;
     _set(RecState.uploading);
     if (kIsWeb) {
@@ -158,14 +158,17 @@ class ClientRecorder extends ChangeNotifier {
     }
     // On mobile the native FGS is still uploading chunks in background threads.
     // Poll until the isFinal=true chunkUploaded event arrives (which sets
-    // RecState.done in _onNativeEvent), or until 120s timeout.
+    // RecState.done in _onNativeEvent), or until 180s timeout.
     // This keeps _recEventSub alive so native events are not dropped.
-    const maxWait = Duration(seconds: 120);
+    // Note: _recEventSub must NOT be cancelled before this method returns.
+    // We do NOT exit on RecState.error — a failed chunk emits an error but
+    // the native service keeps uploading remaining chunks.  We wait for the
+    // isFinal chunkUploaded event regardless, and only give up on timeout.
+    const maxWait = Duration(seconds: 180);
     final deadline = DateTime.now().add(maxWait);
     while (_state != RecState.done &&
-        _state != RecState.error &&
         DateTime.now().isBefore(deadline)) {
-      await Future.delayed(const Duration(milliseconds: 300));
+      await Future.delayed(const Duration(milliseconds: 200));
     }
     if (_state != RecState.done) {
       _set(RecState.done); // timeout — force done so dispose() can proceed
@@ -307,7 +310,17 @@ class ClientRecorder extends ChangeNotifier {
       _micReadyForShareCompleter!.completeError(error ?? 'native error');
     if (_micLoopStartedCompleter?.isCompleted == false)
       _micLoopStartedCompleter!.completeError(error ?? 'native error');
-    _setError(error?.toString() ?? 'Native recorder error');
+    // Only transition to error state if we are NOT already draining/stopping.
+    // A single chunk upload failure (emitError from Kotlin) must not abort
+    // drainPending() — the native service keeps uploading remaining chunks and
+    // the server assembles whatever it received.  If we set RecState.error here
+    // while _stopping is true, drainPending() exits immediately and the session
+    // ends before in-flight chunks reach the server.
+    if (!_stopping) {
+      _setError(error?.toString() ?? 'Native recorder error');
+    } else {
+      log('[REC] Native error during drain (non-fatal): $error');
+    }
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────

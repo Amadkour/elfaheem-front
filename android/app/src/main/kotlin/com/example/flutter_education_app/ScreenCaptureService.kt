@@ -21,6 +21,7 @@ import android.view.WindowManager
 import androidx.core.app.NotificationCompat
 import io.flutter.plugin.common.EventChannel
 import java.io.File
+import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -64,6 +65,15 @@ class ScreenCaptureService : Service() {
         @Volatile var onFgsPromoted:           (() -> Unit)?           = null
 
         val pendingUploads = AtomicInteger(0)
+
+        // Single-threaded executor for chunk uploads.
+        // Chunks are enqueued in order and uploaded one-at-a-time so chunk N
+        // always reaches the server BEFORE chunk N+1.  Without this, a large
+        // chunk 0 and a tiny chunk 1 (is_final) race — chunk 1 can arrive first
+        // and trigger server-side assembly before chunk 0 is saved to disk.
+        val uploadExecutor = Executors.newSingleThreadExecutor { r ->
+            Thread(r, "ChunkUploader").also { it.isDaemon = true }
+        }
     }
 
     // ── recording state ───────────────────────────────────────────────────────
@@ -114,6 +124,13 @@ class ScreenCaptureService : Service() {
         safeReleaseMedia()
         isRunning = false
         isProjectionGranted = false
+        // Do NOT delete the session directory here.  uploadChunkAsync deletes
+        // each chunk file individually after upload (success or permanent failure).
+        // Calling deleteRecursively() here races with in-flight upload tasks on
+        // the uploadExecutor thread — chunks that are still queued will have their
+        // files deleted before the upload attempt, causing ENOENT on every retry
+        // and silently losing those chunks.  Stale dirs from crashed previous
+        // sessions are swept at the start of ACTION_START_MIC_ONLY instead.
         super.onDestroy()
     }
 
@@ -128,7 +145,23 @@ class ScreenCaptureService : Service() {
                 authToken  = intent.getStringExtra(EXTRA_AUTH_TOKEN) ?: ""
                 chunkSecs  = intent.getIntExtra(EXTRA_CHUNK_SECS,   5)
                 chunkIndex = intent.getIntExtra(EXTRA_CHUNK_INDEX,  0)
+                // Reset the static upload counter so a stale value from a previous
+                // session (which may still be draining) does not confuse this one.
+                pendingUploads.set(0)
                 Log.d(TAG, "ACTION_START_MIC_ONLY session=$sessionId chunkSecs=$chunkSecs")
+                // Sweep leftover session dirs from any previously-crashed sessions.
+                // We deliberately skip the current sessionId so that a service restart
+                // mid-session (e.g. process death + START_STICKY re-delivery) does not
+                // delete chunks that are still being uploaded on a surviving executor thread.
+                try {
+                    cacheDir.listFiles()?.forEach { f ->
+                        if (f.isDirectory && f.name.startsWith("session_") &&
+                                f.name != "session_$sessionId") {
+                            f.deleteRecursively()
+                            Log.d(TAG, "swept stale dir: ${f.name}")
+                        }
+                    }
+                } catch (_: Exception) {}
                 resolveScreenMetrics()
                 startForegroundMicOnly()
                 isRunning = true
@@ -307,9 +340,13 @@ class ScreenCaptureService : Service() {
         // Only ACTION_STOP / onDestroy / projectionRevoked flip these flags.
         // The loop itself NEVER touches shouldRecord or shouldStop.
         //
+        // Session-scoped chunk directory prevents files from one session overwriting
+        // a concurrent upload from the previous session (cacheDir is app-global).
+        val sessionDir = File(cacheDir, "session_$sessionId").also { it.mkdirs() }
+
         while (shouldRecord.get() && !shouldStop.get()) {
-            val outFile = File(cacheDir, "chunk_${chunkIndex.toString().padStart(6, '0')}.mp4")
-            Log.d(TAG, "recording chunk #$chunkIndex → ${outFile.name}")
+            val outFile = File(sessionDir, "chunk_${chunkIndex.toString().padStart(6, '0')}.mp4")
+            Log.d(TAG, "recording chunk #$chunkIndex → ${outFile.absolutePath}")
 
             val recordOk = runCatching { recordChunk(outFile, chunkSecs * 1_000L) }
 
@@ -365,6 +402,14 @@ class ScreenCaptureService : Service() {
     // ── record one chunk ──────────────────────────────────────────────────────
 
     private fun recordChunk(outFile: File, durationMs: Long) {
+        // Write to a .tmp file first; rename to outFile only after stop() succeeds.
+        // This guarantees outFile is always a complete, moov-finalised MP4.
+        // If stop() throws (e.g. < 100 ms of frames), the .tmp is deleted and
+        // outFile never appears — the chunk loop sees outFile.exists()==false and
+        // skips the upload rather than sending a corrupt file to the server.
+        val tmpFile = File(outFile.parent, "${outFile.name}.tmp")
+        tmpFile.delete() // clean up any stale .tmp from a previous crash
+
         // Fresh MediaRecorder for every chunk — reusing a stopped recorder
         // causes IllegalStateException on Android 12+.
         val recorder = MediaRecorder(this).also { mediaRecorder = it }
@@ -379,7 +424,7 @@ class ScreenCaptureService : Service() {
         recorder.setVideoEncodingBitRate(VIDEO_BPS)
         recorder.setVideoFrameRate(VIDEO_FPS)
         recorder.setVideoSize(screenWidth, screenHeight)
-        recorder.setOutputFile(outFile.absolutePath)
+        recorder.setOutputFile(tmpFile.absolutePath)  // write to .tmp
         recorder.prepare()
 
         val surface = recorder.surface
@@ -396,6 +441,7 @@ class ScreenCaptureService : Service() {
             )
             Log.d(TAG, "VirtualDisplay created ${screenWidth}x${screenHeight}@${screenDpi}dpi")
         } else {
+            // Swap surface on existing VirtualDisplay — do NOT release/recreate it.
             virtualDisplay!!.surface = surface
         }
 
@@ -409,24 +455,42 @@ class ScreenCaptureService : Service() {
             Thread.sleep(50)
         }
 
+        var stopOk = false
         try {
             recorder.stop()
-            Log.d(TAG, "MediaRecorder.stop() chunk #$chunkIndex size=${outFile.length()}B")
+            stopOk = true
+            Log.d(TAG, "MediaRecorder.stop() chunk #$chunkIndex size=${tmpFile.length()}B")
         } catch (e: Exception) {
-            // stop() throws if no frames were encoded yet (< ~100 ms recording).
-            Log.w(TAG, "recorder.stop() warning on chunk #$chunkIndex: ${e.message}")
+            // stop() throws RuntimeException when no frames were encoded yet
+            // (recording was shorter than ~100 ms, or the surface had no frames).
+            // This means the tmp file has no valid moov atom — discard it.
+            Log.w(TAG, "recorder.stop() failed on chunk #$chunkIndex (${e.message}) — discarding")
         } finally {
             recorder.release()
             mediaRecorder = null
+        }
+
+        if (stopOk && tmpFile.length() > 0L) {
+            // Atomic rename: outFile now exists and is a complete, valid MP4.
+            tmpFile.renameTo(outFile)
+            Log.d(TAG, "chunk #$chunkIndex finalised → ${outFile.name} (${outFile.length()}B)")
+        } else {
+            tmpFile.delete()
+            // Leave outFile absent — the chunk loop's outFile.exists() check skips upload.
         }
     }
 
     // ── upload ────────────────────────────────────────────────────────────────
 
     private fun uploadChunkAsync(file: File, index: Int, isFinal: Boolean) {
+        // Enqueue into the single-threaded executor so uploads are sent in
+        // strict chunk-index order.  A raw Thread.start() per chunk lets large
+        // chunks (chunk 0) lose the race to small final chunks (chunk 1),
+        // causing the server to assemble with only the final chunk and discard
+        // all earlier data.
         val size = file.length()
         pendingUploads.incrementAndGet()
-        Thread({
+        uploadExecutor.execute {
             var attempt = 0
             var lastErr = "unknown"
             while (attempt <= 3) {
@@ -435,8 +499,8 @@ class ScreenCaptureService : Service() {
                     file.delete()
                     pendingUploads.decrementAndGet()
                     mainHandler.post { emitChunkUploaded(index, size, isFinal) }
-                    Log.d(TAG, "chunk #$index uploaded (attempt ${attempt + 1})")
-                    return@Thread
+                    Log.d(TAG, "chunk #$index uploaded OK (attempt ${attempt + 1})")
+                    return@execute
                 } catch (e: Exception) {
                     lastErr = e.message ?: "unknown"
                     Log.e(TAG, "chunk #$index attempt ${attempt + 1} failed: $lastErr")
@@ -448,7 +512,7 @@ class ScreenCaptureService : Service() {
             file.delete()
             pendingUploads.decrementAndGet()
             mainHandler.post { emitError("chunk #$index failed after 3 retries: $lastErr") }
-        }, "Upload-$index").start()
+        }
     }
 
     private fun uploadChunk(file: File, index: Int, isFinal: Boolean) {

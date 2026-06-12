@@ -154,7 +154,11 @@ class _ControlsWidgetState extends State<ControlsWidget>
     final result = await context.showDisconnectDialog();
     if (result == true) {
       await widget.onEndSession();
-      await widget.room.disconnect();
+      try {
+        await widget.room.disconnect();
+      } on TimeoutException catch (e) {
+        log('error on end room: ${e.toString()}');
+      }
     }
   }
 

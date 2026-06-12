@@ -120,15 +120,18 @@ class CourseCard extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            course.title,
-                            style: context.colors.h3.copyWith(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.2,
+                          Flexible(
+                            child: Text(
+                              course.title,
+                              style: context.colors.h3.copyWith(
+                                fontSize: 13,
+                                overflow: TextOverflow.ellipsis,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.2,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                           if (course.rateSummary?.average != null) _StatsRow(course: course),
                         ],
