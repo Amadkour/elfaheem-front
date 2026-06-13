@@ -293,19 +293,27 @@ class _RoomPageState extends State<RoomPage>
 
   Future<void> _requestPermissions() async {
     if (kIsWeb) return;
-    if (!lkPlatformIs(PlatformType.android)) return;
     try {
-      // Request both at once — Android shows them sequentially.
-      final statuses = await [
-        Permission.camera,
-        Permission.microphone,
-      ].request();
+      if (lkPlatformIs(PlatformType.android)) {
+        // Request both at once — Android shows them sequentially.
+        final statuses = await [
+          Permission.camera,
+          Permission.microphone,
+        ].request();
 
-      if (statuses[Permission.camera] != PermissionStatus.granted) {
-        log('[PERM] Camera permission denied — recording will have no camera PiP');
-      }
-      if (statuses[Permission.microphone] != PermissionStatus.granted) {
-        log('[PERM] Microphone permission denied — recording will have no audio');
+        if (statuses[Permission.camera] != PermissionStatus.granted) {
+          log('[PERM] Camera permission denied — recording will have no camera PiP');
+        }
+        if (statuses[Permission.microphone] != PermissionStatus.granted) {
+          log('[PERM] Microphone permission denied — recording will have no audio');
+        }
+      } else {
+        // iOS: request microphone permission before RPScreenRecorder starts.
+        // Without this, the AVAudioSession mic input is silent on first launch.
+        final mic = await Permission.microphone.request();
+        if (mic != PermissionStatus.granted) {
+          log('[PERM] iOS microphone permission denied — audio will be silent');
+        }
       }
     } catch (e) {
       log('[PERM] _requestPermissions error: $e');
