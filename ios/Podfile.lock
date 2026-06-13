@@ -1,0 +1,55 @@
+PODS:
+  - Flutter (1.0.0)
+  - flutter_local_notifications (0.0.1):
+    - Flutter
+  - flutter_webrtc (1.4.0):
+    - Flutter
+    - WebRTC-SDK (= 144.7559.01)
+  - livekit_client (2.8.0):
+    - Flutter
+    - flutter_webrtc
+    - WebRTC-SDK (= 144.7559.01)
+  - moyasar (0.0.1):
+    - Flutter
+  - pay_ios (0.0.1):
+    - Flutter
+  - WebRTC-SDK (144.7559.01)
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - flutter_local_notifications (from `.symlinks/plugins/flutter_local_notifications/ios`)
+  - flutter_webrtc (from `.symlinks/plugins/flutter_webrtc/ios`)
+  - livekit_client (from `.symlinks/plugins/livekit_client/ios`)
+  - moyasar (from `.symlinks/plugins/moyasar/ios`)
+  - pay_ios (from `.symlinks/plugins/pay_ios/ios`)
+
+SPEC REPOS:
+  trunk:
+    - WebRTC-SDK
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  flutter_local_notifications:
+    :path: ".symlinks/plugins/flutter_local_notifications/ios"
+  flutter_webrtc:
+    :path: ".symlinks/plugins/flutter_webrtc/ios"
+  livekit_client:
+    :path: ".symlinks/plugins/livekit_client/ios"
+  moyasar:
+    :path: ".symlinks/plugins/moyasar/ios"
+  pay_ios:
+    :path: ".symlinks/plugins/pay_ios/ios"
+
+SPEC CHECKSUMS:
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  flutter_local_notifications: ad39620c743ea4c15127860f4b5641649a988100
+  flutter_webrtc: ec91d94b484ad49cf191ef93413f64a40ffd3b4c
+  livekit_client: 549b62f57d4bae9385f541922b621e7ce84aae4b
+  moyasar: 1fa35fd99cec4dd2a0913539ba902218e1e3deba
+  pay_ios: 2c48d76615ded0cfaff66185669501b8b1dfc55e
+  WebRTC-SDK: ab9b5319e458c2bfebdc92b3600740da35d5630d
+
+PODFILE CHECKSUM: 53a6aebc29ccee84c41f92f409fc20cd4ca011f1
+
+COCOAPODS: 1.16.2
