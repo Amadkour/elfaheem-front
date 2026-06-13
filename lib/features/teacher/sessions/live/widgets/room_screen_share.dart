@@ -214,14 +214,10 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
 
   // ── iOS ───────────────────────────────────────────────────────────────────
   //
-  // iOS screen share uses RPScreenRecorder in-process capture
-  // (useiOSBroadcastExtension: false).  The broadcast-extension path
-  // (useiOSBroadcastExtension: true) requires a separate Xcode target and
-  // shows NO dialog without it — that was the original bug causing the share
-  // button to do nothing.
-  //
-  // In-process capture re-uses the same RPScreenRecorder singleton that the
-  // recorder already holds, so there is no session conflict.
+  // iOS has no system-level MediaProjection dialog like Android.
+  // We show our own confirmation dialog first (mirroring the Android UX),
+  // then start in-process RPScreenRecorder capture on confirmation.
+  // useiOSBroadcastExtension: false — no separate Xcode extension needed.
 
   Future<void> _toggleScreenShareIOS(
       LocalParticipant local,
@@ -233,9 +229,69 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
     }
 
     if (!isSharing) {
-      // ── START ──────────────────────────────────────────────────────────────
+      // ── Show confirmation dialog (mirrors Android's MediaProjection dialog) ─
+      final confirmed = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1D2E),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.screen_share_outlined, color: Color(0xFF6C63FF), size: 22),
+              SizedBox(width: 10),
+              Text(
+                'Share Your Screen',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'tajawal',
+                ),
+              ),
+            ],
+          ),
+          content: const Text(
+            'Your entire screen will be visible to all participants in this session. '
+                'This includes any apps or notifications that appear while sharing.',
+            style: TextStyle(
+              color: Color(0xFFB0B3C6),
+              fontSize: 13,
+              fontFamily: 'tajawal',
+              height: 1.5,
+            ),
+          ),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          actions: [
+            OutlinedButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFF3A3D52)),
+                foregroundColor: const Color(0xFFB0B3C6),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Cancel', style: TextStyle(fontFamily: 'tajawal')),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6C63FF),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Start Sharing', style: TextStyle(fontFamily: 'tajawal')),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true) {
+        log('[SS] iOS: user cancelled screen share dialog');
+        return;
+      }
+
+      // ── START capture after user confirmed ────────────────────────────────
       try {
-        // Ensure mic is live before we publish the screen track.
         if (!local.isMicrophoneEnabled()) {
           await local.setMicrophoneEnabled(true);
           await Future.delayed(const Duration(milliseconds: 150));
@@ -248,7 +304,6 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
             maxFrameRate: 30,
           ),
         ));
-        // setScreenShareEnabled throws on failure — if we reach here it worked.
         log('[SS] iOS: screen share active');
       } catch (e) {
         log('[SS] iOS start error: $e');
