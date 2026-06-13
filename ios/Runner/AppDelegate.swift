@@ -137,16 +137,7 @@ import AVFoundation
                 self.chunkSecs  = args["chunkSeconds"] as? Int    ?? 5
                 self.chunkIndex = args["chunkIndex"]   as? Int    ?? 0
                 NSLog("[REC] startMicRecording: session=\(self.sessionId) chunkSecs=\(self.chunkSecs)")
-                // On iOS, RPScreenRecorder is the only recording path.
-                // Start capture immediately here so that the subsequent
-                // startScreenCaptureService call from Dart is idempotent
-                // (caught by the "already recording" guard) and avoids
-                // the timing race where startScreenCaptureService fires
-                // before uploadUrl is stored.
-                guard !self.recording else {
-                    result(true); return
-                }
-                self.startScreenCaptureService(result: result)
+                result(true)
 
             case "upgradeToScreenRecording":
                 guard self.recording else {
@@ -177,6 +168,60 @@ import AVFoundation
 
             case "resumeRecording":
                 self.resumeRecording(result: result)
+
+            case "releaseForShare":
+                // Stop RPScreenRecorder so LiveKit can call startCapture for screen share.
+                // Recording state is preserved (paused=true); resumeAfterShare restarts it.
+                NSLog("[REC] releaseForShare: stopping RPScreenRecorder for LiveKit handoff")
+                if self.recording {
+                    self.chunkTimer?.invalidate(); self.chunkTimer = nil
+                    RPScreenRecorder.shared().stopCapture { [weak self] error in
+                        if let e = error { NSLog("[REC] releaseForShare stopCapture error: \(e.localizedDescription)") }
+                        DispatchQueue.main.async {
+                            self?.recording = false
+                            // Do NOT reset uploadUrl/authToken/sessionId — resumeAfterShare needs them.
+                            NSLog("[REC] releaseForShare: RPScreenRecorder released")
+                            result(nil)
+                        }
+                    }
+                } else {
+                    result(nil)
+                }
+
+            case "resumeAfterShare":
+                // LiveKit has finished its screen share and released RPScreenRecorder.
+                // Restart our startCapture session and chunk loop.
+                NSLog("[REC] resumeAfterShare: restarting RPScreenRecorder after share")
+                guard !self.uploadUrl.isEmpty else {
+                    NSLog("[REC] resumeAfterShare: no session configured — ignoring")
+                    result(nil); return
+                }
+                guard !self.recording else {
+                    NSLog("[REC] resumeAfterShare: already recording — skip")
+                    result(nil); return
+                }
+                self.paused   = false
+                self.stopping = false
+                self.configureAudioSessionForRecording()
+                let rp = RPScreenRecorder.shared()
+                rp.isMicrophoneEnabled = true
+                rp.startCapture(handler: { [weak self] sampleBuffer, bufferType, error in
+                    guard let self = self, self.recording, !self.stopping else { return }
+                    if let e = error { self.emitError(e.localizedDescription); return }
+                    self.processSample(sampleBuffer, type: bufferType)
+                }) { [weak self] error in
+                    guard let self = self else { return }
+                    DispatchQueue.main.async {
+                        if let e = error {
+                            NSLog("[REC] resumeAfterShare startCapture error: \(e.localizedDescription)")
+                            result(nil); return
+                        }
+                        self.recording = true
+                        self.beginChunkWriter()
+                        NSLog("[REC] resumeAfterShare: recording restarted at chunk #\(self.chunkIndex)")
+                        result(nil)
+                    }
+                }
 
             case "stopRecording":
                 let isFinal = (call.arguments as? [String: Any])?["isFinal"] as? Bool ?? true
@@ -247,8 +292,7 @@ import AVFoundation
         let session = AVAudioSession.sharedInstance()
         do {
             try session.setCategory(.playAndRecord, mode: .default,
-                                    options: [.defaultToSpeaker, .allowBluetooth,
-                                              .allowBluetoothA2DP, .mixWithOthers])
+                                    options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP])
             try session.setActive(true, options: .notifyOthersOnDeactivation)
             NSLog("[REC] AVAudioSession configured for recording")
         } catch {
@@ -257,17 +301,14 @@ import AVFoundation
     }
 
     private func restoreAudioSessionForLiveKit() {
-        // After RPScreenRecorder stops, simply deactivate our session.
-        // LiveKit manages its own AVAudioSession configuration and will
-        // re-activate it the next time it needs to capture/play audio.
-        // Trying to set a specific category here races with LiveKit's own
-        // session setup and produces OSStatus 561017449 (incompatible category).
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setActive(false, options: .notifyOthersOnDeactivation)
-            NSLog("[REC] AVAudioSession deactivated — LiveKit will restore")
+            try session.setCategory(.playAndRecord, mode: .videoChat,
+                                    options: [.allowBluetooth, .allowBluetoothA2DP, .allowAirPlay])
+            try session.setActive(true, options: .notifyOthersOnDeactivation)
+            NSLog("[REC] AVAudioSession restored for LiveKit")
         } catch {
-            NSLog("[REC] AVAudioSession deactivate error: \(error.localizedDescription)")
+            NSLog("[REC] AVAudioSession restore error: \(error.localizedDescription)")
         }
     }
 
@@ -319,7 +360,7 @@ import AVFoundation
         writer.add(vi)
         writer.add(ai)
         writer.startWriting()
-        writer.startSession(atSourceTime: CMClockGetTime(CMClockGetHostTimeClock()))
+        writer.startSession(atSourceTime: .zero)
 
         NSLog("[REC] beginChunkWriter: chunk #\(chunkIndex) ready")
         scheduleChunkTimer()
