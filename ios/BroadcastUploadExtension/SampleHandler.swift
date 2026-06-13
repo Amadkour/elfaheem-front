@@ -1,44 +1,122 @@
+// SampleHandler.swift
+// BroadcastUploadExtension target
 //
-//  SampleHandler.swift
-//  BroadcastUploadExtension
+// This runs in a separate Apple process when the user taps "Start Broadcast"
+// from the iOS system picker.  It receives every screen frame + mic/app audio
+// sample buffer from ReplayKit, serialises them, and writes them into a shared
+// CFMessagePort so the main Runner app can read and publish them via LiveKit.
 //
-//  Created by Admin on 13/06/2026.
+// Architecture:
+//   Extension process  →  CFMessagePort (local)  →  Main app process
 //
+// The main app registers a CFMessagePortCreateLocal receiver in AppDelegate.
+// The extension writes each sample buffer as:
+//   [4-byte type][8-byte pts_ns][4-byte size][<size>-byte data]
+//
+// Buffer types (match AppDelegate constants):
+//   0 = video, 1 = audioMic, 2 = audioApp, 99 = stop signal
 
 import ReplayKit
+import CoreMedia
+import CoreVideo
+
+private let kPortName = "com.example.flutter_education_app.broadcast"
 
 class SampleHandler: RPBroadcastSampleHandler {
 
-    override func broadcastStarted(withSetupInfo setupInfo: [String : NSObject]?) {
-        // User has requested to start the broadcast. Setup info from the UI extension can be supplied but optional. 
-    }
-    
-    override func broadcastPaused() {
-        // User has requested to pause the broadcast. Samples will stop being delivered.
-    }
-    
-    override func broadcastResumed() {
-        // User has requested to resume the broadcast. Samples delivery will resume.
-    }
-    
-    override func broadcastFinished() {
-        // User has requested to finish the broadcast.
-    }
-    
-    override func processSampleBuffer(_ sampleBuffer: CMSampleBuffer, with sampleBufferType: RPSampleBufferType) {
-        switch sampleBufferType {
-        case RPSampleBufferType.video:
-            // Handle video sample buffer
-            break
-        case RPSampleBufferType.audioApp:
-            // Handle audio sample buffer for app audio
-            break
-        case RPSampleBufferType.audioMic:
-            // Handle audio sample buffer for mic audio
-            break
-        @unknown default:
-            // Handle other sample buffer types
-            fatalError("Unknown type of sample buffer")
+    private var port: CFMessagePort?
+
+    override func broadcastStarted(withSetupInfo setupInfo: [String: NSObject]?) {
+        // Open the port the main app registered.
+        port = CFMessagePortCreateRemote(nil, kPortName as CFString)
+        if port == nil {
+            // Main app not running or port not yet registered — fail gracefully.
+            let err = NSError(domain: "BroadcastError", code: 0,
+                              userInfo: [NSLocalizedDescriptionKey: "Main app port not found"])
+            finishBroadcastWithError(err)
         }
+    }
+
+    override func broadcastPaused() {}
+    override func broadcastResumed() {}
+
+    override func broadcastFinished() {
+        sendStop()
+        if let p = port { CFMessagePortInvalidate(p); port = nil }
+    }
+
+    override func processSampleBuffer(_ sampleBuffer: CMSampleBuffer,
+                                      with sampleBufferType: RPSampleBufferType) {
+        guard CMSampleBufferIsValid(sampleBuffer) else { return }
+
+        let typeId: UInt32
+        switch sampleBufferType {
+        case .video:    typeId = 0
+        case .audioMic: typeId = 1
+        case .audioApp: typeId = 2
+        @unknown default: return
+        }
+
+        guard let data = serialise(sampleBuffer, type: typeId) else { return }
+        send(data)
+    }
+
+    // ─── Serialisation ────────────────────────────────────────────────────────
+
+    private func serialise(_ sb: CMSampleBuffer, type: UInt32) -> Data? {
+        let pts = CMSampleBufferGetPresentationTimeStamp(sb)
+        let ptsNs = UInt64(CMTimeGetSeconds(pts) * 1_000_000_000)
+
+        // For video: encode as JPEG to keep IPC payload small.
+        // For audio: copy raw PCM bytes from the block buffer.
+        let payload: Data
+        if type == 0 {
+            guard let pixelBuffer = CMSampleBufferGetImageBuffer(sb) else { return nil }
+            CVPixelBufferLockBaseAddress(pixelBuffer, .readOnly)
+            defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, .readOnly) }
+            let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+            let context = CIContext()
+            guard let jpegData = context.jpegRepresentation(of: ciImage,
+                                                             colorSpace: CGColorSpaceCreateDeviceRGB(),
+                                                             options: [kCGImageDestinationLossyCompressionQuality as CIImageRepresentationOption: 0.6]) else { return nil }
+            payload = jpegData
+        } else {
+            guard let blockBuffer = CMSampleBufferGetDataBuffer(sb) else { return nil }
+            var length = 0
+            var dataPtr: UnsafeMutablePointer<Int8>? = nil
+            guard CMBlockBufferGetDataPointer(blockBuffer, atOffset: 0,
+                                              lengthAtOffsetOut: nil,
+                                              totalLengthOut: &length,
+                                              dataPointerOut: &dataPtr) == noErr,
+                  let ptr = dataPtr else { return nil }
+            payload = Data(bytes: ptr, count: length)
+        }
+
+        var out = Data(capacity: 4 + 8 + 4 + payload.count)
+        var t = type.bigEndian
+        var p = ptsNs.bigEndian
+        var s = UInt32(payload.count).bigEndian
+        out.append(Data(bytes: &t, count: 4))
+        out.append(Data(bytes: &p, count: 8))
+        out.append(Data(bytes: &s, count: 4))
+        out.append(payload)
+        return out
+    }
+
+    private func send(_ data: Data) {
+        guard let port = port else { return }
+        let cfData = data as CFData
+        CFMessagePortSendRequest(port, 0, cfData, 0, 0, nil, nil)
+    }
+
+    private func sendStop() {
+        var typeId = UInt32(99).bigEndian
+        var zero8  = UInt64(0).bigEndian
+        var zero4  = UInt32(0).bigEndian
+        var data = Data(capacity: 16)
+        data.append(Data(bytes: &typeId, count: 4))
+        data.append(Data(bytes: &zero8,  count: 8))
+        data.append(Data(bytes: &zero4,  count: 4))
+        send(data)
     }
 }

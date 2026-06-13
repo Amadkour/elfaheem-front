@@ -37,6 +37,14 @@ import AVFoundation
     private var paused       = false
     private var stopping     = false
 
+    // ── iOS Broadcast Extension share state ───────────────────────────────────
+    // The extension process sends sample buffers over CFMessagePort IPC.
+    // We publish them to LiveKit participants via a Flutter MethodChannel event.
+    private let kBroadcastPortName = "com.example.flutter_education_app.broadcast"
+    private var broadcastPort: CFMessagePort?
+    private var broadcastShareChannel: FlutterMethodChannel?
+    private var isBroadcasting = false
+
     // ─────────────────────────────────────────────────────────────────────────
     // MARK: - App lifecycle
     // ─────────────────────────────────────────────────────────────────────────
@@ -114,6 +122,12 @@ import AVFoundation
             case "stopScreenCaptureService":
                 result(nil)
 
+            case "showBroadcastPicker":
+                self.showBroadcastPicker(result: result)
+
+            case "stopBroadcast":
+                self.stopBroadcastShare(result: result)
+
             default:
                 result(FlutterMethodNotImplemented)
             }
@@ -168,60 +182,6 @@ import AVFoundation
 
             case "resumeRecording":
                 self.resumeRecording(result: result)
-
-            case "releaseForShare":
-                // Stop RPScreenRecorder so LiveKit can call startCapture for screen share.
-                // Recording state is preserved (paused=true); resumeAfterShare restarts it.
-                NSLog("[REC] releaseForShare: stopping RPScreenRecorder for LiveKit handoff")
-                if self.recording {
-                    self.chunkTimer?.invalidate(); self.chunkTimer = nil
-                    RPScreenRecorder.shared().stopCapture { [weak self] error in
-                        if let e = error { NSLog("[REC] releaseForShare stopCapture error: \(e.localizedDescription)") }
-                        DispatchQueue.main.async {
-                            self?.recording = false
-                            // Do NOT reset uploadUrl/authToken/sessionId — resumeAfterShare needs them.
-                            NSLog("[REC] releaseForShare: RPScreenRecorder released")
-                            result(nil)
-                        }
-                    }
-                } else {
-                    result(nil)
-                }
-
-            case "resumeAfterShare":
-                // LiveKit has finished its screen share and released RPScreenRecorder.
-                // Restart our startCapture session and chunk loop.
-                NSLog("[REC] resumeAfterShare: restarting RPScreenRecorder after share")
-                guard !self.uploadUrl.isEmpty else {
-                    NSLog("[REC] resumeAfterShare: no session configured — ignoring")
-                    result(nil); return
-                }
-                guard !self.recording else {
-                    NSLog("[REC] resumeAfterShare: already recording — skip")
-                    result(nil); return
-                }
-                self.paused   = false
-                self.stopping = false
-                self.configureAudioSessionForRecording()
-                let rp = RPScreenRecorder.shared()
-                rp.isMicrophoneEnabled = true
-                rp.startCapture(handler: { [weak self] sampleBuffer, bufferType, error in
-                    guard let self = self, self.recording, !self.stopping else { return }
-                    if let e = error { self.emitError(e.localizedDescription); return }
-                    self.processSample(sampleBuffer, type: bufferType)
-                }) { [weak self] error in
-                    guard let self = self else { return }
-                    DispatchQueue.main.async {
-                        if let e = error {
-                            NSLog("[REC] resumeAfterShare startCapture error: \(e.localizedDescription)")
-                            result(nil); return
-                        }
-                        self.recording = true
-                        self.beginChunkWriter()
-                        NSLog("[REC] resumeAfterShare: recording restarted at chunk #\(self.chunkIndex)")
-                        result(nil)
-                    }
-                }
 
             case "stopRecording":
                 let isFinal = (call.arguments as? [String: Any])?["isFinal"] as? Bool ?? true
@@ -551,6 +511,129 @@ import AVFoundation
             at: tmp, includingPropertiesForKeys: nil) else { return }
         for url in items where url.lastPathComponent.hasPrefix("rec_chunk_") {
             try? FileManager.default.removeItem(at: url)
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: - iOS Broadcast Extension share (Zoom/Meet style)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Shows the native iOS system broadcast picker sheet.
+    /// The sheet lists all installed Broadcast Upload Extensions — the user
+    /// taps the app name then "Start Broadcast" and the extension begins.
+    private func showBroadcastPicker(result: @escaping FlutterResult) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { result(nil); return }
+
+            // Register our CFMessagePort BEFORE the picker is shown so the
+            // extension can connect to it the moment broadcastStarted() fires.
+            self.registerBroadcastPort()
+
+            let picker = RPSystemBroadcastPickerView(frame: CGRect(x: 0, y: 0, width: 60, height: 60))
+            // Restrict picker to our extension so only our app appears.
+            let bundleId = Bundle.main.bundleIdentifier ?? ""
+            picker.preferredExtension = "\(bundleId).BroadcastUploadExtension"
+            picker.showsMicrophoneButton = false
+
+            // Programmatically trigger the picker button — this is the same
+            // trick livekit_client uses internally for the broadcast path.
+            for subview in picker.subviews {
+                if let button = subview as? UIButton {
+                    button.sendActions(for: .touchUpInside)
+                    break
+                }
+            }
+
+            self.isBroadcasting = true
+            NSLog("[SHARE] showBroadcastPicker: picker triggered")
+            result(nil)
+        }
+    }
+
+    /// Called by Flutter when the user stops screen share.
+    private func stopBroadcastShare(result: @escaping FlutterResult) {
+        isBroadcasting = false
+        invalidateBroadcastPort()
+        emitEvent(["event": "broadcastStopped"])
+        NSLog("[SHARE] stopBroadcastShare: IPC port closed")
+        result(nil)
+    }
+
+    // ── CFMessagePort IPC receiver ────────────────────────────────────────────
+
+    private func registerBroadcastPort() {
+        // Invalidate any existing port first.
+        invalidateBroadcastPort()
+
+        var context = CFMessagePortContext(
+            version: 0,
+            info: Unmanaged.passUnretained(self).toOpaque(),
+            retain: nil, release: nil, copyDescription: nil
+        )
+
+        broadcastPort = CFMessagePortCreateLocal(
+            nil,
+            kBroadcastPortName as CFString,
+            { _, _, data, info -> Unmanaged<CFData>? in
+                // Static C callback — bridge back to Swift instance.
+                guard let info = info else { return nil }
+                let delegate = Unmanaged<AppDelegate>.fromOpaque(info).takeUnretainedValue()
+                if let data = data { delegate.handleBroadcastData(data as Data) }
+                return nil
+            },
+            &context,
+            nil
+        )
+
+        if let port = broadcastPort {
+            let runLoopSource = CFMessagePortCreateRunLoopSource(nil, port, 0)
+            CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
+            NSLog("[SHARE] CFMessagePort registered: \(kBroadcastPortName)")
+        } else {
+            NSLog("[SHARE] CFMessagePort registration FAILED — port name may be in use")
+        }
+    }
+
+    private func invalidateBroadcastPort() {
+        if let port = broadcastPort {
+            CFMessagePortInvalidate(port)
+            broadcastPort = nil
+        }
+    }
+
+    /// Deserialises the wire format from SampleHandler and forwards to Flutter.
+    /// Wire format: [4B type][8B pts_ns][4B payload_size][payload]
+    /// Type 99 = stop signal from extension.
+    private func handleBroadcastData(_ data: Data) {
+        guard data.count >= 16 else { return }
+
+        let typeId  = data.prefix(4).withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+        let ptsNs   = data.dropFirst(4).prefix(8).withUnsafeBytes { $0.load(as: UInt64.self).bigEndian }
+        let paySize = data.dropFirst(12).prefix(4).withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+        let payload = data.dropFirst(16).prefix(Int(paySize))
+
+        if typeId == 99 {
+            // Extension sent stop signal.
+            NSLog("[SHARE] Extension broadcast finished")
+            isBroadcasting = false
+            invalidateBroadcastPort()
+            emitEvent(["event": "broadcastStopped"])
+            return
+        }
+
+        // Forward raw frame data to Flutter via event channel so Dart can
+        // pass it to LiveKit's custom video/audio source.
+        // Only video frames (type 0) are forwarded as base64 JPEG for the
+        // LiveKit RTCVideoSource; audio (types 1,2) is handled by LiveKit
+        // automatically once the broadcast extension is active.
+        if typeId == 0 {
+            let base64 = payload.base64EncodedString()
+            emitEvent([
+                "event":   "broadcastFrame",
+                "type":    Int(typeId),
+                "ptsNs":   Int64(bitPattern: ptsNs),
+                "payload": base64,
+            ])
         }
     }
 }

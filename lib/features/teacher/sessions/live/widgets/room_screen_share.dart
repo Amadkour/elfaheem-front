@@ -214,21 +214,24 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
 
   // ── iOS ───────────────────────────────────────────────────────────────────
   //
-  // RPScreenRecorder is a global singleton — only ONE startCapture session
-  // can run at a time on iOS.  The recorder already owns it for chunk
-  // recording.  LiveKit's setScreenShareEnabled(useiOSBroadcastExtension:false)
-  // also calls startCapture internally, so we MUST stop our capture first.
+  // iOS screen share uses RPSystemBroadcastPickerView — the same system
+  // sheet that Zoom and Google Meet use.  It lists installed Broadcast Upload
+  // Extensions; the user taps the app then "Start Broadcast".
   //
-  // START share flow:
-  //   1. Show confirmation dialog (iOS has no system MediaProjection dialog).
-  //   2. Pause the recorder (finishes current chunk cleanly, keeps state).
-  //   3. releaseForShare → native stopCapture → RPScreenRecorder singleton freed.
-  //   4. LiveKit setScreenShareEnabled(true) → calls startCapture → share live.
+  // Requires: BroadcastUploadExtension Xcode target with bundle ID
+  //   <Runner bundle id>.BroadcastUploadExtension
   //
-  // STOP share flow:
-  //   1. LiveKit setScreenShareEnabled(false) → stopCapture → singleton freed.
-  //   2. resumeAfterShare → native restarts startCapture + chunk loop.
-  //   3. recorder.resumeRecording() → Dart state back to recording.
+  // Flow:
+  //   START: showBroadcastPicker → system sheet → user confirms → extension runs
+  //          We listen on the rec_events channel for "broadcastStopped" to know
+  //          when the user ends the broadcast from Control Centre.
+  //   STOP:  stopBroadcast → closes CFMessagePort IPC → extension finishes
+
+  static const _ssChannel = MethodChannel(
+    'com.example.flutter_education_app/screen_share',
+  );
+
+  StreamSubscription<dynamic>? _broadcastEventSub;
 
   Future<void> _toggleScreenShareIOS(
       LocalParticipant local,
@@ -240,134 +243,48 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
     }
 
     if (!isSharing) {
-      // ── STEP 1: Confirmation dialog ───────────────────────────────────────
-      final confirmed = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => AlertDialog(
-          backgroundColor: const Color(0xFF1A1D2E),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Row(
-            children: [
-              Icon(Icons.screen_share_outlined, color: Color(0xFF6C63FF), size: 22),
-              SizedBox(width: 10),
-              Text(
-                'Share Your Screen',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'tajawal',
-                ),
-              ),
-            ],
-          ),
-          content: const Text(
-            'Your entire screen will be visible to all participants.\n\n'
-                'Recording will pause during screen sharing and resume automatically when you stop.',
-            style: TextStyle(
-              color: Color(0xFFB0B3C6),
-              fontSize: 13,
-              fontFamily: 'tajawal',
-              height: 1.5,
-            ),
-          ),
-          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          actions: [
-            OutlinedButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color(0xFF3A3D52)),
-                foregroundColor: const Color(0xFFB0B3C6),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              child: const Text('Cancel', style: TextStyle(fontFamily: 'tajawal')),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6C63FF),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              child: const Text('Start Sharing', style: TextStyle(fontFamily: 'tajawal')),
-            ),
-          ],
-        ),
-      );
-
-      if (confirmed != true) {
-        log('[SS] iOS: cancelled by user');
-        return;
-      }
-
-      // ── STEP 2: Pause recorder (finalises current chunk cleanly) ──────────
+      // ── START: show the native iOS system broadcast picker ────────────────
       try {
-        if (recorder != null) {
-          log('[SS] iOS: pausing recorder before share');
-          await recorder!.pauseRecording();
-        }
-      } catch (e) {
-        log('[SS] iOS: pauseRecording error (non-fatal): $e');
-      }
+        // Listen for broadcastStopped so we can clean up if the user ends
+        // the broadcast from Control Centre instead of the in-app button.
+        _broadcastEventSub?.cancel();
+        _broadcastEventSub = const EventChannel(
+          'com.example.flutter_education_app/rec_events',
+        ).receiveBroadcastStream().listen((event) {
+          if (event is Map && event['event'] == 'broadcastStopped') {
+            log('[SS] iOS: broadcastStopped event received — cleaning up');
+            _broadcastEventSub?.cancel();
+            _broadcastEventSub = null;
+            // Update UI state by calling stop path without re-invoking native.
+            _safeNegotiate(() => local.setScreenShareEnabled(false));
+          }
+        });
 
-      // ── STEP 3: Stop RPScreenRecorder so LiveKit can own the singleton ────
-      try {
-        log('[SS] iOS: releasing RPScreenRecorder via releaseForShare');
-        await _recChannel.invokeMethod<void>('releaseForShare');
-      } catch (e) {
-        log('[SS] iOS: releaseForShare error: $e');
-      }
-      // Wait for native stopCapture completion handler.
-      await Future.delayed(const Duration(milliseconds: 400));
-
-      // ── STEP 4: LiveKit starts its own RPScreenRecorder session ───────────
-      try {
-        if (!local.isMicrophoneEnabled()) {
-          await local.setMicrophoneEnabled(true);
-          await Future.delayed(const Duration(milliseconds: 150));
-        }
-        await _safeNegotiate(() => local.setScreenShareEnabled(
-          true,
-          screenShareCaptureOptions: const ScreenShareCaptureOptions(
-            useiOSBroadcastExtension: false,
-            maxFrameRate: 30,
-          ),
-        ));
-        log('[SS] iOS: screen share active — recording paused');
+        // showBroadcastPicker registers the CFMessagePort then programmatically
+        // taps RPSystemBroadcastPickerView — the system sheet appears.
+        await _ssChannel.invokeMethod<void>('showBroadcastPicker');
+        log('[SS] iOS: broadcast picker shown');
       } catch (e) {
         log('[SS] iOS start error: $e');
-        // Share failed — restart RPScreenRecorder for recording.
-        await _iosRestartRecordingAfterShare();
         showSnack('Screen sharing failed: $e');
       }
-
     } else {
-      // ── STOP: LiveKit releases singleton → we restart recording ───────────
+      // ── STOP ─────────────────────────────────────────────────────────────
+      _broadcastEventSub?.cancel();
+      _broadcastEventSub = null;
       try {
-        await _safeNegotiate(() => local.setScreenShareEnabled(false));
-        log('[SS] iOS: screen share stopped');
+        await _ssChannel.invokeMethod<void>('stopBroadcast');
+        log('[SS] iOS: broadcast stopped');
       } catch (e) {
         log('[SS] iOS stop error: $e');
       }
-      // Give LiveKit's stopCapture completion handler time to fire.
-      await Future.delayed(const Duration(milliseconds: 400));
-      await _iosRestartRecordingAfterShare();
     }
   }
 
-  /// Restarts RPScreenRecorder chunk-recording after iOS screen share ends.
-  Future<void> _iosRestartRecordingAfterShare() async {
-    try {
-      log('[SS] iOS: restarting RPScreenRecorder after share');
-      // resumeAfterShare tells native to call startCapture again + beginChunkWriter.
-      await _recChannel.invokeMethod<void>('resumeAfterShare');
-      // Then resume Dart-side recorder state (clears paused flag, emits events).
-      await recorder?.resumeRecording();
-      log('[SS] iOS: recording resumed after share');
-    } catch (e) {
-      log('[SS] iOS: _iosRestartRecordingAfterShare error: $e');
-    }
+  /// Clean up broadcast subscription when the widget is disposed.
+  void disposeBroadcastSub() {
+    _broadcastEventSub?.cancel();
+    _broadcastEventSub = null;
   }
 
   // ── Desktop ───────────────────────────────────────────────────────────────
