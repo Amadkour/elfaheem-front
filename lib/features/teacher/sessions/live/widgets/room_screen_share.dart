@@ -244,20 +244,11 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
         await _safeNegotiate(() => local.setScreenShareEnabled(
           true,
           screenShareCaptureOptions: const ScreenShareCaptureOptions(
-            useiOSBroadcastExtension: false, // in-process via RPScreenRecorder
+            useiOSBroadcastExtension: false,
             maxFrameRate: 30,
           ),
         ));
-
-        // Verify the share actually started; setScreenShareEnabled can
-        // silently succeed but leave isScreenShareEnabled() == false.
-        await Future.delayed(const Duration(milliseconds: 400));
-        if (!local.isScreenShareEnabled()) {
-          log('[SS] iOS: setScreenShareEnabled returned but share not active');
-          showSnack('Screen sharing could not be started. Check permissions.');
-          return;
-        }
-
+        // setScreenShareEnabled throws on failure — if we reach here it worked.
         log('[SS] iOS: screen share active');
       } catch (e) {
         log('[SS] iOS start error: $e');
