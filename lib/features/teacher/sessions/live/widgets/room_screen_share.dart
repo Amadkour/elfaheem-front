@@ -213,32 +213,64 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
   }
 
   // ── iOS ───────────────────────────────────────────────────────────────────
+  //
+  // iOS screen share uses RPScreenRecorder in-process capture
+  // (useiOSBroadcastExtension: false).  The broadcast-extension path
+  // (useiOSBroadcastExtension: true) requires a separate Xcode target and
+  // shows NO dialog without it — that was the original bug causing the share
+  // button to do nothing.
+  //
+  // In-process capture re-uses the same RPScreenRecorder singleton that the
+  // recorder already holds, so there is no session conflict.
 
   Future<void> _toggleScreenShareIOS(
       LocalParticipant local,
       bool isSharing,
       ) async {
+    if (_isNegotiating) {
+      log('[SS] iOS: negotiation in progress — tap ignored');
+      return;
+    }
+
     if (!isSharing) {
+      // ── START ──────────────────────────────────────────────────────────────
       try {
+        // Ensure mic is live before we publish the screen track.
+        if (!local.isMicrophoneEnabled()) {
+          await local.setMicrophoneEnabled(true);
+          await Future.delayed(const Duration(milliseconds: 150));
+        }
+
         await _safeNegotiate(() => local.setScreenShareEnabled(
           true,
           screenShareCaptureOptions: const ScreenShareCaptureOptions(
-            useiOSBroadcastExtension: true,
+            useiOSBroadcastExtension: false, // in-process via RPScreenRecorder
             maxFrameRate: 30,
           ),
         ));
+
+        // Verify the share actually started; setScreenShareEnabled can
+        // silently succeed but leave isScreenShareEnabled() == false.
+        await Future.delayed(const Duration(milliseconds: 400));
+        if (!local.isScreenShareEnabled()) {
+          log('[SS] iOS: setScreenShareEnabled returned but share not active');
+          showSnack('Screen sharing could not be started. Check permissions.');
+          return;
+        }
+
         log('[SS] iOS: screen share active');
       } catch (e) {
         log('[SS] iOS start error: $e');
-        showSnack('Screen sharing requires a Broadcast Upload Extension on iOS.');
+        showSnack('Screen sharing failed: $e');
       }
     } else {
+      // ── STOP ───────────────────────────────────────────────────────────────
       try {
         await _safeNegotiate(() => local.setScreenShareEnabled(false));
+        log('[SS] iOS: screen share stopped');
       } catch (e) {
-        log('[SS] iOS stop: $e');
+        log('[SS] iOS stop error: $e');
       }
-      log('[SS] iOS: screen share stopped');
     }
   }
 
