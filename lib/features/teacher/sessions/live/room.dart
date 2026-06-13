@@ -755,23 +755,22 @@ class _RoomPageState extends State<RoomPage>
       return;
     }
 
-    if (!lkPlatformIs(PlatformType.android)) return;
-
-    // Step 2: Show the "Allow screen capture?" system dialog.
-    // This returns true when the user approves and ScreenCaptureService
-    // has stored the MediaProjection grant.
+    // Step 2: Start the native screen-capture service.
+    // Android: shows the "Allow screen capture?" MediaProjection dialog.
+    // iOS:     starts RPScreenRecorder (no dialog — red pill indicator appears).
+    // Both platforms return true when capture is running.
     try {
       final granted = await const MethodChannel(
         'com.example.flutter_education_app/screen_share',
       ).invokeMethod<bool>('startScreenCaptureService');
 
       if (granted == true) {
-        // Step 3: Wait for "screenLoopStarted" — confirms MediaRecorder is live.
+        // Step 3: Wait for "screenLoopStarted" — confirms the chunk loop is live.
         await _recorder!.upgradeToScreenRecording();
         log('[REC] Screen recording confirmed active');
         if (mounted) setState(() {});
       } else {
-        log('[REC] startScreenCaptureService: user denied or returned false — recording skipped');
+        log('[REC] startScreenCaptureService: returned false — recording skipped');
       }
     } on PlatformException catch (e) {
       log('[REC] startScreenCaptureService PlatformException: ${e.code} ${e.message}');
@@ -1034,13 +1033,14 @@ class _RoomPageState extends State<RoomPage>
                     ),
 
                     // Controls bar
-                    SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0, 1),
-                        end: Offset.zero,
-                      ).animate(_entrySlide),
-                      child: _buildControlsBar(),
-                    ),
+                    if(widget.room.localParticipant!=null)
+                      SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0, 1),
+                          end: Offset.zero,
+                        ).animate(_entrySlide),
+                        child: _buildControlsBar(),
+                      ),
                   ],
                 ),
               ),
@@ -1431,31 +1431,31 @@ class _RoomPageState extends State<RoomPage>
         ],
       ),
       child:
-        ControlsWidget(
-          widget.room,
-          widget.room.localParticipant!,
-          // End session goes through our recorder-aware wrapper
-          onEndSession: _endSessionWithRecording,
-          isTeacher: widget.isTeacher,
-          onToggleScreenShare: toggleScreenShare,
-          // ── NEW: pause / resume ──────────────────────────────────
-          // Null when the action is not available (wrong state, or
-          // a transition is already in flight) — ControlsWidget
-          // disables the button automatically when the callback is null.
-          onPauseRecording: (widget.isTeacher &&
-              _recorder?.state == RecState.recording &&
-              !_isPausingRecording &&
-              !_endingSession)
-              ? _pauseRecording
-              : null,
-          onResumeRecording: (widget.isTeacher &&
-              _recorder?.state == RecState.paused &&
-              !_isResumingRecording &&
-              !_endingSession)
-              ? _resumeRecording
-              : null,
-          recorderState: widget.isTeacher ? _recorder?.state : null,
-        ),
+      ControlsWidget(
+        widget.room,
+        widget.room.localParticipant!,
+        // End session goes through our recorder-aware wrapper
+        onEndSession: _endSessionWithRecording,
+        isTeacher: widget.isTeacher,
+        onToggleScreenShare: toggleScreenShare,
+        // ── NEW: pause / resume ──────────────────────────────────
+        // Null when the action is not available (wrong state, or
+        // a transition is already in flight) — ControlsWidget
+        // disables the button automatically when the callback is null.
+        onPauseRecording: (widget.isTeacher &&
+            _recorder?.state == RecState.recording &&
+            !_isPausingRecording &&
+            !_endingSession)
+            ? _pauseRecording
+            : null,
+        onResumeRecording: (widget.isTeacher &&
+            _recorder?.state == RecState.paused &&
+            !_isResumingRecording &&
+            !_endingSession)
+            ? _resumeRecording
+            : null,
+        recorderState: widget.isTeacher ? _recorder?.state : null,
+      ),
     );
   }
 

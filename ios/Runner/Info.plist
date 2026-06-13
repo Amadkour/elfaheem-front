@@ -2,17 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!--
-	    UIBackgroundModes — consolidated (was duplicated in original, which is a bug:
-	    only the LAST key wins in a plist dict, so "fetch" and "remote-notification"
-	    were silently ignored). All required modes are listed once here.
-	      • audio             — keeps AVAudioSession alive during recording
-	      • fetch             — background fetch (FCM)
-	      • remote-notification — push notifications
-	-->
+
 	<key>UIBackgroundModes</key>
 	<array>
-    	<string>processing</string>
+		<string>processing</string>
 		<string>audio</string>
 		<string>fetch</string>
 		<string>remote-notification</string>
@@ -20,47 +13,67 @@
 
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+
 	<key>CFBundleDisplayName</key>
 	<string>Flutter Education App</string>
+
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
+
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+
 	<key>CFBundleName</key>
 	<string>flutter_education_app</string>
+
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
+
 	<key>CFBundleShortVersionString</key>
 	<string>$(FLUTTER_BUILD_NAME)</string>
+
 	<key>CFBundleSignature</key>
 	<string>????</string>
+
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+
+	<!-- Network -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
 
-	<!-- ── Privacy usage strings ── -->
+	<!-- LiveKit / WebRTC -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>This app requires local network access for realtime audio and video communication.</string>
+
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_http._tcp</string>
+		<string>_https._tcp</string>
+	</array>
+
+	<!-- Privacy -->
 	<key>NSCameraUsageDescription</key>
 	<string>$(PRODUCT_NAME) uses your camera</string>
+
 	<key>NSMicrophoneUsageDescription</key>
 	<string>$(PRODUCT_NAME) uses your microphone</string>
+
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>حفظ تسجيلات الحصص</string>
 
-	<!--
-	    RPSystemBroadcastPickerView / ReplayKit screen recording.
-	    iOS requires this key when your app uses RPScreenRecorder
-	    to record the screen with mic audio.
-	-->
 	<key>NSScreenCaptureUsageDescription</key>
 	<string>Screen recording is used to record live sessions for later review</string>
 
@@ -85,22 +98,29 @@
 			</array>
 		</dict>
 	</dict>
+
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
+
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+
 	<key>UIStatusBarHidden</key>
 	<false/>
+
 	<key>UIStatusBarStyle</key>
 	<string>UIStatusBarStyleLightContent</string>
+
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
@@ -108,5 +128,6 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+
 </dict>
 </plist>
