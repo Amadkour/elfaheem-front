@@ -123,7 +123,8 @@ class ClientRecorder extends ChangeNotifier {
   }
 
   /// Phase 3: called after startScreenCaptureService resolves (dialog approved).
-  /// Waits for "screenLoopStarted" which confirms MediaRecorder is running.
+  /// On Android: waits for "screenLoopStarted" which confirms MediaRecorder is running.
+  /// On iOS: this is already done inside startMicRecording — this is a safe no-op.
   Future<void> upgradeToScreenRecording() async {
     if (kIsWeb) return;
     if (_screenRecording) {
@@ -131,6 +132,7 @@ class ClientRecorder extends ChangeNotifier {
       return;
     }
     try {
+      // Android only: native side needs explicit upgrade signal.
       _screenLoopCompleter = Completer<void>();
       final ok = await _recChannel.invokeMethod<bool>('upgradeToScreenRecording');
       if (ok == true) {
@@ -313,7 +315,7 @@ class ClientRecorder extends ChangeNotifier {
     }
   }
 
-  // ── Android: configure the recording service ──────────────────────────────
+  // ── iOS / Android: configure the recording service ───────────────────────
 
   Future<void> _startRecording() async {
     try {
@@ -328,6 +330,11 @@ class ClientRecorder extends ChangeNotifier {
         onError: _onNativeError,
       );
 
+      // On iOS, startMicRecording immediately triggers RPScreenRecorder.
+      // We prepare the screenLoopCompleter BEFORE invoking so we don't
+      // miss the "screenLoopStarted" event that fires during the call.
+      _screenLoopCompleter = Completer<void>();
+
       final ok = await _recChannel.invokeMethod<bool>('startMicRecording', {
         'sessionId':    sessionId,
         'uploadUrl':    uploadUrl,
@@ -336,14 +343,27 @@ class ClientRecorder extends ChangeNotifier {
       });
 
       if (ok == true) {
+        // Wait for the native side to confirm the chunk loop is live.
+        // On iOS this is emitted from within startScreenCaptureService.
+        // On Android this arrives later after MediaProjection approval.
+        await _screenLoopCompleter!.future.timeout(
+          const Duration(seconds: 30),
+          onTimeout: () =>
+              log('[REC] start: timeout waiting for screenLoopStarted'),
+        );
+        _screenLoopCompleter = null;
+        _screenRecording = true;
         _set(RecState.recording);
-        log('[REC] Android: service configured, awaiting projection approval');
+        log('[REC] service configured and capture confirmed');
       } else {
+        _screenLoopCompleter = null;
         _setError('startMicRecording returned false');
       }
     } on PlatformException catch (e) {
+      _screenLoopCompleter = null;
       _setError('Recording failed: ${e.message}');
     } catch (e, st) {
+      _screenLoopCompleter = null;
       log('[REC] _startRecording error: $e\n$st');
       _setError('Recording failed: $e');
     }

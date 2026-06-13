@@ -137,7 +137,16 @@ import AVFoundation
                 self.chunkSecs  = args["chunkSeconds"] as? Int    ?? 5
                 self.chunkIndex = args["chunkIndex"]   as? Int    ?? 0
                 NSLog("[REC] startMicRecording: session=\(self.sessionId) chunkSecs=\(self.chunkSecs)")
-                result(true)
+                // On iOS, RPScreenRecorder is the only recording path.
+                // Start capture immediately here so that the subsequent
+                // startScreenCaptureService call from Dart is idempotent
+                // (caught by the "already recording" guard) and avoids
+                // the timing race where startScreenCaptureService fires
+                // before uploadUrl is stored.
+                guard !self.recording else {
+                    result(true); return
+                }
+                self.startScreenCaptureService(result: result)
 
             case "upgradeToScreenRecording":
                 guard self.recording else {
@@ -238,7 +247,8 @@ import AVFoundation
         let session = AVAudioSession.sharedInstance()
         do {
             try session.setCategory(.playAndRecord, mode: .default,
-                                    options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP])
+                                    options: [.defaultToSpeaker, .allowBluetooth,
+                                              .allowBluetoothA2DP, .mixWithOthers])
             try session.setActive(true, options: .notifyOthersOnDeactivation)
             NSLog("[REC] AVAudioSession configured for recording")
         } catch {
@@ -306,7 +316,7 @@ import AVFoundation
         writer.add(vi)
         writer.add(ai)
         writer.startWriting()
-        writer.startSession(atSourceTime: .zero)
+        writer.startSession(atSourceTime: CMClockGetTime(CMClockGetHostTimeClock()))
 
         NSLog("[REC] beginChunkWriter: chunk #\(chunkIndex) ready")
         scheduleChunkTimer()
