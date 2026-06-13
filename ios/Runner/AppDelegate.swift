@@ -257,14 +257,17 @@ import AVFoundation
     }
 
     private func restoreAudioSessionForLiveKit() {
+        // After RPScreenRecorder stops, simply deactivate our session.
+        // LiveKit manages its own AVAudioSession configuration and will
+        // re-activate it the next time it needs to capture/play audio.
+        // Trying to set a specific category here races with LiveKit's own
+        // session setup and produces OSStatus 561017449 (incompatible category).
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(.playAndRecord, mode: .videoChat,
-                                    options: [.allowBluetooth, .allowBluetoothA2DP, .allowAirPlay])
-            try session.setActive(true, options: .notifyOthersOnDeactivation)
-            NSLog("[REC] AVAudioSession restored for LiveKit")
+            try session.setActive(false, options: .notifyOthersOnDeactivation)
+            NSLog("[REC] AVAudioSession deactivated — LiveKit will restore")
         } catch {
-            NSLog("[REC] AVAudioSession restore error: \(error.localizedDescription)")
+            NSLog("[REC] AVAudioSession deactivate error: \(error.localizedDescription)")
         }
     }
 
