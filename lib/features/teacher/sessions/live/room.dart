@@ -157,7 +157,7 @@ class QuizQuestion {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HD audio helpers
+// HD audio helpers  (unchanged from original)
 // ─────────────────────────────────────────────────────────────────────────────
 const _hdAudioPublishOptions = AudioPublishOptions(
   encoding: AudioEncoding(maxBitrate: 128000),
@@ -175,12 +175,26 @@ const _hdAudioCaptureOptions = AudioCaptureOptions(
 
 Future<void> _enableHdAudio(LocalParticipant local) async {
   try {
+    // await local.setMicrophoneEnabled(
+    //   true,
+    //   audioCaptureOptions: _hdAudioCaptureOptions,
+    // );
+    // for (final pub in local.audioTrackPublications) {
+    //   if (pub.track is LocalAudioTrack) {
+    //     await local.publishAudioTrack(
+    //       pub.track as LocalAudioTrack,
+    //       publishOptions: _hdAudioPublishOptions,
+    //     );
+    //   }
+    // }
     await local.setMicrophoneEnabled(
       true,
       audioCaptureOptions: _hdAudioCaptureOptions,
     );
   } catch (_) {}
 }
+
+// RecState + ClientRecorder → room_recorder.dart
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RoomPage
@@ -230,20 +244,15 @@ class _RoomPageState extends State<RoomPage>
 
   bool get fastConnection => widget.fastConnection;
 
-  // ── LiveKit server recording status ──────────────────────────────────────
+  // ── LiveKit server recording status (shown to all participants) ───────────
   bool _serverRecording = false;
 
   // ── Client-side recorder (teacher only) ──────────────────────────────────
   ClientRecorder? _recorder;
-  bool _recorderStarted = false;
-  bool _endingSession = false;
-  bool _isPausingRecording = false;
-  bool _isResumingRecording = false;
-
-  // ── Permissions granted before room connect ───────────────────────────────
-  // On iOS we request microphone permission upfront (in initState) so that
-  // AVAudioEngine starts cleanly without a noisy audio session reconfiguration.
-  bool _permissionsReady = false;
+  bool _recorderStarted = false; // guard: prevents multiple start() calls
+  bool _endingSession = false;     // true while awaiting final chunk before onEnd()
+  bool _isPausingRecording = false; // true while pauseRecording() is in flight
+  bool _isResumingRecording = false; // true while resumeRecording() is in flight
 
   // Participant panel
   bool _showParticipants = false;
@@ -280,58 +289,39 @@ class _RoomPageState extends State<RoomPage>
   late AnimationController _quizAnim;
   late Animation<double> _quizSlide;
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Permission request
-  //
-  // KEY FIX: permissions are requested EAGERLY in initState (via
-  // addPostFrameCallback) — BEFORE the room connects and BEFORE
-  // AVAudioEngine starts. This prevents the noisy audio glitch on iOS
-  // where the microphone session is reconfigured mid-stream.
-  // ─────────────────────────────────────────────────────────────────────────
-  Future<bool> _requestPermissions() async {
-    if (kIsWeb) return true;
+  // _screenShareChannel → RoomScreenShareMixin
+
+  Future<void> _requestPermissions() async {
+    if (kIsWeb) return;
     try {
       if (lkPlatformIs(PlatformType.android)) {
+        // Request both at once — Android shows them sequentially.
         final statuses = await [
           Permission.camera,
           Permission.microphone,
         ].request();
 
         if (statuses[Permission.camera] != PermissionStatus.granted) {
-          log('[PERM] Camera permission denied');
+          log('[PERM] Camera permission denied — recording will have no camera PiP');
         }
         if (statuses[Permission.microphone] != PermissionStatus.granted) {
-          log('[PERM] Microphone permission denied — audio will be silent');
-          return false;
+          log('[PERM] Microphone permission denied — recording will have no audio');
         }
-        return true;
       } else {
-        // iOS: request microphone permission FIRST before anything else.
-        // If the user has previously denied it, open Settings.
-        final current = await Permission.microphone.status;
-        if (current == PermissionStatus.permanentlyDenied) {
-          log('[PERM] iOS microphone permanently denied — opening Settings');
-          await openAppSettings();
-          // Re-check after returning from Settings.
-          final retried = await Permission.microphone.status;
-          return retried == PermissionStatus.granted;
-        }
+        // iOS: request microphone permission before RPScreenRecorder starts.
+        // Without this, the AVAudioSession mic input is silent on first launch.
         final mic = await Permission.microphone.request();
         if (mic != PermissionStatus.granted) {
           log('[PERM] iOS microphone permission denied — audio will be silent');
-          return false;
         }
-        log('[PERM] iOS microphone permission granted');
-        return true;
       }
     } catch (e) {
       log('[PERM] _requestPermissions error: $e');
-      return false;
     }
   }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// initState
+// 2.  initState()
 // ═══════════════════════════════════════════════════════════════════════════
   @override
   void initState() {
@@ -402,34 +392,26 @@ class _RoomPageState extends State<RoomPage>
     if (!widget.isTeacher) _startQuizPolling();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // ── Step 1: request runtime permissions ───────────────────────────────
+      // CAMERA and MICROPHONE are dangerous permissions on Android 6+.
+      // PixelCopy itself needs no permission, but camera PiP and mic
+      // recording require these to be granted at runtime.
       if (widget.isTeacher) {
-        // ── Step 1: Request permissions FIRST — before anything else.
-        // On iOS this must happen before AVAudioEngine starts, or the OS
-        // reconfigures the audio session mid-capture, causing noise/silence.
-        final granted = await _requestPermissions();
-        if (mounted) setState(() => _permissionsReady = granted);
-
-        if (!granted) {
-          log('[PERM] Permissions not granted — recording will be skipped');
-        }
-      } else {
-        if (mounted) setState(() => _permissionsReady = true);
+        await _requestPermissions();
       }
 
-      // ── Step 2: Enable HD audio for LiveKit publishing ─────────────────
+      // ── Step 2: enable HD audio ────────────────────────────────────────────
       final local = widget.room.localParticipant;
       if (local != null) await _enableHdAudio(local);
 
-      // ── Step 3: Start recorder if room is already connected ────────────
-      // The RoomConnectedEvent may have fired before initState completed.
+      // ── Step 3: start recorder if room is already connected ────────────────
+      // Handles the race where the room connected before initState() ran.
       if (widget.isTeacher &&
-          _permissionsReady &&
           widget.room.connectionState == ConnectionState.connected) {
         await _startRecorderOnce();
       }
     });
   }
-
   void _onRecorderUpdate() {
     if (mounted) setState(() {});
   }
@@ -446,6 +428,8 @@ class _RoomPageState extends State<RoomPage>
     _quizAnim.dispose();
     _quizPollTimer?.cancel();
     _quizTimer?.cancel();
+    // Recorder: if user exits without pressing End Session (e.g. back-swipe),
+    // stop the camera fast and drain remaining uploads in the background.
     if (_recorder != null) {
       final rec = _recorder!;
       _recorder = null;
@@ -460,13 +444,26 @@ class _RoomPageState extends State<RoomPage>
   }
 
   // ── End session ───────────────────────────────────────────────────────────
+  //
+  // Mobile: stopRecordingOnly() → ACTION_STOP (fast, < 200ms) → pop immediately.
+  //   The native FGS drains remaining uploads independently and calls stopSelf()
+  //   only after all pendingUploads reach zero (up to 120s).
+  //   _drainAndDispose runs unawaited and waits for RecState.done via polling.
+  //
+  // Web: stopRecordingOnly() → WebRecorder.stop() which internally polls
+  //   _compositorDone for up to 5 min. Must be fully awaited before onEnd()
+  //   so the server doesn't reject in-flight uploads with 4xx.
   Future<dynamic> _endSessionWithRecording() async {
     if (_endingSession) return null;
     if (mounted) setState(() => _endingSession = true);
 
     final rec = _recorder;
-    _recorder = null;
+    _recorder = null; // detach so dispose() never interferes
 
+    // Stop recording for any active state (recording, paused, starting, or uploading).
+    // We must attempt stop even in 'starting' state — the native service may
+    // already be recording chunks even if the Dart state hasn't transitioned yet.
+    // If currently paused, the native service will wake and finalise normally.
     if (widget.isTeacher &&
         rec != null &&
         rec.state != RecState.done &&
@@ -476,6 +473,9 @@ class _RoomPageState extends State<RoomPage>
         if (kIsWeb) {
           log('[REC] Web: compositor drained — all chunks uploaded');
         }
+        // Mobile: don't block here — native FGS drains uploads independently.
+        // _drainAndDispose runs unawaited so the UI pops immediately while
+        // the background task waits for RecState.done (all chunks confirmed).
       } catch (e) {
         log('[REC] stopRecordingOnly error: $e');
       }
@@ -493,6 +493,10 @@ class _RoomPageState extends State<RoomPage>
     return null;
   }
 
+  // ── NEW: pause recording ──────────────────────────────────────────────────
+  //
+  // Tells the native chunk loop to finish the current chunk and park.
+  // Guarded so double-taps and rapid UI re-renders are safe.
   Future<void> _pauseRecording() async {
     final rec = _recorder;
     if (rec == null || rec.state != RecState.recording) return;
@@ -507,6 +511,9 @@ class _RoomPageState extends State<RoomPage>
     }
   }
 
+  // ── NEW: resume recording ─────────────────────────────────────────────────
+  //
+  // Wakes the parked chunk loop and resumes chunking from the next index.
   Future<void> _resumeRecording() async {
     final rec = _recorder;
     if (rec == null || rec.state != RecState.paused) return;
@@ -521,6 +528,8 @@ class _RoomPageState extends State<RoomPage>
     }
   }
 
+  /// Waits for all in-flight chunk uploads (RecState.done) then disposes.
+  /// Runs in background after screen has already popped.
   static Future<void> _drainAndDispose(ClientRecorder rec) async {
     try {
       await rec.drainPending();
@@ -665,14 +674,12 @@ class _RoomPageState extends State<RoomPage>
   // ── Listeners ──────────────────────────────────────────────────────────────
   void _setUpListeners() => _listener
     ..on<RoomConnectedEvent>((_) async {
-      // Room is fully connected. Start the recorder only after permissions
-      // have been granted (set in initState's postFrameCallback).
-      // If permissions aren't ready yet, _startRecorderOnce() will be called
-      // from initState's postFrameCallback once _permissionsReady is set.
-      log('[ROOM] RoomConnectedEvent');
-      if (widget.isTeacher && _permissionsReady) {
-        await _startRecorderOnce();
-      }
+      // Room is fully connected — safe to start the recorder now.
+      // This fires exactly once after the LiveKit handshake completes,
+      // so the MediaProjection dialog appears AFTER the camera/mic are
+      // already running (no race with LiveKit track setup).
+      log("----------------------111");
+      if (widget.isTeacher) await _startRecorderOnce();
     })
     ..on<RoomDisconnectedEvent>((event) async {
       log('Room disconnected: reason => ${event.reason}');
@@ -746,29 +753,38 @@ class _RoomPageState extends State<RoomPage>
     );
     _recorder!.addListener(_onRecorderUpdate);
 
-    // Phase 1: configure and start mic recording.
-    // On iOS: this starts AVAudioEngine (no red pill, no dialog).
-    // On Android: sends ACTION_START_MIC_ONLY to the foreground service.
+    // Step 1: Configure the service with session params.
+    // No dialog is shown yet; the service enters its ready state.
     await _recorder!.start();
-    log('[REC] Recorder started (mic-only)');
+    log('[REC] Recorder service configured');
 
     if (kIsWeb) {
       await _recorder!.startWebCompositor();
       return;
     }
 
-    // Phase 2: On iOS, startScreenCaptureService is a no-op (returns true
-    // immediately). On Android it shows the MediaProjection dialog.
-    // Either way, upgradeToScreenRecording() is then called to confirm
-    // the recording loop is live before we update the UI.
+    // Step 2: Arm the Phase-2 completer BEFORE calling startScreenCaptureService.
+    // On iOS, RPScreenRecorder.startCapture() emits 'screenLoopStarted' in its
+    // async completion handler — which can fire before invokeMethod returns.
+    // prepareUpgradeWait() creates the Completer now so _onNativeEvent can
+    // resolve it even if it fires during the await below.
+    _recorder!.prepareUpgradeWait();
+
+    // Step 3: Start the native screen-capture service.
+    // iOS:     calls RPScreenRecorder.startCapture() → mic-permission dialog
+    //          on first use → red-pill indicator → AVAssetWriter chunk loop.
+    // Android: shows the "Allow screen capture?" MediaProjection dialog.
+    // Both platforms return true when capture is actively running.
     try {
       final granted = await const MethodChannel(
         'com.example.flutter_education_app/screen_share',
       ).invokeMethod<bool>('startScreenCaptureService');
 
       if (granted == true) {
+        // Step 4: Wait for Phase-2 'screenLoopStarted' — confirms the
+        // AVAssetWriter is writing real video frames (not just audio).
         await _recorder!.upgradeToScreenRecording();
-        log('[REC] Recording loop confirmed active');
+        log('[REC] Phase-2 confirmed — video+audio chunks active');
         if (mounted) setState(() {});
       } else {
         log('[REC] startScreenCaptureService: returned false — recording skipped');
@@ -793,6 +809,11 @@ class _RoomPageState extends State<RoomPage>
 
   bool _hasVideoTrack(TrackPublication pub) => pub.track is VideoTrack;
 
+  VideoTrack? _getVideoTrack(TrackPublication pub) {
+    final t = pub.track;
+    return t is VideoTrack ? t : null;
+  }
+
   void _sortParticipants() {
     final userMedia = <ParticipantTrack>[];
     final screenTracks = <ParticipantTrack>[];
@@ -800,6 +821,8 @@ class _RoomPageState extends State<RoomPage>
     for (final p in widget.room.remoteParticipants.values) {
       for (final t in p.videoTrackPublications) {
         if (t.isScreenShare) {
+          // Include screen shares even before the track object is loaded
+          // (_PremiumScreenShareView handles the null-track loading state).
           screenTracks.add(
             ParticipantTrack(
               participant: p,
@@ -832,6 +855,7 @@ class _RoomPageState extends State<RoomPage>
     if (localPubs != null) {
       for (final t in localPubs) {
         if (t.isScreenShare) {
+          // Include local screen share even before track object loads.
           localScreen.add(
             ParticipantTrack(
               participant: widget.room.localParticipant!,
@@ -1042,7 +1066,10 @@ class _RoomPageState extends State<RoomPage>
             // Participant panel
             if (_showParticipants) _buildParticipantPanel(),
 
-            // Ending-session overlay
+            // ── Ending-session overlay ───────────────────────────────────────
+            // Shown while we wait for the final recording chunk to upload
+            // before calling onEnd(). Prevents teacher from navigating away
+            // prematurely and blocks UI interaction during the wait.
             if (_endingSession)
               Container(
                 color: Colors.black.withValues(alpha: 0.72),
@@ -1115,6 +1142,7 @@ class _RoomPageState extends State<RoomPage>
   // ── Main video ─────────────────────────────────────────────────────────────
   Widget _buildMainVideo() {
     if (participantTracks.isEmpty) {
+      // Premium placeholder — show teacher name and active speaker info
       final local = widget.room.localParticipant;
       final teacherName = local?.name ?? local?.identity ?? 'Teacher';
       final isMicOn = local?.isMicrophoneEnabled() ?? false;
@@ -1225,9 +1253,14 @@ class _RoomPageState extends State<RoomPage>
   }
 
   // ── Recording indicator ────────────────────────────────────────────────────
+  //
+  // Shows two badges stacked vertically:
+  //   1. Server REC badge  — driven by LiveKit egress (visible to all)
+  //   2. Client REC badge  — driven by _ClientRecorder (teacher only)
   Widget _buildRecordingIndicator() {
     final widgets = <Widget>[];
 
+    // Server egress REC badge (shown to everyone when LiveKit egress is active)
     if (_serverRecording) {
       widgets.add(
         Row(
@@ -1271,6 +1304,7 @@ class _RoomPageState extends State<RoomPage>
       );
     }
 
+    // Client recorder badge (teacher only)
     if (widget.isTeacher && _recorder != null) {
       final rec = _recorder!;
       final state = rec.state;
@@ -1417,9 +1451,14 @@ class _RoomPageState extends State<RoomPage>
       ControlsWidget(
         widget.room,
         widget.room.localParticipant!,
+        // End session goes through our recorder-aware wrapper
         onEndSession: _endSessionWithRecording,
         isTeacher: widget.isTeacher,
         onToggleScreenShare: toggleScreenShare,
+        // ── NEW: pause / resume ──────────────────────────────────
+        // Null when the action is not available (wrong state, or
+        // a transition is already in flight) — ControlsWidget
+        // disables the button automatically when the callback is null.
         onPauseRecording: (widget.isTeacher &&
             _recorder?.state == RecState.recording &&
             !_isPausingRecording &&
@@ -1467,6 +1506,7 @@ class _RoomPageState extends State<RoomPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // Header
                 Container(
                   padding: const EdgeInsets.fromLTRB(16, 16, 8, 12),
                   decoration: BoxDecoration(
@@ -1516,6 +1556,7 @@ class _RoomPageState extends State<RoomPage>
                   ),
                 ),
 
+                // Teacher row
                 _ParticipantRow(
                   name: widget.room.localParticipant?.name ?? 'You',
                   isOnline: true,
@@ -1531,6 +1572,7 @@ class _RoomPageState extends State<RoomPage>
 
                 Divider(color: _glassBdr, height: 1),
 
+                // Section label
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
                   child: Row(
@@ -1571,6 +1613,7 @@ class _RoomPageState extends State<RoomPage>
                   ),
                 ),
 
+                // Student list
                 Expanded(
                   child: _enrolledStudents.isEmpty
                       ? Center(
@@ -1684,6 +1727,7 @@ class _RoomPageState extends State<RoomPage>
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Header
         Container(
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
           decoration: BoxDecoration(
@@ -2050,7 +2094,7 @@ extension _WidgetEx on Widget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _ParticipantRow
+// _ParticipantRow  — cleaned up (removed debug prints, fixed join/leave display)
 // ─────────────────────────────────────────────────────────────────────────────
 class _ParticipantRow extends StatelessWidget {
   const _ParticipantRow({
@@ -2093,6 +2137,7 @@ class _ParticipantRow extends StatelessWidget {
       ),
       child: Row(
         children: [
+          // Avatar + online dot
           Stack(
             clipBehavior: Clip.none,
             children: [
@@ -2143,6 +2188,7 @@ class _ParticipantRow extends StatelessWidget {
           ),
           const SizedBox(width: 10),
 
+          // Name + tags + duration
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2174,6 +2220,7 @@ class _ParticipantRow extends StatelessWidget {
                     ],
                   ],
                 ),
+                // Join → leave duration (clean, no debug prints)
                 if (joinDate != null) ...[
                   const SizedBox(height: 2),
                   Text(
@@ -2193,6 +2240,7 @@ class _ParticipantRow extends StatelessWidget {
             ),
           ),
 
+          // Mic / cam
           if (isOnline && !isTeacher) ...[
             Icon(
               micOn ? Icons.mic_rounded : Icons.mic_off_rounded,
@@ -2239,7 +2287,8 @@ class _MiniTag extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _ThumbnailCard
+// _ThumbnailCard, _PremiumScreenShareView, and all other widgets below are
+// unchanged from the original room.dart — copied verbatim.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ThumbnailCard extends StatelessWidget {
@@ -2360,9 +2409,7 @@ class _ThumbnailCard extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// All remaining widgets below are unchanged from the original
-// ─────────────────────────────────────────────────────────────────────────────
+// ── _PremiumScreenShareView and all sub-widgets (unchanged) ─────────────────
 
 class _PremiumScreenShareView extends StatefulWidget {
   final Participant participant;
@@ -2454,6 +2501,13 @@ class _PremiumScreenShareViewState extends State<_PremiumScreenShareView>
                       blurRadius: 32,
                       spreadRadius: 2,
                     ),
+                    BoxShadow(
+                      color: _indigo.withValues(
+                        alpha: 0.06 + 0.08 * _borderGlow.value,
+                      ),
+                      blurRadius: 48,
+                      spreadRadius: -4,
+                    ),
                   ],
                 ),
                 child: child,
@@ -2495,6 +2549,7 @@ class _PremiumScreenShareViewState extends State<_PremiumScreenShareView>
 
 class _PresenterBadge extends StatelessWidget {
   const _PresenterBadge({required this.name, required this.isSpeaking});
+
   final String name;
   final bool isSpeaking;
 
@@ -2509,26 +2564,43 @@ class _PresenterBadge extends StatelessWidget {
       borderRadius: BorderRadius.circular(30),
       border: Border.all(
         color: isSpeaking ? _cyan.withValues(alpha: 0.7) : _glassBdr,
+        width: 1,
       ),
+      boxShadow: isSpeaking
+          ? [BoxShadow(color: _cyan.withValues(alpha: 0.25), blurRadius: 16)]
+          : [],
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         AnimatedContainer(
           duration: const Duration(milliseconds: 300),
-          width: 8, height: 8,
+          width: 8,
+          height: 8,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: isSpeaking ? _cyan : _textLow,
+            boxShadow: isSpeaking
+                ? [BoxShadow(color: _cyan, blurRadius: 6)]
+                : [],
           ),
         ),
         const SizedBox(width: 8),
-        Icon(Icons.person_rounded, size: 13, color: isSpeaking ? _cyan : _textMid),
-        const SizedBox(width: 6),
-        Text(name, style: TextStyle(
-          fontFamily: 'tajawal', fontSize: 12, fontWeight: FontWeight.w700,
+        Icon(
+          Icons.person_rounded,
+          size: 13,
           color: isSpeaking ? _cyan : _textMid,
-        )),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          name,
+          style: TextStyle(
+            fontFamily: 'tajawal',
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: isSpeaking ? _cyan : _textMid,
+          ),
+        ),
       ],
     ),
   );
@@ -2536,26 +2608,48 @@ class _PresenterBadge extends StatelessWidget {
 
 class _ScreenShareLiveBadge extends StatelessWidget {
   const _ScreenShareLiveBadge();
+
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
     decoration: BoxDecoration(
-      gradient: LinearGradient(colors: [_indigo.withValues(alpha: 0.85), _cyan.withValues(alpha: 0.75)]),
+      gradient: LinearGradient(
+        colors: [
+          _indigo.withValues(alpha: 0.85),
+          _cyan.withValues(alpha: 0.75),
+        ],
+      ),
       borderRadius: BorderRadius.circular(30),
+      boxShadow: [
+        BoxShadow(color: _indigo.withValues(alpha: 0.4), blurRadius: 14),
+      ],
     ),
     child: const Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(Icons.screen_share_rounded, size: 13, color: Colors.white),
         SizedBox(width: 6),
-        Text('SCREEN', style: TextStyle(fontFamily: 'tajawal', fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 1.2)),
+        Text(
+          'SCREEN',
+          style: TextStyle(
+            fontFamily: 'tajawal',
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+            letterSpacing: 1.2,
+          ),
+        ),
       ],
     ),
   );
 }
 
 class _ScreenShareBottomBar extends StatelessWidget {
-  const _ScreenShareBottomBar({required this.participant, required this.presenterName});
+  const _ScreenShareBottomBar({
+    required this.participant,
+    required this.presenterName,
+  });
+
   final Participant participant;
   final String presenterName;
 
@@ -2567,8 +2661,13 @@ class _ScreenShareBottomBar extends StatelessWidget {
       height: 64,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.bottomCenter, end: Alignment.topCenter,
-          colors: [Colors.black.withValues(alpha: 0.85), Colors.black.withValues(alpha: 0.55), Colors.transparent],
+          begin: Alignment.bottomCenter,
+          end: Alignment.topCenter,
+          colors: [
+            Colors.black.withValues(alpha: 0.85),
+            Colors.black.withValues(alpha: 0.55),
+            Colors.transparent,
+          ],
           stops: const [0.0, 0.6, 1.0],
         ),
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
@@ -2578,28 +2677,76 @@ class _ScreenShareBottomBar extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Container(
-            width: 32, height: 32,
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: const LinearGradient(colors: [_cyan, _indigo], begin: Alignment.topLeft, end: Alignment.bottomRight),
+              gradient: const LinearGradient(
+                colors: [_cyan, _indigo],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              boxShadow: [
+                BoxShadow(color: _cyan.withValues(alpha: 0.35), blurRadius: 10),
+              ],
             ),
-            child: Center(child: Text(presenterName.isNotEmpty ? presenterName[0].toUpperCase() : '?',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13))),
+            child: Center(
+              child: Text(
+                presenterName.isNotEmpty ? presenterName[0].toUpperCase() : '?',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                ),
+              ),
+            ),
           ),
           const SizedBox(width: 10),
-          Expanded(child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  presenterName,
+                  style: const TextStyle(
+                    color: _textHigh,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Sharing screen',
+                  style: TextStyle(
+                    fontFamily: 'tajawal',
+                    color: _cyan.withValues(alpha: 0.8),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Row(
             children: [
-              Text(presenterName, style: const TextStyle(color: _textHigh, fontWeight: FontWeight.w700, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
-              Text('Sharing screen', style: TextStyle(fontFamily: 'tajawal', color: _cyan.withValues(alpha: 0.8), fontSize: 10, fontWeight: FontWeight.w600)),
+              _StatusPill(
+                icon: micOn ? Icons.mic_rounded : Icons.mic_off_rounded,
+                color: micOn ? _emerald : _rose,
+                active: micOn,
+              ),
+              const SizedBox(width: 6),
+              _StatusPill(
+                icon: camOn
+                    ? Icons.videocam_rounded
+                    : Icons.videocam_off_rounded,
+                color: camOn ? _emerald : _textLow,
+                active: camOn,
+              ),
             ],
-          )),
-          Row(children: [
-            _StatusPill(icon: micOn ? Icons.mic_rounded : Icons.mic_off_rounded, color: micOn ? _emerald : _rose, active: micOn),
-            const SizedBox(width: 6),
-            _StatusPill(icon: camOn ? Icons.videocam_rounded : Icons.videocam_off_rounded, color: camOn ? _emerald : _textLow, active: camOn),
-          ]),
+          ),
         ],
       ),
     );
@@ -2607,150 +2754,573 @@ class _ScreenShareBottomBar extends StatelessWidget {
 }
 
 class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.icon, required this.color, required this.active});
-  final IconData icon; final Color color; final bool active;
+  const _StatusPill({
+    required this.icon,
+    required this.color,
+    required this.active,
+  });
+
+  final IconData icon;
+  final Color color;
+  final bool active;
 
   @override
   Widget build(BuildContext context) => Container(
-    width: 30, height: 30,
-    decoration: BoxDecoration(shape: BoxShape.circle, color: color.withValues(alpha: active ? 0.18 : 0.08), border: Border.all(color: color.withValues(alpha: active ? 0.5 : 0.2))),
+    width: 30,
+    height: 30,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: color.withValues(alpha: active ? 0.18 : 0.08),
+      border: Border.all(
+        color: color.withValues(alpha: active ? 0.5 : 0.2),
+        width: 1,
+      ),
+    ),
     child: Icon(icon, size: 14, color: color),
   );
 }
 
 class _ScreenShareLoadingPlaceholder extends StatelessWidget {
   const _ScreenShareLoadingPlaceholder({required this.presenterName});
+
   final String presenterName;
 
   @override
   Widget build(BuildContext context) => Container(
     color: const Color(0xFF0A0F20),
-    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      Container(width: 72, height: 72, decoration: BoxDecoration(shape: BoxShape.circle, color: _indigo.withValues(alpha: 0.12), border: Border.all(color: _indigo.withValues(alpha: 0.3), width: 1.5)),
-          child: const Icon(Icons.screen_share_rounded, size: 32, color: _indigo)),
-      const SizedBox(height: 18),
-      const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: _cyan)),
-      const SizedBox(height: 14),
-      Text('$presenterName is sharing their screen', style: const TextStyle(color: _textMid, fontSize: 13), textAlign: TextAlign.center),
-    ]),
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          width: 72,
+          height: 72,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _indigo.withValues(alpha: 0.12),
+            border: Border.all(
+              color: _indigo.withValues(alpha: 0.3),
+              width: 1.5,
+            ),
+          ),
+          child: const Icon(
+            Icons.screen_share_rounded,
+            size: 32,
+            color: _indigo,
+          ),
+        ),
+        const SizedBox(height: 18),
+        const SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2, color: _cyan),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          '$presenterName is sharing their screen',
+          style: const TextStyle(
+            color: _textMid,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Connecting…',
+          style: TextStyle(
+            fontFamily: 'tajawal',
+            color: _cyan.withValues(alpha: 0.6),
+            fontSize: 11,
+          ),
+        ),
+      ],
+    ),
   );
 }
 
 class _ScreenShareAuroraPainter extends CustomPainter {
   const _ScreenShareAuroraPainter(this.t);
+
   final double t;
 
   @override
   void paint(Canvas canvas, Size size) {
-    _blob(canvas, Offset(size.width * (0.15 + 0.05 * math.sin(t * 0.7)), size.height * (0.2 + 0.06 * math.cos(t * 0.5))), size.width * 0.45, _indigo.withValues(alpha: 0.06));
-    _blob(canvas, Offset(size.width * (0.82 + 0.04 * math.cos(t * 0.9)), size.height * (0.75 + 0.05 * math.sin(t * 0.6))), size.width * 0.4, _cyan.withValues(alpha: 0.04));
+    _blob(
+      canvas,
+      Offset(
+        size.width * (0.15 + 0.05 * math.sin(t * 0.7)),
+        size.height * (0.2 + 0.06 * math.cos(t * 0.5)),
+      ),
+      size.width * 0.45,
+      _indigo.withValues(alpha: 0.06),
+    );
+    _blob(
+      canvas,
+      Offset(
+        size.width * (0.82 + 0.04 * math.cos(t * 0.9)),
+        size.height * (0.75 + 0.05 * math.sin(t * 0.6)),
+      ),
+      size.width * 0.4,
+      _cyan.withValues(alpha: 0.04),
+    );
   }
 
   void _blob(Canvas canvas, Offset center, double r, Color color) {
-    canvas.drawCircle(center, r, Paint()..shader = RadialGradient(colors: [color, Colors.transparent]).createShader(Rect.fromCircle(center: center, radius: r)));
+    canvas.drawCircle(
+      center,
+      r,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [color, Colors.transparent],
+        ).createShader(Rect.fromCircle(center: center, radius: r)),
+    );
   }
 
   @override
   bool shouldRepaint(_ScreenShareAuroraPainter old) => old.t != t;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// _PremiumWaitingPlaceholder  — Teams-style no-content placeholder
+// Shows teacher avatar, name, A/V status chips, and a "Waiting for students"
+// message with animated aurora + pulse ring — all matching the room design.
+// ─────────────────────────────────────────────────────────────────────────────
 class _PremiumWaitingPlaceholder extends StatefulWidget {
-  const _PremiumWaitingPlaceholder({required this.teacherName, required this.isMicOn, required this.isCamOn, required this.auroraAnim});
-  final String teacherName; final bool isMicOn; final bool isCamOn; final AnimationController auroraAnim;
+  const _PremiumWaitingPlaceholder({
+    required this.teacherName,
+    required this.isMicOn,
+    required this.isCamOn,
+    required this.auroraAnim,
+  });
+
+  final String teacherName;
+  final bool isMicOn;
+  final bool isCamOn;
+  final AnimationController auroraAnim;
 
   @override
-  State<_PremiumWaitingPlaceholder> createState() => _PremiumWaitingPlaceholderState();
+  State<_PremiumWaitingPlaceholder> createState() =>
+      _PremiumWaitingPlaceholderState();
 }
 
-class _PremiumWaitingPlaceholderState extends State<_PremiumWaitingPlaceholder> with SingleTickerProviderStateMixin {
+class _PremiumWaitingPlaceholderState
+    extends State<_PremiumWaitingPlaceholder>
+    with SingleTickerProviderStateMixin {
   late AnimationController _ringAnim;
-  late Animation<double> _ringScale, _ringOpacity;
+  late Animation<double> _ringScale;
+  late Animation<double> _ringOpacity;
 
   @override
   void initState() {
     super.initState();
-    _ringAnim = AnimationController(vsync: this, duration: const Duration(milliseconds: 2000))..repeat();
-    _ringScale = Tween<double>(begin: 1.0, end: 1.55).animate(CurvedAnimation(parent: _ringAnim, curve: Curves.easeOut));
-    _ringOpacity = Tween<double>(begin: 0.45, end: 0.0).animate(CurvedAnimation(parent: _ringAnim, curve: Curves.easeOut));
+    _ringAnim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat();
+    _ringScale = Tween<double>(begin: 1.0, end: 1.55).animate(
+      CurvedAnimation(parent: _ringAnim, curve: Curves.easeOut),
+    );
+    _ringOpacity = Tween<double>(begin: 0.45, end: 0.0).animate(
+      CurvedAnimation(parent: _ringAnim, curve: Curves.easeOut),
+    );
   }
 
   @override
-  void dispose() { _ringAnim.dispose(); super.dispose(); }
+  void dispose() {
+    _ringAnim.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final initials = widget.teacherName.isNotEmpty ? widget.teacherName.trim().split(RegExp(r'\s+')).take(2).map((w) => w[0].toUpperCase()).join() : '?';
-    return Container(color: _bg, child: Stack(fit: StackFit.expand, children: [
-      AnimatedBuilder(animation: widget.auroraAnim, builder: (_, __) => CustomPaint(painter: _AuroraPainter(widget.auroraAnim.value), child: const SizedBox.expand())),
-      Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        SizedBox(width: 120, height: 120, child: Stack(alignment: Alignment.center, children: [
-          AnimatedBuilder(animation: _ringAnim, builder: (_, __) => Transform.scale(scale: _ringScale.value, child: Opacity(opacity: _ringOpacity.value, child: Container(width: 96, height: 96, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: _cyan, width: 2.5)))))),
-          Container(width: 88, height: 88, decoration: BoxDecoration(shape: BoxShape.circle, gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF00D4FF), Color(0xFF6B6EF9)]), boxShadow: [BoxShadow(color: _cyan.withValues(alpha: 0.35), blurRadius: 28, spreadRadius: 2)]),
-              child: Center(child: Text(initials, style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w800, letterSpacing: 1)))),
-        ])),
-        const SizedBox(height: 20),
-        Text(widget.teacherName, style: const TextStyle(fontFamily: 'tajawal', color: _textHigh, fontSize: 22, fontWeight: FontWeight.w800), textAlign: TextAlign.center),
-        const SizedBox(height: 6),
-        Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), decoration: BoxDecoration(color: _cyan.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20), border: Border.all(color: _cyan.withValues(alpha: 0.35))),
-            child: const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.school_rounded, color: _cyan, size: 12), SizedBox(width: 5), Text('Teacher', style: TextStyle(fontFamily: 'tajawal', color: _cyan, fontSize: 12, fontWeight: FontWeight.w700))])),
-        const SizedBox(height: 22),
-        Row(mainAxisSize: MainAxisSize.min, children: [
-          _AVChip(icon: widget.isMicOn ? Icons.mic_rounded : Icons.mic_off_rounded, label: widget.isMicOn ? 'Mic On' : 'Mic Off', active: widget.isMicOn, activeColor: const Color(0xFF00E5A0), inactiveColor: _rose),
-          const SizedBox(width: 10),
-          _AVChip(icon: widget.isCamOn ? Icons.videocam_rounded : Icons.videocam_off_rounded, label: widget.isCamOn ? 'Cam On' : 'Cam Off', active: widget.isCamOn, activeColor: const Color(0xFF00E5A0), inactiveColor: _textLow),
-        ]),
-        const SizedBox(height: 36),
-        Container(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12), decoration: BoxDecoration(color: _glass10, borderRadius: BorderRadius.circular(16), border: Border.all(color: _glassBdr)),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.8, color: _cyan.withValues(alpha: 0.7))), const SizedBox(width: 10), const Text('Waiting for students to join…', style: TextStyle(fontFamily: 'tajawal', color: _textMid, fontSize: 13, fontWeight: FontWeight.w500))])),
-      ])),
-    ]));
+    final initials = widget.teacherName.isNotEmpty
+        ? widget.teacherName
+        .trim()
+        .split(RegExp(r'\s+'))
+        .take(2)
+        .map((w) => w[0].toUpperCase())
+        .join()
+        : '?';
+
+    return Container(
+      color: _bg,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Aurora background
+          AnimatedBuilder(
+            animation: widget.auroraAnim,
+            builder: (_, __) => CustomPaint(
+              painter: _AuroraPainter(widget.auroraAnim.value),
+              child: const SizedBox.expand(),
+            ),
+          ),
+
+          // Center content
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Avatar with pulsing ring
+                SizedBox(
+                  width: 120,
+                  height: 120,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Pulse ring
+                      AnimatedBuilder(
+                        animation: _ringAnim,
+                        builder: (_, __) => Transform.scale(
+                          scale: _ringScale.value,
+                          child: Opacity(
+                            opacity: _ringOpacity.value,
+                            child: Container(
+                              width: 96,
+                              height: 96,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: _cyan,
+                                  width: 2.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Avatar
+                      Container(
+                        width: 88,
+                        height: 88,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFF00D4FF), Color(0xFF6B6EF9)],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _cyan.withValues(alpha: 0.35),
+                              blurRadius: 28,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            initials,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 32,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Name
+                Text(
+                  widget.teacherName,
+                  style: const TextStyle(
+                    fontFamily: 'tajawal',
+                    color: _textHigh,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.2,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+
+                const SizedBox(height: 6),
+
+                // Role chip
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _cyan.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: _cyan.withValues(alpha: 0.35), width: 1),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.school_rounded,
+                          color: _cyan, size: 12),
+                      SizedBox(width: 5),
+                      Text(
+                        'Teacher',
+                        style: TextStyle(
+                          fontFamily: 'tajawal',
+                          color: _cyan,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 22),
+
+                // A/V status row
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _AVChip(
+                      icon: widget.isMicOn
+                          ? Icons.mic_rounded
+                          : Icons.mic_off_rounded,
+                      label: widget.isMicOn ? 'Mic On' : 'Mic Off',
+                      active: widget.isMicOn,
+                      activeColor: const Color(0xFF00E5A0),
+                      inactiveColor: _rose,
+                    ),
+                    const SizedBox(width: 10),
+                    _AVChip(
+                      icon: widget.isCamOn
+                          ? Icons.videocam_rounded
+                          : Icons.videocam_off_rounded,
+                      label: widget.isCamOn ? 'Cam On' : 'Cam Off',
+                      active: widget.isCamOn,
+                      activeColor: const Color(0xFF00E5A0),
+                      inactiveColor: _textLow,
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 36),
+
+                // Waiting message
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: _glass10,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: _glassBdr, width: 1),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.8,
+                          color: _cyan.withValues(alpha: 0.7),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Waiting for students to join…',
+                        style: TextStyle(
+                          fontFamily: 'tajawal',
+                          color: _textMid,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
 class _AVChip extends StatelessWidget {
-  const _AVChip({required this.icon, required this.label, required this.active, required this.activeColor, required this.inactiveColor});
-  final IconData icon; final String label; final bool active; final Color activeColor; final Color inactiveColor;
+  const _AVChip({
+    required this.icon,
+    required this.label,
+    required this.active,
+    required this.activeColor,
+    required this.inactiveColor,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool active;
+  final Color activeColor;
+  final Color inactiveColor;
 
   @override
   Widget build(BuildContext context) {
     final color = active ? activeColor : inactiveColor;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20), border: Border.all(color: color.withValues(alpha: 0.4))),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(icon, size: 14, color: color), const SizedBox(width: 6), Text(label, style: TextStyle(fontFamily: 'tajawal', color: color, fontSize: 12, fontWeight: FontWeight.w600))]),
+      padding:
+      const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border:
+        Border.all(color: color.withValues(alpha: 0.4), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'tajawal',
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
+// ── Old _WaitingPlaceholder kept as fallback ──────────────────────────────────
+class _WaitingPlaceholder extends StatelessWidget {
+  const _WaitingPlaceholder({this.message = 'Waiting for participants…'});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    color: _bg,
+    alignment: Alignment.center,
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _glass10,
+            border: Border.all(color: _glassBdr, width: 1),
+          ),
+          child: Icon(
+            Icons.videocam_rounded,
+            size: 34,
+            color: _cyan.withValues(alpha: 0.35),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          message,
+          style: TextStyle(
+            fontFamily: 'tajawal',
+            color: _textLow,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 class _GlassBadge extends StatelessWidget {
   const _GlassBadge({required this.icon, required this.label, this.color});
-  final IconData icon; final String label; final Color? color;
+
+  final IconData icon;
+  final String label;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
     decoration: BoxDecoration(
-      color: color != null ? color!.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.5),
+      color: color != null
+          ? color!.withValues(alpha: 0.2)
+          : Colors.black.withValues(alpha: 0.5),
       borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: color != null ? color!.withValues(alpha: 0.45) : _glassBdr),
+      border: Border.all(
+        color: color != null ? color!.withValues(alpha: 0.45) : _glassBdr,
+        width: 1,
+      ),
+      boxShadow: color != null
+          ? [BoxShadow(color: color!.withValues(alpha: 0.18), blurRadius: 14)]
+          : [],
     ),
-    child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(icon, size: 13, color: color ?? _textMid), const SizedBox(width: 5), Text(label, style: TextStyle(fontFamily: 'tajawal', fontSize: 12, fontWeight: FontWeight.w600, color: color ?? _textMid))]),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: color ?? _textMid),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'tajawal',
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: color ?? _textMid,
+          ),
+        ),
+      ],
+    ),
   );
 }
 
 class _StyledDialog extends StatelessWidget {
-  const _StyledDialog({required this.title, required this.message, required this.confirmLabel, this.isDanger = false});
-  final String title, message, confirmLabel; final bool isDanger;
+  const _StyledDialog({
+    required this.title,
+    required this.message,
+    required this.confirmLabel,
+    this.isDanger = false,
+  });
+
+  final String title, message, confirmLabel;
+  final bool isDanger;
 
   @override
   Widget build(BuildContext context) => AlertDialog(
     backgroundColor: _surfaceHi,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: _glassBdr)),
-    title: Text(title, style: const TextStyle(color: _textHigh, fontWeight: FontWeight.w700)),
-    content: Text(message, style: TextStyle(fontFamily: 'tajawal', color: _textMid.withValues(alpha: 0.8))),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(20),
+      side: BorderSide(color: _glassBdr, width: 1),
+    ),
+    title: Text(
+      title,
+      style: const TextStyle(color: _textHigh, fontWeight: FontWeight.w700),
+    ),
+    content: Text(
+      message,
+      style: TextStyle(
+        fontFamily: 'tajawal',
+        color: _textMid.withValues(alpha: 0.8),
+      ),
+    ),
     actions: [
-      TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Cancel', style: TextStyle(fontFamily: 'tajawal', color: _textLow))),
-      TextButton(onPressed: () => Navigator.pop(context, true), child: Text(confirmLabel, style: TextStyle(fontFamily: 'tajawal', color: isDanger ? _recRed : _cyan, fontWeight: FontWeight.w700))),
+      TextButton(
+        onPressed: () => Navigator.pop(context, false),
+        child: Text(
+          'Cancel',
+          style: TextStyle(fontFamily: 'tajawal', color: _textLow),
+        ),
+      ),
+      TextButton(
+        onPressed: () => Navigator.pop(context, true),
+        child: Text(
+          confirmLabel,
+          style: TextStyle(
+            fontFamily: 'tajawal',
+            color: isDanger ? _recRed : _cyan,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
     ],
   );
 }
@@ -2763,41 +3333,146 @@ class _SessionEndedDialog extends StatelessWidget {
     backgroundColor: Colors.transparent,
     child: Container(
       padding: const EdgeInsets.all(28),
-      decoration: BoxDecoration(color: _surfaceHi, borderRadius: BorderRadius.circular(24), border: Border.all(color: _glassBdr)),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(width: 72, height: 72, decoration: BoxDecoration(shape: BoxShape.circle, color: _rose.withValues(alpha: 0.12), border: Border.all(color: _rose.withValues(alpha: 0.4), width: 2)),
-            child: const Icon(Icons.meeting_room_rounded, color: _rose, size: 34)),
-        const SizedBox(height: 20),
-        const Text('Session Ended', style: TextStyle(fontFamily: 'tajawal', color: _textHigh, fontWeight: FontWeight.w800, fontSize: 20)),
-        const SizedBox(height: 10),
-        Text('The teacher has ended this session.\nThank you for joining!', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'tajawal', color: _textMid.withValues(alpha: 0.85), fontSize: 14, height: 1.5)),
-        const SizedBox(height: 24),
-        GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 14),
-              decoration: BoxDecoration(gradient: const LinearGradient(colors: [_cyan, _indigo], begin: Alignment.centerLeft, end: Alignment.centerRight), borderRadius: BorderRadius.circular(14)),
-              child: const Text('OK', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'tajawal', color: _textHigh, fontWeight: FontWeight.w700, fontSize: 15))),
-        ),
-      ]),
+      decoration: BoxDecoration(
+        color: _surfaceHi,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _glassBdr, width: 1),
+        boxShadow: [
+          BoxShadow(color: _cyan.withValues(alpha: 0.10), blurRadius: 40),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 20),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _rose.withValues(alpha: 0.12),
+              border: Border.all(color: _rose.withValues(alpha: 0.4), width: 2),
+            ),
+            child: const Icon(
+              Icons.meeting_room_rounded,
+              color: _rose,
+              size: 34,
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Session Ended',
+            style: TextStyle(
+              fontFamily: 'tajawal',
+              color: _textHigh,
+              fontWeight: FontWeight.w800,
+              fontSize: 20,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'The teacher has ended this session.\nThank you for joining!',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'tajawal',
+              color: _textMid.withValues(alpha: 0.85),
+              fontSize: 14,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 24),
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [_cyan, _indigo],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: _cyan.withValues(alpha: 0.28),
+                    blurRadius: 14,
+                  ),
+                ],
+              ),
+              child: const Text(
+                'OK',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'tajawal',
+                  color: _textHigh,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     ),
   );
 }
 
 class _AuroraPainter extends CustomPainter {
   const _AuroraPainter(this.t);
+
   final double t;
 
   @override
   void paint(Canvas canvas, Size size) {
     final a = t * 2 * math.pi;
-    _blob(canvas, Offset(size.width * (0.12 + 0.07 * math.sin(a)), size.height * (0.13 + 0.06 * math.cos(a * 0.7))), size.width * 0.58, const Color(0xFF00D4FF).withValues(alpha: 0.07));
-    _blob(canvas, Offset(size.width * (0.84 + 0.06 * math.cos(a * 1.3)), size.height * (0.24 + 0.08 * math.sin(a * 0.9))), size.width * 0.52, const Color(0xFF6B6EF9).withValues(alpha: 0.06));
-    _blob(canvas, Offset(size.width * (0.16 + 0.05 * math.sin(a * 0.6)), size.height * (0.77 + 0.05 * math.cos(a * 0.5))), size.width * 0.48, const Color(0xFF00E5A0).withValues(alpha: 0.04));
-    _blob(canvas, Offset(size.width * (0.87 + 0.04 * math.cos(a * 1.1)), size.height * (0.83 + 0.04 * math.sin(a * 0.8))), size.width * 0.44, const Color(0xFFFF4F72).withValues(alpha: 0.04));
+    _blob(
+      canvas,
+      Offset(
+        size.width * (0.12 + 0.07 * math.sin(a)),
+        size.height * (0.13 + 0.06 * math.cos(a * 0.7)),
+      ),
+      size.width * 0.58,
+      const Color(0xFF00D4FF).withValues(alpha: 0.07),
+    );
+    _blob(
+      canvas,
+      Offset(
+        size.width * (0.84 + 0.06 * math.cos(a * 1.3)),
+        size.height * (0.24 + 0.08 * math.sin(a * 0.9)),
+      ),
+      size.width * 0.52,
+      const Color(0xFF6B6EF9).withValues(alpha: 0.06),
+    );
+    _blob(
+      canvas,
+      Offset(
+        size.width * (0.16 + 0.05 * math.sin(a * 0.6)),
+        size.height * (0.77 + 0.05 * math.cos(a * 0.5)),
+      ),
+      size.width * 0.48,
+      const Color(0xFF00E5A0).withValues(alpha: 0.04),
+    );
+    _blob(
+      canvas,
+      Offset(
+        size.width * (0.87 + 0.04 * math.cos(a * 1.1)),
+        size.height * (0.83 + 0.04 * math.sin(a * 0.8)),
+      ),
+      size.width * 0.44,
+      const Color(0xFFFF4F72).withValues(alpha: 0.04),
+    );
   }
 
   void _blob(Canvas canvas, Offset center, double r, Color color) {
-    canvas.drawCircle(center, r, Paint()..shader = RadialGradient(colors: [color, Colors.transparent]).createShader(Rect.fromCircle(center: center, radius: r)));
+    canvas.drawCircle(
+      center,
+      r,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [color, Colors.transparent],
+        ).createShader(Rect.fromCircle(center: center, radius: r)),
+    );
   }
 
   @override
@@ -2805,7 +3480,9 @@ class _AuroraPainter extends CustomPainter {
 }
 
 class NotificationChannelHelper {
-  static const _channel = MethodChannel('com.example.flutter_education_app/notifications');
+  static const _channel = MethodChannel(
+    'com.example.flutter_education_app/notifications',
+  );
   static const String screenShareChannelId = 'livekit_screen_share';
   static const String screenShareChannelName = 'Screen Share';
 

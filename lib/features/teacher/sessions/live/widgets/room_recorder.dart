@@ -1,23 +1,30 @@
 // room_recorder.dart
 //
-// iOS flow (NEW):
-//   1. start() → invokeMethod('startMicRecording')
-//      • Native: AVAudioEngine starts mic recording (NO red pill, NO dialog)
-//      • Native emits 'screenLoopStarted' once the chunk timer fires
-//      • Dart: waits for 'screenLoopStarted' → sets RecState.recording
-//   2. room.dart calls startScreenCaptureService (→ no-op on iOS)
-//   3. room.dart calls upgradeToScreenRecording() (→ no-op on iOS, already recording)
-//   4. Teacher taps "Share Screen" → showBroadcastPicker → RPSystemBroadcastPickerView
-//      • NO audio session conflict: AVAudioEngine keeps running
-//      • SampleHandler sends video frames via CFMessagePort to AppDelegate
-//      • AppDelegate forwards them as 'broadcastFrame' events
-//   5. stopRecordingOnly() → invokeMethod('stopRecording') → isFinal chunk uploaded
+// iOS two-phase recording flow:
 //
-// Android flow (UNCHANGED):
-//   1. start() → invokeMethod('startMicRecording') → mic-only FGS
-//   2. startScreenCaptureService → MediaProjection dialog
-//   3. upgradeToScreenRecording() → waits for 'screenLoopStarted'
-//   4. Share screen → flutter_webrtc MediaProjection (separate token)
+//   Phase 1 · start() → invokeMethod('startMicRecording')
+//     • Native stores session params (uploadUrl, authToken, chunkSecs)
+//     • Native immediately emits 'screenLoopStarted' → _screenLoopCompleter
+//       resolves → RecState.recording is set
+//     • RPScreenRecorder has NOT started yet — no red pill, no dialog
+//
+//   Phase 2 · room.dart calls invokeMethod('startScreenCaptureService')
+//     • Native calls RPScreenRecorder.startCapture()
+//     • iOS mic-permission dialog appears HERE (first use only)
+//     • Red-pill recording indicator appears (iOS requirement, cannot avoid)
+//     • On success: AVAssetWriter chunk loop begins with H.264 video + AAC audio
+//     • Native emits 'screenLoopStarted' again → upgradeToScreenRecording()
+//       resolves its own _screenLoopCompleter → _screenRecording confirmed
+//
+//   The recorder handles TWO 'screenLoopStarted' events safely:
+//     • First emit (Phase 1): resolves the start() completer
+//     • Second emit (Phase 2): resolves the upgradeToScreenRecording() completer
+//   Both completers are separate instances so there is no double-complete error.
+//
+// Android flow (unchanged):
+//   Phase 1 · start() → startMicRecording → stores params, emits screenLoopStarted
+//   Phase 2 · startScreenCaptureService → MediaProjection dialog
+//   Phase 3 · upgradeToScreenRecording() → waits for screenLoopStarted from service
 
 import 'dart:async';
 import 'dart:developer';
@@ -81,10 +88,20 @@ class ClientRecorder extends ChangeNotifier {
 
   StreamSubscription<dynamic>? _recEventSub;
 
-  // Completers for lifecycle synchronisation
-  Completer<void>? _screenLoopCompleter;
+  // ── Completers ────────────────────────────────────────────────────────────
+  // _startCompleter:   resolves when Phase-1 'screenLoopStarted' arrives
+  //                    (used inside start() → _startRecording())
+  // _upgradeCompleter: resolves when Phase-2 'screenLoopStarted' arrives
+  //                    (used inside upgradeToScreenRecording())
+  // They are different fields so the two events never collide.
+  Completer<void>? _startCompleter;
+  Completer<void>? _upgradeCompleter;
+
+  // Share-lifecycle completers (Android only)
   Completer<void>? _micReadyForShareCompleter;
   Completer<void>? _micLoopStartedCompleter;
+
+  // Pause / resume completers
   Completer<void>? _pauseCompleter;
   Completer<void>? _resumeCompleter;
 
@@ -102,14 +119,10 @@ class ClientRecorder extends ChangeNotifier {
 
   // ── Public API ────────────────────────────────────────────────────────────
 
-  /// Phase 1: start mic recording.
-  ///
-  /// iOS:     AVAudioEngine starts immediately (no dialog, no red pill).
-  ///          Waits for 'screenLoopStarted' event → RecState.recording.
-  ///
-  /// Android: Sends ACTION_START_MIC_ONLY. MediaProjection dialog is shown
-  ///          separately via startScreenCaptureService in room.dart.
-  ///          Waits for 'screenLoopStarted' which comes after that dialog.
+  /// Phase 1: store session params and open the EventChannel.
+  /// On iOS: native immediately emits 'screenLoopStarted' → sets RecState.recording.
+  /// On Android: same — native stores params and emits immediately.
+  /// Neither platform starts RPScreenRecorder / MediaProjection here.
   Future<void> start() async {
     if (_state != RecState.idle) return;
     _set(RecState.starting);
@@ -126,55 +139,63 @@ class ClientRecorder extends ChangeNotifier {
     _webRecorder!.startCompositor(sessionId, apiClient.baseUrl, 'Bearer $token');
   }
 
-  /// Phase 2 (Android only): called after MediaProjection dialog is approved.
+  /// Phase 2 confirmation: called from room.dart AFTER startScreenCaptureService
+  /// has returned (meaning RPScreenRecorder / MediaProjection is running).
   ///
-  /// On iOS this is a deliberate no-op — the mic recording started in start()
-  /// already emitted 'screenLoopStarted' and set RecState.recording. Calling
-  /// this again on iOS would create a dangling Completer and stall for 15 s.
+  /// Waits for the SECOND 'screenLoopStarted' that AppDelegate emits from
+  /// inside startScreenCaptureService's completion handler — which fires only
+  /// once the AVAssetWriter chunk loop is actually writing frames.
+  ///
+  /// Uses _upgradeCompleter (not _startCompleter) so the two events don't clash.
   Future<void> upgradeToScreenRecording() async {
     if (kIsWeb) return;
 
-    // ── iOS: mic recording is already running — nothing to do ───────────────
-    if (!kIsWeb && Platform.isIOS) {
-      if (_screenRecording) {
-        log('[REC] iOS upgradeToScreenRecording: already recording — no-op');
+    // On iOS: _screenRecording may already be true from Phase 1.
+    // We still wait for the Phase-2 emit to confirm the AVAssetWriter is live
+    // and chunks have actual video frames (not just audio).
+    // The _upgradeCompleter is set before this method is called from room.dart
+    // so we never miss the event even on fast devices.
+    if (_upgradeCompleter == null) {
+      // Completer was not pre-set — create it now. If the event already
+      // arrived (very fast native), we set _screenRecording directly.
+      if (_screenRecording && !kIsWeb && Platform.isIOS) {
+        log('[REC] upgradeToScreenRecording: iOS Phase-2 already confirmed');
         return;
       }
-      // If start() completed but _screenRecording was not set yet (e.g. the
-      // 'screenLoopStarted' event was dropped), set it now.
-      log('[REC] iOS upgradeToScreenRecording: confirming mic recording active');
-      _screenRecording = true;
-      notifyListeners();
-      return;
+      _upgradeCompleter = Completer<void>();
     }
 
-    // ── Android: wait for 'screenLoopStarted' from the projection service ───
-    if (_screenRecording) {
-      log('[REC] upgradeToScreenRecording: already recording — no-op');
-      return;
-    }
     try {
-      _screenLoopCompleter = Completer<void>();
       final ok = await _recChannel.invokeMethod<bool>('upgradeToScreenRecording');
       if (ok == true) {
-        await _screenLoopCompleter!.future.timeout(
-          const Duration(seconds: 15),
-          onTimeout: () => log('[REC] upgradeToScreenRecording: timeout waiting for screenLoopStarted'),
+        await _upgradeCompleter!.future.timeout(
+          const Duration(seconds: 20),
+          onTimeout: () {
+            log('[REC] upgradeToScreenRecording: timeout — assuming live');
+          },
         );
       }
-      _screenLoopCompleter = null;
-      _screenRecording = true;
-      notifyListeners();
-      log('[REC] upgradeToScreenRecording: confirmed');
     } catch (e) {
-      _screenLoopCompleter = null;
       log('[REC] upgradeToScreenRecording error: $e');
+    } finally {
+      _upgradeCompleter = null;
     }
+
+    _screenRecording = true;
+    if (_state != RecState.recording) _set(RecState.recording);
+    notifyListeners();
+    log('[REC] upgradeToScreenRecording: Phase-2 confirmed — video chunks active');
+  }
+
+  /// Call this from room.dart BEFORE calling startScreenCaptureService
+  /// so the Phase-2 'screenLoopStarted' event is never missed.
+  void prepareUpgradeWait() {
+    _upgradeCompleter ??= Completer<void>();
   }
 
   Future<void> downgradeToMicOnly() async {
     if (kIsWeb) return;
-    log('[REC] downgradeToMicOnly: recording continues');
+    log('[REC] downgradeToMicOnly: recording continues uninterrupted');
   }
 
   Future<void> attachScreenToRecorder(Object? screenStream) async {
@@ -189,20 +210,14 @@ class ClientRecorder extends ChangeNotifier {
 
   Future<void> pauseRecording() async {
     if (kIsWeb) { log('[REC] pauseRecording: not supported on web'); return; }
-    if (_state != RecState.recording) {
-      log('[REC] pauseRecording: state=$_state — no-op'); return;
-    }
-    if (_stopping) { log('[REC] pauseRecording: stopping — no-op'); return; }
+    if (_state != RecState.recording || _stopping) return;
     log('[REC] pauseRecording');
     try {
       _pauseCompleter = Completer<void>();
       await _recChannel.invokeMethod<void>('pauseRecording');
       await _pauseCompleter!.future.timeout(
         const Duration(seconds: 15),
-        onTimeout: () {
-          log('[REC] pauseRecording: timeout — assuming paused');
-          _applyPaused();
-        },
+        onTimeout: () { log('[REC] pauseRecording timeout'); _applyPaused(); },
       );
     } catch (e) {
       log('[REC] pauseRecording error: $e');
@@ -213,19 +228,14 @@ class ClientRecorder extends ChangeNotifier {
 
   Future<void> resumeRecording() async {
     if (kIsWeb) { log('[REC] resumeRecording: not supported on web'); return; }
-    if (_state != RecState.paused) {
-      log('[REC] resumeRecording: state=$_state — no-op'); return;
-    }
+    if (_state != RecState.paused) return;
     log('[REC] resumeRecording');
     try {
       _resumeCompleter = Completer<void>();
       await _recChannel.invokeMethod<void>('resumeRecording');
       await _resumeCompleter!.future.timeout(
         const Duration(seconds: 15),
-        onTimeout: () {
-          log('[REC] resumeRecording: timeout — assuming resumed');
-          _applyResumed();
-        },
+        onTimeout: () { log('[REC] resumeRecording timeout'); _applyResumed(); },
       );
     } catch (e) {
       log('[REC] resumeRecording error: $e');
@@ -256,9 +266,7 @@ class ClientRecorder extends ChangeNotifier {
     while (_state != RecState.done && DateTime.now().isBefore(deadline)) {
       await Future.delayed(const Duration(milliseconds: 200));
     }
-    if (_state != RecState.done) {
-      _set(RecState.done);
-    }
+    if (_state != RecState.done) _set(RecState.done);
     log('[REC] drain complete — chunks=$_uploadedChunks bytes=$_totalBytes');
   }
 
@@ -266,7 +274,8 @@ class ClientRecorder extends ChangeNotifier {
   Future<void> dispose() async {
     _recEventSub?.cancel();
     _recEventSub               = null;
-    _screenLoopCompleter       = null;
+    _startCompleter            = null;
+    _upgradeCompleter          = null;
     _micReadyForShareCompleter = null;
     _micLoopStartedCompleter   = null;
     _pauseCompleter            = null;
@@ -282,9 +291,6 @@ class ClientRecorder extends ChangeNotifier {
     try {
       Object? stream = await web_rec.getUserMedia(video: true);
       stream ??= await web_rec.getAudioOnly();
-      if (stream == null) {
-        log('[REC] Web: no camera/mic — compositor in screen-only mode');
-      }
       _webRecorder = web_rec.WebRecorder(
         onBlob: (size) { _totalBytes += size; notifyListeners(); },
       );
@@ -292,14 +298,13 @@ class ClientRecorder extends ChangeNotifier {
       _set(RecState.recording);
       _screenRecording = true;
       notifyListeners();
-      log('[REC] Web: recorder started');
     } catch (e, st) {
       log('[REC] Web start error: $e\n$st');
       _setError('Web recording failed: $e');
     }
   }
 
-  // ── iOS / Android: start mic recording ───────────────────────────────────
+  // ── Mobile: Phase 1 ───────────────────────────────────────────────────────
 
   Future<void> _startRecording() async {
     try {
@@ -307,61 +312,44 @@ class ClientRecorder extends ChangeNotifier {
       final uploadUrl =
           '${apiClient.baseUrl}/api/v1/live-sessions/$sessionId/recording-chunk';
 
-      // Subscribe to native events BEFORE invoking the method channel call,
-      // so we never miss the 'screenLoopStarted' event that fires during
-      // startMicRecording on iOS.
+      // Open EventChannel BEFORE invoking so we never miss events.
       _recEventSub?.cancel();
       _recEventSub = _recEventChannel.receiveBroadcastStream().listen(
         _onNativeEvent,
         onError: _onNativeError,
       );
 
-      // Prepare the completer before invoking so the event handler can
-      // complete it even if the event arrives during the await below.
-      _screenLoopCompleter = Completer<void>();
+      // Prepare the Phase-1 completer before invoking.
+      _startCompleter = Completer<void>();
 
       final ok = await _recChannel.invokeMethod<bool>('startMicRecording', {
         'sessionId':    sessionId,
         'uploadUrl':    uploadUrl,
         'authToken':    'Bearer $token',
         'chunkSeconds': chunkSeconds,
-        // Pass the current chunk index so the native side picks up from
-        // where we left off after a re-configure (e.g. reconnect).
         'chunkIndex':   0,
       });
 
       if (ok == true) {
-        // iOS: 'screenLoopStarted' is emitted from within startMicRecording
-        //      (after AVAudioEngine starts). Timeout is generous to handle
-        //      slow devices.
-        //
-        // Android: 'screenLoopStarted' arrives LATER — after the teacher
-        //      approves the MediaProjection dialog and the FGS actually
-        //      starts recording. Here we wait up to 30 s; the dialog itself
-        //      is shown by room.dart via startScreenCaptureService.
-        await _screenLoopCompleter!.future.timeout(
-          const Duration(seconds: 30),
-          onTimeout: () =>
-              log('[REC] start: timeout waiting for screenLoopStarted — continuing'),
+        // Wait for Phase-1 'screenLoopStarted'.
+        // iOS: arrives almost immediately (emitted synchronously in the handler).
+        // Android: also immediate (params stored, event emitted).
+        await _startCompleter!.future.timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => log('[REC] Phase-1 screenLoopStarted timeout'),
         );
-        _screenLoopCompleter = null;
-
-        // If the event already set _screenRecording=true (iOS fast path),
-        // state is already RecState.recording. Otherwise set it now.
-        if (_state != RecState.recording) {
-          _screenRecording = true;
-          _set(RecState.recording);
-        }
-        log('[REC] mic recording started and confirmed');
+        _startCompleter = null;
+        // State is now RecState.recording (set in _onNativeEvent).
+        log('[REC] Phase-1 complete — params stored, ready for startScreenCaptureService');
       } else {
-        _screenLoopCompleter = null;
+        _startCompleter = null;
         _setError('startMicRecording returned false');
       }
     } on PlatformException catch (e) {
-      _screenLoopCompleter = null;
+      _startCompleter = null;
       _setError('Recording failed: ${e.message}');
     } catch (e, st) {
-      _screenLoopCompleter = null;
+      _startCompleter = null;
       log('[REC] _startRecording error: $e\n$st');
       _setError('Recording failed: $e');
     }
@@ -370,7 +358,6 @@ class ClientRecorder extends ChangeNotifier {
   Future<void> _stopMobile({required bool isFinal}) async {
     try {
       await _recChannel.invokeMethod('stopRecording', {'isFinal': isFinal});
-      log('[REC] Mobile: stop requested isFinal=$isFinal');
     } catch (e) {
       log('[REC] Mobile stop error: $e');
     }
@@ -384,25 +371,32 @@ class ClientRecorder extends ChangeNotifier {
 
     switch (type) {
       case 'screenLoopStarted':
-        log('[REC] screenLoopStarted — chunk loop active');
-        if (_screenLoopCompleter?.isCompleted == false) {
-          _screenLoopCompleter!.complete();
+        log('[REC] screenLoopStarted received');
+        // Phase-1 completer: resolves start()
+        if (_startCompleter != null && !_startCompleter!.isCompleted) {
+          _startCompleter!.complete();
+          // Set recording state immediately on Phase-1.
+          _screenRecording = true;
+          if (_state == RecState.starting) _set(RecState.recording);
+          notifyListeners();
+          return; // Phase-1 event consumed
         }
-        // Set state immediately so room.dart does not need to wait for
-        // the timeout branch.
+        // Phase-2 completer: resolves upgradeToScreenRecording()
+        // This fires when RPScreenRecorder's startCapture completion handler runs.
+        if (_upgradeCompleter != null && !_upgradeCompleter!.isCompleted) {
+          _upgradeCompleter!.complete();
+        }
         _screenRecording = true;
-        if (_state == RecState.starting) _set(RecState.recording);
+        if (_state != RecState.recording) _set(RecState.recording);
         notifyListeners();
 
       case 'micReadyForShare':
-        log('[REC] micReadyForShare');
         if (_micReadyForShareCompleter?.isCompleted == false) {
           _micReadyForShareCompleter!.complete();
         }
         _micReadyForShareCompleter = null;
 
       case 'micLoopStarted':
-        log('[REC] micLoopStarted');
         if (_micLoopStartedCompleter?.isCompleted == false) {
           _micLoopStartedCompleter!.complete();
         }
@@ -421,29 +415,16 @@ class ClientRecorder extends ChangeNotifier {
         }
 
       case 'recordingPaused':
-        log('[REC] recordingPaused');
         _applyPaused();
-        if (_pauseCompleter?.isCompleted == false) {
-          _pauseCompleter!.complete();
-        }
+        if (_pauseCompleter?.isCompleted == false) _pauseCompleter!.complete();
 
       case 'recordingResumed':
-        log('[REC] recordingResumed');
         _applyResumed();
-        if (_resumeCompleter?.isCompleted == false) {
-          _resumeCompleter!.complete();
-        }
+        if (_resumeCompleter?.isCompleted == false) _resumeCompleter!.complete();
 
-    // iOS-only events — no action needed in Dart beyond logging.
       case 'broadcastFrame':
-      // Video frames from the broadcast extension are forwarded to LiveKit
-      // by AppDelegate natively. Dart just acknowledges the event.
-        break;
-
       case 'broadcastStopped':
-        log('[REC] broadcastStopped — iOS screen share ended');
-        // Handled by RoomScreenShareMixin._broadcastEventSub.
-        break;
+        break; // handled by RoomScreenShareMixin
 
       default:
         log('[REC] unknown event: $type');
@@ -452,27 +433,24 @@ class ClientRecorder extends ChangeNotifier {
 
   void _onNativeError(dynamic error) {
     log('[REC] Native error: $error');
-    if (_screenLoopCompleter?.isCompleted == false)
-      _screenLoopCompleter!.completeError(error ?? 'native error');
-    if (_micReadyForShareCompleter?.isCompleted == false)
-      _micReadyForShareCompleter!.completeError(error ?? 'native error');
-    if (_micLoopStartedCompleter?.isCompleted == false)
-      _micLoopStartedCompleter!.completeError(error ?? 'native error');
-    if (_pauseCompleter?.isCompleted == false)
-      _pauseCompleter!.completeError(error ?? 'native error');
-    if (_resumeCompleter?.isCompleted == false)
-      _resumeCompleter!.completeError(error ?? 'native error');
-    if (!_stopping) {
-      _setError(error?.toString() ?? 'Native recorder error');
-    } else {
-      log('[REC] Native error during drain (non-fatal): $error');
+    void tryComplete(Completer<void>? c) {
+      if (c?.isCompleted == false) c!.completeError(error ?? 'native error');
     }
+    tryComplete(_startCompleter);
+    tryComplete(_upgradeCompleter);
+    tryComplete(_micReadyForShareCompleter);
+    tryComplete(_micLoopStartedCompleter);
+    tryComplete(_pauseCompleter);
+    tryComplete(_resumeCompleter);
+    if (!_stopping) _setError(error?.toString() ?? 'Native recorder error');
   }
 
   // ── Internal helpers ──────────────────────────────────────────────────────
 
-  void _applyPaused()  { _isPaused = true;  _set(RecState.paused);     }
-  void _applyResumed() { _isPaused = false; _set(RecState.recording);  }
+  void _applyPaused()  { _isPaused = true;  _set(RecState.paused);    }
+  void _applyResumed() { _isPaused = false; _set(RecState.recording); }
   void _set(RecState s) { _state = s; notifyListeners(); }
-  void _setError(String m) { _lastError = m; _state = RecState.error; notifyListeners(); }
+  void _setError(String m) {
+    _lastError = m; _state = RecState.error; notifyListeners();
+  }
 }

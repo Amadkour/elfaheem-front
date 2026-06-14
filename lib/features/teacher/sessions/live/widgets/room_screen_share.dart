@@ -1,25 +1,24 @@
-// room_screen_share.dart
+// room_screen_share.dart — Standard MediaProjection screen share flow
 //
-// iOS screen share flow (fixed):
-//   START: showBroadcastPicker → system sheet → user taps "Start Broadcast"
-//          The RPBroadcastUploadExtension (SampleHandler.swift) starts and
-//          sends frames via CFMessagePort to AppDelegate.
-//          We do NOT call setScreenShareEnabled(true) on LiveKit — that would
-//          request a second AVAudioSession/MediaProjection and fight our
-//          AVAudioEngine mic recording.
-//          Instead, AppDelegate forwards video frames as 'broadcastFrame'
-//          events. The mic audio continues from AVAudioEngine uninterrupted.
+// Screen share on Android uses flutter_webrtc's own MediaProjection token
+// (its dialog appears when the teacher taps the Share Screen button).
+// Our ScreenCaptureService holds a separate token for continuous recording —
+// both coexist without conflict.
 //
-//   STOP:  stopBroadcast → AppDelegate closes the CFMessagePort IPC.
-//          The extension's broadcastFinished() fires automatically.
+// START sharing:
+//   1. promoteForShare() — no-op; flutter_webrtc manages its own FGS type.
+//   2. _stopScreenForShare() — tells native to emit micReadyForShare so the
+//      recording's chunk boundary is clean before the share begins.
+//   3. setScreenShareEnabled(true) — flutter_webrtc shows ITS OWN dialog
+//      and begins streaming the screen to live participants.
+//   4. After sharing, upgradeToScreenRecording() re-confirms recording is live.
 //
-// Android screen share flow (UNCHANGED):
-//   flutter_webrtc's own MediaProjection token handles the screen stream.
-//   Our ScreenCaptureService holds a separate token for chunk recording.
+// STOP sharing:
+//   1. setScreenShareEnabled(false)
+//   2. _stopShareAndReUpgrade() — waits for micLoopStarted, then re-confirms.
 
 import 'dart:async';
 import 'dart:developer';
-import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -72,21 +71,26 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
       bool isSharing,
       ) async {
     if (!isSharing) {
+      // ── START screen share ────────────────────────────────────────────────
       try {
         if (!local.isMicrophoneEnabled()) {
           await local.setMicrophoneEnabled(true);
           await Future.delayed(const Duration(milliseconds: 200));
         }
 
+        // Step 1: promoteForShare — no-op on our side; unblocks any Dart waiter.
         try {
           await _recChannel.invokeMethod<void>('promoteForShare');
         } catch (e) {
           log('[SS] promoteForShare error (non-fatal): $e');
         }
 
+        // Step 2: Signal the recording service to emit micReadyForShare so
+        // the chunk boundary is clean before the share session begins.
         await _stopScreenForShare();
         log('[SS] Android: share preparation complete');
 
+        // Step 3: flutter_webrtc shows ITS OWN projection dialog and streams.
         await _safeNegotiate(() => local.setScreenShareEnabled(
           true,
           screenShareCaptureOptions: const ScreenShareCaptureOptions(
@@ -96,6 +100,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
         ));
         log('[SS] Android: LiveKit screen share enabled');
 
+        // Step 4: Publish screen audio track if available.
         await Future.delayed(const Duration(milliseconds: 300));
         for (final pub in local.audioTrackPublications) {
           if (pub.source == TrackSource.screenShareAudio &&
@@ -113,6 +118,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
         showSnack('Screen sharing failed: $e');
       }
     } else {
+      // ── STOP screen share ─────────────────────────────────────────────────
       try {
         await _safeNegotiate(() => local.setScreenShareEnabled(false));
         log('[SS] Android: LiveKit screen share disabled');
@@ -126,6 +132,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
 
   // ── Blocking helpers ──────────────────────────────────────────────────────
 
+  /// Signals the service to emit micReadyForShare (clean chunk boundary).
   Future<void> _stopScreenForShare() async {
     recorder?.prepareMicReadyForShareWait();
     try {
@@ -140,6 +147,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
     );
   }
 
+  /// After share ends: waits for micLoopStarted, then re-confirms recording.
   Future<void> _stopShareAndReUpgrade() async {
     recorder?.prepareMicLoopStartedWait();
     try {
@@ -206,42 +214,24 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
 
   // ── iOS ───────────────────────────────────────────────────────────────────
   //
-  // KEY DESIGN DECISIONS:
+  // iOS screen share uses RPSystemBroadcastPickerView — the same system
+  // sheet that Zoom and Google Meet use.  It lists installed Broadcast Upload
+  // Extensions; the user taps the app then "Start Broadcast".
   //
-  // 1. We do NOT call local.setScreenShareEnabled(true).
-  //    On iOS, LiveKit's setScreenShareEnabled starts an RPScreenRecorder
-  //    session which requests its own AVAudioSession reconfiguration.
-  //    This CONFLICTS with our AVAudioEngine mic recording, causing a
-  //    1-2 second audio dropout and session reset (the noisy glitch).
+  // Requires: BroadcastUploadExtension Xcode target with bundle ID
+  //   <Runner bundle id>.BroadcastUploadExtension
   //
-  // 2. Instead, showBroadcastPicker triggers RPSystemBroadcastPickerView.
-  //    This shows the system sheet WITHOUT touching the local AVAudioSession.
-  //    The broadcast extension runs in a SEPARATE PROCESS and sends frames
-  //    via CFMessagePort IPC to AppDelegate, which re-emits them as events.
-  //    Our AVAudioEngine keeps recording mic audio without interruption.
-  //
-  // 3. The "screen share" indicator in LiveKit participant tracks will NOT
-  //    show a local screen share track (because we never published one).
-  //    If you need remote participants to see the screen, you would need to
-  //    forward the CFMessagePort frames to a custom VideoSource and publish
-  //    that. For pure recording purposes (the primary use case here), this
-  //    is not needed — the recorded chunks already include audio only, and
-  //    the screen content is captured by the broadcast extension separately.
-  //    If you DO need remote screen share on iOS, set _publishScreenOnIOS = true.
-  //
-  // 4. _broadcastEventSub listens for 'broadcastStopped' so we can update
-  //    the UI if the user ends the broadcast from Control Centre.
+  // Flow:
+  //   START: showBroadcastPicker → system sheet → user confirms → extension runs
+  //          We listen on the rec_events channel for "broadcastStopped" to know
+  //          when the user ends the broadcast from Control Centre.
+  //   STOP:  stopBroadcast → closes CFMessagePort IPC → extension finishes
 
   static const _ssChannel = MethodChannel(
     'com.example.flutter_education_app/screen_share',
   );
 
   StreamSubscription<dynamic>? _broadcastEventSub;
-
-  // Set to true if you want to ALSO publish a LiveKit screen share track on iOS.
-  // This will cause a brief audio session reconfiguration (~300 ms delay) but
-  // remote participants will see the screen. Defaults to false for clean audio.
-  static const bool _publishScreenOnIOS = false;
 
   Future<void> _toggleScreenShareIOS(
       LocalParticipant local,
@@ -253,48 +243,27 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
     }
 
     if (!isSharing) {
-      // ── START: show the iOS system broadcast picker ───────────────────────
+      // ── START: show the native iOS system broadcast picker ────────────────
       try {
-        // Subscribe for 'broadcastStopped' BEFORE showing the picker, so we
-        // don't miss the event if the user cancels immediately.
+        // Listen for broadcastStopped so we can clean up if the user ends
+        // the broadcast from Control Centre instead of the in-app button.
         _broadcastEventSub?.cancel();
         _broadcastEventSub = const EventChannel(
           'com.example.flutter_education_app/rec_events',
-        ).receiveBroadcastStream().listen((event) async {
+        ).receiveBroadcastStream().listen((event) {
           if (event is Map && event['event'] == 'broadcastStopped') {
-            log('[SS] iOS: broadcastStopped — cleaning up');
+            log('[SS] iOS: broadcastStopped event received — cleaning up');
             _broadcastEventSub?.cancel();
             _broadcastEventSub = null;
-            // If we published a LiveKit screen share track, stop it.
-            if (_publishScreenOnIOS && local.isScreenShareEnabled()) {
-              await _safeNegotiate(() => local.setScreenShareEnabled(false));
-            }
+            // Update UI state by calling stop path without re-invoking native.
+            _safeNegotiate(() => local.setScreenShareEnabled(false));
           }
         });
 
-        // showBroadcastPicker:
-        //   • Registers the CFMessagePort IPC receiver in AppDelegate
-        //   • Programmatically taps RPSystemBroadcastPickerView
-        //   • System sheet appears — user selects app and taps "Start Broadcast"
-        //   • SampleHandler.broadcastStarted() fires in the extension process
-        //   • Frames flow via CFMessagePort → AppDelegate → 'broadcastFrame' events
+        // showBroadcastPicker registers the CFMessagePort then programmatically
+        // taps RPSystemBroadcastPickerView — the system sheet appears.
         await _ssChannel.invokeMethod<void>('showBroadcastPicker');
-        log('[SS] iOS: broadcast picker shown — mic recording continues uninterrupted');
-
-        // Optional: also publish a LiveKit screen share track.
-        // Only do this if _publishScreenOnIOS is true AND we accepted the risk
-        // of a brief audio reconfiguration delay.
-        if (_publishScreenOnIOS) {
-          await Future.delayed(const Duration(milliseconds: 500));
-          await _safeNegotiate(() => local.setScreenShareEnabled(
-            true,
-            screenShareCaptureOptions: const ScreenShareCaptureOptions(
-              captureScreenAudio: false, // audio is handled by AVAudioEngine
-              maxFrameRate: 15,
-            ),
-          ));
-          log('[SS] iOS: LiveKit screen share track published');
-        }
+        log('[SS] iOS: broadcast picker shown');
       } catch (e) {
         log('[SS] iOS start error: $e');
         showSnack('Screen sharing failed: $e');
@@ -303,29 +272,16 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
       // ── STOP ─────────────────────────────────────────────────────────────
       _broadcastEventSub?.cancel();
       _broadcastEventSub = null;
-
-      // Stop LiveKit screen share track if we published one.
-      if (_publishScreenOnIOS && local.isScreenShareEnabled()) {
-        try {
-          await _safeNegotiate(() => local.setScreenShareEnabled(false));
-          log('[SS] iOS: LiveKit screen share track stopped');
-        } catch (e) {
-          log('[SS] iOS stop setScreenShareEnabled: $e');
-        }
-      }
-
       try {
-        // Closing the IPC port causes broadcastFinished() in the extension,
-        // which stops the system-level broadcast automatically.
         await _ssChannel.invokeMethod<void>('stopBroadcast');
-        log('[SS] iOS: broadcast IPC port closed');
+        log('[SS] iOS: broadcast stopped');
       } catch (e) {
         log('[SS] iOS stop error: $e');
       }
     }
   }
 
-  /// Call from the widget's dispose() to clean up the broadcast subscription.
+  /// Clean up broadcast subscription when the widget is disposed.
   void disposeBroadcastSub() {
     _broadcastEventSub?.cancel();
     _broadcastEventSub = null;
@@ -378,19 +334,19 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// RecordingStatusBanner (unchanged)
+// RecordingStatusBanner
 // ─────────────────────────────────────────────────────────────────────────────
 class RecordingStatusBanner extends StatefulWidget {
   const RecordingStatusBanner({
     super.key,
     required this.isScreenRecording,
     required this.isSharing,
-    this.isPaused = false,
+    this.isPaused = false,   // NEW
   });
 
   final bool isScreenRecording;
   final bool isSharing;
-  final bool isPaused;
+  final bool isPaused;  // NEW
 
   @override
   State<RecordingStatusBanner> createState() => _RecordingStatusBannerState();
@@ -420,6 +376,8 @@ class _RecordingStatusBannerState extends State<RecordingStatusBanner>
 
   @override
   Widget build(BuildContext context) {
+    // ── colour / icon logic ──────────────────────────────────────────────────
+    // Priority: paused > audio-only (starting) > screen+video active
     final Color dotColor;
     final Color borderColor;
     final Color shadowColor;
@@ -442,18 +400,18 @@ class _RecordingStatusBannerState extends State<RecordingStatusBanner>
       shadowColor = const Color(0xFF22C55E).withValues(alpha: 0.12);
       iconColor   = const Color(0xFF22C55E);
       icon        = Icons.videocam;
-      title       = 'Recording — Audio';
+      title       = 'Recording — Video + Audio';
       subtitle    = widget.isSharing
-          ? 'Screen shared · Mic recording active'
-          : 'Mic recording active';
+          ? 'Capturing session with shared screen'
+          : 'Capturing session video and audio';
     } else {
       dotColor    = const Color(0xFFF59E0B);
       borderColor = const Color(0xFFF59E0B).withValues(alpha: 0.45);
       shadowColor = const Color(0xFFF59E0B).withValues(alpha: 0.12);
       iconColor   = const Color(0xFFF59E0B);
       icon        = Icons.mic;
-      title       = 'Recording — Starting…';
-      subtitle    = 'Configuring microphone';
+      title       = 'Recording — Audio Only';
+      subtitle    = 'Starting recorder…';
     }
 
     return Container(
@@ -470,6 +428,7 @@ class _RecordingStatusBannerState extends State<RecordingStatusBanner>
           AnimatedBuilder(
             animation: _pulse,
             builder: (_, __) => Opacity(
+              // Paused: solid dot (no pulse). Active: pulsing dot.
               opacity: widget.isPaused ? 1.0 : _opacity.value,
               child: Container(
                 width: 10, height: 10,
