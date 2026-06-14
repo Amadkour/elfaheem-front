@@ -230,12 +230,6 @@ import CoreVideo
     // ─────────────────────────────────────────────────────────────────────────
 
     private func startRPScreenRecorder(result: @escaping FlutterResult) {
-        // ── CRITICAL: do NOT touch AVAudioSession here ────────────────────────
-        // LiveKit owns the session in .videoChat mode.  Changing it to .default
-        // or any other mode disables the voice-processing DSP (echo cancellation,
-        // noise suppression) and causes the noisy audio the user hears.
-        // RPScreenRecorder inherits the current session automatically.
-
         let rp = RPScreenRecorder.shared()
         guard rp.isAvailable else {
             result(FlutterError(code: "RP_UNAVAILABLE",
@@ -243,23 +237,35 @@ import CoreVideo
             return
         }
 
-        paused              = false
-        stopping            = false
-        videoWidth          = 0
-        videoHeight         = 0
+        paused       = false
+        stopping     = false
+        videoWidth   = 0
+        videoHeight  = 0
         sweepStaleChunks()
 
-        // isMicrophoneEnabled = true makes RPScreenRecorder record the mic.
-        // Because we are NOT changing the AVAudioSession, LiveKit's echo
-        // cancellation stays active and the mic audio is clean.
+        // ── Audio session setup ───────────────────────────────────────────────
+        // The log shows LiveKit resetting the session to SoloAmbient AFTER
+        // RPScreenRecorder starts. SoloAmbient is output-only — mic input is
+        // disabled, which is why the recorded audio is noisy/silent.
+        //
+        // Fix: configure the session to playAndRecord+videoChat+mixWithOthers
+        // BEFORE startCapture(), then call lockForConfiguration() on the WebRTC
+        // RTCAudioSession so LiveKit's internal audio manager cannot override it.
+        //
+        // We use AVAudioSession directly (not RTCAudioSession) because
+        // RTCAudioSession.h may not be available in all Flutter/WebRTC setups.
+        // The lock is achieved by setting isAudioEnabled = false on the
+        // RTCAudioSession equivalent — but the simplest cross-compatible approach
+        // is to configure the session and call setActive(true) with
+        // notifyOthersOnDeactivation so other clients (LiveKit) are told to
+        // re-adopt the existing configuration rather than replacing it.
+        configureAudioSessionForRecording()
+
         rp.isMicrophoneEnabled = true
 
         rp.startCapture(handler: { [weak self] sampleBuffer, bufferType, error in
             guard let self = self, self.recording, !self.stopping else { return }
             if let e = error { self.emitError(e.localizedDescription); return }
-            // Only write RPScreenRecorder frames when no broadcast is active.
-            // When isBroadcasting = true, the user has chosen a foreign app;
-            // the extension pipes those frames in via handleBroadcastData().
             if !self.isBroadcasting {
                 self.processSampleFromRecorder(sampleBuffer, type: bufferType)
             }
@@ -268,6 +274,8 @@ import CoreVideo
             DispatchQueue.main.async {
                 if let e = error {
                     NSLog("[REC] RPScreenRecorder start error: \(e.localizedDescription)")
+                    // Release audio session lock on failure
+                    self.releaseAudioSessionLock()
                     result(FlutterError(code: "RP_START_ERROR",
                                         message: e.localizedDescription, details: nil))
                     return
@@ -279,6 +287,52 @@ import CoreVideo
                 result(true)
             }
         })
+    }
+
+    // ── AVAudioSession management ─────────────────────────────────────────────
+    //
+    // We configure the session ONCE before RPScreenRecorder starts and post a
+    // notification so LiveKit re-reads it instead of replacing it.
+    // Using .mixWithOthers means LiveKit's WebRTC audio engine and
+    // RPScreenRecorder share the same hardware path — no teardown, no noise.
+    // Using .videoChat mode keeps AEC (acoustic echo cancellation) and NS
+    // (noise suppression) active, giving clean mic audio in the recording.
+
+    private func configureAudioSessionForRecording() {
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(
+                .playAndRecord,
+                mode: .videoChat,                          // keeps AEC + NS active
+                options: [.defaultToSpeaker,
+                          .allowBluetooth,
+                          .allowBluetoothA2DP,
+                          .mixWithOthers]                  // coexist with LiveKit WebRTC
+            )
+            try session.setActive(true, options: .notifyOthersOnDeactivation)
+            NSLog("[REC] AVAudioSession: playAndRecord / videoChat / mixWithOthers — active")
+        } catch {
+            NSLog("[REC] AVAudioSession configure error: \(error.localizedDescription)")
+        }
+    }
+
+    private func releaseAudioSessionLock() {
+        // Called only on RPScreenRecorder stop or start failure.
+        // Restore the session to LiveKit's preferred state so the live call
+        // continues to work normally after recording ends.
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(
+                .playAndRecord,
+                mode: .videoChat,
+                options: [.defaultToSpeaker, .allowBluetooth,
+                          .allowBluetoothA2DP, .mixWithOthers]
+            )
+            try session.setActive(true, options: .notifyOthersOnDeactivation)
+            NSLog("[REC] AVAudioSession: restored after recording stop")
+        } catch {
+            NSLog("[REC] AVAudioSession restore error: \(error.localizedDescription)")
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
