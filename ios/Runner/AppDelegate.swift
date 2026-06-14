@@ -370,16 +370,18 @@ import CoreVideo
                 decodeTimeStamp:        .invalid
             )
 
-            guard let fmtDesc = CMVideoFormatDescription.init(pixelBuffer: pixelBuffer)
-                                 .flatMap({ Optional($0) }) ??
-                                 (try? CMVideoFormatDescription(imageBuffer: pixelBuffer))
-            else { return }
+            var fmtDesc: CMVideoFormatDescription?
+            guard CMVideoFormatDescriptionCreateForImageBuffer(
+                allocator:              kCFAllocatorDefault,
+                imageBuffer:            pixelBuffer,
+                formatDescriptionOut:   &fmtDesc
+            ) == noErr, fmtDesc != nil else { return }
 
             var sampleBuffer: CMSampleBuffer?
             guard CMSampleBufferCreateReadyWithImageBuffer(
                 allocator:              kCFAllocatorDefault,
                 imageBuffer:            pixelBuffer,
-                formatDescription:      fmtDesc,
+                formatDescription:      fmtDesc!,
                 sampleTiming:           &timingInfo,
                 sampleBufferOut:        &sampleBuffer
             ) == noErr, let sb = sampleBuffer else { return }
@@ -807,18 +809,4 @@ private class RecEventStreamHandler: NSObject, FlutterStreamHandler {
         onListen(eventSink); return nil
     }
     func onCancel(withArguments args: Any?) -> FlutterError? { onCancel(); return nil }
-}
-
-// ── CMVideoFormatDescription convenience ─────────────────────────────────────
-extension CMVideoFormatDescription {
-    init?(imageBuffer: CVImageBuffer) {
-        var desc: CMFormatDescription?
-        let status = CMVideoFormatDescriptionCreateForImageBuffer(
-            allocator: kCFAllocatorDefault,
-            imageBuffer: imageBuffer,
-            formatDescriptionOut: &desc
-        )
-        guard status == noErr, let d = desc else { return nil }
-        self = d as! CMVideoFormatDescription
-    }
 }
