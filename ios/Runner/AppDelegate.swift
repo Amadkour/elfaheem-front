@@ -1,38 +1,3 @@
-// AppDelegate.swift
-//
-// Recording architecture — two-phase:
-//
-//   Phase 1 · startMicRecording (called on room connect)
-//     ▸ Configures session params (uploadUrl, authToken, chunkSecs)
-//     ▸ Returns immediately (result: true)
-//     ▸ Does NOT start RPScreenRecorder yet — no dialog, no red pill
-//     ▸ Emits nothing — Dart will call startScreenCaptureService next
-//
-//   Phase 2 · startScreenCaptureService (called right after Phase 1)
-//     ▸ Calls RPScreenRecorder.startCapture(...)
-//     ▸ iOS shows the microphone-permission dialog HERE (first use only)
-//       and the red-pill indicator — this is expected and correct
-//     ▸ On success: begins AVAssetWriter chunk loop, emits "screenLoopStarted"
-//     ▸ Chunks are full MP4 (H.264 video + AAC audio) — no black screen
-//
-//   Screen share (separate concern):
-//     ▸ showBroadcastPicker → RPSystemBroadcastPickerView for LiveKit share
-//     ▸ Recording continues uninterrupted (RPScreenRecorder keeps running)
-//     ▸ SampleHandler sends frames to LiveKit via CFMessagePort IPC
-//
-// WHY NOT AVAudioEngine:
-//   AVAudioEngine captures mic audio only — produces audio-only .caf files
-//   with no video track, causing the black-screen symptom. RPScreenRecorder
-//   is the correct iOS API for screen+audio recording.
-//
-// PERMISSION TIMING:
-//   The microphone permission dialog appears the FIRST TIME startCapture()
-//   is called. On subsequent launches it does not appear. The red-pill
-//   "screen recording" indicator appears whenever RPScreenRecorder is
-//   actively capturing — this is an iOS system requirement and cannot be
-//   suppressed for recording. For screen-share-only (not recording), the
-//   broadcast extension approach avoids the red pill.
-
 import Flutter
 import UIKit
 import Firebase
@@ -50,7 +15,7 @@ import AVFoundation
     // ── EventChannel sink ─────────────────────────────────────────────────────
     private var eventSink: FlutterEventSink?
 
-    // ── Flutter engine ────────────────────────────────────────────────────────
+    // ── Flutter engine (owned here so it outlives the VC) ────────────────────
     private var flutterEngine: FlutterEngine?
 
     // ── AVAssetWriter (one per chunk) ─────────────────────────────────────────
@@ -58,30 +23,29 @@ import AVFoundation
     private var videoInput:  AVAssetWriterInput?
     private var audioInput:  AVAssetWriterInput?
 
-    // ── Session params (set by startMicRecording, used by startScreenCaptureService) ──
+    // ── Session params ────────────────────────────────────────────────────────
     private var sessionId: Int    = 0
     private var uploadUrl: String = ""
     private var authToken: String = ""
     private var chunkSecs: Int    = 5
 
     // ── Chunk loop state ──────────────────────────────────────────────────────
-    private var chunkIndex:  Int   = 0
-    private var chunkTimer:  Timer?
-    private var currentFile: URL?
-    private var recording    = false   // true while RPScreenRecorder is capturing
-    private var paused       = false
-    private var stopping     = false
-
-    // ── First video sample flag ───────────────────────────────────────────────
-    // RPScreenRecorder may deliver a few audio samples before the first video
-    // frame. We must not start the AVAssetWriter session until we have a valid
-    // video timestamp, otherwise the writer fails with "sample out of order".
+    private var chunkIndex:        Int   = 0
+    private var chunkTimer:        Timer?
+    private var currentFile:       URL?
+    private var recording          = false
+    private var paused             = false
+    private var stopping           = false
+    // Set to true once writer.startSession(atSourceTime:) has been called for
+    // the current chunk. Reset to false in beginChunkWriter() each rotation.
     private var writerSessionStarted = false
-    private var firstVideoTimestamp: CMTime = .invalid
 
-    // ── iOS Broadcast Extension IPC ───────────────────────────────────────────
+    // ── iOS Broadcast Extension share state ───────────────────────────────────
+    // The extension process sends sample buffers over CFMessagePort IPC.
+    // We publish them to LiveKit participants via a Flutter MethodChannel event.
     private let kBroadcastPortName = "com.example.flutter_education_app.broadcast"
     private var broadcastPort: CFMessagePort?
+    private var broadcastShareChannel: FlutterMethodChannel?
     private var isBroadcasting = false
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -94,22 +58,37 @@ import AVFoundation
     ) -> Bool {
         FirebaseApp.configure()
 
+        // 1. Create and run the Flutter engine explicitly.
+        //    This gives us a messenger that is guaranteed ready — no window
+        //    lookup needed, no timing race with rootViewController assignment.
         let engine = FlutterEngine(name: "main_engine")
         engine.run()
         flutterEngine = engine
 
+        // 2. Register all Flutter plugins (shared_preferences, etc.) against
+        //    this engine BEFORE the FlutterViewController is presented.
+        //    This is the correct place — matches what the default AppDelegate
+        //    template does when it calls super.application(...).
         GeneratedPluginRegistrant.register(with: engine)
 
+        // 3. Register our custom channels against the same engine messenger.
+        //    The messenger is live the moment engine.run() returns.
         registerScreenShareChannel(messenger: engine.binaryMessenger)
         registerRecorderChannel(messenger: engine.binaryMessenger)
         registerEventChannel(messenger: engine.binaryMessenger)
 
+        // 4. Create the root view controller from our running engine and
+        //    attach it to the window — exactly as Flutter's template does.
         let vc = FlutterViewController(engine: engine, nibName: nil, bundle: nil)
         window = UIWindow(frame: UIScreen.main.bounds)
         window?.rootViewController = vc
         window?.makeKeyAndVisible()
 
         return true
+        // Note: we do NOT call super.application(...) here because super's
+        // implementation creates its own engine and its own VC, which would
+        // conflict with ours. Returning true directly is correct when you
+        // own the engine lifecycle yourself.
     }
 
     override func application(
@@ -132,9 +111,6 @@ import AVFoundation
             switch call.method {
 
             case "startScreenCaptureService":
-                // Phase 2: start RPScreenRecorder.
-                // Called from room.dart immediately after the room connects
-                // and startMicRecording has configured session params.
                 guard !self.recording else {
                     NSLog("[REC] startScreenCaptureService: already recording — skip")
                     result(true); return
@@ -150,9 +126,6 @@ import AVFoundation
                 result(nil)
 
             case "showBroadcastPicker":
-                // Called when teacher taps "Share Screen".
-                // RPScreenRecorder keeps recording; we just open the
-                // broadcast picker for the LiveKit screen-share stream.
                 self.showBroadcastPicker(result: result)
 
             case "stopBroadcast":
@@ -171,9 +144,6 @@ import AVFoundation
             switch call.method {
 
             case "startMicRecording":
-                // Phase 1: store session params. No RPScreenRecorder yet.
-                // Returns immediately so room.dart can proceed to show the
-                // room UI and then call startScreenCaptureService.
                 guard let args = call.arguments as? [String: Any] else {
                     result(FlutterError(code: "BAD_ARGS", message: "Expected map", details: nil))
                     return
@@ -183,24 +153,16 @@ import AVFoundation
                 self.authToken  = args["authToken"]    as? String ?? ""
                 self.chunkSecs  = args["chunkSeconds"] as? Int    ?? 5
                 self.chunkIndex = args["chunkIndex"]   as? Int    ?? 0
-                NSLog("[REC] startMicRecording: session=\(self.sessionId) configured — waiting for startScreenCaptureService")
-                // Emit screenLoopStarted immediately so Dart's _startRecording()
-                // completer resolves without waiting for Phase 2.
-                // The actual recording loop starts in startScreenCaptureService.
-                self.emitEvent(["event": "screenLoopStarted"])
+                NSLog("[REC] startMicRecording: session=\(self.sessionId) chunkSecs=\(self.chunkSecs)")
                 result(true)
 
             case "upgradeToScreenRecording":
-                // Called from room.dart after startScreenCaptureService returns.
-                // On iOS, recording is already running at this point.
-                if self.recording {
-                    self.emitEvent(["event": "screenLoopStarted"])
-                    result(true)
-                } else {
-                    // startScreenCaptureService not done yet — emit when it finishes.
-                    // Safe: room.dart waits on the event, not this return value.
-                    result(true)
+                guard self.recording else {
+                    NSLog("[REC] upgradeToScreenRecording: not recording")
+                    result(false); return
                 }
+                self.emitEvent(["event": "screenLoopStarted"])
+                result(true)
 
             case "downgradeToMicForShare":
                 NSLog("[REC] downgradeToMicForShare")
@@ -244,16 +206,7 @@ import AVFoundation
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // MARK: - Phase 2: RPScreenRecorder capture
-    //
-    // This is the correct iOS API for recording screen + mic audio together
-    // into a proper MP4 with both video and audio tracks.
-    //
-    // The system microphone permission dialog (if not yet granted) and the
-    // red-pill recording indicator appear here — this is iOS-enforced and
-    // cannot be avoided when using RPScreenRecorder. The dialog is shown
-    // at the right time: after the room is connected and the teacher is
-    // already in the session, not at app launch.
+    // MARK: - Phase 2: startScreenCaptureService
     // ─────────────────────────────────────────────────────────────────────────
 
     private func startScreenCaptureService(result: @escaping FlutterResult) {
@@ -262,18 +215,14 @@ import AVFoundation
         let rp = RPScreenRecorder.shared()
         guard rp.isAvailable else {
             result(FlutterError(code: "RP_UNAVAILABLE",
-                                message: "RPScreenRecorder not available", details: nil))
+                                message: "RPScreenRecorder is not available on this device",
+                                details: nil))
             return
         }
 
-        paused               = false
-        stopping             = false
-        writerSessionStarted = false
-        firstVideoTimestamp  = .invalid
+        paused   = false
+        stopping = false
         sweepStaleChunks()
-
-        // Enable mic capture. The iOS permission dialog appears here on
-        // first call if mic permission has not been granted before.
         rp.isMicrophoneEnabled = true
 
         rp.startCapture(handler: { [weak self] sampleBuffer, bufferType, error in
@@ -291,12 +240,8 @@ import AVFoundation
                 }
                 self.recording = true
                 self.beginChunkWriter()
-                // Re-emit screenLoopStarted now that the capture loop is
-                // actually running. The Dart side may already have resolved
-                // its completer from the Phase 1 emit; emitting again is safe
-                // and ensures upgradeToScreenRecording() also gets it.
                 self.emitEvent(["event": "screenLoopStarted"])
-                NSLog("[REC] RPScreenRecorder capture started — chunk #\(self.chunkIndex)")
+                NSLog("[REC] capture started at chunk #\(self.chunkIndex)")
                 result(true)
             }
         }
@@ -309,13 +254,23 @@ import AVFoundation
     private func configureAudioSessionForRecording() {
         let session = AVAudioSession.sharedInstance()
         do {
-            // .playAndRecord with .mixWithOthers lets LiveKit's audio and
-            // RPScreenRecorder's mic capture coexist without session conflicts.
-            try session.setCategory(.playAndRecord, mode: .default,
-                                    options: [.defaultToSpeaker, .allowBluetooth,
-                                              .allowBluetoothA2DP, .mixWithOthers])
+            // CRITICAL — .mixWithOthers prevents the noise burst:
+            // Without it, RPScreenRecorder.startCapture() interrupts LiveKit's
+            // existing .videoChat session, forcing the OS to tear down and
+            // rebuild the audio graph. That teardown produces the ~1 s noise
+            // burst / echo heard at the start of recording.
+            //
+            // Using .videoChat mode (same as LiveKit) + .mixWithOthers means
+            // both stacks share the same hardware path with no interruption.
+            // Echo cancellation and noise suppression stay active because
+            // .videoChat mode keeps them enabled even with .mixWithOthers.
+            try session.setCategory(.playAndRecord, mode: .videoChat,
+                                    options: [.defaultToSpeaker,
+                                              .allowBluetooth,
+                                              .allowBluetoothA2DP,
+                                              .mixWithOthers])
             try session.setActive(true, options: .notifyOthersOnDeactivation)
-            NSLog("[REC] AVAudioSession configured for recording")
+            NSLog("[REC] AVAudioSession configured: playAndRecord/videoChat/mixWithOthers")
         } catch {
             NSLog("[REC] AVAudioSession config error: \(error.localizedDescription)")
         }
@@ -334,7 +289,7 @@ import AVFoundation
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // MARK: - Chunk writer (AVAssetWriter — H.264 video + AAC audio)
+    // MARK: - Chunk writer
     // ─────────────────────────────────────────────────────────────────────────
 
     private func beginChunkWriter() {
@@ -350,40 +305,29 @@ import AVFoundation
         }
         assetWriter = writer
 
-        // ── Video settings ────────────────────────────────────────────────────
-        // Use screen native resolution scaled to a sensible recording size.
-        // 720p is a good balance between quality and file size for education.
-        let scale   = UIScreen.main.scale
-        let nativeW = Int(UIScreen.main.bounds.width  * scale)
-        let nativeH = Int(UIScreen.main.bounds.height * scale)
-        // Clamp to 720p max (1280 on the shorter side) to avoid huge files.
-        let maxShort = 720
-        let shortSide = min(nativeW, nativeH)
-        let ratio  = shortSide > maxShort ? CGFloat(maxShort) / CGFloat(shortSide) : 1.0
-        let recW   = Int(CGFloat(nativeW) * ratio) & ~1  // must be even for H.264
-        let recH   = Int(CGFloat(nativeH) * ratio) & ~1
+        let scale = UIScreen.main.scale
+        let w = Int(UIScreen.main.bounds.width  * scale)
+        let h = Int(UIScreen.main.bounds.height * scale)
 
         let vSettings: [String: Any] = [
             AVVideoCodecKey:  AVVideoCodecType.h264,
-            AVVideoWidthKey:  recW,
-            AVVideoHeightKey: recH,
+            AVVideoWidthKey:  w,
+            AVVideoHeightKey: h,
             AVVideoCompressionPropertiesKey: [
-                AVVideoAverageBitRateKey:      4_000_000,   // 4 Mbps — clear screen content
+                AVVideoAverageBitRateKey:      8_000_000,
                 AVVideoMaxKeyFrameIntervalKey: 60,
                 AVVideoProfileLevelKey:        AVVideoProfileLevelH264HighAutoLevel,
-                AVVideoAllowFrameReorderingKey: false,      // low-latency encoding
             ],
         ]
         let vi = AVAssetWriterInput(mediaType: .video, outputSettings: vSettings)
         vi.expectsMediaDataInRealTime = true
         videoInput = vi
 
-        // ── Audio settings ────────────────────────────────────────────────────
         let aSettings: [String: Any] = [
             AVFormatIDKey:         kAudioFormatMPEG4AAC,
             AVSampleRateKey:       44100,
             AVNumberOfChannelsKey: 1,
-            AVEncoderBitRateKey:   128_000,
+            AVEncoderBitRateKey:   192_000,
         ]
         let ai = AVAssetWriterInput(mediaType: .audio, outputSettings: aSettings)
         ai.expectsMediaDataInRealTime = true
@@ -392,14 +336,14 @@ import AVFoundation
         writer.add(vi)
         writer.add(ai)
         writer.startWriting()
-        // IMPORTANT: do NOT call startSession(atSourceTime:) here.
-        // We start the session on the FIRST video sample so the timestamp
-        // is correct. Starting at .zero causes "sample out of order" failures
-        // when the first real video frame has a non-zero PTS.
+        // Do NOT call startSession(atSourceTime:) here.
+        // We call it on the FIRST video sample in processSample() using the
+        // real PTS of that frame. Starting at .zero causes "sample out of
+        // order" errors when the first real frame has a non-zero PTS, which
+        // silently produces a black video track in the output file.
         writerSessionStarted = false
-        firstVideoTimestamp  = .invalid
 
-        NSLog("[REC] beginChunkWriter: chunk #\(chunkIndex) \(recW)×\(recH)")
+        NSLog("[REC] beginChunkWriter: chunk #\(chunkIndex) ready")
         scheduleChunkTimer()
     }
 
@@ -420,22 +364,6 @@ import AVFoundation
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // MARK: - Sample processing
-    //
-    // RPScreenRecorder delivers three buffer types:
-    //   .video    — CVPixelBuffer frames (the actual screen content)
-    //   .audioMic — PCM audio from the device microphone
-    //   .audioApp — PCM audio from apps (system sounds, etc.)
-    //
-    // We write video frames to the video track and mic audio to the audio
-    // track. App audio is mixed in as well for a complete recording.
-    //
-    // CRITICAL: the AVAssetWriter session must be started with the PTS of
-    // the FIRST VIDEO FRAME. Audio samples before that PTS are dropped.
-    // Starting at .zero causes the writer to fail silently (black video).
-    // ─────────────────────────────────────────────────────────────────────────
-
     private func processSample(_ sampleBuffer: CMSampleBuffer, type: RPSampleBufferType) {
         guard CMSampleBufferIsValid(sampleBuffer),
               let writer = assetWriter,
@@ -447,27 +375,26 @@ import AVFoundation
             guard CMTIME_IS_VALID(pts) else { return }
 
             if !writerSessionStarted {
-                // Start the session on the very first video frame.
-                // This anchors the timeline correctly so video and audio are in sync.
+                // Start the AVAssetWriter session anchored to the first real
+                // video frame. This is mandatory — starting at .zero and then
+                // receiving a frame with pts > 0 causes the writer to drop
+                // the sample silently, producing a black video track.
                 writer.startSession(atSourceTime: pts)
-                firstVideoTimestamp  = pts
                 writerSessionStarted = true
                 NSLog("[REC] writer session started at PTS \(CMTimeGetSeconds(pts))s")
             }
-
             if videoInput?.isReadyForMoreMediaData == true {
                 videoInput?.append(sampleBuffer)
             }
 
         case .audioMic, .audioApp:
-            // Drop audio samples that arrive before the first video frame —
-            // they would be out-of-order relative to the session start time.
+            // Drop audio samples that arrive before the writer session starts.
+            // Appending audio with a PTS earlier than the session start time
+            // causes AVAssetWriter to log "sample out of order" and skip the
+            // sample — harmless, but causes the noisy audio artifact at the
+            // very start of each chunk. Gating on writerSessionStarted
+            // eliminates those early samples cleanly.
             guard writerSessionStarted else { return }
-
-            let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
-            guard CMTIME_IS_VALID(pts),
-                  CMTimeCompare(pts, firstVideoTimestamp) >= 0 else { return }
-
             if audioInput?.isReadyForMoreMediaData == true {
                 audioInput?.append(sampleBuffer)
             }
@@ -495,7 +422,6 @@ import AVFoundation
             guard let self = self else { return }
             self.chunkIndex += 1
             self.assetWriter = nil; self.videoInput = nil; self.audioInput = nil
-            self.writerSessionStarted = false
             self.emitEvent(["event": "recordingPaused"])
             NSLog("[REC] recordingPaused at chunk #\(self.chunkIndex)")
             result(nil)
@@ -510,7 +436,6 @@ import AVFoundation
         NSLog("[REC] resumeRecording: restarting at chunk #\(chunkIndex)")
         paused = false
         writerSessionStarted = false
-        firstVideoTimestamp  = .invalid
         beginChunkWriter()
         emitEvent(["event": "recordingResumed"])
         result(nil)
@@ -549,27 +474,12 @@ import AVFoundation
         let idx = chunkIndex
         videoInput?.markAsFinished()
         audioInput?.markAsFinished()
-
         writer.finishWriting { [weak self] in
             guard let self = self else { completion(); return }
-
             if writer.status == .failed {
-                NSLog("[REC] writer failed chunk #\(idx): \(writer.error?.localizedDescription ?? "unknown")")
-                // Still call completion so the chunk loop continues.
-                DispatchQueue.main.async { completion() }
-                return
+                NSLog("[REC] writer failed chunk #\(idx): \(writer.error?.localizedDescription ?? "")")
+                completion(); return
             }
-
-            // Verify the file is non-empty before uploading.
-            let size = (try? fileURL.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0
-            if size < 1024 {
-                NSLog("[REC] chunk #\(idx) suspiciously small (\(size)B) — dropping")
-                try? FileManager.default.removeItem(at: fileURL)
-                DispatchQueue.main.async { completion() }
-                return
-            }
-
-            NSLog("[REC] finalised chunk #\(idx) (\(size)B isFinal=\(isFinal))")
             DispatchQueue.global(qos: .utility).async {
                 self.uploadChunkAsync(fileURL: fileURL, index: idx, isFinal: isFinal)
                 DispatchQueue.main.async { completion() }
@@ -656,24 +566,34 @@ import AVFoundation
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // MARK: - iOS Broadcast Extension share (showBroadcastPicker)
-    //
-    // Completely separate from the recording pipeline.
-    // RPScreenRecorder continues its chunk recording uninterrupted while
-    // the broadcast extension streams to LiveKit participants.
+    // MARK: - iOS Broadcast Extension share (Zoom/Meet style)
     // ─────────────────────────────────────────────────────────────────────────
 
+    /// Shows the native iOS system broadcast picker sheet.
+    /// The sheet lists all installed Broadcast Upload Extensions — the user
+    /// taps the app name then "Start Broadcast" and the extension begins.
     private func showBroadcastPicker(result: @escaping FlutterResult) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { result(nil); return }
 
+            // Register our CFMessagePort BEFORE the picker is shown so the
+            // extension can connect to it the moment broadcastStarted() fires.
             self.registerBroadcastPort()
 
             let picker = RPSystemBroadcastPickerView(frame: CGRect(x: 0, y: 0, width: 60, height: 60))
-            let bundleId = Bundle.main.bundleIdentifier ?? ""
-            picker.preferredExtension = "\(bundleId).BroadcastUploadExtension"
+            // Do NOT set preferredExtension here.
+            // Setting it restricts the picker to show ONLY your app's extension,
+            // hiding every other installed broadcast-capable app (YouTube, Zoom,
+            // Teams, etc.). The teacher cannot then choose which app to share FROM.
+            //
+            // Leave preferredExtension nil → iOS shows the full list of all
+            // apps that have a broadcast upload extension installed, exactly
+            // like the system Control Centre screen-recording picker does.
+            // The user taps the app they want to capture, then "Start Broadcast".
             picker.showsMicrophoneButton = false
 
+            // Programmatically trigger the picker button — this is the same
+            // trick livekit_client uses internally for the broadcast path.
             for subview in picker.subviews {
                 if let button = subview as? UIButton {
                     button.sendActions(for: .touchUpInside)
@@ -687,6 +607,7 @@ import AVFoundation
         }
     }
 
+    /// Called by Flutter when the user stops screen share.
     private func stopBroadcastShare(result: @escaping FlutterResult) {
         isBroadcasting = false
         invalidateBroadcastPort()
@@ -698,6 +619,7 @@ import AVFoundation
     // ── CFMessagePort IPC receiver ────────────────────────────────────────────
 
     private func registerBroadcastPort() {
+        // Invalidate any existing port first.
         invalidateBroadcastPort()
 
         var context = CFMessagePortContext(
@@ -710,6 +632,7 @@ import AVFoundation
             nil,
             kBroadcastPortName as CFString,
             { _, _, data, info -> Unmanaged<CFData>? in
+                // Static C callback — bridge back to Swift instance.
                 guard let info = info else { return nil }
                 let delegate = Unmanaged<AppDelegate>.fromOpaque(info).takeUnretainedValue()
                 if let data = data { delegate.handleBroadcastData(data as Data) }
@@ -724,7 +647,7 @@ import AVFoundation
             CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
             NSLog("[SHARE] CFMessagePort registered: \(kBroadcastPortName)")
         } else {
-            NSLog("[SHARE] CFMessagePort registration FAILED")
+            NSLog("[SHARE] CFMessagePort registration FAILED — port name may be in use")
         }
     }
 
@@ -735,6 +658,9 @@ import AVFoundation
         }
     }
 
+    /// Deserialises the wire format from SampleHandler and forwards to Flutter.
+    /// Wire format: [4B type][8B pts_ns][4B payload_size][payload]
+    /// Type 99 = stop signal from extension.
     private func handleBroadcastData(_ data: Data) {
         guard data.count >= 16 else { return }
 
@@ -744,6 +670,7 @@ import AVFoundation
         let payload = data.dropFirst(16).prefix(Int(paySize))
 
         if typeId == 99 {
+            // Extension sent stop signal.
             NSLog("[SHARE] Extension broadcast finished")
             isBroadcasting = false
             invalidateBroadcastPort()
@@ -751,6 +678,11 @@ import AVFoundation
             return
         }
 
+        // Forward raw frame data to Flutter via event channel so Dart can
+        // pass it to LiveKit's custom video/audio source.
+        // Only video frames (type 0) are forwarded as base64 JPEG for the
+        // LiveKit RTCVideoSource; audio (types 1,2) is handled by LiveKit
+        // automatically once the broadcast extension is active.
         if typeId == 0 {
             let base64 = payload.base64EncodedString()
             emitEvent([
