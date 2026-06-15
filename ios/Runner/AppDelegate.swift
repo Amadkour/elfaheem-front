@@ -265,24 +265,28 @@ import CoreVideo
         sweepStaleChunks()
 
         // ── Audio session setup ───────────────────────────────────────────────
-        // The log shows LiveKit resetting the session to SoloAmbient AFTER
-        // RPScreenRecorder starts. SoloAmbient is output-only — mic input is
-        // disabled, which is why the recorded audio is noisy/silent.
+        // LiveKit resets AVAudioSession to SoloAmbient (output-only) after
+        // RPScreenRecorder starts, killing mic input and causing silent/noisy
+        // audio in recordings.
         //
-        // Fix: configure the session to playAndRecord+videoChat+mixWithOthers
-        // BEFORE startCapture(), then call lockForConfiguration() on the WebRTC
-        // RTCAudioSession so LiveKit's internal audio manager cannot override it.
-        //
-        // We use AVAudioSession directly (not RTCAudioSession) because
-        // RTCAudioSession.h may not be available in all Flutter/WebRTC setups.
-        // The lock is achieved by setting isAudioEnabled = false on the
-        // RTCAudioSession equivalent — but the simplest cross-compatible approach
-        // is to configure the session and call setActive(true) with
-        // notifyOthersOnDeactivation so other clients (LiveKit) are told to
-        // re-adopt the existing configuration rather than replacing it.
+        // Strategy:
+        //   1. Configure playAndRecord+videoChat+mixWithOthers BEFORE startCapture.
+        //   2. Set recording=true BEFORE the async completion handler fires, so
+        //      stopRecording() called during startup still reaches finaliseChunk().
+        //   3. After startCapture's completion fires, re-apply the audio config
+        //      because LiveKit may have reset it during the async gap.
+        //   4. Schedule a one-shot re-arm 1 s later to catch any delayed reset.
         configureAudioSessionForRecording()
 
         rp.isMicrophoneEnabled = true
+
+        // ── Set recording=true BEFORE startCapture's async completion ────────
+        // Without this, if stopRecording() is called while startCapture is still
+        // in flight (e.g. user taps End Session quickly), the guard
+        // `guard recording else { return }` in stopRecording() exits immediately
+        // without calling finaliseChunk(), producing 0 uploaded chunks.
+        recording = true
+        beginChunkWriter()
 
         rp.startCapture(handler: { [weak self] sampleBuffer, bufferType, error in
             guard let self = self, self.recording, !self.stopping else { return }
@@ -295,14 +299,34 @@ import CoreVideo
             DispatchQueue.main.async {
                 if let e = error {
                     NSLog("[REC] RPScreenRecorder start error: \(e.localizedDescription)")
-                    // Release audio session lock on failure
+                    // Undo the optimistic recording=true so we stay consistent.
+                    self.recording  = false
+                    self.stopping   = false
+                    self.chunkTimer?.invalidate()
+                    self.chunkTimer = nil
+                    self.assetWriter = nil
+                    self.videoInput  = nil
+                    self.audioInput  = nil
+                    self.writerSessionStarted = false
                     self.releaseAudioSessionLock()
                     result(FlutterError(code: "RP_START_ERROR",
                                         message: e.localizedDescription, details: nil))
                     return
                 }
-                self.recording = true
-                self.beginChunkWriter()
+                // ── Re-arm audio session AFTER startCapture completes ────────
+                // LiveKit's RTCAudioSession may have reconfigured the session
+                // during the async gap (visible in logs as "SoloAmbient").
+                // Re-applying here ensures mic input is active when frames arrive.
+                self.configureAudioSessionForRecording()
+
+                // Schedule a delayed re-arm to catch any LiveKit reset that
+                // fires after the completion handler (observed in practice).
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                    guard let self = self, self.recording else { return }
+                    self.configureAudioSessionForRecording()
+                    NSLog("[REC] AVAudioSession: delayed re-arm applied")
+                }
+
                 self.emitEvent(["event": "screenLoopStarted"])
                 NSLog("[REC] RPScreenRecorder started — chunk #\(self.chunkIndex)")
                 result(true)
@@ -811,43 +835,26 @@ import CoreVideo
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { result(nil); return }
 
-            // Register Darwin notification listeners BEFORE the picker fires
+            // Register Darwin notification listeners BEFORE the picker appears
             // so we are ready the instant the extension's broadcastStarted() fires.
             self.registerDarwinListeners()
 
-            // ── Invisible broadcast trigger ───────────────────────────────────
-            // We create RPSystemBroadcastPickerView at a 1x1 off-screen rect
-            // and programmatically press its button WITHOUT adding it to any
-            // visible view hierarchy position.  The system still launches the
-            // broadcast extension but the picker sheet never appears to the
-            // user — Flutter shows its own toast + Stop button overlay instead.
-            //
-            // We attach the picker to the key window at alpha=0 so UIKit keeps
-            // the object alive long enough to process the touch event.
-            let picker = RPSystemBroadcastPickerView(
-                frame: CGRect(x: -500, y: -500, width: 1, height: 1))
+            let picker = RPSystemBroadcastPickerView(frame: CGRect(x: 0, y: 0, width: 60, height: 60))
+
+            // Point directly at our own extension so the system skips the
+            // full picker list and shows only our "Start Broadcast" sheet.
             picker.preferredExtension =
                 Bundle.main.bundleIdentifier.map { $0 + ".BroadcastUploadExtension" }
             picker.showsMicrophoneButton = false
-            picker.alpha = 0
 
-            if let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow }) {
-                window.addSubview(picker)
-            }
-
+            // Programmatically press the picker button to open the sheet.
             for subview in picker.subviews {
                 if let button = subview as? UIButton {
                     button.sendActions(for: .touchUpInside)
                     break
                 }
             }
-
-            // Remove after 2s once the system has processed the tap.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                picker.removeFromSuperview()
-            }
-
-            NSLog("[SHARE] showBroadcastPicker — silent tap fired, extension: \(picker.preferredExtension ?? "nil")")
+            NSLog("[SHARE] showBroadcastPicker — extension: \(picker.preferredExtension ?? "nil")")
             result(nil)
         }
     }
@@ -857,6 +864,18 @@ import CoreVideo
         removeDarwinListeners()
         emitEvent(["event": "broadcastStopped"])
         NSLog("[SHARE] broadcast stopped by app")
+        // Rotate the current chunk so the broadcast frames that were written
+        // are finalised and uploaded before RPScreenRecorder resumes.
+        // Without this the last broadcast chunk is lost if stopRecording()
+        // is called immediately after (e.g. End Session during sharing).
+        if recording && !stopping && !paused {
+            finaliseChunk(isFinal: false) { [weak self] in
+                guard let self = self, self.recording, !self.stopping, !self.paused else { return }
+                self.chunkIndex += 1
+                self.beginChunkWriter()
+                NSLog("[SHARE] broadcast chunk rotated — RPScreenRecorder resuming at chunk #\(self.chunkIndex)")
+            }
+        }
         result(nil)
     }
 
@@ -947,6 +966,15 @@ import CoreVideo
         isBroadcasting = false
         removeDarwinListeners()
         emitEvent(["event": "broadcastStopped"])
+        // Finalise broadcast chunk and resume RPScreenRecorder capture.
+        if recording && !stopping && !paused {
+            finaliseChunk(isFinal: false) { [weak self] in
+                guard let self = self, self.recording, !self.stopping, !self.paused else { return }
+                self.chunkIndex += 1
+                self.beginChunkWriter()
+                NSLog("[SHARE] Darwin stop: chunk rotated at #\(self.chunkIndex)")
+            }
+        }
     }
 
     /// Parse a frame blob and route it to the writer.

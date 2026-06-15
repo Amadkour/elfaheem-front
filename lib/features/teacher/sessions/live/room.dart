@@ -238,6 +238,18 @@ class _RoomPageState extends State<RoomPage>
   @override bool get isTeacher => widget.isTeacher;
   @override void showSnack(String msg) => _showSnack(msg);
 
+  /// Show the floating Stop Share button when iOS broadcast starts.
+  @override
+  void _onIOSShareStarted() {
+    if (mounted) setState(() => _iosShareVisible = true);
+  }
+
+  /// Hide the floating Stop Share button when iOS broadcast ends.
+  @override
+  void _onIOSShareStopped() {
+    if (mounted) setState(() => _iosShareVisible = false);
+  }
+
   List<ParticipantTrack> participantTracks = [];
 
   EventsListener<RoomEvent> get _listener => widget.listener;
@@ -251,9 +263,13 @@ class _RoomPageState extends State<RoomPage>
   ClientRecorder? _recorder;
   bool _recorderStarted = false; // guard: prevents multiple start() calls
   bool _endingSession = false;     // true while awaiting final chunk before onEnd()
-  bool _iosSharing = false;         // true while iOS broadcast share is active
   bool _isPausingRecording = false; // true while pauseRecording() is in flight
   bool _isResumingRecording = false; // true while resumeRecording() is in flight
+
+  // ── iOS broadcast share UX ────────────────────────────────────────────────
+  // True while an iOS broadcast share is active. Controls the floating
+  // "Stop Share" button that appears after the picker fires.
+  bool _iosShareVisible = false;
 
   // Participant panel
   bool _showParticipants = false;
@@ -411,11 +427,6 @@ class _RoomPageState extends State<RoomPage>
           widget.room.connectionState == ConnectionState.connected) {
         await _startRecorderOnce();
       }
-
-      // Wire up the iOS sharing state callback so the Stop button appears/hides.
-      onIOSSharingChanged = (sharing) {
-        if (mounted) setState(() => _iosSharing = sharing);
-      };
     });
   }
   void _onRecorderUpdate() {
@@ -441,8 +452,6 @@ class _RoomPageState extends State<RoomPage>
       _recorder = null;
       unawaited(_drainAndDispose(rec));
     }
-    // Stop any active iOS broadcast share and drain remaining chunks.
-    disposeBroadcastSub();
     super.dispose();
   }
 
@@ -465,10 +474,9 @@ class _RoomPageState extends State<RoomPage>
     if (_endingSession) return null;
     if (mounted) setState(() => _endingSession = true);
 
-    // Stop any active iOS broadcast share before ending so chunks are drained.
-    if (_iosSharing) {
-      await stopIOSShareExplicit();
-    }
+    // Stop any active iOS broadcast share first so its final chunk is
+    // finalised and uploaded before we call stopRecordingOnly().
+    await stopIOSShareIfActive();
 
     final rec = _recorder;
     _recorder = null; // detach so dispose() never interferes
@@ -1054,13 +1062,24 @@ class _RoomPageState extends State<RoomPage>
                               ),
                             ),
 
-                            // iOS screen-share Stop button
-                            if (_iosSharing)
-                              _buildIOSStopShareButton(),
-
                             // Quiz overlay
                             if (_quizVisible && _activeQuiz != null)
                               _buildQuizOverlay(),
+
+                            // ── iOS floating Stop Share button ─────────────
+                            // Appears after broadcast share starts (no native
+                            // dialog), hidden as soon as share stops.
+                            if (_iosShareVisible && widget.isTeacher)
+                              Positioned(
+                                top: 12,
+                                left: 0,
+                                right: 0,
+                                child: Center(
+                                  child: _IOSStopShareButton(
+                                    onStop: () => stopIOSShareIfActive(),
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -1259,58 +1278,6 @@ class _RoomPageState extends State<RoomPage>
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── iOS Screen Share Stop button ─────────────────────────────────────────────
-  //
-  // Shown as a floating pill anchored to the top-centre of the video area
-  // while an iOS broadcast share is active.  Tapping it stops the share and
-  // drains any remaining recording chunks to the server.
-  Widget _buildIOSStopShareButton() {
-    return Positioned(
-      top: 14,
-      left: 0,
-      right: 0,
-      child: Center(
-        child: GestureDetector(
-          onTap: () async {
-            setState(() => _iosSharing = false);
-            await stopIOSShareExplicit();
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-            decoration: BoxDecoration(
-              color: _rose.withValues(alpha: 0.92),
-              borderRadius: BorderRadius.circular(30),
-              boxShadow: [
-                BoxShadow(
-                  color: _rose.withValues(alpha: 0.45),
-                  blurRadius: 20,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.stop_screen_share_rounded,
-                    size: 18, color: Colors.white),
-                SizedBox(width: 8),
-                Text(
-                  'إيقاف المشاركة',
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
                   ),
                 ),
               ],
@@ -3567,5 +3534,84 @@ class NotificationChannelHelper {
     } on PlatformException catch (e) {
       log('NotificationChannelHelper: ${e.message}');
     }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _IOSStopShareButton
+//
+// Floating pill shown after the iOS broadcast picker fires (instead of the
+// native system dialog).  Tapping it calls stopIOSShareIfActive() on the mixin.
+// ─────────────────────────────────────────────────────────────────────────────
+class _IOSStopShareButton extends StatefulWidget {
+  const _IOSStopShareButton({required this.onStop});
+  final VoidCallback onStop;
+
+  @override
+  State<_IOSStopShareButton> createState() => _IOSStopShareButtonState();
+}
+
+class _IOSStopShareButtonState extends State<_IOSStopShareButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse;
+  late final Animation<double>    _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 850),
+    )..repeat(reverse: true);
+    _scale = Tween<double>(begin: 1.0, end: 1.04)
+        .animate(CurvedAnimation(parent: _pulse, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _scale,
+      builder: (_, child) => Transform.scale(scale: _scale.value, child: child),
+      child: GestureDetector(
+        onTap: widget.onStop,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFF4F72),
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFF4F72).withValues(alpha: 0.45),
+                blurRadius: 18,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Icon(Icons.stop_screen_share_rounded,
+                  color: Colors.white, size: 18),
+              SizedBox(width: 8),
+              Text(
+                'إيقاف المشاركة',
+                style: TextStyle(
+                  fontFamily: 'tajawal',
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

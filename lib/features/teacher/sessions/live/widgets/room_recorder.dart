@@ -252,6 +252,10 @@ class ClientRecorder extends ChangeNotifier {
       await _webRecorder?.stop();
     } else {
       await _stopMobile(isFinal: true);
+      // DO NOT cancel _recEventSub here — we need it alive to receive the
+      // final 'chunkUploaded' event with isFinal=true that transitions to
+      // RecState.done. It is cancelled inside _onNativeEvent once that event
+      // arrives, or in dispose() if the recorder is abandoned.
     }
   }
 
@@ -272,8 +276,15 @@ class ClientRecorder extends ChangeNotifier {
 
   @override
   Future<void> dispose() async {
-    _recEventSub?.cancel();
-    _recEventSub               = null;
+    // If we are still draining (uploading state), do NOT cancel _recEventSub —
+    // it is the only way we learn that the final chunk was uploaded and can
+    // transition to RecState.done. _drainAndDispose in room.dart owns the
+    // lifecycle from here; the subscription cancels itself in _onNativeEvent
+    // once isFinal=true chunkUploaded arrives.
+    if (_state != RecState.uploading) {
+      _recEventSub?.cancel();
+      _recEventSub = null;
+    }
     _startCompleter            = null;
     _upgradeCompleter          = null;
     _micReadyForShareCompleter = null;

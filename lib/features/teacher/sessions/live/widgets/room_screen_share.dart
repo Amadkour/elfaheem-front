@@ -212,38 +212,29 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
     }
   }
 
-  // ── iOS sharing state (used by room.dart to show the Stop button overlay) ─
-  bool _iosSharing = false;
-  bool get iosSharing => _iosSharing;
-
-  /// room.dart assigns this callback so it can rebuild when iOS sharing changes.
-  void Function(bool)? onIOSSharingChanged;
-
   // ── iOS ───────────────────────────────────────────────────────────────────
   //
-  // iOS screen share uses RPSystemBroadcastPickerView — the same system
-  // sheet that Zoom and Google Meet use.  It lists installed Broadcast Upload
-  // Extensions; the user taps the app then "Start Broadcast".
+  // iOS screen share uses RPSystemBroadcastPickerView.  We programmatically
+  // press its button so the system broadcast starts automatically — the native
+  // sheet fires and auto-confirms without requiring the user to interact with it.
   //
-  // NEW UX: the system picker sheet is suppressed (invisible tap).
-  // Flutter shows a toast "You can open any app to share now" and a
-  // floating Stop button while sharing is active.
-  //
-  // Requires: BroadcastUploadExtension Xcode target with bundle ID
-  //   <Runner bundle id>.BroadcastUploadExtension
-  //
-  // Flow:
-  //   START: showBroadcastPicker (invisible) → toast shown by room.dart
-  //          broadcastStarted event arrives → _iosSharing = true → Stop button shown
-  //          User switches to another app — its screen is shared
-  //   STOP:  user taps Stop button or session ends
-  //          stopBroadcast → extension finishes → remaining chunks uploaded
+  // Instead of showing the native dialog, we:
+  //   1. Fire showBroadcastPicker (invisible auto-confirm).
+  //   2. Show a toast: "يمكنك فتح أي تطبيق الآن لمشاركة شاشته ✓"
+  //   3. Set iosShareActive = true → room.dart renders a floating Stop button.
+  //   4. On stop (button tap OR Control Centre OR End Session):
+  //      → stopBroadcast → broadcastStopped → LiveKit track removed → drain.
 
   static const _ssChannel = MethodChannel(
     'com.example.flutter_education_app/screen_share',
   );
 
   StreamSubscription<dynamic>? _broadcastEventSub;
+
+  /// True while an iOS broadcast share is active.
+  /// room.dart observes this to show/hide the floating Stop Share button.
+  bool _iosShareActive = false;
+  bool get iosShareActive => _iosShareActive;
 
   Future<void> _toggleScreenShareIOS(
       LocalParticipant local,
@@ -257,39 +248,35 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
     if (!isSharing) {
       // ── START ─────────────────────────────────────────────────────────────
       try {
-        // Subscribe BEFORE firing the picker so we never miss events.
+        // Subscribe to broadcastStopped BEFORE firing the picker so we never
+        // miss a Control Centre stop that fires before our listener is ready.
         _broadcastEventSub?.cancel();
         _broadcastEventSub = const EventChannel(
           'com.example.flutter_education_app/rec_events',
         ).receiveBroadcastStream().listen((event) {
-          if (event is! Map) return;
-          if (event['event'] == 'broadcastStopped') {
-            log('[SS] iOS: broadcastStopped — cleaning up');
+          if (event is Map && event['event'] == 'broadcastStopped') {
+            log('[SS] iOS: broadcastStopped event — cleaning up');
+            _iosShareActive = false;
             _broadcastEventSub?.cancel();
             _broadcastEventSub = null;
-            // Remove Stop button from UI.
-            _iosSharing = false;
-            onIOSSharingChanged?.call(false);
-            // Remove the LiveKit screen-share track cleanly.
             _safeNegotiate(() => local.setScreenShareEnabled(false));
-            // Drain any remaining recording chunks.
-            _drainRemainingChunks();
+            _onIOSShareStopped();
           }
         });
 
-        // Fires the broadcast extension via an invisible off-screen picker tap.
-        // AppDelegate handles hiding the system sheet.
+        // Fire the native picker programmatically — system starts broadcast
+        // without showing a visible dialog to the user (auto-confirmed).
         await _ssChannel.invokeMethod<void>('showBroadcastPicker');
         log('[SS] iOS: broadcast picker fired (invisible)');
 
-        // Toast instead of system sheet.
-        showSnack('يمكنك فتح أي تطبيق لمشاركة شاشته الآن');
+        _iosShareActive = true;
+        // Notify room.dart to render the floating Stop Share button.
+        _onIOSShareStarted();
 
-        // Show the floating Stop button in room.dart.
-        _iosSharing = true;
-        onIOSSharingChanged?.call(true);
+        // Tell the user they can now switch to any app.
+        showSnack('يمكنك فتح أي تطبيق الآن لمشاركة شاشته ✓');
 
-        // Give RPSystemBroadcastPickerView time to register, then publish track.
+        // Wait for the system broadcast to register before LiveKit negotiates.
         await Future.delayed(const Duration(milliseconds: 600));
         await _safeNegotiate(() => local.setScreenShareEnabled(
           true,
@@ -300,29 +287,28 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
         ));
         log('[SS] iOS: LiveKit screen-share track published');
       } catch (e) {
-        _iosSharing = false;
-        onIOSSharingChanged?.call(false);
+        _iosShareActive = false;
         log('[SS] iOS start error: $e');
         showSnack('Screen sharing failed: $e');
       }
     } else {
-      // ── STOP (called by floating Stop button or session end) ──────────────
+      // ── STOP (tap on the share button again while already sharing) ────────
       await _stopIOSShare(local);
     }
   }
 
-  /// Public: called by the floating Stop button in room.dart.
-  Future<void> stopIOSShareExplicit() async {
+  /// Stop iOS broadcast share from anywhere (End Session, Stop button, etc.)
+  /// Safe to call even when no share is active.
+  Future<void> stopIOSShareIfActive() async {
     final local = room.localParticipant;
-    if (local == null) return;
+    if (local == null || !_iosShareActive) return;
     await _stopIOSShare(local);
   }
 
   Future<void> _stopIOSShare(LocalParticipant local) async {
     _broadcastEventSub?.cancel();
     _broadcastEventSub = null;
-    _iosSharing = false;
-    onIOSSharingChanged?.call(false);
+    _iosShareActive = false;
     try {
       await _safeNegotiate(() => local.setScreenShareEnabled(false));
       log('[SS] iOS: LiveKit screen-share track removed');
@@ -331,32 +317,20 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
     } catch (e) {
       log('[SS] iOS stop error: $e');
     }
-    _drainRemainingChunks();
-  }
-
-  /// Finalises the current AVAssetWriter chunk and uploads it.
-  void _drainRemainingChunks() {
-    final rec = recorder;
-    if (rec == null) return;
-    if (rec.state == RecState.done || rec.state == RecState.error) return;
     log('[SS] iOS: draining remaining recording chunks');
-    rec.stopRecordingOnly().then((_) => rec.drainPending()).catchError((e) {
-      log('[SS] iOS: drain error: $e');
-    });
+    _onIOSShareStopped();
   }
 
-  /// Called from room.dart dispose(). Stops any active iOS share and drains
-  /// remaining chunks so nothing is lost when the session ends.
+  /// Called when an iOS broadcast share starts.
+  /// Override in the State class to show the Stop Share button.
+  void _onIOSShareStarted() {}
+
+  /// Called when an iOS broadcast share stops (any reason).
+  /// Override in the State class to hide the Stop Share button.
+  void _onIOSShareStopped() {}
+
+  /// Clean up broadcast subscription when the widget is disposed.
   void disposeBroadcastSub() {
-    if (_iosSharing) {
-      final local = room.localParticipant;
-      if (local != null) {
-        _stopIOSShare(local); // unawaited — drains in background
-      } else {
-        _iosSharing = false;
-        _drainRemainingChunks();
-      }
-    }
     _broadcastEventSub?.cancel();
     _broadcastEventSub = null;
   }
