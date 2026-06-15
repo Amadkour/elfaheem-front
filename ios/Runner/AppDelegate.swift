@@ -320,7 +320,15 @@ import CoreVideo
         rp.startCapture(handler: { [weak self] sampleBuffer, bufferType, error in
             guard let self = self, self.recording, !self.stopping else { return }
             if let e = error { self.emitError(e.localizedDescription); return }
-            if !self.isBroadcasting {
+            // FIX (muted audio): When broadcasting, suppress RPScreenRecorder VIDEO
+            // (the foreign app's frames come from SampleHandler instead) but keep
+            // AUDIO flowing — RPScreenRecorder is the only source of clean mic audio
+            // with LiveKit AEC/NS applied. Suppressing audio too = silent recording.
+            if bufferType == .audioMic || bufferType == .audioApp {
+                // Always write audio regardless of broadcast state.
+                self.processSampleFromRecorder(sampleBuffer, type: bufferType)
+            } else if !self.isBroadcasting {
+                // Only write RPScreenRecorder VIDEO when not broadcasting.
                 self.processSampleFromRecorder(sampleBuffer, type: bufferType)
             }
         }, completionHandler: { [weak self] error in
@@ -1057,33 +1065,54 @@ import CoreVideo
     /// typeId: 0 = video (JPEG), 1 = audioMic (PCM), 2 = audioApp (PCM)
     private func handleBroadcastData(_ data: Data) {
         guard data.count >= 16 else { return }
-        let typeId  = data.prefix(4).withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
-        let ptsNs   = data.dropFirst(4).prefix(8).withUnsafeBytes { $0.load(as: UInt64.self).bigEndian }
-        let paySize = data.dropFirst(12).prefix(4).withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+
+        // FIX (misaligned pointer crash): Use copyBytes into stack-allocated
+        // locals. Data slices from dropFirst() are not guaranteed to be
+        // naturally aligned; UInt64.load(as:) requires 8-byte alignment on arm64.
+        var typeId:  UInt32 = 0
+        var ptsNs:   UInt64 = 0
+        var paySize: UInt32 = 0
+        _ = data.copyBytes(to: UnsafeMutableBufferPointer(start: &typeId,  count: 1), from: 0..<4)
+        _ = data.copyBytes(to: UnsafeMutableBufferPointer(start: &ptsNs,   count: 1), from: 4..<12)
+        _ = data.copyBytes(to: UnsafeMutableBufferPointer(start: &paySize, count: 1), from: 12..<16)
+        typeId  = UInt32(bigEndian: typeId)
+        ptsNs   = UInt64(bigEndian: ptsNs)
+        paySize = UInt32(bigEndian: paySize)
         let payload = Data(data.dropFirst(16).prefix(Int(paySize)))
 
         switch typeId {
         case 0:
-            // Video frame (JPEG) — write into the active AVAssetWriter chunk.
+            // FIX (foreign app not recorded): On the first broadcast frame,
+            // the recording was paused by showBroadcastPicker() and the
+            // assetWriter was set to nil. We must create a new chunk writer
+            // BEFORE calling processSampleFromBroadcast, otherwise every
+            // frame hits "guard let writer = self.assetWriter" and drops.
+            //
+            // We also must NOT call processSampleFromBroadcast from ipcReadQueue
+            // while beginChunkWriter() is still setting up state on the main
+            // thread — so we dispatch to main for the writer setup and only
+            // then enqueue the frame on writerQueue.
             if !isBroadcasting {
                 isBroadcasting = true
                 NSLog("[SHARE] first broadcast frame — switching recording source")
-                // If recording was paused by showBroadcastPicker (to protect
-                // against the iOS overlay suspension window), resume it now.
-                // The extension is running, iOS has fully resumed, it's safe to write.
                 if recording && paused && !stopping {
-                    paused = false
-                    beginChunkWriter()
-                    NSLog("[SHARE] recording resumed from picker-pause — broadcast chunk #\(chunkIndex)")
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self = self else { return }
+                        self.paused = false
+                        self.beginChunkWriter()
+                        NSLog("[SHARE] chunk writer restarted for broadcast at chunk #\(self.chunkIndex)")
+                        // Now safe to write — assetWriter exists.
+                        self.processSampleFromBroadcast(jpegData: payload, ptsNs: ptsNs)
+                    }
+                    return   // processSampleFromBroadcast called above after writer ready
                 }
             }
             guard recording, !stopping, !paused else { return }
             processSampleFromBroadcast(jpegData: payload, ptsNs: ptsNs)
 
         case 1, 2:
-            // Audio from the extension.
-            // RPScreenRecorder already captures mic audio (clean, with LiveKit
-            // AEC/NS applied), so we skip the extension audio to avoid doubles.
+            // Extension audio is skipped — RPScreenRecorder captures clean mic
+            // audio continuously (even during broadcast) so we never go silent.
             break
 
         default:
