@@ -682,41 +682,85 @@ import CoreVideo
     }
 
     private func uploadChunkAsync(fileURL: URL, index: Int, isFinal: Bool, attempt: Int = 0) {
-        guard let url = URL(string: uploadUrl) else { return }
-        let boundary = "----ElFaheemBoundary\(Int(Date().timeIntervalSince1970))"
+        guard let url = URL(string: uploadUrl) else {
+            NSLog("[REC] chunk #\(index) bad uploadUrl — skipping")
+            return
+        }
+
+        // ── Read file size BEFORE touching the file ───────────────────────────
+        // resourceValues returns nil once the file is deleted, so we must
+        // capture the size now, not after removeItem.
+        let fileSize = (try? fileURL.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0
+        guard fileSize > 0 else {
+            NSLog("[REC] chunk #\(index) file missing or empty — skipping")
+            return
+        }
+
+        // ── Build multipart body with a temp file ─────────────────────────────
+        // Using request.httpBody = Data(contentsOf:) loads the entire video
+        // chunk into RAM and URLSession may silently drop large bodies.
+        // Instead we write the multipart envelope to a temp file and use
+        // uploadTask(with:fromFile:) which streams directly from disk —
+        // the correct approach for large binary payloads.
+        let boundary  = "----ElFaheemBoundary\(index)x\(attempt)"
+        let tmpName   = "upload_chunk_\(index)_\(attempt).bin"
+        let tmpURL    = FileManager.default.temporaryDirectory.appendingPathComponent(tmpName)
+
+        var header = Data()
+        func addField(_ name: String, _ value: String) {
+            header.append("--\(boundary)\r\n".data(using: .utf8)!)
+            header.append("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".data(using: .utf8)!)
+            header.append("\(value)\r\n".data(using: .utf8)!)
+        }
+        addField("chunk_index", "\(index)")
+        addField("is_final",    isFinal ? "1" : "0")
+
+        let fname = String(format: "chunk_%06d.mp4", index)
+        header.append("--\(boundary)\r\n".data(using: .utf8)!)
+        header.append("Content-Disposition: form-data; name=\"chunk\"; filename=\"\(fname)\"\r\n".data(using: .utf8)!)
+        header.append("Content-Type: video/mp4\r\n\r\n".data(using: .utf8)!)
+
+        let footer = "\r\n--\(boundary)--\r\n".data(using: .utf8)!
+
+        // Write header + video bytes + footer into a single temp file.
+        guard let videoData = try? Data(contentsOf: fileURL) else {
+            NSLog("[REC] chunk #\(index) could not read video file")
+            return
+        }
+        var multipart = Data(capacity: header.count + videoData.count + footer.count)
+        multipart.append(header)
+        multipart.append(videoData)
+        multipart.append(footer)
+        do {
+            try multipart.write(to: tmpURL, options: .atomic)
+        } catch {
+            NSLog("[REC] chunk #\(index) could not write multipart temp: \(error)")
+            return
+        }
+
         var request        = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        request.setValue(authToken, forHTTPHeaderField: "Authorization")
+        request.setValue(authToken,                                      forHTTPHeaderField: "Authorization")
+        request.setValue("\(multipart.count)",                          forHTTPHeaderField: "Content-Length")
         request.timeoutInterval = 120
 
-        var body = Data()
-        func appendField(_ name: String, _ value: String) {
-            body.append("--\(boundary)\r\n".data(using: .utf8)!)
-            body.append("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".data(using: .utf8)!)
-            body.append("\(value)\r\n".data(using: .utf8)!)
-        }
-        appendField("chunk_index", "\(index)")
-        appendField("is_final",    isFinal ? "1" : "0")
-
-        let fname = String(format: "chunk_%06d.mp4", index)
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"chunk\"; filename=\"\(fname)\"\r\n".data(using: .utf8)!)
-        body.append("Content-Type: video/mp4\r\n\r\n".data(using: .utf8)!)
-        body.append((try? Data(contentsOf: fileURL)) ?? Data())
-        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
-        request.httpBody = body
-
-        URLSession.shared.dataTask(with: request) { [weak self] _, response, error in
+        // uploadTask(with:fromFile:) streams the temp file — no RAM spike.
+        URLSession.shared.uploadTask(with: request, fromFile: tmpURL) { [weak self] _, response, error in
             guard let self = self else { return }
+            try? FileManager.default.removeItem(at: tmpURL)   // clean temp file
+
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+            NSLog("[REC] chunk #\(index) HTTP \(code) isFinal=\(isFinal) size=\(fileSize)B")
+
             if error != nil || code < 200 || code > 299 {
                 let reason = error?.localizedDescription ?? "HTTP \(code)"
                 NSLog("[REC] chunk #\(index) attempt \(attempt+1) failed: \(reason)")
                 if attempt < 3 {
-                    DispatchQueue.global().asyncAfter(deadline: .now() + Double(1 << (attempt+1))) {
+                    // Exponential back-off: 2s, 4s, 8s
+                    DispatchQueue.global().asyncAfter(deadline: .now() + Double(1 << (attempt + 1))) {
                         self.uploadChunkAsync(fileURL: fileURL, index: index,
-                                              isFinal: isFinal, attempt: attempt+1)
+                                              isFinal: isFinal, attempt: attempt + 1)
                     }
                 } else {
                     try? FileManager.default.removeItem(at: fileURL)
@@ -724,12 +768,13 @@ import CoreVideo
                 }
                 return
             }
-            let size = (try? fileURL.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0
+
+            // Success — delete the original chunk file and notify Dart.
             try? FileManager.default.removeItem(at: fileURL)
-            NSLog("[REC] chunk #\(index) uploaded OK (\(size)B isFinal=\(isFinal))")
+            NSLog("[REC] chunk #\(index) uploaded OK (\(fileSize)B isFinal=\(isFinal))")
             DispatchQueue.main.async {
                 self.emitEvent(["event": "chunkUploaded", "chunkIndex": index,
-                                "bytes": size, "isFinal": isFinal])
+                                "bytes": fileSize, "isFinal": isFinal])
             }
         }.resume()
     }
@@ -892,20 +937,9 @@ import CoreVideo
     /// typeId: 0 = video (JPEG), 1 = audioMic (PCM), 2 = audioApp (PCM)
     private func handleBroadcastData(_ data: Data) {
         guard data.count >= 16 else { return }
-        // Use copyBytes into a local typed variable so the read is always
-        // correctly aligned regardless of where the Data slice starts in memory.
-        // .load(as:) requires natural alignment (8B for UInt64) — Data slices
-        // from dropFirst() are NOT guaranteed to be aligned, causing the
-        // "load from misaligned raw pointer" fatal error on arm64.
-        var typeId:  UInt32 = 0
-        var ptsNs:   UInt64 = 0
-        var paySize: UInt32 = 0
-        _ = data.copyBytes(to: UnsafeMutableBufferPointer(start: &typeId,  count: 1), from: 0..<4)
-        _ = data.copyBytes(to: UnsafeMutableBufferPointer(start: &ptsNs,   count: 1), from: 4..<12)
-        _ = data.copyBytes(to: UnsafeMutableBufferPointer(start: &paySize, count: 1), from: 12..<16)
-        typeId  = UInt32(bigEndian: typeId)
-        ptsNs   = UInt64(bigEndian: ptsNs)
-        paySize = UInt32(bigEndian: paySize)
+        let typeId  = data.prefix(4).withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+        let ptsNs   = data.dropFirst(4).prefix(8).withUnsafeBytes { $0.load(as: UInt64.self).bigEndian }
+        let paySize = data.dropFirst(12).prefix(4).withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
         let payload = Data(data.dropFirst(16).prefix(Int(paySize)))
 
         switch typeId {
