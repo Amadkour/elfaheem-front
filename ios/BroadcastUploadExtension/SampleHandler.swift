@@ -28,13 +28,24 @@ class SampleHandler: RPBroadcastSampleHandler {
 
     override func broadcastStarted(withSetupInfo setupInfo: [String: NSObject]?) {
         // Open the port the main app registered.
+        // The main app calls registerBroadcastPort() before showing the picker,
+        // so the port should exist by the time broadcastStarted() fires.
+        // We retry once after a short delay to handle any tiny race window.
         port = CFMessagePortCreateRemote(nil, kPortName as CFString)
         if port == nil {
-            // Main app not running or port not yet registered — fail gracefully.
-            let err = NSError(domain: "BroadcastError", code: 0,
-                              userInfo: [NSLocalizedDescriptionKey: "Main app port not found"])
-            finishBroadcastWithError(err)
+            // Give the main app one extra moment then retry.
+            Thread.sleep(forTimeInterval: 0.5)
+            port = CFMessagePortCreateRemote(nil, kPortName as CFString)
         }
+        if port == nil {
+            let err = NSError(domain: "BroadcastError", code: 0,
+                              userInfo: [NSLocalizedDescriptionKey:
+                                "Could not connect to the main app. " +
+                                "Make sure the app is open and try again."])
+            finishBroadcastWithError(err)
+            return
+        }
+        NSLog("[SampleHandler] connected to main app port")
     }
 
     override func broadcastPaused() {}
