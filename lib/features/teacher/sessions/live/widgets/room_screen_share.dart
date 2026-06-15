@@ -255,7 +255,8 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
             log('[SS] iOS: broadcastStopped event received — cleaning up');
             _broadcastEventSub?.cancel();
             _broadcastEventSub = null;
-            // Update UI state by calling stop path without re-invoking native.
+            // Disable the LiveKit screen-share track so the room sees the
+            // share end cleanly (was missing before — track stayed published).
             _safeNegotiate(() => local.setScreenShareEnabled(false));
           }
         });
@@ -264,6 +265,27 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
         // taps RPSystemBroadcastPickerView — the system sheet appears.
         await _ssChannel.invokeMethod<void>('showBroadcastPicker');
         log('[SS] iOS: broadcast picker shown');
+
+        // ── BUG 1 FIX ────────────────────────────────────────────────────────
+        // Without this call the broadcast extension only feeds the local
+        // recording file (via CFMessagePort → AVAssetWriter). LiveKit never
+        // publishes a screen-share video track, so other participants see
+        // nothing. We must call setScreenShareEnabled(true) so LiveKit
+        // negotiates a screen-share track with the server.
+        //
+        // We wait 600 ms so the system broadcast picker has time to register
+        // with RPScreenRecorder before LiveKit tries to start capture.
+        // captureScreenAudio: false — audio is already handled by
+        // RPScreenRecorder in AppDelegate (clean, AEC-processed mic audio).
+        await Future.delayed(const Duration(milliseconds: 600));
+        await _safeNegotiate(() => local.setScreenShareEnabled(
+          true,
+          screenShareCaptureOptions: const ScreenShareCaptureOptions(
+            captureScreenAudio: false,
+            maxFrameRate: 30,
+          ),
+        ));
+        log('[SS] iOS: LiveKit screen-share track published');
       } catch (e) {
         log('[SS] iOS start error: $e');
         showSnack('Screen sharing failed: $e');
@@ -273,6 +295,10 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
       _broadcastEventSub?.cancel();
       _broadcastEventSub = null;
       try {
+        // Disable the LiveKit track BEFORE stopping the broadcast so the
+        // server receives the proper track-removed signal first.
+        await _safeNegotiate(() => local.setScreenShareEnabled(false));
+        log('[SS] iOS: LiveKit screen-share track removed');
         await _ssChannel.invokeMethod<void>('stopBroadcast');
         log('[SS] iOS: broadcast stopped');
       } catch (e) {

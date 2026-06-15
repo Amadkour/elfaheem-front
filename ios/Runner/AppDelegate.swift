@@ -79,6 +79,15 @@ import CoreVideo
     // and frames from the broadcast extension are written instead.
     private var isBroadcasting      = false
 
+    // ── Audio session protection ──────────────────────────────────────────────
+    // LiveKit's WebRTC audio manager can silently reset AVAudioSession to
+    // SoloAmbient (output-only) after RPScreenRecorder starts, disabling mic
+    // input and producing noisy / silent audio in the recording.
+    // We keep a route-change observer alive for the duration of the recording
+    // and immediately re-assert our playAndRecord/videoChat configuration
+    // whenever an external actor overrides it.
+    private var audioSessionObserver: NSObjectProtocol?
+
     // ── Broadcast Extension IPC ───────────────────────────────────────────────
     private let kBroadcastPortName  = "com.example.flutter_education_app.broadcast"
     private var broadcastPort:      CFMessagePort?
@@ -274,12 +283,19 @@ import CoreVideo
             DispatchQueue.main.async {
                 if let e = error {
                     NSLog("[REC] RPScreenRecorder start error: \(e.localizedDescription)")
-                    // Release audio session lock on failure
                     self.releaseAudioSessionLock()
                     result(FlutterError(code: "RP_START_ERROR",
                                         message: e.localizedDescription, details: nil))
                     return
                 }
+                // ── BUG 2 FIX (part A) ────────────────────────────────────────
+                // LiveKit's WebRTC audio manager may have fired its own
+                // setActive() / setCategory() call during startCapture().
+                // Re-assert our configuration now so the recorded audio
+                // uses the correct playAndRecord/videoChat session from
+                // this point forward.
+                self.configureAudioSessionForRecording()
+
                 self.recording = true
                 self.beginChunkWriter()
                 self.emitEvent(["event": "screenLoopStarted"])
@@ -314,12 +330,49 @@ import CoreVideo
         } catch {
             NSLog("[REC] AVAudioSession configure error: \(error.localizedDescription)")
         }
+
+        // ── BUG 2 FIX (part B) ───────────────────────────────────────────────
+        // Watch for any external actor (LiveKit WebRTC engine, system phone
+        // call, Bluetooth connect/disconnect) overriding the session category
+        // while the recording is active, and immediately re-assert our config.
+        // This is the main guard against the "dوشة بدون صوت" noise burst that
+        // occurs when LiveKit resets the session to SoloAmbient (output-only).
+        //
+        // We remove any existing observer first to avoid duplicate registrations
+        // when configureAudioSessionForRecording() is called twice (before
+        // startCapture and again in the completion handler).
+        if let existing = audioSessionObserver {
+            NotificationCenter.default.removeObserver(existing)
+            audioSessionObserver = nil
+        }
+        audioSessionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.routeChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self, self.recording, !self.stopping else { return }
+            let reason = notification.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt ?? 0
+            let s = AVAudioSession.sharedInstance()
+            // Re-assert if the category was changed away from playAndRecord
+            // (e.g. LiveKit reset it to soloAmbient or ambient).
+            if s.category != .playAndRecord || s.mode != .videoChat {
+                NSLog("[REC] AVAudioSession overridden (reason=\(reason)) — re-asserting playAndRecord/videoChat")
+                self.configureAudioSessionForRecording()
+            }
+        }
     }
 
     private func releaseAudioSessionLock() {
-        // Called only on RPScreenRecorder stop or start failure.
-        // Restore the session to LiveKit's preferred state so the live call
-        // continues to work normally after recording ends.
+        // Called on RPScreenRecorder stop or start failure.
+        // 1. Remove the route-change observer so we stop fighting LiveKit
+        //    over the session category after recording has ended.
+        // 2. Restore the session to LiveKit's preferred state so the live
+        //    call continues to work normally.
+        if let obs = audioSessionObserver {
+            NotificationCenter.default.removeObserver(obs)
+            audioSessionObserver = nil
+            NSLog("[REC] AVAudioSession route-change observer removed")
+        }
         let session = AVAudioSession.sharedInstance()
         do {
             try session.setCategory(
@@ -612,6 +665,9 @@ import CoreVideo
         chunkTimer?.invalidate(); chunkTimer = nil
         isBroadcasting = false
         invalidateBroadcastPort()
+        // Remove the audio session observer BEFORE stopCapture so we don't
+        // fight LiveKit for the session category during teardown.
+        releaseAudioSessionLock()
 
         RPScreenRecorder.shared().stopCapture { [weak self] error in
             if let e = error { NSLog("[REC] stopCapture: \(e.localizedDescription)") }
