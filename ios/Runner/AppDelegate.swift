@@ -806,19 +806,43 @@ import CoreVideo
             self.registerBroadcastPort()
 
             let picker = RPSystemBroadcastPickerView(frame: CGRect(x: 0, y: 0, width: 60, height: 60))
-            // preferredExtension is intentionally NOT set.
-            // Setting it would restrict the picker to only YOUR extension,
-            // hiding all other apps. Leaving it nil shows the full system
-            // list so the teacher can pick any foreign app to share.
+
+            // FIX: Always set preferredExtension to our own bundle ID.
+            //
+            // WITHOUT this, iOS shows the full system picker listing every
+            // installed broadcast extension (Facebook Live, YouTube, etc.).
+            // When the user — or our programmatic button tap — picks a
+            // third-party extension such as Facebook's, that extension
+            // immediately fails with "Screen sharing is not available"
+            // because it is not launched inside Facebook's host app.
+            //
+            // WITH preferredExtension set, iOS skips the picker entirely
+            // and goes straight to the system confirmation sheet for OUR
+            // extension ("Start Broadcast" / "Cancel"), which is exactly
+            // what we want. The user still sees the native iOS confirmation
+            // dialog — we just pre-select our own extension so no foreign
+            // extension can be chosen by mistake.
+            //
+            // The bundle ID must match:
+            //   Runner bundle ID + ".BroadcastUploadExtension"
+            // e.g. "com.example.flutterEducationApp.BroadcastUploadExtension"
+            //
+            // ⚠️  Update the string below to match your actual Runner bundle ID.
+            picker.preferredExtension =
+                Bundle.main.bundleIdentifier.map { $0 + ".BroadcastUploadExtension" }
+
             picker.showsMicrophoneButton = false
 
+            // Programmatically trigger the picker button.
+            // Because preferredExtension is now set this will directly
+            // open our extension's confirmation sheet, not the full list.
             for subview in picker.subviews {
                 if let button = subview as? UIButton {
                     button.sendActions(for: .touchUpInside)
                     break
                 }
             }
-            NSLog("[SHARE] showBroadcastPicker presented")
+            NSLog("[SHARE] showBroadcastPicker presented — extension: \(picker.preferredExtension ?? "nil")")
             result(nil)
         }
     }
