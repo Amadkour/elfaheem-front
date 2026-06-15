@@ -74,6 +74,37 @@ import CoreVideo
     private var paused        = false
     private var stopping      = false
 
+    // ── Upload URLSession ─────────────────────────────────────────────────────
+    //
+    // URLSession.shared is cancelled when the LiveKit WebRTC stack tears down
+    // its network connections on room disconnect — "network connection was lost"
+    // appears in logs exactly at that moment.
+    //
+    // Fix: use a DEDICATED background URLSession.
+    //   • background(withIdentifier:) tasks survive app-to-background transitions
+    //     and are NOT affected by foreground network teardowns from other stacks
+    //     (LiveKit, Firebase, etc.)
+    //   • The session identifier must be unique per app install; using the bundle
+    //     ID suffix keeps it stable across launches so iOS can reconnect pending
+    //     tasks after a crash or relaunch.
+    //   • waitsForConnectivity = true: if the network is briefly lost during the
+    //     LiveKit disconnect, URLSession waits for it to return instead of failing.
+    //   • timeoutIntervalForResource = 300: 5 min window per chunk upload attempt.
+    private lazy var uploadSession: URLSession = {
+        let cfg = URLSessionConfiguration.background(
+            withIdentifier: "com.elfaheem.rec.upload"
+        )
+        cfg.isDiscretionary          = false   // upload promptly, not when convenient
+        cfg.sessionSendsLaunchEvents = true    // wake app if upload completes in bg
+        cfg.waitsForConnectivity     = true    // retry automatically on network loss
+        cfg.timeoutIntervalForRequest  = 120
+        cfg.timeoutIntervalForResource = 300
+        // HTTPMaximumConnectionsPerHost=1 avoids hammering the tunnel server
+        // (Cloudflare's trycloudflare has aggressive per-IP connection limits)
+        cfg.httpMaximumConnectionsPerHost = 1
+        return URLSession(configuration: cfg, delegate: nil, delegateQueue: nil)
+    }()
+
     // ── Broadcast source control ──────────────────────────────────────────────
     // When isBroadcasting = true, frames from RPScreenRecorder are suppressed
     // and frames from the broadcast extension are written instead.
@@ -770,7 +801,10 @@ import CoreVideo
         request.timeoutInterval = 120
 
         // uploadTask(with:fromFile:) streams the temp file — no RAM spike.
-        URLSession.shared.uploadTask(with: request, fromFile: tmpURL) { [weak self] _, response, error in
+        // Use the dedicated background URLSession so this upload survives
+        // LiveKit disconnect / app backgrounding (URLSession.shared is cancelled
+        // by the WebRTC stack teardown, causing "network connection was lost").
+        uploadSession.uploadTask(with: request, fromFile: tmpURL) { [weak self] _, response, error in
             guard let self = self else { return }
             try? FileManager.default.removeItem(at: tmpURL)   // clean temp file
 
@@ -780,15 +814,17 @@ import CoreVideo
             if error != nil || code < 200 || code > 299 {
                 let reason = error?.localizedDescription ?? "HTTP \(code)"
                 NSLog("[REC] chunk #\(index) attempt \(attempt+1) failed: \(reason)")
-                if attempt < 3 {
-                    // Exponential back-off: 2s, 4s, 8s
-                    DispatchQueue.global().asyncAfter(deadline: .now() + Double(1 << (attempt + 1))) {
+                if attempt < 4 {
+                    // Back-off: 3s, 6s, 12s, 24s — longer than before because
+                    // waitsForConnectivity means the network may need time to
+                    // fully re-establish after LiveKit tears down its sockets.
+                    DispatchQueue.global().asyncAfter(deadline: .now() + Double(3 * (1 << attempt))) {
                         self.uploadChunkAsync(fileURL: fileURL, index: index,
                                               isFinal: isFinal, attempt: attempt + 1)
                     }
                 } else {
                     try? FileManager.default.removeItem(at: fileURL)
-                    self.emitError("chunk #\(index) failed after 3 retries: \(reason)")
+                    self.emitError("chunk #\(index) failed after 4 retries: \(reason)")
                 }
                 return
             }
@@ -819,11 +855,19 @@ import CoreVideo
     }
 
     private func sweepStaleChunks() {
-        let tmp = FileManager.default.temporaryDirectory
+        // Only remove chunk files that are more than 1 hour old.
+        // Deleting recent files risks wiping chunks that a background URLSession
+        // task is currently uploading from a previous session launch.
+        let tmp  = FileManager.default.temporaryDirectory
+        let cutoff = Date(timeIntervalSinceNow: -3600)
         guard let items = try? FileManager.default.contentsOfDirectory(
-            at: tmp, includingPropertiesForKeys: nil) else { return }
+            at: tmp, includingPropertiesForKeys: [.creationDateKey]) else { return }
         for url in items where url.lastPathComponent.hasPrefix("rec_chunk_") {
-            try? FileManager.default.removeItem(at: url)
+            let created = (try? url.resourceValues(forKeys: [.creationDateKey]))?.creationDate
+            if let d = created, d < cutoff {
+                try? FileManager.default.removeItem(at: url)
+                NSLog("[REC] swept stale chunk: \(url.lastPathComponent)")
+            }
         }
     }
 

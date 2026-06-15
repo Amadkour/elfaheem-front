@@ -475,16 +475,12 @@ class _RoomPageState extends State<RoomPage>
     if (mounted) setState(() => _endingSession = true);
 
     // Stop any active iOS broadcast share first so its final chunk is
-    // finalised and uploaded before we call stopRecordingOnly().
+    // finalised before we call stopRecordingOnly().
     await stopIOSShareIfActive();
 
     final rec = _recorder;
     _recorder = null; // detach so dispose() never interferes
 
-    // Stop recording for any active state (recording, paused, starting, or uploading).
-    // We must attempt stop even in 'starting' state — the native service may
-    // already be recording chunks even if the Dart state hasn't transitioned yet.
-    // If currently paused, the native service will wake and finalise normally.
     if (widget.isTeacher &&
         rec != null &&
         rec.state != RecState.done &&
@@ -494,19 +490,35 @@ class _RoomPageState extends State<RoomPage>
         if (kIsWeb) {
           log('[REC] Web: compositor drained — all chunks uploaded');
         }
-        // Mobile: don't block here — native FGS drains uploads independently.
-        // _drainAndDispose runs unawaited so the UI pops immediately while
-        // the background task waits for RecState.done (all chunks confirmed).
       } catch (e) {
         log('[REC] stopRecordingOnly error: $e');
       }
-      unawaited(_drainAndDispose(rec));
+
+      // Schedule the background drain BEFORE calling onEnd().
+      // onEnd() disconnects the LiveKit room which throws a TimeoutException
+      // and resets the network stack. If we schedule drain AFTER onEnd()
+      // the URLSession may already be mid-teardown when the drain starts.
+      // Scheduling here first guarantees the drain Future is alive and the
+      // background URLSession has its tasks queued before LiveKit disconnects.
+      //
+      // We wait 2 s after LiveKit disconnect to let the network interface
+      // recover before the background URLSession retries failed chunks.
+      // (The dedicated background URLSession has waitsForConnectivity=true
+      // so it will retry automatically, but the 2 s gives the OS time to
+      // re-establish the Wi-Fi/cell path that LiveKit just released.)
+      unawaited(() async {
+        // Give LiveKit time to tear down its sockets cleanly.
+        await Future.delayed(const Duration(seconds: 2));
+        await _drainAndDispose(rec);
+      }());
     }
 
     try {
       await widget.onEnd();
     } catch (e) {
-      log('[REC] onEnd error: $e');
+      // LiveKit throws TimeoutException on room disconnect — this is normal
+      // and does not affect the recording drain which is already scheduled.
+      log('[REC] onEnd error (LiveKit disconnect expected): $e');
     }
 
     if (mounted) Navigator.pop(context);
