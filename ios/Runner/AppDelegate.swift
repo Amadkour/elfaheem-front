@@ -16,7 +16,7 @@
 //     chosen by the user from RPSystemBroadcastPickerView.
 //     Active only while the user has tapped "Share Screen" → picked an app
 //     → "Start Broadcast".
-//     Frames arrive via CFMessagePort IPC → handleBroadcastData()
+//     Frames arrive via Darwin notification + App Group shared file IPC
 //     → processSampleFromBroadcast() → SAME AVAssetWriter chunks → upload.
 //     While broadcast is active we PAUSE RPScreenRecorder frames so that
 //     only the foreign app's screen goes into the recording.
@@ -79,9 +79,30 @@ import CoreVideo
     // and frames from the broadcast extension are written instead.
     private var isBroadcasting      = false
 
-    // ── Broadcast Extension IPC ───────────────────────────────────────────────
-    private let kBroadcastPortName  = "com.example.flutter_education_app.broadcast"
-    private var broadcastPort:      CFMessagePort?
+    // ── Broadcast Extension IPC (App Group + Darwin notifications) ───────────
+    //
+    // CFMessagePort CANNOT cross the iOS process sandbox on modern iOS —
+    // CFMessagePortCreateRemote always returns nil from an extension process.
+    //
+    // Correct mechanism: shared App Group container + Darwin notifications.
+    //   • SampleHandler writes each frame to a shared binary file, then
+    //     posts a Darwin notification as the "data ready" signal.
+    //   • AppDelegate registers for those notifications and reads the file.
+    //
+    // ⚠️  REQUIRED XCODE SETUP (one-time, ~30 seconds):
+    //   1. Select the Runner target → Signing & Capabilities → "+" → App Groups
+    //      Add group ID:  group.com.example.flutter_education_app
+    //   2. Select the BroadcastUploadExtension target → same steps → same ID
+    //   Both targets must share the EXACT same group string.
+    //
+    //   If your bundle ID differs, update kAppGroup in BOTH this file and
+    //   SampleHandler.swift — they must be identical.
+    private let kAppGroup           = "group.com.example.flutter_education_app"
+    private let kDarwinFrameNotif   = "com.example.flutter_education_app.frame"
+    private let kDarwinStopNotif    = "com.example.flutter_education_app.stop"
+    private let kFrameFileName      = "broadcast_frame.bin"
+    private var darwinObserverAdded = false
+    private let ipcReadQueue        = DispatchQueue(label: "com.elfaheem.ipc", qos: .userInteractive)
 
     // ── Video dimensions (read from first RPScreenRecorder video frame) ───────
     private var videoWidth:  Int = 0
@@ -611,7 +632,7 @@ import CoreVideo
         stopping = true; recording = false
         chunkTimer?.invalidate(); chunkTimer = nil
         isBroadcasting = false
-        invalidateBroadcastPort()
+        removeDarwinListeners()
 
         RPScreenRecorder.shared().stopCapture { [weak self] error in
             if let e = error { NSLog("[REC] stopCapture: \(e.localizedDescription)") }
@@ -745,94 +766,130 @@ import CoreVideo
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { result(nil); return }
 
-            // Register the CFMessagePort BEFORE the picker is shown so the
-            // extension can connect the moment broadcastStarted() fires.
-            self.registerBroadcastPort()
+            // Register Darwin notification listeners BEFORE the picker appears
+            // so we are ready the instant the extension's broadcastStarted() fires.
+            self.registerDarwinListeners()
 
             let picker = RPSystemBroadcastPickerView(frame: CGRect(x: 0, y: 0, width: 60, height: 60))
 
-            // FIX: Always set preferredExtension to our own bundle ID.
-            //
-            // WITHOUT this, iOS shows the full system picker listing every
-            // installed broadcast extension (Facebook Live, YouTube, etc.).
-            // When the user — or our programmatic button tap — picks a
-            // third-party extension such as Facebook's, that extension
-            // immediately fails with "Screen sharing is not available"
-            // because it is not launched inside Facebook's host app.
-            //
-            // WITH preferredExtension set, iOS skips the picker entirely
-            // and goes straight to the system confirmation sheet for OUR
-            // extension ("Start Broadcast" / "Cancel"), which is exactly
-            // what we want. The user still sees the native iOS confirmation
-            // dialog — we just pre-select our own extension so no foreign
-            // extension can be chosen by mistake.
-            //
-            // The bundle ID must match:
-            //   Runner bundle ID + ".BroadcastUploadExtension"
-            // e.g. "com.example.flutterEducationApp.BroadcastUploadExtension"
-            //
-            // ⚠️  Update the string below to match your actual Runner bundle ID.
+            // Point directly at our own extension so the system skips the
+            // full picker list and shows only our "Start Broadcast" sheet.
             picker.preferredExtension =
                 Bundle.main.bundleIdentifier.map { $0 + ".BroadcastUploadExtension" }
-
             picker.showsMicrophoneButton = false
 
-            // Programmatically trigger the picker button.
-            // Because preferredExtension is now set this will directly
-            // open our extension's confirmation sheet, not the full list.
+            // Programmatically press the picker button to open the sheet.
             for subview in picker.subviews {
                 if let button = subview as? UIButton {
                     button.sendActions(for: .touchUpInside)
                     break
                 }
             }
-            NSLog("[SHARE] showBroadcastPicker presented — extension: \(picker.preferredExtension ?? "nil")")
+            NSLog("[SHARE] showBroadcastPicker — extension: \(picker.preferredExtension ?? "nil")")
             result(nil)
         }
     }
 
     private func stopBroadcastShare(result: @escaping FlutterResult) {
         isBroadcasting = false
-        invalidateBroadcastPort()
+        removeDarwinListeners()
         emitEvent(["event": "broadcastStopped"])
-        NSLog("[SHARE] broadcast stopped")
+        NSLog("[SHARE] broadcast stopped by app")
         result(nil)
     }
 
-    // ── CFMessagePort (IPC from broadcast extension process) ──────────────────
+    // ── IPC: Darwin notifications + App Group shared file ────────────────────
+    //
+    // How it works:
+    //   SampleHandler (extension process):
+    //     1. Serialises each frame into a binary blob.
+    //     2. Writes it atomically to:
+    //        <AppGroupContainer>/broadcast_frame.bin
+    //     3. Calls notify_post("…frame") — a Darwin notification that crosses
+    //        the iOS process sandbox without any entitlement beyond App Group.
+    //
+    //   AppDelegate (host app process):
+    //     1. Registered for the same Darwin notification via
+    //        CFNotificationCenterAddObserver on the Darwin center.
+    //     2. On notification: reads the shared file on ipcReadQueue,
+    //        parses the binary blob, routes to handleBroadcastData().
+    //
+    // Why not CFMessagePort?
+    //   CFMessagePortCreateRemote() always returns nil from a Broadcast Upload
+    //   Extension on iOS 14+ because the OS sandbox blocks extension→app IPC
+    //   for CFMessagePort. Darwin notifications + a shared container file is
+    //   the Apple-documented pattern for this exact use case.
 
-    private func registerBroadcastPort() {
-        invalidateBroadcastPort()
-        var context = CFMessagePortContext(version: 0,
-                                           info: Unmanaged.passUnretained(self).toOpaque(),
-                                           retain: nil, release: nil,
-                                           copyDescription: nil)
-        broadcastPort = CFMessagePortCreateLocal(
-            nil, kBroadcastPortName as CFString,
-            { _, _, data, info -> Unmanaged<CFData>? in
-                guard let info = info else { return nil }
-                let d = Unmanaged<AppDelegate>.fromOpaque(info).takeUnretainedValue()
-                if let data = data { d.handleBroadcastData(data as Data) }
-                return nil
+    private func registerDarwinListeners() {
+        guard !darwinObserverAdded else { return }
+        darwinObserverAdded = true
+
+        let center = CFNotificationCenterGetDarwinNotifyCenter()
+        let selfPtr = Unmanaged.passUnretained(self).toOpaque()
+
+        // Frame notification
+        CFNotificationCenterAddObserver(
+            center, selfPtr,
+            { _, selfPtr, _, _, _ in
+                guard let selfPtr = selfPtr else { return }
+                let me = Unmanaged<AppDelegate>.fromOpaque(selfPtr).takeUnretainedValue()
+                me.onDarwinFrameNotif()
             },
-            &context, nil
+            kDarwinFrameNotif as CFString, nil, .deliverImmediately
         )
-        if let port = broadcastPort {
-            let src = CFMessagePortCreateRunLoopSource(nil, port, 0)
-            CFRunLoopAddSource(CFRunLoopGetMain(), src, .commonModes)
-            NSLog("[SHARE] CFMessagePort registered")
-        } else {
-            NSLog("[SHARE] CFMessagePort registration FAILED")
+
+        // Stop notification
+        CFNotificationCenterAddObserver(
+            center, selfPtr,
+            { _, selfPtr, _, _, _ in
+                guard let selfPtr = selfPtr else { return }
+                let me = Unmanaged<AppDelegate>.fromOpaque(selfPtr).takeUnretainedValue()
+                me.onDarwinStopNotif()
+            },
+            kDarwinStopNotif as CFString, nil, .deliverImmediately
+        )
+
+        NSLog("[SHARE] Darwin listeners registered")
+    }
+
+    private func removeDarwinListeners() {
+        guard darwinObserverAdded else { return }
+        darwinObserverAdded = false
+        let center  = CFNotificationCenterGetDarwinNotifyCenter()
+        let selfPtr = Unmanaged.passUnretained(self).toOpaque()
+        CFNotificationCenterRemoveObserver(center, selfPtr,
+            CFNotificationName(kDarwinFrameNotif as CFString), nil)
+        CFNotificationCenterRemoveObserver(center, selfPtr,
+            CFNotificationName(kDarwinStopNotif  as CFString), nil)
+        NSLog("[SHARE] Darwin listeners removed")
+    }
+
+    /// Called on the main thread when the extension posted a frame notification.
+    private func onDarwinFrameNotif() {
+        ipcReadQueue.async { [weak self] in
+            guard let self = self else { return }
+            guard let container = FileManager.default
+                    .containerURL(forSecurityApplicationGroupIdentifier: self.kAppGroup) else {
+                NSLog("[SHARE] ERROR: App Group container not found — check entitlements")
+                return
+            }
+            let fileURL = container.appendingPathComponent(self.kFrameFileName)
+            guard let data = try? Data(contentsOf: fileURL), data.count >= 16 else { return }
+            self.handleBroadcastData(data)
         }
     }
 
-    private func invalidateBroadcastPort() {
-        if let port = broadcastPort { CFMessagePortInvalidate(port); broadcastPort = nil }
+    /// Called on the main thread when the extension posted a stop notification.
+    private func onDarwinStopNotif() {
+        NSLog("[SHARE] broadcast extension finished (Darwin stop)")
+        isBroadcasting = false
+        removeDarwinListeners()
+        emitEvent(["event": "broadcastStopped"])
     }
 
-    /// Deserialise a packet from SampleHandler and route it.
+    /// Parse a frame blob and route it to the writer.
     /// Wire format: [4B typeId BE][8B ptsNs BE][4B payloadSize BE][payload]
-    /// typeId: 0=video(JPEG), 1=audioMic(PCM), 2=audioApp(PCM), 99=stop
+    /// typeId: 0 = video (JPEG), 1 = audioMic (PCM), 2 = audioApp (PCM)
     private func handleBroadcastData(_ data: Data) {
         guard data.count >= 16 else { return }
         let typeId  = data.prefix(4).withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
@@ -841,33 +898,19 @@ import CoreVideo
         let payload = Data(data.dropFirst(16).prefix(Int(paySize)))
 
         switch typeId {
-        case 99:
-            // Extension finished — stop suppressing RPScreenRecorder frames.
-            NSLog("[SHARE] broadcast extension finished")
-            isBroadcasting = false
-            invalidateBroadcastPort()
-            emitEvent(["event": "broadcastStopped"])
-
         case 0:
-            // Video frame (JPEG) from the foreign app.
-            // Write it into the active AVAssetWriter chunk so the recording
-            // shows the shared app's screen instead of our own app.
+            // Video frame (JPEG) — write into the active AVAssetWriter chunk.
             if !isBroadcasting {
                 isBroadcasting = true
-                NSLog("[SHARE] first broadcast video frame received — switching source")
+                NSLog("[SHARE] first broadcast frame — switching recording source")
             }
             guard recording, !stopping, !paused else { return }
             processSampleFromBroadcast(jpegData: payload, ptsNs: ptsNs)
 
         case 1, 2:
-            // Audio from the extension (mic or app audio as raw PCM).
-            // We intentionally do NOT write this into the AVAssetWriter because:
-            //   • RPScreenRecorder is already capturing mic audio (clean, with
-            //     LiveKit's echo cancellation applied).
-            //   • Writing a second audio stream would cause duplicate audio or
-            //     require mixing, adding significant complexity.
-            // The RPScreenRecorder audio capture continues unaffected even
-            // while isBroadcasting = true (only the VIDEO is suppressed).
+            // Audio from the extension.
+            // RPScreenRecorder already captures mic audio (clean, with LiveKit
+            // AEC/NS applied), so we skip the extension audio to avoid doubles.
             break
 
         default:

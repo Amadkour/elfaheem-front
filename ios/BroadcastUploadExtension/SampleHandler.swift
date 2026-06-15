@@ -1,133 +1,142 @@
 // SampleHandler.swift
 // BroadcastUploadExtension target
 //
-// This runs in a separate Apple process when the user taps "Start Broadcast"
-// from the iOS system picker.  It receives every screen frame + mic/app audio
-// sample buffer from ReplayKit, serialises them, and writes them into a shared
-// CFMessagePort so the main Runner app can read and publish them via LiveKit.
+// Receives every screen frame + audio sample buffer from ReplayKit and
+// forwards them to the main Runner app using the ONLY IPC mechanism that
+// actually works across the iOS process sandbox for Broadcast Upload
+// Extensions on iOS 14+:
 //
-// Architecture:
-//   Extension process  →  CFMessagePort (local)  →  Main app process
+//   App Group shared file  +  Darwin notifications
 //
-// The main app registers a CFMessagePortCreateLocal receiver in AppDelegate.
-// The extension writes each sample buffer as:
-//   [4-byte type][8-byte pts_ns][4-byte size][<size>-byte data]
+// WHY NOT CFMessagePort?
+//   CFMessagePortCreateRemote() always returns nil when called from a
+//   Broadcast Upload Extension trying to connect to the host app process.
+//   Apple's iOS sandbox blocks it — this is not a configuration issue,
+//   it is a platform restriction introduced in iOS 14.
 //
-// Buffer types (match AppDelegate constants):
-//   0 = video, 1 = audioMic, 2 = audioApp, 99 = stop signal
+// HOW THIS WORKS:
+//   1. SampleHandler serialises each video frame into a binary blob.
+//   2. Writes it atomically to the App Group shared container:
+//        <AppGroup>/broadcast_frame.bin
+//   3. Posts a Darwin notification:  "…flutter_education_app.frame"
+//   4. AppDelegate receives the notification (Darwin center crosses the
+//      sandbox boundary safely), reads the file, decodes, and writes to
+//      the AVAssetWriter recording chunk.
+//   5. On broadcast end, posts "…flutter_education_app.stop".
+//
+// ⚠️  REQUIRED XCODE SETUP — must match AppDelegate.swift:
+//   Runner target:                  Signing & Capabilities → App Groups
+//     → group.com.example.flutter_education_app
+//   BroadcastUploadExtension target: same capability → same group ID
+//
+//   If your bundle ID is different, change kAppGroup below AND in
+//   AppDelegate.swift (they must be identical strings).
 
 import ReplayKit
 import CoreMedia
 import CoreVideo
 
-private let kPortName = "com.example.flutter_education_app.broadcast"
+private let kAppGroup         = "group.com.example.flutter_education_app"
+private let kDarwinFrameNotif = "com.example.flutter_education_app.frame"
+private let kDarwinStopNotif  = "com.example.flutter_education_app.stop"
+private let kFrameFileName    = "broadcast_frame.bin"
 
 class SampleHandler: RPBroadcastSampleHandler {
 
-    private var port: CFMessagePort?
+    // Resolved once in broadcastStarted() and reused for every frame.
+    private var frameFileURL: URL?
 
     override func broadcastStarted(withSetupInfo setupInfo: [String: NSObject]?) {
-        // Open the port the main app registered.
-        // The main app calls registerBroadcastPort() before showing the picker,
-        // so the port should exist by the time broadcastStarted() fires.
-        // We retry once after a short delay to handle any tiny race window.
-        port = CFMessagePortCreateRemote(nil, kPortName as CFString)
-        if port == nil {
-            // Give the main app one extra moment then retry.
-            Thread.sleep(forTimeInterval: 0.5)
-            port = CFMessagePortCreateRemote(nil, kPortName as CFString)
-        }
-        if port == nil {
-            let err = NSError(domain: "BroadcastError", code: 0,
-                              userInfo: [NSLocalizedDescriptionKey:
-                                "Could not connect to the main app. " +
-                                "Make sure the app is open and try again."])
+        // Resolve the shared container URL.
+        guard let container = FileManager.default
+                .containerURL(forSecurityApplicationGroupIdentifier: kAppGroup) else {
+            let err = NSError(
+                domain: "BroadcastError", code: 1,
+                userInfo: [NSLocalizedDescriptionKey:
+                    "App Group '\(kAppGroup)' not found. " +
+                    "Add the App Groups capability (same group ID) to both " +
+                    "the Runner target and the BroadcastUploadExtension target in Xcode."])
             finishBroadcastWithError(err)
             return
         }
-        NSLog("[SampleHandler] connected to main app port")
+        frameFileURL = container.appendingPathComponent(kFrameFileName)
+        NSLog("[SampleHandler] started — container: \(container.path)")
     }
 
-    override func broadcastPaused() {}
+    override func broadcastPaused()  {}
     override func broadcastResumed() {}
 
     override func broadcastFinished() {
-        sendStop()
-        if let p = port { CFMessagePortInvalidate(p); port = nil }
+        notify(kDarwinStopNotif)
+        NSLog("[SampleHandler] finished — stop notification posted")
     }
 
     override func processSampleBuffer(_ sampleBuffer: CMSampleBuffer,
                                       with sampleBufferType: RPSampleBufferType) {
-        guard CMSampleBufferIsValid(sampleBuffer) else { return }
+        // Only forward video frames. Audio is captured cleanly by
+        // RPScreenRecorder in the host app (with LiveKit AEC/NS applied),
+        // so sending extension audio would produce duplicates.
+        guard sampleBufferType == .video,
+              CMSampleBufferIsValid(sampleBuffer) else { return }
 
-        let typeId: UInt32
-        switch sampleBufferType {
-        case .video:    typeId = 0
-        case .audioMic: typeId = 1
-        case .audioApp: typeId = 2
-        @unknown default: return
-        }
-
-        guard let data = serialise(sampleBuffer, type: typeId) else { return }
-        send(data)
+        guard let data = serialise(sampleBuffer) else { return }
+        write(data)
     }
 
-    // ─── Serialisation ────────────────────────────────────────────────────────
+    // ── Serialisation ─────────────────────────────────────────────────────────
+    //
+    // Wire format (same as AppDelegate expects):
+    //   [4B  typeId  uint32 BE]  — 0 = video
+    //   [8B  ptsNs   uint64 BE]  — presentation timestamp in nanoseconds
+    //   [4B  size    uint32 BE]  — byte length of payload
+    //   [<size> bytes payload]   — JPEG-encoded frame
 
-    private func serialise(_ sb: CMSampleBuffer, type: UInt32) -> Data? {
-        let pts = CMSampleBufferGetPresentationTimeStamp(sb)
-        let ptsNs = UInt64(CMTimeGetSeconds(pts) * 1_000_000_000)
+    private func serialise(_ sb: CMSampleBuffer) -> Data? {
+        let pts   = CMSampleBufferGetPresentationTimeStamp(sb)
+        let ptsNs = UInt64(max(0, CMTimeGetSeconds(pts) * 1_000_000_000))
 
-        // For video: encode as JPEG to keep IPC payload small.
-        // For audio: copy raw PCM bytes from the block buffer.
-        let payload: Data
-        if type == 0 {
-            guard let pixelBuffer = CMSampleBufferGetImageBuffer(sb) else { return nil }
-            CVPixelBufferLockBaseAddress(pixelBuffer, .readOnly)
-            defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, .readOnly) }
-            let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
-            let context = CIContext()
-            guard let jpegData = context.jpegRepresentation(of: ciImage,
-                                                             colorSpace: CGColorSpaceCreateDeviceRGB(),
-                                                             options: [kCGImageDestinationLossyCompressionQuality as CIImageRepresentationOption: 0.6]) else { return nil }
-            payload = jpegData
-        } else {
-            guard let blockBuffer = CMSampleBufferGetDataBuffer(sb) else { return nil }
-            var length = 0
-            var dataPtr: UnsafeMutablePointer<Int8>? = nil
-            guard CMBlockBufferGetDataPointer(blockBuffer, atOffset: 0,
-                                              lengthAtOffsetOut: nil,
-                                              totalLengthOut: &length,
-                                              dataPointerOut: &dataPtr) == noErr,
-                  let ptr = dataPtr else { return nil }
-            payload = Data(bytes: ptr, count: length)
-        }
+        // Encode the pixel buffer as JPEG to keep the shared file small.
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sb) else { return nil }
+        CVPixelBufferLockBaseAddress(pixelBuffer, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, .readOnly) }
 
-        var out = Data(capacity: 4 + 8 + 4 + payload.count)
-        var t = type.bigEndian
-        var p = ptsNs.bigEndian
-        var s = UInt32(payload.count).bigEndian
-        out.append(Data(bytes: &t, count: 4))
-        out.append(Data(bytes: &p, count: 8))
-        out.append(Data(bytes: &s, count: 4))
-        out.append(payload)
+        let ciImage  = CIImage(cvPixelBuffer: pixelBuffer)
+        let context  = CIContext()
+        guard let jpegData = context.jpegRepresentation(
+            of:         ciImage,
+            colorSpace: CGColorSpaceCreateDeviceRGB(),
+            options:    [kCGImageDestinationLossyCompressionQuality
+                         as CIImageRepresentationOption: 0.6]
+        ) else { return nil }
+
+        var typeId = UInt32(0).bigEndian
+        var pts8   = ptsNs.bigEndian
+        var size4  = UInt32(jpegData.count).bigEndian
+
+        var out = Data(capacity: 16 + jpegData.count)
+        out.append(Data(bytes: &typeId, count: 4))
+        out.append(Data(bytes: &pts8,   count: 8))
+        out.append(Data(bytes: &size4,  count: 4))
+        out.append(jpegData)
         return out
     }
 
-    private func send(_ data: Data) {
-        guard let port = port else { return }
-        let cfData = data as CFData
-        CFMessagePortSendRequest(port, 0, cfData, 0, 0, nil, nil)
+    // ── File write + Darwin notification ──────────────────────────────────────
+
+    private func write(_ data: Data) {
+        guard let url = frameFileURL else { return }
+        // Write atomically so the host app never reads a partial file.
+        try? data.write(to: url, options: .atomic)
+        notify(kDarwinFrameNotif)
     }
 
-    private func sendStop() {
-        var typeId = UInt32(99).bigEndian
-        var zero8  = UInt64(0).bigEndian
-        var zero4  = UInt32(0).bigEndian
-        var data = Data(capacity: 16)
-        data.append(Data(bytes: &typeId, count: 4))
-        data.append(Data(bytes: &zero8,  count: 8))
-        data.append(Data(bytes: &zero4,  count: 4))
-        send(data)
+    private func notify(_ name: String) {
+        // CFNotificationCenterPostNotification on the Darwin center is the
+        // only notification mechanism that crosses the iOS extension sandbox.
+        CFNotificationCenterPostNotification(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            CFNotificationName(name as CFString),
+            nil, nil, true
+        )
     }
 }
