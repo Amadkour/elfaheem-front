@@ -97,7 +97,7 @@ import CoreVideo
     //
     //   If your bundle ID differs, update kAppGroup in BOTH this file and
     //   SampleHandler.swift — they must be identical.
-    private let kAppGroup           = "group.com.example.flutterEducationApp"
+    private let kAppGroup           = "group.com.example.flutter_education_app"
     private let kDarwinFrameNotif   = "com.example.flutter_education_app.frame"
     private let kDarwinStopNotif    = "com.example.flutter_education_app.stop"
     private let kFrameFileName      = "broadcast_frame.bin"
@@ -892,9 +892,20 @@ import CoreVideo
     /// typeId: 0 = video (JPEG), 1 = audioMic (PCM), 2 = audioApp (PCM)
     private func handleBroadcastData(_ data: Data) {
         guard data.count >= 16 else { return }
-        let typeId  = data.prefix(4).withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
-        let ptsNs   = data.dropFirst(4).prefix(8).withUnsafeBytes { $0.load(as: UInt64.self).bigEndian }
-        let paySize = data.dropFirst(12).prefix(4).withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+        // Use copyBytes into a local typed variable so the read is always
+        // correctly aligned regardless of where the Data slice starts in memory.
+        // .load(as:) requires natural alignment (8B for UInt64) — Data slices
+        // from dropFirst() are NOT guaranteed to be aligned, causing the
+        // "load from misaligned raw pointer" fatal error on arm64.
+        var typeId:  UInt32 = 0
+        var ptsNs:   UInt64 = 0
+        var paySize: UInt32 = 0
+        _ = data.copyBytes(to: UnsafeMutableBufferPointer(start: &typeId,  count: 1), from: 0..<4)
+        _ = data.copyBytes(to: UnsafeMutableBufferPointer(start: &ptsNs,   count: 1), from: 4..<12)
+        _ = data.copyBytes(to: UnsafeMutableBufferPointer(start: &paySize, count: 1), from: 12..<16)
+        typeId  = UInt32(bigEndian: typeId)
+        ptsNs   = UInt64(bigEndian: ptsNs)
+        paySize = UInt32(bigEndian: paySize)
         let payload = Data(data.dropFirst(16).prefix(Int(paySize)))
 
         switch typeId {
