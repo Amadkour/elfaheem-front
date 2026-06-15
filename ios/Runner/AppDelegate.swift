@@ -76,33 +76,31 @@ import CoreVideo
 
     // ── Upload URLSession ─────────────────────────────────────────────────────
     //
-    // URLSession.shared is cancelled when the LiveKit WebRTC stack tears down
-    // its network connections on room disconnect — "network connection was lost"
-    // appears in logs exactly at that moment.
+    // URLSession.shared is cancelled by LiveKit's WebRTC stack when it tears
+    // down its network connections on room disconnect.
     //
-    // Fix: use a DEDICATED background URLSession.
-    //   • background(withIdentifier:) tasks survive app-to-background transitions
-    //     and are NOT affected by foreground network teardowns from other stacks
-    //     (LiveKit, Firebase, etc.)
-    //   • The session identifier must be unique per app install; using the bundle
-    //     ID suffix keeps it stable across launches so iOS can reconnect pending
-    //     tasks after a crash or relaunch.
-    //   • waitsForConnectivity = true: if the network is briefly lost during the
-    //     LiveKit disconnect, URLSession waits for it to return instead of failing.
-    //   • timeoutIntervalForResource = 300: 5 min window per chunk upload attempt.
+    // Fix: a DEDICATED default-configuration URLSession that is completely
+    // independent from URLSession.shared and from LiveKit's internal sessions.
+    //
+    // We do NOT use URLSessionConfiguration.background because:
+    //   • background sessions forbid completion-handler–based tasks entirely
+    //     (crashes with "Completion handler blocks are not supported in
+    //     background sessions. Use a delegate instead.")
+    //   • Our retry logic lives in the completion handler.
+    //
+    // A fresh .default session with waitsForConnectivity=true is sufficient:
+    //   • It is not shared with any other consumer, so LiveKit cannot cancel it.
+    //   • waitsForConnectivity queues tasks instead of failing when the network
+    //     is momentarily lost during LiveKit's socket teardown.
+    //   • httpMaximumConnectionsPerHost=1 serialises requests to the Cloudflare
+    //     tunnel (avoids per-IP connection-limit resets from trycloudflare.com).
     private lazy var uploadSession: URLSession = {
-        let cfg = URLSessionConfiguration.background(
-            withIdentifier: "com.elfaheem.rec.upload"
-        )
-        cfg.isDiscretionary          = false   // upload promptly, not when convenient
-        cfg.sessionSendsLaunchEvents = true    // wake app if upload completes in bg
-        cfg.waitsForConnectivity     = true    // retry automatically on network loss
-        cfg.timeoutIntervalForRequest  = 120
-        cfg.timeoutIntervalForResource = 300
-        // HTTPMaximumConnectionsPerHost=1 avoids hammering the tunnel server
-        // (Cloudflare's trycloudflare has aggressive per-IP connection limits)
+        let cfg = URLSessionConfiguration.default
+        cfg.waitsForConnectivity          = true
+        cfg.timeoutIntervalForRequest     = 120
+        cfg.timeoutIntervalForResource    = 300
         cfg.httpMaximumConnectionsPerHost = 1
-        return URLSession(configuration: cfg, delegate: nil, delegateQueue: nil)
+        return URLSession(configuration: cfg)
     }()
 
     // ── Broadcast source control ──────────────────────────────────────────────
@@ -879,19 +877,40 @@ import CoreVideo
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { result(nil); return }
 
+            // ── Pause recording during the iOS broadcast confirmation overlay ─
+            // When the system sheet appears, iOS briefly suspends the Runner app
+            // which causes:
+            //   • AVAudioSession interruption → LiveKit tries to reconfigure →
+            //     "Configure audio error: Code=561017449 kAudioSessionIncompatibleCategory"
+            //   • RPScreenRecorder may deliver corrupted/duplicate frames during
+            //     the suspension window
+            //
+            // Pausing here (finalise current chunk, stop accepting frames) means
+            // the suspension window produces no data. Recording resumes cleanly
+            // once the first broadcast frame arrives via Darwin notification,
+            // which confirms the extension has started and iOS has fully resumed.
+            if self.recording && !self.paused && !self.stopping {
+                self.paused = true
+                NSLog("[SHARE] picker: recording paused before system overlay")
+                self.finaliseChunk(isFinal: false) { [weak self] in
+                    guard let self = self else { return }
+                    self.chunkIndex += 1
+                    NSLog("[SHARE] picker: paused chunk rotated at #\(self.chunkIndex)")
+                    // beginChunkWriter() is called when broadcast starts (first
+                    // Darwin frame notification) or when broadcast is cancelled
+                    // (stopBroadcastShare without isBroadcasting ever becoming true).
+                }
+            }
+
             // Register Darwin notification listeners BEFORE the picker appears
             // so we are ready the instant the extension's broadcastStarted() fires.
             self.registerDarwinListeners()
 
             let picker = RPSystemBroadcastPickerView(frame: CGRect(x: 0, y: 0, width: 60, height: 60))
-
-            // Point directly at our own extension so the system skips the
-            // full picker list and shows only our "Start Broadcast" sheet.
             picker.preferredExtension =
                 Bundle.main.bundleIdentifier.map { $0 + ".BroadcastUploadExtension" }
             picker.showsMicrophoneButton = false
 
-            // Programmatically press the picker button to open the sheet.
             for subview in picker.subviews {
                 if let button = subview as? UIButton {
                     button.sendActions(for: .touchUpInside)
@@ -908,16 +927,22 @@ import CoreVideo
         removeDarwinListeners()
         emitEvent(["event": "broadcastStopped"])
         NSLog("[SHARE] broadcast stopped by app")
-        // Rotate the current chunk so the broadcast frames that were written
-        // are finalised and uploaded before RPScreenRecorder resumes.
-        // Without this the last broadcast chunk is lost if stopRecording()
-        // is called immediately after (e.g. End Session during sharing).
-        if recording && !stopping && !paused {
-            finaliseChunk(isFinal: false) { [weak self] in
-                guard let self = self, self.recording, !self.stopping, !self.paused else { return }
-                self.chunkIndex += 1
-                self.beginChunkWriter()
-                NSLog("[SHARE] broadcast chunk rotated — RPScreenRecorder resuming at chunk #\(self.chunkIndex)")
+        if recording && !stopping {
+            if paused {
+                // Broadcast was never confirmed (user cancelled picker).
+                // Resume RPScreenRecorder which was paused by showBroadcastPicker.
+                paused = false
+                beginChunkWriter()
+                NSLog("[SHARE] picker cancelled — RPScreenRecorder resumed at chunk #\(chunkIndex)")
+            } else {
+                // Broadcast was active: finalise the broadcast chunk and start
+                // a fresh RPScreenRecorder chunk.
+                finaliseChunk(isFinal: false) { [weak self] in
+                    guard let self = self, self.recording, !self.stopping, !self.paused else { return }
+                    self.chunkIndex += 1
+                    self.beginChunkWriter()
+                    NSLog("[SHARE] broadcast chunk rotated — RPScreenRecorder resuming at chunk #\(self.chunkIndex)")
+                }
             }
         }
         result(nil)
@@ -1010,13 +1035,19 @@ import CoreVideo
         isBroadcasting = false
         removeDarwinListeners()
         emitEvent(["event": "broadcastStopped"])
-        // Finalise broadcast chunk and resume RPScreenRecorder capture.
-        if recording && !stopping && !paused {
-            finaliseChunk(isFinal: false) { [weak self] in
-                guard let self = self, self.recording, !self.stopping, !self.paused else { return }
-                self.chunkIndex += 1
-                self.beginChunkWriter()
-                NSLog("[SHARE] Darwin stop: chunk rotated at #\(self.chunkIndex)")
+        if recording && !stopping {
+            if paused {
+                // Extension stopped before we got the first frame (race).
+                paused = false
+                beginChunkWriter()
+                NSLog("[SHARE] Darwin stop: resumed from paused state at chunk #\(chunkIndex)")
+            } else {
+                finaliseChunk(isFinal: false) { [weak self] in
+                    guard let self = self, self.recording, !self.stopping, !self.paused else { return }
+                    self.chunkIndex += 1
+                    self.beginChunkWriter()
+                    NSLog("[SHARE] Darwin stop: chunk rotated at #\(self.chunkIndex)")
+                }
             }
         }
     }
@@ -1037,6 +1068,14 @@ import CoreVideo
             if !isBroadcasting {
                 isBroadcasting = true
                 NSLog("[SHARE] first broadcast frame — switching recording source")
+                // If recording was paused by showBroadcastPicker (to protect
+                // against the iOS overlay suspension window), resume it now.
+                // The extension is running, iOS has fully resumed, it's safe to write.
+                if recording && paused && !stopping {
+                    paused = false
+                    beginChunkWriter()
+                    NSLog("[SHARE] recording resumed from picker-pause — broadcast chunk #\(chunkIndex)")
+                }
             }
             guard recording, !stopping, !paused else { return }
             processSampleFromBroadcast(jpegData: payload, ptsNs: ptsNs)
