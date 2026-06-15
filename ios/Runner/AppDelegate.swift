@@ -97,7 +97,7 @@ import CoreVideo
     //
     //   If your bundle ID differs, update kAppGroup in BOTH this file and
     //   SampleHandler.swift — they must be identical.
-    private let kAppGroup           = "group.com.example.flutter_education_app"
+    private let kAppGroup           = "group.com.example.flutterEducationApp"
     private let kDarwinFrameNotif   = "com.example.flutter_education_app.frame"
     private let kDarwinStopNotif    = "com.example.flutter_education_app.stop"
     private let kFrameFileName      = "broadcast_frame.bin"
