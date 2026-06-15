@@ -207,7 +207,7 @@ class _FilterTabs extends StatelessWidget {
                     border: active
                         ? Border(
                             bottom: BorderSide(
-                              color: context.colors.primaryBlue,
+                              color: context.colors.primaryDark,
                               width: 1,
                             ),
                           )
@@ -222,7 +222,7 @@ class _FilterTabs extends StatelessWidget {
                           icon,
                           size: 13,
                           color: active
-                              ? context.colors.primaryBlue
+                              ? context.colors.primaryDark
                               : context.colors.textLight,
                         ),
                         const SizedBox(width: 5),
@@ -230,7 +230,7 @@ class _FilterTabs extends StatelessWidget {
                           labelKey.tr,
                           style: context.colors.label.copyWith(
                             color: active
-                                ? context.colors.primaryBlue
+                                ? context.colors.primaryDark
                                 : context.colors.textLight,
                             fontWeight: active
                                 ? FontWeight.w700
@@ -539,7 +539,7 @@ class _CourseCardState extends State<_CourseCard> {
       decoration: BoxDecoration(
         color: context.colors.cardBg,
         borderRadius: BorderRadius.circular(20),
-        //  border: Border.all(color: context.colors.primaryBlue),
+        //  border: Border.all(color: context.colors.primaryDark),
         boxShadow: [
           BoxShadow(
             color: context.colors.primary.withValues(alpha: 0.7),
@@ -679,7 +679,7 @@ class _CourseCardState extends State<_CourseCard> {
                 SizedBox(width: 5),
                 _OverlayBtn(
                   icon: Icons.edit_rounded,
-                  color: context.colors.primaryBlue,
+                  color: context.colors.primaryDark,
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -853,7 +853,7 @@ class _OverlayBtn extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: context.colors.primaryBlue),
+        border: Border.all(color: context.colors.primaryDark),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.12),
@@ -879,7 +879,7 @@ class _PublishButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color primaryColor = isDraft ? context.colors.primaryBlue : Colors.red;
+    Color primaryColor = isDraft ? context.colors.primaryDark : Colors.red;
     return GestureDetector(
       onTap: onTap,
       child: Container(

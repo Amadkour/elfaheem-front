@@ -238,48 +238,6 @@ class _RoomPageState extends State<RoomPage>
   @override bool get isTeacher => widget.isTeacher;
   @override void showSnack(String msg) => _showSnack(msg);
 
-  /// Called by RoomScreenShareMixin when iOS broadcast starts or stops.
-  @override
-  void onIOSBroadcastStateChanged(bool active) {
-    if (!mounted) return;
-    setState(() => _isBroadcastingIOS = active);
-    if (active) {
-      // Toast: tell the teacher they can now open any app
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: const [
-              Icon(Icons.screen_share_rounded, color: Colors.white, size: 18),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'يمكنك الآن فتح أي تطبيق للمشاركة',
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: const Color(0xFF00D4FF),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 4),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-        ),
-      );
-    }
-  }
-
-  /// Stop iOS broadcast share and clean up. Called from the in-app stop
-  /// button and from _endSessionWithRecording before stopping the recorder.
-  Future<void> _stopIOSBroadcast() async {
-    if (!_isBroadcastingIOS) return;
-    await stopIOSBroadcast(); // defined in RoomScreenShareMixin
-  }
-
   List<ParticipantTrack> participantTracks = [];
 
   EventsListener<RoomEvent> get _listener => widget.listener;
@@ -293,13 +251,9 @@ class _RoomPageState extends State<RoomPage>
   ClientRecorder? _recorder;
   bool _recorderStarted = false; // guard: prevents multiple start() calls
   bool _endingSession = false;     // true while awaiting final chunk before onEnd()
+  bool _iosSharing = false;         // true while iOS broadcast share is active
   bool _isPausingRecording = false; // true while pauseRecording() is in flight
   bool _isResumingRecording = false; // true while resumeRecording() is in flight
-
-  // iOS broadcast share state —────────────────────────────────────────────────
-  // True from the moment showBroadcastPicker succeeds until the broadcast
-  // stops (in-app button, broadcastStopped native event, or session end).
-  bool _isBroadcastingIOS = false;
 
   // Participant panel
   bool _showParticipants = false;
@@ -457,6 +411,11 @@ class _RoomPageState extends State<RoomPage>
           widget.room.connectionState == ConnectionState.connected) {
         await _startRecorderOnce();
       }
+
+      // Wire up the iOS sharing state callback so the Stop button appears/hides.
+      onIOSSharingChanged = (sharing) {
+        if (mounted) setState(() => _iosSharing = sharing);
+      };
     });
   }
   void _onRecorderUpdate() {
@@ -482,6 +441,8 @@ class _RoomPageState extends State<RoomPage>
       _recorder = null;
       unawaited(_drainAndDispose(rec));
     }
+    // Stop any active iOS broadcast share and drain remaining chunks.
+    disposeBroadcastSub();
     super.dispose();
   }
 
@@ -504,11 +465,9 @@ class _RoomPageState extends State<RoomPage>
     if (_endingSession) return null;
     if (mounted) setState(() => _endingSession = true);
 
-    // Stop iOS broadcast share before ending — ensures the extension sends
-    // its stop notification so the last in-flight frames are flushed and
-    // the Darwin listener is cleaned up before the recorder is stopped.
-    if (_isBroadcastingIOS) {
-      await _stopIOSBroadcast();
+    // Stop any active iOS broadcast share before ending so chunks are drained.
+    if (_iosSharing) {
+      await stopIOSShareExplicit();
     }
 
     final rec = _recorder;
@@ -1078,11 +1037,6 @@ class _RoomPageState extends State<RoomPage>
                             // Recording indicators
                             _buildRecordingIndicator(),
 
-                            // iOS broadcast share active banner + stop button
-                            // Only visible on iOS while _isBroadcastingIOS = true
-                            if (Platform.isIOS && widget.isTeacher)
-                              _buildIOSShareBanner(),
-
                             // Participant count badge
                             Positioned(
                               bottom: 14,
@@ -1099,6 +1053,10 @@ class _RoomPageState extends State<RoomPage>
                                 ),
                               ),
                             ),
+
+                            // iOS screen-share Stop button
+                            if (_iosSharing)
+                              _buildIOSStopShareButton(),
 
                             // Quiz overlay
                             if (_quizVisible && _activeQuiz != null)
@@ -1311,103 +1269,63 @@ class _RoomPageState extends State<RoomPage>
     );
   }
 
-  // ── Recording indicator ────────────────────────────────────────────────────
+  // ── iOS Screen Share Stop button ─────────────────────────────────────────────
   //
-  // Shows two badges stacked vertically:
-  //   1. Server REC badge  — driven by LiveKit egress (visible to all)
-  //   2. Client REC badge  — driven by _ClientRecorder (teacher only)
-  // ── iOS Share Active Banner ──────────────────────────────────────────────
-  //
-  // Shown only on iOS while the broadcast is active (teacher opened another
-  // app and is sharing its screen). The banner sits at the top-centre of the
-  // screen so it is visible no matter which app the teacher is looking at
-  // when they switch back to return to the session.
-  Widget _buildIOSShareBanner() {
-    if (!_isBroadcastingIOS) return const SizedBox.shrink();
+  // Shown as a floating pill anchored to the top-centre of the video area
+  // while an iOS broadcast share is active.  Tapping it stops the share and
+  // drains any remaining recording chunks to the server.
+  Widget _buildIOSStopShareButton() {
     return Positioned(
-      top: 12,
-      left: 24,
-      right: 24,
-      child: Material(
-        color: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0E1120),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFF00D4FF).withValues(alpha: 0.5), width: 1.2),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF00D4FF).withValues(alpha: 0.15),
-                blurRadius: 20,
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              // Pulsing dot
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.3, end: 1.0),
-                duration: const Duration(milliseconds: 800),
-                builder: (_, v, __) => Opacity(
-                  opacity: v,
-                  child: Container(
-                    width: 9, height: 9,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF00D4FF),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
+      top: 14,
+      left: 0,
+      right: 0,
+      child: Center(
+        child: GestureDetector(
+          onTap: () async {
+            setState(() => _iosSharing = false);
+            await stopIOSShareExplicit();
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+            decoration: BoxDecoration(
+              color: _rose.withValues(alpha: 0.92),
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: _rose.withValues(alpha: 0.45),
+                  blurRadius: 20,
+                  offset: const Offset(0, 4),
                 ),
-                onEnd: () => setState(() {}), // re-trigger animation loop
-              ),
-              const SizedBox(width: 8),
-              const Icon(Icons.screen_share_rounded, color: Color(0xFF00D4FF), size: 18),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  'جارٍ مشاركة الشاشة',
+              ],
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.stop_screen_share_rounded,
+                    size: 18, color: Colors.white),
+                SizedBox(width: 8),
+                Text(
+                  'إيقاف المشاركة',
                   style: TextStyle(
                     fontFamily: 'tajawal',
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
-                    fontSize: 13,
+                    fontSize: 14,
                   ),
                 ),
-              ),
-              // Stop button
-              GestureDetector(
-                onTap: () async {
-                  await _stopIOSBroadcast();
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFF4F72).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: const Color(0xFFFF4F72).withValues(alpha: 0.5),
-                      width: 1,
-                    ),
-                  ),
-                  child: const Text(
-                    'إيقاف المشاركة',
-                    style: TextStyle(
-                      fontFamily: 'tajawal',
-                      color: Color(0xFFFF4F72),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
+  // ── Recording indicator ────────────────────────────────────────────────────
+  //
+  // Shows two badges stacked vertically:
+  //   1. Server REC badge  — driven by LiveKit egress (visible to all)
+  //   2. Client REC badge  — driven by _ClientRecorder (teacher only)
   Widget _buildRecordingIndicator() {
     final widgets = <Widget>[];
 

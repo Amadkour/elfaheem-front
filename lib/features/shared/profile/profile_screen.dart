@@ -168,7 +168,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                           trailing: Switch.adaptive(
                             value: p.notificationsEnabled,
                             onChanged: p.toggleNotifications,
-                            activeColor: context.colors.primaryBlue,
+                            activeColor: context.colors.primaryDark,
                             thumbColor:
                                 const WidgetStatePropertyAll(Colors.white),
                           ),
@@ -190,7 +190,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                             onChanged: (b) async {
                               await p.changeMode(b);
                             },
-                            activeColor: context.colors.primaryBlue,
+                            activeColor: context.colors.primaryDark,
                             thumbColor:
                                 const WidgetStatePropertyAll(Colors.white),
                           ),
@@ -322,7 +322,7 @@ class ProfileHeader extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: context.colors.primary.withValues(alpha: 0.1),
                 border:
-                    Border.all(color: context.colors.primaryBlue, width: 2.5),
+                    Border.all(color: context.colors.primaryDark, width: 2.5),
               ),
               child: provider.imageUrl.isNotEmpty
                   ? ClipOval(
@@ -332,7 +332,7 @@ class ProfileHeader extends StatelessWidget {
                       ),
                     )
                   : Icon(Icons.person_rounded,
-                      size: 52, color: context.colors.primaryBlue),
+                      size: 52, color: context.colors.primaryDark),
             ),
           ],
         ),

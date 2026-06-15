@@ -315,7 +315,7 @@ class UserChipButton extends StatelessWidget {
                         shape: BoxShape.circle,
                         color: context.colors.primary.withValues(alpha: 0.1),
                         border: Border.all(
-                            color: context.colors.primaryBlue, width: 2.5),
+                            color: context.colors.primaryDark, width: 2.5),
                       ),
                       child: ClipOval(
                           child: AppNetworkImage(
@@ -707,7 +707,7 @@ class _BottomNav extends StatelessWidget {
                             boxShadow: active
                                 ? [
                                     BoxShadow(
-                                        color: context.colors.primaryBlue
+                                        color: context.colors.primaryDark
                                             .withValues(alpha: 0.3),
                                         blurRadius: 8,
                                         offset: const Offset(0, 2))
@@ -730,7 +730,7 @@ class _BottomNav extends StatelessWidget {
                             fontWeight:
                                 active ? FontWeight.w700 : FontWeight.w500,
                             color: active
-                                ? context.colors.primaryBlue
+                                ? context.colors.primaryDark
                                 : context.colors.textLight,
                             fontFamily: 'bahji',
                           ),

@@ -204,7 +204,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: TextStyle(
                   fontFamily: 'tajawal',
                   fontSize: 13,
-                  color: context.colors.primaryBlue,
+                  color: context.colors.primaryDark,
                   fontWeight: FontWeight.w500,
                 ),
               ),

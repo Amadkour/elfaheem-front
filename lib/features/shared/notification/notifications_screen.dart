@@ -203,12 +203,12 @@ class _NotifTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: isRead
               ? context.colors.cardBg
-              : context.colors.primaryBlue.withValues(alpha: 0.05),
+              : context.colors.primaryDark.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(context.colors.radiusMedium),
           border: Border.all(
             color: isRead
                 ? Colors.transparent
-                : context.colors.primaryBlue.withValues(alpha: 0.2),
+                : context.colors.primaryDark.withValues(alpha: 0.2),
           ),
           boxShadow: context.colors.cardShadow,
         ),
@@ -238,7 +238,7 @@ class _NotifTile extends StatelessWidget {
                           width: 8,
                           height: 8,
                           decoration: BoxDecoration(
-                            color: context.colors.primaryBlue,
+                            color: context.colors.primaryDark,
                             shape: BoxShape.circle,
                           ),
                         ),

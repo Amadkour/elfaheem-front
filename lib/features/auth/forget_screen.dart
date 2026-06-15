@@ -161,7 +161,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
           Row(
             children: [
               Icon(Icons.info_outline_rounded, size: 13,
-                color: context.colors.primaryBlue,
+                color: context.colors.primaryDark,
               ),
               const SizedBox(width: 6),
               Text(
@@ -169,7 +169,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
                 style: TextStyle(
                   fontFamily: 'tajawal',
                   fontSize: 12,
-                  color: context.colors.primaryBlue,
+                  color: context.colors.primaryDark,
                 ),
               ),
             ],

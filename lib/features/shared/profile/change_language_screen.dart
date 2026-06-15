@@ -40,7 +40,7 @@ class ChangeLanguageScreen extends StatelessWidget {
                               context.colors.radiusMedium),
                           border: Border.all(
                               color: isSelected
-                                  ? context.colors.primaryBlue
+                                  ? context.colors.primaryDark
                                   : context.colors.divider,
                               width: isSelected ? 2 : 1),
                           boxShadow: context.colors.cardShadow,
@@ -51,13 +51,13 @@ class ChangeLanguageScreen extends StatelessWidget {
                               Text(l.tr,
                                   style: context.colors.label.copyWith(
                                       color: isSelected
-                                          ? context.colors.primaryBlue
+                                          ? context.colors.primaryDark
                                           : context.colors.textDark,
                                       fontWeight: FontWeight.w700,
                                       fontSize: 15)),
                               if (isSelected)
                                 Icon(Icons.check_circle_rounded,
-                                    color: context.colors.primaryBlue,
+                                    color: context.colors.primaryDark,
                                     size: 22),
                             ]),
                       ),

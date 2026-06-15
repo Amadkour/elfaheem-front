@@ -100,7 +100,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       case 1: return c.danger;
       case 2: return c.warning;
       case 3: return c.success;
-      case 4: return c.primaryBlue;
+      case 4: return c.primaryDark;
       default: return c.divider;
     }
   }

@@ -394,7 +394,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         1 => c.danger,
         2 => c.warning,
         3 => c.success,
-        4 => c.primaryBlue,
+        4 => c.primaryDark,
         _ => c.divider,
       };
 

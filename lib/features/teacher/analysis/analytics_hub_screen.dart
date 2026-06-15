@@ -88,11 +88,11 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen>
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: context.colors.primaryBlue.withValues(alpha: 0.08),
+              color: context.colors.primaryDark.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(Icons.analytics_rounded,
-                color: context.colors.primaryBlue, size: 24),
+                color: context.colors.primaryDark, size: 24),
           ),
         ]),
       );
@@ -183,11 +183,11 @@ class _CourseAnalyticsCard extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: context.colors.primaryBlue.withValues(alpha: 0.1),
+                color: context.colors.primaryDark.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(Icons.menu_book_rounded,
-                  color: context.colors.primaryBlue, size: 22),
+                  color: context.colors.primaryDark, size: 22),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -265,7 +265,7 @@ class _CourseAnalyticsCard extends StatelessWidget {
                 icon: Icons.quiz_rounded,
                 label: 'analytics_btn_exams'.tr,
                 sublabel: 'analytics_btn_exams_sub'.tr,
-                color: context.colors.primaryBlue,
+                color: context.colors.primaryDark,
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(

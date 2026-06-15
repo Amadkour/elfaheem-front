@@ -39,7 +39,7 @@ class SectionHeader extends StatelessWidget {
                 child: Text(
                   actionLabel!,
                   style: context.colors.label.copyWith(
-                    color: context.colors.primaryBlue,
+                    color: context.colors.primaryDark,
                     fontWeight: FontWeight.w700,
                     fontSize: 12,
                   ),

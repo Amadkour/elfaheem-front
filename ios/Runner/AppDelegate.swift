@@ -811,26 +811,43 @@ import CoreVideo
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { result(nil); return }
 
-            // Register Darwin notification listeners BEFORE the picker appears
+            // Register Darwin notification listeners BEFORE the picker fires
             // so we are ready the instant the extension's broadcastStarted() fires.
             self.registerDarwinListeners()
 
-            let picker = RPSystemBroadcastPickerView(frame: CGRect(x: 0, y: 0, width: 60, height: 60))
-
-            // Point directly at our own extension so the system skips the
-            // full picker list and shows only our "Start Broadcast" sheet.
+            // ── Invisible broadcast trigger ───────────────────────────────────
+            // We create RPSystemBroadcastPickerView at a 1x1 off-screen rect
+            // and programmatically press its button WITHOUT adding it to any
+            // visible view hierarchy position.  The system still launches the
+            // broadcast extension but the picker sheet never appears to the
+            // user — Flutter shows its own toast + Stop button overlay instead.
+            //
+            // We attach the picker to the key window at alpha=0 so UIKit keeps
+            // the object alive long enough to process the touch event.
+            let picker = RPSystemBroadcastPickerView(
+                frame: CGRect(x: -500, y: -500, width: 1, height: 1))
             picker.preferredExtension =
                 Bundle.main.bundleIdentifier.map { $0 + ".BroadcastUploadExtension" }
             picker.showsMicrophoneButton = false
+            picker.alpha = 0
 
-            // Programmatically press the picker button to open the sheet.
+            if let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow }) {
+                window.addSubview(picker)
+            }
+
             for subview in picker.subviews {
                 if let button = subview as? UIButton {
                     button.sendActions(for: .touchUpInside)
                     break
                 }
             }
-            NSLog("[SHARE] showBroadcastPicker — extension: \(picker.preferredExtension ?? "nil")")
+
+            // Remove after 2s once the system has processed the tap.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                picker.removeFromSuperview()
+            }
+
+            NSLog("[SHARE] showBroadcastPicker — silent tap fired, extension: \(picker.preferredExtension ?? "nil")")
             result(nil)
         }
     }

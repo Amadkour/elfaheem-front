@@ -414,7 +414,7 @@ class _MobileHero extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 36),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [c.primary, c.primaryBlue],
+          colors: [c.primary, c.primaryDark],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),

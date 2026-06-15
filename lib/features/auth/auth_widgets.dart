@@ -534,7 +534,7 @@ class LinkRow extends StatelessWidget {
               style:  TextStyle(
                 fontFamily: 'tajawal',
                 fontSize: 14,
-                color: context.colors.primaryBlue,
+                color: context.colors.primaryDark,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -599,7 +599,7 @@ class RolePicker extends StatelessWidget {
                   color:  context.colors.inputBg,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: isSelected ? context.colors.primaryBlue : _kBorder,
+                    color: isSelected ? context.colors.primaryDark : _kBorder,
                     width: isSelected ? 2 : 1.5,
                   ),
                 ),
@@ -610,7 +610,7 @@ class RolePicker extends StatelessWidget {
                       height: 40,
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? context.colors.primaryBlue.withValues(alpha:0.15)
+                            ? context.colors.primaryDark.withValues(alpha:0.15)
                             : const Color(0xFF9CA3AF).withValues(alpha:0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -618,7 +618,7 @@ class RolePicker extends StatelessWidget {
                         role['text'] == 'teacher'
                             ? Icons.cast_for_education_outlined
                             : Icons.school_outlined,
-                        color: isSelected ? context.colors.primaryBlue : _kMuted,
+                        color: isSelected ? context.colors.primaryDark : _kMuted,
                         size: 20,
                       ),
                     ),
@@ -799,7 +799,7 @@ class LangDropdown extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-           Icon(Icons.language, size: 20,color: context.colors.primaryBlue,),
+           Icon(Icons.language, size: 20,color: context.colors.primaryDark,),
 
           const SizedBox(width: 5), // 👈 تحكمي فيها (0 لو عايزة تلزقيهم)
 
