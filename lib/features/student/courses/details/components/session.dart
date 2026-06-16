@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../../config/app_theme.dart';
+import '../../../../../config/theme/app_theme.dart';
+import '../../../../../config/theme/theme_config_provider.dart';
 import '../../../../shared/session/material/session_material_widget.dart';
 import '../../../../shared/session/progress_banner.dart';
 import '../../../models.dart';
@@ -15,7 +16,7 @@ class SessionsTab extends StatelessWidget {
         padding: EdgeInsets.all(48),
         child: Center(
           child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation(context.colors.primary),
+            valueColor: AlwaysStoppedAnimation(context.themeConfig.primary),
             strokeWidth: 2.5,
           ),
         ),
@@ -32,11 +33,11 @@ class SessionsTab extends StatelessWidget {
                 width: 72,
                 height: 72,
                 decoration: BoxDecoration(
-                  color: context.colors.primaryLight.withValues(alpha: 0.3),
+                  color: context.themeConfig.primaryLight.withValues(alpha: 0.3),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(Icons.video_library_outlined,
-                    size: 36, color: context.colors.primary),
+                    size: 36, color: context.themeConfig.primary),
               ),
               const SizedBox(height: 14),
               Text('لا توجد دروس بعد', style: context.colors.body),

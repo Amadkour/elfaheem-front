@@ -1,6 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import '../../config/app_theme.dart';
+import '../../config/theme/app_theme.dart';
 
 class ScreenAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;

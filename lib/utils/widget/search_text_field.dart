@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../config/app_config.dart';
-import '../../config/app_theme.dart';
+import '../../config/theme/app_theme.dart';
+import '../../config/theme/theme_config_provider.dart';
 
 class MySearchBar extends StatelessWidget {
   final TextEditingController controller;
@@ -21,32 +22,32 @@ class MySearchBar extends StatelessWidget {
         style: TextStyle(
           fontFamily: 'tajawal',
           fontSize: 14,
-          color: context.colors.textDark,
+          color: context.themeConfig.textDark,
         ),
         decoration: InputDecoration(
           hintText: hint.tr,
           hintStyle: TextStyle(
             fontFamily: 'tajawal',
-            color: context.colors.textMedium,
+            color: context.themeConfig.textMedium,
             fontSize: 13,
           ),
           prefixIcon: Icon(Icons.search_rounded,
-              size: 20, color: context.colors.textMedium),
+              size: 20, color: context.themeConfig.textMedium),
           filled: true,
-          fillColor: context.colors.surface,
+          fillColor: context.themeConfig.surfaceCard,
           contentPadding:
           const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: context.colors.divider, width: 0.5),
+            borderSide: BorderSide(color: context.themeConfig.divider, width: 0.5),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: context.colors.divider, width: 0.5),
+            borderSide: BorderSide(color: context.themeConfig.divider, width: 0.5),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: context.colors.primary, width: 1),
+            borderSide: BorderSide(color: context.themeConfig.primary, width: 1),
           ),
         ),
         onChanged: onChanged,

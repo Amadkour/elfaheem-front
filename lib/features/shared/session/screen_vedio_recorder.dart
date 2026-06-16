@@ -11,8 +11,10 @@ import 'package:flutter_education_app/features/shared/session/material/session_m
 import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
-import 'package:flutter_education_app/config/app_theme.dart';
+import 'package:flutter_education_app/config/theme/app_theme.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import '../../../config/app_config.dart';
+import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/helpers.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -510,7 +512,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                 alignment: Alignment.centerLeft,
                 child: FractionallySizedBox(
                   widthFactor: fraction,
-                  child: Container(color: context.colors.primary),
+                  child: Container(color: context.themeConfig.primary),
                 ),
               ),
             ),

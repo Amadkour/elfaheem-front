@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/app_config.dart';
-import '../../../../config/app_theme.dart';
+import '../../../../config/theme/app_theme.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/helpers.dart';
 import '../../../../utils/widget/base_page.dart';
 import '../../../../utils/widget/search_text_field.dart';
@@ -68,9 +69,9 @@ class _Header extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       decoration: BoxDecoration(
-        color: context.colors.surface,
+        color: context.themeConfig.surfaceCard,
         border: Border(
-          bottom: BorderSide(color: context.colors.divider, width: 0.5),
+          bottom: BorderSide(color: context.themeConfig.divider, width: 0.5),
         ),
       ),
       child: Row(
@@ -81,12 +82,12 @@ class _Header extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: context.colors.background,
+                color: context.themeConfig.background,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: context.colors.divider),
+                border: Border.all(color: context.themeConfig.divider),
               ),
               child: Icon(Icons.arrow_back_ios_new_rounded,
-                  size: 16, color: context.colors.textDark),
+                  size: 16, color: context.themeConfig.textDark),
             ),
           ),
           const SizedBox(width: 12),
@@ -104,7 +105,7 @@ class _Header extends StatelessWidget {
                   style: TextStyle(
                     fontFamily: 'tajawal',
                     fontSize: 12,
-                    color: context.colors.textMedium,
+                    color: context.themeConfig.textMedium,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -131,9 +132,9 @@ class _StatsBar extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
       decoration: BoxDecoration(
-        color: context.colors.surface,
+        color: context.themeConfig.surfaceCard,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: context.colors.divider, width: 0.5),
+        border: Border.all(color: context.themeConfig.divider, width: 0.5),
       ),
       child: Row(
         children: [
@@ -168,7 +169,7 @@ class _Divider extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         width: 0.5,
         height: 36,
-        color: context.colors.divider,
+        color: context.themeConfig.divider,
         margin: const EdgeInsets.symmetric(horizontal: 8),
       );
 }
@@ -207,7 +208,7 @@ class _Stat extends StatelessWidget {
                 fontFamily: 'tajawal',
                 fontSize: 15,
                 fontWeight: FontWeight.w800,
-                color: context.colors.textDark,
+                color: context.themeConfig.textDark,
               ),
             ),
             Text(
@@ -215,7 +216,7 @@ class _Stat extends StatelessWidget {
               style: TextStyle(
                 fontFamily: 'tajawal',
                 fontSize: 10,
-                color: context.colors.textMedium,
+                color: context.themeConfig.textMedium,
               ),
             ),
           ],
@@ -234,7 +235,7 @@ class _StudentList extends StatelessWidget {
     if (p.isLoading) {
       return Center(
         child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation(context.colors.primary),
+          valueColor: AlwaysStoppedAnimation(context.themeConfig.primary),
           strokeWidth: 2.5,
         ),
       );
@@ -249,12 +250,12 @@ class _StudentList extends StatelessWidget {
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: context.colors.surface,
+                color: context.themeConfig.surfaceCard,
                 shape: BoxShape.circle,
-                border: Border.all(color: context.colors.divider),
+                border: Border.all(color: context.themeConfig.divider),
               ),
               child: Icon(Icons.people_outline_rounded,
-                  size: 32, color: context.colors.textMedium),
+                  size: 32, color: context.themeConfig.textMedium),
             ),
             const SizedBox(height: 16),
             Text('no_students'.tr, style: context.colors.h3),
@@ -264,7 +265,7 @@ class _StudentList extends StatelessWidget {
               style: TextStyle(
                 fontFamily: 'tajawal',
                 fontSize: 13,
-                color: context.colors.textMedium,
+                color: context.themeConfig.textMedium,
               ),
             ),
           ],
@@ -273,7 +274,7 @@ class _StudentList extends StatelessWidget {
     }
 
     return RefreshIndicator(
-      color: context.colors.primary,
+      color: context.themeConfig.primary,
       onRefresh: () async {},
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 32),
@@ -303,9 +304,9 @@ class _StudentCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: context.colors.surface,
+        color: context.themeConfig.surfaceCard,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.colors.divider, width: 0.5),
+        border: Border.all(color: context.themeConfig.divider, width: 0.5),
       ),
       child: Row(
         children: [
@@ -324,7 +325,7 @@ class _StudentCard extends StatelessWidget {
                           fontFamily: 'tajawal',
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: context.colors.textDark,
+                          color: context.themeConfig.textDark,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -348,7 +349,7 @@ class _StudentCard extends StatelessWidget {
                   style: TextStyle(
                     fontFamily: 'tajawal',
                     fontSize: 11,
-                    color: context.colors.textMedium,
+                    color: context.themeConfig.textMedium,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -359,7 +360,7 @@ class _StudentCard extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: student.progressPercentage / 100,
                     minHeight: 5,
-                    backgroundColor: context.colors.divider,
+                    backgroundColor: context.themeConfig.divider,
                     valueColor: AlwaysStoppedAnimation(_progressColor),
                   ),
                 ),
@@ -369,7 +370,7 @@ class _StudentCard extends StatelessWidget {
                   style: TextStyle(
                     fontFamily: 'tajawal',
                     fontSize: 10,
-                    color: context.colors.textMedium,
+                    color: context.themeConfig.textMedium,
                   ),
                 ),
               ],

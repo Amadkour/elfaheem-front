@@ -8,8 +8,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../../../../../config/app_theme.dart';
+import '../../../../config/theme/app_theme.dart';
 import '../../../../../utils/widget/refresh_button.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 import '../../home/teacher_models.dart';
 
 class CourseHero extends StatelessWidget {
@@ -69,7 +70,7 @@ class CourseHero extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: context.colors.primary.withValues(alpha: 0.85),
+                    color: context.themeConfig.primary.withValues(alpha: 0.85),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(

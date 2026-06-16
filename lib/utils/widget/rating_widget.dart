@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
-import '../../config/app_theme.dart';
+import '../../config/theme/app_theme.dart';
+import '../../config/theme/theme_config_provider.dart';
 import '../../core/api_client.dart'; // adjust import path as needed
 
 // ══════════════════════════════════════════════
@@ -281,7 +282,7 @@ class _RatingWidgetState extends State<RatingWidget>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(e.toString()),
-            backgroundColor: context.colors.danger,
+            backgroundColor: context.themeConfig.danger,
             behavior: SnackBarBehavior.floating,
           ),
         );

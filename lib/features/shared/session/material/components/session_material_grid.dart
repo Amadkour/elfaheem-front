@@ -11,7 +11,8 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../config/app_config.dart';
-import '../../../../../config/app_theme.dart';
+import '../../../../../config/theme/app_theme.dart';
+import '../../../../../config/theme/theme_config_provider.dart';
 import '../../../../../utils/helpers.dart';
 import '../../../../../utils/widget/rating_widget.dart';
 import '../../../../student/courses/details/course_detail_provider.dart';
@@ -85,12 +86,12 @@ class SessionMaterialGrid extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(children: [
           Icon(Icons.folder_open_rounded,
-              size: 18, color: context.colors.textLight),
+              size: 18, color: context.themeConfig.textLight),
           const SizedBox(width: 8),
           Text(
             'no_attachments_yet'.tr,
             style: context.colors.caption
-                .copyWith(color: context.colors.textLight),
+                .copyWith(color: context.themeConfig.textLight),
           ),
         ]),
       );
@@ -132,7 +133,7 @@ class SessionMaterialGrid extends StatelessWidget {
     final isRecorded  = m.type == SessionMaterialType.recorded;
 
     final icon       = _typeIcons[m.type] ?? Icons.attach_file_rounded;
-    final color      = _typeColors[m.type] ?? context.colors.primary;
+    final color      = _typeColors[m.type] ?? context.themeConfig.primary;
     final labelKey   = _typeLabelKeys[m.type] ?? 'material_type_link';
     final isCompleted = m.completed;
 
@@ -149,7 +150,7 @@ class SessionMaterialGrid extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
-          color: context.colors.cardBg,
+          color: context.themeConfig.cardBg,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isCompleted
@@ -227,7 +228,7 @@ class SessionMaterialGrid extends StatelessWidget {
                                         ? FontStyle.italic
                                         : FontStyle.normal,
                                     color: isCompleted
-                                        ? context.colors.textMedium
+                                        ? context.themeConfig.textMedium
                                         : isRecording
                                         ? color
                                         : null,
@@ -297,13 +298,13 @@ class SessionMaterialGrid extends StatelessWidget {
                         if (!isRecording) ...[
                           _iconBtn(
                             icon: CupertinoIcons.settings_solid,
-                            color: context.colors.textMedium,
+                            color: context.themeConfig.textMedium,
                             onTap: () => _showEditDialog(context, m),
                           ),
                         ],
                         _iconBtn(
                           icon: CupertinoIcons.minus_circle_fill,
-                          color: context.colors.danger,
+                          color: context.themeConfig.danger,
                           onTap: () => _showDeleteDialog(context, m),
                         ),
                       ])
@@ -332,7 +333,7 @@ class SessionMaterialGrid extends StatelessWidget {
                                 key: ValueKey('empty')),
                           ),
                           Icon(Icons.open_in_new_rounded,
-                              size: 16, color: context.colors.textLight),
+                              size: 16, color: context.themeConfig.textLight),
                         ],
                       ),
                   ],
@@ -455,7 +456,7 @@ class SessionMaterialGrid extends StatelessWidget {
           );
         },
         confirmLabel: 'save'.tr,
-        confirmColor: context.colors.primary,
+        confirmColor: context.themeConfig.primary,
       ),
     );
   }
@@ -474,7 +475,7 @@ class SessionMaterialGrid extends StatelessWidget {
               .deleteMaterial(session.id, m.id);
         },
         confirmLabel: 'delete'.tr,
-        confirmColor: context.colors.danger,
+        confirmColor: context.themeConfig.danger,
       ),
     );
   }

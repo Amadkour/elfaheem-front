@@ -5,7 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' show DateFormat;
 import 'package:provider/provider.dart';
 import '../config/app_config.dart';
-import '../config/app_theme.dart';
+import '../config/theme/app_theme.dart';
+import '../config/theme/theme_config_provider.dart';
 import '../features/student/models.dart';
 import '../features/teacher/home/teacher_models.dart';
 import '../features/teacher/sessions/components/session_form_sheet.dart';
@@ -135,7 +136,7 @@ class Helpers {
           ]),
       ),
       backgroundColor:
-      !isError ? context.colors.success : context.colors.danger,
+      !isError ? context.themeConfig.success : context.themeConfig.danger,
       behavior: SnackBarBehavior.floating,
       margin: const EdgeInsets.all(16),
       shape:
@@ -174,11 +175,11 @@ class Helpers {
               }            },
             child:  Text(cancel??'cancel'.tr,
                 style:  TextStyle(
-                    fontFamily: 'tajawal', color: context.colors.textMedium)),
+                    fontFamily: 'tajawal', color: context.themeConfig.textMedium)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: context.colors.danger,
+              backgroundColor: context.themeConfig.danger,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
             ),

@@ -8,7 +8,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
 import 'enrollment_provider.dart';
 
 class StcOtpStep extends StatefulWidget {

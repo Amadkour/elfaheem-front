@@ -7,7 +7,8 @@ import 'package:flutter_education_app/features/auth/login_screen.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
-import '../../config/app_theme.dart';
+import '../../config/theme/app_theme.dart';
+import '../../config/theme/theme_config_provider.dart';
 import '../shared/profile/change_password_widget.dart';
 import 'additional_register_screen.dart';
 import 'auth_widgets.dart';
@@ -149,7 +150,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('invalid_otp'.tr),
-            backgroundColor: context.colors.danger,
+            backgroundColor: context.themeConfig.danger,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -170,7 +171,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('otp_resent'.tr),
-          backgroundColor: context.colors.success,
+          backgroundColor: context.themeConfig.success,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -238,7 +239,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
           widget.email,
           style:  TextStyle(
             fontWeight: FontWeight.w700,
-            color: context.colors.textDark,
+            color: context.themeConfig.textDark,
           ),
         ),
         const SizedBox(height: 32),
@@ -263,7 +264,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
              shape: RoundedRectangleBorder(
                borderRadius: BorderRadius.circular(context.colors.radiusXL),
              ),
-             color: context.colors.cardBg,
+             color: context.themeConfig.cardBg,
              child: Padding(
                padding: const EdgeInsets.all(32),
                child: main
@@ -310,17 +311,17 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     Color bgColor;
 
     if (_hasError) {
-      borderColor = context.colors.danger;
-      bgColor = context.colors.danger.withValues(alpha: 0.05);
+      borderColor = context.themeConfig.danger;
+      bgColor = context.themeConfig.danger.withValues(alpha: 0.05);
     } else if (isFocused) {
-      borderColor = context.colors.primary;
-      bgColor = context.colors.background;
+      borderColor = context.themeConfig.primary;
+      bgColor = context.themeConfig.background;
     } else if (isFilled) {
-      borderColor = context.colors.primary.withValues(alpha: 0.5);
-      bgColor = context.colors.background;
+      borderColor = context.themeConfig.primary.withValues(alpha: 0.5);
+      bgColor = context.themeConfig.background;
     } else {
-      borderColor = context.colors.divider;
-      bgColor = context.colors.inputBg;
+      borderColor = context.themeConfig.divider;
+      bgColor = context.themeConfig.inputBg(isDark: context.colors.isDark);
     }
 
     return Expanded(
@@ -335,7 +336,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
             boxShadow: isFocused
                 ? [
                     BoxShadow(
-                      color: context.colors.primary.withValues(alpha: 0.1),
+                      color: context.themeConfig.primary.withValues(alpha: 0.1),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -355,14 +356,14 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                 fontSize: 28,
                 height: 2.7,
                 fontWeight: FontWeight.w800,
-                color: context.colors.textDark,
+                color: context.themeConfig.textDark,
               ),
               decoration:  InputDecoration(
                 constraints: BoxConstraints(minHeight: 70),
-                focusColor:  context.colors.cardBg,
+                focusColor:  context.themeConfig.cardBg,
                 counterText: '',
                 border: InputBorder.none,
-                fillColor: context.colors.cardBg,
+                fillColor: context.themeConfig.cardBg,
                 contentPadding: EdgeInsets.zero,
                 focusedBorder: OutlineInputBorder(
                     borderSide: BorderSide.none,
@@ -380,7 +381,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
 
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               onChanged: (value) => _onOtpChanged(index, value),
-              cursorColor: context.colors.primary,
+              cursorColor: context.themeConfig.primary,
             ),
           ),
         ),
@@ -398,7 +399,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: canResend ? context.colors.accent : context.colors.textLight,
+            color: canResend ? context.themeConfig.accent : context.themeConfig.textLight,
             decoration:
                 canResend ? TextDecoration.underline : TextDecoration.none,
           ),
@@ -411,7 +412,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     return ElevatedButton(
       onPressed: _isOtpComplete && !_isLoading ? _onConfirm : null,
       style: ElevatedButton.styleFrom(
-        backgroundColor: context.colors.primary,
+        backgroundColor: context.themeConfig.primary,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 16),
         shape: RoundedRectangleBorder(

@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/config/app_theme.dart';
+import 'package:flutter_education_app/config/theme/app_theme.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/app_config.dart';
@@ -335,7 +336,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
   // ── Session flag bar ──────────────────────────────────────────────────────
   Widget _buildSessionFlagBar(TeacherAttendanceProvider prov) {
     return Container(
-      color: context.colors.cardBg,
+      color: context.themeConfig.cardBg,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -441,7 +442,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
         child: Container(
           decoration: BoxDecoration(
-            color: context.colors.cardBg,
+            color: context.themeConfig.cardBg,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
@@ -542,7 +543,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
   Widget _buildSaveBar(TeacherAttendanceProvider prov) {
     return Container(
       decoration: BoxDecoration(
-        color: context.colors.cardBg,
+        color: context.themeConfig.cardBg,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: .08),
@@ -879,7 +880,7 @@ class _PremiumStudentTile extends StatelessWidget {
       curve: Curves.easeOutCubic,
       margin: compact ? const EdgeInsets.only(bottom: 10) : EdgeInsets.zero,
       decoration: BoxDecoration(
-        color: context.colors.cardBg,
+        color: context.themeConfig.cardBg,
         borderRadius: BorderRadius.circular(16),
         border:
             Border.all(color: statusColor.withValues(alpha: .2), width: 1.5),

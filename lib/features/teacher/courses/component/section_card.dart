@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../../config/app_theme.dart';
+import '../../../../config/theme/app_theme.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 
 class SectionCard extends StatelessWidget {
   final IconData icon;
@@ -21,9 +22,9 @@ class SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: context.colors.cardBg,
+        color: context.themeConfig.cardBg,
         borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-        boxShadow: context.colors.cardShadow,
+        boxShadow: context.themeConfig.cardShadow(isDark:context.colors.isDark),
       ),
       child: Column(
         children: [
@@ -36,10 +37,10 @@ class SectionCard extends StatelessWidget {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: context.colors.primary.withValues(alpha: 0.1),
+                    color: context.themeConfig.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(icon, size: 18, color: context.colors.primary),
+                  child: Icon(icon, size: 18, color: context.themeConfig.primary),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -51,18 +52,18 @@ class SectionCard extends StatelessWidget {
                     padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: context.colors.primary.withValues(alpha: 0.1),
+                      color: context.themeConfig.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                          Icon(Icons.add,
-                            size: 14, color: context.colors.primary),
+                            size: 14, color: context.themeConfig.primary),
                         const SizedBox(width: 4),
                         Text('إضافة',
                             style: context.colors.caption.copyWith(
-                                color: context.colors.primary,
+                                color: context.themeConfig.primary,
                                 fontWeight: FontWeight.w700)),
                       ],
                     ),
@@ -81,7 +82,7 @@ class SectionCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
               child: Text('لم يتم الإضافة بعد',
-                  style: context.colors.caption.copyWith(color: context.colors.textLight)),
+                  style: context.colors.caption.copyWith(color: context.themeConfig.textLight)),
             ),
         ],
       ),
@@ -103,7 +104,7 @@ class _ItemRow extends StatelessWidget {
     trailing: GestureDetector(
       onTap: onRemove,
       child:
-       Icon(Icons.close_rounded, size: 18, color: context.colors.danger),
+       Icon(Icons.close_rounded, size: 18, color: context.themeConfig.danger),
     ),
   );
 }

@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 
-import '../../config/app_theme.dart';
+import '../../config/theme/app_theme.dart';
 
 class ElearningPatternPainter extends CustomPainter {
   final bool isDark;

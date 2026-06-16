@@ -137,6 +137,13 @@ import CoreVideo
     private var videoWidth:  Int = 0
     private var videoHeight: Int = 0
 
+    // ── Background keepalive task ─────────────────────────────────────────────
+    // Keeps the host app process alive while the BroadcastUploadExtension
+    // is capturing in the background. Without this iOS suspends the Flutter
+    // process after ~5 seconds, Darwin notifications queue up unprocessed,
+    // and AVAssetWriter writes fail because the run loop is frozen.
+    private var bgTask: UIBackgroundTaskIdentifier = .invalid
+
     // ─────────────────────────────────────────────────────────────────────────
     // MARK: - App lifecycle
     // ─────────────────────────────────────────────────────────────────────────
@@ -156,11 +163,54 @@ import CoreVideo
         registerRecorderChannel(messenger: engine.binaryMessenger)
         registerEventChannel(messenger: engine.binaryMessenger)
 
+        // Watch app-backgrounding so we can hold a background task while
+        // the extension is recording from another app.
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(appDidEnterBackground),
+            name: UIApplication.didEnterBackgroundNotification, object: nil)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(appWillEnterForeground),
+            name: UIApplication.willEnterForegroundNotification, object: nil)
+
         let vc = FlutterViewController(engine: engine, nibName: nil, bundle: nil)
         window = UIWindow(frame: UIScreen.main.bounds)
         window?.rootViewController = vc
         window?.makeKeyAndVisible()
         return true
+    }
+
+    @objc private func appDidEnterBackground() {
+        // Only hold a background task while the extension is (or is about to be)
+        // broadcasting — no point keeping the process alive otherwise.
+        guard isBroadcasting || darwinObserverAdded else { return }
+        guard bgTask == .invalid else { return }
+        bgTask = UIApplication.shared.beginBackgroundTask(withName: "BroadcastRecord") {
+            [weak self] in guard let self = self else { return }
+            // Expiry: iOS is about to force-suspend us. Finalise current chunk.
+            NSLog("[REC] background task expiring — finalising chunk")
+            self.finaliseChunk(isFinal: false) { [weak self] in
+                guard let self = self else { return }
+                self.chunkIndex += 1
+                NSLog("[REC] emergency chunk rotated at #\(self.chunkIndex)")
+            }
+            UIApplication.shared.endBackgroundTask(self.bgTask)
+            self.bgTask = .invalid
+        }
+        NSLog("[REC] background task started id=\(bgTask.rawValue)")
+    }
+
+    @objc private func appWillEnterForeground() {
+        guard bgTask != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(bgTask)
+        bgTask = .invalid
+        NSLog("[REC] background task ended — app foregrounded")
+    }
+
+    private func endBgTask() {
+        guard bgTask != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(bgTask)
+        bgTask = .invalid
+        NSLog("[REC] background task ended")
     }
 
     override func application(
@@ -193,17 +243,14 @@ import CoreVideo
                 result(nil)
 
             case "showBroadcastPicker":
-                // On iOS, screen share is handled entirely by RPScreenRecorder
-                // (via LiveKit's setScreenShareEnabled). No broadcast picker or
-                // BroadcastUploadExtension is needed — RPScreenRecorder already
-                // captures the full screen including any foreground app.
-                // This case is kept for compatibility but is a no-op.
-                result(nil)
+                // Show the iOS system picker so the user can choose which
+                // foreign app to share. When they pick one and tap
+                // "Start Broadcast", SampleHandler.broadcastStarted() fires
+                // and the extension begins sending frames via CFMessagePort.
+                self.showBroadcastPicker(result: result)
 
             case "stopBroadcast":
-                // No-op: broadcast extension is no longer used.
-                // RPScreenRecorder continues until stopRecording() is called.
-                result(nil)
+                self.stopBroadcastShare(result: result)
 
             default:
                 result(FlutterMethodNotImplemented)
@@ -323,12 +370,16 @@ import CoreVideo
         rp.startCapture(handler: { [weak self] sampleBuffer, bufferType, error in
             guard let self = self, self.recording, !self.stopping else { return }
             if let e = error { self.emitError(e.localizedDescription); return }
-            // Always write every sample — RPScreenRecorder automatically follows
-            // the foreground app, so it captures the full screen including any
-            // app the teacher switches to during the session.
-            // Never suppress based on isBroadcasting — that caused missing video
-            // and silent audio in recordings.
-            self.processSampleFromRecorder(sampleBuffer, type: bufferType)
+            // When the BroadcastUploadExtension is active:
+            //   • SUPPRESS RPScreenRecorder VIDEO — the extension sends the real
+            //     foreground-app frames (could be Safari, YouTube, any app).
+            //   • ALWAYS KEEP AUDIO — RPScreenRecorder is the only clean mic
+            //     source with LiveKit AEC/NS. Extension audio is skipped.
+            // When not broadcasting: write everything normally.
+            let isAudio = (bufferType == .audioMic || bufferType == .audioApp)
+            if isAudio || !self.isBroadcasting {
+                self.processSampleFromRecorder(sampleBuffer, type: bufferType)
+            }
         }, completionHandler: { [weak self] error in
             guard let self = self else { return }
             DispatchQueue.main.async {
@@ -692,6 +743,7 @@ import CoreVideo
         chunkTimer?.invalidate(); chunkTimer = nil
         isBroadcasting = false
         removeDarwinListeners()
+        endBgTask()
 
         RPScreenRecorder.shared().stopCapture { [weak self] error in
             if let e = error { NSLog("[REC] stopCapture: \(e.localizedDescription)") }
@@ -879,15 +931,81 @@ import CoreVideo
     // MARK: - Broadcast Extension (foreign-app screen share)
     // ─────────────────────────────────────────────────────────────────────────
 
-    // showBroadcastPicker and stopBroadcastShare are no longer used.
-    // Screen sharing on iOS is handled entirely by LiveKit's setScreenShareEnabled()
-    // which uses RPScreenRecorder internally — the same instance that is already
-    // recording the full session. No BroadcastUploadExtension is needed.
-    //
-    // RPScreenRecorder.startCapture() follows the foreground app automatically,
-    // so when the teacher opens any other app (Safari, YouTube, a presentation
-    // app), RPScreenRecorder records it and LiveKit streams it to participants
-    // without any extra picker or extension required.
+    private func showBroadcastPicker(result: @escaping FlutterResult) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { result(nil); return }
+
+            // Start the background keepalive task NOW — before the picker sheet
+            // appears. The teacher may immediately switch apps after confirming
+            // and we must already hold the task or iOS suspends us first.
+            self.appDidEnterBackground()
+
+            // Pause recording during the iOS broadcast confirmation overlay.
+            // The system sheet briefly suspends the Runner app which causes
+            // AVAudioSession interruptions and corrupted RPScreenRecorder frames.
+            // Pausing means the overlay window produces no data; recording
+            // resumes cleanly once the first extension frame arrives.
+            if self.recording && !self.paused && !self.stopping {
+                self.paused = true
+                NSLog("[SHARE] picker: recording paused before system overlay")
+                self.finaliseChunk(isFinal: false) { [weak self] in
+                    guard let self = self else { return }
+                    self.chunkIndex += 1
+                    NSLog("[SHARE] picker: paused chunk rotated at #\(self.chunkIndex)")
+                }
+            }
+
+            // Register Darwin listeners BEFORE the picker appears so we never
+            // miss the first frame notification from broadcastStarted().
+            self.registerDarwinListeners()
+
+            let picker = RPSystemBroadcastPickerView(frame: CGRect(x: 0, y: 0, width: 60, height: 60))
+            // preferredExtension = OUR bundle ID:
+            //   Shows a single "Start Broadcast / Cancel" sheet — no list.
+            //   Prevents the teacher picking Facebook Live / YouTube which would
+            //   immediately fail with "sharing unavailable" (wrong process).
+            picker.preferredExtension =
+                Bundle.main.bundleIdentifier.map { $0 + ".BroadcastUploadExtension" }
+            picker.showsMicrophoneButton = false
+
+            for subview in picker.subviews {
+                if let button = subview as? UIButton {
+                    button.sendActions(for: .touchUpInside)
+                    break
+                }
+            }
+            NSLog("[SHARE] showBroadcastPicker — ext: \(picker.preferredExtension ?? "nil")")
+            result(nil)
+        }
+    }
+
+    private func stopBroadcastShare(result: @escaping FlutterResult) {
+        isBroadcasting = false
+        removeDarwinListeners()
+        emitEvent(["event": "broadcastStopped"])
+        NSLog("[SHARE] broadcast stopped by app")
+
+        // End the background keepalive — recording continues in foreground.
+        endBgTask()
+
+        if recording && !stopping {
+            if paused {
+                // Extension never confirmed (user cancelled picker).
+                paused = false
+                beginChunkWriter()
+                NSLog("[SHARE] picker cancelled — RPScreenRecorder resumed at chunk #\(chunkIndex)")
+            } else {
+                // Rotate chunk: separate extension frames from in-app frames.
+                finaliseChunk(isFinal: false) { [weak self] in
+                    guard let self = self, self.recording, !self.stopping, !self.paused else { return }
+                    self.chunkIndex += 1
+                    self.beginChunkWriter()
+                    NSLog("[SHARE] broadcast ended — in-app recording resumed at chunk #\(self.chunkIndex)")
+                }
+            }
+        }
+        result(nil)
+    }
 
     // ── IPC: Darwin notifications + App Group shared file ────────────────────
     //
@@ -993,43 +1111,64 @@ import CoreVideo
         }
     }
 
-    /// Parse a frame blob and route it to the writer.
+    /// Called on ipcReadQueue when SampleHandler posts a Darwin notification.
+    ///
     /// Wire format: [4B typeId BE][8B ptsNs BE][4B payloadSize BE][payload]
-    /// typeId: 0 = video (JPEG), 1 = audioMic (PCM), 2 = audioApp (PCM)
+    ///   typeId 0 = video JPEG  → written to AVAssetWriter
+    ///   typeId 1/2 = audio PCM → skipped (RPScreenRecorder provides mic audio)
+    ///
+    /// WHY THIS MATTERS FOR BACKGROUND RECORDING:
+    ///   RPScreenRecorder.startCapture() stops delivering frames when the host
+    ///   app is backgrounded (iOS suspends the app process). The extension runs
+    ///   in its OWN separate process — iOS never suspends it while broadcasting.
+    ///   So when the teacher switches to another app, the extension keeps sending
+    ///   frames here via the App Group shared file + Darwin notification IPC.
+    ///   We write those frames into the AVAssetWriter so the recording contains
+    ///   the full session including all apps the teacher opened.
     private func handleBroadcastData(_ data: Data) {
         guard data.count >= 16 else { return }
-        let typeId  = data.prefix(4).withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
-        let ptsNs   = data.dropFirst(4).prefix(8).withUnsafeBytes { $0.load(as: UInt64.self).bigEndian }
-        let paySize = data.dropFirst(12).prefix(4).withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
-        let payload = Data(data.dropFirst(16).prefix(Int(paySize)))
 
-        switch typeId {
-        case 0:
-            // Video frame (JPEG) — write into the active AVAssetWriter chunk.
-            if !isBroadcasting {
-                isBroadcasting = true
-                NSLog("[SHARE] first broadcast frame — switching recording source")
-                // If recording was paused by showBroadcastPicker (to protect
-                // against the iOS overlay suspension window), resume it now.
-                // The extension is running, iOS has fully resumed, it's safe to write.
-                if recording && paused && !stopping {
-                    paused = false
-                    beginChunkWriter()
-                    NSLog("[SHARE] recording resumed from picker-pause — broadcast chunk #\(chunkIndex)")
+        // Safe aligned reads into stack locals.
+        // Data slices from dropFirst() are NOT guaranteed to be 8-byte aligned —
+        // calling .load(as: UInt64.self) on a misaligned pointer crashes on arm64.
+        var typeId:  UInt32 = 0
+        var ptsNs:   UInt64 = 0
+        var paySize: UInt32 = 0
+        _ = data.copyBytes(to: UnsafeMutableBufferPointer(start: &typeId,  count: 1), from: 0..<4)
+        _ = data.copyBytes(to: UnsafeMutableBufferPointer(start: &ptsNs,   count: 1), from: 4..<12)
+        _ = data.copyBytes(to: UnsafeMutableBufferPointer(start: &paySize, count: 1), from: 12..<16)
+        typeId  = UInt32(bigEndian: typeId)
+        ptsNs   = UInt64(bigEndian: ptsNs)
+        paySize = UInt32(bigEndian: paySize)
+
+        // Only handle video frames — audio comes from RPScreenRecorder
+        guard typeId == 0 else { return }
+        let jpegPayload = Data(data.dropFirst(16).prefix(Int(paySize)))
+
+        if !isBroadcasting {
+            // First frame from the extension — user confirmed "Start Broadcast".
+            isBroadcasting = true
+            NSLog("[SHARE] first extension frame — broadcast active, writing to recorder")
+
+            // showBroadcastPicker pauses recording during the system overlay
+            // to avoid corrupted frames. Resume it now that the extension is live.
+            if recording && paused && !stopping {
+                // Dispatch to main: beginChunkWriter() touches UI-adjacent state.
+                // Only call processSampleFromBroadcast AFTER writer is ready.
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    self.paused = false
+                    self.beginChunkWriter()
+                    NSLog("[SHARE] chunk writer restarted for broadcast at chunk #\(self.chunkIndex)")
+                    // Queue the first frame on writerQueue after writer is set.
+                    self.processSampleFromBroadcast(jpegData: jpegPayload, ptsNs: ptsNs)
                 }
+                return
             }
-            guard recording, !stopping, !paused else { return }
-            processSampleFromBroadcast(jpegData: payload, ptsNs: ptsNs)
-
-        case 1, 2:
-            // Audio from the extension.
-            // RPScreenRecorder already captures mic audio (clean, with LiveKit
-            // AEC/NS applied), so we skip the extension audio to avoid doubles.
-            break
-
-        default:
-            break
         }
+
+        guard recording, !stopping, !paused else { return }
+        processSampleFromBroadcast(jpegData: jpegPayload, ptsNs: ptsNs)
     }
 }
 

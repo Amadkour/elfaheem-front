@@ -16,7 +16,8 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
-import '../../config/app_theme.dart';
+import '../../config/theme/app_theme.dart';
+import '../../config/theme/theme_config_provider.dart';
 import '../shared/profile/about/about_terms_model.dart';
 import '../shared/profile/about/about_terms_provider.dart';
 import '../shared/profile/change_password_widget.dart';
@@ -114,14 +115,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
       Fluttertoast.showToast(
           msg: 'password must be identical',
           timeInSecForIosWeb: 3,
-          backgroundColor: context.colors.danger);
+          backgroundColor: context.themeConfig.danger);
       return;
     }
     if (_dobController.text.isEmpty) {
       Fluttertoast.showToast(
           msg: 'please select your birth of date',
           timeInSecForIosWeb: 3,
-          backgroundColor: context.colors.danger);
+          backgroundColor: context.themeConfig.danger);
       return;
     }
     final authProvider = context.read<AuthProvider>();
@@ -129,14 +130,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
       Fluttertoast.showToast(
           msg: 'please select your role',
           timeInSecForIosWeb: 3,
-          backgroundColor: context.colors.danger);
+          backgroundColor: context.themeConfig.danger);
       return;
     }
     if (!_termsAccepted) {
       Fluttertoast.showToast(
           msg: 'يجب قراءة والموافقة على الشروط والأحكام',
           timeInSecForIosWeb: 3,
-          backgroundColor: context.colors.danger);
+          backgroundColor: context.themeConfig.danger);
       return;
     }
     final success = await authProvider.register(

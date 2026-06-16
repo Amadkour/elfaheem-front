@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/config/app_theme.dart';
+import 'package:flutter_education_app/config/theme/app_theme.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 class MyPrimaryButton extends StatelessWidget {
   const MyPrimaryButton(
@@ -21,7 +22,7 @@ class MyPrimaryButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: context.colors.accent,
+          backgroundColor: context.themeConfig.accent,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),

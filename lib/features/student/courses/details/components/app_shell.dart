@@ -4,7 +4,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../../config/app_config.dart' as Helpers;
-import '../../../../../config/app_theme.dart';
+import '../../../../../config/theme/app_theme.dart';
+import '../../../../../config/theme/theme_config_provider.dart';
 import '../../../../auth/auth_provider.dart';
 import 'app_responsive.dart';
 
@@ -70,7 +71,7 @@ class _WebLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: context.colors.background,
+      backgroundColor: context.themeConfig.background,
       body: Row(
         children: [
           // ── Sidebar ──────────────────────────────────────────────────
@@ -117,11 +118,11 @@ class _Sidebar extends StatelessWidget {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    gradient: context.colors.primaryGradient,
+                    gradient: context.themeConfig.linearPrimary,
                     borderRadius: BorderRadius.circular(11),
                     boxShadow: [
                       BoxShadow(
-                        color: context.colors.primary.withValues(alpha:0.4),
+                        color: context.themeConfig.primary.withValues(alpha:0.4),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
@@ -172,7 +173,7 @@ class _Sidebar extends StatelessWidget {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    gradient: context.colors.primaryGradient,
+                    gradient: context.themeConfig.linearPrimary,
                     shape: BoxShape.circle,
                   ),
                   alignment: Alignment.center,
@@ -245,7 +246,7 @@ class _SideNavItem extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           decoration: BoxDecoration(
             color: active
-                ? context.colors.primary.withValues(alpha:0.22)
+                ? context.themeConfig.primary.withValues(alpha:0.22)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
@@ -256,13 +257,13 @@ class _SideNavItem extends StatelessWidget {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  gradient: active ? context.colors.primaryGradient : null,
+                  gradient: active ? context.themeConfig.linearPrimary : null,
                   color: active ? null : Colors.white.withValues(alpha:0.07),
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: active
                       ? [
                           BoxShadow(
-                            color: context.colors.primary.withValues(alpha:0.35),
+                            color: context.themeConfig.primary.withValues(alpha:0.35),
                             blurRadius: 8,
                             offset: const Offset(0, 3),
                           ),
@@ -309,7 +310,7 @@ class _MobileLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: context.colors.background,
+      backgroundColor: context.themeConfig.background,
       body: pages[idx].child,
       bottomNavigationBar: _BottomNav(
         pages: pages,
@@ -332,7 +333,7 @@ class _BottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: context.colors.cardBg,
+        color: context.themeConfig.cardBg,
         border: Border(
           top: BorderSide(
             color: Colors.black.withValues(alpha:0.07),
@@ -370,7 +371,7 @@ class _BottomNav extends StatelessWidget {
                         height: 30,
                         decoration: BoxDecoration(
                           gradient:
-                              active ? context.colors.primaryGradient : null,
+                              active ? context.themeConfig.linearPrimary : null,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(
@@ -378,7 +379,7 @@ class _BottomNav extends StatelessWidget {
                           size: 20,
                           color: active
                               ? Colors.white
-                              : context.colors.textLight,
+                              : context.themeConfig.textLight,
                         ),
                       ),
                       const SizedBox(height: 3),
@@ -390,8 +391,8 @@ class _BottomNav extends StatelessWidget {
                               ? FontWeight.w700
                               : FontWeight.w500,
                           color: active
-                              ? context.colors.primary
-                              : context.colors.textLight,
+                              ? context.themeConfig.primary
+                              : context.themeConfig.textLight,
                           fontFamily: 'bahji',
                         ),
                       ),

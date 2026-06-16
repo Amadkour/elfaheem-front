@@ -5,8 +5,8 @@ import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
-import '../../config/app_theme.dart';
-import '../../core/api_client.dart';
+import '../../config/theme/app_theme.dart';
+import '../../config/theme/theme_config_provider.dart';
 import '../../utils/helpers.dart';
 import '../teacher/dashboard/teacher_dashboard_screen.dart';
 import 'auth_provider.dart';
@@ -71,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Consumer<LangProvider>(builder: (context, l, _) {
       return BasePage(
-        background: context.colors.isDark?null:context.colors.cardBg,
+        background: context.colors.isDark?null:context.themeConfig.cardBg,
         child: isWide ? _buildWideLayout() : _buildNarrowLayout(),
       );
     });
@@ -94,7 +94,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 padding: const EdgeInsets.all(0.0),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(context.colors.radiusXL),
-                  color:context.colors.isDark? context.colors.cardBg: context.colors.background,
+                  color:context.colors.isDark? context.themeConfig.cardBg: context.themeConfig.background,
                 ),
                 child: ClipRRect(
                   borderRadius:
@@ -147,7 +147,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: 100,
                 height: 100,
                 heroTag: "logo-login",
-                color: context.colors.background,
+                color: context.themeConfig.background,
               ),
               LangDropdown(),
 
@@ -161,7 +161,7 @@ class _LoginScreenState extends State<LoginScreen> {
               fontFamily: 'tajawal',
               fontSize: 26,
               fontWeight: FontWeight.bold,
-              color: context.colors.textDark,
+              color: context.themeConfig.textDark,
             ),
           ),
           Text(
@@ -170,7 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
               fontFamily: 'tajawal',
               fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: context.colors.secondText,
+              color: context.themeConfig.secondText,
             ),
           ),
 
@@ -204,7 +204,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: TextStyle(
                   fontFamily: 'tajawal',
                   fontSize: 13,
-                  color: context.colors.primaryDark,
+                  color: context.themeConfig.primaryDark,
                   fontWeight: FontWeight.w500,
                 ),
               ),

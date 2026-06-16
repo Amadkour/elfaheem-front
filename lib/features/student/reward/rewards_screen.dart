@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
 import '../../../../config/app_config.dart' as Helpers;
 import '../../../../utils/widget/app_network_image.dart';
 import '../../../../utils/widget/app_bar.dart';
+import '../../../config/theme/theme_config_provider.dart';
 import 'rewards_provider.dart';
 
 class RewardsScreen extends StatelessWidget {
@@ -49,7 +50,7 @@ class _OverviewView extends StatelessWidget {
     final courses  = provider.enrolledCourses;
 
     return Scaffold(
-      backgroundColor: context.colors.background,
+      backgroundColor: context.themeConfig.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -74,7 +75,7 @@ class _OverviewView extends StatelessWidget {
                           ),
                           borderRadius:
                               BorderRadius.circular(context.colors.radiusLarge),
-                          boxShadow: context.colors.primaryShadow,
+                          boxShadow: context.themeConfig.primaryShadow(isDark:context.colors.isDark),
                         ),
                         child: Stack(
                           alignment: Alignment.center,
@@ -136,7 +137,7 @@ class _OverviewView extends StatelessWidget {
                       Column(
                         children: [
                            Icon(Icons.school_outlined,
-                              size: 64, color: context.colors.textLight),
+                              size: 64, color: context.themeConfig.textLight),
                           const SizedBox(height: 12),
                           Text('سجّل في كورس لتبدأ رحلتك!',
                               style: context.colors.body),
@@ -167,7 +168,7 @@ class _CourseCircle extends StatelessWidget {
           height: 120,
           decoration: BoxDecoration(
             shape:     BoxShape.circle,
-            boxShadow: context.colors.cardShadow,
+            boxShadow: context.themeConfig.cardShadow(isDark:context.colors.isDark),
           ),
           child: ClipOval(
             child: AppNetworkImage(
@@ -181,7 +182,7 @@ class _CourseCircle extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           course.name as String,
-          style:     context.colors.label.copyWith(color: context.colors.textDark),
+          style:     context.colors.label.copyWith(color: context.themeConfig.textDark),
           textAlign: TextAlign.center,
           maxLines:  2,
           overflow:  TextOverflow.ellipsis,
@@ -203,7 +204,7 @@ class _DetailView extends StatelessWidget {
     final provider = context.watch<RewardsProvider>();
 
     return Scaffold(
-      backgroundColor: context.colors.background,
+      backgroundColor: context.themeConfig.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -221,7 +222,7 @@ class _DetailView extends StatelessWidget {
                     // ── Achievements ─────────────────────────────────────────
                     _Section(
                       title:    'الإنجازات 🏆',
-                      color:    context.colors.primary,
+                      color:    context.themeConfig.primary,
                       children: provider.achievements
                           .map((a) => _AchievementRow(item: a))
                           .toList(),
@@ -230,7 +231,7 @@ class _DetailView extends StatelessWidget {
                     // ── Leaderboard ──────────────────────────────────────────
                     _Section(
                       title:    'لوحة المتصدرين 🥇',
-                      color:    context.colors.accent,
+                      color:    context.themeConfig.accent,
                       children: provider.leaderboard
                           .map((e) => _LeaderRow(entry: e))
                           .toList(),
@@ -239,7 +240,7 @@ class _DetailView extends StatelessWidget {
                     // ── Tips ─────────────────────────────────────────────────
                     _Section(
                       title:    'هل تريد أن تصبح الطالب المتفوق؟ 🔥',
-                      color:    context.colors.danger,
+                      color:    context.themeConfig.danger,
                       children: provider.tips
                           .map((a) => _AchievementRow(item: a))
                           .toList(),
@@ -273,18 +274,18 @@ class _UserTrophy extends StatelessWidget {
               height: 110,
               decoration: BoxDecoration(
                 shape:     BoxShape.circle,
-                color:     context.colors.accent.withValues(alpha: 0.1),
+                color:     context.themeConfig.accent.withValues(alpha: 0.1),
                 border: Border.all(
-                    color: context.colors.accent.withValues(alpha: 0.3), width: 3),
+                    color: context.themeConfig.accent.withValues(alpha: 0.3), width: 3),
               ),
               child:  Icon(Icons.person_rounded,
-                  size: 60, color: context.colors.accent),
+                  size: 60, color: context.themeConfig.accent),
             ),
             // Ribbon
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               decoration: BoxDecoration(
-                color:        context.colors.accent,
+                color:        context.themeConfig.accent,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -302,7 +303,7 @@ class _UserTrophy extends StatelessWidget {
         const SizedBox(height: 16),
         Text(
           '${provider.totalPoints} نقطة',
-          style: context.colors.h2.copyWith(color: context.colors.primary),
+          style: context.colors.h2.copyWith(color: context.themeConfig.primary),
         ),
       ],
     );
@@ -324,9 +325,9 @@ class _Section extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color:        context.colors.cardBg,
+        color:        context.themeConfig.cardBg,
         borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-        boxShadow:    context.colors.cardShadow,
+        boxShadow:    context.themeConfig.cardShadow(isDark:context.colors.isDark),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -371,14 +372,14 @@ class _AchievementRow extends StatelessWidget {
             child: Text(
               item.title as String,
               style: context.colors.label.copyWith(
-                color:      earned ? context.colors.textDark : context.colors.textLight,
+                color:      earned ? context.themeConfig.textDark : context.themeConfig.textLight,
                 decoration: earned ? null : TextDecoration.lineThrough,
               ),
             ),
           ),
           Icon(
             earned ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
-            color: earned ? context.colors.success : context.colors.textLight,
+            color: earned ? context.themeConfig.success : context.themeConfig.textLight,
             size:  20,
           ),
         ],
@@ -404,7 +405,7 @@ class _LeaderRow extends StatelessWidget {
       child: Row(
         children: [
           Text(entry.name,
-              style: context.colors.label.copyWith(color: context.colors.textDark)),
+              style: context.colors.label.copyWith(color: context.themeConfig.textDark)),
           const Spacer(),
           Text(medal,
               style: const TextStyle(fontSize: 18)),

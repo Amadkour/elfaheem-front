@@ -212,30 +212,39 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
     }
   }
 
-  // ── iOS ───────────────────────────────────────────────────────────────────
+  // ── iOS screen share ──────────────────────────────────────────────────────
   //
-  // WHY NO BROADCAST PICKER ON iOS:
-  //   RPSystemBroadcastPickerView does NOT list "apps to share". It lists
-  //   Broadcast Upload Extensions installed on the device. When you pick
-  //   another app's extension (e.g. YouTube's), that extension runs inside
-  //   YouTube's process — it has no connection to your app and immediately
-  //   fails with "sharing unavailable".
+  // Why RPSystemBroadcastPickerView + OUR OWN extension is the only solution:
   //
-  // THE CORRECT iOS APPROACH:
-  //   RPScreenRecorder.startCapture() — already running for recording —
-  //   captures the ENTIRE DEVICE SCREEN including any app in the foreground.
-  //   LiveKit's setScreenShareEnabled(true) uses the same RPScreenRecorder
-  //   internally to stream the full screen to participants.
+  //   RPScreenRecorder.startCapture() STOPS delivering frames the moment the
+  //   host app moves to the background — iOS suspends the Flutter process.
+  //   So switching to any other app = recording stops. This is a hard iOS
+  //   platform restriction that cannot be worked around from the main process.
   //
-  //   So the iOS flow is IDENTICAL to Android:
-  //   START → setScreenShareEnabled(true) → LiveKit streams full screen
-  //           RPScreenRecorder records whatever is on screen automatically
-  //   STOP  → setScreenShareEnabled(false)
+  //   BroadcastUploadExtension runs in its OWN separate process. iOS never
+  //   suspends it while it is broadcasting. It captures the FULL device screen
+  //   including any foreground app (Safari, YouTube, anything) and sends frames
+  //   back via App Group shared file + Darwin notifications.
   //
-  //   The teacher can open ANY app after tapping Share — both the stream
-  //   to participants and the local recording follow the foreground.
+  //   Flow:
+  //   START → showBroadcastPicker (native, preferredExtension = our extension)
+  //     • iOS shows a single "Start Broadcast / Cancel" sheet (not the full list)
+  //     • Teacher taps Start → extension process launched by iOS
+  //     • Extension posts Darwin notifications for each frame
+  //     • AppDelegate writes frames into the AVAssetWriter recording
+  //     • LiveKit setScreenShareEnabled(true) streams via WebRTC to participants
+  //     • Toast shown + in-app "Stop Share" banner appears
+  //     • Teacher can now open ANY app → all recorded + streamed
+  //
+  //   STOP (in-app button / session end / Control Centre)
+  //     → stopIOSBroadcast() → native stopBroadcast → extension finishes
+  //     → AppDelegate rotates chunk + resumes in-app RPScreenRecorder video
 
-  // Track iOS sharing state for the in-app banner
+  static const _ssChannel = MethodChannel(
+    'com.example.flutter_education_app/screen_share',
+  );
+
+  StreamSubscription<dynamic>? _broadcastEventSub;
   bool _isBroadcastActive = false;
 
   Future<void> _toggleScreenShareIOS(
@@ -248,68 +257,88 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
     }
 
     if (!isSharing) {
-      // ── START ─────────────────────────────────────────────────────────────
+      // ── START ──────────────────────────────────────────────────────────────
       try {
-        // Ensure microphone is on before sharing
-        if (!local.isMicrophoneEnabled()) {
-          await local.setMicrophoneEnabled(true);
-          await Future.delayed(const Duration(milliseconds: 200));
-        }
-
-        // setScreenShareEnabled(true) on iOS uses RPScreenRecorder to capture
-        // the full device screen and stream it to LiveKit participants.
-        // The existing RPScreenRecorder recording session continues uninterrupted
-        // — it simply records whatever is now on screen (any app).
-        await _safeNegotiate(() => local.setScreenShareEnabled(
-          true,
-          screenShareCaptureOptions: const ScreenShareCaptureOptions(
-            captureScreenAudio: true,
-            maxFrameRate: 30,
-          ),
-        ));
-        log('[SS] iOS: LiveKit screen-share track published');
-
-        // Publish screen audio if LiveKit created a track for it
-        await Future.delayed(const Duration(milliseconds: 300));
-        for (final pub in local.audioTrackPublications) {
-          if (pub.source == TrackSource.screenShareAudio &&
-              pub.track is LocalAudioTrack) {
-            await local.publishAudioTrack(
-              pub.track as LocalAudioTrack,
-              publishOptions: _hdAudioPublishOptions,
+        // Subscribe for broadcastStopped BEFORE showing picker so we never
+        // miss the event (fires when teacher stops from Control Centre or the
+        // extension crashes).
+        _broadcastEventSub?.cancel();
+        _broadcastEventSub = const EventChannel(
+          'com.example.flutter_education_app/rec_events',
+        ).receiveBroadcastStream().listen((event) {
+          if (event is Map && event['event'] == 'broadcastStopped') {
+            log('[SS] iOS: broadcastStopped event — cleaning up');
+            _broadcastEventSub?.cancel();
+            _broadcastEventSub = null;
+            _isBroadcastActive = false;
+            onIOSBroadcastStateChanged(false);
+            // Turn off LiveKit screen-share track
+            unawaited(
+              _safeNegotiate(
+                    () => local.setScreenShareEnabled(false).catchError((_) {}),
+              ),
             );
-            log('[SS] iOS: screen audio track published');
-            break;
           }
-        }
+        });
 
-        // Notify parent to show the "sharing active" banner and toast
+        // Enable LiveKit screen-share track in parallel so participants see
+        // the screen via WebRTC while the extension records it locally.
+        unawaited(
+          _safeNegotiate(
+                () => local.setScreenShareEnabled(true).catchError((_) {}),
+          ),
+        );
+
+        // Show the "Start Broadcast" confirmation sheet for OUR extension.
+        // preferredExtension is set in AppDelegate so only our extension
+        // appears — no third-party extensions that would fail.
+        await _ssChannel.invokeMethod<void>('showBroadcastPicker');
+        log('[SS] iOS: broadcast picker shown');
+
+        // Update UI immediately — banner + toast appear
         _isBroadcastActive = true;
         onIOSBroadcastStateChanged(true);
 
       } catch (e) {
-        log('[SS] iOS start error: \$e');
-        showSnack('Screen sharing failed: \$e');
+        log('[SS] iOS start error: $e');
+        _broadcastEventSub?.cancel();
+        _broadcastEventSub = null;
+        _isBroadcastActive = false;
+        showSnack('فشل بدء المشاركة: $e');
       }
+
     } else {
-      // ── STOP ─────────────────────────────────────────────────────────────
+      // ── STOP via share-button tap ───────────────────────────────────────────
       await stopIOSBroadcast();
     }
   }
 
-  /// Stop iOS screen share. Called from stop button or session end.
-  /// Idempotent — safe to call multiple times.
+  /// Stop the iOS broadcast from any call site.
+  /// Safe to call multiple times — idempotent.
   Future<void> stopIOSBroadcast() async {
+    _broadcastEventSub?.cancel();
+    _broadcastEventSub = null;
     if (!_isBroadcastActive) return;
     _isBroadcastActive = false;
+
     try {
-      await _safeNegotiate(
-            () => room.localParticipant?.setScreenShareEnabled(false) ?? Future.value(),
-      );
-      log('[SS] iOS: screen share stopped');
+      // Tell AppDelegate to stop the extension and rotate the recording chunk.
+      await _ssChannel.invokeMethod<void>('stopBroadcast');
+      log('[SS] iOS: stopBroadcast sent to native');
     } catch (e) {
-      log('[SS] iOS stop error (non-fatal): \$e');
+      log('[SS] iOS stopBroadcast error (non-fatal): $e');
     }
+
+    // Disable LiveKit screen-share track
+    unawaited(
+      _safeNegotiate(
+            () => room.localParticipant
+            ?.setScreenShareEnabled(false)
+            .catchError((_) {}) ??
+            Future.value(),
+      ),
+    );
+
     onIOSBroadcastStateChanged(false);
   }
 
@@ -318,6 +347,8 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
 
   /// Clean up on widget dispose.
   void disposeBroadcastSub() {
+    _broadcastEventSub?.cancel();
+    _broadcastEventSub = null;
     _isBroadcastActive = false;
   }
 

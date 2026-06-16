@@ -5,7 +5,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:provider/provider.dart';
-import '../../../../config/app_theme.dart';
+import '../../../../config/theme/app_theme.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/app_network_image.dart';
 import '../../../../utils/widget/base_page.dart';
@@ -54,7 +55,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
               width: context.width / 5,
               height: context.width / 5,
               child: CircularProgressIndicator(
-                  color: context.colors.primary,
+                  color: context.themeConfig.primary,
                   strokeWidth: context.width / 80),
             ))
           : isWide
@@ -82,7 +83,7 @@ class _MobileDetail extends StatelessWidget {
             children: [
               Expanded(
                 child: RefreshIndicator(
-                  color: context.colors.primary,
+                  color: context.themeConfig.primary,
                   onRefresh: () => provider.refresh(),
                   child: CustomScrollView(
                     physics: const BouncingScrollPhysics(),
@@ -130,7 +131,7 @@ class _WebDetail extends StatelessWidget {
                 constraints:
                     const BoxConstraints(maxWidth: Breakpoints.contentMax),
                 child: RefreshIndicator(
-                  color: context.colors.primary,
+                  color: context.themeConfig.primary,
                   onRefresh: () =>
                       context.read<CourseDetailProvider>().refresh(),
                   child: CustomScrollView(
@@ -272,7 +273,7 @@ class _WebSidebar extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: context.colors.cardBg,
+              color: context.themeConfig.cardBg,
               borderRadius: BorderRadius.circular(18),
               boxShadow: [
                 BoxShadow(
@@ -294,7 +295,7 @@ class _WebSidebar extends StatelessWidget {
                     fontWeight: FontWeight.w900,
                     color: c.price == 0
                         ? const Color(0xFF0F6E56)
-                        : context.colors.primary,
+                        : context.themeConfig.primary,
                     fontFamily: 'bahji',
                   ),
                 ),
@@ -323,7 +324,7 @@ class _WebCourseFacts extends StatelessWidget {
         _Fact(
             icon: Icons.people_alt_rounded,
             label: '${course.studentsCount} طالب مسجّل',
-            color: context.colors.primary),
+            color: context.themeConfig.primary),
         _Fact(
             icon: Icons.video_library_rounded,
             label: '${course.sessionsCount} محاضرة',
@@ -336,17 +337,17 @@ class _WebCourseFacts extends StatelessWidget {
           _Fact(
               icon: Icons.workspace_premium_rounded,
               label: 'شهادة إتمام معتمدة',
-              color: context.colors.accent),
+              color: context.themeConfig.accent),
         if (course.type == 'live')
           _Fact(
               icon: Icons.sensors_rounded,
               label: 'بث مباشر',
-              color: context.colors.danger)
+              color: context.themeConfig.danger)
         else
           _Fact(
               icon: Icons.play_circle_outline_rounded,
               label: 'كورس مسجّل',
-              color: context.colors.primary),
+              color: context.themeConfig.primary),
       ],
     );
   }
@@ -456,7 +457,7 @@ class _HeroBadge extends StatelessWidget {
   Widget build(BuildContext context) => Text(
         label,
         style: TextStyle(
-          color: context.colors.textLight,
+          color: context.themeConfig.textLight,
           fontSize: 11,
           fontWeight: FontWeight.w700,
           fontFamily: 'bahji',
@@ -470,7 +471,7 @@ class _FavButton extends StatelessWidget {
     final isFav = context.watch<CourseDetailProvider>().course.isFavorite;
     return _CircleIconBtn(
       icon: isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-      iconColor: isFav ? context.colors.danger : null,
+      iconColor: isFav ? context.themeConfig.danger : null,
       onTap: () => context.read<CourseDetailProvider>().toggleFavorite(),
     );
   }
@@ -502,7 +503,7 @@ class _CircleIconBtn extends StatelessWidget {
             ],
           ),
           child:
-              Icon(icon, size: 20, color: iconColor ?? context.colors.textDark),
+              Icon(icon, size: 20, color: iconColor ?? context.themeConfig.textDark),
         ),
       );
 }
@@ -529,7 +530,7 @@ class _CourseMeta extends StatelessWidget {
                 StatChip(
                   icon: Icons.people_alt_rounded,
                   label: '${c.studentsCount}\n ${'student'.tr}',
-                  iconColor: context.colors.primary,
+                  iconColor: context.themeConfig.primary,
                   maxHeight: context.height / 9,
                 ),
                 StatChip(
@@ -550,7 +551,7 @@ class _CourseMeta extends StatelessWidget {
                   StatChip(
                     icon: Icons.workspace_premium_rounded,
                     label: 'شهادة\nإتمام',
-                    iconColor: context.colors.accent,
+                    iconColor: context.themeConfig.accent,
                     iconBg: Color(0xFFFAEEDA),
                     maxHeight: context.height / 9,
                   )
@@ -561,8 +562,8 @@ class _CourseMeta extends StatelessWidget {
                         : Icons.play_circle_outline_rounded,
                     label: c.type == 'live' ? 'مباشر' : 'مسجّل',
                     iconColor: c.type == 'live'
-                        ? context.colors.danger
-                        : context.colors.primary,
+                        ? context.themeConfig.danger
+                        : context.themeConfig.primary,
                     maxHeight: context.height / 9,
                   ),
               ],
@@ -593,7 +594,7 @@ class _TabBarWidget extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: context.colors.cardBg,
+          color: context.themeConfig.cardBg,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
@@ -620,8 +621,8 @@ class _TabBarWidget extends StatelessWidget {
                     border: Border(
                         bottom: BorderSide(
                             color: isActive
-                                ? context.colors.primary
-                                : context.colors.textLight)),
+                                ? context.themeConfig.primary
+                                : context.themeConfig.textLight)),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -630,16 +631,16 @@ class _TabBarWidget extends StatelessWidget {
                         icon,
                         size: 14,
                         color: isActive
-                            ? context.colors.primary
-                            : context.colors.textLight,
+                            ? context.themeConfig.primary
+                            : context.themeConfig.textLight,
                       ),
                       const SizedBox(width: 5),
                       Text(
                         label,
                         style: context.colors.label.copyWith(
                           color: isActive
-                              ? context.colors.primary
-                              : context.colors.textLight,
+                              ? context.themeConfig.primary
+                              : context.themeConfig.textLight,
                           fontWeight:
                               isActive ? FontWeight.w700 : FontWeight.w500,
                           fontSize: 12,
@@ -671,20 +672,20 @@ class _EnrollButton extends StatelessWidget {
         child: Container(
           height: 52,
           decoration: BoxDecoration(
-            color: context.colors.accent2.withValues(alpha: 0.1),
+            color: context.themeConfig.accent2.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(32),
-            border: Border.all(color: context.colors.accent2),
+            border: Border.all(color: context.themeConfig.accent2),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.check_circle_rounded,
-                  color: context.colors.accent2, size: 20),
+                  color: context.themeConfig.accent2, size: 20),
               SizedBox(width: 8),
               Text(
                 'تم الاشتراك بنجاح',
                 style: TextStyle(
-                  color: context.colors.accent2,
+                  color: context.themeConfig.accent2,
                   fontWeight: FontWeight.w800,
                   fontSize: 15,
                   fontFamily: 'bahji',
@@ -718,11 +719,11 @@ class _EnrollButton extends StatelessWidget {
         child: Container(
           height: 52,
           decoration: BoxDecoration(
-            gradient: context.colors.primaryGradient,
+            gradient: context.themeConfig.linearPrimary,
             borderRadius: BorderRadius.circular(32),
             boxShadow: [
               BoxShadow(
-                color: context.colors.primary.withValues(alpha: 0.42),
+                color: context.themeConfig.primary.withValues(alpha: 0.42),
                 blurRadius: 22,
                 offset: const Offset(0, 7),
               ),

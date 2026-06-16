@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/config/app_theme.dart';
+import 'package:flutter_education_app/config/theme/app_theme.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/paint_background.dart';
 
 import '../helpers.dart';
@@ -28,7 +29,7 @@ class BasePage extends StatelessWidget {
         textDirection: Helpers.pageDirection,
         child: Scaffold(
             appBar: appBar,
-            backgroundColor: background ??  context.colors.background,
+            backgroundColor: background ??  context.themeConfig.background,
             floatingActionButton: floatingActionButton,
             bottomNavigationBar: bottomNavigationBar,
             body: DecoratedBox(
@@ -53,9 +54,9 @@ class BasePage extends StatelessWidget {
                   margin: EdgeInsets.symmetric(vertical: 10),
                   padding: const EdgeInsets.all(0.0),
                   decoration: BoxDecoration(
-                    border: BoxBorder.all(color: context.colors.divider,width: 1),
+                    border: BoxBorder.all(color: context.themeConfig.divider,width: 1),
                     borderRadius: BorderRadius.circular(context.colors.radiusXL),
-                    color: context.colors.cardBg,
+                    color: context.themeConfig.cardBg,
         
                   ),
                   child: ClipRRect(

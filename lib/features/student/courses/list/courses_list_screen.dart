@@ -8,7 +8,8 @@ import 'package:flutter_education_app/features/student/courses/my_courses/my_cou
 import 'package:provider/provider.dart';
 
 import '../../../../config/app_config.dart' as Helpers;
-import '../../../../config/app_theme.dart';
+import '../../../../config/theme/app_theme.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/app_network_image.dart';
 import '../../../../utils/widget/base_page.dart';
@@ -106,10 +107,10 @@ class _EmptyState extends StatelessWidget {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: context.colors.primaryLight.withValues(alpha: 0.3),
+                color: context.themeConfig.primaryLight.withValues(alpha: 0.3),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 38, color: context.colors.primary),
+              child: Icon(icon, size: 38, color: context.themeConfig.primary),
             ),
             const SizedBox(height: 16),
             Text(message,

@@ -7,7 +7,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../config/app_config.dart';
-import '../../../../../config/app_theme.dart';
+import '../../../../../config/theme/app_theme.dart';
+import '../../../../../config/theme/theme_config_provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public entry — the whole progress block
@@ -135,7 +136,7 @@ class _LabelRow extends StatelessWidget {
                   fontFamily: 'bahji',
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: context.colors.textLight,
+                  color: context.themeConfig.textLight,
                 ),
               ),
             ],
@@ -273,7 +274,7 @@ class SegmentedProgressBar extends StatelessWidget {
                     : null,
                 color: filled
                     ? null
-                    : context.colors.textLight.withValues(alpha: 0.12),
+                    : context.themeConfig.textLight.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(4),
                 boxShadow: filled
                     ? [
@@ -299,7 +300,7 @@ class SegmentedProgressBar extends StatelessWidget {
           Container(
             height: 8,
             decoration: BoxDecoration(
-              color: context.colors.textLight.withValues(alpha: 0.12),
+              color: context.themeConfig.textLight.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(8),
             ),
           ),

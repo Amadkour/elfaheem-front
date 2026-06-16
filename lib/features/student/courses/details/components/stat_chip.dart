@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import '../../../../../config/app_theme.dart';
+import '../../../../../config/theme/app_theme.dart';
+import '../../../../../config/theme/theme_config_provider.dart';
 
 class StatChip extends StatelessWidget {
   final IconData icon;
@@ -18,7 +19,7 @@ class StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = iconColor ?? context.colors.primary;
+    final fg = iconColor ?? context.themeConfig.primary;
     final bg = iconBg ?? fg.withValues(alpha:0.12);
 
     return Expanded(
@@ -28,7 +29,7 @@ class StatChip extends StatelessWidget {
         margin: EdgeInsets.all(3),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
         decoration: BoxDecoration(
-          color: context.colors.cardBg,
+          color: context.themeConfig.cardBg,
           //borderRadius: BorderRadius.circular(16),
             shape: BoxShape.circle,
           border: Border.all(color: fg.withValues(alpha:0.12)),
@@ -57,7 +58,7 @@ class StatChip extends StatelessWidget {
               style: context.colors.caption.copyWith(
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
-                color: context.colors.textDark,
+                color: context.themeConfig.textDark,
                 height: 1.35,
               ),
               textAlign: TextAlign.center,
@@ -93,10 +94,10 @@ class MiniStatChip extends StatelessWidget {
         width: 18,
         height: 18,
         decoration: BoxDecoration(
-          color: (color??context.colors.textLight).withValues(alpha:0.12),
+          color: (color??context.themeConfig.textLight).withValues(alpha:0.12),
           borderRadius: BorderRadius.circular(5),
         ),
-        child: Icon(icon, size: 11, color: color??context.colors.textLight),
+        child: Icon(icon, size: 11, color: color??context.themeConfig.textLight),
       ),
       const SizedBox(width: 4),
       Text(label, style: context.colors.caption.copyWith(fontSize: 11)),

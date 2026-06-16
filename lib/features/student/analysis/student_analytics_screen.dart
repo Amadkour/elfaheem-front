@@ -1,7 +1,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_education_app/config/app_theme.dart';
+import 'package:flutter_education_app/config/theme/app_theme.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import '../../../utils/widget/base_page.dart';
 import 'attendance/student_attendance_model.dart';
 import 'exam/student_exam_list_screen.dart';
@@ -80,11 +81,11 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView>
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: context.colors.primary.withValues(alpha: 0.08),
+              color: context.themeConfig.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(Icons.analytics_rounded,
-                color: context.colors.primary, size: 24),
+                color: context.themeConfig.primary, size: 24),
           ),
         ]),
       );
@@ -142,7 +143,7 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView>
               label: const Text('إعادة المحاولة',
                   style: TextStyle(fontFamily: 'bahji')),
               style: ElevatedButton.styleFrom(
-                backgroundColor: context.colors.primary,
+                backgroundColor: context.themeConfig.primary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
@@ -234,7 +235,7 @@ class _CourseCard extends StatelessWidget {
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
                   colors: [
-                    context.colors.primary.withValues(alpha: 0.06),
+                    context.themeConfig.primary.withValues(alpha: 0.06),
                     Colors.transparent,
                   ],
                 ),
@@ -280,7 +281,7 @@ class _CourseCard extends StatelessWidget {
                           child: LinearProgressIndicator(
                             value: course.progress / 100,
                             backgroundColor: Colors.grey.shade100,
-                            color: context.colors.primary,
+                            color: context.themeConfig.primary,
                             minHeight: 5,
                           ),
                         ),
@@ -304,7 +305,7 @@ class _CourseCard extends StatelessWidget {
                 _ActionChip(
                   icon: Icons.fact_check_rounded,
                   label: 'الحضور',
-                  color: context.colors.success,
+                  color: context.themeConfig.success,
                 ),
                 const SizedBox(width: 10),
                 InkWell(
@@ -322,7 +323,7 @@ class _CourseCard extends StatelessWidget {
                   child: _ActionChip(
                     icon: Icons.quiz_rounded,
                     label: 'الاختبارات',
-                    color: context.colors.primary,
+                    color: context.themeConfig.primary,
                   ),
                 ),
                 const Spacer(),
@@ -346,10 +347,10 @@ class _CourseCard extends StatelessWidget {
         width: 48,
         height: 48,
         decoration: BoxDecoration(
-          color: context.colors.primary.withValues(alpha: 0.1),
+          color: context.themeConfig.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Icon(Icons.menu_book_rounded, color: context.colors.primary, size: 22),
+        child: Icon(Icons.menu_book_rounded, color: context.themeConfig.primary, size: 22),
       );
 }
 

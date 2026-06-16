@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import '../../config/app_theme.dart';
+import '../../config/theme/app_theme.dart';
+import '../../config/theme/theme_config_provider.dart';
 class MyDatePicker extends StatelessWidget {
   const MyDatePicker(
       {super.key,
@@ -18,7 +19,7 @@ class MyDatePicker extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       shadowColor:  Color.fromRGBO(0, 0, 0, 0.25),
-      color: context.colors.inputBg,
+      color: context.themeConfig.inputBg(isDark:context.colors.isDark),
       borderRadius: BorderRadius.circular(10),
       elevation: 4,
       clipBehavior: Clip.antiAliasWithSaveLayer,
@@ -29,17 +30,17 @@ class MyDatePicker extends StatelessWidget {
             fontFamily: 'tajawal',
             fontWeight: FontWeight.w500,
             fontSize: 15,
-            color: context.colors.textDark),
+            color: context.themeConfig.textDark),
         decoration: InputDecoration(
             hintTextDirection: TextDirection.rtl,
             floatingLabelBehavior: FloatingLabelBehavior.never,
-            fillColor: context.colors.inputBg,
+            fillColor: context.themeConfig.inputBg(isDark:context.colors.isDark),
             hint: Text(
               label,
               style:  TextStyle(
                   fontFamily: 'tajawal',
                   fontWeight: FontWeight.w600,
-                  color: context.colors.textMedium),
+                  color: context.themeConfig.textMedium),
               textDirection: TextDirection.rtl,
             ),
             border: const OutlineInputBorder(borderSide: BorderSide.none),
@@ -65,19 +66,19 @@ class MyDatePicker extends StatelessWidget {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            primaryColorDark: context.colors.inputBg,
+            primaryColorDark: context.themeConfig.inputBg(isDark:context.colors.isDark),
             colorScheme: isDark
                 ? ColorScheme.dark(
-              primary: context.colors.accent,       // Selected day circle
-              onPrimary: context.colors.background, // Selected day text
-              surface: context.colors.cardBg,       // Picker background
-              onSurface: context.colors.textDark, // Day & header text
+              primary: context.themeConfig.accent,       // Selected day circle
+              onPrimary: context.themeConfig.background, // Selected day text
+              surface: context.themeConfig.cardBg,       // Picker background
+              onSurface: context.themeConfig.textDark, // Day & header text
             )
                 : ColorScheme.light(
-              primary: context.colors.accent,       // Selected day circle
-              onPrimary: context.colors.background, // Selected day text
-              surface: context.colors.cardBg,       // Picker background
-              onSurface: context.colors.textDark, // Day & header text
+              primary: context.themeConfig.accent,       // Selected day circle
+              onPrimary: context.themeConfig.background, // Selected day text
+              surface: context.themeConfig.cardBg,       // Picker background
+              onSurface: context.themeConfig.textDark, // Day & header text
             ),
             textTheme: TextTheme.of(context).copyWith(
               displaySmall: const TextStyle(fontFamily: 'tajawal'),

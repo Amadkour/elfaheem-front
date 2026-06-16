@@ -1,7 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/student/models.dart';
-import '../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
+import '../../../config/theme/theme_config_provider.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import '../../student/courses/details/course_detail_screen.dart';
 import '../../student/home/component/course_row.dart';
@@ -44,7 +45,7 @@ class HomeCourseList extends StatelessWidget {
               if (i >= courses.length) {
                 return Center(
                   child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation(context.colors.primary),
+                    valueColor: AlwaysStoppedAnimation(context.themeConfig.primary),
                     strokeWidth: 2,
                   ),
                 );

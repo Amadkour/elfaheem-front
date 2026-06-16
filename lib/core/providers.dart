@@ -5,6 +5,7 @@ import 'package:flutter_education_app/features/student/attendance/attendance_pro
 import 'package:flutter_education_app/features/student/courses/details/course_detail_provider.dart';
 import 'package:provider/provider.dart';
 import '../config/storage_service.dart' show StorageService;
+import '../config/theme/theme_config_provider.dart';
 import '../features/auth/auth_provider.dart';
 import '../features/category/categories_provider.dart';
 import '../features/shared/notification/notifications_provider.dart';
@@ -22,80 +23,75 @@ import '../features/teacher/schedules/schedules_provider.dart';
 import '../features/teacher/sessions/sessions_provider.dart';
 import '../features/teacher/sessions/students/course_student_provider.dart';
 
-List<SingleChildWidget> appProviders(
-        {required StorageService storage, required ApiClient api}) =>
-    [
-// Storage — shared singleton
-      Provider<StorageService>.value(value: storage),
-      Provider<StorageService>.value(value: storage),
+List<SingleChildWidget> appProviders({
+  required StorageService storage,
+  required ApiClient api,
+}) => [
+  // Storage — shared singleton
+  Provider<StorageService>.value(value: storage),
+  Provider<StorageService>.value(value: storage),
 
-// Auth — receives the shared storage instance so it can restore
-// the user from disk in its constructor without an async gap.
-      ChangeNotifierProvider<AuthProvider>(
-        create: (_) => AuthProvider(storage: storage),
-      ),
+  // Auth — receives the shared storage instance so it can restore
+  // the user from disk in its constructor without an async gap.
+  ChangeNotifierProvider<AuthProvider>(
+    create: (_) => AuthProvider(storage: storage),
+  ),
 
-// Language (keep however your app initialises this)
-      ChangeNotifierProvider<LangProvider>(
-          create: (_) => LangProvider(storage: storage)),
+  // Language (keep however your app initialises this)
+  ChangeNotifierProvider<LangProvider>(
+    create: (_) => LangProvider(storage: storage),
+  ),
 
-// ── Auth (root — all others may read auth state via context.read) ────────
+  // ── Auth (root — all others may read auth state via context.read) ────────
 
-      // ── Domain providers (all share the ApiClient singleton) ─────────────────
-      ChangeNotifierProvider<CategoriesProvider>(
-        create: (_) => CategoriesProvider(),
-      ),
-      // ── Domain providers (all share the ApiClient singleton) ─────────────────
-      ChangeNotifierProvider<TeacherSchedulesProvider>(
-        create: (_) => TeacherSchedulesProvider(),
-      ),
-      ChangeNotifierProvider<AboutTermsProvider>(
-        create: (_) => AboutTermsProvider(),
-      ),
+  // ── Domain providers (all share the ApiClient singleton) ─────────────────
+  ChangeNotifierProvider<CategoriesProvider>(
+    create: (_) => CategoriesProvider(),
+  ),
+  // ── Domain providers (all share the ApiClient singleton) ─────────────────
+  ChangeNotifierProvider<TeacherSchedulesProvider>(
+    create: (_) => TeacherSchedulesProvider(),
+  ),
+  ChangeNotifierProvider<AboutTermsProvider>(
+    create: (_) => AboutTermsProvider(),
+  ),
 
-      ChangeNotifierProvider<StudentAnalyticsProvider>(
-        create: (_) => StudentAnalyticsProvider(),
-      ),
-      ChangeNotifierProvider<MyCoursesProvider>(
-        create: (_) => MyCoursesProvider(),
-      ),
-      ChangeNotifierProvider<TeacherScheduleOverviewProvider>(
-        create: (_) => TeacherScheduleOverviewProvider(),
-      ),
-      ChangeNotifierProvider<StudentExamProvider>(
-        create: (_) => StudentExamProvider(),
-      ),
-      ChangeNotifierProvider<CourseDetailProvider>(
-        create: (_) => CourseDetailProvider(),
-      ),
-      ChangeNotifierProvider<StudentSchedulesProvider>(
-        create: (_) => StudentSchedulesProvider(),
-      ),
-      ChangeNotifierProvider<TeacherProvider>(
-        create: (_) => TeacherProvider(),
-      ),
-      ChangeNotifierProvider<ProfileProvider>(
-        create: (_) => ProfileProvider(storage: storage, api: api),
-      ),
-      ChangeNotifierProvider<CoursesProvider>(
-        create: (_) => CoursesProvider(),
-      ),
-      ChangeNotifierProvider<RewardsProvider>(
-        create: (_) => RewardsProvider(),
-      ),
-      ChangeNotifierProvider<HomeProvider>(
-        create: (_) => HomeProvider(),
-      ),
-      ChangeNotifierProvider<StudentSessionsProvider>(
-        create: (_) => StudentSessionsProvider(),
-      ),
-      ChangeNotifierProvider<EnrolledStudentsProvider>(
-        create: (_) => EnrolledStudentsProvider(api: api),
-      ),
-      ChangeNotifierProvider<StudentAttendanceProvider>(
-        create: (_) => StudentAttendanceProvider(),
-      ),
-      ChangeNotifierProvider<NotificationsProvider>(
-        create: (_) => NotificationsProvider(),
-      ),
-    ];
+  ChangeNotifierProvider<StudentAnalyticsProvider>(
+    create: (_) => StudentAnalyticsProvider(),
+  ),
+  ChangeNotifierProvider<MyCoursesProvider>(create: (_) => MyCoursesProvider()),
+  ChangeNotifierProvider<ThemeConfigProvider>(
+    create: (_) => ThemeConfigProvider(api: api),
+  ),
+  ChangeNotifierProvider<TeacherScheduleOverviewProvider>(
+    create: (_) => TeacherScheduleOverviewProvider(),
+  ),
+  ChangeNotifierProvider<StudentExamProvider>(
+    create: (_) => StudentExamProvider(),
+  ),
+  ChangeNotifierProvider<CourseDetailProvider>(
+    create: (_) => CourseDetailProvider(),
+  ),
+  ChangeNotifierProvider<StudentSchedulesProvider>(
+    create: (_) => StudentSchedulesProvider(),
+  ),
+  ChangeNotifierProvider<TeacherProvider>(create: (_) => TeacherProvider()),
+  ChangeNotifierProvider<ProfileProvider>(
+    create: (_) => ProfileProvider(storage: storage, api: api),
+  ),
+  ChangeNotifierProvider<CoursesProvider>(create: (_) => CoursesProvider()),
+  ChangeNotifierProvider<RewardsProvider>(create: (_) => RewardsProvider()),
+  ChangeNotifierProvider<HomeProvider>(create: (_) => HomeProvider()),
+  ChangeNotifierProvider<StudentSessionsProvider>(
+    create: (_) => StudentSessionsProvider(),
+  ),
+  ChangeNotifierProvider<EnrolledStudentsProvider>(
+    create: (_) => EnrolledStudentsProvider(api: api),
+  ),
+  ChangeNotifierProvider<StudentAttendanceProvider>(
+    create: (_) => StudentAttendanceProvider(),
+  ),
+  ChangeNotifierProvider<NotificationsProvider>(
+    create: (_) => NotificationsProvider(),
+  ),
+];

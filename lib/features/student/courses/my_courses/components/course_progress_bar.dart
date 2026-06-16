@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../../config/app_theme.dart';
+import '../../../../../config/theme/app_theme.dart';
+import '../../../../../config/theme/theme_config_provider.dart';
 
 class CourseProgressBar extends StatelessWidget {
   final double progress;
@@ -11,7 +12,7 @@ class CourseProgressBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final pct          = (progress * 100).round();
     final isDone       = progress >= 1.0;
-    final effectiveClr = color ?? context.colors.primary;
+    final effectiveClr = color ?? context.themeConfig.primary;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -43,7 +44,7 @@ class CourseProgressBar extends StatelessWidget {
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color:
-                    isDone ? effectiveClr : context.colors.textLight,
+                    isDone ? effectiveClr : context.themeConfig.textLight,
                   ),
                 ),
               ],

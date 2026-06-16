@@ -7,7 +7,8 @@ library;
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_education_app/config/app_theme.dart';
+import 'package:flutter_education_app/config/theme/app_theme.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'student_exam_frozen_screen.dart';
 import 'student_exam_api.dart';
 import 'student_exam_provider.dart';
@@ -319,9 +320,9 @@ class _InfoCard extends StatelessWidget {
     width: double.infinity,
     padding: const EdgeInsets.all(18),
     decoration: BoxDecoration(
-      color: context.colors.cardBg,
+      color: context.themeConfig.cardBg,
       borderRadius: BorderRadius.circular(20),
-      boxShadow: context.colors.cardShadow,
+      boxShadow: context.themeConfig.cardShadow(isDark:context.colors.isDark),
       border: Border.all(color: accent.withValues(alpha: .10)),
     ),
     child: Column(

@@ -7,8 +7,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/schedules/schedules_screen.dart';
 
-import '../../../../../config/app_theme.dart';
+import '../../../../config/theme/app_theme.dart';
 import '../../../../config/app_config.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 import '../../home/teacher_models.dart';
 
 class _AddButton extends StatelessWidget {
@@ -27,9 +28,9 @@ class _AddButton extends StatelessWidget {
             height: 36,
             padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(
-              gradient: context.colors.accentGradient,
+              gradient: context.themeConfig.linearAccent,
               borderRadius: BorderRadius.circular(10),
-              boxShadow: context.colors.primaryShadow,
+              boxShadow: context.themeConfig.primaryShadow(isDark:context.colors.isDark),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               const Icon(Icons.add_rounded, color: Colors.white, size: 18),
@@ -76,7 +77,7 @@ class CourseDetailsSection extends StatelessWidget {
     width: 4,
       height: 18,
       decoration: BoxDecoration(
-        gradient: context.colors.primaryGradient,
+        gradient: context.themeConfig.linearPrimary,
         borderRadius: BorderRadius.circular(2),
       ),
     ),
@@ -207,12 +208,12 @@ class CourseDetailsSection extends StatelessWidget {
   Widget build(BuildContext context) {
   return Container(
   decoration: BoxDecoration(
-  color: context.colors.surface,
+  color: context.themeConfig.surfaceCard,
   borderRadius: BorderRadius.circular(16),
   border: Border.all(
   color: _expanded
   ? widget.color.withValues(alpha: 0.35)
-      : context.colors.divider,
+      : context.themeConfig.divider,
   width: 1.2,
   ),
   boxShadow: [
@@ -252,7 +253,7 @@ class CourseDetailsSection extends StatelessWidget {
   fontFamily: 'tajawal',
   fontSize: 13,
   fontWeight: FontWeight.w700,
-  color: context.colors.textDark,
+  color: context.themeConfig.textDark,
   ),
   ),
   ),
@@ -282,7 +283,7 @@ class CourseDetailsSection extends StatelessWidget {
   duration: const Duration(milliseconds: 250),
   child: Icon(
   Icons.keyboard_arrow_down_rounded,
-  color: context.colors.textMedium,
+  color: context.themeConfig.textMedium,
   size: 20,
   ),
   ),
@@ -357,7 +358,7 @@ class CourseDetailsSection extends StatelessWidget {
   Icon(
   Icons.access_time_rounded,
   size: 13,
-  color: context.colors.textMedium,
+  color: context.themeConfig.textMedium,
   ),
   const SizedBox(width: 4),
   Text(
@@ -366,7 +367,7 @@ class CourseDetailsSection extends StatelessWidget {
   fontFamily: 'tajawal',
   fontSize: 12,
   fontWeight: FontWeight.w600,
-  color: context.colors.textDark,
+  color: context.themeConfig.textDark,
   ),
   ),
   ],
@@ -386,7 +387,7 @@ class CourseDetailsSection extends StatelessWidget {
   children: [
   Padding(
   padding: const EdgeInsets.only(top: 5),
-  child: Icon(Icons.circle, size: 6, color: context.colors.textMedium),
+  child: Icon(Icons.circle, size: 6, color: context.themeConfig.textMedium),
   ),
   const SizedBox(width: 10),
   Expanded(
@@ -395,7 +396,7 @@ class CourseDetailsSection extends StatelessWidget {
   style: TextStyle(
   fontFamily: 'tajawal',
   fontSize: 13,
-  color: context.colors.textDark,
+  color: context.themeConfig.textDark,
   height: 1.4,
   ),
   ),
@@ -427,7 +428,7 @@ class CourseDetailsSection extends StatelessWidget {
   fontFamily: 'tajawal',
   fontSize: 13,
   fontWeight: FontWeight.w600,
-  color: context.colors.textDark,
+  color: context.themeConfig.textDark,
   ),
   ),
   if (cert.description != null && cert.description!.isNotEmpty) ...[
@@ -437,7 +438,7 @@ class CourseDetailsSection extends StatelessWidget {
   style: TextStyle(
   fontFamily: 'tajawal',
   fontSize: 11,
-  color: context.colors.textMedium,
+  color: context.themeConfig.textMedium,
   height: 1.4,
   ),
   ),

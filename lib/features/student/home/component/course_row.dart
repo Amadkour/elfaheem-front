@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/student/models.dart'
     show CourseModel;
 import '../../../../config/app_config.dart';
-import '../../../../config/app_theme.dart';
+import '../../../../config/theme/app_theme.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/widget/app_network_image.dart';
 import '../../../shared/profile/course_instractor_profile.dart';
 
@@ -91,7 +92,7 @@ class CourseCard extends StatelessWidget {
       child: Container(
         width: fixedWidth,
         decoration: BoxDecoration(
-          color: context.colors.cardBg2,
+          color: context.themeConfig.cardBg,
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
@@ -141,7 +142,7 @@ class CourseCard extends StatelessWidget {
                         Text(
                           course.description!,
                           style: context.colors.caption.copyWith(
-                            color: context.colors.textLight,
+                            color: context.themeConfig.textLight,
                             fontWeight: FontWeight.w700,
                             fontSize: 9,
                           ),
@@ -173,7 +174,7 @@ class CourseCard extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 4, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: context.colors.primary,
+                                  color: context.themeConfig.primary,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
@@ -197,8 +198,8 @@ class CourseCard extends StatelessWidget {
                                     horizontal: 9, vertical: 3),
                                 decoration: BoxDecoration(
                                     color: course.isPublished
-                                        ? context.colors.success
-                                        : context.colors.warning,
+                                        ? context.themeConfig.success
+                                        : context.themeConfig.warning,
                                     borderRadius: BorderRadius.circular(8)),
                                 child: Text(
                                   course.isPublished
@@ -345,13 +346,13 @@ class _Thumbnail extends StatelessWidget {
             decoration: BoxDecoration(
               color: course.price == 0
                   ? const Color(0xFF0F6E56)
-                  : context.colors.primary,
+                  : context.themeConfig.primary,
               borderRadius: BorderRadius.circular(10),
               boxShadow: [
                 BoxShadow(
                   color: (course.price == 0
                           ? const Color(0xFF0F6E56)
-                          : context.colors.primary)
+                          : context.themeConfig.primary)
                       .withValues(alpha: 0.35),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
@@ -423,12 +424,12 @@ class _StatsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(Icons.star_rounded, color: context.colors.accent, size: 13),
+        Icon(Icons.star_rounded, color: context.themeConfig.accent, size: 13),
         const SizedBox(width: 3),
         Text(
           course.rateSummary?.average.toStringAsFixed(1) ?? '',
           style: context.colors.caption.copyWith(
-            color: context.colors.textDark,
+            color: context.themeConfig.textDark,
             fontWeight: FontWeight.w700,
             fontSize: 12,
           ),
@@ -454,7 +455,7 @@ class _MetaRow extends StatelessWidget {
       children: [
         if (hasLectures) ...[
           IconColored(
-            color: context.colors.primary,
+            color: context.themeConfig.primary,
             icon: Icons.play_circle_outline_rounded,
           ),
           const SizedBox(width: 3),
@@ -466,7 +467,7 @@ class _MetaRow extends StatelessWidget {
         if (hasLectures && hasHours) Spacer(),
         if (hasHours) ...[
           IconColored(
-            color: context.colors.accent,
+            color: context.themeConfig.accent,
             icon: Icons.access_time_rounded,
           ),
           const SizedBox(width: 3),
@@ -497,7 +498,7 @@ class _StudentRow extends StatelessWidget {
       children: [
         if (hasCertificate) ...[
           IconColored(
-              color: context.colors.success,
+              color: context.themeConfig.success,
               icon: Icons.workspace_premium_rounded),
           const SizedBox(width: 3),
           Text(
@@ -508,7 +509,7 @@ class _StudentRow extends StatelessWidget {
         if (hasStudents && hasCertificate) Spacer(),
         if (hasStudents) ...[
           IconColored(
-              color: context.colors.accent2, icon: CupertinoIcons.group),
+              color: context.themeConfig.accent2, icon: CupertinoIcons.group),
           const SizedBox(width: 3),
           Text(
             '${course.studentsCount} ${'student'.tr}',
@@ -530,10 +531,10 @@ class _ProgressBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Color primary = progress > 90
-        ? context.colors.success
+        ? context.themeConfig.success
         : progress > 30
-            ? context.colors.primary
-            : context.colors.danger;
+            ? context.themeConfig.primary
+            : context.themeConfig.danger;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -547,7 +548,7 @@ class _ProgressBar extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: (progress / 100).clamp(0.0, 1.0),
                 minHeight: 5,
-                backgroundColor: context.colors.primaryLight,
+                backgroundColor: context.themeConfig.primaryLight,
                 valueColor: AlwaysStoppedAnimation(primary),
               ),
             ),

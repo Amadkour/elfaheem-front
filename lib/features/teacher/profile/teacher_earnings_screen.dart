@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:intl/intl.dart';
 
-import '../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
 import '../../../core/api_client.dart';
 import '../../../utils/helpers.dart';
 import '../../../utils/widget/base_page.dart';

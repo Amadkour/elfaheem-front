@@ -12,8 +12,9 @@ import 'package:flutter_education_app/features/teacher/sessions/components/sessi
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../../config/app_theme.dart';
+import '../../../../config/theme/app_theme.dart';
 import '../../../../config/app_config.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 import '../../../shared/session/material/session_material_widget.dart';
 import '../../../student/models.dart';
 import '../../home/teacher_models.dart';
@@ -88,7 +89,7 @@ class _SectionHeader extends StatelessWidget {
             width: 4,
             height: 20,
             decoration: BoxDecoration(
-              gradient: context.colors.primaryGradient,
+              gradient: context.themeConfig.linearPrimary,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -102,7 +103,7 @@ class _SectionHeader extends StatelessWidget {
             padding: const EdgeInsets.symmetric(
                 horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: context.colors.primary.withValues(alpha: 0.12),
+              color: context.themeConfig.primary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
@@ -111,7 +112,7 @@ class _SectionHeader extends StatelessWidget {
                 fontFamily: 'tajawal',
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: context.colors.primary,
+                color: context.themeConfig.primary,
               ),
             ),
           ),
@@ -141,9 +142,9 @@ class _AddButton extends StatelessWidget {
         height: 36,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
-          gradient: context.colors.accentGradient,
+          gradient: context.themeConfig.linearAccent,
           borderRadius: BorderRadius.circular(10),
-          boxShadow: context.colors.primaryShadow,
+          boxShadow: context.themeConfig.primaryShadow(isDark:context.colors.isDark),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           const Icon(Icons.add_rounded, color: Colors.white, size: 18),
@@ -180,9 +181,9 @@ class _LoadingState extends StatelessWidget {
             width: 40,
             height: 40,
             child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation(context.colors.primary),
+              valueColor: AlwaysStoppedAnimation(context.themeConfig.primary),
               strokeWidth: 3,
-              backgroundColor: context.colors.primaryLight,
+              backgroundColor: context.themeConfig.primaryLight,
             ),
           ),
           const SizedBox(height: 16),
@@ -212,9 +213,9 @@ class _EmptyState extends StatelessWidget {
             width: 90,
             height: 90,
             decoration: BoxDecoration(
-              gradient: context.colors.primaryGradient,
+              gradient: context.themeConfig.linearPrimary,
               shape: BoxShape.circle,
-              boxShadow: context.colors.primaryShadow,
+              boxShadow: context.themeConfig.primaryShadow(isDark:context.colors.isDark),
             ),
             child: const Icon(
               Icons.video_library_rounded,
@@ -225,7 +226,7 @@ class _EmptyState extends StatelessWidget {
           const SizedBox(height: 20),
           Text(
             'no_sessions_yet'.tr,
-            style: context.colors.h3.copyWith(color: context.colors.textDark),
+            style: context.colors.h3.copyWith(color: context.themeConfig.textDark),
           ),
           const SizedBox(height: 8),
           Text(
@@ -239,9 +240,9 @@ class _EmptyState extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
               decoration: BoxDecoration(
-                gradient: context.colors.accentGradient,
+                gradient: context.themeConfig.linearAccent,
                 borderRadius: BorderRadius.circular(24),
-                boxShadow: context.colors.primaryShadow,
+                boxShadow: context.themeConfig.primaryShadow(isDark:context.colors.isDark),
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 const Icon(Icons.add_rounded, color: Colors.white, size: 20),

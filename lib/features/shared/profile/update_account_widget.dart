@@ -24,11 +24,12 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../config/app_config.dart' as Helpers;
-import '../../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
 import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/editable_image.dart';
 import '../../../../utils/widget/primary_button.dart';
 import '../../../../utils/widget/text_field.dart';
+import '../../../config/theme/theme_config_provider.dart';
 import '../../auth/auth_provider.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 
@@ -122,11 +123,11 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
       }
 
       if (mounted) {
-        _showSnack('changes_saved'.tr, context.colors.success);
+        _showSnack('changes_saved'.tr, context.themeConfig.success);
         Navigator.of(context).pop();
       }
     } catch (e) {
-      if (mounted) _showSnack(e.toString(), context.colors.danger);
+      if (mounted) _showSnack(e.toString(), context.themeConfig.danger);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -441,13 +442,13 @@ class _MobileHero extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: context.colors.cardBg,
+                  color: context.themeConfig.cardBg,
                   borderRadius: BorderRadius.circular(14),
-                  boxShadow: context.colors.cardShadow,
+                  boxShadow: context.themeConfig.cardShadow(isDark:context.colors.isDark),
                 ),
                 child: Icon(
                   CupertinoIcons.back,
-                  color: context.colors.textDark,
+                  color: context.themeConfig.textDark,
                   size: 22,
                 ),
               ),

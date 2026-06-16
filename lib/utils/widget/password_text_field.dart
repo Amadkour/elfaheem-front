@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../config/app_theme.dart';
+import '../../config/theme/app_theme.dart';
+import '../../config/theme/theme_config_provider.dart';
 import '../validators.dart';
 
 class MyPasswordTextField extends StatelessWidget {
@@ -22,7 +23,7 @@ class MyPasswordTextField extends StatelessWidget {
   ) {
     return Material(
       shadowColor: Color.fromRGBO(0, 0, 0, 0.25),
-      color: context.colors.inputBg,
+      color: context.themeConfig.inputBg(isDark:context.colors.isDark),
       borderRadius: BorderRadius.circular(10),
       elevation: 4,
       clipBehavior: Clip.antiAliasWithSaveLayer,
@@ -35,17 +36,17 @@ class MyPasswordTextField extends StatelessWidget {
             fontFamily: 'tajawal',
             fontWeight: FontWeight.w500,
             fontSize: 15,
-            color: context.colors.textDark),
+            color: context.themeConfig.textDark),
         decoration: InputDecoration(
           hintTextDirection: TextDirection.rtl,
           floatingLabelBehavior: FloatingLabelBehavior.never,
-          fillColor: context.colors.inputBg,
+          fillColor: context.themeConfig.inputBg(isDark:context.colors.isDark),
           hint: Text(
             label,
             style:  TextStyle(
                 fontFamily: 'tajawal',
                 fontWeight: FontWeight.w600,
-                color:  context.colors.textDark),
+                color:  context.themeConfig.textDark),
             textDirection: TextDirection.rtl,
           ),
           suffixIcon: IconButton(

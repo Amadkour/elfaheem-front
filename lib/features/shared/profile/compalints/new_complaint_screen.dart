@@ -8,7 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../config/app_config.dart';
-import '../../../../config/app_theme.dart';
+import '../../../../config/theme/app_theme.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/helpers.dart';
 import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/base_page.dart';
@@ -83,7 +84,7 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('complaint_sent_success'.tr,
             style: const TextStyle(fontFamily: 'bahji')),
-        backgroundColor: context.colors.success,
+        backgroundColor: context.themeConfig.success,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ));
@@ -93,7 +94,7 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('error_try_again'.tr,
             style: const TextStyle(fontFamily: 'bahji')),
-        backgroundColor: context.colors.danger,
+        backgroundColor: context.themeConfig.danger,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ));

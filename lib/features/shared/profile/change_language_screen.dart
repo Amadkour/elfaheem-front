@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart' show LangProvider, pageDirection, Trans, AppConfig;
-import '../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
+import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/base_page.dart';
 
@@ -35,15 +36,15 @@ class ChangeLanguageScreen extends StatelessWidget {
                         duration: const Duration(milliseconds: 200),
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: context.colors.cardBg,
+                          color: context.themeConfig.cardBg,
                           borderRadius: BorderRadius.circular(
                               context.colors.radiusMedium),
                           border: Border.all(
                               color: isSelected
-                                  ? context.colors.primaryDark
-                                  : context.colors.divider,
+                                  ? context.themeConfig.primaryDark
+                                  : context.themeConfig.divider,
                               width: isSelected ? 2 : 1),
-                          boxShadow: context.colors.cardShadow,
+                          boxShadow: context.themeConfig.cardShadow(isDark:context.colors.isDark),
                         ),
                         child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -51,13 +52,13 @@ class ChangeLanguageScreen extends StatelessWidget {
                               Text(l.tr,
                                   style: context.colors.label.copyWith(
                                       color: isSelected
-                                          ? context.colors.primaryDark
-                                          : context.colors.textDark,
+                                          ? context.themeConfig.primaryDark
+                                          : context.themeConfig.textDark,
                                       fontWeight: FontWeight.w700,
                                       fontSize: 15)),
                               if (isSelected)
                                 Icon(Icons.check_circle_rounded,
-                                    color: context.colors.primaryDark,
+                                    color: context.themeConfig.primaryDark,
                                     size: 22),
                             ]),
                       ),

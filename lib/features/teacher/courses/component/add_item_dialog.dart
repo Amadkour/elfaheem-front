@@ -4,7 +4,8 @@
 
 import 'package:flutter/material.dart';
 
-import '../../../../config/app_theme.dart';
+import '../../../../config/theme/app_theme.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 
 /// FIX: The original used `_` as the builder's context parameter name,
 /// which shadowed the outer [context] passed into the function.
@@ -43,11 +44,11 @@ Future<void> addItemDialog(
             onPressed: () => Navigator.pop(dialogContext),
             child:  Text('إلغاء',
                 style: TextStyle(
-                    fontFamily: 'bahji', color: context.colors.textMedium)),
+                    fontFamily: 'bahji', color: context.themeConfig.textMedium)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: context.colors.primary,
+              backgroundColor: context.themeConfig.primary,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
             ),

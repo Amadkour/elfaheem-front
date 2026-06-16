@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
-/// Application configuration and context.colors.
+/// Application configuration and context.themeConfig.
 class AppConfig {
   static const String baseUrl = 'https://optional-hub-speeches-suggests.trycloudflare.com';
   static String lang = 'ar';

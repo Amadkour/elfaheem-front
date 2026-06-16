@@ -5,7 +5,8 @@
 // FIX: removed unused `dart:math` import that caused an analysis warning.
 import 'package:flutter/material.dart';
 
-import '../../../../config/app_theme.dart';
+import '../../../../config/theme/app_theme.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 
 class GradientButton extends StatelessWidget {
   final String label;
@@ -29,9 +30,9 @@ class GradientButton extends StatelessWidget {
       height: 50,
       decoration: BoxDecoration(
         gradient:
-        enable ? context.colors.primaryGradient : context.colors.disableGradient,
+        enable ? context.themeConfig.linearPrimary : context.themeConfig.linearDisable,
         borderRadius: BorderRadius.circular(10),
-        boxShadow: enable ? context.colors.primaryShadow : null,
+        boxShadow: enable ? context.themeConfig.primaryShadow(isDark:context.colors.isDark) : null,
       ),
       child: Center(
         child: isLoading

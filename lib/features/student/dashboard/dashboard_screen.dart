@@ -8,8 +8,9 @@ import 'package:flutter_education_app/features/teacher/dashboard/teacher_dashboa
 import 'package:flutter_education_app/features/teacher/schedules/schedules_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
-import '../../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
 import '../../../config/app_config.dart' as Helpers;
+import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_network_image.dart';
 import '../../../utils/widget/refresh_button.dart';
 import '../analysis/student_analytics_provider.dart';
@@ -152,7 +153,7 @@ class WideShell extends StatelessWidget {
             child: Container(
               width: Breakpoints.sidebarW,
               decoration:
-                  BoxDecoration(gradient: context.colors.primarySliderGradient),
+                  BoxDecoration(gradient: context.themeConfig.linearSlider),
               child: Stack(
                 children: [
                   // Decorative circles
@@ -184,7 +185,7 @@ class WideShell extends StatelessWidget {
                               width: 42,
                               height: 42,
                               decoration: BoxDecoration(
-                                color: context.colors.primary
+                                color: context.themeConfig.primary
                                     .withValues(alpha: 0.3),
                                 borderRadius: BorderRadius.circular(13),
                               ),
@@ -303,7 +304,7 @@ class UserChipButton extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                gradient: context.colors.primaryGradient,
+                gradient: context.themeConfig.linearPrimary,
                 shape: BoxShape.circle,
               ),
               alignment: Alignment.center,
@@ -313,9 +314,9 @@ class UserChipButton extends StatelessWidget {
                       height: 35,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: context.colors.primary.withValues(alpha: 0.1),
+                        color: context.themeConfig.primary.withValues(alpha: 0.1),
                         border: Border.all(
-                            color: context.colors.primaryDark, width: 2.5),
+                            color: context.themeConfig.primaryDark, width: 2.5),
                       ),
                       child: ClipOval(
                           child: AppNetworkImage(
@@ -390,12 +391,12 @@ class _SidebarTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         decoration: BoxDecoration(
           color: selected
-              ? context.colors.primary.withValues(alpha: 0.2)
+              ? context.themeConfig.primary.withValues(alpha: 0.2)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: selected
-                ? context.colors.primary.withValues(alpha: 0.3)
+                ? context.themeConfig.primary.withValues(alpha: 0.3)
                 : Colors.transparent,
           ),
         ),
@@ -407,7 +408,7 @@ class _SidebarTile extends StatelessWidget {
                 width: 3,
                 height: 20,
                 decoration: BoxDecoration(
-                  color: context.colors.accent,
+                  color: context.themeConfig.accent,
                   borderRadius: BorderRadius.circular(2),
                 ),
                 margin: const EdgeInsetsDirectional.only(end: 10),
@@ -437,7 +438,7 @@ class _SidebarTile extends StatelessWidget {
             //   Container(
             //     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
             //     decoration: BoxDecoration(
-            //         color: context.colors.danger,
+            //         color: context.themeConfig.danger,
             //         borderRadius: BorderRadius.circular(20)),
             //     child: Text('$badge',
             //         style: const TextStyle(
@@ -468,10 +469,10 @@ class _WideTopBar extends StatelessWidget {
     return Container(
       height: 64,
       decoration: BoxDecoration(
-        color: context.colors.cardBg,
+        color: context.themeConfig.cardBg,
         border: Border(
             bottom: BorderSide(
-                color: context.colors.primary.withValues(alpha: 0.08))),
+                color: context.themeConfig.primary.withValues(alpha: 0.08))),
         boxShadow: [
           BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
@@ -509,7 +510,7 @@ class NotificationIcon extends StatelessWidget {
         margin: EdgeInsets.all(5),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
-          color: context.colors.primary,
+          color: context.themeConfig.primary,
         ),
         child: Stack(clipBehavior: Clip.none, children: [
           Icon(Icons.notifications_rounded, color: Colors.white, size: 20),
@@ -521,7 +522,7 @@ class NotificationIcon extends StatelessWidget {
                 padding: EdgeInsets.all(2),
                 alignment: AlignmentGeometry.center,
                 decoration: BoxDecoration(
-                    color: context.colors.danger, shape: BoxShape.circle),
+                    color: context.themeConfig.danger, shape: BoxShape.circle),
                 child: Text( unreadCount>99? '99+':
                 unreadCount.toString(),
                   style: AppTheme.small.copyWith(color: Colors.white),
@@ -559,20 +560,20 @@ class RailShell extends StatelessWidget {
         children: [
           DecoratedBox(
             decoration:
-                BoxDecoration(gradient: context.colors.primarySliderGradient),
+                BoxDecoration(gradient: context.themeConfig.linearSlider),
             child: Column(
               children: [
                 Expanded(
                   child: NavigationRail(
                     backgroundColor: context.colors.isDark
-                        ? context.colors.cardBg
-                        : context.colors.primaryDark,
+                        ? context.themeConfig.cardBg
+                        : context.themeConfig.primaryDark,
                     selectedIndex: currentIndex,
                     onDestinationSelected: onTap,
                     minWidth: 66,
                     labelType: NavigationRailLabelType.none,
                     indicatorColor:
-                        context.colors.primary.withValues(alpha: 0.35),
+                        context.themeConfig.primary.withValues(alpha: 0.35),
                     selectedIconTheme:
                         const IconThemeData(color: Colors.white, size: 23),
                     unselectedIconTheme: IconThemeData(
@@ -670,7 +671,7 @@ class _BottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         decoration: BoxDecoration(
-          color: context.colors.cardBg,
+          color: context.themeConfig.cardBg,
           border: Border(
               top: BorderSide(
                   color: Colors.black.withValues(alpha: 0.07), width: 0.5)),
@@ -702,12 +703,12 @@ class _BottomNav extends StatelessWidget {
                           height: 30,
                           decoration: BoxDecoration(
                             gradient:
-                                active ? context.colors.primaryGradient : null,
+                                active ? context.themeConfig.linearPrimary : null,
                             borderRadius: BorderRadius.circular(10),
                             boxShadow: active
                                 ? [
                                     BoxShadow(
-                                        color: context.colors.primaryDark
+                                        color: context.themeConfig.primaryDark
                                             .withValues(alpha: 0.3),
                                         blurRadius: 8,
                                         offset: const Offset(0, 2))
@@ -719,7 +720,7 @@ class _BottomNav extends StatelessWidget {
                             size: 20,
                             color: active
                                 ? Colors.white
-                                : context.colors.textLight,
+                                : context.themeConfig.textLight,
                           ),
                         ),
                         const SizedBox(height: 3),
@@ -730,8 +731,8 @@ class _BottomNav extends StatelessWidget {
                             fontWeight:
                                 active ? FontWeight.w700 : FontWeight.w500,
                             color: active
-                                ? context.colors.primaryDark
-                                : context.colors.textLight,
+                                ? context.themeConfig.primaryDark
+                                : context.themeConfig.textLight,
                             fontFamily: 'bahji',
                           ),
                         ),

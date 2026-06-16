@@ -6,7 +6,8 @@ import 'package:flutter_education_app/utils/widget/editable_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
-import '../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
+import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/api_client.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/primary_menue.dart';
@@ -170,13 +171,13 @@ class _CourseFormInnerState extends State<_CourseFormInner>
       }
       _showSnack(
         _isEdit ? 'course_updated_success'.tr : 'course_created_success'.tr,
-        context.colors.success,
+        context.themeConfig.success,
       );
       Navigator.pop(context, result);
     } else {
       _showSnack(
         formProvider.errorMessage ?? 'error_please_retry'.tr,
-        context.colors.danger,
+        context.themeConfig.danger,
       );
     }
   }
@@ -425,7 +426,7 @@ class _HeroHeader extends StatelessWidget {
           ),
           Positioned(
             bottom: 0, right: 0, left: 0,
-            child: Container(height: unit, color: context.colors.background),
+            child: Container(height: unit, color: context.themeConfig.background),
           ),
           // Decorative circles
           Positioned(
@@ -530,7 +531,7 @@ class _FormCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     decoration: BoxDecoration(
-      color: context.colors.cardBg,
+      color: context.themeConfig.cardBg,
       borderRadius: BorderRadius.circular(20),
       boxShadow: [
         BoxShadow(
@@ -549,7 +550,7 @@ class _FormCard extends StatelessWidget {
             Container(
               width: 34, height: 34,
               decoration: BoxDecoration(
-                gradient: context.colors.primaryGradient,
+                gradient: context.themeConfig.linearPrimary,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, size: 17, color: Colors.white),
@@ -628,7 +629,7 @@ class _StickyFooter extends StatelessWidget {
     return Container(
       padding: EdgeInsets.fromLTRB(20, 14, 20, 14 + bottom),
       decoration: BoxDecoration(
-        color: context.colors.cardBg,
+        color: context.themeConfig.cardBg,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.08),
@@ -647,11 +648,11 @@ class _StickyFooter extends StatelessWidget {
               height: 52,
               decoration: BoxDecoration(
                 gradient: canSave
-                    ? context.colors.primaryGradient
+                    ? context.themeConfig.linearPrimary
                     : const LinearGradient(
                     colors: [Color(0xFFCDD5E0), Color(0xFFCDD5E0)]),
                 borderRadius: BorderRadius.circular(14),
-                boxShadow: canSave ? context.colors.primaryShadow : null,
+                boxShadow: canSave ? context.themeConfig.primaryShadow(isDark:context.colors.isDark) : null,
               ),
               child: Center(
                 child: isLoading
@@ -686,13 +687,13 @@ class _StickyFooter extends StatelessWidget {
             child: Container(
               width: 52, height: 52,
               decoration: BoxDecoration(
-                color: context.colors.primary.withValues(alpha: 0.1),
+                color: context.themeConfig.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                    color: context.colors.primary.withValues(alpha: 0.3)),
+                    color: context.themeConfig.primary.withValues(alpha: 0.3)),
               ),
               child: Icon(Icons.calendar_month_rounded,
-                  size: 22, color: context.colors.primary),
+                  size: 22, color: context.themeConfig.primary),
             ),
           ),
         ],

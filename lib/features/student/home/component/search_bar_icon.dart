@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/student/models.dart';
 import '../../../../config/app_config.dart';
-import '../../../../config/app_theme.dart';
+import '../../../../config/theme/app_theme.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 import '../../courses/list/courses_list_screen.dart';
 
 class SearchBarIcon extends StatelessWidget {
@@ -26,7 +27,7 @@ class SearchBarIcon extends StatelessWidget {
         child: Container(
           height: 52,
           decoration: BoxDecoration(
-            color: context.colors.cardBg,
+            color: context.themeConfig.cardBg,
             borderRadius: BorderRadius.circular(context.colors.radiusLarge),
             boxShadow: [
               BoxShadow(
@@ -42,7 +43,7 @@ class SearchBarIcon extends StatelessWidget {
                 padding: EdgeInsets.symmetric(horizontal: 16),
                 child: Icon(
                   Icons.search_rounded,
-                  color: context.colors.textLight,
+                  color: context.themeConfig.textLight,
                   size: 22,
                 ),
               ),
@@ -51,7 +52,7 @@ class SearchBarIcon extends StatelessWidget {
                   'search'.tr,
                   style: context.colors.caption.copyWith(
                     fontSize: 14,
-                    color: context.colors.textLight,
+                    color: context.themeConfig.textLight,
                   ),
                 ),
               ),

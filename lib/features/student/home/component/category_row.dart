@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/category/categories_screen.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../config/app_theme.dart';
+import '../../../../config/theme/app_theme.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 import '../../../category/categories_provider.dart';
 
 class CategoriesRow extends StatelessWidget {
@@ -17,7 +18,7 @@ class CategoriesRow extends StatelessWidget {
             height: 112,
             child: Center(
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation(context.colors.primaryDark),
+                valueColor: AlwaysStoppedAnimation(context.themeConfig.primaryDark),
                 strokeWidth: 2.5,
               ),
             ),
@@ -32,7 +33,7 @@ class CategoriesRow extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.category_outlined,
-                      size: 36, color: context.colors.primaryDark),
+                      size: 36, color: context.themeConfig.primaryDark),
                   SizedBox(height: 8),
                   Text('لا توجد أقسام', style: context.colors.caption),
                 ],
@@ -66,19 +67,19 @@ class CategoriesRow extends StatelessWidget {
                       height: 66,
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? context.colors.primaryLight
-                            : context.colors.cardBg,
+                            ? context.themeConfig.primaryLight
+                            : context.themeConfig.cardBg,
                         shape: BoxShape.circle,
                         border: isSelected
                             ? Border.all(
-                            color: context.colors.primaryDark, width: 2)
+                            color: context.themeConfig.primaryDark, width: 2)
                             : Border.all(
                             color: Colors.transparent, width: 2),
                         boxShadow: isSelected
                             ? [
                           BoxShadow(
                             color:
-                            context.colors.primaryDark.withValues(alpha:0.28),
+                            context.themeConfig.primaryDark.withValues(alpha:0.28),
                             blurRadius: 14,
                             offset: const Offset(0, 4),
                           )
@@ -98,13 +99,13 @@ class CategoriesRow extends StatelessWidget {
                           child: Image.network(
                             cat.imageUrl,
                             color: isSelected
-                                ? context.colors.primaryDark
-                                : context.colors.accent2,
+                                ? context.themeConfig.primaryDark
+                                : context.themeConfig.accent2,
                             errorBuilder: (_, __, ___) => Icon(
                               Icons.category_rounded,
                               color: isSelected
-                                  ? context.colors.primaryDark
-                                  : context.colors.primaryDark,
+                                  ? context.themeConfig.primaryDark
+                                  : context.themeConfig.primaryDark,
                               size: 28,
                             ),
                           ),
@@ -113,8 +114,8 @@ class CategoriesRow extends StatelessWidget {
                           : Icon(
                         Icons.category_rounded,
                         color: isSelected
-                            ? context.colors.primary
-                            : context.colors.primaryDark,
+                            ? context.themeConfig.primary
+                            : context.themeConfig.primaryDark,
                         size: 28,
                       ),
                     ),
@@ -125,8 +126,8 @@ class CategoriesRow extends StatelessWidget {
                         cat.name,
                         style: context.colors.caption.copyWith(
                           color: isSelected
-                              ? context.colors.primary
-                              : context.colors.textDark,
+                              ? context.themeConfig.primary
+                              : context.themeConfig.textDark,
                           fontWeight: isSelected
                               ? FontWeight.w700
                               : FontWeight.w500,

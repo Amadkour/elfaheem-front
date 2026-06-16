@@ -11,7 +11,8 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart' as Helpers;
-import '../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
+import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/text_field.dart';
 import '../../../utils/widget/primary_button.dart';
@@ -348,7 +349,7 @@ class _BankAccountCard extends StatelessWidget {
             onPressed: () => Navigator.pop(context, true),
             child: Text('btn_delete'.tr,
                 style: TextStyle(
-                    color: context.colors.danger, fontFamily: 'bahji')),
+                    color: context.themeConfig.danger, fontFamily: 'bahji')),
           ),
         ],
       ),
@@ -404,11 +405,11 @@ class _AddBankFormState extends State<_AddBankForm> {
         _ibanCtrl.clear();
         _swiftCtrl.clear();
         ScaffoldMessenger.of(context).showSnackBar(
-          _snack('bank_account_saved_success'.tr, context.colors.success),
+          _snack('bank_account_saved_success'.tr, context.themeConfig.success),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          _snack(p.errorMessage ?? 'error_occurred'.tr, context.colors.danger),
+          _snack(p.errorMessage ?? 'error_occurred'.tr, context.themeConfig.danger),
         );
       }
     }

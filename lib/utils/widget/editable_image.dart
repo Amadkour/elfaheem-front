@@ -8,7 +8,8 @@ import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../config/app_config.dart';
-import '../../config/app_theme.dart';
+import '../../config/theme/app_theme.dart';
+import '../../config/theme/theme_config_provider.dart';
 
 class EditableImage extends StatelessWidget {
   const EditableImage(
@@ -76,13 +77,13 @@ class EditableImage extends StatelessWidget {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  gradient: context.colors.primaryGradient,
+                  gradient: context.themeConfig.linearPrimary,
                   shape:isCircle? BoxShape.circle : BoxShape.rectangle,
                   borderRadius:isCircle?null: BorderRadius.all(Radius.circular(10)),
                   border: Border.all(color: Colors.white, width: 2),
                   boxShadow: [
                     BoxShadow(
-                      color: context.colors.primary.withValues(alpha: 0.4),
+                      color: context.themeConfig.primary.withValues(alpha: 0.4),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                     ),
@@ -163,7 +164,7 @@ class _ImageSourceSheet extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         margin: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: context.colors.cardBg,
+          color: context.themeConfig.cardBg,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
@@ -184,7 +185,7 @@ class _ImageSourceSheet extends StatelessWidget {
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     fontFamily: 'bahji',
-                    color: context.colors.textDark)),
+                    color: context.themeConfig.textDark)),
             const SizedBox(height: 16),
             _SheetTile(
               icon: Icons.photo_library_rounded,

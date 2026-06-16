@@ -12,7 +12,8 @@ import 'package:flutter_education_app/features/teacher/home/teacher_provider.dar
 import 'package:flutter_education_app/features/teacher/sessions/model/live_response_model.dart';
 import 'package:provider/provider.dart';
 
-import '../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
+import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/helpers.dart';
 import '../sessions/live/prejoin.dart';
 import '../sessions/sessions_provider.dart';
@@ -158,7 +159,7 @@ class _QueueHeader extends StatelessWidget {
               fontFamily: 'bahji',
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: context.colors.textMedium,
+              color: context.themeConfig.textMedium,
               letterSpacing: 0.5,
             ),
           ),
@@ -166,8 +167,8 @@ class _QueueHeader extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
             decoration: BoxDecoration(
-              color: context.colors.background,
-              border: Border.all(color: context.colors.divider),
+              color: context.themeConfig.background,
+              border: Border.all(color: context.themeConfig.divider),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
@@ -176,7 +177,7 @@ class _QueueHeader extends StatelessWidget {
                 fontFamily: 'bahji',
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: context.colors.textMedium,
+                color: context.themeConfig.textMedium,
               ),
             ),
           ),
@@ -212,7 +213,7 @@ class _DayGroup extends StatelessWidget {
               fontFamily: 'bahji',
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: context.colors.textMedium.withValues(alpha: 0.6),
+              color: context.themeConfig.textMedium.withValues(alpha: 0.6),
               letterSpacing: 0.8,
             ),
           ),
@@ -258,12 +259,12 @@ class ScheduleSessionCard extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
         child: Container(
           decoration: BoxDecoration(
-            color: background??context.colors.background,
+            color: background??context.themeConfig.background,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isOngoing
                   ? _accent.withValues(alpha: 0.5)
-                  : context.colors.divider,
+                  : context.themeConfig.divider,
               width: isOngoing ? 1.2 : 0.5,
             ),
             boxShadow: [
@@ -716,14 +717,14 @@ class _MetaChip extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
-      Icon(icon, size: 11, color: context.colors.textMedium),
+      Icon(icon, size: 11, color: context.themeConfig.textMedium),
       const SizedBox(width: 3),
       Text(
         label,
         style: TextStyle(
           fontFamily: 'bahji',
           fontSize: 11,
-          color: context.colors.textMedium,
+          color: context.themeConfig.textMedium,
         ),
       ),
     ],
@@ -820,10 +821,10 @@ class _EmptyQueue extends StatelessWidget {
     child: Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: context.colors.primary.withValues(alpha: 0.06),
+        color: context.themeConfig.primary.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: context.colors.primary.withValues(alpha: 0.15),
+          color: context.themeConfig.primary.withValues(alpha: 0.15),
         ),
       ),
       child: Row(
@@ -832,12 +833,12 @@ class _EmptyQueue extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: context.colors.primary.withValues(alpha: 0.1),
+              color: context.themeConfig.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.calendar_today_outlined,
-              color: context.colors.primary,
+              color: context.themeConfig.primary,
               size: 20,
             ),
           ),
@@ -846,7 +847,7 @@ class _EmptyQueue extends StatelessWidget {
             child: Text(
               'لا توجد مواعيد خلال الأسبوع القادم',
               style: context.colors.caption.copyWith(
-                color: context.colors.textMedium,
+                color: context.themeConfig.textMedium,
               ),
             ),
           ),
@@ -921,7 +922,7 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
         bottom: MediaQuery.of(context).viewInsets.bottom + 32,
       ),
       decoration: BoxDecoration(
-        color: context.colors.cardBg,
+        color: context.themeConfig.cardBg,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Form(
@@ -935,7 +936,7 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: context.colors.divider,
+                  color: context.themeConfig.divider,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -947,7 +948,7 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    gradient: context.colors.primaryGradient,
+                    gradient: context.themeConfig.linearPrimary,
                     borderRadius: BorderRadius.circular(13),
                   ),
                   child: const Icon(
@@ -965,7 +966,7 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
                       Text(
                         widget.session.courseName,
                         style: context.colors.caption.copyWith(
-                          color: context.colors.primary,
+                          color: context.themeConfig.primary,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -978,17 +979,17 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: context.colors.primary.withValues(alpha: 0.06),
+                color: context.themeConfig.primary.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: context.colors.primary.withValues(alpha: 0.15),
+                  color: context.themeConfig.primary.withValues(alpha: 0.15),
                 ),
               ),
               child: Row(
                 children: [
                   Icon(
                     Icons.schedule_rounded,
-                    color: context.colors.primary,
+                    color: context.themeConfig.primary,
                     size: 16,
                   ),
                   const SizedBox(width: 8),
@@ -996,7 +997,7 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
                     '${widget.session.dayLabel}  '
                     '${widget.session.startTime} — ${widget.session.endTime}',
                     style: context.colors.label.copyWith(
-                      color: context.colors.primary,
+                      color: context.themeConfig.primary,
                     ),
                   ),
                 ],
@@ -1047,11 +1048,11 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
               child: Container(
                 height: 52,
                 decoration: BoxDecoration(
-                  gradient: context.colors.primaryGradient,
+                  gradient: context.themeConfig.linearPrimary,
                   borderRadius: BorderRadius.circular(30),
                   boxShadow: [
                     BoxShadow(
-                      color: context.colors.primary.withValues(alpha: 0.38),
+                      color: context.themeConfig.primary.withValues(alpha: 0.38),
                       blurRadius: 18,
                       offset: const Offset(0, 6),
                     ),
@@ -1085,7 +1086,7 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
               child: Text(
                 'إلغاء',
                 style: context.colors.label.copyWith(
-                  color: context.colors.textMedium,
+                  color: context.themeConfig.textMedium,
                 ),
               ),
             ),

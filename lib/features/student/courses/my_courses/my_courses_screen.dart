@@ -2,7 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/app_config.dart' as Helpers;
-import '../../../../config/app_theme.dart';
+import '../../../../config/theme/app_theme.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/base_page.dart';
 import '../../../../utils/widget/search_text_field.dart';
@@ -86,24 +87,24 @@ class _StatsRow extends StatelessWidget {
             label: 'registered_courses'.tr,
             count: p.allCount,
             icon: Icons.library_books_rounded,
-            gradient: context.colors.accentGradient,
-            shadowColor: context.colors.primary,
+            gradient: context.themeConfig.linearAccent,
+            shadowColor: context.themeConfig.primary,
           ),
           const SizedBox(width: 10),
           _StatCard(
             label: 'ongoing_courses'.tr,
             count: p.inProgressCount,
             icon: Icons.trending_up_rounded,
-            gradient: context.colors.tealGradient,
-            shadowColor: context.colors.accent,
+            gradient: context.themeConfig.linearAccent,
+            shadowColor: context.themeConfig.accent,
           ),
           const SizedBox(width: 10),
           _StatCard(
             label: 'completed_courses'.tr,
             count: p.completedCount,
             icon: Icons.workspace_premium_rounded,
-            gradient: context.colors.purpleGradient,
-            shadowColor: context.colors.accent2,
+            gradient: context.themeConfig.linearPurple,
+            shadowColor: context.themeConfig.accent2,
           ),
         ],
       ),
@@ -196,7 +197,7 @@ class _FilterTabs extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 20),
 
       decoration: BoxDecoration(
-        color: context.colors.cardBg,
+        color: context.themeConfig.cardBg,
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
@@ -224,8 +225,8 @@ class _FilterTabs extends StatelessWidget {
                   border: Border(
                       bottom: BorderSide(
                           color: active
-                              ? context.colors.primary
-                              : context.colors.textLight,
+                              ? context.themeConfig.primary
+                              : context.themeConfig.textLight,
                           width: 2)),
                 ),
                 child: Row(
@@ -235,16 +236,16 @@ class _FilterTabs extends StatelessWidget {
                       icon,
                       size: 14,
                       color: active
-                          ? context.colors.primary
-                          : context.colors.textLight,
+                          ? context.themeConfig.primary
+                          : context.themeConfig.textLight,
                     ),
                     const SizedBox(width: 5),
                     Text(
                       label,
                       style: context.colors.label.copyWith(
                         color: active
-                            ? context.colors.primary
-                            : context.colors.textLight,
+                            ? context.themeConfig.primary
+                            : context.themeConfig.textLight,
                         fontWeight:
                             active ? FontWeight.w700 : FontWeight.w500,
                         fontSize: 12,
@@ -275,7 +276,7 @@ class _CourseList extends StatelessWidget {
     if (provider.isLoading && provider.allCourses.isEmpty) {
       return Center(
         child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation(context.colors.primary),
+          valueColor: AlwaysStoppedAnimation(context.themeConfig.primary),
           strokeWidth: 2.5,
         ),
       );
@@ -299,11 +300,11 @@ class _CourseList extends StatelessWidget {
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: context.colors.primaryLight.withValues(alpha: 0.3),
+                  color: context.themeConfig.primaryLight.withValues(alpha: 0.3),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(Icons.menu_book_rounded,
-                    size: 38, color: context.colors.primary),
+                    size: 38, color: context.themeConfig.primary),
               ),
               const SizedBox(height: 14),
               Text('no_courses_in_section'.tr, style: context.colors.body),

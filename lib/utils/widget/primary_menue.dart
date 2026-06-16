@@ -2,7 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../../config/app_config.dart';
-import '../../config/app_theme.dart';
+import '../../config/theme/app_theme.dart';
+import '../../config/theme/theme_config_provider.dart';
 
 class MyPrimaryMenu extends StatelessWidget {
   const MyPrimaryMenu(
@@ -25,7 +26,7 @@ class MyPrimaryMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       shadowColor: const Color.fromRGBO(0, 0, 0, 0.25),
-      color: context.colors.inputBg,
+      color: context.themeConfig.inputBg(isDark:context.colors.isDark),
       borderRadius: BorderRadius.circular(10),
       child: ExpansionTile(
 
@@ -37,7 +38,7 @@ class MyPrimaryMenu extends StatelessWidget {
             fontFamily: 'tajawal',
             fontWeight: FontWeight.w100,
             fontSize: 17,
-            color: context.colors.textDark,
+            color: context.themeConfig.textDark,
           ),
         ),
         children: List.generate(
@@ -45,9 +46,9 @@ class MyPrimaryMenu extends StatelessWidget {
             (int i) => Column(
                   children: [
                     DecoratedBox(
-                      decoration:  BoxDecoration(color: context.colors.background),
+                      decoration:  BoxDecoration(color: context.themeConfig.background),
                       child: ListTile(
-                        tileColor: context.colors.inputBg,
+                        tileColor: context.themeConfig.inputBg(isDark:context.colors.isDark),
                         splashColor: Colors.transparent,
                         hoverColor: Colors.transparent,
                         leading: haveLogo
@@ -64,12 +65,12 @@ class MyPrimaryMenu extends StatelessWidget {
                             fontFamily: 'tajawal',
                             fontWeight: FontWeight.w100,
                             fontSize: 17,
-                            color: context.colors.textMedium,
+                            color: context.themeConfig.textMedium,
                           ),
                         ),
                         trailing:(initValue?['text']==options[i]['text'])?
-                        Icon( CupertinoIcons.check_mark_circled_solid,color: context.colors.primary,):
-                        Icon( CupertinoIcons.circle,color: context.colors.secondText.withAlpha(100),),
+                        Icon( CupertinoIcons.check_mark_circled_solid,color: context.themeConfig.primary,):
+                        Icon( CupertinoIcons.circle,color: context.themeConfig.secondText.withAlpha(100),),
                         onTap: () => onChange(i),
                       ),
                     ),

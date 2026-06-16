@@ -1,8 +1,10 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/config/app_theme.dart';
+import 'package:flutter_education_app/config/theme/app_theme.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'dart:async';
+import '../../../../../config/theme/theme_config_provider.dart';
 import 'no_video.dart';
 import 'participant_info.dart';
 import 'participant_stats.dart';
@@ -131,7 +133,7 @@ abstract class _ParticipantWidgetState<T extends ParticipantWidget>
           border: widget.participant.isSpeaking && !isScreenShare
               ? Border.all(
                   width: 5,
-                  color: context.colors.primary,
+                  color: context.themeConfig.primary,
                 )
               : null,
         ),

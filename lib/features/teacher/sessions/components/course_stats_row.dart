@@ -6,8 +6,9 @@
 
 import 'package:flutter/material.dart';
 
-import '../../../../../config/app_theme.dart';
+import '../../../../config/theme/app_theme.dart';
 import '../../../../config/app_config.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 import '../../home/teacher_models.dart';
 import '../students/course_student_screen.dart';
 
@@ -40,7 +41,7 @@ class CourseStatsRow extends StatelessWidget {
         icon: Icons.play_lesson_rounded,
         label: 'sessions'.tr,
         value: '$sessionCount',
-        color: context.colors.primary,
+        color: context.themeConfig.primary,
       ),
       _StatItem(
         icon: Icons.sell_rounded,
@@ -59,9 +60,9 @@ class CourseStatsRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: context.colors.surface,
+        color: context.themeConfig.surfaceCard,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.colors.divider, width: 1),
+        border: Border.all(color: context.themeConfig.divider, width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.06),
@@ -123,7 +124,7 @@ class _StatChip extends StatelessWidget {
             fontFamily: 'tajawal',
             fontSize: 14,
             fontWeight: FontWeight.w800,
-            color: context.colors.textDark,
+            color: context.themeConfig.textDark,
           ),
         ),
         const SizedBox(height: 2),
@@ -136,7 +137,7 @@ class _StatChip extends StatelessWidget {
                 item.onTap == null ? null : TextDecoration.underline,
             decorationColor: Colors.blueAccent,
             decorationThickness: 2,
-            color: context.colors.textMedium,
+            color: context.themeConfig.textMedium,
           ),
         ),
       ],

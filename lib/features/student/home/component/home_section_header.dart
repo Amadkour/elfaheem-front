@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../config/app_theme.dart';
+import '../../../../config/theme/app_theme.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 
 class SectionHeader extends StatelessWidget {
   final String title;
@@ -39,7 +40,7 @@ class SectionHeader extends StatelessWidget {
                 child: Text(
                   actionLabel!,
                   style: context.colors.label.copyWith(
-                    color: context.colors.primaryDark,
+                    color: context.themeConfig.primaryDark,
                     fontWeight: FontWeight.w700,
                     fontSize: 12,
                   ),

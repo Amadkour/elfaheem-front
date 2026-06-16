@@ -13,7 +13,8 @@ import 'package:flutter_education_app/features/teacher/home/teacher_provider.dar
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
-import '../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
+import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/app_network_image.dart';
 import '../../../utils/widget/primary_button.dart';
@@ -168,7 +169,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                           trailing: Switch.adaptive(
                             value: p.notificationsEnabled,
                             onChanged: p.toggleNotifications,
-                            activeColor: context.colors.primaryDark,
+                            activeColor: context.themeConfig.primaryDark,
                             thumbColor:
                                 const WidgetStatePropertyAll(Colors.white),
                           ),
@@ -190,7 +191,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                             onChanged: (b) async {
                               await p.changeMode(b);
                             },
-                            activeColor: context.colors.primaryDark,
+                            activeColor: context.themeConfig.primaryDark,
                             thumbColor:
                                 const WidgetStatePropertyAll(Colors.white),
                           ),
@@ -285,7 +286,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
         height: 56,
         padding: const EdgeInsets.symmetric(horizontal: 24),
         decoration: BoxDecoration(
-          color: c.cardBg, // ← was: context.colors.cardBg
+          color: c.cardBg, // ← was: context.themeConfig.cardBg
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),
@@ -320,9 +321,9 @@ class ProfileHeader extends StatelessWidget {
               height: context.height / 8,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: context.colors.primary.withValues(alpha: 0.1),
+                color: context.themeConfig.primary.withValues(alpha: 0.1),
                 border:
-                    Border.all(color: context.colors.primaryDark, width: 2.5),
+                    Border.all(color: context.themeConfig.primaryDark, width: 2.5),
               ),
               child: provider.imageUrl.isNotEmpty
                   ? ClipOval(
@@ -332,7 +333,7 @@ class ProfileHeader extends StatelessWidget {
                       ),
                     )
                   : Icon(Icons.person_rounded,
-                      size: 52, color: context.colors.primaryDark),
+                      size: 52, color: context.themeConfig.primaryDark),
             ),
           ],
         ),

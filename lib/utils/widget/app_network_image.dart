@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../config/app_theme.dart';
+import '../../config/theme/app_theme.dart';
+import '../../config/theme/theme_config_provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AppNetworkImage
@@ -47,7 +48,7 @@ class AppNetworkImage extends StatelessWidget {
       errorBuilder: (_, __, ___) => Container(
         width: width,
         height: height,
-        color:color ?? context.colors.cardBg,
+        color:color ?? context.themeConfig.cardBg,
         child: Center(
           child: Image.asset(
             'assets/images/logo.png',
@@ -60,11 +61,11 @@ class AppNetworkImage extends StatelessWidget {
         return Container(
           width: width,
           height: height,
-          color: color ?? context.colors.cardBg,
+          color: color ?? context.themeConfig.cardBg,
           child: Center(
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation(context.colors.primary),
+              valueColor: AlwaysStoppedAnimation(context.themeConfig.primary),
             ),
           ),
         );
@@ -79,7 +80,7 @@ class AppNetworkImage extends StatelessWidget {
       img = Container(
         padding: padding,
         decoration: BoxDecoration(
-          color: color ?? context.colors.cardBg,
+          color: color ?? context.themeConfig.cardBg,
           borderRadius: borderRadius,
         ),
         child: ClipRRect(borderRadius: borderRadius!, child: img),

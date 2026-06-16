@@ -7,7 +7,8 @@ import 'package:flutter_education_app/features/teacher/home/queue_work_items.dar
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show TeacherCourse, CourseSchedule, ScheduleSession;
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
-import '../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
+import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/primary_button.dart';
@@ -111,7 +112,7 @@ class _ScheduleTabBodyState extends State<ScheduleTabBody>
                 : <ScheduleSession>[];
 
             return RefreshIndicator(
-              color: context.colors.primary,
+              color: context.themeConfig.primary,
               onRefresh: _doRefresh,
               child: CustomScrollView(
                 physics: const BouncingScrollPhysics(
@@ -156,7 +157,7 @@ class _ScheduleTabBodyState extends State<ScheduleTabBody>
                         separatorBuilder: (_, __) => const SizedBox(height: 12),
                         itemBuilder: (_, i) =>
                             ScheduleSessionCard(
-                              background:context.colors.cardBg,
+                              background:context.themeConfig.cardBg,
                               session: shownSlots[i], now: DateTime.now(),
                         ),
                       ),
@@ -226,13 +227,13 @@ class _Header extends StatelessWidget {
         child: Row(children: [
           Icon(Icons.history_rounded,
               size: 13,
-              color: context.colors.textLight.withValues(alpha: 0.7)),
+              color: context.themeConfig.textLight.withValues(alpha: 0.7)),
           const SizedBox(width: 4),
           Text(
             _lastFetchedLabel(),
             style: context.colors.caption.copyWith(
                 fontSize: 11,
-                color: context.colors.textLight.withValues(alpha: 0.8)),
+                color: context.themeConfig.textLight.withValues(alpha: 0.8)),
           ),
         ]),
       ),
@@ -264,13 +265,13 @@ class _NextBanner extends StatelessWidget {
         colors: [Color(0xFFB71C1C), Color(0xFFEF5350)],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight)
-        : context.colors.primaryGradient;
+        : context.themeConfig.linearPrimary;
 
     return Container(
       decoration: BoxDecoration(
           gradient: gradient,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: context.colors.primaryShadow),
+          boxShadow: context.themeConfig.primaryShadow(isDark:context.colors.isDark)),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
         child: Stack(children: [
@@ -516,29 +517,29 @@ class _WeekStrip extends StatelessWidget {
                 width: 56,
                 decoration: BoxDecoration(
                   gradient: isSel
-                      ? context.colors.primaryGradientOnColor
+                      ? context.themeConfig.linearPrimary
                       : isToday
                       ? LinearGradient(colors: [
-                    context.colors.primary.withValues(alpha: 0.13),
-                    context.colors.primary.withValues(alpha: 0.06),
+                    context.themeConfig.primary.withValues(alpha: 0.13),
+                    context.themeConfig.primary.withValues(alpha: 0.06),
                   ])
                       : null,
-                  color: isSel || isToday ? null : context.colors.cardBg,
+                  color: isSel || isToday ? null : context.themeConfig.cardBg,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
 
                       color: isSel
                           ? Colors.transparent
                           : isToday
-                          ? context.colors.primary.withValues(alpha: 0.4)
+                          ? context.themeConfig.primary.withValues(alpha: 0.4)
                           : isActive
-                          ? context.colors.divider
-                          : context.colors.divider.withValues(alpha: 0.35),
+                          ? context.themeConfig.divider
+                          : context.themeConfig.divider.withValues(alpha: 0.35),
                       width: isSel ? 0 : 1,
                     ),
 
 
-                  boxShadow: isSel ? context.colors.primaryShadow : null,
+                  boxShadow: isSel ? context.themeConfig.primaryShadow(isDark:context.colors.isDark) : null,
                 ),
                 child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -552,10 +553,10 @@ class _WeekStrip extends StatelessWidget {
                           color: isSel
                               ? Colors.white
                               : isToday
-                              ? context.colors.primary
+                              ? context.themeConfig.primary
                               : isActive
-                              ? context.colors.textDark
-                              : context.colors.textLight,
+                              ? context.themeConfig.textDark
+                              : context.themeConfig.textLight,
                         ),
                       ),
                       const SizedBox(height: 5),
@@ -569,12 +570,12 @@ class _WeekStrip extends StatelessWidget {
                               height: 6,
                               decoration: BoxDecoration(
                                 color: hasOngoing
-                                    ? (isSel ? Colors.white : context.colors.danger)
+                                    ? (isSel ? Colors.white : context.themeConfig.danger)
                                     : isSel
                                     ? Colors.white.withValues(alpha: 0.8)
                                     : isToday
-                                    ? context.colors.primary
-                                    : context.colors.textLight,
+                                    ? context.themeConfig.primary
+                                    : context.themeConfig.textLight,
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -609,15 +610,15 @@ class _EmptyDay extends StatelessWidget {
       padding:
       const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
       decoration: BoxDecoration(
-          color: context.colors.cardBg,
+          color: context.themeConfig.cardBg,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: context.colors.cardShadow),
+          boxShadow: context.themeConfig.cardShadow(isDark:context.colors.isDark)),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Container(
           width: 72,
           height: 72,
           decoration: BoxDecoration(
-            color: context.colors.primary.withValues(alpha: 0.07),
+            color: context.themeConfig.primary.withValues(alpha: 0.07),
             shape: BoxShape.circle,
           ),
           child: Icon(
@@ -625,7 +626,7 @@ class _EmptyDay extends StatelessWidget {
                 ? Icons.wb_sunny_outlined
                 : Icons.calendar_today_outlined,
             size: 34,
-            color: context.colors.primary.withValues(alpha: 0.45),
+            color: context.themeConfig.primary.withValues(alpha: 0.45),
           ),
         ),
         const SizedBox(height: 16),
@@ -634,7 +635,7 @@ class _EmptyDay extends StatelessWidget {
               (isToday
                   ? '${'no-lessons-today'.tr} 🎉'
                   : '${'no-lessons'.tr}$day'),
-          style: context.colors.body.copyWith(color: context.colors.textMedium),
+          style: context.colors.body.copyWith(color: context.themeConfig.textMedium),
           textAlign: TextAlign.center,
         ),
         if (isToday) ...[
@@ -655,13 +656,13 @@ class _LoadingState extends StatelessWidget {
   Widget build(BuildContext context) => Center(
     child: Column(mainAxisSize: MainAxisSize.min, children: [
        CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation(context.colors.primary)),
+          valueColor: AlwaysStoppedAnimation(context.themeConfig.primary)),
       const SizedBox(height: 16),
        Text('loading-schedule'.tr,
           style: TextStyle(
               fontFamily: 'bahji',
               fontSize: 13,
-              color: context.colors.textMedium)),
+              color: context.themeConfig.textMedium)),
       const SizedBox(height: 20),
       GestureDetector(
         onTap: onRefresh,
@@ -669,10 +670,10 @@ class _LoadingState extends StatelessWidget {
             style: TextStyle(
                 fontFamily: 'bahji',
                 fontSize: 13,
-                color: context.colors.primary,
+                color: context.themeConfig.primary,
                 fontWeight: FontWeight.w700,
                 decoration: TextDecoration.underline,
-                decorationColor: context.colors.primary)),
+                decorationColor: context.themeConfig.primary)),
       ),
     ]),
   );
@@ -730,26 +731,26 @@ class _TeacherSchedulesScreenState extends State<TeacherSchedulesScreen> {
             child: Container(
               padding: const EdgeInsets.all(13),
               decoration: BoxDecoration(
-                  color: context.colors.primary.withValues(alpha: 0.06),
+                  color: context.themeConfig.primary.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                      color: context.colors.primary.withValues(alpha: 0.15))),
+                      color: context.themeConfig.primary.withValues(alpha: 0.15))),
               child: Row(children: [
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: context.colors.primary.withValues(alpha: 0.1),
+                    color: context.themeConfig.primary.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child:  Icon(Icons.repeat_rounded,
-                      color: context.colors.primary, size: 15),
+                      color: context.themeConfig.primary, size: 15),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'appointment-repeat'.tr,
                     style: context.colors.caption.copyWith(
-                        color: context.colors.primary, height: 1.5),
+                        color: context.themeConfig.primary, height: 1.5),
                   ),
                 ),
               ]),
@@ -761,7 +762,7 @@ class _TeacherSchedulesScreenState extends State<TeacherSchedulesScreen> {
                 ?  Center(
                 child: CircularProgressIndicator(
                     valueColor:
-                    AlwaysStoppedAnimation(context.colors.primary)))
+                    AlwaysStoppedAnimation(context.themeConfig.primary)))
                 : provider.schedules.isEmpty
                 ? _ManageEmptyState(onAdd: ()=>TeacherSchedulesScreen.openAddScheduleScreenSheet(context))
                 : _ManageList(schedules: provider.schedules),
@@ -801,16 +802,16 @@ class _ManageCard extends StatelessWidget {
     padding:
     const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     decoration: BoxDecoration(
-        color: context.colors.cardBg,
+        color: context.themeConfig.cardBg,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: context.colors.cardShadow),
+        boxShadow: context.themeConfig.cardShadow(isDark:context.colors.isDark)),
     child: Row(children: [
       // Day badge
       Container(
         width: 54,
         height: 54,
         decoration: BoxDecoration(
-            gradient: context.colors.primaryGradient,
+            gradient: context.themeConfig.linearPrimary,
             borderRadius: BorderRadius.circular(14)),
         child: Center(
           child: Text(
@@ -834,12 +835,12 @@ class _ManageCard extends StatelessWidget {
               const SizedBox(height: 5),
               Row(children: [
                  Icon(Icons.access_time_filled_rounded,
-                    size: 14, color: context.colors.primary),
+                    size: 14, color: context.themeConfig.primary),
                 const SizedBox(width: 5),
                 Text(
                     '${schedule.startTime}  —  ${schedule.endTime}',
                     style: context.colors.label.copyWith(
-                        color: context.colors.textDark, fontSize: 13)),
+                        color: context.themeConfig.textDark, fontSize: 13)),
               ]),
             ]),
       ),
@@ -850,12 +851,12 @@ class _ManageCard extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-                color: context.colors.danger.withValues(alpha: 0.08),
+                color: context.themeConfig.danger.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                    color: context.colors.danger.withValues(alpha: 0.2))),
+                    color: context.themeConfig.danger.withValues(alpha: 0.2))),
             child:  Icon(Icons.delete_outline_rounded,
-                color: context.colors.danger, size: 18)),
+                color: context.themeConfig.danger, size: 18)),
       ),
     ]),
   );
@@ -883,10 +884,10 @@ class _ManageCard extends StatelessWidget {
                   child:  Text('cancel'.tr,
                       style: TextStyle(
                           fontFamily: 'bahji',
-                          color: context.colors.textMedium))),
+                          color: context.themeConfig.textMedium))),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: context.colors.danger,
+                    backgroundColor: context.themeConfig.danger,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10))),
                 onPressed: () => Navigator.pop(ctx, true),
@@ -916,9 +917,9 @@ class _ManageEmptyState extends StatelessWidget {
             width: 90,
             height: 90,
             decoration: BoxDecoration(
-                gradient: context.colors.primaryGradient,
+                gradient: context.themeConfig.linearPrimary,
                 shape: BoxShape.circle,
-                boxShadow: context.colors.primaryShadow),
+                boxShadow: context.themeConfig.primaryShadow(isDark:context.colors.isDark)),
             child: const Icon(Icons.calendar_month_rounded,
                 color: Colors.white, size: 44)),
         const SizedBox(height: 20),
@@ -939,9 +940,9 @@ class _ManageEmptyState extends StatelessWidget {
             padding: const EdgeInsets.symmetric(
                 horizontal: 28, vertical: 14),
             decoration: BoxDecoration(
-                gradient: context.colors.primaryGradient,
+                gradient: context.themeConfig.linearPrimary,
                 borderRadius: BorderRadius.circular(26),
-                boxShadow: context.colors.primaryShadow),
+                boxShadow: context.themeConfig.primaryShadow(isDark:context.colors.isDark)),
             child:  Text('add-weekly-appointment'.tr,
                 style: TextStyle(
                     color: Colors.white,
@@ -1012,10 +1013,10 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
                       child:  Text('cancel'.tr,
                           style: TextStyle(
                               fontFamily: 'bahji',
-                              color: context.colors.textMedium))),
+                              color: context.themeConfig.textMedium))),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                        backgroundColor: context.colors.primary,
+                        backgroundColor: context.themeConfig.primary,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10))),
                     onPressed: () => Navigator.pop(context, true),
@@ -1044,7 +1045,7 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
             style: const TextStyle(
                 fontFamily: 'bahji', color: Colors.white)),
         backgroundColor:
-        r != null ? context.colors.success : context.colors.danger,
+        r != null ? context.themeConfig.success : context.themeConfig.danger,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12)),
@@ -1065,7 +1066,7 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
             top: 24,
             bottom: MediaQuery.of(context).viewInsets.bottom + 32),
         decoration:  BoxDecoration(
-            color: context.colors.cardBg,
+            color: context.themeConfig.cardBg,
             borderRadius:
             BorderRadius.vertical(top: Radius.circular(28))),
         child: Column(
@@ -1078,7 +1079,7 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                        color: context.colors.divider,
+                        color: context.themeConfig.divider,
                         borderRadius: BorderRadius.circular(2)))),
             const SizedBox(height: 18),
              Text('add-weekly-appointment'.tr, style: context.colors.h2),
@@ -1087,7 +1088,7 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
             // Day chips
             Text('today'.tr,
                 style: context.colors.label.copyWith(
-                    color: context.colors.textDark,
+                    color: context.themeConfig.textDark,
                     fontWeight: FontWeight.w700)),
             const SizedBox(height: 10),
             SizedBox(
@@ -1107,22 +1108,22 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
                           horizontal: 16, vertical: 10),
                       decoration: BoxDecoration(
                         gradient:
-                        sel ? context.colors.primaryGradient : null,
+                        sel ? context.themeConfig.linearPrimary : null,
                         color:
-                        sel ? null : context.colors.background,
+                        sel ? null : context.themeConfig.background,
                         borderRadius: BorderRadius.circular(22),
                         border: Border.all(
                             color: sel
                                 ? Colors.transparent
-                                : context.colors.divider),
+                                : context.themeConfig.divider),
                         boxShadow:
-                        sel ? context.colors.primaryShadow : null,
+                        sel ? context.themeConfig.primaryShadow(isDark:context.colors.isDark) : null,
                       ),
                       child: Text(l,
                           style: context.colors.label.copyWith(
                               color: sel
                                   ? Colors.white
-                                  : context.colors.textMedium,
+                                  : context.themeConfig.textMedium,
                               fontWeight: sel
                                   ? FontWeight.w700
                                   : FontWeight.w500)),
@@ -1152,7 +1153,7 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
               const SizedBox(height: 6),
               Text('end-time-must-be-after-start-time'.tr,
                   style: context.colors.caption
-                      .copyWith(color: context.colors.danger)),
+                      .copyWith(color: context.themeConfig.danger)),
             ],
             const SizedBox(height: 24),
             MyPrimaryButton(
@@ -1182,7 +1183,7 @@ class _TimePicker extends StatelessWidget {
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(label,
             style: context.colors.label.copyWith(
-                color: context.colors.textDark,
+                color: context.themeConfig.textDark,
                 fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),
         GestureDetector(
@@ -1191,19 +1192,19 @@ class _TimePicker extends StatelessWidget {
             padding: const EdgeInsets.symmetric(
                 horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-                color: context.colors.background,
+                color: context.themeConfig.background,
                 borderRadius:
                 BorderRadius.circular(context.colors.radiusMedium),
                 border: Border.all(
                     color: hasError
-                        ? context.colors.danger
-                        : context.colors.divider,
+                        ? context.themeConfig.danger
+                        : context.themeConfig.divider,
                     width: hasError ? 1.5 : 1)),
             child: Row(children: [
               Icon(Icons.access_time_rounded,
                   size: 18,
                   color:
-                  hasError ? context.colors.danger : context.colors.primary),
+                  hasError ? context.themeConfig.danger : context.themeConfig.primary),
               const SizedBox(width: 8),
               Text(
                   '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
@@ -1226,9 +1227,9 @@ class _AddBtn extends StatelessWidget {
         height: 40,
         margin: const EdgeInsets.only(left: 4),
         decoration: BoxDecoration(
-            gradient: context.colors.primaryGradient,
+            gradient: context.themeConfig.linearPrimary,
             shape: BoxShape.circle,
-            boxShadow: context.colors.primaryShadow),
+            boxShadow: context.themeConfig.primaryShadow(isDark:context.colors.isDark)),
         child: const Icon(Icons.add_rounded,
             color: Colors.white, size: 22)),
   );

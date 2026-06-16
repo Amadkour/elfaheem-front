@@ -1,7 +1,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_education_app/config/app_theme.dart';
+import 'package:flutter_education_app/config/theme/app_theme.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import 'passcode_screen.dart';
 import 'student_exam_api.dart';
@@ -82,14 +84,14 @@ class _StudentCourseExamsWidgetState extends State<StudentCourseExamsWidget> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           child: Row(children: [
-            Icon(Icons.quiz_rounded, size: 18, color: context.colors.primary),
+            Icon(Icons.quiz_rounded, size: 18, color: context.themeConfig.primary),
             const SizedBox(width: 8),
             Text('الاختبارات',
                 style: TextStyle(
                     fontFamily: 'bahji',
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: context.colors.primary)),
+                    color: context.themeConfig.primary)),
             const Spacer(),
             Text('${exams.length} اختبار',
                 style: const TextStyle(
@@ -149,7 +151,7 @@ class _CourseExamTile extends StatelessWidget {
     } else if (isDone) {
       accent = exam.passed == true ? AppTheme.success : Colors.redAccent;
     } else {
-      accent = context.colors.primary;
+      accent = context.themeConfig.primary;
     }
 
     return Padding(

@@ -3,7 +3,8 @@ import 'package:flutter_education_app/features/teacher/analysis/attendance/teach
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/course_instractor_profile.dart';
 import 'package:provider/provider.dart';
-import '../../../../config/app_theme.dart';
+import '../../../../config/theme/app_theme.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/widget/app_network_image.dart';
 import '../home_provider.dart';
 
@@ -68,7 +69,7 @@ class InstructorsRow extends StatelessWidget {
                   Text(ins.teacher!.teacherProfile!.specialization!.name,
                     style: context.colors.caption.copyWith(
                       fontSize: 10,
-                      color: context.colors.textLight,
+                      color: context.themeConfig.textLight,
                     ),
                     textAlign: TextAlign.center,
                     maxLines: 1,

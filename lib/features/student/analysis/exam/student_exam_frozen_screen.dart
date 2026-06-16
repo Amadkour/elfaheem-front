@@ -1,7 +1,8 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/config/app_theme.dart';
+import 'package:flutter_education_app/config/theme/app_theme.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/student/analysis/exam/student_exam_api.dart';
 
 class StudentExamFrozenScreen extends StatefulWidget {
@@ -67,7 +68,7 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: context.colors.background,
+        backgroundColor: context.themeConfig.background,
         appBar: AppBar(
           backgroundColor: _accent,
           foregroundColor: Colors.white,
@@ -181,7 +182,7 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
                   icon: Icons.help_outline_rounded,
                   label: 'عدد الأسئلة',
                   value: '${e.questionCount}',
-                  color: context.colors.primary,
+                  color: context.themeConfig.primary,
                 ),
               if (e.passingScore != null)
                 _InfoRow(

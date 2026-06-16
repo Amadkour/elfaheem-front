@@ -5,7 +5,8 @@ import 'package:flutter_education_app/features/teacher/sessions/sessions_screen.
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart';
-import '../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
+import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../teacher/sessions/sessions_provider.dart';
@@ -48,7 +49,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             child: Icon(
                               Icons.notifications_active_rounded,
                               size: 50,
-                              color: context.colors.primary,
+                              color: context.themeConfig.primary,
                             ),
                           )
                         : ListView(
@@ -109,7 +110,7 @@ class _NotifGroup extends StatelessWidget {
               child: Text(
                 'mark_all_read'.tr,
                 style: context.colors.label.copyWith(
-                  color: context.colors.primary,
+                  color: context.themeConfig.primary,
                 ),
               ),
             ),
@@ -140,22 +141,22 @@ class _NotifTile extends StatelessWidget {
       case 'payment':
         return _IconBadge(
           icon: Icons.credit_card_rounded,
-          bg: context.colors.primary.withValues(alpha: 0.15),
-          iconColor: context.colors.primary,
+          bg: context.themeConfig.primary.withValues(alpha: 0.15),
+          iconColor: context.themeConfig.primary,
         );
       case 'badge':
         return _IconBadge(
           icon: Icons.workspace_premium_rounded,
-          bg: context.colors.accent.withValues(alpha: 0.15),
-          iconColor: context.colors.accent,
+          bg: context.themeConfig.accent.withValues(alpha: 0.15),
+          iconColor: context.themeConfig.accent,
         );
       case 'new':
         return _NewBadgeIcon();
       default:
         return _IconBadge(
           icon: Icons.notifications_rounded,
-          bg: context.colors.background,
-          iconColor: context.colors.textMedium,
+          bg: context.themeConfig.background,
+          iconColor: context.themeConfig.textMedium,
         );
     }
   }
@@ -202,15 +203,15 @@ class _NotifTile extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: isRead
-              ? context.colors.cardBg
-              : context.colors.primaryDark.withValues(alpha: 0.05),
+              ? context.themeConfig.cardBg
+              : context.themeConfig.primaryDark.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(context.colors.radiusMedium),
           border: Border.all(
             color: isRead
                 ? Colors.transparent
-                : context.colors.primaryDark.withValues(alpha: 0.2),
+                : context.themeConfig.primaryDark.withValues(alpha: 0.2),
           ),
-          boxShadow: context.colors.cardShadow,
+          boxShadow: context.themeConfig.cardShadow(isDark:context.colors.isDark),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -228,8 +229,8 @@ class _NotifTile extends StatelessWidget {
                           notif.title,
                           style: context.colors.h3.copyWith(
                             color: isRead
-                                ? context.colors.textDark
-                                : context.colors.primary,
+                                ? context.themeConfig.textDark
+                                : context.themeConfig.primary,
                           ),
                         ),
                       ),
@@ -238,7 +239,7 @@ class _NotifTile extends StatelessWidget {
                           width: 8,
                           height: 8,
                           decoration: BoxDecoration(
-                            color: context.colors.primaryDark,
+                            color: context.themeConfig.primaryDark,
                             shape: BoxShape.circle,
                           ),
                         ),

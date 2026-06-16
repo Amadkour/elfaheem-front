@@ -9,7 +9,8 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_education_app/config/app_theme.dart';
+import 'package:flutter_education_app/config/theme/app_theme.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'student_exam_provider.dart';
 
 class StudentExamResultScreen extends StatefulWidget {
@@ -498,7 +499,7 @@ class _QuestionBreakdownTile extends StatelessWidget {
       color = Colors.grey;
       icon = Icons.remove_circle_outline_rounded;
     } else if (isCorrect == true) {
-      color = context.colors.success;
+      color = context.themeConfig.success;
       icon = Icons.check_circle_rounded;
     } else {
       color = Colors.redAccent;

@@ -5,8 +5,9 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
-import '../../../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
 import '../../../config/app_config.dart';
+import '../../../config/theme/theme_config_provider.dart';
 import '../home/teacher_models.dart';
 import '../home/teacher_provider.dart';
 import 'attendance/teacher_attendance_screen.dart';
@@ -88,11 +89,11 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen>
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: context.colors.primaryDark.withValues(alpha: 0.08),
+              color: context.themeConfig.primaryDark.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(Icons.analytics_rounded,
-                color: context.colors.primaryDark, size: 24),
+                color: context.themeConfig.primaryDark, size: 24),
           ),
         ]),
       );
@@ -117,7 +118,7 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen>
                     })
                 : null,
             filled: true,
-            fillColor: context.colors.cardBg,
+            fillColor: context.themeConfig.cardBg,
             border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide.none),
@@ -162,7 +163,7 @@ class _CourseAnalyticsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: context.colors.cardBg,
+        color: context.themeConfig.cardBg,
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
@@ -183,11 +184,11 @@ class _CourseAnalyticsCard extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: context.colors.primaryDark.withValues(alpha: 0.1),
+                color: context.themeConfig.primaryDark.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(Icons.menu_book_rounded,
-                  color: context.colors.primaryDark, size: 22),
+                  color: context.themeConfig.primaryDark, size: 22),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -246,7 +247,7 @@ class _CourseAnalyticsCard extends StatelessWidget {
                 icon: Icons.fact_check_rounded,
                 label: 'analytics_btn_attendance'.tr,
                 sublabel: 'analytics_btn_attendance_sub'.tr,
-                color: context.colors.success,
+                color: context.themeConfig.success,
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -265,7 +266,7 @@ class _CourseAnalyticsCard extends StatelessWidget {
                 icon: Icons.quiz_rounded,
                 label: 'analytics_btn_exams'.tr,
                 sublabel: 'analytics_btn_exams_sub'.tr,
-                color: context.colors.primaryDark,
+                color: context.themeConfig.primaryDark,
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(

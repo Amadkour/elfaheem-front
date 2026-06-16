@@ -9,6 +9,16 @@
 		<string>audio</string>
 		<string>fetch</string>
 		<string>remote-notification</string>
+		<!--
+		  voip: Keeps the host app process alive while the
+		  BroadcastUploadExtension is recording in the background.
+		  Without this, iOS suspends the Flutter process after ~5 seconds
+		  in the background, causing Darwin notifications from the extension
+		  to queue up and AVAssetWriter writes to fail silently.
+		  LiveKit already requires voip for WebRTC — this just makes it
+		  explicit in the plist so iOS honours it for our recording pipeline.
+		-->
+		<string>voip</string>
 	</array>
 
 	<key>CADisableMinimumFrameDurationOnPhone</key>

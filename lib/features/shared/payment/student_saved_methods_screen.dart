@@ -7,7 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart' as Helpers;
-import '../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
+import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/text_field.dart';
@@ -472,8 +473,8 @@ class _CardAction extends StatelessWidget {
       child: Icon(icon,
           size:  16,
           color: danger
-              ? context.colors.danger
-              : context.colors.primary),
+              ? context.themeConfig.danger
+              : context.themeConfig.primary),
     ),
   );
 }
@@ -760,7 +761,7 @@ class _AddStudentBankFormState extends State<_AddStudentBankForm> {
           SnackBar(
             content: Text('bank_account_saved_success'.tr,
                 style: const TextStyle(fontFamily: 'bahji', color: Colors.white)),
-            backgroundColor: context.colors.success,
+            backgroundColor: context.themeConfig.success,
             behavior:        SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12)),

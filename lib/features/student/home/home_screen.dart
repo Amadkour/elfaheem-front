@@ -8,7 +8,8 @@ import 'package:flutter_education_app/features/student/home/home_provider.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
 import '../../../config/app_config.dart' as Helpers;
-import '../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
+import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../teacher/home/home_screen.dart';
 import '../courses/list/courses_list_screen.dart';
@@ -342,10 +343,10 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
         final isOngoing = next?.isOngoing ?? false;
 
         final gradient = isOngoing
-            ? context.colors.dangerGradient
+            ? context.themeConfig.linearDanger
             : next != null
-            ? context.colors.primaryGradient
-            : context.colors.successGradient;
+            ? context.themeConfig.linearPrimary
+            : context.themeConfig.linearSuccess;
 
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -358,8 +359,8 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
               boxShadow: [
                 BoxShadow(
                   color: (isOngoing
-                      ? context.colors.danger
-                      : context.colors.primary)
+                      ? context.themeConfig.danger
+                      : context.themeConfig.primary)
                       .withValues(alpha: 0.38),
                   blurRadius: 24,
                   offset: const Offset(0, 8),

@@ -6,7 +6,8 @@ import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
-import '../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
+import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_network_image.dart';
 import '../../../utils/widget/rating_widget.dart';
 import '../../student/models.dart';
@@ -516,7 +517,7 @@ class InstructorAvatar extends StatelessWidget {
       decoration: !canOpen
           ? BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: context.colors.background, width: 3),
+              border: Border.all(color: context.themeConfig.background, width: 3),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.2),
@@ -527,7 +528,7 @@ class InstructorAvatar extends StatelessWidget {
             )
           : BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: context.colors.background, width: 1),
+              border: Border.all(color: context.themeConfig.background, width: 1),
             ),
       child: ClipOval(
         child: teacher.imageUrl != null

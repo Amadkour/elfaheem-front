@@ -7,7 +7,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../config/app_config.dart';
-import '../../../../../config/app_theme.dart';
+import '../../../../../config/theme/app_theme.dart';
+import '../../../../../config/theme/theme_config_provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RTL themed AlertDialog wrapper
@@ -36,7 +37,7 @@ class RtlDialog extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: AlertDialog(
-        backgroundColor: context.colors.cardBg,
+        backgroundColor: context.themeConfig.cardBg,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(title, style: context.colors.h3),
         content: content,
@@ -46,7 +47,7 @@ class RtlDialog extends StatelessWidget {
             child: Text(
               'cancel'.tr,
               style: TextStyle(
-                  fontFamily: 'bahji', color: context.colors.textMedium),
+                  fontFamily: 'bahji', color: context.themeConfig.textMedium),
             ),
           ),
           ElevatedButton(
@@ -94,20 +95,20 @@ class SessionField extends StatelessWidget {
         labelText: label,
         labelStyle: context.colors.caption,
         filled: true,
-        fillColor: context.colors.background,
+        fillColor: context.themeConfig.background,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(
-              color: context.colors.textLight.withValues(alpha: 0.2)),
+              color: context.themeConfig.textLight.withValues(alpha: 0.2)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(
-              color: context.colors.textLight.withValues(alpha: 0.2)),
+              color: context.themeConfig.textLight.withValues(alpha: 0.2)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: context.colors.primary),
+          borderSide: BorderSide(color: context.themeConfig.primary),
         ),
       ),
     );
@@ -125,7 +126,7 @@ class SessionTypePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = isLive ? context.colors.danger : context.colors.primary;
+    final c = isLive ? context.themeConfig.danger : context.themeConfig.primary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(

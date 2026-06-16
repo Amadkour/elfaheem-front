@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/config/app_theme.dart';
+import 'package:flutter_education_app/config/theme/app_theme.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
-import '../category/categories_provider.dart';
+import '../../config/theme/theme_config_provider.dart';
 import 'auth_provider.dart';
 import '../../utils/helpers.dart';
 import 'auth_widgets.dart';
@@ -27,7 +28,9 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
   final _teachingController = ExpansibleController();
 
   @override
-  void initState() {}
+  void initState() {
+    super.initState();
+  }
 
   @override
   void dispose() {
@@ -106,7 +109,7 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
       padding: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(context.colors.radiusXL),
-        color: context.colors.cardBg,
+        color: context.themeConfig.cardBg,
       ),
       child: Form(
         key: _formKey,
@@ -126,7 +129,7 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
                 fontFamily: 'tajawal',
                 fontSize: 26,
                 fontWeight: FontWeight.bold,
-                color: context.colors.textDark,
+                color: context.themeConfig.textDark,
               ),
             ),
             const SizedBox(height: 6),

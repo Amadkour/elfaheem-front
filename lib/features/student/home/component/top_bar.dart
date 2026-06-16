@@ -3,7 +3,8 @@ import 'package:flutter_education_app/features/shared/notification/notifications
 import 'package:provider/provider.dart';
 
 import '../../../../config/app_config.dart';
-import '../../../../config/app_theme.dart';
+import '../../../../config/theme/app_theme.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 import '../../../auth/auth_provider.dart';
 import '../../dashboard/dashboard_screen.dart';
 
@@ -36,7 +37,7 @@ class TopBar extends StatelessWidget {
                   '${'welcome'.tr} 👋',
                   style: context.colors.caption.copyWith(
                     fontSize: 12,
-                    color: context.colors.textLight,
+                    color: context.themeConfig.textLight,
                   ),
                 ),
                 const SizedBox(height: 1),

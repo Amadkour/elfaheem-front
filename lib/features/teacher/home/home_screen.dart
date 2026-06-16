@@ -6,7 +6,8 @@ import 'package:flutter_education_app/features/teacher/home/queue_work_items.dar
 import 'package:flutter_education_app/features/teacher/home/teacher_provider.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
-import '../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
+import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../auth/auth_provider.dart';
 import '../../shared/course/home_course_list.dart';
@@ -17,7 +18,6 @@ import '../../student/home/component/course_row.dart';
 import '../../student/home/component/home_section_header.dart';
 import '../../student/models.dart';
 import '../courses/component/teacher_stats.dart';
-import '../courses/courses_screen.dart';
 import '../sessions/sessions_provider.dart';
 import '../sessions/sessions_screen.dart';
 
@@ -54,7 +54,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
       useWebCard: true,
       child: SafeArea(
         child: RefreshIndicator(
-          color: context.colors.primary,
+          color: context.themeConfig.primary,
           onRefresh: () => context.read<TeacherProvider>().init(),
           child: CustomScrollView(
             physics: const BouncingScrollPhysics(
@@ -71,7 +71,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
               // ── Stats ────────────────────────────────────────────
               SliverToBoxAdapter(
                 child: ColoredBox(
-                  color: context.colors.cardBg,
+                  color: context.themeConfig.cardBg,
                   child: Column(
                     children: [
                       ContentBox(
@@ -170,7 +170,7 @@ class _WebTopBar extends StatelessWidget {
       height: 56,
       padding: const EdgeInsets.symmetric(horizontal: 24),
       decoration: BoxDecoration(
-        color: context.colors.cardBg,
+        color: context.themeConfig.cardBg,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -209,10 +209,10 @@ class _TopBar extends StatelessWidget {
             height: 48,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: context.colors.primaryGradient,
+              gradient: context.themeConfig.linearPrimary,
               boxShadow: [
                 BoxShadow(
-                  color: context.colors.primary.withValues(alpha: 0.38),
+                  color: context.themeConfig.primary.withValues(alpha: 0.38),
                   blurRadius: 14,
                   offset: const Offset(0, 4),
                 ),
@@ -291,8 +291,8 @@ class _ShimmerState extends State<Shimmer> with SingleTickerProviderStateMixin {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(widget.radius),
         color: Color.lerp(
-          context.colors.divider,
-          context.colors.divider.withValues(alpha: 0.3),
+          context.themeConfig.divider,
+          context.themeConfig.divider.withValues(alpha: 0.3),
           _anim.value,
         ),
       ),
@@ -389,8 +389,8 @@ class StatsRow extends StatelessWidget {
           value: '${stats.totalCourses}',
           label: 'course_count'.tr,
           icon: Icons.library_books_rounded,
-          gradient: context.colors.tealGradient,
-          shadowColor: context.colors.accent2,
+          gradient: context.themeConfig.linearAccent,
+          shadowColor: context.themeConfig.accent2,
         ),
       ],
     );
@@ -406,24 +406,24 @@ class StatsRow extends StatelessWidget {
               value: stats.doctorRating.toStringAsFixed(1),
               label: 'teacher_rate'.tr,
               icon: Icons.star_rounded,
-              gradient: context.colors.successGradient.withOpacity(.7),
-              shadowColor: context.colors.primary,
+              gradient: context.themeConfig.linearSuccess.withOpacity(.7),
+              shadowColor: context.themeConfig.primary,
             ),
             const SizedBox(width: 12),
             _StatCard(
               value: stats.courseRating.toStringAsFixed(1),
               label: 'course_rate'.tr,
               icon: Icons.star_rounded,
-              gradient: context.colors.dangerGradient,
-              shadowColor: context.colors.textMedium,
+              gradient: context.themeConfig.linearDanger,
+              shadowColor: context.themeConfig.textMedium,
             ),
             const SizedBox(width: 12),
             _StatCard(
               value: stats.materialRating.toStringAsFixed(1),
               label: 'materials_rate'.tr,
               icon: Icons.star_rounded,
-              gradient: context.colors.purpleGradient,
-              shadowColor: context.colors.purple,
+              gradient: context.themeConfig.linearPurple,
+              shadowColor: context.themeConfig.purple,
             ),
           ],
         ),
@@ -517,7 +517,7 @@ class _AddCourseButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            color: context.colors.primary.withValues(alpha: 0.40),
+            color: context.themeConfig.primary.withValues(alpha: 0.40),
             blurRadius: 20,
             offset: const Offset(0, 6),
           ),

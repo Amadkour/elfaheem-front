@@ -11,7 +11,8 @@ import 'package:moyasar/moyasar.dart';
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart' as helpers;
-import '../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
+import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/app_network_image.dart';
 import '../../shared/payment/saved_methods_provider.dart';
@@ -58,7 +59,7 @@ class _EnrollView extends StatelessWidget {
     return Directionality(
       textDirection: helpers.pageDirection,
       child: Scaffold(
-        backgroundColor: context.colors.background,
+        backgroundColor: context.themeConfig.background,
         body: SafeArea(
           child: Consumer<EnrollmentProvider>(
             builder: (_, enroll, __) => AnimatedSwitcher(

@@ -17,8 +17,9 @@ import 'package:provider/provider.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'config/app_config.dart';
-import 'config/app_theme.dart';
+import 'config/theme/app_theme.dart';
 import 'config/storage_service.dart';
+import 'config/theme/theme_config_provider.dart';
 import 'core/providers.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/register_screen.dart';
@@ -63,9 +64,7 @@ Future<void> _initCore() async {
   timeago.setLocaleMessages('ar', timeago.ArShortMessages());
   timeago.setLocaleMessages('en', timeago.EnShortMessages());
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   await RemoteConfigService.instance.init();
   await NotificationService.instance.init();
@@ -75,8 +74,9 @@ Future<void> _initCore() async {
 
 Future<void> _initCrashlytics() async {
   // Disable in debug so your dashboard stays clean during development
-  await FirebaseCrashlytics.instance
-      .setCrashlyticsCollectionEnabled(!kDebugMode);
+  await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(
+    !kDebugMode,
+  );
 
   // Flutter framework errors (widget build failures, etc.)
   FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
@@ -120,10 +120,11 @@ class _ElFaheemAppState extends State<ElFaheemApp> {
     });
     super.initState();
   }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
-
+    final tc = context.watch<ThemeConfigProvider>();
     final String initialRoute;
     if (!auth.isAuthenticated) {
       initialRoute = '/login';
@@ -136,35 +137,39 @@ class _ElFaheemAppState extends State<ElFaheemApp> {
     final isDark = context.watch<ProfileProvider>().darkMode;
     final appName = RemoteConfigService.instance.appName;
 
-    return MaterialApp(
-      navigatorKey: navigatorKey,
-      title: appName,
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.themeData,
-      darkTheme: AppTheme.darkThemeData,
-      themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
-      initialRoute: initialRoute,
-      onGenerateRoute: _router,
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      builder: (_, child) => ResponsiveBreakpoints.builder(
-        breakpoints: [
-          const Breakpoint(start: 0, end: 450, name: MOBILE),
-          const Breakpoint(start: 451, end: 800, name: TABLET),
-          const Breakpoint(start: 801, end: 1920, name: DESKTOP),
-          const Breakpoint(start: 1921, end: double.infinity, name: '4K'),
+    return ThemeConfigScope(
+      // ← wrap here
+      provider: tc,
+      child: MaterialApp(
+        navigatorKey: navigatorKey,
+        title: appName,
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.themeData,
+        darkTheme: AppTheme.darkThemeData,
+        themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
+        initialRoute: initialRoute,
+        onGenerateRoute: _router,
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
         ],
-        useShortestSide: true,
-        child: child!,
+        builder: (_, child) => ResponsiveBreakpoints.builder(
+          breakpoints: [
+            const Breakpoint(start: 0, end: 450, name: MOBILE),
+            const Breakpoint(start: 451, end: 800, name: TABLET),
+            const Breakpoint(start: 801, end: 1920, name: DESKTOP),
+            const Breakpoint(start: 1921, end: double.infinity, name: '4K'),
+          ],
+          useShortestSide: true,
+          child: child!,
+        ),
+        supportedLocales: context
+            .read<LangProvider>()
+            .languages
+            .map((_) => const Locale('en', ''))
+            .toList(),
       ),
-      supportedLocales: context
-          .read<LangProvider>()
-          .languages
-          .map((_) => const Locale('en', ''))
-          .toList(),
     );
   }
 
@@ -176,10 +181,12 @@ class _ElFaheemAppState extends State<ElFaheemApp> {
         return _fade(const RegisterScreen());
       case '/otp':
         final args = settings.arguments as List;
-        return _fade(OtpVerificationScreen(
-          email: args[0] as String,
-          role: args[1] as String,
-        ));
+        return _fade(
+          OtpVerificationScreen(
+            email: args[0] as String,
+            role: args[1] as String,
+          ),
+        );
       case '/forgot-password':
         return _fade(const ForgetScreen());
       case '/home':
@@ -243,18 +250,22 @@ class _NotFoundScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('404',
-                style: TextStyle(
-                  fontSize: 64,
-                  fontWeight: FontWeight.w900,
-                  color: c.textDark,
-                )),
-            Text('not_found'.tr,
-                style: TextStyle(
-                  fontFamily: 'tajawal',
-                  fontSize: 16,
-                  color: c.textMedium,
-                )),
+            Text(
+              '404',
+              style: TextStyle(
+                fontSize: 64,
+                fontWeight: FontWeight.w900,
+                color: c.textDark,
+              ),
+            ),
+            Text(
+              'not_found'.tr,
+              style: TextStyle(
+                fontFamily: 'tajawal',
+                fontSize: 16,
+                color: c.textMedium,
+              ),
+            ),
             const SizedBox(height: 20),
             TextButton(
               onPressed: () => Navigator.of(context).pushReplacementNamed(
@@ -262,11 +273,13 @@ class _NotFoundScreen extends StatelessWidget {
                     ? '/teacher_dashboard'
                     : '/dashboard',
               ),
-              child: Text('home'.tr,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    color: Color(0xFF5B8FFF),
-                  )),
+              child: Text(
+                'home'.tr,
+                style: TextStyle(
+                  fontFamily: 'tajawal',
+                  color: Color(0xFF5B8FFF),
+                ),
+              ),
             ),
           ],
         ),

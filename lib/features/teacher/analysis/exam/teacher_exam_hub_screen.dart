@@ -4,7 +4,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_education_app/config/app_theme.dart';
+import 'package:flutter_education_app/config/theme/app_theme.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import '../../../../config/app_config.dart';
 import 'exam_model.dart';
 import 'teacher_exam_provider.dart';
@@ -70,7 +71,7 @@ class _HubViewState extends State<_HubView>
       floatingActionButton: prov.tab == 0
           ? FloatingActionButton.extended(
               onPressed: () => _showCreateSheet(context),
-              backgroundColor: context.colors.primary,
+              backgroundColor: context.themeConfig.primary,
               icon: const Icon(Icons.add_rounded, color: Colors.white),
               label: Text('new_exam'.tr,
                   style: TextStyle(
@@ -149,7 +150,7 @@ class _HubViewState extends State<_HubView>
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: context.colors.background,
+                      color: context.themeConfig.background,
                       borderRadius: BorderRadius.vertical(
                         top: Radius.circular(28),
                       ),
@@ -264,7 +265,7 @@ class _HubViewState extends State<_HubView>
     return Column(children: [
       // Summary header
       Container(
-        color: context.colors.cardBg,
+        color: context.themeConfig.cardBg,
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
         margin: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -281,9 +282,9 @@ class _HubViewState extends State<_HubView>
           const SizedBox(height: 10),
           Row(children: [
             _MiniStat('${prov.results.length}', 'stat_enrolled'.tr,
-                context.colors.primary),
+                context.themeConfig.primary),
             _MiniStat('${prov.attendedCount}', 'stat_attended'.tr,
-                context.colors.success),
+                context.themeConfig.success),
             _MiniStat(
                 '${prov.attemptedCount}', 'stat_answered'.tr, Colors.orange),
             _MiniStat('${prov.passedCount}', 'stat_passed'.tr, Colors.teal),
@@ -325,7 +326,7 @@ class _HubViewState extends State<_HubView>
               : 'exam_unpublished_snack'.tr),
       err != null
           ? Colors.redAccent
-          : (exam.isPublished ? context.colors.success : Colors.orange),
+          : (exam.isPublished ? context.themeConfig.success : Colors.orange),
     );
   }
 
@@ -365,7 +366,7 @@ class _HubViewState extends State<_HubView>
       if (context.mounted) {
         _snack(
             deleted ? 'exam_deleted_snack'.tr : 'exam_delete_failed_snack'.tr,
-            deleted ? context.colors.success : Colors.redAccent);
+            deleted ? context.themeConfig.success : Colors.redAccent);
       }
     }
   }
@@ -385,7 +386,7 @@ class _HubViewState extends State<_HubView>
     showModalBottomSheet(
       context: ctx,
       isScrollControlled: true,
-      backgroundColor: context.colors.background,
+      backgroundColor: context.themeConfig.background,
       builder: (_) => ChangeNotifierProvider.value(
         value: prov,
         child: _ManageQuestionsSheet(exam: exam),
@@ -431,7 +432,7 @@ class _ExamCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          color: context.colors.cardBg,
+          color: context.themeConfig.cardBg,
           borderRadius: BorderRadius.circular(22),
           border: Border(),
           boxShadow: [
@@ -456,12 +457,12 @@ class _ExamCard extends StatelessWidget {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: context.colors.primary.withValues(alpha: .1),
+                      color: context.themeConfig.primary.withValues(alpha: .1),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Icon(
                       Icons.quiz_rounded,
-                      color: context.colors.primary,
+                      color: context.themeConfig.primary,
                       size: 28,
                     ),
                   ),
@@ -581,7 +582,7 @@ class _ExamCard extends StatelessWidget {
                           : Icons.visibility_rounded,
                       color: exam.isPublished
                           ? Colors.grey
-                          : context.colors.success,
+                          : context.themeConfig.success,
                       onTap: onToggle,
                     ),
                   ),
@@ -615,7 +616,7 @@ class _ExamCard extends StatelessWidget {
                     child: _ModernActionBtn(
                       title: 'btn_results'.tr,
                       icon: Icons.bar_chart_rounded,
-                      color: context.colors.primary,
+                      color: context.themeConfig.primary,
                       onTap: onResults,
                     ),
                   ),
@@ -694,7 +695,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
       child: Container(
         height: MediaQuery.of(context).size.height * 0.88,
         decoration: BoxDecoration(
-            color: context.colors.background,
+            color: context.themeConfig.background,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
         child: Column(children: [
           // Handle
@@ -735,12 +736,12 @@ class _ManageQuestionsSheet extends StatelessWidget {
                 onPressed: () => _showQuestionForm(context, prov,
                     examId: exam.id, existing: null),
                 icon: Icon(Icons.add_rounded,
-                    size: 18, color: context.colors.primary),
+                    size: 18, color: context.themeConfig.primary),
                 label: Text('btn_add'.tr,
                     style: TextStyle(
                         fontFamily: 'bahji',
                         fontWeight: FontWeight.w700,
-                        color: context.colors.primary)),
+                        color: context.themeConfig.primary)),
               ),
             ]),
           ),
@@ -764,7 +765,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
                         ElevatedButton(
                           onPressed: () => prov.loadQuestions(exam.id),
                           style: ElevatedButton.styleFrom(
-                              backgroundColor: context.colors.primary),
+                              backgroundColor: context.themeConfig.primary),
                           child: Text('retry'.tr,
                               style: const TextStyle(fontFamily: 'bahji')),
                         ),
@@ -908,7 +909,7 @@ class _QuestionTile extends StatelessWidget {
                 width: 26,
                 height: 26,
                 decoration: BoxDecoration(
-                  color: context.colors.primary.withValues(alpha: 0.1),
+                  color: context.themeConfig.primary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Center(
@@ -917,7 +918,7 @@ class _QuestionTile extends StatelessWidget {
                           fontFamily: 'bahji',
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
-                          color: context.colors.primary)),
+                          color: context.themeConfig.primary)),
                 ),
               ),
               const SizedBox(width: 10),
@@ -945,7 +946,7 @@ class _QuestionTile extends StatelessWidget {
                     child: ListTile(
                       dense: true,
                       leading: Icon(Icons.edit_rounded,
-                          color: context.colors.primary),
+                          color: context.themeConfig.primary),
                       title: Text('btn_edit'.tr,
                           style: const TextStyle(fontFamily: 'bahji')),
                     ),
@@ -980,18 +981,18 @@ class _QuestionTile extends StatelessWidget {
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: isCorrect
-                          ? context.colors.success.withValues(alpha: 0.1)
+                          ? context.themeConfig.success.withValues(alpha: 0.1)
                           : Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                           color: isCorrect
-                              ? context.colors.success.withValues(alpha: 0.4)
+                              ? context.themeConfig.success.withValues(alpha: 0.4)
                               : Colors.grey.shade300),
                     ),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       if (isCorrect) ...[
                         Icon(Icons.check_circle_rounded,
-                            size: 12, color: context.colors.success),
+                            size: 12, color: context.themeConfig.success),
                         const SizedBox(width: 4),
                       ],
                       Text(opt,
@@ -999,7 +1000,7 @@ class _QuestionTile extends StatelessWidget {
                               fontFamily: 'bahji',
                               fontSize: 12,
                               color: isCorrect
-                                  ? context.colors.success
+                                  ? context.themeConfig.success
                                   : Colors.grey.shade700,
                               fontWeight: isCorrect
                                   ? FontWeight.w700
@@ -1121,7 +1122,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
       if (!context.mounted) return;
       if (q != null) {
         Navigator.pop(context);
-        _snack('question_added_snack'.tr, context.colors.success);
+        _snack('question_added_snack'.tr, context.themeConfig.success);
       } else {
         _snack('question_add_failed_snack'.tr, Colors.redAccent);
       }
@@ -1138,7 +1139,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
       if (!context.mounted) return;
       if (q != null) {
         Navigator.pop(context);
-        _snack('question_updated_snack'.tr, context.colors.success);
+        _snack('question_updated_snack'.tr, context.themeConfig.success);
       } else {
         _snack('question_update_failed_snack'.tr, Colors.redAccent);
       }
@@ -1186,7 +1187,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                   isEditing
                       ? Icons.edit_rounded
                       : Icons.add_circle_outline_rounded,
-                  color: context.colors.primary),
+                  color: context.themeConfig.primary),
               const SizedBox(width: 8),
               Text(
                   isEditing
@@ -1329,7 +1330,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                               style: const TextStyle(
                                   fontFamily: 'bahji', fontSize: 13)),
                           style: TextButton.styleFrom(
-                              foregroundColor: context.colors.primary),
+                              foregroundColor: context.themeConfig.primary),
                         ),
 
                         const SizedBox(height: 12),
@@ -1348,7 +1349,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                         child: ElevatedButton(
                           onPressed: prov.saving ? null : _submit,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: context.colors.primary,
+                            backgroundColor: context.themeConfig.primary,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 15),
                             shape: RoundedRectangleBorder(
@@ -1486,7 +1487,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
         textDirection: TextDirection.rtl,
         child: Container(
           decoration: BoxDecoration(
-              color: context.colors.background,
+              color: context.themeConfig.background,
               borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
           padding:
               EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
@@ -1502,7 +1503,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
               padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(children: [
                 Icon(Icons.add_circle_outline_rounded,
-                    color: context.colors.primary),
+                    color: context.themeConfig.primary),
                 SizedBox(width: 8),
                 Text('create_exam_sheet_title'.tr,
                     style: const TextStyle(
@@ -1651,7 +1652,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                                         fontFamily: 'bahji',
                                         fontSize: 14,
                                         color: _deadlineDate != null
-                                            ? context.colors.textDark
+                                            ? context.themeConfig.textDark
                                             : Colors.grey),
                                   ),
                                 ]),
@@ -1690,7 +1691,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                       child: ElevatedButton(
                         onPressed: widget.provider.saving ? null : _submit,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: context.colors.primary,
+                          backgroundColor: context.themeConfig.primary,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 15),
                           shape: RoundedRectangleBorder(
@@ -1749,14 +1750,14 @@ class _AnswersSheet extends StatelessWidget {
               child: Row(children: [
                 CircleAvatar(
                   backgroundColor:
-                      context.colors.primary.withValues(alpha: 0.1),
+                      context.themeConfig.primary.withValues(alpha: 0.1),
                   backgroundImage: result.studentImage != null
                       ? NetworkImage(result.studentImage!)
                       : null,
                   child: result.studentImage == null
                       ? Text(result.studentName[0],
                           style: TextStyle(
-                              color: context.colors.primary,
+                              color: context.themeConfig.primary,
                               fontWeight: FontWeight.w700,
                               fontFamily: 'bahji'))
                       : null,
@@ -1786,7 +1787,7 @@ class _AnswersSheet extends StatelessWidget {
                         ? 'result_passed_badge'.tr
                         : 'result_failed_badge'.tr,
                     result.passed == true
-                        ? context.colors.success
+                        ? context.themeConfig.success
                         : Colors.redAccent),
               ]),
             ),
@@ -1804,7 +1805,7 @@ class _AnswersSheet extends StatelessWidget {
                         final a = result.answers[i];
                         final correct = a.isCorrect == true;
                         final color =
-                            correct ? context.colors.success : Colors.redAccent;
+                            correct ? context.themeConfig.success : Colors.redAccent;
                         return Container(
                           margin: const EdgeInsets.only(bottom: 10),
                           padding: const EdgeInsets.all(14),
@@ -1870,7 +1871,7 @@ class _ResultTile extends StatelessWidget {
     final pct = result.percentage;
     final passed = result.passed;
     final color = passed == true
-        ? context.colors.success
+        ? context.themeConfig.success
         : passed == false
             ? Colors.redAccent
             : Colors.grey;
@@ -1912,7 +1913,7 @@ class _ResultTile extends StatelessWidget {
                 width: 14,
                 height: 14,
                 decoration: BoxDecoration(
-                    color: context.colors.success,
+                    color: context.themeConfig.success,
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 1.5)),
               ),
@@ -1929,7 +1930,7 @@ class _ResultTile extends StatelessWidget {
           Row(children: [
             _StatusBadge(
                 result.isAttended ? 'attended_badge'.tr : 'absent_badge'.tr,
-                result.isAttended ? context.colors.success : Colors.redAccent),
+                result.isAttended ? context.themeConfig.success : Colors.redAccent),
             const SizedBox(width: 6),
             if (result.attempted)
               _StatusBadge(
@@ -1967,7 +1968,7 @@ class _ResultTile extends StatelessWidget {
                   style: TextStyle(
                       fontFamily: 'bahji',
                       fontSize: 11,
-                      color: context.colors.primary,
+                      color: context.themeConfig.primary,
                       fontWeight: FontWeight.w600)),
             ),
         ]),
@@ -2056,7 +2057,7 @@ class _Field extends StatelessWidget {
               fontFamily: 'bahji', fontSize: 13, color: Colors.grey),
           hintStyle: const TextStyle(fontFamily: 'bahji', color: Colors.grey),
           filled: true,
-          fillColor: context.colors.inputBg,
+          fillColor: context.themeConfig.inputBg(isDark:context.colors.isDark),
           border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(color: Colors.grey.shade300)),
@@ -2092,7 +2093,7 @@ class _Toggle extends StatelessWidget {
         child: Column(children: [
           ListTile(
             dense: true,
-            leading: Icon(icon, color: context.colors.primary, size: 20),
+            leading: Icon(icon, color: context.themeConfig.primary, size: 20),
             title: Text(label,
                 style: const TextStyle(
                     fontFamily: 'bahji',
@@ -2101,7 +2102,7 @@ class _Toggle extends StatelessWidget {
             trailing: Switch.adaptive(
                 value: value,
                 onChanged: onChanged,
-                activeColor: context.colors.primary),
+                activeColor: context.themeConfig.primary),
             contentPadding: const EdgeInsets.symmetric(horizontal: 14),
           ),
           if (value && child != null)
@@ -2130,7 +2131,7 @@ class _ErrorView extends StatelessWidget {
           ElevatedButton(
               onPressed: onRetry,
               style: ElevatedButton.styleFrom(
-                  backgroundColor: context.colors.primary,
+                  backgroundColor: context.themeConfig.primary,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12))),
               child: Text('retry'.tr,

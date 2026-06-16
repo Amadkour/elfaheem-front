@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/app_config.dart';
-import '../../../../config/app_theme.dart';
+import '../../../../config/theme/app_theme.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/helpers.dart';
 import '../../../../utils/widget/primary_button.dart';
 import '../../../../utils/widget/text_field.dart';
@@ -62,7 +63,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
       lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: ColorScheme.light(primary: context.colors.primary),
+          colorScheme: ColorScheme.light(primary: context.themeConfig.primary),
         ),
         child: child!,
       ),
@@ -73,7 +74,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
       initialTime: TimeOfDay.fromDateTime(_scheduled ?? DateTime.now()),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: ColorScheme.light(primary: context.colors.primary),
+          colorScheme: ColorScheme.light(primary: context.themeConfig.primary),
         ),
         child: child!,
       ),
@@ -157,7 +158,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
           bottom: MediaQuery.of(context).viewInsets.bottom + 32,
         ),
         decoration: BoxDecoration(
-          color: context.colors.surface,
+          color: context.themeConfig.surfaceCard,
           borderRadius: BorderRadius.vertical(
             top: Radius.circular(context.colors.radiusXL),
           ),
@@ -176,7 +177,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                     height: 4,
                     margin: const EdgeInsets.symmetric(vertical: 14),
                     decoration: BoxDecoration(
-                      color: context.colors.divider,
+                      color: context.themeConfig.divider,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -189,9 +190,9 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                       width: 38,
                       height: 38,
                       decoration: BoxDecoration(
-                        gradient: context.colors.primaryGradient,
+                        gradient: context.themeConfig.linearPrimary,
                         borderRadius: BorderRadius.circular(11),
-                        boxShadow: context.colors.primaryShadow,
+                        boxShadow: context.themeConfig.primaryShadow(isDark:context.colors.isDark),
                       ),
                       child: Icon(
                         _isEdit ? Icons.edit_rounded : Icons.add_rounded,
@@ -249,15 +250,15 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                       ),
                       decoration: BoxDecoration(
                         color: _scheduled != null
-                            ? context.colors.primaryLight
-                            : context.colors.background,
+                            ? context.themeConfig.primaryLight
+                            : context.themeConfig.background,
                         borderRadius: BorderRadius.circular(
                           context.colors.radiusMedium,
                         ),
                         border: Border.all(
                           color: _scheduled != null
-                              ? context.colors.primary.withValues(alpha: 0.35)
-                              : context.colors.divider,
+                              ? context.themeConfig.primary.withValues(alpha: 0.35)
+                              : context.themeConfig.divider,
                           width: _scheduled != null ? 1.5 : 1,
                         ),
                       ),
@@ -267,14 +268,14 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                             width: 32,
                             height: 32,
                             decoration: BoxDecoration(
-                              color: context.colors.primary.withValues(
+                              color: context.themeConfig.primary.withValues(
                                 alpha: 0.1,
                               ),
                               borderRadius: BorderRadius.circular(9),
                             ),
                             child: Icon(
                               Icons.event_rounded,
-                              color: context.colors.primary,
+                              color: context.themeConfig.primary,
                               size: 17,
                             ),
                           ),
@@ -286,8 +287,8 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                                   : 'pick_live_datetime'.tr,
                               style: context.colors.label.copyWith(
                                 color: _scheduled != null
-                                    ? context.colors.primary
-                                    : context.colors.textLight,
+                                    ? context.themeConfig.primary
+                                    : context.themeConfig.textLight,
                               ),
                             ),
                           ),
@@ -296,8 +297,8 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                                 ? Icons.check_circle_rounded
                                 : Icons.chevron_right_rounded,
                             color: _scheduled != null
-                                ? context.colors.success
-                                : context.colors.textLight,
+                                ? context.themeConfig.success
+                                : context.themeConfig.textLight,
                             size: 18,
                           ),
                         ],
@@ -346,7 +347,7 @@ class _TypeSelector extends StatelessWidget {
         Text(
           'session_type_label'.tr,
           style: context.colors.label.copyWith(
-            color: context.colors.textDark,
+            color: context.themeConfig.textDark,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -371,23 +372,23 @@ class _TypeSelector extends StatelessWidget {
                     decoration: BoxDecoration(
                       gradient: isSelected
                           ? (v == 'live'
-                                ? context.colors.dangerGradient
-                                : context.colors.primaryGradient)
+                                ? context.themeConfig.linearDanger
+                                : context.themeConfig.linearPrimary)
                           : null,
-                      color: isSelected ? null : context.colors.background,
+                      color: isSelected ? null : context.themeConfig.background,
                       borderRadius: BorderRadius.circular(
                         context.colors.radiusMedium,
                       ),
                       border: isSelected
                           ? null
-                          : Border.all(color: context.colors.divider, width: 1),
+                          : Border.all(color: context.themeConfig.divider, width: 1),
                       boxShadow: isSelected
                           ? [
                               BoxShadow(
                                 color:
                                     (v == 'live'
-                                            ? context.colors.danger
-                                            : context.colors.primary)
+                                            ? context.themeConfig.danger
+                                            : context.themeConfig.primary)
                                         .withValues(alpha: 0.28),
                                 blurRadius: 12,
                                 offset: const Offset(0, 4),
@@ -403,7 +404,7 @@ class _TypeSelector extends StatelessWidget {
                           size: 17,
                           color: isSelected
                               ? Colors.white
-                              : context.colors.textMedium,
+                              : context.themeConfig.textMedium,
                         ),
                         const SizedBox(width: 7),
                         Text(
@@ -411,7 +412,7 @@ class _TypeSelector extends StatelessWidget {
                           style: context.colors.label.copyWith(
                             color: isSelected
                                 ? Colors.white
-                                : context.colors.textMedium,
+                                : context.themeConfig.textMedium,
                             fontWeight: isSelected
                                 ? FontWeight.w700
                                 : FontWeight.w500,

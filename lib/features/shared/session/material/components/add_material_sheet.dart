@@ -10,7 +10,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../config/app_config.dart';
-import '../../../../../config/app_theme.dart';
+import '../../../../../config/theme/app_theme.dart';
+import '../../../../../config/theme/theme_config_provider.dart';
 import '../../../../teacher/sessions/sessions_provider.dart';
 import 'session_shared_widgets.dart';
 
@@ -38,20 +39,20 @@ class AddMaterialButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: context.colors.primary.withValues(alpha: 0.1),
+          color: context.themeConfig.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-              color: context.colors.primary.withValues(alpha: 0.3)),
+              color: context.themeConfig.primary.withValues(alpha: 0.3)),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.add_rounded, size: 14, color: context.colors.primary),
+          Icon(Icons.add_rounded, size: 14, color: context.themeConfig.primary),
           const SizedBox(width: 4),
           Text(
             'add_material'.tr,
             style: TextStyle(
               fontFamily: 'bahji',
               fontSize: 11,
-              color: context.colors.primary,
+              color: context.themeConfig.primary,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -191,7 +192,7 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg,
           style: const TextStyle(fontFamily: 'bahji', color: Colors.white)),
-      backgroundColor: context.colors.danger,
+      backgroundColor: context.themeConfig.danger,
       behavior: SnackBarBehavior.floating,
       shape:
           RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -208,7 +209,7 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottomInset),
       decoration: BoxDecoration(
-        color: context.colors.cardBg,
+        color: context.themeConfig.cardBg,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Directionality(
@@ -223,7 +224,7 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: context.colors.textLight.withValues(alpha: 0.3),
+                  color: context.themeConfig.textLight.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -265,7 +266,7 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
                     : ElevatedButton(
                         key: const ValueKey('submit'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: context.colors.primary,
+                          backgroundColor: context.themeConfig.primary,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),
@@ -304,10 +305,10 @@ class _ModeToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: context.colors.background,
+        color: context.themeConfig.background,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-            color: context.colors.textLight.withValues(alpha: 0.15)),
+            color: context.themeConfig.textLight.withValues(alpha: 0.15)),
       ),
       child: Row(children: [
         _segment('file_mode'.tr, 0, Icons.upload_file_rounded, context),
@@ -326,7 +327,7 @@ class _ModeToggle extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: sel ? context.colors.primary : Colors.transparent,
+            color: sel ? context.themeConfig.primary : Colors.transparent,
             borderRadius: BorderRadius.circular(9),
           ),
           child:
@@ -334,7 +335,7 @@ class _ModeToggle extends StatelessWidget {
             Icon(icon,
                 size: 15,
                 color:
-                    sel ? Colors.white : context.colors.textMedium),
+                    sel ? Colors.white : context.themeConfig.textMedium),
             const SizedBox(width: 5),
             Text(
               label,
@@ -343,7 +344,7 @@ class _ModeToggle extends StatelessWidget {
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color:
-                    sel ? Colors.white : context.colors.textMedium,
+                    sel ? Colors.white : context.themeConfig.textMedium,
               ),
             ),
           ]),
@@ -384,19 +385,19 @@ class _FileTypeSelector extends StatelessWidget {
               decoration: BoxDecoration(
                 color: selected
                     ? opt.color.withValues(alpha: 0.15)
-                    : context.colors.background,
+                    : context.themeConfig.background,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: selected
                       ? opt.color
-                      : context.colors.textLight.withValues(alpha: 0.2),
+                      : context.themeConfig.textLight.withValues(alpha: 0.2),
                 ),
               ),
               child: Column(children: [
                 Icon(opt.icon,
                     color: selected
                         ? opt.color
-                        : context.colors.textLight,
+                        : context.themeConfig.textLight,
                     size: 22),
                 const SizedBox(height: 4),
                 Text(
@@ -407,7 +408,7 @@ class _FileTypeSelector extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     color: selected
                         ? opt.color
-                        : context.colors.textLight,
+                        : context.themeConfig.textLight,
                   ),
                 ),
               ]),
@@ -439,13 +440,13 @@ class _FilePickerZone extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
           color: picked
-              ? context.colors.success.withValues(alpha: 0.08)
-              : context.colors.background,
+              ? context.themeConfig.success.withValues(alpha: 0.08)
+              : context.themeConfig.background,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: picked
-                ? context.colors.success.withValues(alpha: 0.4)
-                : context.colors.textLight.withValues(alpha: 0.2),
+                ? context.themeConfig.success.withValues(alpha: 0.4)
+                : context.themeConfig.textLight.withValues(alpha: 0.2),
             width: 1.5,
           ),
         ),
@@ -456,7 +457,7 @@ class _FilePickerZone extends StatelessWidget {
                 : Icons.upload_file_rounded,
             size: 28,
             color:
-                picked ? context.colors.success : context.colors.textMedium,
+                picked ? context.themeConfig.success : context.themeConfig.textMedium,
           ),
           const SizedBox(height: 6),
           Text(
@@ -464,8 +465,8 @@ class _FilePickerZone extends StatelessWidget {
             style: context.colors.body.copyWith(
               fontSize: 13,
               color: picked
-                  ? context.colors.success
-                  : context.colors.textMedium,
+                  ? context.themeConfig.success
+                  : context.themeConfig.textMedium,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

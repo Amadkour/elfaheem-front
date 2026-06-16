@@ -5,7 +5,8 @@ import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
-import '../../config/app_theme.dart';
+import '../../config/theme/app_theme.dart';
+import '../../config/theme/theme_config_provider.dart';
 import 'auth_provider.dart';
 import '../../utils/helpers.dart';
 import 'register_screen.dart';
@@ -120,7 +121,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
                     fontFamily: 'tajawal',
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    color: context.colors.textDark,
+                    color: context.themeConfig.textDark,
                   ),
                 ),
               ],
@@ -135,7 +136,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
               fontFamily: 'tajawal',
               fontSize: 26,
               fontWeight: FontWeight.bold,
-              color: context.colors.textDark,),
+              color: context.themeConfig.textDark,),
           ),
           const SizedBox(height: 6),
           Text(
@@ -143,7 +144,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
             style: TextStyle(
               fontFamily: 'tajawal',
               fontSize: 14,
-              color: context.colors.secondText,
+              color: context.themeConfig.secondText,
               height: 1.6,
             ),
           ),
@@ -161,7 +162,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
           Row(
             children: [
               Icon(Icons.info_outline_rounded, size: 13,
-                color: context.colors.primaryDark,
+                color: context.themeConfig.primaryDark,
               ),
               const SizedBox(width: 6),
               Text(
@@ -169,7 +170,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
                 style: TextStyle(
                   fontFamily: 'tajawal',
                   fontSize: 12,
-                  color: context.colors.primaryDark,
+                  color: context.themeConfig.primaryDark,
                 ),
               ),
             ],
@@ -202,7 +203,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
       padding: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(context.colors.radiusXL),
-        color: context.colors.cardBg,
+        color: context.themeConfig.cardBg,
       ),
       child: form
     );

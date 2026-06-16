@@ -7,7 +7,8 @@ library;
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_education_app/config/app_theme.dart';
+import 'package:flutter_education_app/config/theme/app_theme.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'student_exam_api.dart';
 import 'student_exam_detail_screen.dart';
 import 'student_exam_provider.dart';
@@ -494,7 +495,7 @@ class _ErrorState extends StatelessWidget {
           icon: const Icon(Icons.refresh_rounded, size: 18),
           label: const Text('إعادة المحاولة', style: TextStyle(fontFamily: 'bahji')),
           style: ElevatedButton.styleFrom(
-            backgroundColor: context.colors.primary,
+            backgroundColor: context.themeConfig.primary,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
