@@ -193,14 +193,17 @@ import CoreVideo
                 result(nil)
 
             case "showBroadcastPicker":
-                // Show the iOS system picker so the user can choose which
-                // foreign app to share. When they pick one and tap
-                // "Start Broadcast", SampleHandler.broadcastStarted() fires
-                // and the extension begins sending frames via CFMessagePort.
-                self.showBroadcastPicker(result: result)
+                // On iOS, screen share is handled entirely by RPScreenRecorder
+                // (via LiveKit's setScreenShareEnabled). No broadcast picker or
+                // BroadcastUploadExtension is needed — RPScreenRecorder already
+                // captures the full screen including any foreground app.
+                // This case is kept for compatibility but is a no-op.
+                result(nil)
 
             case "stopBroadcast":
-                self.stopBroadcastShare(result: result)
+                // No-op: broadcast extension is no longer used.
+                // RPScreenRecorder continues until stopRecording() is called.
+                result(nil)
 
             default:
                 result(FlutterMethodNotImplemented)
@@ -320,9 +323,11 @@ import CoreVideo
         rp.startCapture(handler: { [weak self] sampleBuffer, bufferType, error in
             guard let self = self, self.recording, !self.stopping else { return }
             if let e = error { self.emitError(e.localizedDescription); return }
-            // FIX: Always write ALL samples — RPScreenRecorder captures whatever
-            // is on screen including any foreign app the teacher switches to.
-            // Suppressing when isBroadcasting caused: no shared-app in recording + muted audio.
+            // Always write every sample — RPScreenRecorder automatically follows
+            // the foreground app, so it captures the full screen including any
+            // app the teacher switches to during the session.
+            // Never suppress based on isBroadcasting — that caused missing video
+            // and silent audio in recordings.
             self.processSampleFromRecorder(sampleBuffer, type: bufferType)
         }, completionHandler: { [weak self] error in
             guard let self = self else { return }
@@ -374,27 +379,40 @@ import CoreVideo
     // (noise suppression) active, giving clean mic audio in the recording.
 
     private func configureAudioSessionForRecording() {
-        // FIX (muted audio): Do NOT replace LiveKit's audio session.
-        // LiveKit resets AVAudioSession on every SDP renegotiation — any category
-        // we force gets overwritten in milliseconds → mic input lost → silence.
-        //
-        // Solution: keep LiveKit's existing category+mode, ONLY add .mixWithOthers
-        // so RPScreenRecorder can share the hardware audio path alongside LiveKit.
         let session = AVAudioSession.sharedInstance()
-        let merged  = session.categoryOptions
-            .union([.mixWithOthers, .allowBluetooth, .allowBluetoothA2DP, .defaultToSpeaker])
         do {
-            try session.setCategory(session.category, mode: session.mode, options: merged)
+            try session.setCategory(
+                .playAndRecord,
+                mode: .videoChat,                          // keeps AEC + NS active
+                options: [.defaultToSpeaker,
+                          .allowBluetooth,
+                          .allowBluetoothA2DP,
+                          .mixWithOthers]                  // coexist with LiveKit WebRTC
+            )
             try session.setActive(true, options: .notifyOthersOnDeactivation)
-            NSLog("[REC] AVAudioSession: added mixWithOthers to LiveKit session (cat=\(session.category.rawValue) mode=\(session.mode.rawValue))")
+            NSLog("[REC] AVAudioSession: playAndRecord / videoChat / mixWithOthers — active")
         } catch {
-            NSLog("[REC] AVAudioSession merge error (non-fatal): \(error.localizedDescription)")
+            NSLog("[REC] AVAudioSession configure error: \(error.localizedDescription)")
         }
     }
 
     private func releaseAudioSessionLock() {
-        // No-op: we never replaced LiveKit's session, nothing to restore.
-        NSLog("[REC] AVAudioSession: releaseAudioSessionLock — no-op")
+        // Called only on RPScreenRecorder stop or start failure.
+        // Restore the session to LiveKit's preferred state so the live call
+        // continues to work normally after recording ends.
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(
+                .playAndRecord,
+                mode: .videoChat,
+                options: [.defaultToSpeaker, .allowBluetooth,
+                          .allowBluetoothA2DP, .mixWithOthers]
+            )
+            try session.setActive(true, options: .notifyOthersOnDeactivation)
+            NSLog("[REC] AVAudioSession: restored after recording stop")
+        } catch {
+            NSLog("[REC] AVAudioSession restore error: \(error.localizedDescription)")
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -861,81 +879,15 @@ import CoreVideo
     // MARK: - Broadcast Extension (foreign-app screen share)
     // ─────────────────────────────────────────────────────────────────────────
 
-    private func showBroadcastPicker(result: @escaping FlutterResult) {
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { result(nil); return }
-
-            // ── Pause recording during the iOS broadcast confirmation overlay ─
-            // When the system sheet appears, iOS briefly suspends the Runner app
-            // which causes:
-            //   • AVAudioSession interruption → LiveKit tries to reconfigure →
-            //     "Configure audio error: Code=561017449 kAudioSessionIncompatibleCategory"
-            //   • RPScreenRecorder may deliver corrupted/duplicate frames during
-            //     the suspension window
-            //
-            // Pausing here (finalise current chunk, stop accepting frames) means
-            // the suspension window produces no data. Recording resumes cleanly
-            // once the first broadcast frame arrives via Darwin notification,
-            // which confirms the extension has started and iOS has fully resumed.
-            if self.recording && !self.paused && !self.stopping {
-                self.paused = true
-                NSLog("[SHARE] picker: recording paused before system overlay")
-                self.finaliseChunk(isFinal: false) { [weak self] in
-                    guard let self = self else { return }
-                    self.chunkIndex += 1
-                    NSLog("[SHARE] picker: paused chunk rotated at #\(self.chunkIndex)")
-                    // beginChunkWriter() is called when broadcast starts (first
-                    // Darwin frame notification) or when broadcast is cancelled
-                    // (stopBroadcastShare without isBroadcasting ever becoming true).
-                }
-            }
-
-            // Register Darwin notification listeners BEFORE the picker appears
-            // so we are ready the instant the extension's broadcastStarted() fires.
-            self.registerDarwinListeners()
-
-            let picker = RPSystemBroadcastPickerView(frame: CGRect(x: 0, y: 0, width: 60, height: 60))
-            // FIX: nil shows ALL broadcast extensions so teacher can pick any app.
-            // Setting our bundle ID would hide all other options.
-            picker.preferredExtension = nil
-            picker.showsMicrophoneButton = false
-
-            for subview in picker.subviews {
-                if let button = subview as? UIButton {
-                    button.sendActions(for: .touchUpInside)
-                    break
-                }
-            }
-            NSLog("[SHARE] showBroadcastPicker — extension: \(picker.preferredExtension ?? "nil")")
-            result(nil)
-        }
-    }
-
-    private func stopBroadcastShare(result: @escaping FlutterResult) {
-        isBroadcasting = false
-        removeDarwinListeners()
-        emitEvent(["event": "broadcastStopped"])
-        NSLog("[SHARE] broadcast stopped by app")
-        if recording && !stopping {
-            if paused {
-                // Broadcast was never confirmed (user cancelled picker).
-                // Resume RPScreenRecorder which was paused by showBroadcastPicker.
-                paused = false
-                beginChunkWriter()
-                NSLog("[SHARE] picker cancelled — RPScreenRecorder resumed at chunk #\(chunkIndex)")
-            } else {
-                // Broadcast was active: finalise the broadcast chunk and start
-                // a fresh RPScreenRecorder chunk.
-                finaliseChunk(isFinal: false) { [weak self] in
-                    guard let self = self, self.recording, !self.stopping, !self.paused else { return }
-                    self.chunkIndex += 1
-                    self.beginChunkWriter()
-                    NSLog("[SHARE] broadcast chunk rotated — RPScreenRecorder resuming at chunk #\(self.chunkIndex)")
-                }
-            }
-        }
-        result(nil)
-    }
+    // showBroadcastPicker and stopBroadcastShare are no longer used.
+    // Screen sharing on iOS is handled entirely by LiveKit's setScreenShareEnabled()
+    // which uses RPScreenRecorder internally — the same instance that is already
+    // recording the full session. No BroadcastUploadExtension is needed.
+    //
+    // RPScreenRecorder.startCapture() follows the foreground app automatically,
+    // so when the teacher opens any other app (Safari, YouTube, a presentation
+    // app), RPScreenRecorder records it and LiveKit streams it to participants
+    // without any extra picker or extension required.
 
     // ── IPC: Darwin notifications + App Group shared file ────────────────────
     //
@@ -1041,30 +993,42 @@ import CoreVideo
         }
     }
 
-    /// Receives a frame notification from SampleHandler.
-    /// We only use this to detect broadcast start — we do NOT write
-    /// SampleHandler frames to AVAssetWriter. RPScreenRecorder already
-    /// captures the full screen (including foreign apps) natively.
+    /// Parse a frame blob and route it to the writer.
+    /// Wire format: [4B typeId BE][8B ptsNs BE][4B payloadSize BE][payload]
+    /// typeId: 0 = video (JPEG), 1 = audioMic (PCM), 2 = audioApp (PCM)
     private func handleBroadcastData(_ data: Data) {
-        guard data.count >= 4 else { return }
-        // Read typeId safely (aligned copy to stack variable)
-        var typeId: UInt32 = 0
-        _ = data.copyBytes(to: UnsafeMutableBufferPointer(start: &typeId, count: 1), from: 0..<4)
-        typeId = UInt32(bigEndian: typeId)
+        guard data.count >= 16 else { return }
+        let typeId  = data.prefix(4).withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+        let ptsNs   = data.dropFirst(4).prefix(8).withUnsafeBytes { $0.load(as: UInt64.self).bigEndian }
+        let paySize = data.dropFirst(12).prefix(4).withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+        let payload = Data(data.dropFirst(16).prefix(Int(paySize)))
 
-        // Only act on the first video frame (typeId=0)
-        guard typeId == 0, !isBroadcasting else { return }
-        isBroadcasting = true
-        NSLog("[SHARE] broadcast confirmed — RPScreenRecorder continues recording")
-
-        // Resume AVAssetWriter if showBroadcastPicker paused it during the overlay
-        if recording && paused && !stopping {
-            DispatchQueue.main.async { [weak self] in
-                guard let self = self else { return }
-                self.paused = false
-                self.beginChunkWriter()
-                NSLog("[SHARE] recording resumed at chunk #\(self.chunkIndex)")
+        switch typeId {
+        case 0:
+            // Video frame (JPEG) — write into the active AVAssetWriter chunk.
+            if !isBroadcasting {
+                isBroadcasting = true
+                NSLog("[SHARE] first broadcast frame — switching recording source")
+                // If recording was paused by showBroadcastPicker (to protect
+                // against the iOS overlay suspension window), resume it now.
+                // The extension is running, iOS has fully resumed, it's safe to write.
+                if recording && paused && !stopping {
+                    paused = false
+                    beginChunkWriter()
+                    NSLog("[SHARE] recording resumed from picker-pause — broadcast chunk #\(chunkIndex)")
+                }
             }
+            guard recording, !stopping, !paused else { return }
+            processSampleFromBroadcast(jpegData: payload, ptsNs: ptsNs)
+
+        case 1, 2:
+            // Audio from the extension.
+            // RPScreenRecorder already captures mic audio (clean, with LiveKit
+            // AEC/NS applied), so we skip the extension audio to avoid doubles.
+            break
+
+        default:
+            break
         }
     }
 }
