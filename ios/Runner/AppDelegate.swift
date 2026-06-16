@@ -320,17 +320,10 @@ import CoreVideo
         rp.startCapture(handler: { [weak self] sampleBuffer, bufferType, error in
             guard let self = self, self.recording, !self.stopping else { return }
             if let e = error { self.emitError(e.localizedDescription); return }
-            // FIX (muted audio): When broadcasting, suppress RPScreenRecorder VIDEO
-            // (the foreign app's frames come from SampleHandler instead) but keep
-            // AUDIO flowing — RPScreenRecorder is the only source of clean mic audio
-            // with LiveKit AEC/NS applied. Suppressing audio too = silent recording.
-            if bufferType == .audioMic || bufferType == .audioApp {
-                // Always write audio regardless of broadcast state.
-                self.processSampleFromRecorder(sampleBuffer, type: bufferType)
-            } else if !self.isBroadcasting {
-                // Only write RPScreenRecorder VIDEO when not broadcasting.
-                self.processSampleFromRecorder(sampleBuffer, type: bufferType)
-            }
+            // FIX: Always write ALL samples — RPScreenRecorder captures whatever
+            // is on screen including any foreign app the teacher switches to.
+            // Suppressing when isBroadcasting caused: no shared-app in recording + muted audio.
+            self.processSampleFromRecorder(sampleBuffer, type: bufferType)
         }, completionHandler: { [weak self] error in
             guard let self = self else { return }
             DispatchQueue.main.async {
@@ -381,40 +374,27 @@ import CoreVideo
     // (noise suppression) active, giving clean mic audio in the recording.
 
     private func configureAudioSessionForRecording() {
+        // FIX (muted audio): Do NOT replace LiveKit's audio session.
+        // LiveKit resets AVAudioSession on every SDP renegotiation — any category
+        // we force gets overwritten in milliseconds → mic input lost → silence.
+        //
+        // Solution: keep LiveKit's existing category+mode, ONLY add .mixWithOthers
+        // so RPScreenRecorder can share the hardware audio path alongside LiveKit.
         let session = AVAudioSession.sharedInstance()
+        let merged  = session.categoryOptions
+            .union([.mixWithOthers, .allowBluetooth, .allowBluetoothA2DP, .defaultToSpeaker])
         do {
-            try session.setCategory(
-                .playAndRecord,
-                mode: .videoChat,                          // keeps AEC + NS active
-                options: [.defaultToSpeaker,
-                          .allowBluetooth,
-                          .allowBluetoothA2DP,
-                          .mixWithOthers]                  // coexist with LiveKit WebRTC
-            )
+            try session.setCategory(session.category, mode: session.mode, options: merged)
             try session.setActive(true, options: .notifyOthersOnDeactivation)
-            NSLog("[REC] AVAudioSession: playAndRecord / videoChat / mixWithOthers — active")
+            NSLog("[REC] AVAudioSession: added mixWithOthers to LiveKit session (cat=\(session.category.rawValue) mode=\(session.mode.rawValue))")
         } catch {
-            NSLog("[REC] AVAudioSession configure error: \(error.localizedDescription)")
+            NSLog("[REC] AVAudioSession merge error (non-fatal): \(error.localizedDescription)")
         }
     }
 
     private func releaseAudioSessionLock() {
-        // Called only on RPScreenRecorder stop or start failure.
-        // Restore the session to LiveKit's preferred state so the live call
-        // continues to work normally after recording ends.
-        let session = AVAudioSession.sharedInstance()
-        do {
-            try session.setCategory(
-                .playAndRecord,
-                mode: .videoChat,
-                options: [.defaultToSpeaker, .allowBluetooth,
-                          .allowBluetoothA2DP, .mixWithOthers]
-            )
-            try session.setActive(true, options: .notifyOthersOnDeactivation)
-            NSLog("[REC] AVAudioSession: restored after recording stop")
-        } catch {
-            NSLog("[REC] AVAudioSession restore error: \(error.localizedDescription)")
-        }
+        // No-op: we never replaced LiveKit's session, nothing to restore.
+        NSLog("[REC] AVAudioSession: releaseAudioSessionLock — no-op")
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -915,8 +895,9 @@ import CoreVideo
             self.registerDarwinListeners()
 
             let picker = RPSystemBroadcastPickerView(frame: CGRect(x: 0, y: 0, width: 60, height: 60))
-            picker.preferredExtension =
-                Bundle.main.bundleIdentifier.map { $0 + ".BroadcastUploadExtension" }
+            // FIX: nil shows ALL broadcast extensions so teacher can pick any app.
+            // Setting our bundle ID would hide all other options.
+            picker.preferredExtension = nil
             picker.showsMicrophoneButton = false
 
             for subview in picker.subviews {
@@ -1060,63 +1041,30 @@ import CoreVideo
         }
     }
 
-    /// Parse a frame blob and route it to the writer.
-    /// Wire format: [4B typeId BE][8B ptsNs BE][4B payloadSize BE][payload]
-    /// typeId: 0 = video (JPEG), 1 = audioMic (PCM), 2 = audioApp (PCM)
+    /// Receives a frame notification from SampleHandler.
+    /// We only use this to detect broadcast start — we do NOT write
+    /// SampleHandler frames to AVAssetWriter. RPScreenRecorder already
+    /// captures the full screen (including foreign apps) natively.
     private func handleBroadcastData(_ data: Data) {
-        guard data.count >= 16 else { return }
+        guard data.count >= 4 else { return }
+        // Read typeId safely (aligned copy to stack variable)
+        var typeId: UInt32 = 0
+        _ = data.copyBytes(to: UnsafeMutableBufferPointer(start: &typeId, count: 1), from: 0..<4)
+        typeId = UInt32(bigEndian: typeId)
 
-        // FIX (misaligned pointer crash): Use copyBytes into stack-allocated
-        // locals. Data slices from dropFirst() are not guaranteed to be
-        // naturally aligned; UInt64.load(as:) requires 8-byte alignment on arm64.
-        var typeId:  UInt32 = 0
-        var ptsNs:   UInt64 = 0
-        var paySize: UInt32 = 0
-        _ = data.copyBytes(to: UnsafeMutableBufferPointer(start: &typeId,  count: 1), from: 0..<4)
-        _ = data.copyBytes(to: UnsafeMutableBufferPointer(start: &ptsNs,   count: 1), from: 4..<12)
-        _ = data.copyBytes(to: UnsafeMutableBufferPointer(start: &paySize, count: 1), from: 12..<16)
-        typeId  = UInt32(bigEndian: typeId)
-        ptsNs   = UInt64(bigEndian: ptsNs)
-        paySize = UInt32(bigEndian: paySize)
-        let payload = Data(data.dropFirst(16).prefix(Int(paySize)))
+        // Only act on the first video frame (typeId=0)
+        guard typeId == 0, !isBroadcasting else { return }
+        isBroadcasting = true
+        NSLog("[SHARE] broadcast confirmed — RPScreenRecorder continues recording")
 
-        switch typeId {
-        case 0:
-            // FIX (foreign app not recorded): On the first broadcast frame,
-            // the recording was paused by showBroadcastPicker() and the
-            // assetWriter was set to nil. We must create a new chunk writer
-            // BEFORE calling processSampleFromBroadcast, otherwise every
-            // frame hits "guard let writer = self.assetWriter" and drops.
-            //
-            // We also must NOT call processSampleFromBroadcast from ipcReadQueue
-            // while beginChunkWriter() is still setting up state on the main
-            // thread — so we dispatch to main for the writer setup and only
-            // then enqueue the frame on writerQueue.
-            if !isBroadcasting {
-                isBroadcasting = true
-                NSLog("[SHARE] first broadcast frame — switching recording source")
-                if recording && paused && !stopping {
-                    DispatchQueue.main.async { [weak self] in
-                        guard let self = self else { return }
-                        self.paused = false
-                        self.beginChunkWriter()
-                        NSLog("[SHARE] chunk writer restarted for broadcast at chunk #\(self.chunkIndex)")
-                        // Now safe to write — assetWriter exists.
-                        self.processSampleFromBroadcast(jpegData: payload, ptsNs: ptsNs)
-                    }
-                    return   // processSampleFromBroadcast called above after writer ready
-                }
+        // Resume AVAssetWriter if showBroadcastPicker paused it during the overlay
+        if recording && paused && !stopping {
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.paused = false
+                self.beginChunkWriter()
+                NSLog("[SHARE] recording resumed at chunk #\(self.chunkIndex)")
             }
-            guard recording, !stopping, !paused else { return }
-            processSampleFromBroadcast(jpegData: payload, ptsNs: ptsNs)
-
-        case 1, 2:
-            // Extension audio is skipped — RPScreenRecorder captures clean mic
-            // audio continuously (even during broadcast) so we never go silent.
-            break
-
-        default:
-            break
         }
     }
 }

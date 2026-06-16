@@ -238,16 +238,45 @@ class _RoomPageState extends State<RoomPage>
   @override bool get isTeacher => widget.isTeacher;
   @override void showSnack(String msg) => _showSnack(msg);
 
-  /// Show the floating Stop Share button when iOS broadcast starts.
+  // Called by RoomScreenShareMixin when iOS broadcast starts/stops.
   @override
-  void _onIOSShareStarted() {
-    if (mounted) setState(() => _iosShareVisible = true);
+  void onIOSBroadcastStateChanged(bool active) {
+    if (!mounted) return;
+    setState(() => _isBroadcastingIOS = active);
+    if (active) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.screen_share_rounded, color: Colors.white, size: 16),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'يمكنك الآن فتح أي تطبيق للمشاركة',
+                  style: TextStyle(
+                    fontFamily: 'tajawal',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: _cyan,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+        ),
+      );
+    }
   }
 
-  /// Hide the floating Stop Share button when iOS broadcast ends.
-  @override
-  void _onIOSShareStopped() {
-    if (mounted) setState(() => _iosShareVisible = false);
+  bool _isBroadcastingIOS = false;
+
+  Future<void> _stopIOSBroadcast() async {
+    if (!_isBroadcastingIOS) return;
+    await stopIOSBroadcast();
   }
 
   List<ParticipantTrack> participantTracks = [];
@@ -266,10 +295,12 @@ class _RoomPageState extends State<RoomPage>
   bool _isPausingRecording = false; // true while pauseRecording() is in flight
   bool _isResumingRecording = false; // true while resumeRecording() is in flight
 
-  // ── iOS broadcast share UX ────────────────────────────────────────────────
-  // True while an iOS broadcast share is active. Controls the floating
-  // "Stop Share" button that appears after the picker fires.
-  bool _iosShareVisible = false;
+  // ── Recording elapsed-time clock ──────────────────────────────────────────
+  // Ticks every second while RecState.recording. Paused when recording is
+  // paused, stopped when recording ends. Displayed in the REC badge.
+  Timer? _recClockTimer;
+  int _recElapsedSeconds = 0;
+  DateTime? _recClockStart; // wall-clock when the current run started
 
   // Participant panel
   bool _showParticipants = false;
@@ -430,7 +461,44 @@ class _RoomPageState extends State<RoomPage>
     });
   }
   void _onRecorderUpdate() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    final state = _recorder?.state;
+    if (state == RecState.recording) {
+      _ensureRecClockRunning();
+    } else {
+      _stopRecClock(pause: state == RecState.paused);
+    }
+    setState(() {});
+  }
+
+  void _ensureRecClockRunning() {
+    if (_recClockTimer != null) return; // already ticking
+    _recClockStart = DateTime.now();
+    _recClockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) { _recClockTimer?.cancel(); _recClockTimer = null; return; }
+      setState(() => _recElapsedSeconds++);
+    });
+  }
+
+  void _stopRecClock({bool pause = false}) {
+    _recClockTimer?.cancel();
+    _recClockTimer = null;
+    if (!pause) {
+      // Full stop — reset counter so next recording starts from 0.
+      _recElapsedSeconds = 0;
+      _recClockStart = null;
+    }
+    // When paused we keep _recElapsedSeconds so it resumes from where it left off.
+  }
+
+  String get _recElapsedLabel {
+    final h = _recElapsedSeconds ~/ 3600;
+    final m = (_recElapsedSeconds % 3600) ~/ 60;
+    final s = _recElapsedSeconds % 60;
+    if (h > 0) {
+      return '${h.toString().padLeft(2,'0')}:${m.toString().padLeft(2,'0')}:${s.toString().padLeft(2,'0')}';
+    }
+    return '${m.toString().padLeft(2,'0')}:${s.toString().padLeft(2,'0')}';
   }
 
   @override
@@ -445,6 +513,7 @@ class _RoomPageState extends State<RoomPage>
     _quizAnim.dispose();
     _quizPollTimer?.cancel();
     _quizTimer?.cancel();
+    _recClockTimer?.cancel();
     // Recorder: if user exits without pressing End Session (e.g. back-swipe),
     // stop the camera fast and drain remaining uploads in the background.
     if (_recorder != null) {
@@ -474,13 +543,13 @@ class _RoomPageState extends State<RoomPage>
     if (_endingSession) return null;
     if (mounted) setState(() => _endingSession = true);
 
-    // Stop any active iOS broadcast share first so its final chunk is
-    // finalised before we call stopRecordingOnly().
-    await stopIOSShareIfActive();
-
     final rec = _recorder;
     _recorder = null; // detach so dispose() never interferes
 
+    // Stop recording for any active state (recording, paused, starting, or uploading).
+    // We must attempt stop even in 'starting' state — the native service may
+    // already be recording chunks even if the Dart state hasn't transitioned yet.
+    // If currently paused, the native service will wake and finalise normally.
     if (widget.isTeacher &&
         rec != null &&
         rec.state != RecState.done &&
@@ -490,35 +559,19 @@ class _RoomPageState extends State<RoomPage>
         if (kIsWeb) {
           log('[REC] Web: compositor drained — all chunks uploaded');
         }
+        // Mobile: don't block here — native FGS drains uploads independently.
+        // _drainAndDispose runs unawaited so the UI pops immediately while
+        // the background task waits for RecState.done (all chunks confirmed).
       } catch (e) {
         log('[REC] stopRecordingOnly error: $e');
       }
-
-      // Schedule the background drain BEFORE calling onEnd().
-      // onEnd() disconnects the LiveKit room which throws a TimeoutException
-      // and resets the network stack. If we schedule drain AFTER onEnd()
-      // the URLSession may already be mid-teardown when the drain starts.
-      // Scheduling here first guarantees the drain Future is alive and the
-      // background URLSession has its tasks queued before LiveKit disconnects.
-      //
-      // We wait 2 s after LiveKit disconnect to let the network interface
-      // recover before the background URLSession retries failed chunks.
-      // (The dedicated background URLSession has waitsForConnectivity=true
-      // so it will retry automatically, but the 2 s gives the OS time to
-      // re-establish the Wi-Fi/cell path that LiveKit just released.)
-      unawaited(() async {
-        // Give LiveKit time to tear down its sockets cleanly.
-        await Future.delayed(const Duration(seconds: 2));
-        await _drainAndDispose(rec);
-      }());
+      unawaited(_drainAndDispose(rec));
     }
 
     try {
       await widget.onEnd();
     } catch (e) {
-      // LiveKit throws TimeoutException on room disconnect — this is normal
-      // and does not affect the recording drain which is already scheduled.
-      log('[REC] onEnd error (LiveKit disconnect expected): $e');
+      log('[REC] onEnd error: $e');
     }
 
     if (mounted) Navigator.pop(context);
@@ -1057,6 +1110,10 @@ class _RoomPageState extends State<RoomPage>
                             // Recording indicators
                             _buildRecordingIndicator(),
 
+                            // iOS broadcast share banner + stop button
+                            if (Platform.isIOS && widget.isTeacher)
+                              _buildIOSShareBanner(),
+
                             // Participant count badge
                             Positioned(
                               bottom: 14,
@@ -1077,21 +1134,6 @@ class _RoomPageState extends State<RoomPage>
                             // Quiz overlay
                             if (_quizVisible && _activeQuiz != null)
                               _buildQuizOverlay(),
-
-                            // ── iOS floating Stop Share button ─────────────
-                            // Appears after broadcast share starts (no native
-                            // dialog), hidden as soon as share stops.
-                            if (_iosShareVisible && widget.isTeacher)
-                              Positioned(
-                                top: 12,
-                                left: 0,
-                                right: 0,
-                                child: Center(
-                                  child: _IOSStopShareButton(
-                                    onStop: () => stopIOSShareIfActive(),
-                                  ),
-                                ),
-                              ),
                           ],
                         ),
                       ),
@@ -1300,43 +1342,129 @@ class _RoomPageState extends State<RoomPage>
     );
   }
 
+  // ── iOS Share Active Banner ──────────────────────────────────────────────────
+  // Shown only on iOS when teacher has started a broadcast (opened another app).
+  // Floats at the top of the screen so it's visible after switching to any app.
+  Widget _buildIOSShareBanner() {
+    if (!_isBroadcastingIOS) return const SizedBox.shrink();
+    return Positioned(
+      top: 12,
+      left: 24,
+      right: 24,
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0E1120),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _cyan.withValues(alpha: 0.5),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: _cyan.withValues(alpha: 0.18),
+                blurRadius: 20,
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              // Pulsing dot
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.3, end: 1.0),
+                duration: const Duration(milliseconds: 800),
+                onEnd: () { if (mounted) setState(() {}); },
+                builder: (_, v, __) => Opacity(
+                  opacity: v,
+                  child: Container(
+                    width: 8, height: 8,
+                    decoration: const BoxDecoration(
+                      color: _cyan,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.screen_share_rounded, color: _cyan, size: 16),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'جارٍ مشاركة الشاشة',
+                  style: TextStyle(
+                    fontFamily: 'tajawal',
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              // Elapsed recording time shown here too
+              if (_recElapsedSeconds > 0)
+                Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: Text(
+                    _recElapsedLabel,
+                    style: const TextStyle(
+                      fontFamily: 'tajawal',
+                      color: _cyan,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ),
+              // Stop button
+              GestureDetector(
+                onTap: _stopIOSBroadcast,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _rose.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: _rose.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  child: const Text(
+                    'إيقاف المشاركة',
+                    style: TextStyle(
+                      fontFamily: 'tajawal',
+                      color: _rose,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // ── Recording indicator ────────────────────────────────────────────────────
   //
-  // Shows two badges stacked vertically:
-  //   1. Server REC badge  — driven by LiveKit egress (visible to all)
-  //   2. Client REC badge  — driven by _ClientRecorder (teacher only)
+  // Top-right corner, stacked vertically:
+  //   1. Server REC badge  — LiveKit egress, visible to all participants
+  //   2. Client REC badge  — teacher only, shows live elapsed time + state
   Widget _buildRecordingIndicator() {
-    final widgets = <Widget>[];
+    final badges = <Widget>[];
 
-    // Server egress REC badge (shown to everyone when LiveKit egress is active)
+    // ── Server egress badge ───────────────────────────────────────────────────
     if (_serverRecording) {
-      widgets.add(
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FadeTransition(
-              opacity: _recDotOpacity,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: _recRed,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-            const SizedBox(width: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.55),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: _recRed.withValues(alpha: 0.4),
-                  width: 1,
-                ),
-              ),
-              child: const Text(
+      badges.add(
+        AnimatedBuilder(
+          animation: _recDotAnim,
+          builder: (_, __) => _RecBadge(
+            dotColor: _recRed,
+            dotOpacity: _recDotOpacity.value,
+            pulsing: true,
+            children: const [
+              Text(
                 'REC',
                 style: TextStyle(
                   fontFamily: 'tajawal',
@@ -1346,132 +1474,131 @@ class _RoomPageState extends State<RoomPage>
                   letterSpacing: 1.2,
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     }
 
-    // Client recorder badge (teacher only)
+    // ── Client recorder badge (teacher only) ──────────────────────────────────
     if (widget.isTeacher && _recorder != null) {
-      final rec = _recorder!;
+      final rec   = _recorder!;
       final state = rec.state;
-      final mb = (rec.totalBytes / 1024 / 1024).toStringAsFixed(1);
-
-      Color dotColor;
-      String label;
-      switch (state) {
-        case RecState.starting:
-          dotColor = _textLow;
-          label = 'Starting…';
-          break;
-        case RecState.recording:
-          dotColor = _emerald;
-          label = '● LOCAL REC ${rec.uploadedChunks}↑ ${mb}MB';
-          break;
-        case RecState.paused:
-          dotColor = const Color(0xFFFFB800);
-          label = '⏸ PAUSED ${rec.uploadedChunks}↑ ${mb}MB';
-          break;
-        case RecState.uploading:
-          dotColor = const Color(0xFFFFB800);
-          label = 'Uploading… ${rec.uploadedChunks}↑';
-          break;
-        case RecState.done:
-          dotColor = _emerald;
-          label = '✓ Saved';
-          break;
-        case RecState.error:
-          dotColor = _rose;
-          label = 'Rec Error';
-          break;
-        default:
-          return widgets.isEmpty
-              ? const SizedBox.shrink()
-              : Positioned(
-            top: 14,
-            right: 14,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: widgets
-                  .map(
-                    (w) => Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: w,
-                ),
-              )
-                  .toList(),
-            ),
-          );
-      }
 
       if (state != RecState.idle) {
-        widgets.add(
+        final Color  dotColor;
+        final bool   pulsing;
+        final String stateLabel;
+        final String timeLabel  = _recElapsedLabel;
+        final String chunkLabel = '${rec.uploadedChunks}↑';
+        final String mbLabel    =
+            '${(rec.totalBytes / 1024 / 1024).toStringAsFixed(1)}MB';
+
+        switch (state) {
+          case RecState.starting:
+            dotColor   = _textLow;
+            pulsing    = false;
+            stateLabel = 'جارٍ البدء…';
+          case RecState.recording:
+            dotColor   = _emerald;
+            pulsing    = true;
+            stateLabel = 'تسجيل';
+          case RecState.paused:
+            dotColor   = const Color(0xFFFFB800);
+            pulsing    = false;
+            stateLabel = '⏸ متوقف';
+          case RecState.uploading:
+            dotColor   = const Color(0xFFFFB800);
+            pulsing    = false;
+            stateLabel = 'رفع…';
+          case RecState.done:
+            dotColor   = _emerald;
+            pulsing    = false;
+            stateLabel = '✓ محفوظ';
+          case RecState.error:
+            dotColor   = _rose;
+            pulsing    = false;
+            stateLabel = 'خطأ';
+          default:
+            dotColor   = _textLow;
+            pulsing    = false;
+            stateLabel = '';
+        }
+
+        badges.add(
           AnimatedBuilder(
             animation: _recDotAnim,
-            builder: (_, __) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.55),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: dotColor.withValues(
-                    alpha: state == RecState.recording
-                        ? (0.3 + 0.4 * _recDotOpacity.value)
-                        : state == RecState.paused
-                        ? 0.55
-                        : 0.4,
+            builder: (_, __) => _RecBadge(
+              dotColor:   dotColor,
+              dotOpacity: pulsing ? _recDotOpacity.value : 1.0,
+              pulsing:    pulsing,
+              children: [
+                // State label
+                Text(
+                  stateLabel,
+                  style: TextStyle(
+                    fontFamily: 'tajawal',
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: dotColor,
+                    letterSpacing: 0.3,
                   ),
-                  width: 1,
                 ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
+                // Elapsed time — shown while recording or paused
+                if (state == RecState.recording || state == RecState.paused) ...[
                   Container(
-                    width: 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: state == RecState.recording
-                          ? dotColor.withValues(
-                        alpha: 0.4 + 0.6 * _recDotOpacity.value,
-                      )
-                          : state == RecState.paused
-                          ? dotColor.withValues(alpha: 0.9)
-                          : dotColor,
-                    ),
+                    width: 1,
+                    height: 10,
+                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    color: dotColor.withValues(alpha: 0.35),
                   ),
-                  const SizedBox(width: 5),
                   Text(
-                    label,
+                    timeLabel,
                     style: TextStyle(
                       fontFamily: 'tajawal',
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
                       color: dotColor,
-                      letterSpacing: 0.4,
+                      letterSpacing: 0.8,
                     ),
                   ),
                 ],
-              ),
+                // Upload progress — always shown when not idle/error
+                if (state != RecState.starting &&
+                    state != RecState.done &&
+                    state != RecState.error) ...[
+                  Container(
+                    width: 1,
+                    height: 10,
+                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    color: dotColor.withValues(alpha: 0.25),
+                  ),
+                  Text(
+                    '$chunkLabel $mbLabel',
+                    style: TextStyle(
+                      fontFamily: 'tajawal',
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      color: dotColor.withValues(alpha: 0.7),
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         );
       }
     }
 
-    if (widgets.isEmpty) return const SizedBox.shrink();
+    if (badges.isEmpty) return const SizedBox.shrink();
     return Positioned(
       top: 14,
       right: 14,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
-        children: widgets
-            .map(
-              (w) =>
-              Padding(padding: const EdgeInsets.only(bottom: 6), child: w),
-        )
+        children: badges
+            .map((w) => Padding(padding: const EdgeInsets.only(bottom: 6), child: w))
             .toList(),
       ),
     );
@@ -2128,6 +2255,64 @@ class _RoomPageState extends State<RoomPage>
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _RecBadge — compact glass pill used in the recording indicator
+// ─────────────────────────────────────────────────────────────────────────────
+class _RecBadge extends StatelessWidget {
+  const _RecBadge({
+    required this.dotColor,
+    required this.dotOpacity,
+    required this.pulsing,
+    required this.children,
+  });
+
+  final Color        dotColor;
+  final double       dotOpacity;   // 0..1, driven by _recDotOpacity animation
+  final bool         pulsing;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.58),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: dotColor.withValues(
+            alpha: pulsing ? (0.28 + 0.38 * dotOpacity) : 0.40,
+          ),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: dotColor.withValues(alpha: pulsing ? 0.12 * dotOpacity : 0.08),
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Pulsing / static dot
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: dotColor.withValues(
+                alpha: pulsing ? (0.38 + 0.62 * dotOpacity) : 0.9,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          ...children,
         ],
       ),
     );
@@ -3546,84 +3731,5 @@ class NotificationChannelHelper {
     } on PlatformException catch (e) {
       log('NotificationChannelHelper: ${e.message}');
     }
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// _IOSStopShareButton
-//
-// Floating pill shown after the iOS broadcast picker fires (instead of the
-// native system dialog).  Tapping it calls stopIOSShareIfActive() on the mixin.
-// ─────────────────────────────────────────────────────────────────────────────
-class _IOSStopShareButton extends StatefulWidget {
-  const _IOSStopShareButton({required this.onStop});
-  final VoidCallback onStop;
-
-  @override
-  State<_IOSStopShareButton> createState() => _IOSStopShareButtonState();
-}
-
-class _IOSStopShareButtonState extends State<_IOSStopShareButton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _pulse;
-  late final Animation<double>    _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _pulse = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 850),
-    )..repeat(reverse: true);
-    _scale = Tween<double>(begin: 1.0, end: 1.04)
-        .animate(CurvedAnimation(parent: _pulse, curve: Curves.easeInOut));
-  }
-
-  @override
-  void dispose() {
-    _pulse.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _scale,
-      builder: (_, child) => Transform.scale(scale: _scale.value, child: child),
-      child: GestureDetector(
-        onTap: widget.onStop,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFF4F72),
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFFF4F72).withValues(alpha: 0.45),
-                blurRadius: 18,
-                spreadRadius: 2,
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.stop_screen_share_rounded,
-                  color: Colors.white, size: 18),
-              SizedBox(width: 8),
-              Text(
-                'إيقاف المشاركة',
-                style: TextStyle(
-                  fontFamily: 'tajawal',
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
