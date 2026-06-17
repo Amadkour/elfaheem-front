@@ -315,7 +315,7 @@ class ClientRecorder extends ChangeNotifier {
     try {
       final token     = (await apiClient.accessToken) ?? '';
       final uploadUrl =
-          '\${apiClient.baseUrl}/api/v1/live-sessions/\$sessionId/recording-chunk';
+          '${apiClient.baseUrl}/api/v1/live-sessions/$sessionId/recording-chunk';
 
       // Open EventChannel BEFORE invoking so we never miss events.
       _recEventSub?.cancel();
@@ -332,7 +332,7 @@ class ClientRecorder extends ChangeNotifier {
       final ok = await _recChannel.invokeMethod<bool>('startMicRecording', {
         'sessionId':    sessionId,
         'uploadUrl':    uploadUrl,
-        'authToken':    'Bearer \$token',
+        'authToken':    'Bearer $token',
         'chunkSeconds': chunkSeconds,
         'chunkIndex':   _nextChunkIndex,
       });
@@ -350,11 +350,11 @@ class ClientRecorder extends ChangeNotifier {
       }
     } on PlatformException catch (e) {
       _startCompleter = null;
-      _setError('Recording failed: \${e.message}');
+      _setError('Recording failed: ${e.message}');
     } catch (e, st) {
       _startCompleter = null;
-      log('[REC] _startRecording error: \$e\n\$st');
-      _setError('Recording failed: \$e');
+      log('[REC] _startRecording error: $e\n$st');
+      _setError('Recording failed: $e');
     }
   }
 
