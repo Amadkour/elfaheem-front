@@ -1,30 +1,26 @@
 // room_recorder.dart
 //
-// iOS two-phase recording flow:
+// iOS recording flow (single-phase):
 //
-//   Phase 1 · start() → invokeMethod('startMicRecording')
-//     • Native stores session params (uploadUrl, authToken, chunkSecs)
-//     • Native immediately emits 'screenLoopStarted' → _screenLoopCompleter
-//       resolves → RecState.recording is set
-//     • RPScreenRecorder has NOT started yet — no red pill, no dialog
+//   start() → invokeMethod('startMicRecording')
+//     • Native stores session params AND immediately calls startRPScreenRecorder()
+//     • iOS mic-permission dialog appears on first use
+//     • Red-pill recording indicator appears (iOS requirement)
+//     • AVAssetWriter chunk loop begins (H.264 video + AAC audio)
+//     • Native emits 'screenLoopStarted' → _startCompleter resolves
+//     • RecState.recording is set — chunks uploading every chunkSeconds
 //
-//   Phase 2 · room.dart calls invokeMethod('startScreenCaptureService')
-//     • Native calls RPScreenRecorder.startCapture()
-//     • iOS mic-permission dialog appears HERE (first use only)
-//     • Red-pill recording indicator appears (iOS requirement, cannot avoid)
-//     • On success: AVAssetWriter chunk loop begins with H.264 video + AAC audio
-//     • Native emits 'screenLoopStarted' again → upgradeToScreenRecording()
-//       resolves its own _screenLoopCompleter → _screenRecording confirmed
+//   room.dart still calls invokeMethod('startScreenCaptureService') after
+//   start() returns, but native uses rpRunning guard to make it a no-op
+//   (RPScreenRecorder is already running). This keeps room.dart unchanged.
 //
-//   The recorder handles TWO 'screenLoopStarted' events safely:
-//     • First emit (Phase 1): resolves the start() completer
-//     • Second emit (Phase 2): resolves the upgradeToScreenRecording() completer
-//   Both completers are separate instances so there is no double-complete error.
+//   chunkIndex is monotonically increasing (_nextChunkIndex) — never reset
+//   to 0 on reconnect so already-uploaded chunks are never overwritten.
 //
 // Android flow (unchanged):
-//   Phase 1 · start() → startMicRecording → stores params, emits screenLoopStarted
-//   Phase 2 · startScreenCaptureService → MediaProjection dialog
-//   Phase 3 · upgradeToScreenRecording() → waits for screenLoopStarted from service
+//   start() → startMicRecording → stores params, emits screenLoopStarted
+//   startScreenCaptureService → MediaProjection dialog
+//   upgradeToScreenRecording() → waits for screenLoopStarted from service
 
 import 'dart:async';
 import 'dart:developer';
@@ -310,11 +306,16 @@ class ClientRecorder extends ChangeNotifier {
 
   // ── Mobile: Phase 1 ───────────────────────────────────────────────────────
 
+  // Tracks the highest chunk index the native side has acknowledged, so that
+  // if the recorder restarts (e.g. room reconnect) the new chunks are numbered
+  // sequentially and don't overwrite already-uploaded chunks on the server.
+  int _nextChunkIndex = 0;
+
   Future<void> _startRecording() async {
     try {
       final token     = (await apiClient.accessToken) ?? '';
       final uploadUrl =
-          '${apiClient.baseUrl}/api/v1/live-sessions/$sessionId/recording-chunk';
+          '\${apiClient.baseUrl}/api/v1/live-sessions/\$sessionId/recording-chunk';
 
       // Open EventChannel BEFORE invoking so we never miss events.
       _recEventSub?.cancel();
@@ -323,39 +324,37 @@ class ClientRecorder extends ChangeNotifier {
         onError: _onNativeError,
       );
 
-      // Prepare the Phase-1 completer before invoking.
       _startCompleter = Completer<void>();
 
+      // startMicRecording now starts RPScreenRecorder immediately (no Phase 2
+      // gap). chunkIndex is monotonically increasing — never reset to 0 — so
+      // a reconnect/restart cannot overwrite chunks already on the server.
       final ok = await _recChannel.invokeMethod<bool>('startMicRecording', {
         'sessionId':    sessionId,
         'uploadUrl':    uploadUrl,
-        'authToken':    'Bearer $token',
+        'authToken':    'Bearer \$token',
         'chunkSeconds': chunkSeconds,
-        'chunkIndex':   0,
+        'chunkIndex':   _nextChunkIndex,
       });
 
       if (ok == true) {
-        // Wait for Phase-1 'screenLoopStarted'.
-        // iOS: arrives almost immediately (emitted synchronously in the handler).
-        // Android: also immediate (params stored, event emitted).
         await _startCompleter!.future.timeout(
-          const Duration(seconds: 10),
-          onTimeout: () => log('[REC] Phase-1 screenLoopStarted timeout'),
+          const Duration(seconds: 30),   // longer: includes RP permission dialog
+          onTimeout: () => log('[REC] screenLoopStarted timeout — assuming live'),
         );
         _startCompleter = null;
-        // State is now RecState.recording (set in _onNativeEvent).
-        log('[REC] Phase-1 complete — params stored, ready for startScreenCaptureService');
+        log('[REC] recording started — video+audio chunks active');
       } else {
         _startCompleter = null;
         _setError('startMicRecording returned false');
       }
     } on PlatformException catch (e) {
       _startCompleter = null;
-      _setError('Recording failed: ${e.message}');
+      _setError('Recording failed: \${e.message}');
     } catch (e, st) {
       _startCompleter = null;
-      log('[REC] _startRecording error: $e\n$st');
-      _setError('Recording failed: $e');
+      log('[REC] _startRecording error: \$e\n\$st');
+      _setError('Recording failed: \$e');
     }
   }
 
@@ -375,19 +374,15 @@ class ClientRecorder extends ChangeNotifier {
 
     switch (type) {
       case 'screenLoopStarted':
-        log('[REC] screenLoopStarted received');
-        // Phase-1 completer: resolves start()
+      // Single start event — native now starts RPScreenRecorder immediately
+      // in startMicRecording, so there is only one 'screenLoopStarted' event.
+        log('[REC] screenLoopStarted received — recording active');
         if (_startCompleter != null && !_startCompleter!.isCompleted) {
           _startCompleter!.complete();
-          // Set recording state immediately on Phase-1.
-          _screenRecording = true;
-          if (_state == RecState.starting) _set(RecState.recording);
-          notifyListeners();
-          return; // Phase-1 event consumed
         }
-        // Fallthrough: unexpected extra screenLoopStarted — ignore silently
-        // to prevent resetting the chunk timer or re-triggering beginChunkWriter.
-        log('[REC] screenLoopStarted: extra event ignored (Phase-1 already consumed)');
+        _screenRecording = true;
+        if (_state == RecState.starting) _set(RecState.recording);
+        notifyListeners();
 
       case 'videoChunksActive':
       // Phase-2 signal: AVAssetWriter is writing real video frames.
@@ -415,18 +410,19 @@ class ClientRecorder extends ChangeNotifier {
       case 'chunkUploaded':
         _uploadedChunks++;
         _totalBytes += (event['bytes'] as int? ?? 0);
+        // Advance _nextChunkIndex so a future restart continues from the
+        // correct position and doesn't overwrite uploaded chunks on the server.
+        final uploadedIdx = event['chunkIndex'] as int? ?? 0;
+        if (uploadedIdx + 1 > _nextChunkIndex) _nextChunkIndex = uploadedIdx + 1;
         notifyListeners();
-        log('[REC] chunk #${event['chunkIndex']} uploaded '
+        log('[REC] chunk #$uploadedIdx uploaded '
             '(${event['bytes']}B isFinal=${event['isFinal']})');
         if (event['isFinal'] == true && _stopping) {
           _set(RecState.done);
           // Do NOT cancel _recEventSub here — cancelling a broadcast
-          // stream subscription from within its own listener while the
-          // native EventChannel sink is still open triggers:
-          //   PlatformException(error, No active stream to cancel, null, null)
-          // because Flutter calls onCancel() on the StreamHandler but the
-          // native side already tore down the sink. dispose() is the single
-          // authoritative cancellation point.
+          // stream subscription from within its own listener throws
+          //   PlatformException(error, No active stream to cancel)
+          // dispose() is the single authoritative cancellation point.
         }
 
       case 'recordingPaused':

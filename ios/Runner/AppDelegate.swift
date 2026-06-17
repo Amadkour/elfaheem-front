@@ -311,37 +311,52 @@ import CoreVideo
             switch call.method {
 
             case "startMicRecording":
+                // ── Single-call recording start ───────────────────────────────
+                // startMicRecording now starts BOTH the chunk loop AND
+                // RPScreenRecorder in one call. The old two-phase design
+                // (Phase1=store params, Phase2=startScreenCaptureService) created
+                // gaps: Phase-1 chunks had no video frames (dropped as too small
+                // or rejected by server), and the async gap between phases let
+                // LiveKit reset AVAudioSession to SoloAmbient, silencing the mic.
+                //
+                // Dart side still calls startScreenCaptureService separately for
+                // the iOS permission dialog flow; we use rpRunning to make that
+                // a cheap no-op once we are already capturing.
                 guard let args = call.arguments as? [String: Any] else {
                     result(FlutterError(code: "BAD_ARGS", message: "Expected map", details: nil))
+                    return
+                }
+                guard !self.recording else {
+                    // Already recording — just confirm so Dart resolves.
+                    self.emitEvent(["event": "screenLoopStarted"])
+                    result(true)
                     return
                 }
                 self.sessionId  = args["sessionId"]    as? Int    ?? 0
                 self.uploadUrl  = args["uploadUrl"]    as? String ?? ""
                 self.authToken  = args["authToken"]    as? String ?? ""
                 self.chunkSecs  = args["chunkSeconds"] as? Int    ?? 5
-                self.chunkIndex = args["chunkIndex"]   as? Int    ?? 0
-                NSLog("[REC] startMicRecording: session=\(self.sessionId) chunkSecs=\(self.chunkSecs)")
-                // ── Start chunk writer in Phase 1 ─────────────────────────────
-                // beginChunkWriter() was previously only called from Phase 2
-                // (startRPScreenRecorder). If Phase 2 was slow or the second
-                // screenLoopStarted event was not emitted, no chunk timer was
-                // scheduled, so the 5-second rotation never fired and
-                // uploadChunkAsync was never called.
-                // Starting here guarantees chunks begin immediately.
-                // When startRPScreenRecorder also calls beginChunkWriter(), the
-                // scheduleChunkTimer() guard (chunkTimer == nil) makes it a no-op.
-                if !self.recording {
-                    self.recording   = true
-                    self.stopping    = false
-                    self.paused      = false
-                    self.videoWidth  = 0
-                    self.videoHeight = 0
-                    self.sweepStaleChunks()
-                    self.beginChunkWriter()
-                }
-                // Emit immediately so Dart's Phase-1 completer resolves.
+                // chunkIndex is monotonically increasing across the whole
+                // session — never reset to 0 so a reconnect doesn't overwrite
+                // already-uploaded chunks on the server.
+                let startIdx    = args["chunkIndex"]   as? Int    ?? 0
+                if startIdx > self.chunkIndex { self.chunkIndex = startIdx }
+                NSLog("[REC] startMicRecording: session=\(self.sessionId) chunk=\(self.chunkIndex) secs=\(self.chunkSecs)")
+                self.recording   = true
+                self.stopping    = false
+                self.paused      = false
+                self.videoWidth  = 0
+                self.videoHeight = 0
+                self.sweepStaleChunks()
+                // Emit before startRPScreenRecorder so Dart's _startCompleter
+                // resolves immediately regardless of how long permission dialog takes.
                 self.emitEvent(["event": "screenLoopStarted"])
                 result(true)
+                // Start RPScreenRecorder (permission dialog + red-pill).
+                // This is async; the chunk timer inside beginChunkWriter()
+                // is scheduled here and frames start flowing once the dialog
+                // is approved — no gap between param-store and first frame.
+                self.startRPScreenRecorder(result: { _ in })
 
             case "upgradeToScreenRecording":
                 if self.recording {
@@ -841,10 +856,19 @@ import CoreVideo
 
         RPScreenRecorder.shared().stopCapture { [weak self] error in
             if let e = error { NSLog("[REC] stopCapture: \(e.localizedDescription)") }
-            DispatchQueue.main.async {
-                self?.finaliseChunk(isFinal: isFinal) {
-                    self?.stopping = false
-                    result(nil)
+            // ── Drain the writer queue before finalising ───────────────────
+            // stopCapture's completion fires before all queued
+            // processSampleFromRecorder calls finish executing on writerQueue.
+            // Without this barrier, finishWriting races with in-flight
+            // appends → the last 1-3 seconds of the session are truncated.
+            // writerQueue.async{} after the barrier runs only after all
+            // prior writerQueue work is done, then we hop to main to finalise.
+            self?.writerQueue.async {
+                DispatchQueue.main.async {
+                    self?.finaliseChunk(isFinal: isFinal) {
+                        self?.stopping = false
+                        result(nil)
+                    }
                 }
             }
         }
@@ -1048,30 +1072,22 @@ import CoreVideo
             // switch apps immediately after confirming.
             self.appDidEnterBackground()
 
-            // ── Pause recording during the iOS broadcast confirmation overlay ─
-            // When the system sheet appears, iOS briefly suspends the Runner app
-            // which causes:
-            //   • AVAudioSession interruption → LiveKit tries to reconfigure →
-            //     "Configure audio error: Code=561017449 kAudioSessionIncompatibleCategory"
-            //   • RPScreenRecorder may deliver corrupted/duplicate frames during
-            //     the suspension window
+            // ── Do NOT pause recording during the picker overlay ─────────
+            // The previous approach paused (finalisedChunk + stopped writing)
+            // here, creating a deliberate gap of 5–30 seconds while the user
+            // looks at the system picker. For continuous recording we keep
+            // RPScreenRecorder writing app-screen frames throughout.
             //
-            // Pausing here (finalise current chunk, stop accepting frames) means
-            // the suspension window produces no data. Recording resumes cleanly
-            // once the first broadcast frame arrives via Darwin notification,
-            // which confirms the extension has started and iOS has fully resumed.
-            if self.recording && !self.paused && !self.stopping {
-                self.paused = true
-                NSLog("[SHARE] picker: recording paused before system overlay")
-                self.finaliseChunk(isFinal: false) { [weak self] in
-                    guard let self = self else { return }
-                    self.chunkIndex += 1
-                    NSLog("[SHARE] picker: paused chunk rotated at #\(self.chunkIndex)")
-                    // beginChunkWriter() is called when broadcast starts (first
-                    // Darwin frame notification) or when broadcast is cancelled
-                    // (stopBroadcastShare without isBroadcasting ever becoming true).
-                }
-            }
+            // AVAudioSession interruptions from the system sheet are handled
+            // by our audioSessionRouteChanged / audioSessionInterrupted
+            // observers which re-arm playAndRecord+videoChat+mixWithOthers
+            // automatically after iOS resumes the app.
+            //
+            // When the first Darwin frame notification arrives (broadcast confirmed),
+            // handleBroadcastData sets isBroadcasting=true which suppresses
+            // RPScreenRecorder frames in favour of the extension frames —
+            // the transition is seamless with no gap.
+            NSLog("[SHARE] picker: recording continues uninterrupted during overlay")
 
             // Register Darwin notification listeners BEFORE the picker appears
             // so we are ready the instant the extension's broadcastStarted() fires.
@@ -1099,22 +1115,14 @@ import CoreVideo
         endBgTask()
         emitEvent(["event": "broadcastStopped"])
         NSLog("[SHARE] broadcast stopped by app")
-        if recording && !stopping {
-            if paused {
-                // Broadcast was never confirmed (user cancelled picker).
-                // Resume RPScreenRecorder which was paused by showBroadcastPicker.
-                paused = false
-                beginChunkWriter()
-                NSLog("[SHARE] picker cancelled — RPScreenRecorder resumed at chunk #\(chunkIndex)")
-            } else {
-                // Broadcast was active: finalise the broadcast chunk and start
-                // a fresh RPScreenRecorder chunk.
-                finaliseChunk(isFinal: false) { [weak self] in
-                    guard let self = self, self.recording, !self.stopping, !self.paused else { return }
-                    self.chunkIndex += 1
-                    self.beginChunkWriter()
-                    NSLog("[SHARE] broadcast chunk rotated — RPScreenRecorder resuming at chunk #\(self.chunkIndex)")
-                }
+        // Recording was never paused during the picker; just rotate the chunk
+        // so the transition from broadcast back to RPScreenRecorder is seamless.
+        if recording && !stopping && !paused {
+            finaliseChunk(isFinal: false) { [weak self] in
+                guard let self = self, self.recording, !self.stopping, !self.paused else { return }
+                self.chunkIndex += 1
+                self.beginChunkWriter()
+                NSLog("[SHARE] broadcast chunk rotated — RPScreenRecorder resuming at chunk #\(self.chunkIndex)")
             }
         }
         result(nil)
@@ -1207,19 +1215,15 @@ import CoreVideo
         isBroadcasting = false
         removeDarwinListeners()
         emitEvent(["event": "broadcastStopped"])
-        if recording && !stopping {
-            if paused {
-                // Extension stopped before we got the first frame (race).
-                paused = false
-                beginChunkWriter()
-                NSLog("[SHARE] Darwin stop: resumed from paused state at chunk #\(chunkIndex)")
-            } else {
-                finaliseChunk(isFinal: false) { [weak self] in
-                    guard let self = self, self.recording, !self.stopping, !self.paused else { return }
-                    self.chunkIndex += 1
-                    self.beginChunkWriter()
-                    NSLog("[SHARE] Darwin stop: chunk rotated at #\(self.chunkIndex)")
-                }
+        // Broadcast ended — rotate chunk and resume RPScreenRecorder frames.
+        // (Recording was never paused during the picker, so no paused-state
+        // branch is needed here.)
+        if recording && !stopping && !paused {
+            finaliseChunk(isFinal: false) { [weak self] in
+                guard let self = self, self.recording, !self.stopping, !self.paused else { return }
+                self.chunkIndex += 1
+                self.beginChunkWriter()
+                NSLog("[SHARE] Darwin stop: chunk rotated at #\(self.chunkIndex)")
             }
         }
     }
@@ -1267,14 +1271,10 @@ import CoreVideo
                 // duration delta on the first frame of this one.
                 lastBroadcastPts = nil
                 NSLog("[SHARE] first broadcast frame — switching recording source")
-                // If recording was paused by showBroadcastPicker (to protect
-                // against the iOS overlay suspension window), resume it now.
-                // The extension is running, iOS has fully resumed, it's safe to write.
-                if recording && paused && !stopping {
-                    paused = false
-                    beginChunkWriter()
-                    NSLog("[SHARE] recording resumed from picker-pause — broadcast chunk #\(chunkIndex)")
-                }
+                // Recording is continuous — no paused state to resume from.
+                // isBroadcasting=true is enough to route subsequent frames
+                // through processSampleFromBroadcast instead of RPScreenRecorder.
+                NSLog("[SHARE] broadcast active — switching frame source at chunk #\(chunkIndex)")
             }
             guard recording, !stopping, !paused else { return }
             processSampleFromBroadcast(jpegData: payload, ptsNs: ptsNs)
