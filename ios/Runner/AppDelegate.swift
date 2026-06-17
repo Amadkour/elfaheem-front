@@ -1192,9 +1192,32 @@ import CoreVideo
     /// typeId: 0 = video (JPEG), 1 = audioMic (PCM), 2 = audioApp (PCM)
     private func handleBroadcastData(_ data: Data) {
         guard data.count >= 16 else { return }
-        let typeId  = data.prefix(4).withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
-        let ptsNs   = data.dropFirst(4).prefix(8).withUnsafeBytes { $0.load(as: UInt64.self).bigEndian }
-        let paySize = data.dropFirst(12).prefix(4).withUnsafeBytes { $0.load(as: UInt32.self).bigEndian }
+
+        // NOTE: do NOT use withUnsafeBytes { $0.load(as:) } here.
+        // load(as:) requires the pointer to be aligned to the loaded type's
+        // size (8 bytes for UInt64, 4 for UInt32). Data.dropFirst(n) returns
+        // a slice whose base address is `originalBase + n` — Data/Foundation
+        // makes no alignment guarantee for that address, so loading a UInt64
+        // from an offset-4 slice (as the old ptsNs line did) crashes roughly
+        // half the time with "Fatal error: load from misaligned raw pointer"
+        // depending on where the OS happened to place the backing buffer.
+        // Decoding byte-by-byte below is alignment-safe by construction since
+        // UInt8 has no alignment requirement greater than 1.
+        func beUInt32(_ bytes: Data, _ offset: Int) -> UInt32 {
+            var v: UInt32 = 0
+            for i in 0..<4 { v = (v << 8) | UInt32(bytes[bytes.startIndex + offset + i]) }
+            return v
+        }
+        func beUInt64(_ bytes: Data, _ offset: Int) -> UInt64 {
+            var v: UInt64 = 0
+            for i in 0..<8 { v = (v << 8) | UInt64(bytes[bytes.startIndex + offset + i]) }
+            return v
+        }
+
+        let typeId  = beUInt32(data, 0)
+        let ptsNs   = beUInt64(data, 4)
+        let paySize = beUInt32(data, 12)
+        guard data.count >= 16 + Int(paySize) else { return }
         let payload = Data(data.dropFirst(16).prefix(Int(paySize)))
 
         switch typeId {
