@@ -272,8 +272,12 @@ class ClientRecorder extends ChangeNotifier {
 
   @override
   Future<void> dispose() async {
-    _recEventSub?.cancel();
-    _recEventSub               = null;
+    // Cancel via Future so we never cancel from within the stream listener
+    // itself (which would throw "No active stream to cancel").
+    final sub = _recEventSub;
+    _recEventSub = null;
+    Future.microtask(() => sub?.cancel());
+
     _startCompleter            = null;
     _upgradeCompleter          = null;
     _micReadyForShareCompleter = null;
@@ -416,8 +420,13 @@ class ClientRecorder extends ChangeNotifier {
             '(${event['bytes']}B isFinal=${event['isFinal']})');
         if (event['isFinal'] == true && _stopping) {
           _set(RecState.done);
-          _recEventSub?.cancel();
-          _recEventSub = null;
+          // Do NOT cancel _recEventSub here — cancelling a broadcast
+          // stream subscription from within its own listener while the
+          // native EventChannel sink is still open triggers:
+          //   PlatformException(error, No active stream to cancel, null, null)
+          // because Flutter calls onCancel() on the StreamHandler but the
+          // native side already tore down the sink. dispose() is the single
+          // authoritative cancellation point.
         }
 
       case 'recordingPaused':
