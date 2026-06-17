@@ -3,10 +3,10 @@
 // Hero banner at the top of the course-detail screen.
 // Reads nothing from any provider — all data passed in as constructor params.
 // ─────────────────────────────────────────────────────────────────────────────
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart';
 
 import '../../../../config/theme/app_theme.dart';
 import '../../../../../utils/widget/refresh_button.dart';
@@ -34,7 +34,7 @@ class CourseHero extends StatelessWidget {
         SizedBox(
           height: 260,
           width: double.infinity,
-          child: _buildBackground(),
+          child: _buildBackground(context),
         ),
         Positioned(
           top: 12,
@@ -117,16 +117,12 @@ class CourseHero extends StatelessWidget {
     );
   }
 
-  Widget _buildBackground() {
+  Widget _buildBackground(BuildContext context) {
     final imageUrl = course.imageUrl;
     if (imageUrl.isNotEmpty) {
       return Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF1A1F3A), Color(0xFF2D3461)],
-          ),
+        decoration:  BoxDecoration(
+          gradient: context.themeConfig.linearPrimary,
         ),
         child: DecoratedBox(
           decoration: BoxDecoration(
@@ -158,12 +154,8 @@ class _GradientBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF1A1F3A), Color(0xFF2D3461)],
-          ),
+        decoration:  BoxDecoration(
+          gradient: context.themeConfig.linearAccent,
         ),
         child: Center(
           child: Icon(

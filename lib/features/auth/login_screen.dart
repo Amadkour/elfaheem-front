@@ -71,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Consumer<LangProvider>(builder: (context, l, _) {
       return BasePage(
-        background: context.colors.isDark?null:context.themeConfig.cardBg,
+        background: context.colors.isDark?null:isWide ?context.themeConfig.background.withValues(alpha: 0.5):context.themeConfig.background,
         child: isWide ? _buildWideLayout() : _buildNarrowLayout(),
       );
     });
@@ -252,12 +252,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               Color(0xff1E293B),
                             ],
                           )
-                        : const LinearGradient(
-                            colors: [
-                              Color(0xffFFE082),
-                              Color(0xffFFB300),
-                            ],
-                          ),
+                        : context.themeConfig.linearAccent,
                   ),
                   child: Stack(
                     children: [

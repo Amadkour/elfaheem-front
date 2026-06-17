@@ -108,6 +108,12 @@ import CoreVideo
     // and frames from the broadcast extension are written instead.
     private var isBroadcasting      = false
 
+    // Tracks the previous broadcast frame's presentation timestamp so we can
+    // compute each frame's REAL duration (extension frame arrival is not a
+    // fixed cadence — JPEG encode + file write + Darwin notify round-trip
+    // introduces jitter). nil until the first broadcast frame is written.
+    private var lastBroadcastPts:   CMTime?
+
     // ── Broadcast Extension IPC (App Group + Darwin notifications) ───────────
     //
     // CFMessagePort CANNOT cross the iOS process sandbox on modern iOS —
@@ -120,13 +126,22 @@ import CoreVideo
     //
     // ⚠️  REQUIRED XCODE SETUP (one-time, ~30 seconds):
     //   1. Select the Runner target → Signing & Capabilities → "+" → App Groups
-    //      Add group ID:  group.com.example.flutter_education_app
+    //      Add group ID:  group.com.example.flutterEducationApp
     //   2. Select the BroadcastUploadExtension target → same steps → same ID
     //   Both targets must share the EXACT same group string.
     //
+    //   NOTE: this must match BroadcastUploadExtension.entitlements AND the
+    //   kAppGroup constant in SampleHandler.swift EXACTLY (character-for-
+    //   character). A previous version of this file used the snake_case
+    //   variant "group.com.example.flutter_education_app", which silently
+    //   mismatched the entitlements file (camelCase) — that mismatch makes
+    //   containerURL(forSecurityApplicationGroupIdentifier:) return nil in
+    //   BOTH processes, breaking the IPC with no obvious error at the call
+    //   site. If you ever rename the App Group, grep the whole project for
+    //   the old string and update every occurrence in the same commit.
     //   If your bundle ID differs, update kAppGroup in BOTH this file and
     //   SampleHandler.swift — they must be identical.
-    private let kAppGroup           = "group.com.example.flutter_education_app"
+    private let kAppGroup           = "group.com.example.flutterEducationApp"
     private let kDarwinFrameNotif   = "com.example.flutter_education_app.frame"
     private let kDarwinStopNotif    = "com.example.flutter_education_app.stop"
     private let kFrameFileName      = "broadcast_frame.bin"
@@ -533,8 +548,30 @@ import CoreVideo
             let pts  = CMTimeMake(value: Int64(ptsNs / 1_000_000),
                                   timescale: 1_000)   // millisecond timescale
 
+            // Real per-frame duration = delta from the previous broadcast
+            // frame's PTS. Extension frame cadence is not fixed (JPEG encode +
+            // shared-file write + Darwin notify round-trip jitters), so a
+            // hardcoded 1/30s duration would be wrong on most frames even
+            // though the PTS itself is accurate. Clamp to a sane range so a
+            // single dropped/delayed notification (or the first frame, which
+            // has no prior PTS to diff against) can't produce a zero-length
+            // or absurdly long sample.
+            let fallbackDuration = CMTime(value: 1, timescale: 30)
+            var duration = fallbackDuration
+            if let last = self.lastBroadcastPts {
+                let delta = CMTimeSubtract(pts, last)
+                let deltaSeconds = CMTimeGetSeconds(delta)
+                if deltaSeconds.isFinite, deltaSeconds > 0.005, deltaSeconds < 1.0 {
+                    duration = delta
+                }
+                // else: out-of-range delta (clock jump, dropped notification,
+                // or out-of-order frame) — keep fallbackDuration rather than
+                // writing a degenerate sample.
+            }
+            self.lastBroadcastPts = pts
+
             var timingInfo = CMSampleTimingInfo(
-                duration:               CMTime(value: 1, timescale: 30),
+                duration:               duration,
                 presentationTimeStamp:  pts,
                 decodeTimeStamp:        .invalid
             )
@@ -672,6 +709,12 @@ import CoreVideo
         // every subsequent real frame (which has pts > 0) to be treated as
         // "before the session" and silently dropped → black video track.
         writerSessionStarted = false
+        // New chunk = new writer = new timeline, so the previous chunk's last
+        // broadcast-frame PTS is no longer a valid baseline for a duration
+        // delta. Reset it so the first broadcast frame of this chunk falls
+        // back to fallbackDuration instead of computing a (likely huge,
+        // cross-chunk) delta.
+        lastBroadcastPts = nil
 
         NSLog("[REC] beginChunkWriter: chunk #\(chunkIndex) \(w)×\(h)")
         scheduleChunkTimer()
@@ -1159,6 +1202,10 @@ import CoreVideo
             // Video frame (JPEG) — write into the active AVAssetWriter chunk.
             if !isBroadcasting {
                 isBroadcasting = true
+                // Fresh broadcast session — any previous PTS baseline is from
+                // a prior (now-stopped) broadcast and would produce a bogus
+                // duration delta on the first frame of this one.
+                lastBroadcastPts = nil
                 NSLog("[SHARE] first broadcast frame — switching recording source")
                 // If recording was paused by showBroadcastPicker (to protect
                 // against the iOS overlay suspension window), resume it now.

@@ -239,7 +239,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
 
                   // ── Logout ───────────────────────────────────────────────
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.fromLTRB( 20,0,20,20),
                     child: SettingsGroup(
                       title: 'exit'.tr,
                       itemBackground:c.danger.withAlpha(30),
@@ -256,20 +256,20 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                            }
                          },
                         ),
-                        SettingsTile(
-                          icon: Icons.delete,
-                          iconBg: c.dangerTint,
-                          iconColor: c.danger,
-                          label: 'delete_account_title'.tr,
-                          onTap:() async {
-                            final ok = await Helpers.confirmDialog(context,title: "are_you_sure_to_delete_account".tr,confirm: "delete".tr);
-                            if (ok == true && context.mounted) {
-                              Helpers.showMessage( 'your_account_will_deleted_successfully_through_14_days'.tr);
-                              await Future.delayed(Duration(seconds: 5));
-                              await context.read<ProfileProvider>().deleteAccount(context);
-                            }
-                          },
-                        ),
+                        // SettingsTile(
+                        //   icon: Icons.delete,
+                        //   iconBg: c.dangerTint,
+                        //   iconColor: c.danger,
+                        //   label: 'delete_account_title'.tr,
+                        //   onTap:() async {
+                        //     final ok = await Helpers.confirmDialog(context,title: "are_you_sure_to_delete_account".tr,confirm: "delete".tr);
+                        //     if (ok == true && context.mounted) {
+                        //       Helpers.showMessage( 'your_account_will_deleted_successfully_through_14_days'.tr);
+                        //       await Future.delayed(Duration(seconds: 5));
+                        //       await context.read<ProfileProvider>().deleteAccount(context);
+                        //     }
+                        //   },
+                        // ),
                       ],
                     ),
                   ),
@@ -285,16 +285,6 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
   Widget _webHeader(AppColors c) => Container(
         height: 56,
         padding: const EdgeInsets.symmetric(horizontal: 24),
-        decoration: BoxDecoration(
-          color: c.cardBg, // ← was: context.themeConfig.cardBg
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
         child: Row(children: [
           Text('account'.tr, style: c.h2.copyWith(fontSize: 16)),
         ]),

@@ -196,11 +196,11 @@ class WideShell extends StatelessWidget {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Elfaheem',
+                                const Text('Al-Faheem',
                                     style: TextStyle(
                                         fontFamily: 'bahji',
                                         color: Colors.white,
-                                        fontWeight: FontWeight.w900,
+                                        fontWeight: FontWeight.normal,
                                         fontSize: 17)),
                                 Text('منصة التعلم الذكي',
                                     style: TextStyle(
@@ -391,7 +391,7 @@ class _SidebarTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         decoration: BoxDecoration(
           color: selected
-              ? context.themeConfig.primary.withValues(alpha: 0.2)
+              ? context.themeConfig.accent2.withValues(alpha: 0.2)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
@@ -429,7 +429,7 @@ class _SidebarTile extends StatelessWidget {
                   color: selected
                       ? Colors.white
                       : Colors.white.withValues(alpha: 0.48),
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  fontWeight: selected ? FontWeight.w500 : FontWeight.normal,
                   fontSize: 14,
                 ),
               ),
@@ -469,7 +469,7 @@ class _WideTopBar extends StatelessWidget {
     return Container(
       height: 64,
       decoration: BoxDecoration(
-        color: context.themeConfig.cardBg,
+        color: context.themeConfig.primary,
         border: Border(
             bottom: BorderSide(
                 color: context.themeConfig.primary.withValues(alpha: 0.08))),
@@ -483,7 +483,7 @@ class _WideTopBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 28),
       child: Row(
         children: [
-          Text(title, style: context.colors.h2),
+          Text(title, style: context.colors.h2.copyWith(color:Colors.white,fontWeight:FontWeight.normal)),
           const Spacer(),
           if (onRefresh != null) RefreshButton(onTap: onRefresh!),
           SizedBox(
@@ -510,7 +510,7 @@ class NotificationIcon extends StatelessWidget {
         margin: EdgeInsets.all(5),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
-          color: context.themeConfig.primary,
+          color: context.themeConfig.accent2,
         ),
         child: Stack(clipBehavior: Clip.none, children: [
           Icon(Icons.notifications_rounded, color: Colors.white, size: 20),

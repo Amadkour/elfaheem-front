@@ -72,6 +72,7 @@ class ThemeConfigModel {
   // ── Gradients (List<Color>, ordered) ────────────────────────────────────
   final List<Color> gradientPrimary;
   final List<Color> gradientAccent;
+  final List<Color> gradientAccent2;
   final List<Color> gradientSlider;
   final List<Color> primarySliderGradient; // alias: primary brand slider
   final List<Color> gradientLightSlideBar;
@@ -132,6 +133,7 @@ class ThemeConfigModel {
     required this.cardShadowColorDark,
     required this.gradientPrimary,
     required this.gradientAccent,
+    required this.gradientAccent2,
     required this.gradientSlider,
     required this.primarySliderGradient,
     required this.gradientLightSlideBar,
@@ -224,6 +226,7 @@ class ThemeConfigModel {
       // Gradients
       gradientPrimary: _cl(j['gradient_primary']),
       gradientAccent: _cl(j['gradient_accent']),
+      gradientAccent2: _cl(j['gradient_accent2']),
       gradientSlider: _cl(j['gradient_slider']),
       primarySliderGradient: _cl(j['primary_slider_gradient']),
       gradientLightSlideBar: _cl(j['gradient_light_slide_bar']),

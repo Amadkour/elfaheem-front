@@ -104,6 +104,10 @@ class ThemeConfigProvider extends ChangeNotifier {
       _model?.gradientAccent ??
           const [Color(0xFFF4C542), Color(0xFFF8D670)];
 
+  List<Color> get gradientAccent2 =>
+      _model?.gradientAccent2 ??
+          const [Color(0xFFF4C542), Color(0xFFF8D670)];
+
   List<Color> get gradientSlider =>
       _model?.gradientSlider ??
           const [Color(0xFF2E2E2E), Color(0xFF4A4A4A), Color(0xFF2E2E2E)];
@@ -224,11 +228,21 @@ class ThemeConfigProvider extends ChangeNotifier {
     end: Alignment.bottomRight,
     colors: gradientAccent,
   );
+  LinearGradient get linearAccent2 => LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: gradientAccent2,
+  );
 
   LinearGradient get linearSlider => LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: gradientSlider,
+  );
+  LinearGradient get linearPrimarySlider => LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: primarySliderGradient,
   );
 
   LinearGradient get linearDisable => LinearGradient(

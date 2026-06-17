@@ -30,10 +30,7 @@ class AuthSidebar extends StatelessWidget {
     return Container(
       width: context.width/3 >400?400:context.width/3 ,
       decoration:  BoxDecoration(
-        gradient:LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors:context.themeConfig.primarySliderGradient),
+        gradient:context.themeConfig.linearSlider,
       ),
       child: Stack(
         children: [
@@ -451,7 +448,7 @@ class PrimaryButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: isLoading || !enable ? null : onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: enable? context.themeConfig.accent:context.themeConfig.textDark,
+          backgroundColor: enable? context.themeConfig.accent2.withValues(alpha:0.7):context.themeConfig.textDark,
           disabledBackgroundColor: context.themeConfig.accent.withValues(alpha:0.6),
           foregroundColor: Colors.white,
           elevation: 0,

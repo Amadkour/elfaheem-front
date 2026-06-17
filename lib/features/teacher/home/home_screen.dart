@@ -10,7 +10,6 @@ import '../../../config/theme/app_theme.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../auth/auth_provider.dart';
-import '../../shared/course/home_course_list.dart';
 import '../../shared/notification/notifications_provider.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import '../../student/dashboard/dashboard_screen.dart';
@@ -62,16 +61,15 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
             ),
             slivers: [
               // ── Top bar ─────────────────────────────────────────
-              if (!isWide) SliverToBoxAdapter(child: _TopBar()),
-              if (!isWide)
-                const SliverToBoxAdapter(child: SizedBox(height: 20))
+              if (!isWide) ...[SliverToBoxAdapter(child: _TopBar()),
+                const SliverToBoxAdapter(child: SizedBox(height: 20))]
               else
                 SliverToBoxAdapter(child: _WebTopBar()),
 
               // ── Stats ────────────────────────────────────────────
               SliverToBoxAdapter(
                 child: ColoredBox(
-                  color: context.themeConfig.cardBg,
+                  color: context.themeConfig.background,
                   child: Column(
                     children: [
                       ContentBox(
@@ -168,17 +166,8 @@ class _WebTopBar extends StatelessWidget {
     final name = context.watch<AuthProvider>().currentUser?.name ?? 'sir'.tr;
     return Container(
       height: 56,
+      color: context.themeConfig.background,
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      decoration: BoxDecoration(
-        color: context.themeConfig.cardBg,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
       child: Row(
         children: [
           Text(
@@ -369,20 +358,17 @@ class StatsRow extends StatelessWidget {
           value: stats.overallRating.toStringAsFixed(1),
           label: 'overall_rate'.tr,
           icon: Icons.star_rounded,
-          gradient: const LinearGradient(
-            colors: [Color(0xFFFF9500), Color(0xFFFF9500)],
-          ),
-          shadowColor: const Color(0xFFFF9500),
+          gradient: context.themeConfig.linearPrimarySlider,
+
+          shadowColor: context.themeConfig.accent2,
         ),
         const SizedBox(width: 12),
         _StatCard(
           value: '${stats.totalStudents}',
           label: 'total_count'.tr,
           icon: Icons.people_alt_rounded,
-          gradient: const LinearGradient(
-            colors: [Color(0xFFFFD166), Color(0xFFFFD166)],
-          ),
-          shadowColor: const Color(0xFFFFD166),
+          gradient: context.themeConfig.linearPrimary,
+          shadowColor: context.themeConfig.accent2,
         ),
         const SizedBox(width: 12),
         _StatCard(
@@ -513,7 +499,7 @@ class _AddCourseButton extends StatelessWidget {
     child: Container(
       height: 54,
       decoration: BoxDecoration(
-        gradient: AppTheme.primaryGradient,
+        color:context.themeConfig.accent2.withValues(alpha:0.7),
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(

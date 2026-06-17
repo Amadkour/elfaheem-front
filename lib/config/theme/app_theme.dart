@@ -867,9 +867,9 @@ class AppTheme {
   );
   static const TextStyle h2 = TextStyle(
     fontSize: 22,
-    fontWeight: FontWeight.w700,
     color: textDark,
-    fontFamily: 'tajawal',
+    fontWeight:FontWeight.normal,
+    fontFamily: 'bahji',
     letterSpacing: -0.3,
   );
   static const TextStyle h3 = TextStyle(
