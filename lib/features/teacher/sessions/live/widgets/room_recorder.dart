@@ -252,10 +252,6 @@ class ClientRecorder extends ChangeNotifier {
       await _webRecorder?.stop();
     } else {
       await _stopMobile(isFinal: true);
-      // DO NOT cancel _recEventSub here — we need it alive to receive the
-      // final 'chunkUploaded' event with isFinal=true that transitions to
-      // RecState.done. It is cancelled inside _onNativeEvent once that event
-      // arrives, or in dispose() if the recorder is abandoned.
     }
   }
 
@@ -276,15 +272,8 @@ class ClientRecorder extends ChangeNotifier {
 
   @override
   Future<void> dispose() async {
-    // If we are still draining (uploading state), do NOT cancel _recEventSub —
-    // it is the only way we learn that the final chunk was uploaded and can
-    // transition to RecState.done. _drainAndDispose in room.dart owns the
-    // lifecycle from here; the subscription cancels itself in _onNativeEvent
-    // once isFinal=true chunkUploaded arrives.
-    if (_state != RecState.uploading) {
-      _recEventSub?.cancel();
-      _recEventSub = null;
-    }
+    _recEventSub?.cancel();
+    _recEventSub               = null;
     _startCompleter            = null;
     _upgradeCompleter          = null;
     _micReadyForShareCompleter = null;
@@ -392,8 +381,14 @@ class ClientRecorder extends ChangeNotifier {
           notifyListeners();
           return; // Phase-1 event consumed
         }
-        // Phase-2 completer: resolves upgradeToScreenRecording()
-        // This fires when RPScreenRecorder's startCapture completion handler runs.
+        // Fallthrough: unexpected extra screenLoopStarted — ignore silently
+        // to prevent resetting the chunk timer or re-triggering beginChunkWriter.
+        log('[REC] screenLoopStarted: extra event ignored (Phase-1 already consumed)');
+
+      case 'videoChunksActive':
+      // Phase-2 signal: AVAssetWriter is writing real video frames.
+      // Resolves upgradeToScreenRecording()'s _upgradeCompleter.
+        log('[REC] videoChunksActive received');
         if (_upgradeCompleter != null && !_upgradeCompleter!.isCompleted) {
           _upgradeCompleter!.complete();
         }

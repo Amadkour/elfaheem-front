@@ -137,12 +137,7 @@ import CoreVideo
     private var videoWidth:  Int = 0
     private var videoHeight: Int = 0
 
-    // ── Background keepalive ──────────────────────────────────────────────────
-    // Holds a background task that keeps the host app alive while the
-    // BroadcastUploadExtension is recording from another app.
-    // Without this iOS suspends the Flutter process in ~5 seconds, Darwin
-    // notifications from the extension queue up unprocessed, and
-    // AVAssetWriter writes fail silently.
+    // ── Background keepalive task ─────────────────────────────────────────────
     private var bgTask: UIBackgroundTaskIdentifier = .invalid
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -178,9 +173,6 @@ import CoreVideo
         return true
     }
 
-    // Called by NotificationCenter when app goes to background.
-    // Only starts the background task if the extension is (or is about to be)
-    // broadcasting — no need to keep the process alive otherwise.
     @objc private func appDidEnterBackground() {
         guard isBroadcasting || darwinObserverAdded else { return }
         guard bgTask == .invalid else { return }
@@ -191,7 +183,6 @@ import CoreVideo
             self.finaliseChunk(isFinal: false) { [weak self] in
                 guard let self = self else { return }
                 self.chunkIndex += 1
-                NSLog("[REC] emergency chunk rotated #\(self.chunkIndex)")
             }
             UIApplication.shared.endBackgroundTask(self.bgTask)
             self.bgTask = .invalid
@@ -199,17 +190,15 @@ import CoreVideo
         NSLog("[REC] background task started id=\(bgTask.rawValue)")
     }
 
-    // Called by NotificationCenter when app returns to foreground.
     @objc private func appWillEnterForeground() {
         endBgTask()
-        NSLog("[REC] background task ended — app foregrounded")
     }
 
-    // End the background task from any call site. Safe to call multiple times.
     private func endBgTask() {
         guard bgTask != .invalid else { return }
         UIApplication.shared.endBackgroundTask(bgTask)
         bgTask = .invalid
+        NSLog("[REC] background task ended")
     }
 
     override func application(
@@ -280,7 +269,10 @@ import CoreVideo
 
             case "upgradeToScreenRecording":
                 if self.recording {
-                    self.emitEvent(["event": "screenLoopStarted"])
+                    // Emit a DISTINCT event so Dart's _upgradeCompleter resolves
+                    // without accidentally triggering Phase-1 logic or resetting
+                    // the chunk timer again via another beginChunkWriter() call.
+                    self.emitEvent(["event": "videoChunksActive"])
                     result(true)
                 } else {
                     result(false)
@@ -612,6 +604,14 @@ import CoreVideo
     // ─────────────────────────────────────────────────────────────────────────
 
     private func beginChunkWriter() {
+        // beginChunkWriter creates an AVAssetWriter and schedules a Timer.
+        // Both must happen on the main thread:
+        //   • Timer.scheduledTimer requires the main RunLoop
+        //   • AVAssetWriter init is not thread-safe
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in self?.beginChunkWriter() }
+            return
+        }
         guard !stopping else { return }
 
         let fileName = String(format: "rec_chunk_%06d.mp4", chunkIndex)
@@ -678,15 +678,37 @@ import CoreVideo
     }
 
     private func scheduleChunkTimer() {
-        chunkTimer?.invalidate()
-        chunkTimer = Timer.scheduledTimer(withTimeInterval: Double(chunkSecs),
-                                          repeats: false) { [weak self] _ in
+        // MUST run on main thread — Timer.scheduledTimer requires a RunLoop.
+        // Background DispatchQueues (writerQueue, ipcReadQueue) have NO RunLoop,
+        // so a Timer created there is never added to any run loop and never fires.
+        // Result: chunks are never rotated → only the first chunk is ever saved.
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in self?.scheduleChunkTimer() }
+            return
+        }
+        // Guard: if a timer is already running, don't reset it.
+        // beginChunkWriter() can be called multiple times (e.g. from 3 rapid
+        // screenLoopStarted events) and each call previously reset the timer
+        // back to zero — the 5-second chunk never completed.
+        guard chunkTimer == nil else {
+            NSLog("[REC] scheduleChunkTimer: timer already running — skipping reset")
+            return
+        }
+        chunkTimer = Timer.scheduledTimer(
+            withTimeInterval: Double(chunkSecs),
+            repeats: false
+        ) { [weak self] _ in
             self?.rotateChunk()
         }
+        NSLog("[REC] chunk timer scheduled: \(chunkSecs)s for chunk #\(chunkIndex)")
     }
 
     private func rotateChunk() {
         guard recording, !stopping, !paused else { return }
+        // Nil the timer here so scheduleChunkTimer() inside the next
+        // beginChunkWriter() call sees nil and creates a fresh one.
+        chunkTimer?.invalidate()
+        chunkTimer = nil
         finaliseChunk(isFinal: false) { [weak self] in
             guard let self = self, self.recording, !self.stopping, !self.paused else { return }
             self.chunkIndex += 1
@@ -730,8 +752,7 @@ import CoreVideo
 
     private func stopRecording(isFinal: Bool, result: @escaping FlutterResult) {
         guard recording else { result(nil); return }
-        NSLog("[REC] stopRecording: isFinal=\(isFinal) chunk=#\(chunkIndex)")
-        // Set flags FIRST so processSample* drops all new samples immediately.
+        NSLog("[REC] stopRecording: isFinal=\(isFinal)")
         stopping = true; recording = false
         chunkTimer?.invalidate(); chunkTimer = nil
         isBroadcasting = false
@@ -754,14 +775,10 @@ import CoreVideo
     // ─────────────────────────────────────────────────────────────────────────
 
     private func finaliseChunk(isFinal: Bool, completion: @escaping () -> Void) {
-        // Capture into locals and nil properties IMMEDIATELY.
-        // This is the critical fix for the crash:
-        //   "Cannot call finishWritingWithCompletionHandler when status is 2"
-        //
-        // The crash happens when finaliseChunk is called twice on the same
-        // assetWriter (e.g. stopBroadcastShare rotates a chunk, then
-        // stopRecording finalises again). By nilling assetWriter before any
-        // async work, the second call hits the guard below and returns safely.
+        // Capture into locals and nil immediately — prevents double-finishWriting crash.
+        // "Cannot call finishWritingWithCompletionHandler when status is 2" happens
+        // when this is called twice on the same writer (e.g. stopBroadcastShare then
+        // stopRecording). Nilling first means the second call hits the guard below.
         guard let writer  = assetWriter,
               let vi      = videoInput,
               let ai      = audioInput,
@@ -769,24 +786,16 @@ import CoreVideo
             DispatchQueue.main.async { completion() }
             return
         }
-
-        // Guard: only call finishWriting when the writer is actively writing.
-        // Calling it on a .failed or .completed writer crashes with status 2.
         guard writer.status == .writing else {
-            NSLog("[REC] finaliseChunk: skipped (writer status=\(writer.status.rawValue))")
+            NSLog("[REC] finaliseChunk skipped (writer status=\(writer.status.rawValue))")
             assetWriter = nil; videoInput = nil; audioInput = nil
             currentFile = nil; writerSessionStarted = false
             DispatchQueue.main.async { completion() }
             return
         }
-
-        // Nil everything now — any re-entrant call sees nil and returns above.
         assetWriter = nil; videoInput = nil; audioInput = nil
         currentFile = nil; writerSessionStarted = false
-
         let idx = chunkIndex
-
-        // markAsFinished + finishWriting must run on the same queue as appends.
         writerQueue.async { [weak self] in
             vi.markAsFinished()
             ai.markAsFinished()
@@ -955,16 +964,22 @@ import CoreVideo
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { result(nil); return }
 
-            // Pre-start the background task NOW before the picker sheet appears.
-            // The teacher may switch apps immediately after confirming; we must
-            // already hold the task or iOS suspends us before the first frame.
+            // Pre-start background task before picker appears — teacher may
+            // switch apps immediately after confirming.
             self.appDidEnterBackground()
 
-            // Pause recording during the iOS broadcast confirmation overlay.
-            // The system sheet briefly suspends the Runner causing AVAudioSession
-            // interruptions and possibly corrupted RPScreenRecorder frames.
-            // Pausing means the overlay window produces no data; recording
-            // resumes on the first Darwin frame notification from the extension.
+            // ── Pause recording during the iOS broadcast confirmation overlay ─
+            // When the system sheet appears, iOS briefly suspends the Runner app
+            // which causes:
+            //   • AVAudioSession interruption → LiveKit tries to reconfigure →
+            //     "Configure audio error: Code=561017449 kAudioSessionIncompatibleCategory"
+            //   • RPScreenRecorder may deliver corrupted/duplicate frames during
+            //     the suspension window
+            //
+            // Pausing here (finalise current chunk, stop accepting frames) means
+            // the suspension window produces no data. Recording resumes cleanly
+            // once the first broadcast frame arrives via Darwin notification,
+            // which confirms the extension has started and iOS has fully resumed.
             if self.recording && !self.paused && !self.stopping {
                 self.paused = true
                 NSLog("[SHARE] picker: recording paused before system overlay")
@@ -972,11 +987,14 @@ import CoreVideo
                     guard let self = self else { return }
                     self.chunkIndex += 1
                     NSLog("[SHARE] picker: paused chunk rotated at #\(self.chunkIndex)")
+                    // beginChunkWriter() is called when broadcast starts (first
+                    // Darwin frame notification) or when broadcast is cancelled
+                    // (stopBroadcastShare without isBroadcasting ever becoming true).
                 }
             }
 
-            // Register Darwin listeners BEFORE the picker so we never miss
-            // the first frame notification from broadcastStarted().
+            // Register Darwin notification listeners BEFORE the picker appears
+            // so we are ready the instant the extension's broadcastStarted() fires.
             self.registerDarwinListeners()
 
             let picker = RPSystemBroadcastPickerView(frame: CGRect(x: 0, y: 0, width: 60, height: 60))
@@ -1003,15 +1021,19 @@ import CoreVideo
         NSLog("[SHARE] broadcast stopped by app")
         if recording && !stopping {
             if paused {
+                // Broadcast was never confirmed (user cancelled picker).
+                // Resume RPScreenRecorder which was paused by showBroadcastPicker.
                 paused = false
                 beginChunkWriter()
                 NSLog("[SHARE] picker cancelled — RPScreenRecorder resumed at chunk #\(chunkIndex)")
             } else {
+                // Broadcast was active: finalise the broadcast chunk and start
+                // a fresh RPScreenRecorder chunk.
                 finaliseChunk(isFinal: false) { [weak self] in
                     guard let self = self, self.recording, !self.stopping, !self.paused else { return }
                     self.chunkIndex += 1
                     self.beginChunkWriter()
-                    NSLog("[SHARE] broadcast ended — in-app recording resumed at chunk #\(self.chunkIndex)")
+                    NSLog("[SHARE] broadcast chunk rotated — RPScreenRecorder resuming at chunk #\(self.chunkIndex)")
                 }
             }
         }
