@@ -244,8 +244,29 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
     'com.example.flutter_education_app/screen_share',
   );
 
-  StreamSubscription<dynamic>? _broadcastEventSub;
   bool _isBroadcastActive = false;
+
+  // Handles a 'broadcastStopped' event forwarded from ClientRecorder's
+  // single rec_events subscription (see onBroadcastEvent doc in
+  // room_recorder.dart for why this mixin must not open its own
+  // EventChannel('.../rec_events').listen(...) — a second listener on the
+  // same channel name silently displaces whichever one native already had,
+  // since FlutterEventChannel keeps only one active sink at a time).
+  void _handleBroadcastEvent(Map<dynamic, dynamic> event) {
+    if (event['event'] != 'broadcastStopped') return;
+    log('[SS] iOS: broadcastStopped event — cleaning up');
+    _isBroadcastActive = false;
+    onIOSBroadcastStateChanged(false);
+    // Turn off LiveKit screen-share track
+    unawaited(
+      _safeNegotiate(
+            () => room.localParticipant
+            ?.setScreenShareEnabled(false)
+            .catchError((_) {}) ??
+            Future.value(),
+      ),
+    );
+  }
 
   Future<void> _toggleScreenShareIOS(
       LocalParticipant local,
@@ -259,27 +280,11 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
     if (!isSharing) {
       // ── START ──────────────────────────────────────────────────────────────
       try {
-        // Subscribe for broadcastStopped BEFORE showing picker so we never
+        // Register for broadcastStopped BEFORE showing picker so we never
         // miss the event (fires when teacher stops from Control Centre or the
-        // extension crashes).
-        _broadcastEventSub?.cancel();
-        _broadcastEventSub = const EventChannel(
-          'com.example.flutter_education_app/rec_events',
-        ).receiveBroadcastStream().listen((event) {
-          if (event is Map && event['event'] == 'broadcastStopped') {
-            log('[SS] iOS: broadcastStopped event — cleaning up');
-            _broadcastEventSub?.cancel();
-            _broadcastEventSub = null;
-            _isBroadcastActive = false;
-            onIOSBroadcastStateChanged(false);
-            // Turn off LiveKit screen-share track
-            unawaited(
-              _safeNegotiate(
-                    () => local.setScreenShareEnabled(false).catchError((_) {}),
-              ),
-            );
-          }
-        });
+        // extension crashes). This routes through ClientRecorder's existing
+        // rec_events subscription rather than opening a second one.
+        recorder?.onBroadcastEvent = _handleBroadcastEvent;
 
         // Enable LiveKit screen-share track in parallel so participants see
         // the screen via WebRTC while the extension records it locally.
@@ -301,8 +306,9 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
 
       } catch (e) {
         log('[SS] iOS start error: $e');
-        _broadcastEventSub?.cancel();
-        _broadcastEventSub = null;
+        if (recorder?.onBroadcastEvent == _handleBroadcastEvent) {
+          recorder?.onBroadcastEvent = null;
+        }
         _isBroadcastActive = false;
         showSnack('فشل بدء المشاركة: $e');
       }
@@ -316,8 +322,9 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
   /// Stop the iOS broadcast from any call site.
   /// Safe to call multiple times — idempotent.
   Future<void> stopIOSBroadcast() async {
-    _broadcastEventSub?.cancel();
-    _broadcastEventSub = null;
+    if (recorder?.onBroadcastEvent == _handleBroadcastEvent) {
+      recorder?.onBroadcastEvent = null;
+    }
     if (!_isBroadcastActive) return;
     _isBroadcastActive = false;
 
@@ -347,8 +354,9 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
 
   /// Clean up on widget dispose.
   void disposeBroadcastSub() {
-    _broadcastEventSub?.cancel();
-    _broadcastEventSub = null;
+    if (recorder?.onBroadcastEvent == _handleBroadcastEvent) {
+      recorder?.onBroadcastEvent = null;
+    }
     _isBroadcastActive = false;
   }
 
