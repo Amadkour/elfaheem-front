@@ -73,7 +73,6 @@ import CoreVideo
     private var recording     = false
     private var paused        = false
     private var stopping      = false
-    private var rpRunning     = false  // true once RPScreenRecorder.startCapture succeeds
 
     // ── Upload URLSession ─────────────────────────────────────────────────────
     //
@@ -181,17 +180,6 @@ import CoreVideo
         NotificationCenter.default.addObserver(
             self, selector: #selector(appWillEnterForeground),
             name: UIApplication.willEnterForegroundNotification, object: nil)
-        // Re-arm audio session whenever LiveKit resets it to SoloAmbient.
-        // LiveKit posts AVAudioSession.routeChangeNotification and
-        // AVAudioSession.interruptionNotification after each reconfigure.
-        // Observing these and re-applying playAndRecord+videoChat+mixWithOthers
-        // keeps the mic active for RPScreenRecorder throughout the session.
-        NotificationCenter.default.addObserver(
-            self, selector: #selector(audioSessionRouteChanged),
-            name: AVAudioSession.routeChangeNotification, object: nil)
-        NotificationCenter.default.addObserver(
-            self, selector: #selector(audioSessionInterrupted),
-            name: AVAudioSession.interruptionNotification, object: nil)
 
         let vc = FlutterViewController(engine: engine, nibName: nil, bundle: nil)
         window = UIWindow(frame: UIScreen.main.bounds)
@@ -221,33 +209,6 @@ import CoreVideo
         endBgTask()
     }
 
-    /// Re-arm audio session after LiveKit changes the route (e.g. speaker/BT switch).
-    /// LiveKit's RTCAudioSession reconfigures to SoloAmbient on certain route changes,
-    /// dropping mic input for RPScreenRecorder and producing silent/empty chunks.
-    @objc private func audioSessionRouteChanged(_ notification: Notification) {
-        guard recording, !stopping else { return }
-        let reason = (notification.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt)
-            .flatMap { AVAudioSession.RouteChangeReason(rawValue: $0) }
-        NSLog("[REC] AVAudioSession route changed (reason=\(reason?.rawValue ?? 99)) — re-arming")
-        // Small delay so LiveKit finishes its own reconfigure before we override.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-            guard let self = self, self.recording, !self.stopping else { return }
-            self.configureAudioSessionForRecording()
-        }
-    }
-
-    /// Re-arm audio session after an interruption ends (e.g. phone call, Siri).
-    @objc private func audioSessionInterrupted(_ notification: Notification) {
-        guard recording, !stopping else { return }
-        guard let type = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
-              type == AVAudioSession.InterruptionType.ended.rawValue else { return }
-        NSLog("[REC] AVAudioSession interruption ended — re-arming")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            guard let self = self, self.recording, !self.stopping else { return }
-            self.configureAudioSessionForRecording()
-        }
-    }
-
     private func endBgTask() {
         guard bgTask != .invalid else { return }
         UIApplication.shared.endBackgroundTask(bgTask)
@@ -273,11 +234,7 @@ import CoreVideo
             guard let self = self else { return }
             switch call.method {
             case "startScreenCaptureService":
-                // Guard on rpRunning (not recording) — recording=true is set
-                // in Phase 1 (startMicRecording) to start the chunk timer early.
-                // We still need to call startRPScreenRecorder for the actual
-                // RPScreenRecorder.startCapture() that brings video frames.
-                guard !self.rpRunning else { result(true); return }
+                guard !self.recording else { result(true); return }
                 guard !self.uploadUrl.isEmpty else {
                     result(FlutterError(code: "NOT_CONFIGURED",
                                         message: "Call startMicRecording first", details: nil))
@@ -311,52 +268,19 @@ import CoreVideo
             switch call.method {
 
             case "startMicRecording":
-                // ── Single-call recording start ───────────────────────────────
-                // startMicRecording now starts BOTH the chunk loop AND
-                // RPScreenRecorder in one call. The old two-phase design
-                // (Phase1=store params, Phase2=startScreenCaptureService) created
-                // gaps: Phase-1 chunks had no video frames (dropped as too small
-                // or rejected by server), and the async gap between phases let
-                // LiveKit reset AVAudioSession to SoloAmbient, silencing the mic.
-                //
-                // Dart side still calls startScreenCaptureService separately for
-                // the iOS permission dialog flow; we use rpRunning to make that
-                // a cheap no-op once we are already capturing.
                 guard let args = call.arguments as? [String: Any] else {
                     result(FlutterError(code: "BAD_ARGS", message: "Expected map", details: nil))
-                    return
-                }
-                guard !self.recording else {
-                    // Already recording — just confirm so Dart resolves.
-                    self.emitEvent(["event": "screenLoopStarted"])
-                    result(true)
                     return
                 }
                 self.sessionId  = args["sessionId"]    as? Int    ?? 0
                 self.uploadUrl  = args["uploadUrl"]    as? String ?? ""
                 self.authToken  = args["authToken"]    as? String ?? ""
                 self.chunkSecs  = args["chunkSeconds"] as? Int    ?? 5
-                // chunkIndex is monotonically increasing across the whole
-                // session — never reset to 0 so a reconnect doesn't overwrite
-                // already-uploaded chunks on the server.
-                let startIdx    = args["chunkIndex"]   as? Int    ?? 0
-                if startIdx > self.chunkIndex { self.chunkIndex = startIdx }
-                NSLog("[REC] startMicRecording: session=\(self.sessionId) chunk=\(self.chunkIndex) secs=\(self.chunkSecs)")
-                self.recording   = true
-                self.stopping    = false
-                self.paused      = false
-                self.videoWidth  = 0
-                self.videoHeight = 0
-                self.sweepStaleChunks()
-                // Emit before startRPScreenRecorder so Dart's _startCompleter
-                // resolves immediately regardless of how long permission dialog takes.
+                self.chunkIndex = args["chunkIndex"]   as? Int    ?? 0
+                NSLog("[REC] startMicRecording: session=\(self.sessionId) chunkSecs=\(self.chunkSecs)")
+                // Emit immediately so Dart's Phase-1 completer resolves.
                 self.emitEvent(["event": "screenLoopStarted"])
                 result(true)
-                // Start RPScreenRecorder (permission dialog + red-pill).
-                // This is async; the chunk timer inside beginChunkWriter()
-                // is scheduled here and frames start flowing once the dialog
-                // is approved — no gap between param-store and first frame.
-                self.startRPScreenRecorder(result: { _ in })
 
             case "upgradeToScreenRecording":
                 if self.recording {
@@ -419,16 +343,35 @@ import CoreVideo
             return
         }
 
-        // recording/paused/stopping/videoWidth/videoHeight were already
-        // set in startMicRecording (Phase 1). Don't reset them here.
-        rpRunning = true
+        paused       = false
+        stopping     = false
+        videoWidth   = 0
+        videoHeight  = 0
+        sweepStaleChunks()
+
+        // ── Audio session setup ───────────────────────────────────────────────
+        // LiveKit resets AVAudioSession to SoloAmbient (output-only) after
+        // RPScreenRecorder starts, killing mic input and causing silent/noisy
+        // audio in recordings.
+        //
+        // Strategy:
+        //   1. Configure playAndRecord+videoChat+mixWithOthers BEFORE startCapture.
+        //   2. Set recording=true BEFORE the async completion handler fires, so
+        //      stopRecording() called during startup still reaches finaliseChunk().
+        //   3. After startCapture's completion fires, re-apply the audio config
+        //      because LiveKit may have reset it during the async gap.
+        //   4. Schedule a one-shot re-arm 1 s later to catch any delayed reset.
         configureAudioSessionForRecording()
+
         rp.isMicrophoneEnabled = true
-        // beginChunkWriter() was already called in Phase 1.
-        // scheduleChunkTimer()'s guard (chunkTimer == nil) makes this a no-op
-        // if the timer is already running, so it's safe to call again just in
-        // case Phase 1 didn't complete for some reason.
-        if assetWriter == nil { beginChunkWriter() }
+
+        // ── Set recording=true BEFORE startCapture's async completion ────────
+        // Without this, if stopRecording() is called while startCapture is still
+        // in flight (e.g. user taps End Session quickly), the guard
+        // `guard recording else { return }` in stopRecording() exits immediately
+        // without calling finaliseChunk(), producing 0 uploaded chunks.
+        recording = true
+        beginChunkWriter()
 
         rp.startCapture(handler: { [weak self] sampleBuffer, bufferType, error in
             guard let self = self, self.recording, !self.stopping else { return }
@@ -441,10 +384,15 @@ import CoreVideo
             DispatchQueue.main.async {
                 if let e = error {
                     NSLog("[REC] RPScreenRecorder start error: \(e.localizedDescription)")
-                    // RPScreenRecorder failed — mark rpRunning=false.
-                    // recording stays true: the Phase-1 chunk loop is still running
-                    // (audio-only chunks). The session can still be stopped cleanly.
-                    self.rpRunning = false
+                    // Undo the optimistic recording=true so we stay consistent.
+                    self.recording  = false
+                    self.stopping   = false
+                    self.chunkTimer?.invalidate()
+                    self.chunkTimer = nil
+                    self.assetWriter = nil
+                    self.videoInput  = nil
+                    self.audioInput  = nil
+                    self.writerSessionStarted = false
                     self.releaseAudioSessionLock()
                     result(FlutterError(code: "RP_START_ERROR",
                                         message: e.localizedDescription, details: nil))
@@ -799,11 +747,21 @@ import CoreVideo
     }
 
     private func rotateChunk() {
-        guard recording, !stopping, !paused else { return }
-        // Nil the timer here so scheduleChunkTimer() inside the next
-        // beginChunkWriter() call sees nil and creates a fresh one.
+        // ALWAYS nil the timer reference first, unconditionally — even if we're
+        // about to return early due to paused/stopping/not-recording.
+        // If we don't, the spent (fired, non-repeating) timer object sits in
+        // chunkTimer non-nil, and the next beginChunkWriter() → scheduleChunkTimer()
+        // call hits `guard chunkTimer == nil` and returns without scheduling a new
+        // timer — so chunks never rotate again for the rest of the session.
+        // This was the cause of "only records chunks before sharing": showBroadcastPicker
+        // sets paused=true, the 5-second timer fires, rotateChunk() returns early
+        // (paused guard), chunkTimer stays non-nil with the spent timer, then when
+        // the first broadcast frame arrives and calls beginChunkWriter(), no new
+        // timer is ever scheduled. One giant broadcast chunk accumulates until
+        // stopRecording() flushes it — instead of 5-second rotations.
         chunkTimer?.invalidate()
         chunkTimer = nil
+        guard recording, !stopping, !paused else { return }
         finaliseChunk(isFinal: false) { [weak self] in
             guard let self = self, self.recording, !self.stopping, !self.paused else { return }
             self.chunkIndex += 1
@@ -847,28 +805,31 @@ import CoreVideo
 
     private func stopRecording(isFinal: Bool, result: @escaping FlutterResult) {
         guard recording else { result(nil); return }
-        NSLog("[REC] stopRecording: isFinal=\(isFinal)")
-        stopping = true; recording = false; rpRunning = false
+        NSLog("[REC] stopRecording: isFinal=\(isFinal) isBroadcasting=\(isBroadcasting)")
+        stopping = true; recording = false
         chunkTimer?.invalidate(); chunkTimer = nil
         isBroadcasting = false
         removeDarwinListeners()
         endBgTask()
 
-        RPScreenRecorder.shared().stopCapture { [weak self] error in
-            if let e = error { NSLog("[REC] stopCapture: \(e.localizedDescription)") }
-            // ── Drain the writer queue before finalising ───────────────────
-            // stopCapture's completion fires before all queued
-            // processSampleFromRecorder calls finish executing on writerQueue.
-            // Without this barrier, finishWriting races with in-flight
-            // appends → the last 1-3 seconds of the session are truncated.
-            // writerQueue.async{} after the barrier runs only after all
-            // prior writerQueue work is done, then we hop to main to finalise.
-            self?.writerQueue.async {
+        // If the broadcast extension was active when the session ended, we must
+        // finalise its in-progress chunk NOW (with isFinal=true) before calling
+        // RPScreenRecorder.stopCapture(). Without this, the broadcast chunk is
+        // abandoned — stopCapture() tears down the AVAssetWriter mid-write and
+        // the last chunk never gets uploaded with isFinal=true.
+        //
+        // Note: RPScreenRecorder.stopCapture() does NOT stop the extension
+        // process (it runs out-of-process) — the extension will continue sending
+        // Darwin notifications after we return, but removeDarwinListeners() above
+        // means we no longer read them. The extension stops on its own when the
+        // user dismisses it from Control Centre or when the system reclaims it.
+        finaliseChunk(isFinal: isFinal) { [weak self] in
+            guard let self = self else { result(nil); return }
+            RPScreenRecorder.shared().stopCapture { [weak self] error in
+                if let e = error { NSLog("[REC] stopCapture: \(e.localizedDescription)") }
                 DispatchQueue.main.async {
-                    self?.finaliseChunk(isFinal: isFinal) {
-                        self?.stopping = false
-                        result(nil)
-                    }
+                    self?.stopping = false
+                    result(nil)
                 }
             }
         }
@@ -1072,22 +1033,30 @@ import CoreVideo
             // switch apps immediately after confirming.
             self.appDidEnterBackground()
 
-            // ── Do NOT pause recording during the picker overlay ─────────
-            // The previous approach paused (finalisedChunk + stopped writing)
-            // here, creating a deliberate gap of 5–30 seconds while the user
-            // looks at the system picker. For continuous recording we keep
-            // RPScreenRecorder writing app-screen frames throughout.
+            // ── Pause recording during the iOS broadcast confirmation overlay ─
+            // When the system sheet appears, iOS briefly suspends the Runner app
+            // which causes:
+            //   • AVAudioSession interruption → LiveKit tries to reconfigure →
+            //     "Configure audio error: Code=561017449 kAudioSessionIncompatibleCategory"
+            //   • RPScreenRecorder may deliver corrupted/duplicate frames during
+            //     the suspension window
             //
-            // AVAudioSession interruptions from the system sheet are handled
-            // by our audioSessionRouteChanged / audioSessionInterrupted
-            // observers which re-arm playAndRecord+videoChat+mixWithOthers
-            // automatically after iOS resumes the app.
-            //
-            // When the first Darwin frame notification arrives (broadcast confirmed),
-            // handleBroadcastData sets isBroadcasting=true which suppresses
-            // RPScreenRecorder frames in favour of the extension frames —
-            // the transition is seamless with no gap.
-            NSLog("[SHARE] picker: recording continues uninterrupted during overlay")
+            // Pausing here (finalise current chunk, stop accepting frames) means
+            // the suspension window produces no data. Recording resumes cleanly
+            // once the first broadcast frame arrives via Darwin notification,
+            // which confirms the extension has started and iOS has fully resumed.
+            if self.recording && !self.paused && !self.stopping {
+                self.paused = true
+                NSLog("[SHARE] picker: recording paused before system overlay")
+                self.finaliseChunk(isFinal: false) { [weak self] in
+                    guard let self = self else { return }
+                    self.chunkIndex += 1
+                    NSLog("[SHARE] picker: paused chunk rotated at #\(self.chunkIndex)")
+                    // beginChunkWriter() is called when broadcast starts (first
+                    // Darwin frame notification) or when broadcast is cancelled
+                    // (stopBroadcastShare without isBroadcasting ever becoming true).
+                }
+            }
 
             // Register Darwin notification listeners BEFORE the picker appears
             // so we are ready the instant the extension's broadcastStarted() fires.
@@ -1115,14 +1084,22 @@ import CoreVideo
         endBgTask()
         emitEvent(["event": "broadcastStopped"])
         NSLog("[SHARE] broadcast stopped by app")
-        // Recording was never paused during the picker; just rotate the chunk
-        // so the transition from broadcast back to RPScreenRecorder is seamless.
-        if recording && !stopping && !paused {
-            finaliseChunk(isFinal: false) { [weak self] in
-                guard let self = self, self.recording, !self.stopping, !self.paused else { return }
-                self.chunkIndex += 1
-                self.beginChunkWriter()
-                NSLog("[SHARE] broadcast chunk rotated — RPScreenRecorder resuming at chunk #\(self.chunkIndex)")
+        if recording && !stopping {
+            if paused {
+                // Broadcast was never confirmed (user cancelled picker).
+                // Resume RPScreenRecorder which was paused by showBroadcastPicker.
+                paused = false
+                beginChunkWriter()
+                NSLog("[SHARE] picker cancelled — RPScreenRecorder resumed at chunk #\(chunkIndex)")
+            } else {
+                // Broadcast was active: finalise the broadcast chunk and start
+                // a fresh RPScreenRecorder chunk.
+                finaliseChunk(isFinal: false) { [weak self] in
+                    guard let self = self, self.recording, !self.stopping, !self.paused else { return }
+                    self.chunkIndex += 1
+                    self.beginChunkWriter()
+                    NSLog("[SHARE] broadcast chunk rotated — RPScreenRecorder resuming at chunk #\(self.chunkIndex)")
+                }
             }
         }
         result(nil)
@@ -1215,15 +1192,19 @@ import CoreVideo
         isBroadcasting = false
         removeDarwinListeners()
         emitEvent(["event": "broadcastStopped"])
-        // Broadcast ended — rotate chunk and resume RPScreenRecorder frames.
-        // (Recording was never paused during the picker, so no paused-state
-        // branch is needed here.)
-        if recording && !stopping && !paused {
-            finaliseChunk(isFinal: false) { [weak self] in
-                guard let self = self, self.recording, !self.stopping, !self.paused else { return }
-                self.chunkIndex += 1
-                self.beginChunkWriter()
-                NSLog("[SHARE] Darwin stop: chunk rotated at #\(self.chunkIndex)")
+        if recording && !stopping {
+            if paused {
+                // Extension stopped before we got the first frame (race).
+                paused = false
+                beginChunkWriter()
+                NSLog("[SHARE] Darwin stop: resumed from paused state at chunk #\(chunkIndex)")
+            } else {
+                finaliseChunk(isFinal: false) { [weak self] in
+                    guard let self = self, self.recording, !self.stopping, !self.paused else { return }
+                    self.chunkIndex += 1
+                    self.beginChunkWriter()
+                    NSLog("[SHARE] Darwin stop: chunk rotated at #\(self.chunkIndex)")
+                }
             }
         }
     }
@@ -1271,10 +1252,14 @@ import CoreVideo
                 // duration delta on the first frame of this one.
                 lastBroadcastPts = nil
                 NSLog("[SHARE] first broadcast frame — switching recording source")
-                // Recording is continuous — no paused state to resume from.
-                // isBroadcasting=true is enough to route subsequent frames
-                // through processSampleFromBroadcast instead of RPScreenRecorder.
-                NSLog("[SHARE] broadcast active — switching frame source at chunk #\(chunkIndex)")
+                // If recording was paused by showBroadcastPicker (to protect
+                // against the iOS overlay suspension window), resume it now.
+                // The extension is running, iOS has fully resumed, it's safe to write.
+                if recording && paused && !stopping {
+                    paused = false
+                    beginChunkWriter()
+                    NSLog("[SHARE] recording resumed from picker-pause — broadcast chunk #\(chunkIndex)")
+                }
             }
             guard recording, !stopping, !paused else { return }
             processSampleFromBroadcast(jpegData: payload, ptsNs: ptsNs)
