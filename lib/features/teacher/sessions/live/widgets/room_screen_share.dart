@@ -246,14 +246,29 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
 
   bool _isBroadcastActive = false;
 
-  // Handles a 'broadcastStopped' event forwarded from ClientRecorder's
+  // Handles broadcast-related events forwarded from ClientRecorder's
   // single rec_events subscription (see onBroadcastEvent doc in
   // room_recorder.dart for why this mixin must not open its own
   // EventChannel('.../rec_events').listen(...) — a second listener on the
   // same channel name silently displaces whichever one native already had,
   // since FlutterEventChannel keeps only one active sink at a time).
+  //
+  // Handles two event types:
+  //   'videoChunksActive' — broadcast is confirmed live; upgrade Dart state.
+  //   'broadcastStopped'  — broadcast ended; clean up and resume recording.
   void _handleBroadcastEvent(Map<dynamic, dynamic> event) {
-    if (event['event'] != 'broadcastStopped') return;
+    final type = event['event'] as String?;
+
+    if (type == 'videoChunksActive') {
+      // Native has confirmed the AVAssetWriter is writing broadcast frames.
+      // upgradeToScreenRecording() has already been called (it triggered this
+      // emit) — the _upgradeCompleter is resolved by _onNativeEvent before
+      // this callback fires. Nothing more to do here except log.
+      log('[SS] iOS: broadcast upgrade confirmed — video chunks active');
+      return;
+    }
+
+    if (type != 'broadcastStopped') return;
     log('[SS] iOS: broadcastStopped event — cleaning up');
     _isBroadcastActive = false;
     onIOSBroadcastStateChanged(false);
@@ -280,11 +295,23 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
     if (!isSharing) {
       // ── START ──────────────────────────────────────────────────────────────
       try {
-        // Register for broadcastStopped BEFORE showing picker so we never
-        // miss the event (fires when teacher stops from Control Centre or the
-        // extension crashes). This routes through ClientRecorder's existing
-        // rec_events subscription rather than opening a second one.
+        // Register for broadcast events BEFORE showing picker so we never
+        // miss 'videoChunksActive' or 'broadcastStopped'. Routes through
+        // ClientRecorder's existing rec_events subscription — see onBroadcastEvent
+        // field doc in room_recorder.dart for why a second subscription would
+        // silently break chunk uploads.
         recorder?.onBroadcastEvent = _handleBroadcastEvent;
+
+        // Step 1: Rotate a clean chunk boundary before the broadcast picker
+        // appears, matching the Android path's _stopScreenForShare() call.
+        // This ensures the last RPScreenRecorder chunk closes cleanly before
+        // iOS suspends the app during the system confirmation sheet.
+        // Native's showBroadcastPicker() already handles this internally
+        // (it calls finaliseChunk + rotates chunkIndex before registering
+        // Darwin listeners), so on iOS we just need to pre-arm the upgrade
+        // completer so we never miss the 'videoChunksActive' event that
+        // arrives on the first Darwin frame notification.
+        recorder?.prepareUpgradeWait();
 
         // Enable LiveKit screen-share track in parallel so participants see
         // the screen via WebRTC while the extension records it locally.
@@ -295,12 +322,25 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
         );
 
         // Show the "Start Broadcast" confirmation sheet for OUR extension.
-        // preferredExtension is set in AppDelegate so only our extension
-        // appears — no third-party extensions that would fail.
+        // Internally this: pauses RPScreenRecorder, finalises + rotates chunk,
+        // registers Darwin listeners, auto-taps the picker button.
         await _ssChannel.invokeMethod<void>('showBroadcastPicker');
         log('[SS] iOS: broadcast picker shown');
 
-        // Update UI immediately — banner + toast appear
+        // Step 2: Wait for Phase-2 upgrade — confirms the AVAssetWriter is
+        // writing real broadcast frames (not just paused).
+        // upgradeToScreenRecording() calls invokeMethod('upgradeToScreenRecording')
+        // which emits 'videoChunksActive' from native IFF self.recording==true.
+        // The first Darwin frame from the extension triggers beginChunkWriter()
+        // in AppDelegate, which means self.recording is already true by the
+        // time the user's extension confirms — so this resolves normally.
+        // Timeout is generous (30s) since the user is manually confirming
+        // the system broadcast picker.
+        log('[SS] iOS: waiting for broadcast Phase-2 upgrade...');
+        await recorder?.upgradeToScreenRecording();
+        log('[SS] iOS: Phase-2 confirmed — broadcast chunks active');
+
+        // Update UI — banner + toast appear
         _isBroadcastActive = true;
         onIOSBroadcastStateChanged(true);
 
