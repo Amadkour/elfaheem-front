@@ -1211,6 +1211,23 @@ import CoreVideo
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { result(nil); return }
 
+            // ── ORDER MATTERS ────────────────────────────────────────────
+            // registerDarwinListeners() MUST run before appDidEnterBackground().
+            // appDidEnterBackground()'s very first line is:
+            //     guard isBroadcasting || darwinObserverAdded else { return }
+            // At this point isBroadcasting is still false (the extension
+            // hasn't sent its first frame yet), so that guard only passes if
+            // darwinObserverAdded is already true. Calling
+            // appDidEnterBackground() first meant the guard always failed,
+            // beginBackgroundTask() was never started, and a few seconds
+            // later — exactly when the teacher switches away to the app they
+            // want to share — iOS suspends the host process with no
+            // background task protecting it. The chunk timer and upload
+            // callbacks then freeze until the user returns to the app, which
+            // is what looked like "recording stops the moment you open
+            // another app to share". Registering the Darwin listeners first
+            // makes the guard pass and the background task actually start.
+            self.registerDarwinListeners()
             self.appDidEnterBackground()
 
             if self.recording && !self.paused && !self.stopping {
@@ -1222,8 +1239,6 @@ import CoreVideo
                     NSLog("[SHARE] picker: paused chunk rotated at #\(self.chunkIndex)")
                 }
             }
-
-            self.registerDarwinListeners()
 
             // ── preferredExtension = OUR extension (not nil) ─────────────────
             //
