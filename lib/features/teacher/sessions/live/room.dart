@@ -247,24 +247,44 @@ class _RoomPageState extends State<RoomPage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.screen_share_rounded, color: Colors.white, size: 16),
+              Icon(Icons.screen_share_rounded, color: Colors.white, size: 18),
               SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  'يمكنك الآن فتح أي تطبيق للمشاركة',
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'المشاركة نشطة الآن ✓',
+                      style: TextStyle(
+                        fontFamily: 'tajawal',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(height: 3),
+                    Text(
+                      'افتح أي تطبيق تريد مشاركته — الشاشة بأكملها تُسجَّل.\n'
+                          'التطبيقات المحمية (فيسبوك، نتفليكس) لا يمكن تصويرها بسبب قيود Apple.',
+                      style: TextStyle(
+                        fontFamily: 'tajawal',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
           backgroundColor: _cyan,
           behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 4),
+          // Long duration so teacher has time to read before switching apps.
+          duration: const Duration(seconds: 7),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
         ),
@@ -837,6 +857,14 @@ class _RoomPageState extends State<RoomPage>
     _recorder = ClientRecorder(
       sessionId: widget.sessionId,
       apiClient: widget.apiClient,
+      // 15s chunks instead of 5s: on a Cloudflare tunnel a 5s chunk at
+      // typical screen-share bitrate (~1 Mbps) produces ~600KB–2MB per chunk,
+      // which takes 10–30s to upload serially. With 5s intervals this means
+      // chunks accumulate faster than they upload, and only 1 makes it before
+      // the session ends. 15s gives the previous chunk time to fully land
+      // before the next one starts, and the parallel upload pool (4 connections)
+      // handles bursts at stop time. Adjust down once you move to a faster host.
+      chunkSeconds: 15,
     );
     _recorder!.addListener(_onRecorderUpdate);
 
@@ -1231,23 +1259,26 @@ class _RoomPageState extends State<RoomPage>
   }
 
   // ── Main video ─────────────────────────────────────────────────────────────
-  //
-  // Layout rules (teacher):
-  //   • Main view: placeholder (if no remote) or first remote/screen-share track.
-  //   • PiP corner: always the teacher's own camera feed (if camera on).
-  //   • Swap: tapping PiP swaps the contents of main and PiP.
-  //
-  // Layout rules (student):
-  //   • Main view: first participant track (teacher camera or screen share).
-  //   • PiP corner: student's own camera (if enabled).
   Widget _buildMainVideo() {
-    final local = widget.room.localParticipant;
-
-    if (_pipSwapped && widget.isTeacher) {
-      // Swapped: show teacher's own camera in the main area.
+    if (participantTracks.isEmpty) {
+      // Premium placeholder — show teacher name and active speaker info
+      final local = widget.room.localParticipant;
+      final teacherName = local?.name ?? local?.identity ?? 'Teacher';
+      final isMicOn = local?.isMicrophoneEnabled() ?? false;
+      final isCamOn = local?.isCameraEnabled() ?? false;
+      return _PremiumWaitingPlaceholder(
+        teacherName: teacherName,
+        isMicOn: isMicOn,
+        isCamOn: isCamOn,
+        auroraAnim: _auroraAnim,
+      );
+    }
+    final main = participantTracks.first;
+    // When PiP is swapped, show the local camera as the main view.
+    if (_pipSwapped) {
       final localEntry = participantTracks
           .where((t) =>
-      t.participant == local &&
+      t.participant == widget.room.localParticipant &&
           t.type != ParticipantTrackType.kScreenShare)
           .firstOrNull;
       if (localEntry != null) {
@@ -1261,29 +1292,6 @@ class _RoomPageState extends State<RoomPage>
         }
       }
     }
-
-    // For teacher: filter out local camera from the main track list so the
-    // main area always shows remote participants or a placeholder.
-    final mainTracks = widget.isTeacher
-        ? participantTracks.where((t) =>
-    !(t.participant == local &&
-        t.type != ParticipantTrackType.kScreenShare)).toList()
-        : participantTracks;
-
-    if (mainTracks.isEmpty) {
-      // Premium placeholder — shown while waiting for remote participants.
-      final teacherName = local?.name ?? local?.identity ?? 'Teacher';
-      final isMicOn = local?.isMicrophoneEnabled() ?? false;
-      final isCamOn = local?.isCameraEnabled() ?? false;
-      return _PremiumWaitingPlaceholder(
-        teacherName: teacherName,
-        isMicOn: isMicOn,
-        isCamOn: isCamOn,
-        auroraAnim: _auroraAnim,
-      );
-    }
-
-    final main = mainTracks.first;
     if (main.type == ParticipantTrackType.kScreenShare) {
       return _PremiumScreenShareView(
         participant: main.participant,
@@ -1296,38 +1304,29 @@ class _RoomPageState extends State<RoomPage>
 
   // ── PiP ────────────────────────────────────────────────────────────────────
   //
-  // Always shows the teacher's own camera feed in the corner (PiP).
-  // Tapping PiP swaps main and PiP content (camera ↔ remote/placeholder).
-  // Draggable to any corner of the screen.
+  // Always visible when the local participant has a camera track, regardless
+  // of whether screen share is active. Draggable to any corner. Tapping the
+  // PiP (or its swap icon) swaps the PiP content with the main view, so the
+  // teacher/student can choose which feed is prominent.
   Widget _buildDraggablePip(BoxConstraints constraints) {
-    final local = widget.room.localParticipant;
-
-    // For teacher: always show local camera in PiP.
-    // For student: only show PiP if local camera track is available.
+    // Find the local participant's camera entry.
     final localEntry = participantTracks
         .where((t) =>
-    t.participant == local &&
+    t.participant == widget.room.localParticipant &&
         t.type != ParticipantTrackType.kScreenShare)
         .firstOrNull;
-
-    final cameraTrack = localEntry != null
-        ? _resolveCameraTrack(localEntry.participant)
-        : null;
-
-    // For teacher, show PiP even when camera track is null (shows off icon).
-    // For student, hide PiP if no camera track.
-    if (cameraTrack == null && !widget.isTeacher) return const SizedBox.shrink();
-    // Hide entirely if teacher has no camera and not swapped.
+    if (localEntry == null) return const SizedBox.shrink();
+    final cameraTrack = _resolveCameraTrack(localEntry.participant);
+    // Hide if camera is off and not swapped — nothing useful to show in PiP.
     if (cameraTrack == null && !_pipSwapped) return const SizedBox.shrink();
 
-    // In swapped mode: PiP shows the remote/main content;
-    // In normal mode: PiP shows the local camera.
-    final mainTracks = widget.isTeacher
-        ? participantTracks.where((t) =>
-    !(t.participant == local &&
-        t.type != ParticipantTrackType.kScreenShare)).toList()
-        : participantTracks;
-    final pipTrack = _pipSwapped && mainTracks.isNotEmpty ? mainTracks.first : null;
+    // When _pipSwapped: PiP shows the main participant, main shows camera.
+    // When normal:      PiP shows local camera, main shows first participant.
+    final pipTrack = _pipSwapped
+        ? (participantTracks.isNotEmpty
+        ? participantTracks.first
+        : null)
+        : null; // null = show camera in PiP (handled below)
 
     return Positioned(
       right: _pipRight,
@@ -1390,7 +1389,7 @@ class _RoomPageState extends State<RoomPage>
                     ),
                   ),
 
-                // Swap icon — always visible so intent is clear
+                // Swap icon — top-right corner, always visible so intent is clear
                 Positioned(
                   top: 4,
                   right: 4,

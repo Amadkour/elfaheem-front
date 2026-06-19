@@ -1115,22 +1115,8 @@ import CoreVideo
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { result(nil); return }
 
-            // Pre-start background task before picker appears — teacher may
-            // switch apps immediately after confirming.
             self.appDidEnterBackground()
 
-            // ── Pause recording during the iOS broadcast confirmation overlay ─
-            // When the system sheet appears, iOS briefly suspends the Runner app
-            // which causes:
-            //   • AVAudioSession interruption → LiveKit tries to reconfigure →
-            //     "Configure audio error: Code=561017449 kAudioSessionIncompatibleCategory"
-            //   • RPScreenRecorder may deliver corrupted/duplicate frames during
-            //     the suspension window
-            //
-            // Pausing here (finalise current chunk, stop accepting frames) means
-            // the suspension window produces no data. Recording resumes cleanly
-            // once the first broadcast frame arrives via Darwin notification,
-            // which confirms the extension has started and iOS has fully resumed.
             if self.recording && !self.paused && !self.stopping {
                 self.paused = true
                 NSLog("[SHARE] picker: recording paused before system overlay")
@@ -1138,31 +1124,51 @@ import CoreVideo
                     guard let self = self else { return }
                     self.chunkIndex += 1
                     NSLog("[SHARE] picker: paused chunk rotated at #\(self.chunkIndex)")
-                    // beginChunkWriter() is called when broadcast starts (first
-                    // Darwin frame notification) or when broadcast is cancelled
-                    // (stopBroadcastShare without isBroadcasting ever becoming true).
                 }
             }
 
-            // Register Darwin notification listeners BEFORE the picker appears
-            // so we are ready the instant the extension's broadcastStarted() fires.
             self.registerDarwinListeners()
 
-            let picker = RPSystemBroadcastPickerView(frame: CGRect(x: 0, y: 0, width: 60, height: 60))
-            // preferredExtension = nil → shows the FULL system broadcast picker
-            // so the teacher can choose ANY app on the device to share/record,
-            // not just this app's own screen.
+            // ── preferredExtension = OUR extension (not nil) ─────────────────
             //
-            // When preferredExtension is set to our own bundle ID, iOS shows a
-            // single-button sheet that only offers our app — the user cannot pick
-            // a third-party app (YouTube, browser, whiteboard, etc.).
+            // IMPORTANT — why NOT nil:
+            //   Setting preferredExtension = nil shows a generic "Choose a
+            //   broadcast app" picker listing every broadcast extension on the
+            //   device. Our extension still appears, but:
+            //     a) The user must manually pick it (bad UX).
+            //     b) If the user picks a different extension (e.g. a third-party
+            //        streaming app), our SampleHandler never runs, we never get
+            //        Darwin notifications, and the recording hangs forever.
             //
-            // With nil, iOS shows the standard "Choose a broadcast app" sheet.
-            // Our BroadcastUploadExtension still appears in the list and still
-            // receives frames — the user just has to select it from the picker.
-            // SampleHandler.swift handles all frame forwarding regardless of
-            // which app the user chose to share.
-            picker.preferredExtension = nil
+            // Setting preferredExtension = our bundle makes iOS show a direct
+            // one-tap confirmation sheet for OUR extension and immediately starts
+            // SampleHandler, which receives the FULL DEVICE SCREEN COMPOSITOR —
+            // including any app the user navigates to after confirming.
+            //
+            // ── Why some apps (Facebook, Netflix) show "share not available" ──
+            //
+            //   These apps call UIScreen.main.isCaptured and actively block
+            //   screen recording using AVCaptureSession / DRM enforcement.
+            //   This is enforced by the APP being recorded, not by iOS or our
+            //   extension. It cannot be bypassed — Apple's own QuickTime, AirPlay
+            //   mirroring, and every other screen recorder hits the same block.
+            //   Whiteboards, browsers, document cameras, PDF viewers, and most
+            //   educational apps work fine.
+            //
+            // ── How to share any app's screen ────────────────────────────────
+            //
+            //   1. Teacher taps "Share Screen" → this picker appears.
+            //   2. Teacher taps "Start Broadcast" → SampleHandler starts.
+            //   3. Teacher SWITCHES to the app they want to share (home button
+            //      or swipe up → tap the other app). SampleHandler keeps
+            //      receiving frames of whatever is on screen.
+            //   4. The recording captures everything the teacher shows —
+            //      across any non-DRM app.
+            //
+            let picker = RPSystemBroadcastPickerView(
+                frame: CGRect(x: 0, y: 0, width: 60, height: 60))
+            picker.preferredExtension =
+                Bundle.main.bundleIdentifier.map { $0 + ".BroadcastUploadExtension" }
             picker.showsMicrophoneButton = false
 
             for subview in picker.subviews {
