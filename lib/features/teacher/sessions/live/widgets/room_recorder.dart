@@ -167,31 +167,29 @@ class ClientRecorder extends ChangeNotifier {
   Future<void> upgradeToScreenRecording() async {
     if (kIsWeb) return;
 
-    // On iOS: _screenRecording may already be true from Phase 1.
-    // We still wait for the Phase-2 emit to confirm the AVAssetWriter is live
-    // and chunks have actual video frames (not just audio).
-    // The _upgradeCompleter is set before this method is called from room.dart
-    // so we never miss the event even on fast devices.
+    // FIX: Do NOT return early because _screenRecording is true.
+    // Phase-1 (screenLoopStarted) no longer sets _screenRecording=true, so
+    // that guard was stale. We must always wait for the Phase-2
+    // 'videoChunksActive' event to confirm the AVAssetWriter is live.
+    // prepareUpgradeWait() in room.dart pre-creates the completer so the
+    // event is never missed even on fast devices.
     if (_upgradeCompleter == null) {
-      // Completer was not pre-set — create it now. If the event already
-      // arrived (very fast native), we set _screenRecording directly.
-      if (_screenRecording && !kIsWeb && Platform.isIOS) {
-        log('[REC] upgradeToScreenRecording: iOS Phase-2 already confirmed');
-        return;
-      }
       _upgradeCompleter = Completer<void>();
     }
 
     try {
-      final ok = await _recChannel.invokeMethod<bool>('upgradeToScreenRecording');
-      if (ok == true) {
-        await _upgradeCompleter!.future.timeout(
-          const Duration(seconds: 20),
-          onTimeout: () {
-            log('[REC] upgradeToScreenRecording: timeout — assuming live');
-          },
-        );
-      }
+      // Native emits 'videoChunksActive' from startRPScreenRecorder's
+      // completionHandler — which fires on the main queue after startCapture
+      // succeeds and beginChunkWriter() has started the timer. We wait for it
+      // regardless of whether native returned true or false, since native now
+      // always emits the event (and returns the current recording state).
+      await _recChannel.invokeMethod<bool>('upgradeToScreenRecording');
+      await _upgradeCompleter!.future.timeout(
+        const Duration(seconds: 20),
+        onTimeout: () {
+          log('[REC] upgradeToScreenRecording: timeout — assuming live');
+        },
+      );
     } catch (e) {
       log('[REC] upgradeToScreenRecording error: $e');
     } finally {
@@ -201,7 +199,7 @@ class ClientRecorder extends ChangeNotifier {
     _screenRecording = true;
     if (_state != RecState.recording) _set(RecState.recording);
     notifyListeners();
-    log('[REC] upgradeToScreenRecording: Phase-2 confirmed — video chunks active');
+    log('[REC] upgradeToScreenRecording: Phase-2 confirmed — video+audio chunks active');
   }
 
   /// Call this from room.dart BEFORE calling startScreenCaptureService
@@ -403,24 +401,29 @@ class ClientRecorder extends ChangeNotifier {
 
     switch (type) {
       case 'screenLoopStarted':
-        log('[REC] screenLoopStarted received');
-        // Phase-1 completer: resolves start()
+      // Phase-1 ONLY: resolves start() → stores session params on native side.
+      // Native (startMicRecording) emits this immediately and synchronously.
+      // FIX: do NOT set _screenRecording=true here — that belongs to Phase-2.
+      // Previously setting it here caused upgradeToScreenRecording() to see
+      // _screenRecording=true and return early before _upgradeCompleter was
+      // resolved, leaving Phase-2 stuck until a 20-second timeout.
+        log('[REC] screenLoopStarted received (Phase-1)');
         if (_startCompleter != null && !_startCompleter!.isCompleted) {
           _startCompleter!.complete();
-          // Set recording state immediately on Phase-1.
-          _screenRecording = true;
           if (_state == RecState.starting) _set(RecState.recording);
           notifyListeners();
-          return; // Phase-1 event consumed
+          return;
         }
-        // Fallthrough: unexpected extra screenLoopStarted — ignore silently
-        // to prevent resetting the chunk timer or re-triggering beginChunkWriter.
+        // Extra screenLoopStarted after Phase-1 is consumed — ignore.
         log('[REC] screenLoopStarted: extra event ignored (Phase-1 already consumed)');
 
       case 'videoChunksActive':
-      // Phase-2 signal: AVAssetWriter is writing real video frames.
-      // Resolves upgradeToScreenRecording()'s _upgradeCompleter.
-        log('[REC] videoChunksActive received');
+      // Phase-2 ONLY: AVAssetWriter is writing real video frames.
+      // FIX: Native now emits "videoChunksActive" (not "screenLoopStarted")
+      // from startRPScreenRecorder's completionHandler, so this event is never
+      // confused with the Phase-1 screenLoopStarted and is never swallowed by
+      // the Phase-1 early-return guard above.
+        log('[REC] videoChunksActive received (Phase-2)');
         if (_upgradeCompleter != null && !_upgradeCompleter!.isCompleted) {
           _upgradeCompleter!.complete();
         }
