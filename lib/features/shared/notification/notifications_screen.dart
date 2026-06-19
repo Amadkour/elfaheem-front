@@ -32,6 +32,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget build(BuildContext context) {
     NotificationsProvider provider = context.watch<NotificationsProvider>();
     return BasePage(
+      key: ValueKey('notifications'),
       useWebCard: true,
       child: SafeArea(
         child: provider.isLoading

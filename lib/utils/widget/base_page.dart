@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/app_theme.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_education_app/utils/widget/paint_background.dart';
 
 import '../../features/student/courses/details/components/app_responsive.dart';
 import '../helpers.dart';
+import 'app_bar.dart';
 
 class BasePage extends StatelessWidget {
   const BasePage({
@@ -29,6 +31,22 @@ class BasePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (key case ValueKey(
+    value: final v,
+    ) when AppConfig.disableList.contains(v)) {
+      return Scaffold(
+        appBar: ScreenAppBar(title:(key as ValueKey).value.toString().tr,),
+        body: Center(
+         child: Column(
+           mainAxisAlignment: MainAxisAlignment.center,
+           children: [
+             Text('🚀',style: TextStyle(fontSize: 70),),
+             Text('coming_soon'.tr , style: context.colors.h2.copyWith(color: context.themeConfig.accent2),),
+           ],
+         )
+        ),
+      );
+    }
     Widget w = Directionality(
       textDirection: Helpers.pageDirection,
       child: Scaffold(
@@ -91,6 +109,6 @@ class BasePage extends StatelessWidget {
       );
     }
 
-    return w;
+    return  w;
   }
 }

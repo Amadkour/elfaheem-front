@@ -82,6 +82,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const ProfileScreen(),
       ),
     ]);
+    dashboardItems.removeWhere((e)=>Helpers.AppConfig.disableList.contains('student_tab_${e.label}'));
+
     super.initState();
   }
 

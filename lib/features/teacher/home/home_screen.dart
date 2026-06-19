@@ -4,6 +4,7 @@ import 'package:flutter_education_app/features/teacher/courses/course_form_scree
 import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboard_provider.dart';
 import 'package:flutter_education_app/features/teacher/home/queue_work_items.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_provider.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
 import '../../../config/theme/app_theme.dart';
@@ -61,9 +62,10 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
             ),
             slivers: [
               // ── Top bar ─────────────────────────────────────────
-              if (!isWide) ...[SliverToBoxAdapter(child: _TopBar()),
-                const SliverToBoxAdapter(child: SizedBox(height: 20))]
-              else
+              if (!isWide) ...[
+                SliverToBoxAdapter(child: _TopBar()),
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+              ] else
                 SliverToBoxAdapter(child: _WebTopBar()),
 
               // ── Stats ────────────────────────────────────────────
@@ -72,77 +74,100 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                   color: context.themeConfig.background,
                   child: Column(
                     children: [
-                      ContentBox(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: loading
-                            ? const _StatsShimmer()
-                            : StatsRow(stats: provider.stats, isFull: false),
+                      ParentComponent(
+                        child: ContentBox(
+                          key: ValueKey('teacher_home_stats'),
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: loading
+                              ? const _StatsShimmer()
+                              : StatsRow(stats: provider.stats, isFull: false),
+                        ),
                       ),
                       const SizedBox(height: 20),
 
                       // ── Add course button ────────────────────────────────
-                      ContentBox(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: _AddCourseButton(),
+                      ParentComponent(
+                        child: ContentBox(
+                          key: ValueKey('teacher_home_add_course'),
+
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: _AddCourseButton(),
+                        ),
                       ),
                       SizedBox(height: 24),
 
                       // ── Courses ──────────────────────────────────────────
-                      ContentBox(
-                        child: SectionHeader(
-                          title: 'courses'.tr,
-                          actionLabel: 'show_all'.tr,
-                          onAction: () => context
-                              .read<TeacherDashboardProvider>()
-                              .onChangeTab(1),
+                      ParentComponent(
+                        child: ContentBox(
+                          key: ValueKey('teacher_home_courses'),
+
+                          child: SectionHeader(
+                            title: 'courses'.tr,
+                            actionLabel: 'show_all'.tr,
+                            onAction: () => context
+                                .read<TeacherDashboardProvider>()
+                                .onChangeTab(1),
+                          ),
                         ),
                       ),
                       SizedBox(height: 14),
-                      ContentBox(
-                        child: loading
-                            ? const CoursesShimmer()
-                            : CoursesRow(
-                                courses: provider.allCourses
-                                    .map((e) => e.toCourseModel)
-                                    .toList(),
-                                isTeacher: context
-                                    .read<AuthProvider>()
-                                    .isTeacher,
-                                onTap: (CourseModel c) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => ChangeNotifierProvider(
-                                        create: (_) =>
-                                            TeacherCourseScreenProvider(
-                                              initialCourse: c.toTeacherModel,
-                                            ),
-                                        child: TeacherSessionsScreen(),
+                      ParentComponent(
+                        child: ContentBox(
+                          key: ValueKey('teacher_home_courses'),
+
+                          child: loading
+                              ? const CoursesShimmer()
+                              : CoursesRow(
+                                  courses: provider.allCourses
+                                      .map((e) => e.toCourseModel)
+                                      .toList(),
+                                  isTeacher: context
+                                      .read<AuthProvider>()
+                                      .isTeacher,
+                                  onTap: (CourseModel c) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ChangeNotifierProvider(
+                                          create: (_) =>
+                                              TeacherCourseScreenProvider(
+                                                initialCourse: c.toTeacherModel,
+                                              ),
+                                          child: TeacherSessionsScreen(),
+                                        ),
                                       ),
-                                    ),
-                                  );
-                                },
-                                pageName: 'teacher-home-my-courses',
-                              ),
+                                    );
+                                  },
+                                  pageName: 'teacher-home-my-courses',
+                                ),
+                        ),
                       ),
                       SizedBox(height: 26),
 
                       // ── Schedule ─────────────────────────────────────────
-                      ContentBox(
-                        child: SectionHeader(
-                          title: 'الجدول الزمني',
-                          actionLabel: 'المواعيد القادمة',
-                          onAction: () => context
-                              .read<TeacherDashboardProvider>()
-                              .onChangeTab(2),
+                      ParentComponent(
+                        child: ContentBox(
+                          key: ValueKey('teacher_home_schedule'),
+
+                          child: SectionHeader(
+                            title: 'الجدول الزمني',
+                            actionLabel: 'المواعيد القادمة',
+                            onAction: () => context
+                                .read<TeacherDashboardProvider>()
+                                .onChangeTab(2),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 14),
                       loading
                           ? const _ScheduleShimmer()
-                          : ContentBox(
-                              child: ScheduleQueueList(
-                                sessions: provider.schedule,
+                          : ParentComponent(
+                              child: ContentBox(
+                                key: ValueKey('teacher_home_schedule'),
+
+                                child: ScheduleQueueList(
+                                  sessions: provider.schedule,
+                                ),
                               ),
                             ),
                       SizedBox(height: 36),
@@ -499,7 +524,7 @@ class _AddCourseButton extends StatelessWidget {
     child: Container(
       height: 54,
       decoration: BoxDecoration(
-        color:context.themeConfig.accent2.withValues(alpha:0.7),
+        color: context.themeConfig.accent2.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(

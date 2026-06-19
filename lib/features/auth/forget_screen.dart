@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/verified_screen.dart';
-import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';

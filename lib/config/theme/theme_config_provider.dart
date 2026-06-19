@@ -20,12 +20,14 @@ import 'package:flutter/material.dart'; // Color, Colors, BoxShadow, LinearGradi
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/api_client.dart';
+import '../app_config.dart';
 import 'app_theme.dart';
 import 'theme_config_model.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
 const _kCacheKey = 'theme_config_v1';
+const _kDisableListCacheKey = 'disable_list_v1';
 
 /// Detects which platform string to send to the API.
 String get _currentPlatform {
@@ -52,6 +54,11 @@ class ThemeConfigProvider extends ChangeNotifier {
   ThemeConfigModel? get model    => _model;
   bool              get isFetching => _isFetching;
   String?           get error    => _error;
+
+  /// Feature kill-switch list for the current platform. Same value as
+  /// [AppConfig.disableList] — exposed here too so widgets that already
+  /// listen to context.themeConfig don't need a second lookup.
+  List<String> get disableList => AppConfig.disableList;
 
   // ── Convenience getters — fall back to AppTheme constants ─────────────────
 
@@ -290,8 +297,16 @@ class ThemeConfigProvider extends ChangeNotifier {
       if (raw != null) {
         final json = jsonDecode(raw) as Map<String, dynamic>;
         _model = ThemeConfigModel.fromJson(json);
-        notifyListeners();
       }
+
+      final disableRaw = prefs.getString(_kDisableListCacheKey);
+      if (disableRaw != null) {
+        AppConfig.disableList = (jsonDecode(disableRaw) as List<dynamic>)
+            .map((e) => e.toString())
+            .toList();
+      }
+
+      notifyListeners();
     } catch (e) {
       debugPrint('[ThemeConfigProvider] cache load error: $e');
     }
@@ -303,6 +318,15 @@ class ThemeConfigProvider extends ChangeNotifier {
       await prefs.setString(_kCacheKey, jsonEncode(model.toJson()));
     } catch (e) {
       debugPrint('[ThemeConfigProvider] cache save error: $e');
+    }
+  }
+
+  Future<void> _saveDisableListCache(List<String> items) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kDisableListCacheKey, jsonEncode(items));
+    } catch (e) {
+      debugPrint('[ThemeConfigProvider] disable list cache save error: $e');
     }
   }
 
@@ -320,6 +344,13 @@ class ThemeConfigProvider extends ChangeNotifier {
       final colors = json['colors'] as Map<String, dynamic>;
       _model = ThemeConfigModel.fromJson(colors);
       await _saveCache(_model!);
+
+      final disableItems = (json['disable_list'] as List<dynamic>? ?? [])
+          .map((e) => e.toString())
+          .toList();
+      AppConfig.disableList = disableItems;
+      await _saveDisableListCache(disableItems);
+
       notifyListeners();
     } catch (e) {
       _error = e.toString();

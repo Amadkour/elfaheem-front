@@ -72,6 +72,8 @@ class _State extends State<TeacherDashboardScreen> {
         const ProfileScreen(),
       ),
     ]);
+    dashboardItems.removeWhere((e)=>Helpers.AppConfig.disableList.contains('teacher_tab_${e.label}'));
+
   }
 
   @override
