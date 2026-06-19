@@ -1055,7 +1055,17 @@ import CoreVideo
             }
 
             self.registerDarwinListeners()
-
+   // --- NEW: schedule a resume if broadcast doesn't start ---
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
+            guard let self = self else { return }
+            // If broadcast hasn't started and we're still paused, resume recording.
+            if !self.isBroadcasting && self.paused && self.recording && !self.stopping {
+                self.paused = false
+                self.beginChunkWriter()
+                NSLog("[SHARE] picker timeout: recording resumed (broadcast not started)")
+            }
+        }
+        // --- END NEW ---
             let picker = RPSystemBroadcastPickerView(frame: CGRect(x: 0, y: 0, width: 60, height: 60))
             picker.preferredExtension =
                 Bundle.main.bundleIdentifier.map { $0 + ".BroadcastUploadExtension" }
