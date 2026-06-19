@@ -812,24 +812,53 @@ import CoreVideo
         removeDarwinListeners()
         endBgTask()
 
-        // If the broadcast extension was active when the session ended, we must
-        // finalise its in-progress chunk NOW (with isFinal=true) before calling
-        // RPScreenRecorder.stopCapture(). Without this, the broadcast chunk is
-        // abandoned — stopCapture() tears down the AVAssetWriter mid-write and
-        // the last chunk never gets uploaded with isFinal=true.
+        // ── Why we hold result open until the upload completes ────────────────
+        // On iOS there is no ForegroundService — once result(nil) fires, Dart
+        // calls widget.onEnd() which tears down the room, backgrounds the app,
+        // and may suspend the process. Any in-flight URLSession.default task
+        // is killed silently on suspension. So we must NOT call result(nil)
+        // until the final chunk has actually landed on the server.
         //
-        // Note: RPScreenRecorder.stopCapture() does NOT stop the extension
-        // process (it runs out-of-process) — the extension will continue sending
-        // Darwin notifications after we return, but removeDarwinListeners() above
-        // means we no longer read them. The extension stops on its own when the
-        // user dismisses it from Control Centre or when the system reclaims it.
+        // Flow:
+        //   finaliseChunk → finishWriting → uploadChunkAsync(isFinal:true)
+        //     success/final-failure → stopCapture → result(nil)   ← Dart unblocks
+        //
+        // This means Dart's `await invokeMethod('stopRecording')` truly waits
+        // for the upload, so _endSessionWithRecording's `await stopRecordingOnly()`
+        // blocks until the server has the final chunk before onEnd() is called.
         finaliseChunk(isFinal: isFinal) { [weak self] in
             guard let self = self else { result(nil); return }
-            RPScreenRecorder.shared().stopCapture { [weak self] error in
-                if let e = error { NSLog("[REC] stopCapture: \(e.localizedDescription)") }
-                DispatchQueue.main.async {
-                    self?.stopping = false
-                    result(nil)
+            // Pass result into uploadChunkAsync — it will call result(nil) once
+            // the upload succeeds or exhausts its retries. If the chunk is
+            // not-final or there's nothing to upload, uploadChunkAsync calls
+            // result(nil) immediately after the final attempt.
+            self.stopCaptureThenSignal(result: result)
+        }
+    }
+
+    /// Called after finaliseChunk completes. Stops RPScreenRecorder and calls
+    /// result(nil) so Dart unblocks — upload already completed by the time
+    /// finaliseChunk's completion runs for is_final chunks, because
+    /// uploadChunkAsync dispatches to a global queue and signals back via
+    /// the stopResult closure set in uploadChunkAsync.
+    private var stopResult: FlutterResult?
+
+    private func stopCaptureThenSignal(result: @escaping FlutterResult) {
+        // Store result so uploadChunkAsync can fire it when the upload lands.
+        // If no chunk was written (writer was nil/empty) this fires immediately.
+        stopResult = result
+        RPScreenRecorder.shared().stopCapture { [weak self] error in
+            if let e = error { NSLog("[REC] stopCapture: \(e.localizedDescription)") }
+            DispatchQueue.main.async {
+                self?.stopping = false
+                // If uploadChunkAsync already fired stopResult (fast network),
+                // stopResult is nil here — nothing to do. If upload is still
+                // in-flight, it holds the result and fires it on completion.
+                // Fallback: if no upload was queued at all (empty session),
+                // fire result now so Dart doesn't hang.
+                if let r = self?.stopResult {
+                    self?.stopResult = nil
+                    r(nil)
                 }
             }
         }
@@ -975,6 +1004,17 @@ import CoreVideo
                 } else {
                     try? FileManager.default.removeItem(at: fileURL)
                     self.emitError("chunk #\(index) failed after 4 retries: \(reason)")
+                    // Final chunk failed permanently — still unblock Dart so the
+                    // session can close. The idle watchdog on the server will
+                    // assemble whatever chunks landed successfully.
+                    if isFinal {
+                        DispatchQueue.main.async {
+                            if let r = self.stopResult {
+                                self.stopResult = nil
+                                r(nil)
+                            }
+                        }
+                    }
                 }
                 return
             }
@@ -985,6 +1025,15 @@ import CoreVideo
             DispatchQueue.main.async {
                 self.emitEvent(["event": "chunkUploaded", "chunkIndex": index,
                                 "bytes": fileSize, "isFinal": isFinal])
+                // Final chunk confirmed by server — now safe to unblock Dart.
+                // Dart's await invokeMethod('stopRecording') resolves here,
+                // allowing _endSessionWithRecording to call widget.onEnd().
+                if isFinal {
+                    if let r = self.stopResult {
+                        self.stopResult = nil
+                        r(nil)
+                    }
+                }
             }
         }.resume()
     }

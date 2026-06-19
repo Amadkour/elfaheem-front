@@ -375,7 +375,21 @@ class ClientRecorder extends ChangeNotifier {
 
   Future<void> _stopMobile({required bool isFinal}) async {
     try {
-      await _recChannel.invokeMethod('stopRecording', {'isFinal': isFinal});
+      // Native holds this result open until the final upload lands on the
+      // server (or retries are exhausted) — see AppDelegate.stopRecording().
+      // Timeout of 90s covers worst-case 4-retry back-off (3+6+12+24=45s)
+      // plus upload time on a slow connection, with headroom. If we time out
+      // we still proceed — the server's idle watchdog will assemble whatever
+      // chunks arrived.
+      await _recChannel
+          .invokeMethod('stopRecording', {'isFinal': isFinal})
+          .timeout(
+        const Duration(seconds: 90),
+        onTimeout: () {
+          log('[REC] stopRecording timed out — proceeding with onEnd anyway');
+          return null;
+        },
+      );
     } catch (e) {
       log('[REC] Mobile stop error: $e');
     }

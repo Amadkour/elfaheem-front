@@ -546,25 +546,24 @@ class _RoomPageState extends State<RoomPage>
     final rec = _recorder;
     _recorder = null; // detach so dispose() never interferes
 
-    // Stop recording for any active state (recording, paused, starting, or uploading).
-    // We must attempt stop even in 'starting' state — the native service may
-    // already be recording chunks even if the Dart state hasn't transitioned yet.
-    // If currently paused, the native service will wake and finalise normally.
+    // Stop recording and WAIT for the final chunk to reach the server before
+    // calling onEnd(). On iOS there is no ForegroundService — once onEnd()
+    // fires the app backgrounds and any in-flight URLSession task is killed.
+    // Native's invokeMethod('stopRecording') now holds its FlutterResult open
+    // until the final upload is confirmed (or retries exhausted), so this
+    // await genuinely blocks until the server has isFinal=True.
     if (widget.isTeacher &&
         rec != null &&
         rec.state != RecState.done &&
         rec.state != RecState.error) {
       try {
         await rec.stopRecordingOnly();
-        if (kIsWeb) {
-          log('[REC] Web: compositor drained — all chunks uploaded');
-        }
-        // Mobile: don't block here — native FGS drains uploads independently.
-        // _drainAndDispose runs unawaited so the UI pops immediately while
-        // the background task waits for RecState.done (all chunks confirmed).
+        log('[REC] stopRecordingOnly complete — final chunk confirmed, safe to end');
       } catch (e) {
         log('[REC] stopRecordingOnly error: $e');
       }
+      // Drain any remaining state (web compositor or residual events).
+      // Runs quickly since native already confirmed the final upload above.
       unawaited(_drainAndDispose(rec));
     }
 
