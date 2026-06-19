@@ -220,7 +220,7 @@ import CoreVideo
             [weak self] in
             guard let self = self else { return }
             NSLog("[REC] background task expiring — finalising chunk")
-            self.finaliseChunk(isFinal: false) { [weak self] in
+            self.finaliseChunk(isFinal: false) { [weak self] _ in
                 guard let self = self else { return }
                 self.chunkIndex += 1
             }
@@ -308,15 +308,23 @@ import CoreVideo
                 result(true)
 
             case "upgradeToScreenRecording":
-                if self.recording {
-                    // Emit a DISTINCT event so Dart's _upgradeCompleter resolves
-                    // without accidentally triggering Phase-1 logic or resetting
-                    // the chunk timer again via another beginChunkWriter() call.
-                    self.emitEvent(["event": "videoChunksActive"])
-                    result(true)
-                } else {
-                    result(false)
-                }
+                // FIX: previously this checked only `self.recording`, which
+                // stays true the entire time we are `paused` waiting for a
+                // broadcast extension's first frame (see showBroadcastPicker).
+                // That meant calling this right after showing the broadcast
+                // picker reported "Phase-2 confirmed" / emitted
+                // 'videoChunksActive' INSTANTLY and unconditionally — even
+                // though nothing was actually being captured yet, because the
+                // picker's system sheet hadn't even been confirmed by the
+                // user. Dart would then believe screen-share recording was
+                // live while in reality the recorder was still paused with no
+                // writer, so when the session ended shortly after, there was
+                // nothing left to finalise but the one chunk recorded before
+                // the share tap. confirmRecordingActive() now actually waits
+                // for `paused` to clear (i.e. a real frame arrived, or the
+                // watchdog/cancel path resumed RPScreenRecorder) before
+                // reporting success.
+                self.confirmRecordingActive(result: result)
 
             case "downgradeToMicForShare":
                 self.emitEvent(["event": "micReadyForShare"])
@@ -354,6 +362,43 @@ import CoreVideo
             onListen: { [weak self] sink in self?.eventSink = sink },
             onCancel: { [weak self] in self?.eventSink = nil }
         ))
+    }
+
+    /// Confirms recording is genuinely live (frames currently being written —
+    /// either by RPScreenRecorder or by an active broadcast) before telling
+    /// Dart that Phase-2 / screen-share upgrade succeeded.
+    ///
+    /// Critically, while `paused` is true (e.g. between showBroadcastPicker
+    /// pausing RPScreenRecorder and the extension's first frame actually
+    /// arriving), we must NOT report success yet. The old implementation
+    /// fired the "videoChunksActive" event immediately whenever `recording`
+    /// was true, which stayed true throughout the paused window — a false
+    /// positive that told Dart broadcast chunks were flowing when nothing
+    /// was being captured at all.
+    ///
+    /// We poll briefly instead of failing immediately, because `paused`
+    /// legitimately flips back to false very soon after this is called in
+    /// the normal flows (RPScreenRecorder's own Phase-2 upgrade, or a
+    /// broadcast frame arriving a moment after the user confirms the system
+    /// sheet). 20 attempts * 0.25s = 5s, comfortably inside Dart's own 20s
+    /// timeout for this call so a genuine failure is still reported promptly
+    /// rather than silently falling back to Dart's "assume live" timeout path.
+    private func confirmRecordingActive(result: @escaping FlutterResult, attemptsLeft: Int = 20) {
+        guard recording, !stopping else { result(false); return }
+        guard paused else {
+            // Genuinely writing frames right now.
+            emitEvent(["event": "videoChunksActive"])
+            result(true)
+            return
+        }
+        guard attemptsLeft > 0 else {
+            NSLog("[REC] upgradeToScreenRecording: still paused after wait — reporting not-yet-active")
+            result(false)
+            return
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
+            self?.confirmRecordingActive(result: result, attemptsLeft: attemptsLeft - 1)
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -794,7 +839,7 @@ import CoreVideo
         chunkTimer?.invalidate()
         chunkTimer = nil
         guard recording, !stopping, !paused else { return }
-        finaliseChunk(isFinal: false) { [weak self] in
+        finaliseChunk(isFinal: false) { [weak self] _ in
             guard let self = self, self.recording, !self.stopping, !self.paused else { return }
             self.chunkIndex += 1
             self.beginChunkWriter()
@@ -810,7 +855,7 @@ import CoreVideo
         NSLog("[REC] pauseRecording: finalising chunk #\(chunkIndex)")
         chunkTimer?.invalidate(); chunkTimer = nil
         paused = true
-        finaliseChunk(isFinal: false) { [weak self] in
+        finaliseChunk(isFinal: false) { [weak self] _ in
             guard let self = self else { return }
             self.chunkIndex += 1
             self.assetWriter  = nil
@@ -861,13 +906,20 @@ import CoreVideo
         // This means Dart's `await invokeMethod('stopRecording')` truly waits
         // for the upload, so _endSessionWithRecording's `await stopRecordingOnly()`
         // blocks until the server has the final chunk before onEnd() is called.
-        finaliseChunk(isFinal: isFinal) { [weak self] in
+        //
+        // BUT: if finaliseChunk had nothing to finalise — e.g. the user ended
+        // the session while still `paused` waiting on a broadcast picker that
+        // never actually started, so no AVAssetWriter/frames ever existed for
+        // this "chunk" — no upload will EVER be queued, and waiting on
+        // stopResult would hang until Dart's own 90s timeout. uploadQueued
+        // tells us which case we're in.
+        finaliseChunk(isFinal: isFinal) { [weak self] uploadQueued in
             guard let self = self else { result(nil); return }
             // Pass result into uploadChunkAsync — it will call result(nil) once
             // the upload succeeds or exhausts its retries. If the chunk is
             // not-final or there's nothing to upload, uploadChunkAsync calls
             // result(nil) immediately after the final attempt.
-            self.stopCaptureThenSignal(result: result)
+            self.stopCaptureThenSignal(result: result, expectFinalUpload: uploadQueued)
         }
     }
 
@@ -877,20 +929,36 @@ import CoreVideo
     /// slow network (Cloudflare tunnel) stopCapture completes in <1s but the
     /// upload takes much longer. Firing result here would unblock Dart before
     /// the chunk reaches the server, causing onEnd() to kill the upload.
+    ///
+    /// `expectFinalUpload` must be false when finaliseChunk produced nothing
+    /// to upload (e.g. stop was called mid-pause with no frames captured) —
+    /// in that case nothing will ever call uploadChunkAsync's isFinal path,
+    /// so we must fire result(nil) right here instead of waiting forever.
     private var stopResult: FlutterResult?
 
-    private func stopCaptureThenSignal(result: @escaping FlutterResult) {
-        stopResult = result
+    private func stopCaptureThenSignal(result: @escaping FlutterResult, expectFinalUpload: Bool) {
+        if expectFinalUpload {
+            stopResult = result
+        }
         RPScreenRecorder.shared().stopCapture { [weak self] error in
             if let e = error { NSLog("[REC] stopCapture: \(e.localizedDescription)") }
             DispatchQueue.main.async {
                 self?.stopping = false
-                // Do NOT fire result(nil) here — uploadChunkAsync holds stopResult
-                // and fires it when the server confirms the final chunk (or after
-                // all retries fail). Firing here would unblock Dart before the
-                // upload completes, killing the in-flight URLSession task when
-                // onEnd() backgrounds the app.
-                NSLog("[REC] stopCapture done — waiting for final chunk upload to confirm")
+                if expectFinalUpload {
+                    // Do NOT fire result(nil) here — uploadChunkAsync holds
+                    // stopResult and fires it when the server confirms the
+                    // final chunk (or after all retries fail). Firing here
+                    // would unblock Dart before the upload completes, killing
+                    // the in-flight URLSession task when onEnd() backgrounds
+                    // the app.
+                    NSLog("[REC] stopCapture done — waiting for final chunk upload to confirm")
+                } else {
+                    // Nothing was queued to upload — there is nothing left to
+                    // wait for, so unblock Dart now instead of stalling for
+                    // 90s until its own timeout gives up.
+                    NSLog("[REC] stopCapture done — no final chunk was produced, unblocking Dart now")
+                    result(nil)
+                }
             }
         }
     }
@@ -899,11 +967,19 @@ import CoreVideo
     // MARK: - Chunk finalisation & upload
     // ─────────────────────────────────────────────────────────────────────────
 
-    private func finaliseChunk(isFinal: Bool, completion: @escaping () -> Void) {
+    private func finaliseChunk(isFinal: Bool, completion: @escaping (_ uploadQueued: Bool) -> Void) {
         // Capture into locals and nil immediately — prevents double-finishWriting crash.
         // "Cannot call finishWritingWithCompletionHandler when status is 2" happens
         // when this is called twice on the same writer (e.g. stopBroadcastShare then
         // stopRecording). Nilling first means the second call hits the guard below.
+        //
+        // `uploadQueued` tells the caller whether an upload was actually handed
+        // off to uploadChunkAsync(). This matters for the stop path: if there is
+        // nothing to upload (e.g. we were paused waiting on a broadcast picker
+        // that never actually started, so no frames were ever written), the
+        // caller must NOT block waiting for an isFinal upload completion that
+        // will never happen — that was the cause of stopRecording hanging for
+        // the full 90s Dart timeout with only the pre-share chunk ever landing.
         guard let writer  = assetWriter,
               let vi      = videoInput,
               let ai      = audioInput,
@@ -911,7 +987,7 @@ import CoreVideo
             DispatchQueue.main.async { [weak self] in
                 // No writer — fire stopResult if this is the stop path.
                 if let r = self?.stopResult { self?.stopResult = nil; r(nil) }
-                completion()
+                completion(false)
             }
             return
         }
@@ -921,7 +997,7 @@ import CoreVideo
             currentFile = nil; writerSessionStarted = false
             DispatchQueue.main.async { [weak self] in
                 if let r = self?.stopResult { self?.stopResult = nil; r(nil) }
-                completion()
+                completion(false)
             }
             return
         }
@@ -934,7 +1010,7 @@ import CoreVideo
             try? FileManager.default.removeItem(at: fileURL)
             DispatchQueue.main.async { [weak self] in
                 if let r = self?.stopResult { self?.stopResult = nil; r(nil) }
-                completion()
+                completion(false)
             }
             return
         }
@@ -949,7 +1025,7 @@ import CoreVideo
                     NSLog("[REC] writer failed chunk #\(idx): \(writer.error?.localizedDescription ?? "unknown")")
                     DispatchQueue.main.async { [weak self] in
                         if isFinal, let r = self?.stopResult { self?.stopResult = nil; r(nil) }
-                        completion()
+                        completion(false)
                     }
                     return
                 }
@@ -959,7 +1035,7 @@ import CoreVideo
                     try? FileManager.default.removeItem(at: fileURL)
                     DispatchQueue.main.async { [weak self] in
                         if isFinal, let r = self?.stopResult { self?.stopResult = nil; r(nil) }
-                        completion()
+                        completion(false)
                     }
                     return
                 }
@@ -967,7 +1043,7 @@ import CoreVideo
                 DispatchQueue.global(qos: .utility).async { [weak self] in
                     self?.uploadChunkAsync(fileURL: fileURL, index: idx, isFinal: isFinal)
                 }
-                DispatchQueue.main.async { completion() }
+                DispatchQueue.main.async { completion(true) }
             }
         }
     }
@@ -1140,7 +1216,7 @@ import CoreVideo
             if self.recording && !self.paused && !self.stopping {
                 self.paused = true
                 NSLog("[SHARE] picker: recording paused before system overlay")
-                self.finaliseChunk(isFinal: false) { [weak self] in
+                self.finaliseChunk(isFinal: false) { [weak self] _ in
                     guard let self = self else { return }
                     self.chunkIndex += 1
                     NSLog("[SHARE] picker: paused chunk rotated at #\(self.chunkIndex)")
@@ -1275,7 +1351,7 @@ import CoreVideo
             } else {
                 // Broadcast was active: finalise the broadcast chunk and start
                 // a fresh RPScreenRecorder chunk.
-                finaliseChunk(isFinal: false) { [weak self] in
+                finaliseChunk(isFinal: false) { [weak self] _ in
                     guard let self = self, self.recording, !self.stopping, !self.paused else { return }
                     self.chunkIndex += 1
                     self.beginChunkWriter()
@@ -1384,7 +1460,7 @@ import CoreVideo
                 beginChunkWriter()
                 NSLog("[SHARE] Darwin stop: resumed from paused state at chunk #\(chunkIndex)")
             } else {
-                finaliseChunk(isFinal: false) { [weak self] in
+                finaliseChunk(isFinal: false) { [weak self] _ in
                     guard let self = self, self.recording, !self.stopping, !self.paused else { return }
                     self.chunkIndex += 1
                     self.beginChunkWriter()
