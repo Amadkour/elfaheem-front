@@ -156,6 +156,23 @@ import CoreVideo
     private var darwinObserverAdded = false
     private let ipcReadQueue        = DispatchQueue(label: "com.elfaheem.ipc", qos: .userInteractive)
 
+    // ── Broadcast-picker watchdog ─────────────────────────────────────────────
+    // showBroadcastPicker() pauses RPScreenRecorder and waits for the extension
+    // to deliver its first frame before recording resumes. If the system sheet
+    // never actually appears (e.g. the simulated button tap on the picker view
+    // fails on a given iOS version) or the user backs out without the normal
+    // cancel path firing, nothing would ever resume recording and only the
+    // pre-share chunk(s) would ever reach the server. This timer is a safety
+    // net: if no broadcast frame has arrived within pickerWatchdogSecs of
+    // showing the picker, we assume the broadcast never started and resume
+    // RPScreenRecorder ourselves.
+    private var pickerWatchdog: Timer?
+    private let pickerWatchdogSecs: TimeInterval = 10
+    // Kept alive only so the picker view (which must be in the window/view
+    // hierarchy for its button to reliably trigger the system sheet) isn't
+    // deallocated before iOS has had a chance to act on the simulated tap.
+    private var activeBroadcastPicker: RPSystemBroadcastPickerView?
+
     // ── Video dimensions (read from first RPScreenRecorder video frame) ───────
     private var videoWidth:  Int = 0
     private var videoHeight: Int = 0
@@ -823,6 +840,9 @@ import CoreVideo
         NSLog("[REC] stopRecording: isFinal=\(isFinal) isBroadcasting=\(isBroadcasting)")
         stopping = true; recording = false
         chunkTimer?.invalidate(); chunkTimer = nil
+        pickerWatchdog?.invalidate(); pickerWatchdog = nil
+        activeBroadcastPicker?.removeFromSuperview()
+        activeBroadcastPicker = nil
         isBroadcasting = false
         removeDarwinListeners()
         endBgTask()
@@ -1171,6 +1191,27 @@ import CoreVideo
                 Bundle.main.bundleIdentifier.map { $0 + ".BroadcastUploadExtension" }
             picker.showsMicrophoneButton = false
 
+            // ── CRITICAL: the picker must be part of a live window ───────────
+            // RPSystemBroadcastPickerView's internal button only reliably
+            // presents the system "Start Broadcast" sheet when the view is
+            // actually installed in a window. Previously this view was never
+            // added to any superview — the simulated tap below had nothing
+            // to act on, so on affected iOS versions the sheet silently never
+            // appeared, the extension never launched, `paused` stayed true
+            // forever, and only the chunk(s) recorded before this tap ever
+            // reached the server. We keep it nearly invisible (not literally
+            // hidden — UIKit does not forward control events to hidden views)
+            // and behind everything else, then remove it shortly after.
+            guard let hostWindow = self.window else {
+                NSLog("[SHARE] showBroadcastPicker: no window available")
+                result(nil)
+                return
+            }
+            picker.alpha = 0.01
+            hostWindow.addSubview(picker)
+            hostWindow.sendSubviewToBack(picker)
+            self.activeBroadcastPicker = picker
+
             for subview in picker.subviews {
                 if let button = subview as? UIButton {
                     button.sendActions(for: .touchUpInside)
@@ -1178,6 +1219,38 @@ import CoreVideo
                 }
             }
             NSLog("[SHARE] showBroadcastPicker — extension: \(picker.preferredExtension ?? "nil")")
+
+            // Remove the picker view shortly after — it has done its job of
+            // hosting the tap that opens the system sheet. The sheet itself
+            // is presented by iOS in its own process and doesn't need this
+            // view to remain in the hierarchy.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                picker.removeFromSuperview()
+                if self?.activeBroadcastPicker === picker {
+                    self?.activeBroadcastPicker = nil
+                }
+            }
+
+            // ── Watchdog: resume if the broadcast never actually starts ──────
+            // Covers: sheet failed to present, user dismissed it without going
+            // through "Start Broadcast", or the extension failed to launch
+            // (signing/App-Group misconfiguration etc). Cancelled as soon as
+            // a real broadcast frame arrives (handleBroadcastData), the user
+            // explicitly cancels (stopBroadcastShare), or the extension itself
+            // reports it stopped (onDarwinStopNotif).
+            self.pickerWatchdog?.invalidate()
+            self.pickerWatchdog = Timer.scheduledTimer(
+                withTimeInterval: self.pickerWatchdogSecs, repeats: false
+            ) { [weak self] _ in
+                guard let self = self else { return }
+                self.pickerWatchdog = nil
+                guard self.recording, self.paused, !self.isBroadcasting, !self.stopping else { return }
+                NSLog("[SHARE] picker watchdog: no broadcast frame after " +
+                      "\(self.pickerWatchdogSecs)s — resuming RPScreenRecorder")
+                self.paused = false
+                self.beginChunkWriter()
+            }
+
             result(nil)
         }
     }
@@ -1186,6 +1259,10 @@ import CoreVideo
         isBroadcasting = false
         removeDarwinListeners()
         endBgTask()
+        pickerWatchdog?.invalidate()
+        pickerWatchdog = nil
+        activeBroadcastPicker?.removeFromSuperview()
+        activeBroadcastPicker = nil
         emitEvent(["event": "broadcastStopped"])
         NSLog("[SHARE] broadcast stopped by app")
         if recording && !stopping {
@@ -1295,6 +1372,10 @@ import CoreVideo
         NSLog("[SHARE] broadcast extension finished (Darwin stop)")
         isBroadcasting = false
         removeDarwinListeners()
+        pickerWatchdog?.invalidate()
+        pickerWatchdog = nil
+        activeBroadcastPicker?.removeFromSuperview()
+        activeBroadcastPicker = nil
         emitEvent(["event": "broadcastStopped"])
         if recording && !stopping {
             if paused {
@@ -1351,6 +1432,10 @@ import CoreVideo
             // Video frame (JPEG) — write into the active AVAssetWriter chunk.
             if !isBroadcasting {
                 isBroadcasting = true
+                // Broadcast is confirmed live — the watchdog that would have
+                // resumed RPScreenRecorder on a no-show is no longer needed.
+                pickerWatchdog?.invalidate()
+                pickerWatchdog = nil
                 // Fresh broadcast session — any previous PTS baseline is from
                 // a prior (now-stopped) broadcast and would produce a bogus
                 // duration delta on the first frame of this one.
