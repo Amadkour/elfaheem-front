@@ -371,7 +371,15 @@ import CoreVideo
         // `guard recording else { return }` in stopRecording() exits immediately
         // without calling finaliseChunk(), producing 0 uploaded chunks.
         recording = true
-        beginChunkWriter()
+        // NOTE: do NOT call beginChunkWriter() here.
+        // beginChunkWriter() starts the 5-second chunk timer. If we start it
+        // before startCapture's completionHandler fires (which takes 1-3s on
+        // device), the timer fires into a writer that has never had startSession
+        // called — finishWriting on an un-started AVAssetWriter produces a
+        // corrupt/empty file that gets dropped. Worse, that race means chunk #0
+        // is silently dropped and chunkIndex increments to 1 before any real
+        // media is captured. The timer is started in completionHandler below,
+        // after RPScreenRecorder confirms it is actually delivering frames.
 
         rp.startCapture(handler: { [weak self] sampleBuffer, bufferType, error in
             guard let self = self, self.recording, !self.stopping else { return }
@@ -399,19 +407,18 @@ import CoreVideo
                     return
                 }
                 // ── Re-arm audio session AFTER startCapture completes ────────
-                // LiveKit's RTCAudioSession may have reconfigured the session
-                // during the async gap (visible in logs as "SoloAmbient").
-                // Re-applying here ensures mic input is active when frames arrive.
                 self.configureAudioSessionForRecording()
-
-                // Schedule a delayed re-arm to catch any LiveKit reset that
-                // fires after the completion handler (observed in practice).
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
                     guard let self = self, self.recording else { return }
                     self.configureAudioSessionForRecording()
                     NSLog("[REC] AVAudioSession: delayed re-arm applied")
                 }
 
+                // ── Start chunk writer NOW — RPScreenRecorder is delivering ──
+                // The first video frame will anchor the AVAssetWriter session,
+                // and the 5-second timer starts from this moment, not from
+                // before startCapture was called.
+                self.beginChunkWriter()
                 self.emitEvent(["event": "screenLoopStarted"])
                 NSLog("[REC] RPScreenRecorder started — chunk #\(self.chunkIndex)")
                 result(true)
@@ -884,6 +891,16 @@ import CoreVideo
             NSLog("[REC] finaliseChunk skipped (writer status=\(writer.status.rawValue))")
             assetWriter = nil; videoInput = nil; audioInput = nil
             currentFile = nil; writerSessionStarted = false
+            DispatchQueue.main.async { completion() }
+            return
+        }
+        // Guard: if startSession was never called (no frames arrived yet),
+        // calling finishWriting produces a corrupt/empty container. Drop it.
+        guard writerSessionStarted else {
+            NSLog("[REC] finaliseChunk skipped — startSession never called (no frames yet)")
+            assetWriter = nil; videoInput = nil; audioInput = nil
+            currentFile = nil; writerSessionStarted = false
+            try? FileManager.default.removeItem(at: fileURL)
             DispatchQueue.main.async { completion() }
             return
         }

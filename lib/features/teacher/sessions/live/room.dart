@@ -322,6 +322,8 @@ class _RoomPageState extends State<RoomPage>
   double _pipBottom = 100;
   static const double _pipW = 120;
   static const double _pipH = 90;
+  // When true, camera is the main view and the main participant is in the PiP.
+  bool _pipSwapped = false;
 
   // Animations
   late AnimationController _thumbBarAnim;
@@ -1244,6 +1246,24 @@ class _RoomPageState extends State<RoomPage>
       );
     }
     final main = participantTracks.first;
+    // When PiP is swapped, show the local camera as the main view.
+    if (_pipSwapped) {
+      final localEntry = participantTracks
+          .where((t) =>
+      t.participant == widget.room.localParticipant &&
+          t.type != ParticipantTrackType.kScreenShare)
+          .firstOrNull;
+      if (localEntry != null) {
+        final cameraTrack = _resolveCameraTrack(localEntry.participant);
+        if (cameraTrack != null) {
+          return VideoTrackRenderer(
+            cameraTrack,
+            renderMode: VideoRenderMode.texture,
+            fit: VideoViewFit.contain,
+          );
+        }
+      }
+    }
     if (main.type == ParticipantTrackType.kScreenShare) {
       return _PremiumScreenShareView(
         participant: main.participant,
@@ -1255,18 +1275,31 @@ class _RoomPageState extends State<RoomPage>
   }
 
   // ── PiP ────────────────────────────────────────────────────────────────────
+  //
+  // Always visible when the local participant has a camera track, regardless
+  // of whether screen share is active. Draggable to any corner. Tapping the
+  // PiP (or its swap icon) swaps the PiP content with the main view, so the
+  // teacher/student can choose which feed is prominent.
   Widget _buildDraggablePip(BoxConstraints constraints) {
-    if (!_isScreenShareMain) return const SizedBox.shrink();
+    // Find the local participant's camera entry.
     final localEntry = participantTracks
-        .skip(1)
-        .where(
-          (t) =>
-      t.participant == widget.room.localParticipant &&
-          t.type != ParticipantTrackType.kScreenShare,
-    )
+        .where((t) =>
+    t.participant == widget.room.localParticipant &&
+        t.type != ParticipantTrackType.kScreenShare)
         .firstOrNull;
     if (localEntry == null) return const SizedBox.shrink();
     final cameraTrack = _resolveCameraTrack(localEntry.participant);
+    // Hide if camera is off and not swapped — nothing useful to show in PiP.
+    if (cameraTrack == null && !_pipSwapped) return const SizedBox.shrink();
+
+    // When _pipSwapped: PiP shows the main participant, main shows camera.
+    // When normal:      PiP shows local camera, main shows first participant.
+    final pipTrack = _pipSwapped
+        ? (participantTracks.isNotEmpty
+        ? participantTracks.first
+        : null)
+        : null; // null = show camera in PiP (handled below)
+
     return Positioned(
       right: _pipRight,
       bottom: _pipBottom,
@@ -1281,6 +1314,7 @@ class _RoomPageState extends State<RoomPage>
             constraints.maxHeight - _pipH - 8.0,
           );
         }),
+        onTap: () => setState(() => _pipSwapped = !_pipSwapped),
         child: Container(
           width: _pipW,
           height: _pipH,
@@ -1301,7 +1335,15 @@ class _RoomPageState extends State<RoomPage>
             child: Stack(
               fit: StackFit.expand,
               children: [
-                if (cameraTrack != null)
+                // Video content
+                if (_pipSwapped && pipTrack != null)
+                  AbsorbPointer(
+                    child: ParticipantWidget.widgetFor(
+                      pipTrack,
+                      showStatsLayer: false,
+                    ),
+                  )
+                else if (!_pipSwapped && cameraTrack != null)
                   AbsorbPointer(
                     child: VideoTrackRenderer(
                       cameraTrack,
@@ -1318,6 +1360,26 @@ class _RoomPageState extends State<RoomPage>
                       color: _cyan.withValues(alpha: 0.4),
                     ),
                   ),
+
+                // Swap icon — top-right corner, always visible so intent is clear
+                Positioned(
+                  top: 4,
+                  right: 4,
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Icon(
+                      Icons.swap_calls_rounded,
+                      size: 13,
+                      color: Colors.white.withValues(alpha: 0.85),
+                    ),
+                  ),
+                ),
+
+                // Drag handle — subtle bar at top-centre
                 Positioned(
                   top: 5,
                   left: 0,
@@ -1327,7 +1389,7 @@ class _RoomPageState extends State<RoomPage>
                       width: 28,
                       height: 3,
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.35),
+                        color: Colors.white.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
