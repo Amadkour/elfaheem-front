@@ -8,7 +8,7 @@ import 'package:timeago/timeago.dart' as timeago;
 /// Application configuration and context.themeConfig.
 class AppConfig {
   static const String baseUrl =
-      'https://variance-encourage-genesis-sequence.trycloudflare.com';
+      'https://lat-roads-nasa-sim.trycloudflare.com';
   static String lang = 'ar';
   static bool showLogs = false;
 
@@ -16,8 +16,8 @@ class AppConfig {
   /// ThemeConfigProvider overwrites this with the server-side list (cached
   /// in SharedPreferences) right after GET /api/v1/theme/{platform} resolves.
   static List<String> disableList = [
-    'profile.delete_account',
-    'notifications'
+    // 'profile.delete_account',
+    // 'notifications'
     // 'profile.logout',
     // "profile.exit_group",
     // "teacher_tab_my_profile",
