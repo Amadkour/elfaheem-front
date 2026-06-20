@@ -14,12 +14,25 @@
 //
 //  B) Broadcast Extension (SampleHandler.swift) — captures a FOREIGN APP
 //     chosen by the user from RPSystemBroadcastPickerView.
-//     Active only while the user has tapped "Share Screen" → picked an app
-//     → "Start Broadcast".
+//     Active only while the user has tapped "Share Screen" → tapped the real
+//     visible system picker button (see BroadcastPickerOverlay) → confirmed
+//     "Start Broadcast" in iOS's own sheet.
 //     Frames arrive via Darwin notification + App Group shared file IPC
 //     → processSampleFromBroadcast() → SAME AVAssetWriter chunks → upload.
-//     While broadcast is active we PAUSE RPScreenRecorder frames so that
-//     only the foreign app's screen goes into the recording.
+//
+//     IMPORTANT: recording is NEVER paused for this. RPScreenRecorder keeps
+//     running and the chunk timer keeps rotating chunks continuously from
+//     the moment recording starts until stopRecording() — there is no gap.
+//     `isBroadcasting` simply decides which source's frames get written into
+//     the SAME ongoing AVAssetWriter: RPScreenRecorder frames are skipped
+//     while isBroadcasting is true (see startCapture's handler), and
+//     broadcast frames are skipped once it's false again. The two sources
+//     hand off seamlessly with zero pausing/resuming logic. An earlier
+//     version of this file paused RPScreenRecorder and waited for the
+//     extension's first frame before resuming — that gap, combined with the
+//     system picker's button silently ignoring a synthetic tap on some iOS
+//     versions, was the root cause of recording appearing to "stop" the
+//     moment Share was tapped. Do not reintroduce pausing here.
 //
 //  Audio:
 //     NEVER reconfigure AVAudioSession in this file.
@@ -156,22 +169,14 @@ import CoreVideo
     private var darwinObserverAdded = false
     private let ipcReadQueue        = DispatchQueue(label: "com.elfaheem.ipc", qos: .userInteractive)
 
-    // ── Broadcast-picker watchdog ─────────────────────────────────────────────
-    // showBroadcastPicker() pauses RPScreenRecorder and waits for the extension
-    // to deliver its first frame before recording resumes. If the system sheet
-    // never actually appears (e.g. the simulated button tap on the picker view
-    // fails on a given iOS version) or the user backs out without the normal
-    // cancel path firing, nothing would ever resume recording and only the
-    // pre-share chunk(s) would ever reach the server. This timer is a safety
-    // net: if no broadcast frame has arrived within pickerWatchdogSecs of
-    // showing the picker, we assume the broadcast never started and resume
-    // RPScreenRecorder ourselves.
-    private var pickerWatchdog: Timer?
-    private let pickerWatchdogSecs: TimeInterval = 10
-    // Kept alive only so the picker view (which must be in the window/view
-    // hierarchy for its button to reliably trigger the system sheet) isn't
-    // deallocated before iOS has had a chance to act on the simulated tap.
-    private var activeBroadcastPicker: RPSystemBroadcastPickerView?
+    // ── Broadcast picker overlay ───────────────────────────────────────────────
+    // Holds the visible overlay (instructions + a real, user-tappable
+    // RPSystemBroadcastPickerView + Cancel button) shown by showBroadcastPicker.
+    // Recording is never paused while this is up — RPScreenRecorder keeps
+    // running and writing chunks the whole time. The overlay is dismissed once
+    // the broadcast extension's first frame arrives (handleBroadcastData), the
+    // user taps Cancel, or recording stops outright.
+    private var activeBroadcastOverlay: BroadcastPickerOverlay?
 
     // ── Video dimensions (read from first RPScreenRecorder video frame) ───────
     private var videoWidth:  Int = 0
@@ -368,21 +373,14 @@ import CoreVideo
     /// either by RPScreenRecorder or by an active broadcast) before telling
     /// Dart that Phase-2 / screen-share upgrade succeeded.
     ///
-    /// Critically, while `paused` is true (e.g. between showBroadcastPicker
-    /// pausing RPScreenRecorder and the extension's first frame actually
-    /// arriving), we must NOT report success yet. The old implementation
-    /// fired the "videoChunksActive" event immediately whenever `recording`
-    /// was true, which stayed true throughout the paused window — a false
-    /// positive that told Dart broadcast chunks were flowing when nothing
-    /// was being captured at all.
-    ///
-    /// We poll briefly instead of failing immediately, because `paused`
-    /// legitimately flips back to false very soon after this is called in
-    /// the normal flows (RPScreenRecorder's own Phase-2 upgrade, or a
-    /// broadcast frame arriving a moment after the user confirms the system
-    /// sheet). 20 attempts * 0.25s = 5s, comfortably inside Dart's own 20s
-    /// timeout for this call so a genuine failure is still reported promptly
-    /// rather than silently falling back to Dart's "assume live" timeout path.
+    /// `paused` is now ONLY ever set by the explicit pauseRecording/
+    /// resumeRecording feature — showBroadcastPicker no longer pauses
+    /// anything (RPScreenRecorder keeps running continuously through the
+    /// whole broadcast-picker flow), so calling this right after starting a
+    /// screen share reports success immediately and correctly: frames really
+    /// are being written the entire time, first from RPScreenRecorder, then
+    /// seamlessly from the broadcast extension once its first frame arrives.
+    /// The brief poll below only matters for the manual-pause feature.
     private func confirmRecordingActive(result: @escaping FlutterResult, attemptsLeft: Int = 20) {
         guard recording, !stopping else { result(false); return }
         guard paused else {
@@ -885,9 +883,7 @@ import CoreVideo
         NSLog("[REC] stopRecording: isFinal=\(isFinal) isBroadcasting=\(isBroadcasting)")
         stopping = true; recording = false
         chunkTimer?.invalidate(); chunkTimer = nil
-        pickerWatchdog?.invalidate(); pickerWatchdog = nil
-        activeBroadcastPicker?.removeFromSuperview()
-        activeBroadcastPicker = nil
+        dismissBroadcastOverlay()
         isBroadcasting = false
         removeDarwinListeners()
         endBgTask()
@@ -1211,167 +1207,95 @@ import CoreVideo
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { result(nil); return }
 
-            // ── ORDER MATTERS ────────────────────────────────────────────
-            // registerDarwinListeners() MUST run before appDidEnterBackground().
-            // appDidEnterBackground()'s very first line is:
-            //     guard isBroadcasting || darwinObserverAdded else { return }
-            // At this point isBroadcasting is still false (the extension
-            // hasn't sent its first frame yet), so that guard only passes if
-            // darwinObserverAdded is already true. Calling
-            // appDidEnterBackground() first meant the guard always failed,
-            // beginBackgroundTask() was never started, and a few seconds
-            // later — exactly when the teacher switches away to the app they
-            // want to share — iOS suspends the host process with no
-            // background task protecting it. The chunk timer and upload
-            // callbacks then freeze until the user returns to the app, which
-            // is what looked like "recording stops the moment you open
-            // another app to share". Registering the Darwin listeners first
-            // makes the guard pass and the background task actually start.
+            // ── We do NOT pause recording here anymore ───────────────────────
+            // The previous implementation paused RPScreenRecorder, finalised
+            // the chunk in flight, and waited for the broadcast extension's
+            // first frame before resuming. That created the exact gap this
+            // file's earlier comments warn about ("only records chunks before
+            // sharing"), and on top of that the extension's first frame
+            // sometimes never arrived at all (see below), leaving recording
+            // paused forever.
+            //
+            // RPScreenRecorder simply keeps running and the chunk timer never
+            // stops. `rp.startCapture`'s handler already only forwards frames
+            // into the writer `if !self.isBroadcasting` (see
+            // processSampleFromRecorder's call site), and handleBroadcastData
+            // only writes broadcast frames `guard recording, !stopping`. So the
+            // writer keeps receiving SOME frames at all times — in-app screen
+            // until the broadcast extension's first frame arrives, then the
+            // shared screen — with no pause, no watchdog, and no gap. This is
+            // what "record from the beginning, never stop" means in practice.
             self.registerDarwinListeners()
-            self.appDidEnterBackground()
 
-            if self.recording && !self.paused && !self.stopping {
-                self.paused = true
-                NSLog("[SHARE] picker: recording paused before system overlay")
-                self.finaliseChunk(isFinal: false) { [weak self] _ in
-                    guard let self = self else { return }
-                    self.chunkIndex += 1
-                    NSLog("[SHARE] picker: paused chunk rotated at #\(self.chunkIndex)")
-                }
-            }
-
-            // ── preferredExtension = OUR extension (not nil) ─────────────────
+            // ── Why we no longer synthesize a tap on the system picker ───────
             //
-            // IMPORTANT — why NOT nil:
-            //   Setting preferredExtension = nil shows a generic "Choose a
-            //   broadcast app" picker listing every broadcast extension on the
-            //   device. Our extension still appears, but:
-            //     a) The user must manually pick it (bad UX).
-            //     b) If the user picks a different extension (e.g. a third-party
-            //        streaming app), our SampleHandler never runs, we never get
-            //        Darwin notifications, and the recording hangs forever.
+            // RPSystemBroadcastPickerView is a security-sensitive system
+            // control. Earlier versions of this file created it off-screen
+            // (or, after a prior fix, on-screen but invisible) and called
+            // `button.sendActions(for: .touchUpInside)` on its internal
+            // button to fake a user tap. iOS increasingly ignores or
+            // unreliably honours synthetic touch events sent to this specific
+            // control — it is designed to require a GENUINE human tap so apps
+            // can't silently start broadcasting a user's screen. That is the
+            // actual reason the extension never launched no matter what else
+            // got fixed elsewhere in this flow: the "Start Broadcast" sheet
+            // was simply never appearing.
             //
-            // Setting preferredExtension = our bundle makes iOS show a direct
-            // one-tap confirmation sheet for OUR extension and immediately starts
-            // SampleHandler, which receives the FULL DEVICE SCREEN COMPOSITOR —
-            // including any app the user navigates to after confirming.
-            //
-            // ── Why some apps (Facebook, Netflix) show "share not available" ──
-            //
-            //   These apps call UIScreen.main.isCaptured and actively block
-            //   screen recording using AVCaptureSession / DRM enforcement.
-            //   This is enforced by the APP being recorded, not by iOS or our
-            //   extension. It cannot be bypassed — Apple's own QuickTime, AirPlay
-            //   mirroring, and every other screen recorder hits the same block.
-            //   Whiteboards, browsers, document cameras, PDF viewers, and most
-            //   educational apps work fine.
-            //
-            // ── How to share any app's screen ────────────────────────────────
-            //
-            //   1. Teacher taps "Share Screen" → this picker appears.
-            //   2. Teacher taps "Start Broadcast" → SampleHandler starts.
-            //   3. Teacher SWITCHES to the app they want to share (home button
-            //      or swipe up → tap the other app). SampleHandler keeps
-            //      receiving frames of whatever is on screen.
-            //   4. The recording captures everything the teacher shows —
-            //      across any non-DRM app.
-            //
-            let picker = RPSystemBroadcastPickerView(
-                frame: CGRect(x: 0, y: 0, width: 60, height: 60))
-            picker.preferredExtension =
-                Bundle.main.bundleIdentifier.map { $0 + ".BroadcastUploadExtension" }
-            picker.showsMicrophoneButton = false
-
-            // ── CRITICAL: the picker must be part of a live window ───────────
-            // RPSystemBroadcastPickerView's internal button only reliably
-            // presents the system "Start Broadcast" sheet when the view is
-            // actually installed in a window. Previously this view was never
-            // added to any superview — the simulated tap below had nothing
-            // to act on, so on affected iOS versions the sheet silently never
-            // appeared, the extension never launched, `paused` stayed true
-            // forever, and only the chunk(s) recorded before this tap ever
-            // reached the server. We keep it nearly invisible (not literally
-            // hidden — UIKit does not forward control events to hidden views)
-            // and behind everything else, then remove it shortly after.
+            // The only flow Apple guarantees to work is presenting this
+            // control visibly and letting the user tap it themselves. So we
+            // show a small overlay containing the REAL, normal-sized,
+            // interactive RPSystemBroadcastPickerView plus instructions and a
+            // Cancel button, and wait for either:
+            //   • the user taps it → iOS shows its own "Start Broadcast"
+            //     sheet → user confirms → SampleHandler launches → first
+            //     Darwin frame notification arrives → we dismiss the overlay
+            //     (see handleBroadcastData).
+            //   • the user taps Cancel → we dismiss the overlay ourselves.
             guard let hostWindow = self.window else {
                 NSLog("[SHARE] showBroadcastPicker: no window available")
                 result(nil)
                 return
             }
-            picker.alpha = 0.01
-            hostWindow.addSubview(picker)
-            hostWindow.sendSubviewToBack(picker)
-            self.activeBroadcastPicker = picker
-
-            for subview in picker.subviews {
-                if let button = subview as? UIButton {
-                    button.sendActions(for: .touchUpInside)
-                    break
+            self.activeBroadcastOverlay?.removeFromSuperview()
+            let overlay = BroadcastPickerOverlay(
+                bundleId: Bundle.main.bundleIdentifier ?? "",
+                onCancel: { [weak self] in
+                    self?.dismissBroadcastOverlay()
                 }
-            }
-            NSLog("[SHARE] showBroadcastPicker — extension: \(picker.preferredExtension ?? "nil")")
+            )
+            overlay.frame = hostWindow.bounds
+            overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            hostWindow.addSubview(overlay)
+            self.activeBroadcastOverlay = overlay
 
-            // Remove the picker view shortly after — it has done its job of
-            // hosting the tap that opens the system sheet. The sheet itself
-            // is presented by iOS in its own process and doesn't need this
-            // view to remain in the hierarchy.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-                picker.removeFromSuperview()
-                if self?.activeBroadcastPicker === picker {
-                    self?.activeBroadcastPicker = nil
-                }
-            }
-
-            // ── Watchdog: resume if the broadcast never actually starts ──────
-            // Covers: sheet failed to present, user dismissed it without going
-            // through "Start Broadcast", or the extension failed to launch
-            // (signing/App-Group misconfiguration etc). Cancelled as soon as
-            // a real broadcast frame arrives (handleBroadcastData), the user
-            // explicitly cancels (stopBroadcastShare), or the extension itself
-            // reports it stopped (onDarwinStopNotif).
-            self.pickerWatchdog?.invalidate()
-            self.pickerWatchdog = Timer.scheduledTimer(
-                withTimeInterval: self.pickerWatchdogSecs, repeats: false
-            ) { [weak self] _ in
-                guard let self = self else { return }
-                self.pickerWatchdog = nil
-                guard self.recording, self.paused, !self.isBroadcasting, !self.stopping else { return }
-                NSLog("[SHARE] picker watchdog: no broadcast frame after " +
-                      "\(self.pickerWatchdogSecs)s — resuming RPScreenRecorder")
-                self.paused = false
-                self.beginChunkWriter()
-            }
-
+            NSLog("[SHARE] showBroadcastPicker: overlay with real picker button shown")
             result(nil)
         }
+    }
+
+    private func dismissBroadcastOverlay() {
+        activeBroadcastOverlay?.removeFromSuperview()
+        activeBroadcastOverlay = nil
     }
 
     private func stopBroadcastShare(result: @escaping FlutterResult) {
         isBroadcasting = false
         removeDarwinListeners()
         endBgTask()
-        pickerWatchdog?.invalidate()
-        pickerWatchdog = nil
-        activeBroadcastPicker?.removeFromSuperview()
-        activeBroadcastPicker = nil
+        dismissBroadcastOverlay()
         emitEvent(["event": "broadcastStopped"])
         NSLog("[SHARE] broadcast stopped by app")
+        // Recording was never paused, so there's nothing to "resume" — the
+        // writer kept rotating chunks the whole time. We just rotate the
+        // current chunk now for a clean boundary back to RPScreenRecorder
+        // frames; processSampleFromRecorder already resumes writing them the
+        // moment isBroadcasting is false (see startCapture's handler).
         if recording && !stopping {
-            if paused {
-                // Broadcast was never confirmed (user cancelled picker).
-                // Resume RPScreenRecorder which was paused by showBroadcastPicker.
-                paused = false
-                beginChunkWriter()
-                NSLog("[SHARE] picker cancelled — RPScreenRecorder resumed at chunk #\(chunkIndex)")
-            } else {
-                // Broadcast was active: finalise the broadcast chunk and start
-                // a fresh RPScreenRecorder chunk.
-                finaliseChunk(isFinal: false) { [weak self] _ in
-                    guard let self = self, self.recording, !self.stopping, !self.paused else { return }
-                    self.chunkIndex += 1
-                    self.beginChunkWriter()
-                    NSLog("[SHARE] broadcast chunk rotated — RPScreenRecorder resuming at chunk #\(self.chunkIndex)")
-                }
+            finaliseChunk(isFinal: false) { [weak self] _ in
+                guard let self = self, self.recording, !self.stopping else { return }
+                self.chunkIndex += 1
+                self.beginChunkWriter()
+                NSLog("[SHARE] broadcast chunk rotated — RPScreenRecorder resuming at chunk #\(self.chunkIndex)")
             }
         }
         result(nil)
@@ -1463,24 +1387,18 @@ import CoreVideo
         NSLog("[SHARE] broadcast extension finished (Darwin stop)")
         isBroadcasting = false
         removeDarwinListeners()
-        pickerWatchdog?.invalidate()
-        pickerWatchdog = nil
-        activeBroadcastPicker?.removeFromSuperview()
-        activeBroadcastPicker = nil
+        dismissBroadcastOverlay()
         emitEvent(["event": "broadcastStopped"])
+        // Recording was never paused for the broadcast, so there's nothing to
+        // resume — just rotate the chunk for a clean boundary back to
+        // RPScreenRecorder frames. processSampleFromRecorder already resumes
+        // writing them the moment isBroadcasting flips false.
         if recording && !stopping {
-            if paused {
-                // Extension stopped before we got the first frame (race).
-                paused = false
-                beginChunkWriter()
-                NSLog("[SHARE] Darwin stop: resumed from paused state at chunk #\(chunkIndex)")
-            } else {
-                finaliseChunk(isFinal: false) { [weak self] _ in
-                    guard let self = self, self.recording, !self.stopping, !self.paused else { return }
-                    self.chunkIndex += 1
-                    self.beginChunkWriter()
-                    NSLog("[SHARE] Darwin stop: chunk rotated at #\(self.chunkIndex)")
-                }
+            finaliseChunk(isFinal: false) { [weak self] _ in
+                guard let self = self, self.recording, !self.stopping else { return }
+                self.chunkIndex += 1
+                self.beginChunkWriter()
+                NSLog("[SHARE] Darwin stop: chunk rotated at #\(self.chunkIndex)")
             }
         }
     }
@@ -1523,25 +1441,17 @@ import CoreVideo
             // Video frame (JPEG) — write into the active AVAssetWriter chunk.
             if !isBroadcasting {
                 isBroadcasting = true
-                // Broadcast is confirmed live — the watchdog that would have
-                // resumed RPScreenRecorder on a no-show is no longer needed.
-                pickerWatchdog?.invalidate()
-                pickerWatchdog = nil
+                // The user has genuinely confirmed "Start Broadcast" in the
+                // system sheet — the overlay with the real picker button has
+                // done its job, dismiss it.
+                dismissBroadcastOverlay()
                 // Fresh broadcast session — any previous PTS baseline is from
                 // a prior (now-stopped) broadcast and would produce a bogus
                 // duration delta on the first frame of this one.
                 lastBroadcastPts = nil
                 NSLog("[SHARE] first broadcast frame — switching recording source")
-                // If recording was paused by showBroadcastPicker (to protect
-                // against the iOS overlay suspension window), resume it now.
-                // The extension is running, iOS has fully resumed, it's safe to write.
-                if recording && paused && !stopping {
-                    paused = false
-                    beginChunkWriter()
-                    NSLog("[SHARE] recording resumed from picker-pause — broadcast chunk #\(chunkIndex)")
-                }
             }
-            guard recording, !stopping, !paused else { return }
+            guard recording, !stopping else { return }
             processSampleFromBroadcast(jpegData: payload, ptsNs: ptsNs)
 
         case 1, 2:
@@ -1567,4 +1477,88 @@ private class RecEventStreamHandler: NSObject, FlutterStreamHandler {
         onListen(eventSink); return nil
     }
     func onCancel(withArguments args: Any?) -> FlutterError? { onCancel(); return nil }
+}
+
+// ── Broadcast picker overlay ───────────────────────────────────────────────────
+//
+// Hosts a REAL, visible, normal-sized RPSystemBroadcastPickerView for the user
+// to tap themselves, plus brief instructions and a Cancel button.
+//
+// Why this exists instead of the old "create it off-screen and synthesize a
+// tap" approach: RPSystemBroadcastPickerView is a security-sensitive system
+// control, and iOS increasingly ignores or unreliably handles synthetic
+// UIControl touch events sent to its internal button. It is designed to
+// require a genuine human tap — that's the whole point of it being a system
+// picker rather than a regular API call — so apps can't silently start
+// broadcasting someone's screen. Faking the tap is therefore not a reliable
+// integration path on real devices/iOS versions, which is why the broadcast
+// extension was never actually launching no matter what surrounding race
+// conditions got fixed. Showing this control visibly and waiting for a real
+// tap is the only flow Apple guarantees to work.
+private final class BroadcastPickerOverlay: UIView {
+    private let onCancel: () -> Void
+
+    init(bundleId: String, onCancel: @escaping () -> Void) {
+        self.onCancel = onCancel
+        super.init(frame: .zero)
+        backgroundColor = UIColor.black.withAlphaComponent(0.55)
+
+        let card = UIView()
+        card.backgroundColor = .white
+        card.layer.cornerRadius = 16
+        card.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(card)
+
+        let label = UILabel()
+        label.text = "Tap the icon below, then choose \u{201C}Start Broadcast\u{201D} to share your screen."
+        label.numberOfLines = 0
+        label.textAlignment = .center
+        label.font = .systemFont(ofSize: 15, weight: .medium)
+        label.textColor = .black
+        label.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(label)
+
+        // preferredExtension = our own extension (not nil) so iOS shows a
+        // direct one-tap confirmation sheet for OUR extension rather than a
+        // generic "choose a broadcast app" list. See the original comments
+        // in showBroadcastPicker for why this matters.
+        let picker = RPSystemBroadcastPickerView(frame: CGRect(x: 0, y: 0, width: 56, height: 56))
+        picker.preferredExtension = bundleId.isEmpty ? nil : bundleId + ".BroadcastUploadExtension"
+        picker.showsMicrophoneButton = false
+        picker.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(picker)
+
+        let cancelButton = UIButton(type: .system)
+        cancelButton.setTitle("Cancel", for: .normal)
+        cancelButton.translatesAutoresizingMaskIntoConstraints = false
+        cancelButton.addTarget(self, action: #selector(handleCancelTap), for: .touchUpInside)
+        card.addSubview(cancelButton)
+
+        NSLayoutConstraint.activate([
+            card.centerXAnchor.constraint(equalTo: centerXAnchor),
+            card.centerYAnchor.constraint(equalTo: centerYAnchor),
+            card.widthAnchor.constraint(equalToConstant: 270),
+
+            label.topAnchor.constraint(equalTo: card.topAnchor, constant: 20),
+            label.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 18),
+            label.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
+
+            picker.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 18),
+            picker.centerXAnchor.constraint(equalTo: card.centerXAnchor),
+            picker.widthAnchor.constraint(equalToConstant: 56),
+            picker.heightAnchor.constraint(equalToConstant: 56),
+
+            cancelButton.topAnchor.constraint(equalTo: picker.bottomAnchor, constant: 10),
+            cancelButton.centerXAnchor.constraint(equalTo: card.centerXAnchor),
+            cancelButton.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -16),
+        ])
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("BroadcastPickerOverlay does not support storyboard/XIB instantiation")
+    }
+
+    @objc private func handleCancelTap() {
+        onCancel()
+    }
 }
