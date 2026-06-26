@@ -168,8 +168,8 @@ class Helpers {
         actions: [
           TextButton(
             onPressed: () {
-              if(onConfirm!=null){
-                onConfirm.call();
+              if(onCancel!=null){
+                onCancel.call();
               }else{
                 Navigator.pop(context, false);
               }            },

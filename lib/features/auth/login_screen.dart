@@ -30,7 +30,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _emailController.text = 'Ahmed.Madkour@it-ranks.com';
+    _emailController.text = 'super@c.c';
     _passwordController.text = 'Aa@@aA2291996';
   }
 
@@ -50,13 +50,38 @@ class _LoginScreenState extends State<LoginScreen> {
     );
     if (!mounted) return;
     if (success) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => authProvider.isTeacher
-              ? const TeacherDashboardScreen()
-              : const DashboardScreen(),
-        ),
-      );
+      bool  isTeacher = authProvider.isTeacher;
+
+      if (authProvider.currentUser?.role=='super-admin') {
+        await Helpers.confirmDialog(
+          context,
+          title: 'select personal',
+          confirm: 'teacher'.tr,
+          cancel: 'student'.tr,
+          onConfirm: () async {
+            isTeacher = true;
+            Navigator.pop(context);
+
+          },
+          onCancel: () async {
+            print("0n cancle buttons----------------------->");
+            isTeacher = false;
+            Navigator.pop(context);
+
+          },
+        );
+      }
+      await authProvider.savePersona(isTeacher? 'teacher':'student');
+
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => isTeacher
+                ? const TeacherDashboardScreen()
+                : const DashboardScreen(),
+          ),
+        );
+      }
     } else {
       Helpers.showMessage(
         authProvider.errorMessage ?? 'Login failed',
@@ -69,12 +94,18 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width > 800;
 
-    return Consumer<LangProvider>(builder: (context, l, _) {
-      return BasePage(
-        background: context.colors.isDark?null:isWide ?context.themeConfig.background.withValues(alpha: 0.5):context.themeConfig.background,
-        child: isWide ? _buildWideLayout() : _buildNarrowLayout(),
-      );
-    });
+    return Consumer<LangProvider>(
+      builder: (context, l, _) {
+        return BasePage(
+          background: context.colors.isDark
+              ? null
+              : isWide
+              ? context.themeConfig.background.withValues(alpha: 0.5)
+              : context.themeConfig.background,
+          child: isWide ? _buildWideLayout() : _buildNarrowLayout(),
+        );
+      },
+    );
   }
 
   // ── Wide (web) layout: sidebar + form panel ──────────────────────────────
@@ -94,14 +125,19 @@ class _LoginScreenState extends State<LoginScreen> {
                 padding: const EdgeInsets.all(0.0),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(context.colors.radiusXL),
-                  color:context.colors.isDark? context.themeConfig.cardBg: context.themeConfig.background,
+                  color: context.colors.isDark
+                      ? context.themeConfig.cardBg
+                      : context.themeConfig.background,
                 ),
                 child: ClipRRect(
-                  borderRadius:
-                      BorderRadiusGeometry.circular(context.colors.radiusXL),
+                  borderRadius: BorderRadiusGeometry.circular(
+                    context.colors.radiusXL,
+                  ),
                   child: SingleChildScrollView(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 48,
+                      vertical: 40,
+                    ),
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 440),
                       child: _buildFormCard(),
@@ -110,10 +146,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               Spacer(),
-
             ],
           ),
-        )
+        ),
       ],
     );
   }
@@ -196,9 +231,9 @@ class _LoginScreenState extends State<LoginScreen> {
           Align(
             alignment: AlignmentDirectional.centerEnd,
             child: GestureDetector(
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ForgetScreen()),
-              ),
+              onTap: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const ForgetScreen())),
               child: Text(
                 'forget_password'.tr,
                 style: TextStyle(
@@ -210,7 +245,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-           SizedBox(height: context.height/10),
+          SizedBox(height: context.height / 10),
 
           // Login button
           PrimaryButton(
@@ -225,11 +260,11 @@ class _LoginScreenState extends State<LoginScreen> {
           LinkRow(
             message: "doesn't_have_account".tr,
             linkText: 'register'.tr,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const RegisterScreen()),
-            ),
+            onTap: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const RegisterScreen())),
           ),
-          SizedBox(height: context.height/50),
+          SizedBox(height: context.height / 50),
 
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -247,10 +282,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(40),
                     gradient: provider.darkMode
                         ? const LinearGradient(
-                            colors: [
-                              Color(0xff0F172A),
-                              Color(0xff1E293B),
-                            ],
+                            colors: [Color(0xff0F172A), Color(0xff1E293B)],
                           )
                         : context.themeConfig.linearAccent,
                   ),

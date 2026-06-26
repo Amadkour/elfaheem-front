@@ -22,6 +22,7 @@ class StorageService {
   static const _accessKey = 'access_token';
   static const _refreshKey = 'refresh_token';
   static const _userKey = 'current_user'; // JSON-encoded UserModel
+  static const _persona = 'user_persona';
 
   // ── Singleton ─────────────────────────────────────────────────────────────────
 
@@ -37,6 +38,7 @@ class StorageService {
   String? get accessToken => _prefs.getString(_accessKey);
 
   String? get refreshToken => _prefs.getString(_refreshKey);
+  String? get getPersona => _prefs.getString(_persona);
 
   Future<void> saveTokens({
     required String accessToken,
@@ -61,7 +63,8 @@ class StorageService {
 
   bool? get loadMode => _prefs.getBool('is_dark');
 
-  Future<void> saveMode(bool isDark) async =>await _prefs.setBool('is_dark', isDark);
+  Future<void> saveMode(bool isDark) async =>
+      await _prefs.setBool('is_dark', isDark);
 
   String? get loadLanguage => _prefs.getString('lang');
 
@@ -70,6 +73,9 @@ class StorageService {
   /// Call after login or OTP verification to persist the user object.
   Future<void> saveUser(Map<String, dynamic> userJson) =>
       _prefs.setString(_userKey, jsonEncode(userJson));
+
+  Future<void> savePersona(String persona) =>
+      _prefs.setString(_persona, persona);
 
   /// Call on logout to remove cached user data.
   Future<void> clearUser() => _prefs.remove(_userKey);
@@ -86,5 +92,6 @@ class StorageService {
     await _prefs.remove(_accessKey);
     await _prefs.remove(_refreshKey);
     await _prefs.remove(_userKey);
+    await _prefs.remove(_persona);
   }
 }

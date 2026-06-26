@@ -1,6 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// features/shared/complaints/complaint_model.dart
-// ─────────────────────────────────────────────────────────────────────────────
 
 enum ComplaintStatus {
   open,
@@ -92,7 +89,7 @@ class ComplaintAttachment {
         fileName: j['file_name'],
         fileType: j['file_type'],
         fileSize: j['file_size'],
-        uploadedAt: (j['uploaded_at']),
+        uploadedAt: j['uploaded_at'].toLocalSaTime,
       );
 }
 
@@ -129,7 +126,7 @@ class ComplaintReply {
         senderImage: j['sender_image'],
         message: j['message'],
         isAdmin: j['is_admin'] ?? false,
-        createdAt: (j['created_at']),
+        createdAt: j['created_at'].toLocalSaTime,
         attachments: (j['attachments'] as List? ?? [])
             .map((a) => ComplaintAttachment.fromJson(a))
             .toList(),
@@ -195,10 +192,10 @@ class ComplaintModel {
         status: ComplaintStatus.fromString(j['status'] ?? 'open'),
         isReadByAdmin: j['is_read_by_admin'] ?? false,
         isReadByUser: j['is_read_by_user'] ?? true,
-        createdAt: (j['created_at']),
-        updatedAt: (j['updated_at']),
+        createdAt: j['created_at'].toLocalSaTime,
+        updatedAt: j['updated_at'].toLocalSaTime,
         resolvedAt:
-            j['resolved_at'] != null ? (j['resolved_at']) : null,
+            j['resolved_at']?.toLocalSaTime,
         repliesCount: j['replies_count'] ?? 0,
         replies: (j['replies'] as List? ?? [])
             .map((r) => ComplaintReply.fromJson(r))

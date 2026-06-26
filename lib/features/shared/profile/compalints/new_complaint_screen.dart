@@ -4,6 +4,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 library;
 
+import 'dart:io';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -30,19 +33,15 @@ class NewComplaintScreen extends StatefulWidget {
 
 class _NewComplaintScreenState extends State<NewComplaintScreen>
     with SingleTickerProviderStateMixin {
-  // ── Tab controller ────────────────────────────────────────────────────────
   late final TabController _tabs;
 
-  // ── Form ──────────────────────────────────────────────────────────────────
   final _formKey   = GlobalKey<FormState>();
   final _titleCtrl = TextEditingController();
   final _descCtrl  = TextEditingController();
   ComplaintCategory _category = ComplaintCategory.general;
   ComplaintPriority _priority = ComplaintPriority.medium;
 
-  // ── History: which complaint ids are expanded ─────────────────────────────
   final Set<int> _expandedIds = {};
-  // Which complaint detail has been fully loaded (with replies)
   final Set<int> _loadedIds   = {};
 
   @override
@@ -62,16 +61,15 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
     super.dispose();
   }
 
-  // ── Submit new complaint ──────────────────────────────────────────────────
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     final p = context.read<ComplaintProvider>();
     final result = await p.createComplaint(
-        title: _titleCtrl.text.trim(),
-        description: _descCtrl.text.trim(),
-        category: _category,
-        priority: _priority,
-        courseId: widget.courseId
+      title: _titleCtrl.text.trim(),
+      description: _descCtrl.text.trim(),
+      category: _category,
+      priority: _priority,
+      courseId: widget.courseId,
     );
     if (!mounted) return;
     if (result != null) {
@@ -88,7 +86,6 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ));
-      // Switch to history tab so the user sees the new entry
       _tabs.animateTo(1);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -101,14 +98,12 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
     }
   }
 
-  // ── Toggle a complaint card and lazy-load its replies ─────────────────────
   Future<void> _toggle(int id) async {
     final p = context.read<ComplaintProvider>();
     if (_expandedIds.contains(id)) {
       setState(() => _expandedIds.remove(id));
     } else {
       setState(() => _expandedIds.add(id));
-      // Load full detail (with replies) only once
       if (!_loadedIds.contains(id)) {
         await p.loadDetail(id);
         if (mounted) setState(() => _loadedIds.add(id));
@@ -119,23 +114,18 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
   @override
   Widget build(BuildContext context) {
     final p = context.watch<ComplaintProvider>();
-    final c = context.colors;
 
     return BasePage(
-      useWebCard:true,
+      useWebCard: true,
       child: SafeArea(
         child: Column(children: [
           ScreenAppBar(title: 'complaints_and_support'.tr),
-
-          // ── Tab bar ─────────────────────────────────────────────────
           _TabBar(controller: _tabs, unreadCount: _unreadCount(p)),
-
-          // ── Tab views ───────────────────────────────────────────────
           Expanded(
             child: TabBarView(
               controller: _tabs,
               children: [
-                // ── Tab 0: New complaint form ────────────────────────
+                // ── Tab 0: New complaint form ──────────────────────────────
                 _FormTab(
                   formKey: _formKey,
                   titleCtrl: _titleCtrl,
@@ -144,12 +134,16 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
                   priority: _priority,
                   courseTitle: widget.courseTitle,
                   isSending: p.isSending,
+                  pendingAttachments: p.pendingAttachments,
                   onCategoryChanged: (v) => setState(() => _category = v),
                   onPriorityChanged: (v) => setState(() => _priority = v),
                   onSubmit: _submit,
+                  onPickGallery: () => p.pickComplaintImages(),
+                  onPickCamera: () => p.pickComplaintImageFromCamera(),
+                  onRemoveImage: (i) => p.removeComplaintImage(i),
                 ),
 
-                // ── Tab 1: Previous complaints ───────────────────────
+                // ── Tab 1: Previous complaints ──────────────────────────
                 _HistoryTab(
                   provider: p,
                   expandedIds: _expandedIds,
@@ -265,9 +259,13 @@ class _FormTab extends StatelessWidget {
     required this.priority,
     required this.courseTitle,
     required this.isSending,
+    required this.pendingAttachments,
     required this.onCategoryChanged,
     required this.onPriorityChanged,
     required this.onSubmit,
+    required this.onPickGallery,
+    required this.onPickCamera,
+    required this.onRemoveImage,
   });
 
   final GlobalKey<FormState> formKey;
@@ -277,9 +275,13 @@ class _FormTab extends StatelessWidget {
   final ComplaintPriority priority;
   final String? courseTitle;
   final bool isSending;
+  final List<PendingAttachment> pendingAttachments;
   final ValueChanged<ComplaintCategory> onCategoryChanged;
   final ValueChanged<ComplaintPriority> onPriorityChanged;
   final VoidCallback onSubmit;
+  final VoidCallback onPickGallery;
+  final VoidCallback onPickCamera;
+  final ValueChanged<int> onRemoveImage;
 
   @override
   Widget build(BuildContext context) {
@@ -290,11 +292,10 @@ class _FormTab extends StatelessWidget {
       child: Form(
         key: formKey,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // ── Course badge ───────────────────────────────────────────────────
+          // ── Course badge ─────────────────────────────────────────────────
           if (courseTitle != null) ...[
             Container(
-              padding:
-              const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: c.accentTint,
                 borderRadius: BorderRadius.circular(12),
@@ -314,7 +315,7 @@ class _FormTab extends StatelessWidget {
             const SizedBox(height: 20),
           ],
 
-          // ── Title ──────────────────────────────────────────────────────────
+          // ── Title ────────────────────────────────────────────────────────
           _Label(text: 'complaint_title_label'.tr),
           const SizedBox(height: 8),
           MyTextField(
@@ -325,21 +326,19 @@ class _FormTab extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          // ── Category ───────────────────────────────────────────────────────
+          // ── Category ─────────────────────────────────────────────────────
           _Label(text: 'category_label'.tr),
           const SizedBox(height: 8),
-          _CategoryPicker(
-              selected: category, onChanged: onCategoryChanged),
+          _CategoryPicker(selected: category, onChanged: onCategoryChanged),
           const SizedBox(height: 20),
 
-          // ── Priority ───────────────────────────────────────────────────────
+          // ── Priority ─────────────────────────────────────────────────────
           _Label(text: 'priority_label'.tr),
           const SizedBox(height: 8),
-          _PriorityPicker(
-              selected: priority, onChanged: onPriorityChanged),
+          _PriorityPicker(selected: priority, onChanged: onPriorityChanged),
           const SizedBox(height: 20),
 
-          // ── Description ────────────────────────────────────────────────────
+          // ── Description ──────────────────────────────────────────────────
           _Label(text: 'detailed_description_label'.tr),
           const SizedBox(height: 8),
           MyTextField(
@@ -350,9 +349,18 @@ class _FormTab extends StatelessWidget {
                 ? 'description_too_short'.tr
                 : null,
           ),
+          const SizedBox(height: 20),
+
+          // ── Attachments section ──────────────────────────────────────────
+          _AttachmentSection(
+            attachments: pendingAttachments,
+            onPickGallery: onPickGallery,
+            onPickCamera: onPickCamera,
+            onRemove: onRemoveImage,
+          ),
           const SizedBox(height: 32),
 
-          // ── Submit ─────────────────────────────────────────────────────────
+          // ── Submit ───────────────────────────────────────────────────────
           PrimaryButton(
             label: 'send_complaint_btn'.tr,
             isLoading: isSending,
@@ -360,6 +368,360 @@ class _FormTab extends StatelessWidget {
             icon: Icons.send_rounded,
           ),
         ]),
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  Attachment Section  — reused in both the form and the reply input
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _AttachmentSection extends StatelessWidget {
+  const _AttachmentSection({
+    required this.attachments,
+    required this.onPickGallery,
+    required this.onPickCamera,
+    required this.onRemove,
+    this.compact = false,
+  });
+
+  final List<PendingAttachment> attachments;
+  final VoidCallback onPickGallery;
+  final VoidCallback onPickCamera;
+  final ValueChanged<int> onRemove;
+
+  /// When true, renders a single-row strip (used inside the reply bar).
+  final bool compact;
+
+  static const int _max = 4;
+
+  @override
+  Widget build(BuildContext context) {
+    final c      = context.colors;
+    final canAdd = attachments.length < _max;
+
+    if (compact) {
+      return _CompactAttachmentStrip(
+        attachments: attachments,
+        canAdd: canAdd,
+        onPickGallery: onPickGallery,
+        onPickCamera: onPickCamera,
+        onRemove: onRemove,
+      );
+    }
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // ── Header ─────────────────────────────────────────────────────────
+      Row(children: [
+        _Label(text: 'attachments_label'.tr),
+        const Spacer(),
+        Text(
+          '${attachments.length} / $_max',
+          style: TextStyle(
+              fontFamily: 'bahji', fontSize: 12, color: c.textLight),
+        ),
+      ]),
+      const SizedBox(height: 10),
+
+      // ── Image grid + add button ─────────────────────────────────────────
+      Wrap(spacing: 10, runSpacing: 10, children: [
+        // Existing thumbnails
+        ...attachments.asMap().entries.map((e) => _AttachmentThumb(
+          index: e.key,
+          attachment: e.value,
+          onRemove: onRemove,
+        )),
+
+        // Add button (hidden when max reached)
+        if (canAdd)
+          _AddImageButton(
+            onPickGallery: onPickGallery,
+            onPickCamera: onPickCamera,
+          ),
+      ]),
+
+      if (attachments.isEmpty) ...[
+        const SizedBox(height: 6),
+        Text(
+          'attachments_hint'.tr, // e.g. "Attach up to 4 images (optional)"
+          style: TextStyle(
+              fontFamily: 'bahji', fontSize: 12, color: c.textLight),
+        ),
+      ],
+    ]);
+  }
+}
+
+// ── Single thumbnail with ×-remove ───────────────────────────────────────────
+
+class _AttachmentThumb extends StatelessWidget {
+  const _AttachmentThumb({
+    required this.index,
+    required this.attachment,
+    required this.onRemove,
+  });
+
+  final int index;
+  final PendingAttachment attachment;
+  final ValueChanged<int> onRemove;
+
+  static const double _size = 80;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // Thumbnail
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: kIsWeb
+              ? Image.network(
+            attachment.localPreviewUrl,
+            width: _size,
+            height: _size,
+            fit: BoxFit.cover,
+          )
+              : Image.file(
+            File(attachment.localPreviewUrl),
+            width: _size,
+            height: _size,
+            fit: BoxFit.cover,
+          ),
+        ),
+        // ×-remove button
+        Positioned(
+          top: -6,
+          right: -6,
+          child: GestureDetector(
+            onTap: () => onRemove(index),
+            child: Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.18),
+                      blurRadius: 4)
+                ],
+              ),
+              child: const Icon(Icons.close_rounded,
+                  size: 14, color: Colors.white),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── + Add image button ────────────────────────────────────────────────────────
+
+class _AddImageButton extends StatelessWidget {
+  const _AddImageButton({
+    required this.onPickGallery,
+    required this.onPickCamera,
+  });
+
+  final VoidCallback onPickGallery;
+  final VoidCallback onPickCamera;
+
+  static const double _size = 80;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return GestureDetector(
+      onTap: () => _showPicker(context),
+      child: Container(
+        width: _size,
+        height: _size,
+        decoration: BoxDecoration(
+          color: c.cardBg,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+              color: c.primary.withValues(alpha: 0.4),
+              width: 1.5,
+              style: BorderStyle.solid),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.add_photo_alternate_outlined,
+                size: 26, color: c.primary),
+            const SizedBox(height: 4),
+            Text(
+              'add_image'.tr,
+              style: TextStyle(
+                  fontFamily: 'bahji',
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: c.primary),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showPicker(BuildContext context) {
+    final c = context.colors;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: c.cardBg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            // drag handle
+            Container(
+              width: 36,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: c.divider,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            ListTile(
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: c.primaryTint,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.photo_library_outlined, color: c.primary),
+              ),
+              title: Text('pick_from_gallery'.tr,
+                  style: TextStyle(
+                      fontFamily: 'bahji',
+                      fontWeight: FontWeight.w600,
+                      color: c.textDark)),
+              onTap: () {
+                Navigator.pop(context);
+                onPickGallery();
+              },
+            ),
+            // Hide camera on web — not supported
+            if (!kIsWeb)
+              ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: c.accentTint,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.camera_alt_outlined, color: c.accent),
+                ),
+                title: Text('take_photo'.tr,
+                    style: TextStyle(
+                        fontFamily: 'bahji',
+                        fontWeight: FontWeight.w600,
+                        color: c.textDark)),
+                onTap: () {
+                  Navigator.pop(context);
+                  onPickCamera();
+                },
+              ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Compact strip (inside reply bar) ─────────────────────────────────────────
+
+class _CompactAttachmentStrip extends StatelessWidget {
+  const _CompactAttachmentStrip({
+    required this.attachments,
+    required this.canAdd,
+    required this.onPickGallery,
+    required this.onPickCamera,
+    required this.onRemove,
+  });
+
+  final List<PendingAttachment> attachments;
+  final bool canAdd;
+  final VoidCallback onPickGallery;
+  final VoidCallback onPickCamera;
+  final ValueChanged<int> onRemove;
+
+  static const double _size = 52;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    if (attachments.isEmpty && !canAdd) return const SizedBox.shrink();
+
+    return SizedBox(
+      height: _size + 12,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+        children: [
+          ...attachments.asMap().entries.map((e) => Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Stack(clipBehavior: Clip.none, children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: kIsWeb
+                    ? Image.network(e.value.localPreviewUrl,
+                    width: _size, height: _size, fit: BoxFit.cover)
+                    : Image.file(File(e.value.localPreviewUrl),
+                    width: _size, height: _size, fit: BoxFit.cover),
+              ),
+              Positioned(
+                top: -4,
+                right: -4,
+                child: GestureDetector(
+                  onTap: () => onRemove(e.key),
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFEF4444),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.close_rounded,
+                        size: 10, color: Colors.white),
+                  ),
+                ),
+              ),
+            ]),
+          )),
+          if (canAdd)
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: GestureDetector(
+                onTap: () => _AddImageButton(
+                  onPickGallery: onPickGallery,
+                  onPickCamera: onPickCamera,
+                )._showPicker(context),
+                child: Container(
+                  width: _size,
+                  height: _size,
+                  decoration: BoxDecoration(
+                    color: c.primaryTint,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: c.primary.withValues(alpha: 0.3), width: 1.5),
+                  ),
+                  child: Icon(Icons.add_photo_alternate_outlined,
+                      size: 20, color: c.primary),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -384,12 +746,9 @@ class _HistoryTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-
     if (provider.isLoadingList && provider.complaints.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
-
     if (provider.complaints.isEmpty) {
       return _EmptyHistory();
     }
@@ -402,16 +761,14 @@ class _HistoryTab extends StatelessWidget {
         itemCount: provider.complaints.length,
         separatorBuilder: (_, __) => const SizedBox(height: 12),
         itemBuilder: (_, i) {
-          final complaint = provider.complaints[i];
-          final isExpanded = expandedIds.contains(complaint.id);
-          final isLoaded   = loadedIds.contains(complaint.id);
-
-          // Prefer the fully-loaded version (with replies) from provider
+          final complaint   = provider.complaints[i];
+          final isExpanded  = expandedIds.contains(complaint.id);
+          final isLoaded    = loadedIds.contains(complaint.id);
           final fullComplaint = isLoaded
-              ? (provider.complaints.firstWhere(
+              ? provider.complaints.firstWhere(
                 (c) => c.id == complaint.id,
             orElse: () => complaint,
-          ))
+          )
               : complaint;
 
           return _ComplaintHistoryCard(
@@ -443,9 +800,9 @@ class _ComplaintHistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c          = context.colors;
-    final statusClr  = _statusColor(complaint.status);
-    final hasUnread  = !complaint.isReadByUser;
+    final c         = context.colors;
+    final statusClr = _statusColor(complaint.status);
+    final hasUnread = !complaint.isReadByUser;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
@@ -457,20 +814,20 @@ class _ComplaintHistoryCard extends StatelessWidget {
         border: hasUnread && !isExpanded
             ? Border.all(color: c.primary.withValues(alpha: 0.45), width: 1.5)
             : isExpanded
-            ? Border.all(color: statusClr.withValues(alpha: 0.4), width: 1.5)
+            ? Border.all(
+            color: statusClr.withValues(alpha: 0.4), width: 1.5)
             : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header row ─────────────────────────────────────────────────────
+          // ── Header row ──────────────────────────────────────────────────
           GestureDetector(
             onTap: onToggle,
             behavior: HitTestBehavior.opaque,
             child: Padding(
               padding: const EdgeInsets.all(14),
               child: Row(children: [
-                // Priority indicator
                 Container(
                   width: 4,
                   height: 42,
@@ -501,52 +858,48 @@ class _ComplaintHistoryCard extends StatelessWidget {
                             decoration: BoxDecoration(
                                 color: c.primary, shape: BoxShape.circle),
                           ),
+                        _StatusBadge(
+                          label: _statusLabel(complaint.status),
+                          color: statusClr,
+                        ),
                       ]),
                       const SizedBox(height: 6),
                       Row(children: [
-                        // Status badge
-                        _StatusBadge(
-                            label: _statusLabel(complaint.status),
-                            color: statusClr),
-                        const SizedBox(width: 6),
-                        // Category badge
                         _CategoryBadge(
-                            label: _categoryLabel(complaint.category),
-                            primary: c.primary,
-                            tint: c.primaryTint),
+                          label: _categoryLabel(complaint.category),
+                          primary: c.primary,
+                          tint: c.primaryTint,
+                        ),
                         const Spacer(),
-                        // Replies count chip
-                        if (complaint.repliesCount > 0)
-                          _RepliesCountChip(
-                              count: complaint.repliesCount, c: c),
+                        _RepliesCountChip(count: complaint.repliesCount, c: c),
                       ]),
                     ],
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Expand arrow
                 AnimatedRotation(
-                  turns: isExpanded ? 0.5 : 0,
+                  turns: isExpanded ? 0.5 : 0.0,
                   duration: const Duration(milliseconds: 250),
                   child: Icon(Icons.keyboard_arrow_down_rounded,
-                      color: isExpanded ? statusClr : c.textLight, size: 22),
+                      color: c.textLight),
                 ),
               ]),
             ),
           ),
 
-          // ── Expanded body ──────────────────────────────────────────────────
+          // ── Expanded body ────────────────────────────────────────────────
           AnimatedCrossFade(
-            duration: const Duration(milliseconds: 280),
+            duration: const Duration(milliseconds: 250),
             crossFadeState: isExpanded
-                ? CrossFadeState.showFirst
-                : CrossFadeState.showSecond,
-            firstChild: _ExpandedBody(
-              complaint: complaint,
-              isLoading: isLoading,
-              statusColor: statusClr,
-            ),
-            secondChild: const SizedBox(width: double.infinity),
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            firstChild: const SizedBox.shrink(),
+            secondChild: isLoading
+                ? const Padding(
+              padding: EdgeInsets.all(20),
+              child: Center(child: CircularProgressIndicator()),
+            )
+                : _ExpandedBody(complaint: complaint),
           ),
         ],
       ),
@@ -575,289 +928,238 @@ class _ComplaintHistoryCard extends StatelessWidget {
   };
 
   String _categoryLabel(ComplaintCategory cat) => switch (cat) {
-    ComplaintCategory.technical     => 'category_technical'.tr,
-    ComplaintCategory.payment       => 'category_payment'.tr,
+    ComplaintCategory.technical    => 'category_technical'.tr,
+    ComplaintCategory.payment      => 'category_payment'.tr,
     ComplaintCategory.courseContent => 'category_content'.tr,
-    ComplaintCategory.teacher       => 'category_teacher'.tr,
-    ComplaintCategory.student       => 'category_student'.tr,
-    ComplaintCategory.general       => 'category_general'.tr,
+    ComplaintCategory.teacher      => 'category_teacher'.tr,
+    ComplaintCategory.student      => 'category_student'.tr,
+    ComplaintCategory.general      => 'category_general'.tr,
   };
 }
 
-// ── Expanded body: description + replies ─────────────────────────────────────
+// ── Expanded complaint body with description + attachments + replies ──────────
 
 class _ExpandedBody extends StatelessWidget {
-  const _ExpandedBody({
-    required this.complaint,
-    required this.isLoading,
-    required this.statusColor,
-  });
-
+  const _ExpandedBody({required this.complaint});
   final ComplaintModel complaint;
-  final bool isLoading;
-  final Color statusColor;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Divider(color: c.divider, height: 1),
+        const SizedBox(height: 12),
 
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        border: Border(
-            top: BorderSide(color: c.divider)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Description ─────────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Meta row
-                Row(children: [
-                  Icon(Icons.access_time_rounded,
-                      size: 13, color: c.textLight),
-                  const SizedBox(width: 4),
-                  Text(_formatDate(complaint.createdAt),
-                      style: c.caption.copyWith(fontSize: 11)),
-                  if (complaint.courseTitle != null) ...[
-                    const SizedBox(width: 12),
-                    Icon(Icons.book_outlined, size: 13, color: c.textLight),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(complaint.courseTitle!,
-                          style: c.caption.copyWith(fontSize: 11),
-                          overflow: TextOverflow.ellipsis),
-                    ),
-                  ],
-                ]),
-                const SizedBox(height: 10),
-                // Description box
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: c.background,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    complaint.description,
-                    style: c.body.copyWith(height: 1.75, fontSize: 13),
-                  ),
-                ),
-              ],
-            ),
-          ),
+        // Description
+        Text(complaint.description, style: c.body.copyWith(height: 1.7)),
 
-          // ── Replies section ─────────────────────────────────────────────
-          if (isLoading) ...[
-            const Padding(
-              padding: EdgeInsets.all(20),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-          ] else if (complaint.replies.isNotEmpty) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 16, 14, 0),
-              child: Row(children: [
-                Container(
-                  width: 3,
-                  height: 16,
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'replies_count_label'.tr.replaceAll('{count}', '${complaint.replies.length}'),
-                  style: c.h3.copyWith(fontSize: 13, color: statusColor),
-                ),
-              ]),
-            ),
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Column(
-                children: complaint.replies
-                    .map((r) => _ReplyBubble(reply: r))
-                    .toList(),
-              ),
-            ),
-            const SizedBox(height: 6),
-          ] else ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
-              child: _NoRepliesNote(),
-            ),
-          ],
-
-          // ── Resolved note ────────────────────────────────────────────────
-          if (complaint.status == ComplaintStatus.resolved &&
-              complaint.resolvedAt != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
-              child: _ResolvedBadge(resolvedAt: complaint.resolvedAt!),
-            ),
-
-          const SizedBox(height: 14),
+        // Attachments on the complaint itself
+        if (complaint.attachments.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _AttachmentGallery(attachments: complaint.attachments),
         ],
+
+        // Resolved at tag
+        if (complaint.resolvedAt != null) ...[
+          const SizedBox(height: 12),
+          _ResolvedBanner(resolvedAt: complaint.resolvedAt!),
+        ],
+
+        // Replies
+        if (complaint.replies.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text('replies_label'.tr, style: c.h3.copyWith(fontSize: 13)),
+          const SizedBox(height: 10),
+          ...complaint.replies.map((r) => _HistoryReplyBubble(reply: r)),
+        ],
+      ]),
+    );
+  }
+}
+
+// ── Attachment image gallery ──────────────────────────────────────────────────
+
+class _AttachmentGallery extends StatelessWidget {
+  const _AttachmentGallery({required this.attachments});
+  final List<ComplaintAttachment> attachments;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(
+        'attachments_label'.tr,
+        style: TextStyle(
+            fontFamily: 'bahji',
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: c.textLight),
+      ),
+      const SizedBox(height: 8),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: attachments.map((a) => _NetworkThumb(url: a.fileUrl)).toList(),
+      ),
+    ]);
+  }
+}
+
+class _NetworkThumb extends StatelessWidget {
+  const _NetworkThumb({required this.url});
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _openFullscreen(context),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Image.network(
+          url,
+          width: 80,
+          height: 80,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: context.colors.background,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child:
+            Icon(Icons.broken_image_outlined, color: context.colors.textLight),
+          ),
+        ),
       ),
     );
   }
 
-  String _formatDate(DateTime d) {
-    final diff = DateTime.now().difference(d);
-    if (diff.inMinutes < 60) return 'ago_minutes_long'.tr.replaceAll('{n}', '${diff.inMinutes}');
-    if (diff.inHours < 24)   return 'ago_hours_long'.tr.replaceAll('{n}', '${diff.inHours}');
-    if (diff.inDays < 30)    return 'ago_days'.tr.replaceAll('{n}', '${diff.inDays}');
-    return '${d.day}/${d.month}/${d.year}';
+  void _openFullscreen(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => _FullscreenImage(url: url),
+        fullscreenDialog: true,
+      ),
+    );
   }
 }
 
-// ── Reply bubble ──────────────────────────────────────────────────────────────
+class _FullscreenImage extends StatelessWidget {
+  const _FullscreenImage({required this.url});
+  final String url;
 
-class _ReplyBubble extends StatelessWidget {
-  const _ReplyBubble({required this.reply});
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: Center(
+        child: InteractiveViewer(
+          child: Image.network(url, fit: BoxFit.contain),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Mini reply bubble (used inside the expandable history card) ────────────────
+
+class _HistoryReplyBubble extends StatelessWidget {
+  const _HistoryReplyBubble({required this.reply});
   final ComplaintReply reply;
 
   @override
   Widget build(BuildContext context) {
     final c       = context.colors;
     final isAdmin = reply.isAdmin;
-
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment:
         isAdmin ? MainAxisAlignment.start : MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (isAdmin) ...[
-            // Admin avatar
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                gradient: c.primaryGradient,
-                shape: BoxShape.circle,
-              ),
-              child: reply.senderImage != null
-                  ? ClipOval(
-                  child: Image.network(reply.senderImage!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(
-                          Icons.support_agent_rounded,
-                          size: 16,
-                          color: Colors.white)))
-                  : const Icon(Icons.support_agent_rounded,
-                  size: 16, color: Colors.white),
+            CircleAvatar(
+              radius: 14,
+              backgroundColor: c.primary.withValues(alpha: 0.15),
+              backgroundImage: reply.senderImage != null
+                  ? NetworkImage(reply.senderImage!)
+                  : null,
+              child: reply.senderImage == null
+                  ? Icon(Icons.support_agent_rounded,
+                  size: 14, color: c.primary)
+                  : null,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
           ],
-          // Bubble
-          Flexible(
+          ConstrainedBox(
+            constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.68),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: isAdmin ? c.primaryTint : c.cardBg,
+                color: isAdmin ? c.primaryTint : c.primary,
                 borderRadius: BorderRadius.only(
                   topLeft:     const Radius.circular(14),
                   topRight:    const Radius.circular(14),
                   bottomLeft:  Radius.circular(isAdmin ? 4 : 14),
                   bottomRight: Radius.circular(isAdmin ? 14 : 4),
                 ),
-                border: Border.all(
-                  color: isAdmin
-                      ? c.primary.withValues(alpha: 0.25)
-                      : c.divider,
-                ),
               ),
               child: Column(
-                crossAxisAlignment: isAdmin
-                    ? CrossAxisAlignment.start
-                    : CrossAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Sender name + role
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (isAdmin)
-                        Icon(Icons.verified_rounded,
-                            size: 12, color: c.primary),
-                      if (isAdmin) const SizedBox(width: 4),
-                      Text(
-                        isAdmin ? 'support_team'.tr : 'you_label'.tr,
+                  if (isAdmin)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 3),
+                      child: Text(
+                        reply.senderName,
                         style: TextStyle(
-                          fontFamily: 'bahji',
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: isAdmin ? c.primary : c.textMedium,
-                        ),
+                            fontFamily: 'bahji',
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: c.accent),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 5),
-                  // Message
+                    ),
                   Text(
                     reply.message,
-                    style: c.body.copyWith(fontSize: 13, height: 1.6),
+                    style: TextStyle(
+                        fontFamily: 'bahji',
+                        fontSize: 13,
+                        color: isAdmin ? c.textDark : Colors.white),
                   ),
-                  const SizedBox(height: 5),
-                  // Time
-                  Text(
-                    _formatTime(reply.createdAt),
-                    style: c.caption.copyWith(fontSize: 10),
-                  ),
+                  // Reply attachments
+                  if (reply.attachments.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: reply.attachments
+                          .map((a) => _NetworkThumb(url: a.fileUrl))
+                          .toList(),
+                    ),
+                  ],
                 ],
               ),
             ),
           ),
-          if (!isAdmin) const SizedBox(width: 8),
         ],
       ),
     );
   }
-
-  String _formatTime(DateTime d) {
-    final diff = DateTime.now().difference(d);
-    if (diff.inMinutes < 60) return 'ago_minutes_short'.tr.replaceAll('{n}', '${diff.inMinutes}');
-    if (diff.inHours < 24)   return 'ago_hours_short'.tr.replaceAll('{n}', '${diff.inHours}');
-    return '${d.day}/${d.month}';
-  }
 }
 
-// ── No replies note ───────────────────────────────────────────────────────────
+// ── Resolved banner ───────────────────────────────────────────────────────────
 
-class _NoRepliesNote extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: c.background,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: c.divider),
-      ),
-      child: Row(children: [
-        Icon(Icons.hourglass_empty_rounded, size: 16, color: c.textLight),
-        const SizedBox(width: 8),
-        Text(
-          'no_reply_yet'.tr,
-          style: c.caption.copyWith(fontSize: 12),
-        ),
-      ]),
-    );
-  }
-}
-
-// ── Resolved badge ────────────────────────────────────────────────────────────
-
-class _ResolvedBadge extends StatelessWidget {
-  const _ResolvedBadge({required this.resolvedAt});
+class _ResolvedBanner extends StatelessWidget {
+  const _ResolvedBanner({required this.resolvedAt});
   final DateTime resolvedAt;
 
   @override
@@ -866,13 +1168,12 @@ class _ResolvedBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: c.successTint,
+        color: c.success.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: c.success.withValues(alpha: 0.3)),
       ),
       child: Row(children: [
-        Icon(Icons.check_circle_outline_rounded,
-            size: 16, color: c.success),
+        Icon(Icons.check_circle_outline_rounded, size: 16, color: c.success),
         const SizedBox(width: 8),
         Text(
           '${'resolved_at_prefix'.tr} ${_fmt(resolvedAt)}',
@@ -905,8 +1206,7 @@ class _EmptyHistory extends StatelessWidget {
             shape: BoxShape.circle,
             boxShadow: c.primaryShadow,
           ),
-          child: const Icon(Icons.inbox_outlined,
-              size: 40, color: Colors.white),
+          child: const Icon(Icons.inbox_outlined, size: 40, color: Colors.white),
         ),
         const SizedBox(height: 18),
         Text('no_previous_complaints'.tr, style: c.h2.copyWith(fontSize: 16)),
@@ -921,7 +1221,7 @@ class _EmptyHistory extends StatelessWidget {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  Shared pickers & label  (scoped to this file)
+//  Shared pickers & badges
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _Label extends StatelessWidget {
@@ -986,11 +1286,9 @@ class _RepliesCountChip extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
-      Icon(Icons.chat_bubble_outline_rounded,
-          size: 13, color: c.textLight),
+      Icon(Icons.chat_bubble_outline_rounded, size: 13, color: c.textLight),
       const SizedBox(width: 3),
-      Text('$count',
-          style: c.caption.copyWith(fontSize: 11)),
+      Text('$count', style: c.caption.copyWith(fontSize: 11)),
     ],
   );
 }
@@ -998,8 +1296,7 @@ class _RepliesCountChip extends StatelessWidget {
 // ── Category picker ───────────────────────────────────────────────────────────
 
 class _CategoryPicker extends StatelessWidget {
-  const _CategoryPicker(
-      {required this.selected, required this.onChanged});
+  const _CategoryPicker({required this.selected, required this.onChanged});
   final ComplaintCategory selected;
   final ValueChanged<ComplaintCategory> onChanged;
 
@@ -1007,12 +1304,12 @@ class _CategoryPicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final labels = {
-      ComplaintCategory.general:       ('category_general'.tr,       Icons.help_outline_rounded),
-      ComplaintCategory.technical:     ('category_technical'.tr,     Icons.bug_report_outlined),
-      ComplaintCategory.payment:       ('category_payment'.tr,       Icons.payment_outlined),
-      ComplaintCategory.courseContent: ('category_content'.tr,       Icons.book_outlined),
-      ComplaintCategory.teacher:       ('category_teacher'.tr,       Icons.person_outline_rounded),
-      ComplaintCategory.student:       ('category_student'.tr,       Icons.school_outlined),
+      ComplaintCategory.general:       ('category_general'.tr,  Icons.help_outline_rounded),
+      ComplaintCategory.technical:     ('category_technical'.tr, Icons.bug_report_outlined),
+      ComplaintCategory.payment:       ('category_payment'.tr,  Icons.payment_outlined),
+      ComplaintCategory.courseContent: ('category_content'.tr,  Icons.book_outlined),
+      ComplaintCategory.teacher:       ('category_teacher'.tr,  Icons.person_outline_rounded),
+      ComplaintCategory.student:       ('category_student'.tr,  Icons.school_outlined),
     };
     return Wrap(
       spacing: 8,
@@ -1024,19 +1321,16 @@ class _CategoryPicker extends StatelessWidget {
           onTap: () => onChanged(cat),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            padding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
             decoration: BoxDecoration(
               color: sel ? c.primary : c.cardBg,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: sel ? c.primary : c.divider, width: 1.5),
+              border:
+              Border.all(color: sel ? c.primary : c.divider, width: 1.5),
               boxShadow: sel ? c.primaryShadow : c.cardShadow,
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(icon,
-                  size: 16,
-                  color: sel ? Colors.white : c.textLight),
+              Icon(icon, size: 16, color: sel ? Colors.white : c.textLight),
               const SizedBox(width: 6),
               Text(label,
                   style: TextStyle(
@@ -1055,8 +1349,7 @@ class _CategoryPicker extends StatelessWidget {
 // ── Priority picker ───────────────────────────────────────────────────────────
 
 class _PriorityPicker extends StatelessWidget {
-  const _PriorityPicker(
-      {required this.selected, required this.onChanged});
+  const _PriorityPicker({required this.selected, required this.onChanged});
   final ComplaintPriority selected;
   final ValueChanged<ComplaintPriority> onChanged;
 
@@ -1083,8 +1376,7 @@ class _PriorityPicker extends StatelessWidget {
               decoration: BoxDecoration(
                 color: sel ? color : c.cardBg,
                 borderRadius: BorderRadius.circular(12),
-                border:
-                Border.all(color: sel ? color : c.divider, width: 1.5),
+                border: Border.all(color: sel ? color : c.divider, width: 1.5),
               ),
               child: Text(
                 label,

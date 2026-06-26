@@ -1,5 +1,7 @@
 library;
 
+import 'dart:developer';
+
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 
@@ -42,35 +44,35 @@ class UserModel {
   bool get isTeacher => role == 'teacher';
 
   factory UserModel.fromJson(Map<String, dynamic> j) => UserModel(
-        id: j['id'] as int,
-        name: j['name'] as String,
-        gmail: j['gmail'] as String,
-        role: j['role'] as String,
-        phone: j['phone'] as String?,
-        lastLogin: j['last_login'] == null
-            ? DateTime.now()
-            : (j['last_login'] as String).toLocalSaTime,
-        country: j['country'] as String?,
-        dob: j['dob'] as String?,
-        bio: j['bio'] as String?,
-        imageUrl: j['image_url'] as String?,
-        registrationStep: j['registration_step'] as String?,
-      );
+    id: j['id'] as int,
+    name: j['name'] as String,
+    gmail: j['gmail'] as String,
+    role: j['role'] as String,
+    phone: j['phone'] as String?,
+    lastLogin: j['last_login'] == null
+        ? DateTime.now()
+        : (j['last_login'] as String).toLocalSaTime,
+    country: j['country'] as String?,
+    dob: j['dob'] as String?,
+    bio: j['bio'] as String?,
+    imageUrl: j['image_url'] as String?,
+    registrationStep: j['registration_step'] as String?,
+  );
 
   /// Convert back to JSON for caching in SharedPreferences.
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'gmail': gmail,
-        'role': role,
-        'phone': phone,
-        'country': country,
-        'dob': dob,
-        'bio': bio,
-        'last_login': lastLogin.toIso8601String(),
-        'image_url': imageUrl,
-        'registration_step': registrationStep,
-      };
+    'id': id,
+    'name': name,
+    'gmail': gmail,
+    'role': role,
+    'phone': phone,
+    'country': country,
+    'dob': dob,
+    'bio': bio,
+    'last_login': lastLogin.toIso8601String(),
+    'image_url': imageUrl,
+    'registration_step': registrationStep,
+  };
 }
 
 // ── Provider ──────────────────────────────────────────────────────────────────
@@ -80,8 +82,8 @@ class AuthProvider extends BaseProvider {
   final StorageService _storage;
 
   AuthProvider({ApiClient? api, required StorageService storage})
-      : _api = api ?? ApiClient(),
-        _storage = storage {
+    : _api = api ?? ApiClient(),
+      _storage = storage {
     // Restore the user from disk immediately so role/isTeacher are ready
     // before the first frame is drawn — no async gap, no null user.
     _loadCachedUser();
@@ -89,8 +91,9 @@ class AuthProvider extends BaseProvider {
 
   Future<void> loadSpecialization(BuildContext context) async {
     makeLoading();
-    specializations =
-        await context.read<CategoriesProvider>().getSpecialization();
+    specializations = await context
+        .read<CategoriesProvider>()
+        .getSpecialization();
     stopLoading();
   }
 
@@ -122,13 +125,15 @@ class AuthProvider extends BaseProvider {
 
   UserModel? get currentUser => _currentUser;
 
-  bool get isStudent => _currentUser?.role == 'student';
+  bool get isStudent => persona == 'student';
 
   bool get selectedRoleIsStudent => selectedRole!['text'] == 'student';
 
-  bool get isTeacher => _currentUser?.role == 'teacher';
+  bool get isTeacher => persona == 'teacher';
 
-  bool get isAdmin => _currentUser?.role == 'admin';
+  bool get isAdmin => persona == 'admin';
+
+  bool get isSuper => persona == 'super-admin';
 
   bool get isAuthenticated => _storage.isAuthenticated();
 
@@ -139,6 +144,7 @@ class AuthProvider extends BaseProvider {
     if (saved != null) {
       _currentUser = UserModel.fromJson(saved);
     }
+    persona = _storage.getPersona ?? 'student';
   }
 
   // ── Step 1: Register ──────────────────────────────────────────────────────────
@@ -153,19 +159,21 @@ class AuthProvider extends BaseProvider {
   }) async {
     isLoadingRegistration = true;
     notifyListeners();
-    final result = await run(() => _api.post(
-          '/api/v1/auth/register',
-          body: {
-            'name': name,
-            'gmail': gmail,
-            'password': password,
-            'role': selectedRole!['text'],
-            if (phone != null) 'phone': phone,
-            if (country != null) 'country': country,
-            if (dob != null) 'dob': dob,
-          },
-          auth: false,
-        ));
+    final result = await run(
+      () => _api.post(
+        '/api/v1/auth/register',
+        body: {
+          'name': name,
+          'gmail': gmail,
+          'password': password,
+          'role': selectedRole!['text'],
+          if (phone != null) 'phone': phone,
+          if (country != null) 'country': country,
+          if (dob != null) 'dob': dob,
+        },
+        auth: false,
+      ),
+    );
 
     isLoadingRegistration = false;
     notifyListeners();
@@ -177,15 +185,14 @@ class AuthProvider extends BaseProvider {
   /// On success the server returns the same shape as login:
   ///   { registration_step, ... }
   /// We save the user here so teachers know they need step 3.
-  Future<bool> verifyOtp({
-    required String gmail,
-    required String code,
-  }) async {
-    final result = await run(() => _api.post(
-          '/api/v1/auth/verify-otp',
-          body: {'gmail': gmail, 'code': code},
-          auth: false,
-        ));
+  Future<bool> verifyOtp({required String gmail, required String code}) async {
+    final result = await run(
+      () => _api.post(
+        '/api/v1/auth/verify-otp',
+        body: {'gmail': gmail, 'code': code},
+        auth: false,
+      ),
+    );
 
     if (result != null && result is Map) {
       // The verify-otp response does NOT return tokens — the user still
@@ -205,11 +212,13 @@ class AuthProvider extends BaseProvider {
   // ── Resend OTP ────────────────────────────────────────────────────────────────
 
   Future<bool> resendOtp(String gmail) async {
-    final result = await run(() => _api.post(
-          '/api/v1/auth/resend-otp',
-          body: {'gmail': gmail},
-          auth: false,
-        ));
+    final result = await run(
+      () => _api.post(
+        '/api/v1/auth/resend-otp',
+        body: {'gmail': gmail},
+        auth: false,
+      ),
+    );
     return result != null;
   }
 
@@ -222,16 +231,18 @@ class AuthProvider extends BaseProvider {
     isLoadingAdditionalRegistration = true;
     notifyListeners();
 
-    final result = await run(() => _api.post(
-          '/api/v1/auth/teacher-profile',
-          body: {
-            'experience_years': experienceYears,
-            'teaching_type': selectedTeachingType!['text'],
-            'payment_type': selectedPaymentType!['text'],
-            'gmail': email,
-            'specialization_id': selectedSpecialization!['id'],
-          },
-        ));
+    final result = await run(
+      () => _api.post(
+        '/api/v1/auth/teacher-profile',
+        body: {
+          'experience_years': experienceYears,
+          'teaching_type': selectedTeachingType!['text'],
+          'payment_type': selectedPaymentType!['text'],
+          'gmail': email,
+          'specialization_id': selectedSpecialization!['id'],
+        },
+      ),
+    );
 
     isLoadingAdditionalRegistration = false;
     notifyListeners();
@@ -241,23 +252,23 @@ class AuthProvider extends BaseProvider {
   // ── Login ─────────────────────────────────────────────────────────────────────
 
   /// Authenticates the user, saves tokens + user object to disk.
-  Future<bool> login({
-    required String gmail,
-    required String password,
-  }) async {
+  Future<bool> login({required String gmail, required String password}) async {
     isLoadingLogin = true;
     notifyListeners();
     _currentUser = UserModel(
-        id: 0,
-        name: '',
-        gmail: gmail,
-        role: 'student',
-        lastLogin: DateTime.now());
-    final result = await run(() => _api.post(
-          '/api/v1/auth/login',
-          body: {'gmail': gmail, 'password': password},
-          auth: false,
-        ));
+      id: 0,
+      name: '',
+      gmail: gmail,
+      role: 'student',
+      lastLogin: DateTime.now(),
+    );
+    final result = await run(
+      () => _api.post(
+        '/api/v1/auth/login',
+        body: {'gmail': gmail, 'password': password},
+        auth: false,
+      ),
+    );
     if (result != null && result is Map) {
       // 1. Save tokens
       await _persistTokens(result);
@@ -278,14 +289,23 @@ class AuthProvider extends BaseProvider {
     return false;
   }
 
+  Future<void> savePersona(String persona) async {
+    log("=================[ save Persona is: $persona ]");
+    await _storage.savePersona(persona);
+  }
+
+  String persona = 'student';
+
   // ── Refresh Token ─────────────────────────────────────────────────────────────
 
   Future<bool> refreshToken(String refreshToken) async {
-    final result = await run(() => _api.post(
-          '/api/v1/auth/refresh',
-          queryParams: {'refresh_token': refreshToken},
-          auth: false,
-        ));
+    final result = await run(
+      () => _api.post(
+        '/api/v1/auth/refresh',
+        queryParams: {'refresh_token': refreshToken},
+        auth: false,
+      ),
+    );
 
     if (result != null && result is Map) {
       await _persistTokens(result);
@@ -318,19 +338,13 @@ class AuthProvider extends BaseProvider {
     required String password,
     required String code,
   }) async {
-    print({
-      'gmail': email,
-      'new_password': email,
-      'code': code,
-    });
-    final result = await run(() => _api.put(
-          '/api/v1/auth/reset-password',
-          body: {
-            'gmail': email,
-            'new_password': email,
-            'code': code,
-          },
-        ));
+    print({'gmail': email, 'new_password': email, 'code': code});
+    final result = await run(
+      () => _api.put(
+        '/api/v1/auth/reset-password',
+        body: {'gmail': email, 'new_password': email, 'code': code},
+      ),
+    );
     return result != null;
   }
 
@@ -340,11 +354,13 @@ class AuthProvider extends BaseProvider {
   Future<bool> forgotPassword(String gmail) async {
     isLoadingForget = true;
     notifyListeners();
-    final result = await run(() => _api.post(
-          '/api/v1/auth/forgot-password',
-          body: {'gmail': gmail},
-          auth: false,
-        ));
+    final result = await run(
+      () => _api.post(
+        '/api/v1/auth/forgot-password',
+        body: {'gmail': gmail},
+        auth: false,
+      ),
+    );
     isLoadingForget = false;
     notifyListeners();
     return result != null;
@@ -357,15 +373,13 @@ class AuthProvider extends BaseProvider {
     required String code,
     required String newPassword,
   }) async {
-    final result = await run(() => _api.post(
-          '/api/v1/auth/reset-password',
-          body: {
-            'gmail': gmail,
-            'code': code,
-            'new_password': newPassword,
-          },
-          auth: false,
-        ));
+    final result = await run(
+      () => _api.post(
+        '/api/v1/auth/reset-password',
+        body: {'gmail': gmail, 'code': code, 'new_password': newPassword},
+        auth: false,
+      ),
+    );
     return result != null;
   }
 
@@ -413,14 +427,8 @@ class AuthProvider extends BaseProvider {
     final access = data['access_token'] as String?;
     final refresh = data['refresh_token'] as String?;
     if (access != null && refresh != null) {
-      await _storage.saveTokens(
-        accessToken: access,
-        refreshToken: refresh,
-      );
-      await _api.saveTokens(
-        access: access,
-        refresh: refresh,
-      );
+      await _storage.saveTokens(accessToken: access, refreshToken: refresh);
+      await _api.saveTokens(access: access, refresh: refresh);
     }
   }
 }

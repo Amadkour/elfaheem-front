@@ -4,6 +4,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 library;
 
+import 'dart:io';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -71,11 +74,8 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
       child: SafeArea(
         child: Column(children: [
           ScreenAppBar(title: 'complaints_and_support'.tr),
-          // ── Stats banner ──────────────────────────────────────────────
           _StatsBanner(stats: p.stats),
-          // ── Filters ───────────────────────────────────────────────────
           _FilterRow(provider: p, searchCtrl: _searchCtrl),
-          // ── List ──────────────────────────────────────────────────────
           Expanded(
             child: p.isLoadingList && p.complaints.isEmpty
                 ? const Center(child: CircularProgressIndicator())
@@ -85,10 +85,9 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
               onRefresh: () => p.loadComplaints(reset: true),
               child: ListView.separated(
                 controller: _scrollCtrl,
-                padding:
-                const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                itemCount: p.complaints.length +
-                    (p.isLoadingList ? 1 : 0),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                itemCount:
+                p.complaints.length + (p.isLoadingList ? 1 : 0),
                 separatorBuilder: (_, __) =>
                 const SizedBox(height: 10),
                 itemBuilder: (_, i) {
@@ -143,15 +142,15 @@ class _StatsBanner extends StatelessWidget {
         boxShadow: c.primaryShadow,
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _Stat(label: 'stat_all'.tr,              value: stats.total,      color: Colors.white),
-          _vDivider,
-          _Stat(label: 'status_open'.tr,           value: stats.open,       color: const Color(0xFFFFF0B3)),
-          _vDivider,
-          _Stat(label: 'status_in_progress'.tr,    value: stats.inProgress, color: const Color(0xFFB3E5FC)),
-          _vDivider,
-          _Stat(label: 'status_resolved_banner'.tr, value: stats.resolved,  color: const Color(0xFFB9F6CA)),
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+      _Stat(label: 'stat_all'.tr,              value: stats.total,      color: Colors.white),
+      _vDivider,
+      _Stat(label: 'status_open'.tr,           value: stats.open,       color: const Color(0xFFFFF0B3)),
+      _vDivider,
+      _Stat(label: 'status_in_progress'.tr,    value: stats.inProgress, color: const Color(0xFFB3E5FC)),
+      _vDivider,
+      _Stat(label: 'status_resolved_banner'.tr, value: stats.resolved,  color: const Color(0xFFB9F6CA)),
         ],
       ),
     );
@@ -162,8 +161,7 @@ class _StatsBanner extends StatelessWidget {
 }
 
 class _Stat extends StatelessWidget {
-  const _Stat(
-      {required this.label, required this.value, required this.color});
+  const _Stat({required this.label, required this.value, required this.color});
   final String label;
   final int value;
   final Color color;
@@ -180,11 +178,9 @@ class _Stat extends StatelessWidget {
             color: color),
       ),
       const SizedBox(height: 2),
-      Text(
-        label,
-        style: const TextStyle(
-            fontFamily: 'bahji', fontSize: 11, color: Colors.white70),
-      ),
+      Text(label,
+          style: const TextStyle(
+              fontFamily: 'bahji', fontSize: 11, color: Colors.white70)),
     ]);
   }
 }
@@ -192,26 +188,21 @@ class _Stat extends StatelessWidget {
 // ── Filter Row ────────────────────────────────────────────────────────────────
 
 class _FilterRow extends StatelessWidget {
-  const _FilterRow(
-      {required this.provider, required this.searchCtrl});
+  const _FilterRow({required this.provider, required this.searchCtrl});
   final ComplaintProvider provider;
   final TextEditingController searchCtrl;
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Search
         IconTextField(
           controller: searchCtrl,
-          // onChanged: provider.setSearch,
           label: 'search_complaints_hint'.tr,
           icon: Icons.search_rounded,
         ),
         const SizedBox(height: 10),
-        // Status chips
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(children: [
@@ -248,11 +239,12 @@ class _FilterRow extends StatelessWidget {
 }
 
 class _FilterChip extends StatelessWidget {
-  const _FilterChip(
-      {required this.label,
-        required this.selected,
-        required this.onTap,
-        this.color});
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.color,
+  });
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -260,8 +252,8 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c       = context.colors;
-    final accent  = color ?? c.primary;
+    final c      = context.colors;
+    final accent = color ?? c.primary;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -271,8 +263,8 @@ class _FilterChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? accent : c.cardBg,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-              color: selected ? accent : c.divider, width: 1.5),
+          border:
+          Border.all(color: selected ? accent : c.divider, width: 1.5),
           boxShadow: selected ? c.cardShadow : [],
         ),
         child: Text(
@@ -305,9 +297,7 @@ class _ComplaintCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c         = context.colors;
     final statusClr = _statusColor(complaint.status);
-    final hasUnread = isAdmin
-        ? !complaint.isReadByAdmin
-        : !complaint.isReadByUser;
+    final hasUnread = isAdmin ? !complaint.isReadByAdmin : !complaint.isReadByUser;
 
     return GestureDetector(
       onTap: onTap,
@@ -322,101 +312,88 @@ class _ComplaintCard extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.all(14),
-          child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Header ──────────────────────────────────────────────────
-                Row(children: [
-                  // Priority dot
-                  Container(
-                    width: 8,
-                    height: 8,
-                    margin: const EdgeInsets.only(left: 8),
-                    decoration: BoxDecoration(
-                        color: _priorityColor(complaint.priority),
-                        shape: BoxShape.circle),
-                  ),
-                  Expanded(
-                    child: Text(
-                      complaint.title,
-                      style: c.h3.copyWith(fontSize: 14),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (hasUnread)
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration:
-                      BoxDecoration(color: c.primary, shape: BoxShape.circle),
-                    ),
-                ]),
-                const SizedBox(height: 8),
-                // ── Description ─────────────────────────────────────────────
-                Text(
-                  complaint.description,
-                  style: c.caption.copyWith(height: 1.5),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Container(
+                width: 8,
+                height: 8,
+                margin: const EdgeInsets.only(left: 8),
+                decoration: BoxDecoration(
+                    color: _priorityColor(complaint.priority),
+                    shape: BoxShape.circle),
+              ),
+              Expanded(
+                child: Text(complaint.title,
+                    style: c.h3.copyWith(fontSize: 14),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+              ),
+              if (hasUnread)
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration:
+                  BoxDecoration(color: c.primary, shape: BoxShape.circle),
                 ),
-                const SizedBox(height: 10),
-                // ── Footer ──────────────────────────────────────────────────
-                Row(children: [
-                  // Status badge
-                  Container(
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: statusClr.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      _statusLabel(complaint.status),
-                      style: TextStyle(
-                        fontFamily: 'bahji',
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: statusClr,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  // Category badge
-                  Container(
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: c.primaryTint,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      _categoryLabel(complaint.category),
-                      style: TextStyle(
-                        fontFamily: 'bahji',
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: c.primary,
-                      ),
-                    ),
-                  ),
-                  const Spacer(),
-                  // Replies count
-                  Row(children: [
-                    Icon(Icons.chat_bubble_outline_rounded,
-                        size: 14, color: c.textLight),
-                    const SizedBox(width: 4),
-                    Text('${complaint.repliesCount}',
-                        style: c.caption.copyWith(fontSize: 12)),
-                  ]),
-                  const SizedBox(width: 12),
-                  // Date
-                  Text(
-                    _formatDate(complaint.updatedAt),
-                    style: c.caption.copyWith(fontSize: 11),
-                  ),
-                ]),
+            ]),
+            const SizedBox(height: 8),
+            Text(complaint.description,
+                style: c.caption.copyWith(height: 1.5),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 10),
+            Row(children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusClr.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(_statusLabel(complaint.status),
+                    style: TextStyle(
+                      fontFamily: 'bahji',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: statusClr,
+                    )),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: c.primaryTint,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(_categoryLabel(complaint.category),
+                    style: TextStyle(
+                      fontFamily: 'bahji',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: c.primary,
+                    )),
+              ),
+              const Spacer(),
+              // Attachment indicator
+              if (complaint.attachments.isNotEmpty) ...[
+                Icon(Icons.photo_library_outlined,
+                    size: 14, color: c.textLight),
+                const SizedBox(width: 3),
+                Text('${complaint.attachments.length}',
+                    style: c.caption.copyWith(fontSize: 11)),
+                const SizedBox(width: 8),
+              ],
+              Row(children: [
+                Icon(Icons.chat_bubble_outline_rounded,
+                    size: 14, color: c.textLight),
+                const SizedBox(width: 4),
+                Text('${complaint.repliesCount}',
+                    style: c.caption.copyWith(fontSize: 12)),
               ]),
+              const SizedBox(width: 12),
+              Text(_formatDate(complaint.updatedAt),
+                  style: c.caption.copyWith(fontSize: 11)),
+            ]),
+          ]),
         ),
       ),
     );
@@ -454,13 +431,15 @@ class _ComplaintCard extends StatelessWidget {
 
   String _formatDate(DateTime d) {
     final diff = DateTime.now().difference(d);
-    if (diff.inMinutes < 60) return 'ago_minutes_short'.tr.replaceAll('{n}', '${diff.inMinutes}');
-    if (diff.inHours < 24)   return 'ago_hours_short'.tr.replaceAll('{n}', '${diff.inHours}');
-    return 'ago_days'.tr.replaceAll('{n}', '${diff.inDays}');
+    if (diff.inMinutes < 60)
+      return 'ago_minutes_short'.tr.replaceAll('{n}', '${diff.inMinutes}');
+    if (diff.inHours < 24)
+      return 'ago_hours_short'.tr.replaceAll('{n}', '${diff.inHours}');
+    return '${d.day}/${d.month}/${d.year}';
   }
 }
 
-// ── Empty State ───────────────────────────────────────────────────────────────
+// ── Empty state ───────────────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
   @override
@@ -469,19 +448,19 @@ class _EmptyState extends StatelessWidget {
     return Center(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Container(
-          width: 90,
-          height: 90,
+          width: 80,
+          height: 80,
           decoration: BoxDecoration(
               gradient: c.primaryGradient,
               shape: BoxShape.circle,
               boxShadow: c.primaryShadow),
-          child: const Icon(Icons.support_agent_rounded,
-              size: 44, color: Colors.white),
+          child:
+          const Icon(Icons.support_agent_rounded, size: 40, color: Colors.white),
         ),
-        const SizedBox(height: 20),
-        Text('no_complaints'.tr, style: c.h2),
+        const SizedBox(height: 18),
+        Text('no_complaints_yet'.tr, style: c.h2.copyWith(fontSize: 16)),
         const SizedBox(height: 8),
-        Text('no_complaints_hint'.tr,
+        Text('complaints_empty_hint'.tr,
             style: c.caption.copyWith(color: c.textLight)),
       ]),
     );
@@ -497,12 +476,13 @@ class ComplaintDetailScreen extends StatefulWidget {
   final int complaintId;
 
   @override
-  State<ComplaintDetailScreen> createState() => _ComplaintDetailScreenState();
+  State<ComplaintDetailScreen> createState() =>
+      _ComplaintDetailScreenState();
 }
 
 class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
-  final _replyCtrl   = TextEditingController();
-  final _scrollCtrl  = ScrollController();
+  final _replyCtrl  = TextEditingController();
+  final _scrollCtrl = ScrollController();
 
   @override
   void initState() {
@@ -516,15 +496,18 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
   void dispose() {
     _replyCtrl.dispose();
     _scrollCtrl.dispose();
+    // Clear any staged reply images if user navigates away
+    context.read<ComplaintProvider>().clearReplyImages();
     super.dispose();
   }
 
   Future<void> _sendReply() async {
     final msg = _replyCtrl.text.trim();
-    if (msg.isEmpty) return;
+    final p   = context.read<ComplaintProvider>();
+    if (msg.isEmpty && p.pendingReplyAttachments.isEmpty) return;
     _replyCtrl.clear();
 
-    await context.read<ComplaintProvider>().addReply(
+    await p.addReply(
       complaintId: widget.complaintId,
       message: msg,
     );
@@ -540,10 +523,10 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final p    = context.watch<ComplaintProvider>();
-    final c    = context.colors;
-    final auth = context.read<AuthProvider>();
-    final isAdmin = auth.isTeacher || auth.isAdmin;
+    final p         = context.watch<ComplaintProvider>();
+    final c         = context.colors;
+    final auth      = context.read<AuthProvider>();
+    final isAdmin   = auth.isTeacher || auth.isAdmin;
     final complaint = p.selected;
 
     return Directionality(
@@ -564,7 +547,10 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                     children: [
                       // ── Info card ──────────────────────────────────────────
-                      _InfoCard(complaint: complaint, isAdmin: isAdmin, provider: p),
+                      _InfoCard(
+                          complaint: complaint,
+                          isAdmin: isAdmin,
+                          provider: p),
                       const SizedBox(height: 16),
                       // ── Replies ────────────────────────────────────────────
                       if (complaint.replies.isNotEmpty) ...[
@@ -572,8 +558,10 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                           padding: const EdgeInsets.only(bottom: 10),
                           child: Text('replies_label'.tr, style: c.h3),
                         ),
-                        ...complaint.replies
-                            .map((r) => _ReplyBubble(reply: r, myId: auth.currentUser?.id ?? 0)),
+                        ...complaint.replies.map((r) => _ReplyBubble(
+                          reply: r,
+                          myId: auth.currentUser?.id ?? 0,
+                        )),
                         const SizedBox(height: 8),
                       ],
                     ],
@@ -584,7 +572,11 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                   _ReplyInput(
                     controller: _replyCtrl,
                     isSending: p.isSending,
+                    pendingAttachments: p.pendingReplyAttachments,
                     onSend: _sendReply,
+                    onPickGallery: () => p.pickReplyImage(),
+                    onPickCamera: () => p.pickReplyImageFromCamera(),
+                    onRemoveImage: (i) => p.removeReplyImage(i),
                   ),
               ],
           ]),
@@ -597,18 +589,19 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
 // ── Info Card ─────────────────────────────────────────────────────────────────
 
 class _InfoCard extends StatelessWidget {
-  const _InfoCard(
-      {required this.complaint,
-        required this.isAdmin,
-        required this.provider});
+  const _InfoCard({
+    required this.complaint,
+    required this.isAdmin,
+    required this.provider,
+  });
   final ComplaintModel complaint;
   final bool isAdmin;
   final ComplaintProvider provider;
 
   @override
   Widget build(BuildContext context) {
-    final c          = context.colors;
-    final statusClr  = _statusColor(complaint.status);
+    final c         = context.colors;
+    final statusClr = _statusColor(complaint.status);
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -621,36 +614,35 @@ class _InfoCard extends StatelessWidget {
         // Title + status
         Row(children: [
           Expanded(
-            child: Text(complaint.title,
-                style: c.h2.copyWith(fontSize: 16)),
-          ),
+              child: Text(complaint.title, style: c.h2.copyWith(fontSize: 16))),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
             decoration: BoxDecoration(
               color: statusClr.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Text(
-              _statusLabel(complaint.status),
-              style: TextStyle(
-                  fontFamily: 'bahji',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: statusClr),
-            ),
+            child: Text(_statusLabel(complaint.status),
+                style: TextStyle(
+                    fontFamily: 'bahji',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: statusClr)),
           ),
         ]),
         const SizedBox(height: 12),
-        // Meta row
+        // Meta
         Wrap(spacing: 8, runSpacing: 6, children: [
-          _MetaChip(icon: Icons.label_outline_rounded,
+          _MetaChip(
+              icon: Icons.label_outline_rounded,
               label: _categoryLabel(complaint.category),
               color: c.primary),
-          _MetaChip(icon: Icons.flag_outlined,
+          _MetaChip(
+              icon: Icons.flag_outlined,
               label: _priorityLabel(complaint.priority),
               color: _priorityColor(complaint.priority)),
           if (complaint.courseTitle != null)
-            _MetaChip(icon: Icons.book_outlined,
+            _MetaChip(
+                icon: Icons.book_outlined,
                 label: complaint.courseTitle!,
                 color: c.accent),
         ]),
@@ -663,38 +655,56 @@ class _InfoCard extends StatelessWidget {
             color: c.background,
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Text(complaint.description, style: c.body.copyWith(height: 1.7)),
+          child: Text(complaint.description,
+              style: c.body.copyWith(height: 1.7)),
         ),
+
+        // ── Complaint-level attachments ──────────────────────────────────
+        if (complaint.attachments.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text('attachments_label'.tr,
+              style: TextStyle(
+                  fontFamily: 'bahji',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: c.textMedium)),
+          const SizedBox(height: 10),
+          _AttachmentGallery(attachments: complaint.attachments),
+        ],
+
         // Admin status updater
         if (isAdmin) ...[
           const SizedBox(height: 16),
           Text('update_status_label'.tr, style: c.caption),
           const SizedBox(height: 8),
-          Wrap(spacing: 8, children: ComplaintStatus.values.map((s) {
-            final selected = complaint.status == s;
-            final sc = _statusColor(s);
-            return GestureDetector(
-              onTap: selected ? null : () => provider.updateStatus(complaint.id, s),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                decoration: BoxDecoration(
-                  color: selected ? sc : c.background,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: sc, width: 1.5),
-                ),
-                child: Text(
-                  _statusLabel(s),
-                  style: TextStyle(
-                    fontFamily: 'bahji',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: selected ? Colors.white : sc,
+          Wrap(
+              spacing: 8,
+              children: ComplaintStatus.values.map((s) {
+                final selected = complaint.status == s;
+                final sc = _statusColor(s);
+                return GestureDetector(
+                  onTap: selected
+                      ? null
+                      : () => provider.updateStatus(complaint.id, s),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: selected ? sc : c.background,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: sc, width: 1.5),
+                    ),
+                    child: Text(_statusLabel(s),
+                        style: TextStyle(
+                          fontFamily: 'bahji',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: selected ? Colors.white : sc,
+                        )),
                   ),
-                ),
-              ),
-            );
-          }).toList()),
+                );
+              }).toList()),
         ],
       ]),
     );
@@ -706,12 +716,21 @@ class _InfoCard extends StatelessWidget {
     ComplaintStatus.resolved   => const Color(0xFF10B981),
     ComplaintStatus.closed     => const Color(0xFF6B7280),
   };
+
+  Color _priorityColor(ComplaintPriority p) => switch (p) {
+    ComplaintPriority.urgent => const Color(0xFFEF4444),
+    ComplaintPriority.high   => const Color(0xFFF97316),
+    ComplaintPriority.medium => const Color(0xFFF59E0B),
+    ComplaintPriority.low    => const Color(0xFF10B981),
+  };
+
   String _statusLabel(ComplaintStatus s) => switch (s) {
     ComplaintStatus.open       => 'status_open'.tr,
     ComplaintStatus.inProgress => 'status_in_progress'.tr,
     ComplaintStatus.resolved   => 'status_resolved'.tr,
     ComplaintStatus.closed     => 'status_closed'.tr,
   };
+
   String _categoryLabel(ComplaintCategory cat) => switch (cat) {
     ComplaintCategory.technical    => 'category_technical'.tr,
     ComplaintCategory.payment      => 'category_payment'.tr,
@@ -720,19 +739,99 @@ class _InfoCard extends StatelessWidget {
     ComplaintCategory.student      => 'category_student'.tr,
     ComplaintCategory.general      => 'category_general'.tr,
   };
+
   String _priorityLabel(ComplaintPriority p) => switch (p) {
     ComplaintPriority.urgent => 'priority_urgent'.tr,
     ComplaintPriority.high   => 'priority_high'.tr,
     ComplaintPriority.medium => 'priority_medium'.tr,
     ComplaintPriority.low    => 'priority_low'.tr,
   };
-  Color _priorityColor(ComplaintPriority p) => switch (p) {
-    ComplaintPriority.urgent => const Color(0xFFEF4444),
-    ComplaintPriority.high   => const Color(0xFFF97316),
-    ComplaintPriority.medium => const Color(0xFFF59E0B),
-    ComplaintPriority.low    => const Color(0xFF10B981),
-  };
 }
+
+// ── Attachment gallery (from server) ─────────────────────────────────────────
+
+class _AttachmentGallery extends StatelessWidget {
+  const _AttachmentGallery({required this.attachments});
+  final List<ComplaintAttachment> attachments;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: attachments.map((a) => _NetworkThumb(url: a.fileUrl)).toList(),
+    );
+  }
+}
+
+class _NetworkThumb extends StatelessWidget {
+  const _NetworkThumb({required this.url});
+  final String url;
+
+  static const double _size = 80;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return GestureDetector(
+      onTap: () => _openFullscreen(context),
+      child: Hero(
+        tag: url,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.network(
+            url,
+            width: _size,
+            height: _size,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(
+              width: _size,
+              height: _size,
+              decoration: BoxDecoration(
+                color: c.background,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.broken_image_outlined, color: c.textLight),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openFullscreen(BuildContext context) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => _FullscreenImage(url: url),
+      fullscreenDialog: true,
+    ));
+  }
+}
+
+class _FullscreenImage extends StatelessWidget {
+  const _FullscreenImage({required this.url});
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: Center(
+        child: InteractiveViewer(
+          child: Hero(
+            tag: url,
+            child: Image.network(url, fit: BoxFit.contain),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Meta Chip ─────────────────────────────────────────────────────────────────
 
 class _MetaChip extends StatelessWidget {
   const _MetaChip(
@@ -774,6 +873,7 @@ class _ReplyBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final c    = context.colors;
     final isMe = reply.senderId == myId;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -792,8 +892,7 @@ class _ReplyBubble extends StatelessWidget {
                   : null,
               child: reply.senderImage == null
                   ? Icon(Icons.person_rounded,
-                  size: 18,
-                  color: reply.isAdmin ? c.primary : c.accent)
+                  size: 18, color: reply.isAdmin ? c.primary : c.accent)
                   : null,
             ),
             const SizedBox(width: 8),
@@ -813,44 +912,51 @@ class _ReplyBubble extends StatelessWidget {
                   topLeft:     const Radius.circular(16),
                   topRight:    const Radius.circular(16),
                   bottomLeft:  Radius.circular(isMe ? 16 : 4),
-                  bottomRight: Radius.circular(isMe ? 4  : 16),
+                  bottomRight: Radius.circular(isMe ? 4 : 16),
                 ),
                 boxShadow: c.cardShadow,
               ),
               child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (!isMe)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Text(
-                          reply.senderName,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (!isMe)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text(reply.senderName,
                           style: TextStyle(
                               fontFamily: 'bahji',
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
-                              color: reply.isAdmin ? c.accent : c.textMedium),
-                        ),
-                      ),
-                    Text(
-                      reply.message,
-                      style: TextStyle(
-                          fontFamily: 'bahji',
-                          fontSize: 14,
-                          height: 1.5,
-                          color: isMe ? Colors.white : c.textDark),
+                              color: reply.isAdmin ? c.accent : c.textMedium)),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _formatTime(reply.createdAt),
+                  if (reply.message.isNotEmpty)
+                    Text(reply.message,
+                        style: TextStyle(
+                            fontFamily: 'bahji',
+                            fontSize: 14,
+                            height: 1.5,
+                            color: isMe ? Colors.white : c.textDark)),
+
+                  // ── Reply image attachments ──────────────────────────────
+                  if (reply.attachments.isNotEmpty) ...[
+                    if (reply.message.isNotEmpty) const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: reply.attachments
+                          .map((a) => _NetworkThumb(url: a.fileUrl))
+                          .toList(),
+                    ),
+                  ],
+
+                  const SizedBox(height: 4),
+                  Text(_formatTime(reply.createdAt),
                       style: TextStyle(
                           fontFamily: 'bahji',
                           fontSize: 10,
-                          color: isMe
-                              ? Colors.white60
-                              : c.textLight),
-                    ),
-                  ]),
+                          color: isMe ? Colors.white60 : c.textLight)),
+                ],
+              ),
             ),
           ),
         ],
@@ -865,22 +971,31 @@ class _ReplyBubble extends StatelessWidget {
   }
 }
 
-// ── Reply Input ───────────────────────────────────────────────────────────────
+// ── Reply Input (with image attach strip) ─────────────────────────────────────
 
 class _ReplyInput extends StatelessWidget {
-  const _ReplyInput(
-      {required this.controller,
-        required this.isSending,
-        required this.onSend});
+  const _ReplyInput({
+    required this.controller,
+    required this.isSending,
+    required this.pendingAttachments,
+    required this.onSend,
+    required this.onPickGallery,
+    required this.onPickCamera,
+    required this.onRemoveImage,
+  });
+
   final TextEditingController controller;
   final bool isSending;
+  final List<PendingAttachment> pendingAttachments;
   final VoidCallback onSend;
+  final VoidCallback onPickGallery;
+  final VoidCallback onPickCamera;
+  final ValueChanged<int> onRemoveImage;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       decoration: BoxDecoration(
         color: c.cardBg,
         boxShadow: [
@@ -890,52 +1005,205 @@ class _ReplyInput extends StatelessWidget {
               offset: const Offset(0, -2))
         ],
       ),
-      child: Row(children: [
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              color: c.background,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: c.divider),
-            ),
-            child: TextField(
-              controller: controller,
-              maxLines: null,
-              textDirection: TextDirection.rtl,
-              style: TextStyle(fontFamily: 'bahji', color: c.textDark),
-              decoration: InputDecoration(
-                hintText: 'write_reply_hint'.tr,
-                hintStyle:
-                TextStyle(fontFamily: 'bahji', color: c.textLight),
-                contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                border: InputBorder.none,
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        // ── Pending image strip ────────────────────────────────────────────
+        if (pendingAttachments.isNotEmpty)
+          _PendingImageStrip(
+            attachments: pendingAttachments,
+            onRemove: onRemoveImage,
+          ),
+
+        // ── Text input row ─────────────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+          child: Row(children: [
+            // Camera / gallery button
+            GestureDetector(
+              onTap: () => _showImagePicker(context),
+              child: Container(
+                width: 40,
+                height: 40,
+                margin: const EdgeInsets.only(left: 6),
+                decoration: BoxDecoration(
+                  color: c.primaryTint,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.add_photo_alternate_outlined,
+                    size: 20, color: c.primary),
               ),
             ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        GestureDetector(
-          onTap: isSending ? null : onSend,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              gradient: c.primaryGradient,
-              shape: BoxShape.circle,
-              boxShadow: c.primaryShadow,
+            const SizedBox(width: 8),
+
+            // Text field
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: c.background,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: c.divider),
+                ),
+                child: TextField(
+                  controller: controller,
+                  maxLines: null,
+                  textDirection: TextDirection.rtl,
+                  style: TextStyle(fontFamily: 'bahji', color: c.textDark),
+                  decoration: InputDecoration(
+                    hintText: 'write_reply_hint'.tr,
+                    hintStyle:
+                    TextStyle(fontFamily: 'bahji', color: c.textLight),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
+                    border: InputBorder.none,
+                  ),
+                ),
+              ),
             ),
-            child: isSending
-                ? const Padding(
-                padding: EdgeInsets.all(13),
-                child: CircularProgressIndicator(
-                    color: Colors.white, strokeWidth: 2))
-                : const Icon(Icons.send_rounded,
-                color: Colors.white, size: 20),
-          ),
+            const SizedBox(width: 10),
+
+            // Send button
+            GestureDetector(
+              onTap: isSending ? null : onSend,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  gradient: c.primaryGradient,
+                  shape: BoxShape.circle,
+                  boxShadow: c.primaryShadow,
+                ),
+                child: isSending
+                    ? const Padding(
+                    padding: EdgeInsets.all(13),
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2))
+                    : const Icon(Icons.send_rounded,
+                    color: Colors.white, size: 20),
+              ),
+            ),
+          ]),
         ),
       ]),
+    );
+  }
+
+  void _showImagePicker(BuildContext context) {
+    final c = context.colors;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: c.cardBg,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              width: 36,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                  color: c.divider, borderRadius: BorderRadius.circular(2)),
+            ),
+            ListTile(
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                    color: c.primaryTint,
+                    borderRadius: BorderRadius.circular(10)),
+                child: Icon(Icons.photo_library_outlined, color: c.primary),
+              ),
+              title: Text('pick_from_gallery'.tr,
+                  style: TextStyle(
+                      fontFamily: 'bahji',
+                      fontWeight: FontWeight.w600,
+                      color: c.textDark)),
+              onTap: () {
+                Navigator.pop(context);
+                onPickGallery();
+              },
+            ),
+            if (!kIsWeb)
+              ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                      color: c.accentTint,
+                      borderRadius: BorderRadius.circular(10)),
+                  child: Icon(Icons.camera_alt_outlined, color: c.accent),
+                ),
+                title: Text('take_photo'.tr,
+                    style: TextStyle(
+                        fontFamily: 'bahji',
+                        fontWeight: FontWeight.w600,
+                        color: c.textDark)),
+                onTap: () {
+                  Navigator.pop(context);
+                  onPickCamera();
+                },
+              ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Pending image strip inside reply bar ──────────────────────────────────────
+
+class _PendingImageStrip extends StatelessWidget {
+  const _PendingImageStrip(
+      {required this.attachments, required this.onRemove});
+
+  final List<PendingAttachment> attachments;
+  final ValueChanged<int> onRemove;
+
+  static const double _size = 56;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      height: _size + 16,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: c.divider, width: 0.5)),
+      ),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: attachments.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (_, i) => Stack(
+          clipBehavior: Clip.none,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: kIsWeb
+                  ? Image.network(attachments[i].localPreviewUrl,
+                  width: _size, height: _size, fit: BoxFit.cover)
+                  : Image.file(File(attachments[i].localPreviewUrl),
+                  width: _size, height: _size, fit: BoxFit.cover),
+            ),
+            Positioned(
+              top: -5,
+              right: -5,
+              child: GestureDetector(
+                onTap: () => onRemove(i),
+                child: Container(
+                  width: 18,
+                  height: 18,
+                  decoration: const BoxDecoration(
+                      color: Color(0xFFEF4444), shape: BoxShape.circle),
+                  child: const Icon(Icons.close_rounded,
+                      size: 11, color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
