@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
 import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart';
@@ -50,9 +52,10 @@ class _LoginScreenState extends State<LoginScreen> {
     );
     if (!mounted) return;
     if (success) {
-      bool  isTeacher = authProvider.isTeacher;
+      log("============== role is : ${authProvider.currentUser?.role}");
+      bool isTeacher = authProvider.currentUser?.role == 'teacher';
 
-      if (authProvider.currentUser?.role=='super-admin') {
+      if (authProvider.currentUser?.role == 'super-admin') {
         await Helpers.confirmDialog(
           context,
           title: 'select personal',
@@ -61,17 +64,15 @@ class _LoginScreenState extends State<LoginScreen> {
           onConfirm: () async {
             isTeacher = true;
             Navigator.pop(context);
-
           },
           onCancel: () async {
             print("0n cancle buttons----------------------->");
             isTeacher = false;
             Navigator.pop(context);
-
           },
         );
       }
-      await authProvider.savePersona(isTeacher? 'teacher':'student');
+      await authProvider.savePersona(isTeacher ? 'teacher' : 'student');
 
       if (mounted) {
         Navigator.of(context).pushReplacement(

@@ -1,0 +1,355 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// features/auth/teacher_documents/teacher_document_provider.dart
+// ─────────────────────────────────────────────────────────────────────────────
+
+import 'dart:developer';
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../../../core/api_client.dart';
+import '../../../core/base_provider.dart';
+import 'teacher_document_model.dart';
+
+// File extensions accepted for a document: any common image format or PDF.
+const List<String> kDocumentAllowedExtensions = [
+  'jpg',
+  'jpeg',
+  'png',
+  'webp',
+  'gif',
+  'pdf',
+];
+
+class TeacherDocumentProvider extends BaseProvider {
+  TeacherDocumentProvider({ApiClient? api}) : _api = api ?? ApiClient();
+
+  final ApiClient _api;
+  final _picker = ImagePicker();
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  TeacherDocumentsOverview? _overview;
+
+  TeacherDocumentsOverview? get overview => _overview;
+
+  bool isLoadingOverview = false;
+  bool isLoadingTypes = false;
+
+  // Per-slot upload tracking: typeId (or -1 for custom index) → loading flag
+  final Map<String, bool> _uploading = {};
+
+  bool isUploadingFor(String key) => _uploading[key] ?? false;
+
+  // Custom document form state — keyed by a local UUID string
+  final List<_CustomDocEntry> _customEntries = [];
+
+  List<_CustomDocEntry> get customEntries => List.unmodifiable(_customEntries);
+
+  // Public documents (for profile page — approved-only)
+  List<TeacherDocumentModel> _publicDocs = [];
+
+  List<TeacherDocumentModel> get publicDocs => List.unmodifiable(_publicDocs);
+  bool isLoadingPublic = false;
+
+  // Last error message (upload rejected, finalize blocked, etc.)
+  String? errorMessage;
+
+  bool isFinalizing = false;
+  bool isFinalized = false;
+
+  // ── Load teacher's own overview ──────────────────────────────────────────
+  // NOTE: this is a GET with no body — the backend identifies the teacher
+  // from the auth token, not from an email field. `email` is kept as a
+  // parameter only so existing call sites (which pass it) don't need to
+  // change; it is intentionally unused in the request itself.
+  //
+  // The previous version of this method POSTed {'email': email} to
+  // '/api/v1/auth/teacher-documents', but that path is the *create document*
+  // endpoint (POST expects a JSON body with file_url, required_document_type_id
+  // or custom_title). Posting just {'email': ...} there would 422 every time
+  // and never actually return the overview — this GET is the fix.
+  Future<void> loadOverview(String email) async {
+    isLoadingOverview = true;
+    notifyListeners();
+
+    try {
+      final res = await _api.post(
+        '/api/v1/auth/teacher-documents/overview',
+        body: {'email': email},
+      );
+      if (res != null && res is Map) {
+        _overview = TeacherDocumentsOverview.fromJson(
+          res as Map<String, dynamic>,
+        );
+      }
+    } catch (e) {
+      log('loadOverview ❌ $e');
+    } finally {
+      isLoadingOverview = false;
+      notifyListeners();
+    }
+  }
+
+  // ── Load public docs (profile page) ──────────────────────────────────────
+  Future<void> loadPublicDocuments(int teacherUserId) async {
+    isLoadingPublic = true;
+    notifyListeners();
+    try {
+      final res = await _api.get(
+        '/api/v1/auth/teacher-documents/$teacherUserId/public',
+      );
+      if (res != null && res is List) {
+        _publicDocs = (res as List)
+            .map(
+              (e) => TeacherDocumentModel.fromJson(e as Map<String, dynamic>),
+            )
+            .toList();
+      }
+    } catch (e) {
+      log('loadPublicDocuments ❌ $e');
+    } finally {
+      isLoadingPublic = false;
+      notifyListeners();
+    }
+  }
+
+  // ── Shared: upload raw bytes, then attach the returned file_url ───────────
+  // Step 1: POST .../upload-attachment (multipart) -> {file_url, ...}
+  // Step 2: POST .../                  (JSON)      -> creates/replaces the doc row
+  // Mirrors ComplaintProvider._uploadOne + createComplaint's attachment_urls
+  // pattern, so both features go through the same upload-then-attach shape.
+  Future<bool> _uploadThenAttach({
+    required String key,
+    required String fileName,
+    required String email,
+    String? filePath,
+    Uint8List? fileBytes,
+    int? requiredTypeId,
+    String? customTitle,
+  }) async {
+    _uploading[key] = true;
+    errorMessage = null;
+    notifyListeners();
+    try {
+      final uploadRes = await _api.postMultipart(
+        '/api/v1/auth/teacher-documents/upload-attachment/$email',
+        fields: {},
+        fileField: 'file',
+        fileName: fileName,
+        filePath: filePath,
+        fileBytes: fileBytes,
+      );
+      if (uploadRes == null || uploadRes is! Map) return false;
+
+      final res = await _api.post(
+        '/api/v1/auth/teacher-documents',
+        body: {
+          'email': email,
+          'file_url': uploadRes['file_url'],
+          'file_name': uploadRes['file_name'],
+          'file_type': uploadRes['file_type'],
+          'file_size': uploadRes['file_size'],
+          if (requiredTypeId != null)
+            'required_document_type_id': requiredTypeId,
+          if (customTitle != null) 'custom_title': customTitle,
+        },
+      );
+      if (res == null) return false;
+
+      await loadOverview(email);
+      return true;
+    } catch (e) {
+      errorMessage = e is ApiException ? e.message : e.toString();
+      log('_uploadThenAttach ❌ $e');
+      return false;
+    } finally {
+      _uploading[key] = false;
+      notifyListeners();
+    }
+  }
+
+  // ── Pick & upload for a predefined requirement — quick camera/gallery photo ─
+  Future<void> pickAndUploadRequired({
+    required int requiredTypeId,
+    required ImageSource source,
+    required String email,
+  }) async {
+    XFile? file;
+
+    if (source == ImageSource.gallery) {
+      final files = await _picker.pickMultiImage(imageQuality: 90, limit: 1);
+      file = files.isNotEmpty ? files.first : null;
+    } else {
+      file = await _picker.pickImage(source: source, imageQuality: 90);
+    }
+    if (file == null) return;
+
+    // file.path is a blob URL on web — dart:io's File can't stream from it
+    // (that's the "Unsupported operation: _Namespace" crash). Always read
+    // bytes too so postMultipart has a working fallback on web.
+    final bytes = await file.readAsBytes();
+
+    await _uploadThenAttach(
+      key: 'req_$requiredTypeId',
+      fileName: file.name,
+      filePath: file.path,
+      fileBytes: bytes,
+      requiredTypeId: requiredTypeId,
+      email: email,
+    );
+  }
+
+  // ── Pick & upload for a predefined requirement — any image OR a PDF ────────
+  // Uses file_picker so the teacher can browse their files, not just the
+  // camera roll — needed for scanned PDFs (IDs, certificates, etc.).
+  Future<void> pickAndUploadRequiredFile(
+    int requiredTypeId, {
+    required String email,
+  }) async {
+    // FilePicker.pickFiles(...) is not a valid call — pickFiles lives on
+    // the FilePicker.platform singleton, not as a static method.
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: kDocumentAllowedExtensions,
+      withData: true, // ensures bytes are available on web too
+    );
+    if (result == null || result.files.isEmpty) return;
+    final f = result.files.first;
+
+    await _uploadThenAttach(
+      key: 'req_$requiredTypeId',
+      fileName: f.name,
+      filePath: f.path,
+      fileBytes: f.bytes,
+      requiredTypeId: requiredTypeId,
+      email: email,
+    );
+  }
+
+  // ── Custom document entries (local form rows) ─────────────────────────────
+  void addCustomEntry() {
+    _customEntries.add(_CustomDocEntry());
+    notifyListeners();
+  }
+
+  void removeCustomEntry(int index) {
+    if (index < 0 || index >= _customEntries.length) return;
+    _customEntries.removeAt(index);
+    notifyListeners();
+  }
+
+  void setCustomEntryTitle(int index, String title) {
+    if (index < 0 || index >= _customEntries.length) return;
+    _customEntries[index].title = title;
+    notifyListeners();
+  }
+
+  // ── Custom document: quick camera/gallery photo ─────────────────────────
+  Future<void> pickAndUploadCustom(
+    int entryIndex, {
+    required String email,
+  }) async {
+    if (entryIndex < 0 || entryIndex >= _customEntries.length) return;
+    final entry = _customEntries[entryIndex];
+    if (entry.title.trim().isEmpty) return; // guard: title must be set first
+
+    final files = await _picker.pickMultiImage(imageQuality: 90, limit: 1);
+    if (files.isEmpty) return;
+    final file = files.first;
+
+    // Same web-safety fix as pickAndUploadRequired — always have bytes ready.
+    final bytes = await file.readAsBytes();
+
+    final ok = await _uploadThenAttach(
+      key: 'custom_$entryIndex',
+      fileName: file.name,
+      filePath: file.path,
+      fileBytes: bytes,
+      customTitle: entry.title.trim(),
+      email: email,
+    );
+    if (ok) _customEntries.removeAt(entryIndex);
+  }
+
+  // ── Custom document: any image OR a PDF, via file_picker ──────────────────
+  Future<void> pickAndUploadCustomFile(
+    int entryIndex, {
+    required String email,
+  }) async {
+    if (entryIndex < 0 || entryIndex >= _customEntries.length) return;
+    final entry = _customEntries[entryIndex];
+    if (entry.title.trim().isEmpty) return; // guard: title must be set first
+
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: kDocumentAllowedExtensions,
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) return;
+    final f = result.files.first;
+
+    final ok = await _uploadThenAttach(
+      key: 'custom_$entryIndex',
+      fileName: f.name,
+      filePath: f.path,
+      fileBytes: f.bytes,
+      customTitle: entry.title.trim(),
+      email: email,
+    );
+    if (ok) _customEntries.removeAt(entryIndex);
+  }
+
+  // ── Delete ────────────────────────────────────────────────────────────────
+  Future<bool> deleteDocument(int documentId, {required String email}) async {
+    try {
+      await _api.delete('/api/v1/auth/teacher-documents/$documentId');
+      await loadOverview(email);
+      return true;
+    } catch (e) {
+      log('deleteDocument ❌ $e');
+      return false;
+    }
+  }
+
+  void clearCustomEntries() {
+    _customEntries.clear();
+    notifyListeners();
+  }
+
+  // ── Finalize registration (require ALL required docs to be uploaded) ──────
+  Future<bool> finalizeRegistration({required String email}) async {
+    isFinalizing = true;
+    isFinalized = false;
+    errorMessage = null;
+    notifyListeners();
+    try {
+      final res = await _api.post(
+        '/api/v1/auth/teacher-documents/finalize',
+        body: {'email': email},
+      );
+      if (res != null && res is Map) {
+        _overview = TeacherDocumentsOverview.fromJson(
+          res as Map<String, dynamic>,
+        );
+        isFinalized = true;
+        return true;
+      }
+      return false;
+    } catch (e) {
+      errorMessage = e is ApiException ? e.message : e.toString();
+      log('finalizeRegistration ❌ $e');
+      await loadOverview(email); // refresh so the UI shows what's still missing
+      return false;
+    } finally {
+      isFinalizing = false;
+      notifyListeners();
+    }
+  }
+}
+
+// ── Local form model for an in-progress custom document entry ────────────────
+class _CustomDocEntry {
+  String title = '';
+  // Could extend with a picked XFile preview, but we upload immediately on pick.
+}

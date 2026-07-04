@@ -22,7 +22,7 @@ class StudentScheduleTabState extends State<StudentScheduleTab>
 
   @override
   void dispose() {
-    _prov.dispose();
+    // _prov.dispose();
     super.dispose();
   }
 

@@ -52,7 +52,7 @@ class BasePage extends StatelessWidget {
       child: Scaffold(
         appBar: appBar,
         backgroundColor:
-        background ??(context.showSidebar?context.themeConfig.background.withValues(alpha: 0.5):context.themeConfig.background),
+        background ??(context.showSidebar?context.themeConfig.background.withValues(alpha: 0.3):context.themeConfig.background),
         floatingActionButton: floatingActionButton,
         bottomNavigationBar: bottomNavigationBar,
         body: DecoratedBox(
@@ -67,14 +67,14 @@ class BasePage extends StatelessWidget {
     if (useWebCard && context.width > 599) {
       return Scaffold(
         backgroundColor:
-            background ??(context.showSidebar?context.themeConfig.background.withValues(alpha: 0.5):context.themeConfig.background),
+            background ??(context.showSidebar?context.themeConfig.background.withValues(alpha: 0.3):context.themeConfig.background),
 
         body: Stack(
           children: [
             Positioned.fill(
               child: CustomPaint(
                 painter: ElearningPatternPainter(
-                  color: context.themeConfig.accent.withValues(alpha: 0.05),
+                  color: context.themeConfig.background,
                   width: Helpers.calculateRemainingWidth(context),
                 ),
               ),

@@ -1,3 +1,8 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// features/shared/complaints/complaint_model.dart
+// ─────────────────────────────────────────────────────────────────────────────
+
+import '../../../../utils/helpers.dart';
 
 enum ComplaintStatus {
   open,
@@ -6,18 +11,18 @@ enum ComplaintStatus {
   closed;
 
   static ComplaintStatus fromString(String v) => switch (v) {
-        'in_progress' => inProgress,
-        'resolved'    => resolved,
-        'closed'      => closed,
-        _             => open,
-      };
+    'in_progress' => inProgress,
+    'resolved'    => resolved,
+    'closed'      => closed,
+    _             => open,
+  };
 
   String toJson() => switch (this) {
-        inProgress => 'in_progress',
-        resolved   => 'resolved',
-        closed     => 'closed',
-        open       => 'open',
-      };
+    inProgress => 'in_progress',
+    resolved   => 'resolved',
+    closed     => 'closed',
+    open       => 'open',
+  };
 }
 
 enum ComplaintCategory {
@@ -29,22 +34,22 @@ enum ComplaintCategory {
   general;
 
   static ComplaintCategory fromString(String v) => switch (v) {
-        'technical'      => technical,
-        'payment'        => payment,
-        'course_content' => courseContent,
-        'teacher'        => teacher,
-        'student'        => student,
-        _                => general,
-      };
+    'technical'      => technical,
+    'payment'        => payment,
+    'course_content' => courseContent,
+    'teacher'        => teacher,
+    'student'        => student,
+    _                => general,
+  };
 
   String toJson() => switch (this) {
-        technical    => 'technical',
-        payment      => 'payment',
-        courseContent => 'course_content',
-        teacher      => 'teacher',
-        student      => 'student',
-        general      => 'general',
-      };
+    technical     => 'technical',
+    payment       => 'payment',
+    courseContent => 'course_content',
+    teacher       => 'teacher',
+    student       => 'student',
+    general       => 'general',
+  };
 }
 
 enum ComplaintPriority {
@@ -54,11 +59,11 @@ enum ComplaintPriority {
   urgent;
 
   static ComplaintPriority fromString(String v) => switch (v) {
-        'high'   => high,
-        'urgent' => urgent,
-        'low'    => low,
-        _        => medium,
-      };
+    'high'   => high,
+    'urgent' => urgent,
+    'low'    => low,
+    _        => medium,
+  };
 
   String toJson() => name;
 }
@@ -89,7 +94,7 @@ class ComplaintAttachment {
         fileName: j['file_name'],
         fileType: j['file_type'],
         fileSize: j['file_size'],
-        uploadedAt: j['uploaded_at'].toLocalSaTime,
+        uploadedAt: j['uploaded_at'].toString().toLocalSaTime,
       );
 }
 
@@ -119,18 +124,18 @@ class ComplaintReply {
   });
 
   factory ComplaintReply.fromJson(Map<String, dynamic> j) => ComplaintReply(
-        id: j['id'],
-        complaintId: j['complaint_id'],
-        senderId: j['sender_id'],
-        senderName: j['sender_name'] ?? '',
-        senderImage: j['sender_image'],
-        message: j['message'],
-        isAdmin: j['is_admin'] ?? false,
-        createdAt: j['created_at'].toLocalSaTime,
-        attachments: (j['attachments'] as List? ?? [])
-            .map((a) => ComplaintAttachment.fromJson(a))
-            .toList(),
-      );
+    id: j['id'],
+    complaintId: j['complaint_id'],
+    senderId: j['sender_id'],
+    senderName: j['sender_name'] ?? '',
+    senderImage: j['sender_image'],
+    message: j['message'],
+    isAdmin: j['is_admin'] ?? false,
+    createdAt: j['created_at'].toString().toLocalSaTime,
+    attachments: (j['attachments'] as List? ?? [])
+        .map((a) => ComplaintAttachment.fromJson(a))
+        .toList(),
+  );
 }
 
 // ── Main Complaint ────────────────────────────────────────────────────────────
@@ -144,6 +149,7 @@ class ComplaintModel {
   final String? courseTitle;
   final String title;
   final String description;
+  final String? suggestedSolution; // ← NEW  optional student-proposed fix
   final ComplaintCategory category;
   final ComplaintPriority priority;
   final ComplaintStatus status;
@@ -165,6 +171,7 @@ class ComplaintModel {
     this.courseTitle,
     required this.title,
     required this.description,
+    this.suggestedSolution,         // ← NEW
     required this.category,
     required this.priority,
     required this.status,
@@ -179,31 +186,31 @@ class ComplaintModel {
   });
 
   factory ComplaintModel.fromJson(Map<String, dynamic> j) => ComplaintModel(
-        id: j['id'],
-        userId: j['user_id'],
-        userName: j['user_name'] ?? '',
-        userImage: j['user_image'],
-        courseId: j['course_id'],
-        courseTitle: j['course_title'],
-        title: j['title'],
-        description: j['description'],
-        category: ComplaintCategory.fromString(j['category'] ?? 'general'),
-        priority: ComplaintPriority.fromString(j['priority'] ?? 'medium'),
-        status: ComplaintStatus.fromString(j['status'] ?? 'open'),
-        isReadByAdmin: j['is_read_by_admin'] ?? false,
-        isReadByUser: j['is_read_by_user'] ?? true,
-        createdAt: j['created_at'].toLocalSaTime,
-        updatedAt: j['updated_at'].toLocalSaTime,
-        resolvedAt:
-            j['resolved_at']?.toLocalSaTime,
-        repliesCount: j['replies_count'] ?? 0,
-        replies: (j['replies'] as List? ?? [])
-            .map((r) => ComplaintReply.fromJson(r))
-            .toList(),
-        attachments: (j['attachments'] as List? ?? [])
-            .map((a) => ComplaintAttachment.fromJson(a))
-            .toList(),
-      );
+    id: j['id'],
+    userId: j['user_id'],
+    userName: j['user_name'] ?? '',
+    userImage: j['user_image'],
+    courseId: j['course_id'],
+    courseTitle: j['course_title'],
+    title: j['title'],
+    description: j['description'],
+    suggestedSolution: j['suggested_solution'] as String?, // ← NEW
+    category: ComplaintCategory.fromString(j['category'] ?? 'general'),
+    priority: ComplaintPriority.fromString(j['priority'] ?? 'medium'),
+    status: ComplaintStatus.fromString(j['status'] ?? 'open'),
+    isReadByAdmin: j['is_read_by_admin'] ?? false,
+    isReadByUser: j['is_read_by_user'] ?? true,
+    createdAt: j['created_at'].toString().toLocalSaTime,
+    updatedAt: j['updated_at'].toString().toLocalSaTime,
+    resolvedAt: j['resolved_at']?.toString().toLocalSaTime,
+    repliesCount: j['replies_count'] ?? 0,
+    replies: (j['replies'] as List? ?? [])
+        .map((r) => ComplaintReply.fromJson(r))
+        .toList(),
+    attachments: (j['attachments'] as List? ?? [])
+        .map((a) => ComplaintAttachment.fromJson(a))
+        .toList(),
+  );
 }
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
@@ -226,11 +233,11 @@ class ComplaintStats {
   });
 
   factory ComplaintStats.fromJson(Map<String, dynamic> j) => ComplaintStats(
-        total: j['total'] ?? 0,
-        open: j['open'] ?? 0,
-        inProgress: j['in_progress'] ?? 0,
-        resolved: j['resolved'] ?? 0,
-        closed: j['closed'] ?? 0,
-        unreadAdmin: j['unread_admin'] ?? 0,
-      );
+    total: j['total'] ?? 0,
+    open: j['open'] ?? 0,
+    inProgress: j['in_progress'] ?? 0,
+    resolved: j['resolved'] ?? 0,
+    closed: j['closed'] ?? 0,
+    unreadAdmin: j['unread_admin'] ?? 0,
+  );
 }

@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../config/storage_service.dart' show StorageService;
 import '../config/theme/theme_config_provider.dart';
 import '../features/auth/auth_provider.dart';
+import '../features/auth/teacher_document_provider.dart';
 import '../features/category/categories_provider.dart';
 import '../features/shared/notification/notifications_provider.dart';
 import '../features/shared/profile/about/about_terms_provider.dart';
@@ -54,6 +55,10 @@ List<SingleChildWidget> appProviders({
   ),
   ChangeNotifierProvider<AboutTermsProvider>(
     create: (_) => AboutTermsProvider(),
+  ),
+
+  ChangeNotifierProvider<TeacherDocumentProvider>(
+    create: (_) => TeacherDocumentProvider(),
   ),
 
   ChangeNotifierProvider<StudentAnalyticsProvider>(

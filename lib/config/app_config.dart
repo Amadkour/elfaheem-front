@@ -8,7 +8,7 @@ import 'package:timeago/timeago.dart' as timeago;
 /// Application configuration and context.themeConfig.
 class AppConfig {
   static const String baseUrl =
-      'https://mailing-fit-duncan-fastest.trycloudflare.com';
+      'https://district-reliability-perl-die.trycloudflare.com';
   static String lang = 'ar';
   static bool showLogs = false;
 

@@ -5,6 +5,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
@@ -139,7 +140,7 @@ class ApiClient {
       onResponse: (response, handler) {
         if(AppConfig.showLogs) {
           log('[${response.requestOptions.path}] ${response.statusCode} '
-            '${response.data.runtimeType}');
+              '${response.data.runtimeType}');
           log(response.data.toString());
 
         }
@@ -369,11 +370,16 @@ class ApiClient {
     'postMultipart: provide filePath or fileBytes');
 
     final ext  = p.extension(fileName).replaceFirst('.', '').toLowerCase();
+    log('==============================${p.extension(fileName)}');
+    log('==============================$fileName');
+    log('==============================$ext');
     final mime = _fileMime(ext);
 
     MultipartFile multipartFile;
-    if (filePath != null && File(filePath).existsSync()) {
-      // Stream from disk — memory-efficient and no timeout issues
+    if (!kIsWeb && filePath != null && File(filePath).existsSync()) {
+      // Stream from disk — memory-efficient and no timeout issues.
+      // dart:io's File is unavailable on web (throws "Unsupported
+      // operation: _Namespace"), so web always falls through to bytes below.
       multipartFile = await MultipartFile.fromFile(
         filePath,
         filename:    fileName,
@@ -381,8 +387,14 @@ class ApiClient {
       );
     } else {
       // Fallback: bytes (web, or when file was already deleted)
+      if (fileBytes == null) {
+        throw Exception(
+          'postMultipart: no fileBytes provided and filePath is unusable '
+              '(web platform, or file missing on disk).',
+        );
+      }
       multipartFile = MultipartFile.fromBytes(
-        fileBytes!,
+        fileBytes,
         filename:    fileName,
         contentType: MediaType.parse(mime),
       );

@@ -114,7 +114,15 @@ class ElFaheemApp extends StatefulWidget {
 class _ElFaheemAppState extends State<ElFaheemApp> {
   @override
   void initState() {
+    // NOTE: load() must NOT be called synchronously here. ThemeConfigProvider
+    // .load() calls notifyListeners() before its first await, and calling
+    // that mid-mount (while sibling providers like NotificationsProvider are
+    // still building) throws "setState() or markNeedsBuild() called during
+    // build". Deferring to the post-frame callback runs it safely once the
+    // whole tree has finished its first build.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      context.read<ThemeConfigProvider>().load();
+
       // ── Version check – blocks launch if a force-update is required ──────────
       await VersionCheckService.instance.checkOnStartup();
     });
@@ -123,8 +131,15 @@ class _ElFaheemAppState extends State<ElFaheemApp> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.read<AuthProvider>();
     final tc = context.watch<ThemeConfigProvider>();
+
+    // Block on the theme response before rendering the real app so every
+    // screen paints with the correct palette from the very first frame.
+    if (tc.isLoading) {
+      return const _PremiumLoadingScreen();
+    }
+
+    final auth = context.read<AuthProvider>();
     final String initialRoute;
     if (!auth.isAuthenticated) {
       initialRoute = '/login';
@@ -211,6 +226,65 @@ class _ElFaheemAppState extends State<ElFaheemApp> {
         FadeTransition(opacity: anim, child: child),
     transitionDuration: const Duration(milliseconds: 300),
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Premium splash screen — shown while the live theme is being fetched
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Branded splash shown between app launch and the first theme response.
+///
+/// IMPORTANT: colors here are hard-coded to match `flutter_native_splash`'s
+/// config in pubspec.yaml exactly (background #1A1A1A / accent #F4C542) —
+/// not read from AppTheme — so there is zero visible hand-off flash between
+/// the OS-level native splash and this Flutter splash, on every platform.
+/// If the brand palette ever changes, update both places together.
+class _PremiumLoadingScreen extends StatelessWidget {
+  const _PremiumLoadingScreen();
+
+  static const _bg = Color(0xFF1A1A1A); // matches flutter_native_splash color
+  static const _accent = Color(0xFFF4C542); // matches flutter_native_splash color
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(brightness: Brightness.dark, fontFamily: 'tajawal'),
+      home: Scaffold(
+        backgroundColor: _bg,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                'assets/images/splash.png',
+                width: 120,
+                height: 120,
+                errorBuilder: (_, __, ___) => const Text(
+                  'الفهيم',
+                  style: TextStyle(
+                    fontFamily: 'bahji',
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: _accent,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+              const SizedBox(
+                width: 32,
+                height: 32,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(_accent),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

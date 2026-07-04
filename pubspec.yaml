@@ -76,13 +76,19 @@ flutter:
         - asset: assets/fonts/Tajawal-Regular.ttf
           style: italic
 flutter_native_splash:
-  # General color for all platforms except Android 12+
-  color: "#FFFFFF"
-  # General image for all platforms except Android 12+
+  # Premium theme — Brand Yellow & Dark Charcoal.
+  # These must stay in sync with AppTheme.darkBackground (#1A1A1A) and
+  # AppTheme.primary (#F4C542) in lib/config/theme/app_theme.dart, and with
+  # the hard-coded colors in main.dart's _PremiumLoadingScreen, so there is
+  # no visible color change handing off from native splash -> Flutter splash
+  # -> live app on any platform.
+  color: "#1A1A1A"
+  color_dark: "#1A1A1A"
+
   image: assets/images/splash.png
+  image_dark: assets/images/splash.png
 
-  android_gravity: fill
-
+  android_gravity: center
   ios_content_mode: center
 
   fullscreen: true
@@ -90,8 +96,10 @@ flutter_native_splash:
   # Android 12+ specific configuration (required for newer Android versions)
   android_12:
     image: assets/images/splash.png
-    color: "#FFFFFF"
-    # Optional: background color for the icon
-    # icon_background_color: "#111111"
+    icon_background_color: "#1A1A1A"
+    color: "#1A1A1A"
+    color_dark: "#1A1A1A"
+
+  web: true
 dev_dependencies:
   flutter_test: any

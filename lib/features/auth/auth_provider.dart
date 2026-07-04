@@ -292,6 +292,8 @@ class AuthProvider extends BaseProvider {
   Future<void> savePersona(String persona) async {
     log("=================[ save Persona is: $persona ]");
     await _storage.savePersona(persona);
+    persona = _storage.getPersona ?? 'student';
+
   }
 
   String persona = 'student';

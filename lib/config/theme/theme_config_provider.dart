@@ -2,15 +2,15 @@
 //
 // Lifecycle
 // ─────────
-//   1. On construction → load cached palette from SharedPreferences (instant).
-//   2. Immediately fire a background fetch from the server.
-//   3. On success → update in-memory model + re-cache + notifyListeners().
-//   4. Widgets call context.themeConfig.primary, .gradientPrimary, etc.
-//
-// AppTheme fallback
-// ─────────────────
-//   If the server is unreachable AND no cache exists, every getter falls
-//   back to the hard-coded AppTheme constant, so the app never breaks.
+//   1. load() is called once at app startup. isLoading starts true, so the
+//      app can show a "premium loading" screen until this resolves.
+//   2. Hit the API first.
+//        • Success → parse the model, cache it to SharedPreferences, done.
+//        • Failure → fall back to whatever was last cached in
+//          SharedPreferences. If nothing was ever cached, the AppColors /
+//          AppTheme getters fall back to the hard-coded AppTheme constants,
+//          so the app never breaks or shows blank colours.
+//   3. Widgets call context.themeConfig.primary, .gradientPrimary, etc.
 
 import 'dart:convert';
 import 'dart:io' show Platform;
@@ -41,24 +41,52 @@ String get _currentPlatform {
 class ThemeConfigProvider extends ChangeNotifier {
   final ApiClient _api;
 
-  ThemeConfigProvider({required ApiClient api}) : _api = api {
-    _loadCache().then((_) => _fetchFromServer());
-  }
+  ThemeConfigProvider({required ApiClient api}) : _api = api;
 
   // ── State ─────────────────────────────────────────────────────────────────
 
   ThemeConfigModel? _model;
-  bool _isFetching = false;
+
+  /// True from construction until the first [load] call resolves (either
+  /// from the API or, on failure, from the SharedPreferences cache).
+  /// The app should show a loading/splash screen while this is true.
+  bool _isLoading = true;
   String? _error;
 
-  ThemeConfigModel? get model    => _model;
-  bool              get isFetching => _isFetching;
-  String?           get error    => _error;
+  ThemeConfigModel? get model => _model;
+  bool get isLoading => _isLoading;
+
+  /// Kept for backwards compatibility with existing call sites.
+  bool get isFetching => _isLoading;
+  String? get error => _error;
 
   /// Feature kill-switch list for the current platform. Same value as
   /// [AppConfig.disableList] — exposed here too so widgets that already
   /// listen to context.themeConfig don't need a second lookup.
   List<String> get disableList => AppConfig.disableList;
+
+  // ── Entry point ───────────────────────────────────────────────────────────
+
+  /// Call this once at app startup (and again for a manual refresh).
+  /// Always hits the API first; only reads the SharedPreferences cache if
+  /// the API call fails.
+  Future<void> load() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    final fetchedFromServer = await _fetchFromServer();
+    if (!fetchedFromServer) {
+      await _loadFromCache();
+    }
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  /// Alias for [load] — call after an admin colour change to force a
+  /// fresh fetch.
+  Future<void> refresh() => load();
 
   // ── Convenience getters — fall back to AppTheme constants ─────────────────
 
@@ -288,15 +316,43 @@ class ThemeConfigProvider extends ChangeNotifier {
     colors: gradientPurple,
   );
 
+  // ── Network ───────────────────────────────────────────────────────────────
+
+  /// Returns true on success (model populated + cached), false on failure.
+  Future<bool> _fetchFromServer() async {
+    try {
+      final platform = _currentPlatform;
+      // ApiClient.get returns the parsed JSON body (Map or List).
+      // Adjust the call signature to match your ApiClient implementation.
+      final json = await _api.get('/api/v1/theme/$platform') as Map<String, dynamic>;
+      final colors = json['colors'] as Map<String, dynamic>;
+      _model = ThemeConfigModel.fromJson(colors);
+
+      final disableItems = (json['disable_list'] as List<dynamic>? ?? [])
+          .map((e) => e.toString())
+          .toList();
+      AppConfig.disableList = disableItems;
+
+      await _saveCache(_model!, disableItems);
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      debugPrint('[ThemeConfigProvider] fetch error: $e');
+      return false;
+    }
+  }
+
   // ── Cache ─────────────────────────────────────────────────────────────────
 
-  Future<void> _loadCache() async {
+  /// Only called when the API call fails — reads the last-known-good
+  /// palette (and disable list) back out of SharedPreferences.
+  Future<void> _loadFromCache() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+
       final raw = prefs.getString(_kCacheKey);
       if (raw != null) {
-        final json = jsonDecode(raw) as Map<String, dynamic>;
-        _model = ThemeConfigModel.fromJson(json);
+        _model = ThemeConfigModel.fromJson(jsonDecode(raw) as Map<String, dynamic>);
       }
 
       final disableRaw = prefs.getString(_kDisableListCacheKey);
@@ -305,65 +361,20 @@ class ThemeConfigProvider extends ChangeNotifier {
             .map((e) => e.toString())
             .toList();
       }
-
-      notifyListeners();
     } catch (e) {
       debugPrint('[ThemeConfigProvider] cache load error: $e');
     }
   }
 
-  Future<void> _saveCache(ThemeConfigModel model) async {
+  Future<void> _saveCache(ThemeConfigModel model, List<String> disableItems) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_kCacheKey, jsonEncode(model.toJson()));
+      await prefs.setString(_kDisableListCacheKey, jsonEncode(disableItems));
     } catch (e) {
       debugPrint('[ThemeConfigProvider] cache save error: $e');
     }
   }
-
-  Future<void> _saveDisableListCache(List<String> items) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_kDisableListCacheKey, jsonEncode(items));
-    } catch (e) {
-      debugPrint('[ThemeConfigProvider] disable list cache save error: $e');
-    }
-  }
-
-  // ── Network ───────────────────────────────────────────────────────────────
-
-  Future<void> _fetchFromServer() async {
-    _isFetching = true;
-    _error = null;
-
-    try {
-      final platform = _currentPlatform;
-      // ApiClient.get returns the parsed JSON body (Map or List).
-      // Adjust the call signature to match your ApiClient implementation.
-      final json = await _api.get('/api/v1/theme/$platform') as Map<String, dynamic>;
-      final colors = json['colors'] as Map<String, dynamic>;
-      _model = ThemeConfigModel.fromJson(colors);
-      await _saveCache(_model!);
-
-      final disableItems = (json['disable_list'] as List<dynamic>? ?? [])
-          .map((e) => e.toString())
-          .toList();
-      AppConfig.disableList = disableItems;
-      await _saveDisableListCache(disableItems);
-
-      notifyListeners();
-    } catch (e) {
-      _error = e.toString();
-      debugPrint('[ThemeConfigProvider] fetch error: $e');
-      // Keep showing cached / fallback colours — do NOT crash.
-    } finally {
-      _isFetching = false;
-      notifyListeners();
-    }
-  }
-
-  /// Call this to force a manual refresh (e.g. after an admin colour change).
-  Future<void> refresh() => _fetchFromServer();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
