@@ -4,6 +4,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 library;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/teacher_document_model.dart';
 import 'package:flutter_education_app/features/auth/teacher_document_provider.dart';
@@ -31,6 +32,7 @@ class AdditionalRegisterScreen extends StatefulWidget {
 class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _yearCtrl = TextEditingController();
+  final _bioCtrl = TextEditingController();
   final _payCtrl = ExpansibleController();
   final _specCtrl = ExpansibleController();
   final _teachCtrl = ExpansibleController();
@@ -45,6 +47,7 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
   @override
   void dispose() {
     _yearCtrl.dispose();
+    _bioCtrl.dispose();
     _payCtrl.dispose();
     _specCtrl.dispose();
     _teachCtrl.dispose();
@@ -60,6 +63,7 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
     final success = await auth.completeTeacherProfile(
       experienceYears: int.parse(_yearCtrl.text.trim()),
       email: widget.email,
+      bio: _bioCtrl.text.trim().isEmpty ? null : _bioCtrl.text.trim(),
     );
 
     if (!mounted) return;
@@ -91,7 +95,7 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
       docProvider.clearCustomEntries();
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (r) => false,
+            (r) => false,
       );
     } else {
       // finalizeRegistration() already refreshed the overview, and its
@@ -188,21 +192,21 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    SectionLabel(label: 'Specialization'.tr),
+                    SectionLabel(label: 'specialization'.tr),
                     const SizedBox(height: 8),
                     auth.isLoading
                         ? const Center(
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                         : StyledDropdown(
-                            icon: Icons.science_outlined,
-                            label: 'Specialization'.tr,
-                            controller: _specCtrl,
-                            initValue: auth.selectedSpecialization,
-                            options: auth.specializations,
-                            onChange: (i) =>
-                                auth.onChangeSpecialization(i, _specCtrl),
-                          ),
+                      icon: Icons.science_outlined,
+                      label: 'specialization'.tr,
+                      controller: _specCtrl,
+                      initValue: auth.selectedSpecialization,
+                      options: auth.specializations,
+                      onChange: (i) =>
+                          auth.onChangeSpecialization(i, _specCtrl),
+                    ),
                     const SizedBox(height: 20),
 
                     SectionLabel(label: 'payment_method'.tr),
@@ -226,6 +230,15 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
                       initValue: auth.selectedTeachingType,
                       options: auth.teachingTypes,
                       onChange: (i) => auth.onChangeTeachingType(i, _teachCtrl),
+                    ),
+                    const SizedBox(height: 20),
+
+                    SectionLabel(label: 'bio_label'.tr),
+                    const SizedBox(height: 8),
+                    IconTextField(
+                      controller: _bioCtrl,
+                      label: 'bio_optional_hint'.tr,
+                      icon: Icons.info_outline_rounded,
                     ),
                   ],
                 ),
@@ -362,7 +375,7 @@ class _DocumentsSection extends StatelessWidget {
         // ── Predefined requirement rows ───────────────────────────────────────
         else if (overview != null) ...[
           ...overview.requirements.map(
-            (req) => _RequirementRow(
+                (req) => _RequirementRow(
               requirement: req,
               provider: provider,
               email: email,
@@ -373,7 +386,7 @@ class _DocumentsSection extends StatelessWidget {
           if (overview.customDocuments.isNotEmpty) ...[
             const SizedBox(height: 12),
             ...overview.customDocuments.map(
-              (doc) => _UploadedCustomDocRow(
+                  (doc) => _UploadedCustomDocRow(
                 doc: doc,
                 provider: provider,
                 email: email,
@@ -383,7 +396,7 @@ class _DocumentsSection extends StatelessWidget {
 
           // ── In-progress custom entry forms ────────────────────────────────
           ...provider.customEntries.asMap().entries.map(
-            (e) => _CustomDocEntryRow(
+                (e) => _CustomDocEntryRow(
               index: e.key,
               provider: provider,
               email: email,
@@ -545,26 +558,26 @@ class _RequirementRow extends StatelessWidget {
                 const SizedBox(width: 8),
                 uploading
                     ? const SizedBox(
-                        width: 32,
-                        height: 32,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                  width: 32,
+                  height: 32,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
                     : _UploadButton(
-                        fulfilled: fulfilled,
-                        onPick: (src) => provider.pickAndUploadRequired(
-                          requiredTypeId: requirement.typeId,
-                          source: src,
-                          email: email,
-                        ),
-                        onPickFile: () => provider.pickAndUploadRequiredFile(
-                          requirement.typeId,
-                          email: email,
-                        ),
-                        onDelete: doc != null
-                            ? () =>
-                                  provider.deleteDocument(doc.id, email: email)
-                            : null,
-                      ),
+                  fulfilled: fulfilled,
+                  onPick: (src) => provider.pickAndUploadRequired(
+                    requiredTypeId: requirement.typeId,
+                    source: src,
+                    email: email,
+                  ),
+                  onPickFile: () => provider.pickAndUploadRequiredFile(
+                    requirement.typeId,
+                    email: email,
+                  ),
+                  onDelete: doc != null
+                      ? () =>
+                      provider.deleteDocument(doc.id, email: email)
+                      : null,
+                ),
               ],
             ),
           ),
@@ -712,44 +725,48 @@ class _UploadButton extends StatelessWidget {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              ListTile(
-                leading: _iconBubble(
-                  Icons.photo_library_outlined,
-                  c.primary,
-                  c.primaryTint,
-                ),
-                title: Text(
-                  'pick_from_gallery'.tr,
-                  style: TextStyle(
-                    fontFamily: 'bahji',
-                    fontWeight: FontWeight.w600,
-                    color: c.textDark,
+              // Gallery/camera don't make sense as separate concepts on
+              // web — the browser file picker (below) already covers it.
+              if (!kIsWeb)
+                ListTile(
+                  leading: _iconBubble(
+                    Icons.photo_library_outlined,
+                    c.primary,
+                    c.primaryTint,
                   ),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  onPick(ImageSource.gallery);
-                },
-              ),
-              ListTile(
-                leading: _iconBubble(
-                  Icons.camera_alt_outlined,
-                  c.accent,
-                  c.accentTint,
-                ),
-                title: Text(
-                  'take_photo'.tr,
-                  style: TextStyle(
-                    fontFamily: 'bahji',
-                    fontWeight: FontWeight.w600,
-                    color: c.textDark,
+                  title: Text(
+                    'pick_from_gallery'.tr,
+                    style: TextStyle(
+                      fontFamily: 'bahji',
+                      fontWeight: FontWeight.w600,
+                      color: c.textDark,
+                    ),
                   ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    onPick(ImageSource.gallery);
+                  },
                 ),
-                onTap: () {
-                  Navigator.pop(context);
-                  onPick(ImageSource.camera);
-                },
-              ),
+              if (!kIsWeb)
+                ListTile(
+                  leading: _iconBubble(
+                    Icons.camera_alt_outlined,
+                    c.accent,
+                    c.accentTint,
+                  ),
+                  title: Text(
+                    'take_photo'.tr,
+                    style: TextStyle(
+                      fontFamily: 'bahji',
+                      fontWeight: FontWeight.w600,
+                      color: c.textDark,
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    onPick(ImageSource.camera);
+                  },
+                ),
               ListTile(
                 leading: _iconBubble(
                   Icons.folder_open_outlined,
@@ -982,33 +999,33 @@ class _CustomDocEntryRow extends StatelessWidget {
                 child: Center(
                   child: uploading
                       ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
                       : Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.upload_file_outlined,
-                              size: 16,
-                              color: Colors.white,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'upload_document'.tr,
-                              style: const TextStyle(
-                                fontFamily: 'bahji',
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.upload_file_outlined,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'upload_document'.tr,
+                        style: const TextStyle(
+                          fontFamily: 'bahji',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
                         ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1041,21 +1058,24 @@ class _CustomDocEntryRow extends StatelessWidget {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              ListTile(
-                leading: Icon(Icons.photo_library_outlined, color: c.primary),
-                title: Text(
-                  'pick_from_gallery'.tr,
-                  style: TextStyle(
-                    fontFamily: 'bahji',
-                    fontWeight: FontWeight.w600,
-                    color: c.textDark,
+              // Gallery doesn't make sense as a separate concept on web —
+              // the browser file picker (below) already covers it.
+              if (!kIsWeb)
+                ListTile(
+                  leading: Icon(Icons.photo_library_outlined, color: c.primary),
+                  title: Text(
+                    'pick_from_gallery'.tr,
+                    style: TextStyle(
+                      fontFamily: 'bahji',
+                      fontWeight: FontWeight.w600,
+                      color: c.textDark,
+                    ),
                   ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    provider.pickAndUploadCustom(index, email: email);
+                  },
                 ),
-                onTap: () {
-                  Navigator.pop(context);
-                  provider.pickAndUploadCustom(index, email: email);
-                },
-              ),
               ListTile(
                 leading: Icon(Icons.folder_open_outlined, color: c.textLight),
                 title: Text(

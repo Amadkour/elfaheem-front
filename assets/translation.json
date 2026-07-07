@@ -111,7 +111,7 @@
     "en": "Years of experience",
     "ar": "سنوات الخبرة"
   },
-  "Specialization": {
+  "specialization": {
     "en": "Specialization",
     "ar": "التخصص"
   },
@@ -2949,7 +2949,6 @@
     "en": "Add Lesson",
     "ar": "إضافة درس"
   },
-
   "material_type_recorded": {
     "en": "Recorded",
     "ar": "مسجّل"
@@ -2981,5 +2980,209 @@
   "add_schedule": {
     "en": "Add Schedule",
     "ar": "اضافة ميعاد"
+  },
+  "continue": {
+    "en": "Continue",
+    "ar": "متابعة"
+  },
+  "required": {
+    "en": "Required",
+    "ar": "مطلوب"
+  },
+  "optional": {
+    "en": "Optional",
+    "ar": "اختياري"
+  },
+  "remove": {
+    "en": "Remove",
+    "ar": "إزالة"
+  },
+  "bio_optional_hint": {
+    "en": "Short bio (optional)",
+    "ar": "نبذة مختصرة (اختياري)"
+  },
+  "finish_profile_to_unlock_docs": {
+    "en": "Finish your profile to unlock document uploads",
+    "ar": "أكمل ملفك الشخصي لفتح رفع المستندات"
+  },
+  "finish_registration": {
+    "en": "Finish Registration",
+    "ar": "إنهاء التسجيل"
+  },
+  "registration_failed": {
+    "en": "Registration failed. Please try again",
+    "ar": "فشل التسجيل. حاول مرة أخرى"
+  },
+  "missing_docs_body": {
+    "en": "Please upload all required documents before continuing",
+    "ar": "يرجى رفع جميع المستندات المطلوبة قبل المتابعة"
+  },
+  "required_documents": {
+    "en": "Required Documents",
+    "ar": "المستندات المطلوبة"
+  },
+  "required_documents_section": {
+    "en": "Required Documents",
+    "ar": "المستندات المطلوبة"
+  },
+  "documents_section_hint": {
+    "en": "Upload the required documents to verify your teacher account",
+    "ar": "قم برفع المستندات المطلوبة للتحقق من حساب المعلم الخاص بك"
+  },
+  "documents_manage_subtitle": {
+    "en": "Manage your uploaded verification documents",
+    "ar": "إدارة مستندات التحقق التي قمت برفعها"
+  },
+  "documents_load_failed": {
+    "en": "Failed to load documents",
+    "ar": "فشل تحميل المستندات"
+  },
+  "teaching_details_section": {
+    "en": "Teaching Details",
+    "ar": "تفاصيل التدريس"
+  },
+  "tab_personal_info": {
+    "en": "Personal Info",
+    "ar": "المعلومات الشخصية"
+  },
+  "tab_documents": {
+    "en": "Documents",
+    "ar": "المستندات"
+  },
+  "additional_document": {
+    "en": "Additional document",
+    "ar": "مستند إضافي"
+  },
+  "add_another_document": {
+    "en": "Add another document",
+    "ar": "إضافة مستند آخر"
+  },
+  "add_custom_document": {
+    "en": "Add custom document",
+    "ar": "إضافة مستند مخصص"
+  },
+  "document_title_hint": {
+    "en": "Document title",
+    "ar": "عنوان المستند"
+  },
+  "custom_document_title_hint": {
+    "en": "Document title",
+    "ar": "عنوان المستند"
+  },
+  "upload_document": {
+    "en": "Upload document",
+    "ar": "رفع المستند"
+  },
+  "replace_document": {
+    "en": "Replace document",
+    "ar": "استبدال المستند"
+  },
+  "delete_document": {
+    "en": "Delete document",
+    "ar": "حذف المستند"
+  },
+  "pick_from_gallery": {
+    "en": "Pick from gallery",
+    "ar": "اختر من المعرض"
+  },
+  "take_photo": {
+    "en": "Take a photo",
+    "ar": "التقاط صورة"
+  },
+  "browse_file_pdf_or_image": {
+    "en": "Browse file (PDF or image)",
+    "ar": "تصفح ملف (PDF أو صورة)"
+  },
+  "add_image": {
+    "en": "Add Image",
+    "ar": "إضافة صورة"
+  },
+  "add_attachment": {
+    "en": "Add Attachment",
+    "ar": "إضافة مرفق"
+  },
+  "doc_approved": {
+    "en": "Approved",
+    "ar": "تمت الموافقة"
+  },
+  "doc_pending": {
+    "en": "Pending review",
+    "ar": "قيد المراجعة"
+  },
+  "doc_rejected": {
+    "en": "Rejected",
+    "ar": "مرفوض"
+  },
+  "status_approved": {
+    "en": "Approved",
+    "ar": "تمت الموافقة"
+  },
+  "status_pending_review": {
+    "en": "Pending review",
+    "ar": "قيد المراجعة"
+  },
+  "status_rejected": {
+    "en": "Rejected",
+    "ar": "مرفوض"
+  },
+  "status_not_uploaded": {
+    "en": "Not uploaded",
+    "ar": "لم يتم الرفع"
+  },
+  "image_doc": {
+    "en": "Image document",
+    "ar": "مستند صورة"
+  },
+  "pdf_doc": {
+    "en": "PDF document",
+    "ar": "مستند PDF"
+  },
+  "attachments_label": {
+    "en": "Attachments",
+    "ar": "المرفقات"
+  },
+  "attachments_hint": {
+    "en": "Add images or PDF files to support your complaint",
+    "ar": "أضف صورًا أو ملفات PDF لدعم شكواك"
+  },
+  "could_not_open_file": {
+    "en": "Could not open the file",
+    "ar": "تعذر فتح الملف"
+  },
+  "open_document": {
+    "en": "Open document",
+    "ar": "فتح المستند"
+  },
+  "suggested_solution_label": {
+    "en": "Suggested Solution",
+    "ar": "الحل المقترح"
+  },
+  "suggested_solution_hint": {
+    "en": "Have an idea how to fix it? Let us know",
+    "ar": "هل لديك فكرة لحل المشكلة؟ أخبرنا بها"
+  },
+  "suggested_solution_placeholder": {
+    "en": "Describe your suggested solution",
+    "ar": "صف الحل الذي تقترحه"
+  },
+  "suggested__too_short": {
+    "en": "Suggested solution is too short",
+    "ar": "الحل المقترح قصير جدًا"
+  },
+  "has_suggestion": {
+    "en": "Suggestion",
+    "ar": "اقتراح"
+  },
+  "by_student": {
+    "en": "By student",
+    "ar": "من الطالب"
+  },
+  "no_complaints_yet": {
+    "en": "No complaints yet",
+    "ar": "لا توجد شكاوى حتى الآن"
+  },
+  "complaints_empty_hint": {
+    "en": "You haven't submitted any complaints yet",
+    "ar": "لم تقم بتقديم أي شكوى حتى الآن"
   }
 }

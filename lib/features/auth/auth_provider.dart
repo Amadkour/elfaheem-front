@@ -82,8 +82,8 @@ class AuthProvider extends BaseProvider {
   final StorageService _storage;
 
   AuthProvider({ApiClient? api, required StorageService storage})
-    : _api = api ?? ApiClient(),
-      _storage = storage {
+      : _api = api ?? ApiClient(),
+        _storage = storage {
     // Restore the user from disk immediately so role/isTeacher are ready
     // before the first frame is drawn — no async gap, no null user.
     _loadCachedUser();
@@ -160,7 +160,7 @@ class AuthProvider extends BaseProvider {
     isLoadingRegistration = true;
     notifyListeners();
     final result = await run(
-      () => _api.post(
+          () => _api.post(
         '/api/v1/auth/register',
         body: {
           'name': name,
@@ -187,7 +187,7 @@ class AuthProvider extends BaseProvider {
   /// We save the user here so teachers know they need step 3.
   Future<bool> verifyOtp({required String gmail, required String code}) async {
     final result = await run(
-      () => _api.post(
+          () => _api.post(
         '/api/v1/auth/verify-otp',
         body: {'gmail': gmail, 'code': code},
         auth: false,
@@ -213,7 +213,7 @@ class AuthProvider extends BaseProvider {
 
   Future<bool> resendOtp(String gmail) async {
     final result = await run(
-      () => _api.post(
+          () => _api.post(
         '/api/v1/auth/resend-otp',
         body: {'gmail': gmail},
         auth: false,
@@ -227,12 +227,13 @@ class AuthProvider extends BaseProvider {
   Future<bool> completeTeacherProfile({
     required int experienceYears,
     required String email,
+    String? bio,
   }) async {
     isLoadingAdditionalRegistration = true;
     notifyListeners();
 
     final result = await run(
-      () => _api.post(
+          () => _api.post(
         '/api/v1/auth/teacher-profile',
         body: {
           'experience_years': experienceYears,
@@ -240,12 +241,82 @@ class AuthProvider extends BaseProvider {
           'payment_type': selectedPaymentType!['text'],
           'gmail': email,
           'specialization_id': selectedSpecialization!['id'],
+          if (bio != null && bio.trim().isNotEmpty) 'about': bio.trim(),
         },
       ),
     );
 
     isLoadingAdditionalRegistration = false;
     notifyListeners();
+    return result != null;
+  }
+
+  // ── Edit registration fields later (update-profile screen, everything
+  //    except email) ───────────────────────────────────────────────────────
+  int? teacherExperienceYears;
+  int? teacherSpecializationId;
+  String? teacherTeachingType;
+  String? teacherPaymentType;
+  bool isLoadingTeacherExtras = false;
+
+  /// Fetches the teacher's current experience/specialization/teaching/payment
+  /// values and pre-selects the matching dropdown entries. Call
+  /// loadSpecialization(context) first so `specializations` is populated,
+  /// or the specialization match will silently no-op.
+  Future<void> loadTeacherProfileExtras() async {
+    isLoadingTeacherExtras = true;
+    notifyListeners();
+
+    final result = await run(() => _api.get('/api/v1/auth/teacher-profile-extras'));
+    if (result != null && result is Map) {
+      teacherExperienceYears = result['experience_years'] as int?;
+      teacherSpecializationId = result['specialization_id'] as int?;
+      teacherTeachingType = result['teaching_type'] as String?;
+      teacherPaymentType = result['payment_type'] as String?;
+
+      if (teacherSpecializationId != null) {
+        try {
+          selectedSpecialization = specializations
+              .firstWhere((e) => e['id'] == teacherSpecializationId);
+        } catch (_) {
+          // specializations not loaded yet, or id no longer exists — leave unset
+        }
+      }
+      if (teacherTeachingType != null) {
+        selectedTeachingType = teachingTypes.firstWhere(
+              (e) => e['text'] == teacherTeachingType,
+          orElse: () => teachingTypes.first,
+        );
+      }
+      if (teacherPaymentType != null) {
+        selectedPaymentType = paymentTypes.firstWhere(
+              (e) => e['text'] == teacherPaymentType,
+          orElse: () => paymentTypes.first,
+        );
+      }
+    }
+
+    isLoadingTeacherExtras = false;
+    notifyListeners();
+  }
+
+  Future<bool> updateTeacherProfileExtras({
+    int? experienceYears,
+    int? specializationId,
+    String? teachingType,
+    String? paymentType,
+  }) async {
+    final result = await run(
+          () => _api.put(
+        '/api/v1/auth/teacher-profile-extras',
+        body: {
+          if (experienceYears != null) 'experience_years': experienceYears,
+          if (specializationId != null) 'specialization_id': specializationId,
+          if (teachingType != null) 'teaching_type': teachingType,
+          if (paymentType != null) 'payment_type': paymentType,
+        },
+      ),
+    );
     return result != null;
   }
 
@@ -263,7 +334,7 @@ class AuthProvider extends BaseProvider {
       lastLogin: DateTime.now(),
     );
     final result = await run(
-      () => _api.post(
+          () => _api.post(
         '/api/v1/auth/login',
         body: {'gmail': gmail, 'password': password},
         auth: false,
@@ -302,7 +373,7 @@ class AuthProvider extends BaseProvider {
 
   Future<bool> refreshToken(String refreshToken) async {
     final result = await run(
-      () => _api.post(
+          () => _api.post(
         '/api/v1/auth/refresh',
         queryParams: {'refresh_token': refreshToken},
         auth: false,
@@ -342,7 +413,7 @@ class AuthProvider extends BaseProvider {
   }) async {
     print({'gmail': email, 'new_password': email, 'code': code});
     final result = await run(
-      () => _api.put(
+          () => _api.put(
         '/api/v1/auth/reset-password',
         body: {'gmail': email, 'new_password': email, 'code': code},
       ),
@@ -357,7 +428,7 @@ class AuthProvider extends BaseProvider {
     isLoadingForget = true;
     notifyListeners();
     final result = await run(
-      () => _api.post(
+          () => _api.post(
         '/api/v1/auth/forgot-password',
         body: {'gmail': gmail},
         auth: false,
@@ -376,7 +447,7 @@ class AuthProvider extends BaseProvider {
     required String newPassword,
   }) async {
     final result = await run(
-      () => _api.post(
+          () => _api.post(
         '/api/v1/auth/reset-password',
         body: {'gmail': gmail, 'code': code, 'new_password': newPassword},
         auth: false,

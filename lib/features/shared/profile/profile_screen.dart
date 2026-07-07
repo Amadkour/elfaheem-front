@@ -104,7 +104,11 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               iconColor: c.primary,
                               label: 'update_account'.tr,
                               onTap: () async {
-                                await _push(const EditAccountScreen());
+                                await _push(
+                                  EditAccountScreen(
+                                    isTeacher: p.role != 'student',
+                                  ),
+                                );
                                 if (context.mounted) {
                                   _refresh(context);
                                 }
@@ -190,7 +194,8 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               trailing: Switch.adaptive(
                                 value: p.notificationsEnabled,
                                 onChanged: p.toggleNotifications,
-                                activeThumbColor: context.themeConfig.primaryDark,
+                                activeThumbColor:
+                                    context.themeConfig.primaryDark,
                                 thumbColor: const WidgetStatePropertyAll(
                                   Colors.white,
                                 ),
@@ -219,7 +224,8 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                                 onChanged: (b) async {
                                   await p.changeMode(b);
                                 },
-                                activeThumbColor: context.themeConfig.primaryDark,
+                                activeThumbColor:
+                                    context.themeConfig.primaryDark,
                                 thumbColor: const WidgetStatePropertyAll(
                                   Colors.white,
                                 ),

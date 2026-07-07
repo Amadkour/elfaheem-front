@@ -4,6 +4,7 @@ library;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/theme/app_theme.dart';
 import '../../../../config/theme/theme_config_provider.dart';
@@ -138,87 +139,101 @@ class _WebDetail extends StatelessWidget {
                     physics: const BouncingScrollPhysics(),
                     slivers: [
                       SliverToBoxAdapter(
-                          child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              children: [
-                                _CourseHero(height: context.height / 4),
+                          child: Directionality(
+                            textDirection:TextDirection.ltr,
+                            child: Row(
+                                                    children: [
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  _CourseHero(height: context.height / 4),
 
-                                // Stars row
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      provider.course.name,
-                                      style: const TextStyle(
-                                        color: Colors.black,
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w900,
-                                        fontFamily: 'bahji',
-                                        letterSpacing: -0.4,
-                                        height: 1.25,
+                                  // Stars row
+                                  Directionality(
+                                    textDirection: Helpers.pageDirection,
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Container(
+                                          margin: EdgeInsets.all(10),
+                                          decoration: BoxDecoration(
+                                            gradient: context.themeConfig.linearAccent2,
+                                              borderRadius: BorderRadius.circular(10)
+                                          ),
+                                          child: IconButton(
+                                              onPressed: () {
+                                                Navigator.of(context).push(
+                                                    MaterialPageRoute(
+                                                        builder: (_) =>
+                                                            ChangeNotifierProvider(
+                                                                create: (_) =>
+                                                                    ComplaintProvider(),
+                                                                child:
+                                                                NewComplaintScreen(
+                                                                  courseTitle:
+                                                                  provider.course
+                                                                      .title,
+                                                                  courseId: provider
+                                                                      .course.id,
+                                                                ))));
+                                              },
+                                              icon: Icon(Icons.headset_mic_rounded,color: Colors.white,)),
+                                        ),
+
+                                        Spacer(),
+                                        Text(
+                                          provider.course.name,
+                                          style:  TextStyle(
+                                            color: context.themeConfig.primary,
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w600,
+                                            fontFamily: 'bahji',
+                                            letterSpacing: -0.4,
+                                            height: 1.25,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        SizedBox(
+                                          height: 8,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (provider.course.categoryName !=
+                                          null) ...[
+                                        _HeroBadge(provider.course.categoryName!),
+                                        //const SizedBox(height: 8),
+                                      ],
+                                      Spacer(),
+                                      RatingWidget(
+                                        type: RateType.course,
+                                        sourceId: provider.course.id,
+                                        canEdit: provider.course.isEnrolled,
                                       ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    Spacer(),
-                                    IconButton(
-                                        onPressed: () {
-                                          Navigator.of(context).push(
-                                              MaterialPageRoute(
-                                                  builder: (_) =>
-                                                      ChangeNotifierProvider(
-                                                          create: (_) =>
-                                                              ComplaintProvider(),
-                                                          child:
-                                                              NewComplaintScreen(
-                                                            courseTitle:
-                                                                provider.course
-                                                                    .title,
-                                                            courseId: provider
-                                                                .course.id,
-                                                          ))));
-                                        },
-                                        icon: Icon(Icons.headset_mic_rounded)),
-                                    SizedBox(
-                                      height: 8,
-                                    ),
-                                  ],
-                                ),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    if (provider.course.categoryName !=
-                                        null) ...[
-                                      _HeroBadge(provider.course.categoryName!),
-                                      //const SizedBox(height: 8),
                                     ],
-                                    Spacer(),
-                                    RatingWidget(
-                                      type: RateType.course,
-                                      sourceId: provider.course.id,
-                                      canEdit: provider.course.isEnrolled,
-                                    ),
-                                  ],
-                                ),
-                              ],
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
 
-                          // Right: sticky sidebar
-                          SizedBox(
-                            width: 260,
-                            child: SingleChildScrollView(
-                              padding: const EdgeInsets.fromLTRB(0, 20, 0, 32),
-                              child: _WebSidebar(provider: provider),
+                            // Right: sticky sidebar
+                            SizedBox(
+                              width: 260,
+                              child: SingleChildScrollView(
+                                padding: const EdgeInsets.fromLTRB(0, 20, 0, 32),
+                                child: _WebSidebar(provider: provider),
+                              ),
                             ),
-                          ),
-                        ],
-                      )),
+                                                    ],
+                                                  ),
+                          )),
                       SliverToBoxAdapter(child: _CourseMeta()),
                       SliverToBoxAdapter(child: _TabBarWidget()),
                       const SliverToBoxAdapter(child: SizedBox(height: 4)),
@@ -399,6 +414,7 @@ class _CourseHero extends StatelessWidget {
         AppNetworkImage(
           url: c.imageUrl,
           width: double.infinity,
+          enableFullscreen: true,
           height: height,
           borderRadius: const BorderRadius.only(
             bottomLeft: Radius.circular(24),

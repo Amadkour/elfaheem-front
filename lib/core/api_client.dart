@@ -370,9 +370,6 @@ class ApiClient {
     'postMultipart: provide filePath or fileBytes');
 
     final ext  = p.extension(fileName).replaceFirst('.', '').toLowerCase();
-    log('==============================${p.extension(fileName)}');
-    log('==============================$fileName');
-    log('==============================$ext');
     final mime = _fileMime(ext);
 
     MultipartFile multipartFile;

@@ -219,7 +219,7 @@ class ComplaintProvider extends BaseProvider {
   //  Upload helpers — use postMultipart (consistent with teacher docs pattern)
   // ══════════════════════════════════════════════════════════════════════════
 
-  Future<String?> _uploadOne(PendingAttachment pending) async {
+  Future<Map?> _uploadOne(PendingAttachment pending) async {
     try {
 
       final bytes = await pending.file.readAsBytes();
@@ -232,7 +232,7 @@ class ComplaintProvider extends BaseProvider {
         fileBytes: bytes,
       );
       if (res != null && res is Map && res['file_url'] != null) {
-        return res['file_url'] as String;
+        return res;
       }
       log('_uploadOne ❌ unexpected response: $res');
     } catch (e) {
@@ -241,11 +241,11 @@ class ComplaintProvider extends BaseProvider {
     return null;
   }
 
-  Future<List<String>> _uploadAll(List<PendingAttachment> pending) async {
+  Future<List<Map>> _uploadAll(List<PendingAttachment> pending) async {
     if (pending.isEmpty) return [];
     isUploadingImage = true;
     notifyListeners();
-    final urls = <String>[];
+    final urls = <Map>[];
     try {
       for (final item in pending) {
         final url = await _uploadOne(item);

@@ -5,7 +5,6 @@
 library;
 
 import 'dart:developer';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -15,10 +14,10 @@ import '../../../../config/app_config.dart';
 import '../../../../config/theme/app_theme.dart';
 import '../../../../utils/helpers.dart';
 import '../../../../utils/widget/app_bar.dart';
-import '../../../../utils/widget/app_network_image.dart';
 import '../../../../utils/widget/base_page.dart';
 import '../../../auth/auth_provider.dart';
 import '../../../auth/auth_widgets.dart';
+import 'complaint_attachement_widgets.dart';
 import 'complaint_model.dart';
 import 'complaint_provider.dart';
 
@@ -49,7 +48,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
 
   void _onScroll() {
     if (_scrollCtrl.position.pixels >=
-            _scrollCtrl.position.maxScrollExtent - 200 &&
+        _scrollCtrl.position.maxScrollExtent - 200 &&
         !context.read<ComplaintProvider>().isLoadingList) {
       context.read<ComplaintProvider>().loadComplaints();
     }
@@ -81,30 +80,30 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                   : p.complaints.isEmpty
                   ? _EmptyState()
                   : RefreshIndicator(
-                      onRefresh: () => p.loadComplaints(reset: true),
-                      child: ListView.separated(
-                        controller: _scrollCtrl,
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                        itemCount:
-                            p.complaints.length + (p.isLoadingList ? 1 : 0),
-                        separatorBuilder: (_, __) => const SizedBox(height: 10),
-                        itemBuilder: (_, i) {
-                          if (i >= p.complaints.length) {
-                            return const Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(16),
-                                child: CircularProgressIndicator(),
-                              ),
-                            );
-                          }
-                          return _ComplaintCard(
-                            complaint: p.complaints[i],
-                            isAdmin: !auth.isStudent,
-                            onTap: () => _openDetail(p.complaints[i].id),
-                          );
-                        },
-                      ),
-                    ),
+                onRefresh: () => p.loadComplaints(reset: true),
+                child: ListView.separated(
+                  controller: _scrollCtrl,
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                  itemCount:
+                  p.complaints.length + (p.isLoadingList ? 1 : 0),
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (_, i) {
+                    if (i >= p.complaints.length) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: CircularProgressIndicator(),
+                        ),
+                      );
+                    }
+                    return _ComplaintCard(
+                      complaint: p.complaints[i],
+                      isAdmin: !auth.isStudent,
+                      onTap: () => _openDetail(p.complaints[i].id),
+                    );
+                  },
+                ),
+              ),
             ),
           ],
         ),
@@ -242,7 +241,7 @@ class _FilterRow extends StatelessWidget {
                   onTap: () => provider.setStatusFilter(null),
                 ),
                 ...ComplaintStatus.values.map(
-                  (s) => _FilterChip(
+                      (s) => _FilterChip(
                     label: _statusLabel(s),
                     selected: provider.statusFilter == s,
                     color: _statusColor(s),
@@ -633,47 +632,48 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
               else if (complaint == null)
                 Expanded(child: Center(child: Text('complaint_not_found'.tr)))
               else ...[
-                Expanded(
-                  child: ListView(
-                    controller: _scrollCtrl,
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                    children: [
-                      // ── Info card ──────────────────────────────────────────
-                      _InfoCard(
-                        complaint: complaint,
-                        isAdmin: !auth.isStudent,
-                        provider: p,
-                      ),
-                      const SizedBox(height: 16),
-                      // ── Replies ────────────────────────────────────────────
-                      if (complaint.replies.isNotEmpty) ...[
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Text('replies_label'.tr, style: c.h3),
+                  Expanded(
+                    child: ListView(
+                      controller: _scrollCtrl,
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      children: [
+                        // ── Info card ──────────────────────────────────────────
+                        _InfoCard(
+                          complaint: complaint,
+                          isAdmin: !auth.isStudent,
+                          provider: p,
                         ),
-                        ...complaint.replies.map(
-                          (r) => _ReplyBubble(
-                            reply: r,
-                            myId: auth.currentUser?.id ?? 0,
+                        const SizedBox(height: 16),
+                        // ── Replies ────────────────────────────────────────────
+                        if (complaint.replies.isNotEmpty) ...[
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Text('replies_label'.tr, style: c.h3),
                           ),
-                        ),
-                        const SizedBox(height: 8),
+                          ...complaint.replies.map(
+                                (r) => _ReplyBubble(
+                              reply: r,
+                              myId: auth.currentUser?.id ?? 0,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                ),
-                // ── Reply input ──────────────────────────────────────────────
-                if (complaint.status != ComplaintStatus.closed)
-                  _ReplyInput(
-                    controller: _replyCtrl,
-                    isSending: p.isSending,
-                    pendingAttachments: p.pendingReplyAttachments,
-                    onSend: _sendReply,
-                    onPickGallery: () => p.pickReplyImage(),
-                    onPickCamera: () => p.pickReplyImageFromCamera(),
-                    onRemoveImage: (i) => p.removeReplyImage(i),
-                  ),
-              ],
+                  // ── Reply input ──────────────────────────────────────────────
+                  if (complaint.status != ComplaintStatus.closed)
+                    _ReplyInput(
+                      controller: _replyCtrl,
+                      isSending: p.isSending,
+                      pendingAttachments: p.pendingReplyAttachments,
+                      onSend: _sendReply,
+                      onPickGallery: () => p.pickReplyImage(),
+                      onPickCamera: () => p.pickReplyImageFromCamera(),
+                      onPickFile: () => p.pickReplyFile(),
+                      onRemoveImage: (i) => p.removeReplyImage(i),
+                    ),
+                ],
             ],
           ),
         ),
@@ -788,17 +788,7 @@ class _InfoCard extends StatelessWidget {
           // ── Complaint-level attachments ──────────────────────────────────
           if (complaint.attachments.isNotEmpty) ...[
             const SizedBox(height: 16),
-            Text(
-              'attachments_label'.tr,
-              style: TextStyle(
-                fontFamily: 'bahji',
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: c.textMedium,
-              ),
-            ),
-            const SizedBox(height: 10),
-            _AttachmentGallery(attachments: complaint.attachments),
+            AttachmentGalleryGrid(attachments: complaint.attachments),
           ],
 
           // Admin status updater
@@ -883,46 +873,6 @@ class _InfoCard extends StatelessWidget {
   };
 }
 
-// ── Attachment gallery (from server) ─────────────────────────────────────────
-
-class _AttachmentGallery extends StatelessWidget {
-  const _AttachmentGallery({required this.attachments});
-
-  final List<ComplaintAttachment> attachments;
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: attachments
-          .map(
-            (a) =>
-                _NetworkThumb(url: a.fileUrl, objectId: '${a.id}-attachment'),
-          )
-          .toList(),
-    );
-  }
-}
-
-class _NetworkThumb extends StatelessWidget {
-  const _NetworkThumb({required this.url, required this.objectId});
-
-  final String url;
-  final Object objectId;
-  static const double _size = 80;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppNetworkImage(
-      url: url,
-      width: _size,
-      height: _size,
-      fit: BoxFit.cover,
-      heroTag: objectId,
-    );
-  }
-}
 // ── Meta Chip ─────────────────────────────────────────────────────────────────
 
 class _MetaChip extends StatelessWidget {
@@ -996,10 +946,10 @@ class _ReplyBubble extends StatelessWidget {
                   : null,
               child: reply.senderImage == null
                   ? Icon(
-                      Icons.person_rounded,
-                      size: 18,
-                      color: reply.isAdmin ? c.primary : c.accent,
-                    )
+                Icons.person_rounded,
+                size: 18,
+                color: reply.isAdmin ? c.primary : c.accent,
+              )
                   : null,
             ),
             const SizedBox(width: 8),
@@ -1058,12 +1008,10 @@ class _ReplyBubble extends StatelessWidget {
                       spacing: 6,
                       runSpacing: 6,
                       children: reply.attachments
-                          .map(
-                            (a) => _NetworkThumb(
-                              url: a.fileUrl,
-                              objectId: '${a.id}-replay',
-                            ),
-                          )
+                          .map((a) => NetworkAttachmentTile(
+                        attachment: a,
+                        size: 70,
+                      ))
                           .toList(),
                     ),
                   ],
@@ -1103,6 +1051,7 @@ class _ReplyInput extends StatelessWidget {
     required this.onSend,
     required this.onPickGallery,
     required this.onPickCamera,
+    required this.onPickFile,
     required this.onRemoveImage,
   });
 
@@ -1112,6 +1061,7 @@ class _ReplyInput extends StatelessWidget {
   final VoidCallback onSend;
   final VoidCallback onPickGallery;
   final VoidCallback onPickCamera;
+  final VoidCallback onPickFile;
   final ValueChanged<int> onRemoveImage;
 
   @override
@@ -1155,7 +1105,7 @@ class _ReplyInput extends StatelessWidget {
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      Icons.add_photo_alternate_outlined,
+                      Icons.attach_file_rounded,
                       size: 20,
                       color: c.primary,
                     ),
@@ -1207,17 +1157,17 @@ class _ReplyInput extends StatelessWidget {
                     ),
                     child: isSending
                         ? const Padding(
-                            padding: EdgeInsets.all(13),
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
+                      padding: EdgeInsets.all(13),
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
                         : const Icon(
-                            Icons.send_rounded,
-                            color: Colors.white,
-                            size: 20,
-                          ),
+                      Icons.send_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                   ),
                 ),
               ],
@@ -1251,29 +1201,32 @@ class _ReplyInput extends StatelessWidget {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              ListTile(
-                leading: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: c.primaryTint,
-                    borderRadius: BorderRadius.circular(10),
+              // Gallery doesn't make sense as a separate concept on web —
+              // the browser's file picker (below) already covers it.
+              if (!kIsWeb)
+                ListTile(
+                  leading: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: c.primaryTint,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.photo_library_outlined, color: c.primary),
                   ),
-                  child: Icon(Icons.photo_library_outlined, color: c.primary),
-                ),
-                title: Text(
-                  'pick_from_gallery'.tr,
-                  style: TextStyle(
-                    fontFamily: 'bahji',
-                    fontWeight: FontWeight.w600,
-                    color: c.textDark,
+                  title: Text(
+                    'pick_from_gallery'.tr,
+                    style: TextStyle(
+                      fontFamily: 'bahji',
+                      fontWeight: FontWeight.w600,
+                      color: c.textDark,
+                    ),
                   ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    onPickGallery();
+                  },
                 ),
-                onTap: () {
-                  Navigator.pop(context);
-                  onPickGallery();
-                },
-              ),
               if (!kIsWeb)
                 ListTile(
                   leading: Container(
@@ -1298,6 +1251,29 @@ class _ReplyInput extends StatelessWidget {
                     onPickCamera();
                   },
                 ),
+              ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: c.inputBg,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.folder_open_outlined, color: c.textLight),
+                ),
+                title: Text(
+                  'browse_file_pdf_or_image'.tr,
+                  style: TextStyle(
+                    fontFamily: 'bahji',
+                    fontWeight: FontWeight.w600,
+                    color: c.textDark,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  onPickFile();
+                },
+              ),
             ],
           ),
         ),
@@ -1329,48 +1305,10 @@ class _PendingImageStrip extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         itemCount: attachments.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (_, i) => Stack(
-          clipBehavior: Clip.none,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: kIsWeb
-                  ? AppNetworkImage(
-                      url: attachments[i].localPreviewUrl,
-                      heroTag:
-                          '${attachments[i].localPreviewUrl}-Pending',
-                      width: _size,
-                      height: _size,
-                      fit: BoxFit.cover,
-                    )
-                  : Image.file(
-                      File(attachments[i].localPreviewUrl),
-                      width: _size,
-                      height: _size,
-                      fit: BoxFit.cover,
-                    ),
-            ),
-            Positioned(
-              top: -5,
-              right: -5,
-              child: GestureDetector(
-                onTap: () => onRemove(i),
-                child: Container(
-                  width: 18,
-                  height: 18,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFEF4444),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.close_rounded,
-                    size: 11,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-          ],
+        itemBuilder: (_, i) => PendingAttachmentTile(
+          attachment: attachments[i],
+          onRemove: () => onRemove(i),
+          size: _size,
         ),
       ),
     );
