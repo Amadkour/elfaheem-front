@@ -8,7 +8,7 @@ import 'package:timeago/timeago.dart' as timeago;
 /// Application configuration and context.themeConfig.
 class AppConfig {
   static const String baseUrl =
-      'https://boxes-boundary-questionnaire-vii.trycloudflare.com';
+      'https://rebel-waves-victory-michel.trycloudflare.com';
   static String lang = 'ar';
   static bool showLogs = false;
 

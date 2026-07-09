@@ -45,7 +45,7 @@ class StatChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Spacer(flex: 2,),
+            Spacer(flex: 4,),
             Container(
               width: maxHeight/3,
               height: maxHeight/3,
@@ -65,7 +65,7 @@ class StatChip extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            Spacer(flex: 2,),
+            Spacer(flex: 1,),
 
           ],
         ),

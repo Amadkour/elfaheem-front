@@ -305,7 +305,7 @@ class _PdfFace extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [c.accent.withValues(alpha: 0.16), c.accent.withValues(alpha: 0.06)],
+            colors: [c.primary.withValues(alpha: 0.16), c.primary.withValues(alpha: 0.06)],
           ),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -314,7 +314,7 @@ class _PdfFace extends StatelessWidget {
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: c.accent,
+              color: c.primary,
               borderRadius: BorderRadius.circular(9),
               boxShadow: [BoxShadow(color: c.accent.withValues(alpha: 0.35), blurRadius: 8, offset: const Offset(0, 3))],
             ),
@@ -326,7 +326,7 @@ class _PdfFace extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: TextStyle(fontFamily: 'bahji', fontSize: 9, fontWeight: FontWeight.w600, color: c.accent),
+            style: TextStyle(fontFamily: 'bahji', fontSize: 9, fontWeight: FontWeight.w600, color: c.primary),
           ),
         ]),
       );
@@ -406,7 +406,7 @@ void _showPdfSheet(BuildContext context, {required String? name, required String
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: c.accent,
+                color: c.primary,
                 borderRadius: BorderRadius.circular(13),
                 boxShadow: [BoxShadow(color: c.accent.withValues(alpha: 0.35), blurRadius: 10, offset: const Offset(0, 4))],
               ),

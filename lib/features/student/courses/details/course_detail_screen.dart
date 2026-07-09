@@ -53,15 +53,17 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       child: provider.isLoading
           ? Center(
               child: SizedBox(
-              width: context.width / 5,
-              height: context.width / 5,
-              child: CircularProgressIndicator(
+                width: context.width / 5,
+                height: context.width / 5,
+                child: CircularProgressIndicator(
                   color: context.themeConfig.primary,
-                  strokeWidth: context.width / 80),
-            ))
+                  strokeWidth: context.width / 80,
+                ),
+              ),
+            )
           : isWide
-              ? _WebDetail(provider)
-              : _MobileDetail(provider),
+          ? _WebDetail(provider)
+          : _MobileDetail(provider),
     );
   }
 }
@@ -76,38 +78,40 @@ class _MobileDetail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-        create: (BuildContext context) {
-          return StudentExamProvider();
-        },
-        child: SafeArea(
-          child: Column(
-            children: [
-              Expanded(
-                child: RefreshIndicator(
-                  color: context.themeConfig.primary,
-                  onRefresh: () => provider.refresh(),
-                  child: CustomScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    slivers: [
-                      SliverToBoxAdapter(child: _CourseHero()),
-                      SliverToBoxAdapter(child: _CourseMeta()),
-                      if (provider.course.isEnrolled) ...[
-                        SliverToBoxAdapter(child: _TabBarWidget()),
-                        const SliverToBoxAdapter(child: SizedBox(height: 4)),
-                        SliverToBoxAdapter(
-                            child: TabContent(
+      create: (BuildContext context) {
+        return StudentExamProvider();
+      },
+      child: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: RefreshIndicator(
+                color: context.themeConfig.primary,
+                onRefresh: () => provider.refresh(),
+                child: CustomScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(child: _CourseHero()),
+                    SliverToBoxAdapter(child: _CourseMeta()),
+                    if (provider.course.isEnrolled) ...[
+                      SliverToBoxAdapter(child: _TabBarWidget()),
+                      const SliverToBoxAdapter(child: SizedBox(height: 4)),
+                      SliverToBoxAdapter(
+                        child: TabContent(
                           activeTab: provider.activeTab,
                           courseId: provider.course.id,
-                        )),
-                      ]
+                        ),
+                      ),
                     ],
-                  ),
+                  ],
                 ),
               ),
-              _EnrollButton(),
-            ],
-          ),
-        ));
+            ),
+            _EnrollButton(),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -129,8 +133,9 @@ class _WebDetail extends StatelessWidget {
             child: Align(
               alignment: Alignment.topCenter,
               child: ConstrainedBox(
-                constraints:
-                    const BoxConstraints(maxWidth: Breakpoints.contentMax),
+                constraints: const BoxConstraints(
+                  maxWidth: Breakpoints.contentMax,
+                ),
                 child: RefreshIndicator(
                   color: context.themeConfig.primary,
                   onRefresh: () =>
@@ -139,84 +144,91 @@ class _WebDetail extends StatelessWidget {
                     physics: const BouncingScrollPhysics(),
                     slivers: [
                       SliverToBoxAdapter(
-                          child: Directionality(
-                            textDirection:TextDirection.ltr,
-                            child: Row(
-                                                    children: [
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             Expanded(
                               child: Column(
                                 children: [
                                   _CourseHero(height: context.height / 4),
 
                                   // Stars row
-                                  Directionality(
-                                    textDirection: Helpers.pageDirection,
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Container(
-                                          margin: EdgeInsets.all(10),
-                                          decoration: BoxDecoration(
-                                            gradient: context.themeConfig.linearAccent2,
-                                              borderRadius: BorderRadius.circular(10)
-                                          ),
-                                          child: IconButton(
-                                              onPressed: () {
-                                                Navigator.of(context).push(
-                                                    MaterialPageRoute(
-                                                        builder: (_) =>
-                                                            ChangeNotifierProvider(
-                                                                create: (_) =>
-                                                                    ComplaintProvider(),
-                                                                child:
-                                                                NewComplaintScreen(
-                                                                  courseTitle:
-                                                                  provider.course
-                                                                      .title,
-                                                                  courseId: provider
-                                                                      .course.id,
-                                                                ))));
-                                              },
-                                              icon: Icon(Icons.headset_mic_rounded,color: Colors.white,)),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        provider.course.name,
+                                        style: TextStyle(
+                                          color: context.themeConfig.primary,
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.w600,
+                                          fontFamily: 'bahji',
+                                          letterSpacing: -0.4,
+                                          height: 1.25,
                                         ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      Spacer(),
 
-                                        Spacer(),
-                                        Text(
-                                          provider.course.name,
-                                          style:  TextStyle(
-                                            color: context.themeConfig.primary,
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.w600,
-                                            fontFamily: 'bahji',
-                                            letterSpacing: -0.4,
-                                            height: 1.25,
+                                      Container(
+                                        margin: EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          gradient:
+                                              context.themeConfig.linearAccent2,
+                                          borderRadius: BorderRadius.circular(
+                                            10,
                                           ),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
                                         ),
-                                        SizedBox(
-                                          height: 8,
+                                        child: IconButton(
+                                          onPressed: () {
+                                            Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    ChangeNotifierProvider(
+                                                      create: (_) =>
+                                                          ComplaintProvider(),
+                                                      child: NewComplaintScreen(
+                                                        courseTitle: provider
+                                                            .course
+                                                            .title,
+                                                        courseId:
+                                                            provider.course.id,
+                                                      ),
+                                                    ),
+                                              ),
+                                            );
+                                          },
+                                          icon: Icon(
+                                            Icons.headset_mic_rounded,
+                                            color: Colors.white,
+                                          ),
                                         ),
-                                      ],
-                                    ),
+                                      ),
+                                      SizedBox(height: 8),
+                                    ],
                                   ),
+
                                   Row(
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      if (provider.course.categoryName !=
-                                          null) ...[
-                                        _HeroBadge(provider.course.categoryName!),
-                                        //const SizedBox(height: 8),
-                                      ],
-                                      Spacer(),
                                       RatingWidget(
                                         type: RateType.course,
                                         sourceId: provider.course.id,
                                         canEdit: provider.course.isEnrolled,
                                       ),
+                                      Spacer(),
+
+                                      if (provider.course.categoryName !=
+                                          null) ...[
+                                        _HeroBadge(
+                                          provider.course.categoryName!,
+                                        ),
+                                        //const SizedBox(height: 8),
+                                      ],
                                     ],
                                   ),
                                 ],
@@ -224,24 +236,25 @@ class _WebDetail extends StatelessWidget {
                             ),
 
                             // Right: sticky sidebar
+                            SizedBox(width: 20),
                             SizedBox(
                               width: 260,
                               child: SingleChildScrollView(
-                                padding: const EdgeInsets.fromLTRB(0, 20, 0, 32),
                                 child: _WebSidebar(provider: provider),
                               ),
                             ),
-                                                    ],
-                                                  ),
-                          )),
+                          ],
+                        ),
+                      ),
                       SliverToBoxAdapter(child: _CourseMeta()),
                       SliverToBoxAdapter(child: _TabBarWidget()),
                       const SliverToBoxAdapter(child: SizedBox(height: 4)),
                       SliverToBoxAdapter(
-                          child: TabContent(
-                        activeTab: provider.activeTab,
-                        courseId: provider.course.id,
-                      )),
+                        child: TabContent(
+                          activeTab: provider.activeTab,
+                          courseId: provider.course.id,
+                        ),
+                      ),
                       const SliverToBoxAdapter(child: SizedBox(height: 32)),
                     ],
                   ),
@@ -262,10 +275,7 @@ class _WebTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ScreenAppBar(
-      title: course.title,
-      actions: [_FavButton()],
-    );
+    return ScreenAppBar(title: course.title, actions: [_FavButton()]);
   }
 }
 
@@ -280,7 +290,7 @@ class _WebSidebar extends StatelessWidget {
     final isEnrolled = provider.course.isEnrolled;
 
     return Padding(
-      padding: const EdgeInsets.only(left: 0, right: 20),
+      padding: const EdgeInsets.only(left: 0, right: 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -337,32 +347,38 @@ class _WebCourseFacts extends StatelessWidget {
     return Column(
       children: [
         _Fact(
-            icon: Icons.people_alt_rounded,
-            label: '${course.studentsCount} طالب مسجّل',
-            color: context.themeConfig.primary),
+          icon: Icons.people_alt_rounded,
+          label: '${course.studentsCount} طالب مسجّل',
+          color: context.themeConfig.primary,
+        ),
         _Fact(
-            icon: Icons.video_library_rounded,
-            label: '${course.sessionsCount} محاضرة',
-            color: const Color(0xFF185FA5)),
+          icon: Icons.video_library_rounded,
+          label: '${course.sessionsCount} محاضرة',
+          color: const Color(0xFF185FA5),
+        ),
         _Fact(
-            icon: Icons.access_time_rounded,
-            label: '${course.totalHours.toStringAsFixed(0)} ساعة إجمالية',
-            color: const Color(0xFFBA7517)),
+          icon: Icons.access_time_rounded,
+          label: '${course.totalHours.toStringAsFixed(0)} ساعة إجمالية',
+          color: const Color(0xFFBA7517),
+        ),
         if (course.certificates.isNotEmpty)
           _Fact(
-              icon: Icons.workspace_premium_rounded,
-              label: 'شهادة إتمام معتمدة',
-              color: context.themeConfig.accent),
+            icon: Icons.workspace_premium_rounded,
+            label: 'شهادة إتمام معتمدة',
+            color: context.themeConfig.accent,
+          ),
         if (course.type == 'live')
           _Fact(
-              icon: Icons.sensors_rounded,
-              label: 'بث مباشر',
-              color: context.themeConfig.danger)
+            icon: Icons.sensors_rounded,
+            label: 'بث مباشر',
+            color: context.themeConfig.danger,
+          )
         else
           _Fact(
-              icon: Icons.play_circle_outline_rounded,
-              label: 'كورس مسجّل',
-              color: context.themeConfig.primary),
+            icon: Icons.play_circle_outline_rounded,
+            label: 'كورس مسجّل',
+            color: context.themeConfig.primary,
+          ),
       ],
     );
   }
@@ -377,25 +393,29 @@ class _Fact extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 7),
-        child: Row(
-          children: [
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, size: 16, color: color),
-            ),
-            const SizedBox(width: 10),
-            Text(label,
-                style: context.colors.body
-                    .copyWith(fontSize: 13, fontWeight: FontWeight.w600)),
-          ],
+    padding: const EdgeInsets.symmetric(vertical: 7),
+    child: Row(
+      children: [
+        Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 16, color: color),
         ),
-      );
+        const SizedBox(width: 10),
+        Text(
+          label,
+          style: context.colors.body.copyWith(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 // ── Hero image ────────────────────────────────────────────────────────────────
@@ -471,14 +491,14 @@ class _HeroBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(
-        label,
-        style: TextStyle(
-          color: context.themeConfig.textLight,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          fontFamily: 'bahji',
-        ),
-      );
+    label,
+    style: TextStyle(
+      color: context.themeConfig.textLight,
+      fontSize: 11,
+      fontWeight: FontWeight.w700,
+      fontFamily: 'bahji',
+    ),
+  );
 }
 
 class _FavButton extends StatelessWidget {
@@ -498,30 +518,36 @@ class _CircleIconBtn extends StatelessWidget {
   final Color? iconColor;
   final VoidCallback onTap;
 
-  const _CircleIconBtn(
-      {required this.icon, required this.onTap, this.iconColor});
+  const _CircleIconBtn({
+    required this.icon,
+    required this.onTap,
+    this.iconColor,
+  });
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.9),
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
+    onTap: onTap,
+    child: Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.9),
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
-          child:
-              Icon(icon, size: 20, color: iconColor ?? context.themeConfig.textDark),
-        ),
-      );
+        ],
+      ),
+      child: Icon(
+        icon,
+        size: 20,
+        color: iconColor ?? context.themeConfig.textDark,
+      ),
+    ),
+  );
 }
 
 // ── Meta section ──────────────────────────────────────────────────────────────
@@ -540,36 +566,36 @@ class _CourseMeta extends StatelessWidget {
 
           // Stat chips — 4-col grid
           SizedBox(
-            height: context.height / 9,
+            height: context.height / 10,
             child: Row(
               children: [
                 StatChip(
                   icon: Icons.people_alt_rounded,
-                  label: '${c.studentsCount}\n ${'student'.tr}',
+                  label: '${c.studentsCount} ${'student'.tr}',
                   iconColor: context.themeConfig.primary,
-                  maxHeight: context.height / 9,
+                  maxHeight: context.height / 10,
                 ),
                 StatChip(
                   icon: Icons.video_library_rounded,
-                  label: '${c.sessionsCount}\n ${'session'.tr}',
+                  label: '${c.sessionsCount} ${'session'.tr}',
                   iconColor: const Color(0xFF185FA5),
                   iconBg: const Color(0xFFE6F1FB),
-                  maxHeight: context.height / 9,
+                  maxHeight: context.height / 10,
                 ),
                 StatChip(
                   icon: Icons.access_time_rounded,
-                  label: '${c.totalHours.toStringAsFixed(0)}\n ${'hour'.tr}',
+                  label: '${c.totalHours.toStringAsFixed(0)} ${'hour'.tr}',
                   iconColor: const Color(0xFFBA7517),
                   iconBg: const Color(0xFFFAEEDA),
-                  maxHeight: context.height / 9,
+                  maxHeight: context.height / 10,
                 ),
                 if (c.certificates.isNotEmpty)
                   StatChip(
                     icon: Icons.workspace_premium_rounded,
-                    label: 'شهادة\nإتمام',
+                    label: 'شهادة إتمام',
                     iconColor: context.themeConfig.accent,
                     iconBg: Color(0xFFFAEEDA),
-                    maxHeight: context.height / 9,
+                    maxHeight: context.height / 10,
                   )
                 else
                   StatChip(
@@ -580,7 +606,7 @@ class _CourseMeta extends StatelessWidget {
                     iconColor: c.type == 'live'
                         ? context.themeConfig.danger
                         : context.themeConfig.primary,
-                    maxHeight: context.height / 9,
+                    maxHeight: context.height / 10,
                   ),
               ],
             ),
@@ -635,10 +661,12 @@ class _TabBarWidget extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   decoration: BoxDecoration(
                     border: Border(
-                        bottom: BorderSide(
-                            color: isActive
-                                ? context.themeConfig.primary
-                                : context.themeConfig.textLight)),
+                      bottom: BorderSide(
+                        color: isActive
+                            ? context.themeConfig.primary
+                            : context.themeConfig.textLight,
+                      ),
+                    ),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -657,8 +685,9 @@ class _TabBarWidget extends StatelessWidget {
                           color: isActive
                               ? context.themeConfig.primary
                               : context.themeConfig.textLight,
-                          fontWeight:
-                              isActive ? FontWeight.w700 : FontWeight.w500,
+                          fontWeight: isActive
+                              ? FontWeight.w700
+                              : FontWeight.w500,
                           fontSize: 12,
                         ),
                       ),
@@ -695,8 +724,11 @@ class _EnrollButton extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.check_circle_rounded,
-                  color: context.themeConfig.accent2, size: 20),
+              Icon(
+                Icons.check_circle_rounded,
+                color: context.themeConfig.accent2,
+                size: 20,
+              ),
               SizedBox(width: 8),
               Text(
                 'تم الاشتراك بنجاح',
@@ -723,15 +755,13 @@ class _EnrollButton extends StatelessWidget {
         onTap: p.course.isEnrolled
             ? null
             : () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ChangeNotifierProvider(
-                      create: (_) => EnrollmentProvider(p.course),
-                      child: EnrollmentScreen(
-                        course: p.course,
-                      ),
-                    ),
+                MaterialPageRoute(
+                  builder: (_) => ChangeNotifierProvider(
+                    create: (_) => EnrollmentProvider(p.course),
+                    child: EnrollmentScreen(course: p.course),
                   ),
                 ),
+              ),
         child: Container(
           height: 52,
           decoration: BoxDecoration(
@@ -751,7 +781,9 @@ class _EnrollButton extends StatelessWidget {
                     width: 24,
                     height: 24,
                     child: CircularProgressIndicator(
-                        color: Colors.white, strokeWidth: 2.5),
+                      color: Colors.white,
+                      strokeWidth: 2.5,
+                    ),
                   )
                 : Text(
                     label,

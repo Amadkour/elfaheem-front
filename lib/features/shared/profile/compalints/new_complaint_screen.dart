@@ -5,15 +5,14 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/app_theme.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/widget/app_bar.dart';
-import '../../../../utils/widget/app_network_image.dart';
 import '../../../../utils/widget/base_page.dart';
 import '../../../../utils/widget/text_field.dart';
 import '../../../auth/auth_widgets.dart';
+import 'complaint_attachement_widgets.dart';
 import 'complaint_model.dart';
 import 'complaint_provider.dart';
 
@@ -337,7 +336,6 @@ class _FormTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.themeConfig;
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
@@ -1341,72 +1339,12 @@ class _AttachmentGallery extends StatelessWidget {
           spacing: 8,
           runSpacing: 8,
           children: attachments
-              .map(
-                (a) => _NetworkThumb(
-                  url: a.fileUrl,
-                  isImage: a.fileType == 'image',
-                  name: a.fileName ?? '',
-                ),
-              )
+              .map((a) => NetworkAttachmentTile(attachment: a, size: 70))
               .toList(),
         ),
       ],
     );
   }
-}
-
-class _NetworkThumb extends StatelessWidget {
-  const _NetworkThumb({
-    required this.url,
-    required this.isImage,
-    required this.name,
-  });
-
-  final String url;
-  final String name;
-  final bool isImage;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.themeConfig;
-    return isImage
-        ? AppNetworkImage(url: url, borderRadius: BorderRadius.circular(10))
-        : GestureDetector(
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                fullscreenDialog: true,
-                builder: (_) => _FullscreenImage(url: url),
-              ),
-            ),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                gradient: c.linearPrimary,
-              ),
-              child: Column(
-                children: [Icon(Icons.picture_as_pdf_outlined), Text(name)],
-              ),
-            ),
-          );
-  }
-}
-
-class _FullscreenImage extends StatelessWidget {
-  const _FullscreenImage({required this.url});
-
-  final String url;
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: Colors.black,
-    appBar: AppBar(
-      backgroundColor: Colors.black,
-      iconTheme: const IconThemeData(color: Colors.white),
-    ),
-    body: Center(
-      child: InteractiveViewer(child: Image.network(url, fit: BoxFit.contain)),
-    ),
-  );
 }
 
 class _HistoryReplyBubble extends StatelessWidget {
@@ -1489,11 +1427,8 @@ class _HistoryReplyBubble extends StatelessWidget {
                       runSpacing: 6,
                       children: reply.attachments
                           .map(
-                            (a) => _NetworkThumb(
-                              url: a.fileUrl,
-                              isImage: a.fileType == 'image',
-                              name: a.fileName ?? '',
-                            ),
+                            (a) =>
+                                NetworkAttachmentTile(attachment: a, size: 70),
                           )
                           .toList(),
                     ),
