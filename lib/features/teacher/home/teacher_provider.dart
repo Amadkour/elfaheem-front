@@ -9,7 +9,6 @@
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
 import '../courses/component/teacher_stats.dart';
-import '../sessions/sessions_provider.dart';
 import 'teacher_models.dart';
 
 class TeacherProvider extends BaseProvider {

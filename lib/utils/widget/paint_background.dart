@@ -1,8 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:path/path.dart';
 
-import '../../config/theme/app_theme.dart';
 
 class ElearningPatternPainter extends CustomPainter {
   final double width;

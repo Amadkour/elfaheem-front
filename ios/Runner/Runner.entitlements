@@ -4,7 +4,7 @@
 <dict>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.com.example.flutterEducationApp</string>
+		<string>group.com.softkour.alfaheem</string>
 	</array>
 </dict>
 </plist>

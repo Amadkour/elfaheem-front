@@ -68,8 +68,12 @@ class _StcOtpStepState extends State<StcOtpStep>
 
   @override
   void dispose() {
-    for (final c in _ctrls) c.dispose();
-    for (final f in _fNodes) f.dispose();
+    for (final c in _ctrls) {
+      c.dispose();
+    }
+    for (final f in _fNodes) {
+      f.dispose();
+    }
     _shake.dispose();
     _resendTimer?.cancel();
     super.dispose();
@@ -122,7 +126,9 @@ class _StcOtpStepState extends State<StcOtpStep>
 
   Future<void> _resend() async {
     if (!_canResend) return;
-    for (final c in _ctrls) c.clear();
+    for (final c in _ctrls) {
+      c.clear();
+    }
     _startResendTimer();
     // Re-initiate the payment from provider — just shows loading briefly
     // In practice the user would go back and re-select STC Pay,

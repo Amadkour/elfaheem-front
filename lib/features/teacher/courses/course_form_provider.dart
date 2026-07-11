@@ -213,10 +213,10 @@ class CourseFormProvider extends BaseProvider {
         'name': title,
         'type': type,
         'fees': fees,
-        if (description != null) 'description': description,
+        'description': ?description,
         if (selectedSpecialization?['id'] != null)
           'category_id': selectedSpecialization!['id'],
-        if (totalHours != null) 'total_hours': totalHours,
+        'total_hours': ?totalHours,
       },
     ));
 
@@ -263,11 +263,11 @@ class CourseFormProvider extends BaseProvider {
       '/api/v1/courses/${original.id}',
       body: {
         'name': name,
-        if (description != null) 'description': description,
-        if (fees != null) 'fees': fees,
+        'description': ?description,
+        'fees': ?fees,
         if (selectedSpecialization?['id'] != null)
           'category_id': selectedSpecialization!['id'],
-        if (totalHours != null) 'total_hours': totalHours,
+        'total_hours': ?totalHours,
       },
     ));
 

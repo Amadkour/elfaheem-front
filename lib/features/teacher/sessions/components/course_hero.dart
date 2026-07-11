@@ -4,11 +4,9 @@
 // Reads nothing from any provider — all data passed in as constructor params.
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:path/path.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 
-import '../../../../config/theme/app_theme.dart';
 import '../../../../../utils/widget/refresh_button.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../home/teacher_models.dart';
@@ -32,85 +30,95 @@ class CourseHero extends StatelessWidget {
     return Stack(
       children: [
         SizedBox(
-          height: 260,
+          height: context.height/3.5,
           width: double.infinity,
           child: _buildBackground(context),
         ),
-        Positioned(
-          top: 12,
-          left: 16,
-          right: 16,
-          child: Row(
-            children: [
-              _CircleBtn(
-                icon: Icons.arrow_back_ios_new_rounded,
-                onTap: onBack,
-              ),
-              const Spacer(),
-                RefreshButton(onTap: () async => onRefresh()),
-              const SizedBox(width: 10),
-              _CircleBtn(
-                icon: CupertinoIcons.settings,
-                onTap: onEditCourse,
-              ),
-            ],
-          ),
-        ),
-        Positioned(
-          left: 16,
-          right: 16,
-          bottom: 20,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (course.categoryName != null)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: context.themeConfig.primary.withValues(alpha: 0.85),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    course.categoryName ?? course.type,
-                    style: const TextStyle(
-                      fontFamily: 'tajawal',
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
+        SizedBox(
+          height: context.height/3.5,
+          width: double.infinity,
+          child: SafeArea(
+            child: Stack(
+              children: [
+                Positioned(
+                  top: 12,
+                  left: 16,
+                  right: 16,
+                  child: Row(
+                    children: [
+                      _CircleBtn(
+                        icon: Icons.arrow_back_ios_new_rounded,
+                        onTap: onBack,
+                      ),
+                      const Spacer(),
+                        RefreshButton(onTap: () async => onRefresh()),
+                      const SizedBox(width: 10),
+                      _CircleBtn(
+                        icon: CupertinoIcons.settings,
+                        onTap: onEditCourse,
+                      ),
+                    ],
                   ),
                 ),
-              Text(
-                course.title,
-                style: const TextStyle(
-                  fontFamily: 'tajawal',
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                  height: 1.3,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              if (course.description != null &&
-                  course.description!.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  course.description!,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 12,
-                    color: Colors.white.withValues(alpha: 0.80),
-                    height: 1.45,
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: 20,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (course.categoryName != null)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: context.themeConfig.primary.withValues(alpha: 0.85),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            course.categoryName ?? course.type,
+                            style: const TextStyle(
+                              fontFamily: 'tajawal',
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      Text(
+                        course.title,
+                        style: const TextStyle(
+                          fontFamily: 'tajawal',
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          height: 1.3,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (course.description != null &&
+                          course.description!.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          course.description!,
+                          style: TextStyle(
+                            fontFamily: 'tajawal',
+                            fontSize: 12,
+                            color: Colors.white.withValues(alpha: 0.80),
+                            height: 1.45,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ],
-            ],
+            ),
           ),
         ),
       ],
@@ -138,7 +146,7 @@ class CourseHero extends StatelessWidget {
           child: Image.network(
             imageUrl,
             fit: BoxFit.fitWidth,
-            errorBuilder: (_, __, ___) => const _GradientBackground(),
+            errorBuilder: (_, _, _) => const _GradientBackground(),
           ),
         ),
       );
@@ -172,7 +180,7 @@ class _CircleBtn extends StatelessWidget {
   final VoidCallback onTap;
   final String? label;
 
-  const _CircleBtn({required this.icon, required this.onTap, this.label});
+  const _CircleBtn({required this.icon, required this.onTap}) : label = null;
 
   @override
   Widget build(BuildContext context) {

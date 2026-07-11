@@ -279,7 +279,7 @@ class _StudentList extends StatelessWidget {
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 32),
         itemCount: p.students.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
         itemBuilder: (_, i) => _StudentCard(student: p.students[i]),
       ),
     );
@@ -416,7 +416,7 @@ class _Avatar extends StatelessWidget {
           width: 48,
           height: 48,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _initials,
+          errorBuilder: (_, _, _) => _initials,
         ),
       );
     }

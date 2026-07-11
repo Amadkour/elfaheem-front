@@ -1,15 +1,13 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../../../config/app_config.dart';
-import '../../../config/theme/app_theme.dart';
 import '../../../config/theme/theme_config_provider.dart';
 
 class ProgressBanner extends StatelessWidget {
   final double progress;
   final int total;
   final int complete;
-  const ProgressBanner({
+  const ProgressBanner({super.key, 
     required this.progress, required this.total, required this.complete,
   });
 

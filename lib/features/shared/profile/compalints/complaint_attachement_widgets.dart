@@ -24,7 +24,6 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../config/app_config.dart';
-import '../../../../config/theme/app_theme.dart';
 import '../../../../utils/widget/app_network_image.dart';
 import 'complaint_model.dart';
 import 'complaint_provider.dart';
@@ -95,7 +94,7 @@ class NetworkAttachmentTile extends StatelessWidget {
           : Navigator.of(context).push(PageRouteBuilder(
         opaque: false,
         barrierColor: Colors.black,
-        pageBuilder: (_, __, ___) => _ImageViewer(url: attachment.fileUrl, heroTag: heroTag),
+        pageBuilder: (_, _, _) => _ImageViewer(url: attachment.fileUrl, heroTag: heroTag),
       )),
       face: _pdf
           ? _PdfFace(name: attachment.fileName??'')

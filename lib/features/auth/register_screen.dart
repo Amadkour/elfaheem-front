@@ -7,7 +7,6 @@
 library;
 
 import 'dart:async';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/verified_screen.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -695,7 +694,7 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
       controller: _scrollCtrl,
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
       itemCount: p.terms!.sections.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (_, i) => _SectionCard(
           section: p.terms!.sections[i],
           index: i,
@@ -839,7 +838,7 @@ class _ScrollHintState extends State<_ScrollHint>
       child: Row(children: [
         AnimatedBuilder(
           animation: _bounce,
-          builder: (_, __) => Transform.translate(
+          builder: (_, _) => Transform.translate(
             offset: Offset(0, _bounce.value),
             child: Icon(Icons.keyboard_double_arrow_down_rounded,
                 size: 18, color: c.primary),

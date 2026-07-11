@@ -48,7 +48,7 @@ class CategoriesRow extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             scrollDirection: Axis.horizontal,
             itemCount: categories.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 14),
+            separatorBuilder: (_, _) => const SizedBox(width: 14),
             itemBuilder: (_, i) {
               final cat =categories[i];
               final isSelected = provider.selectedCategoryId == cat.id;
@@ -101,7 +101,7 @@ class CategoriesRow extends StatelessWidget {
                             color: isSelected
                                 ? context.themeConfig.primaryDark
                                 : context.themeConfig.accent2,
-                            errorBuilder: (_, __, ___) => Icon(
+                            errorBuilder: (_, _, _) => Icon(
                               Icons.category_rounded,
                               color: isSelected
                                   ? context.themeConfig.primaryDark

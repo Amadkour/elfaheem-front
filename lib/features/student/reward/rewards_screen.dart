@@ -16,7 +16,7 @@ class RewardsScreen extends StatelessWidget {
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Consumer<RewardsProvider>(
-        builder: (_, provider, __) => AnimatedSwitcher(
+        builder: (_, provider, _) => AnimatedSwitcher(
           duration: const Duration(milliseconds: 350),
           transitionBuilder: (child, anim) => FadeTransition(
             opacity: anim,

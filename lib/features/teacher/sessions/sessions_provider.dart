@@ -13,10 +13,8 @@
 //   • No other logic changed.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/api_client.dart';
@@ -84,8 +82,8 @@ class TeacherCourseScreenProvider extends BaseProvider {
       'course_id': _course.id,
       'name': name,
       'type': type,
-      if (description != null) 'description': description,
-      if (scheduledAt != null) 'scheduled_at': scheduledAt,
+      'description': ?description,
+      'scheduled_at': ?scheduledAt,
       'duration_minutes': durationMinutes,
       'order': order,
     }));
@@ -109,12 +107,12 @@ class TeacherCourseScreenProvider extends BaseProvider {
       }) async {
     final result =
     await run(() => _api.put('/api/v1/sessions/$sessionId', body: {
-      if (name != null) 'name': name,
-      if (description != null) 'description': description,
-      if (type != null) 'type': type,
-      if (scheduledAt != null) 'scheduled_at': scheduledAt,
-      if (durationMinutes != null) 'duration_minutes': durationMinutes,
-      if (order != null) 'order': order,
+      'name': ?name,
+      'description': ?description,
+      'type': ?type,
+      'scheduled_at': ?scheduledAt,
+      'duration_minutes': ?durationMinutes,
+      'order': ?order,
     }));
     if (result is Map<String, dynamic>) {
       final updated = TeacherSessionItem.fromJson(result);
@@ -193,7 +191,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
         '/api/v1/sessions/$sessionId/materials/file',
         fields: {
           'name': name,
-          if (description != null) 'description': description,
+          'description': ?description,
           'order': order.toString(),
         },
         fileField: 'file',
@@ -228,7 +226,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
         'name': name,
         'url': url,
         'type': 'link',
-        if (description != null) 'description': description,
+        'description': ?description,
         'order': order,
       },
     ));
@@ -253,10 +251,10 @@ class TeacherCourseScreenProvider extends BaseProvider {
     final r = await run(() => _api.put(
       '/api/v1/sessions/$sessionId/materials/$materialId',
       body: {
-        if (name != null) 'name': name,
-        if (description != null) 'description': description,
-        if (url != null) 'url': url,
-        if (order != null) 'order': order,
+        'name': ?name,
+        'description': ?description,
+        'url': ?url,
+        'order': ?order,
       },
     ));
     if (r is Map<String, dynamic>) {

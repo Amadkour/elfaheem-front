@@ -8,15 +8,12 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/teacher/sessions/components/session_form_sheet.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
-import 'package:provider/provider.dart';
 
 import '../../../../config/theme/app_theme.dart';
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../shared/session/material/session_material_widget.dart';
-import '../../../student/models.dart';
 import '../../home/teacher_models.dart';
 import '../sessions_provider.dart';
 

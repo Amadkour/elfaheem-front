@@ -167,9 +167,9 @@ class AuthProvider extends BaseProvider {
           'gmail': gmail,
           'password': password,
           'role': selectedRole!['text'],
-          if (phone != null) 'phone': phone,
-          if (country != null) 'country': country,
-          if (dob != null) 'dob': dob,
+          'phone': ?phone,
+          'country': ?country,
+          'dob': ?dob,
         },
         auth: false,
       ),
@@ -310,10 +310,10 @@ class AuthProvider extends BaseProvider {
           () => _api.put(
         '/api/v1/auth/teacher-profile-extras',
         body: {
-          if (experienceYears != null) 'experience_years': experienceYears,
-          if (specializationId != null) 'specialization_id': specializationId,
-          if (teachingType != null) 'teaching_type': teachingType,
-          if (paymentType != null) 'payment_type': paymentType,
+          'experience_years': ?experienceYears,
+          'specialization_id': ?specializationId,
+          'teaching_type': ?teachingType,
+          'payment_type': ?paymentType,
         },
       ),
     );

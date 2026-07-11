@@ -12,7 +12,6 @@ import 'package:flutter_education_app/features/teacher/sessions/sessions_provide
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart';
-import '../../../config/theme/app_theme.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/rating_widget.dart';
@@ -98,6 +97,7 @@ class _TeacherSessionsView extends StatelessWidget {
     return BasePage(
       useWebCard: true,
       child: SafeArea(
+        top: false,
         child: RefreshIndicator(
           color: context.themeConfig.primary,
           backgroundColor: context.themeConfig.primary,

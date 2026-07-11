@@ -338,10 +338,8 @@ class _PasswordCard extends StatelessWidget {
     required this.canSubmit,
     required this.onSubmit,
     this.fromProfile = true,
-    this.email,
-    this.code,
-    required this.onSubmitForget,
-  });
+    required this.onSubmitForget, this.email, this.code,
+  }) ;
 
   @override
   Widget build(BuildContext context) {

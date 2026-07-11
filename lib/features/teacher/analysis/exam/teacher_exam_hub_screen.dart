@@ -793,7 +793,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
                         : ReorderableListView.builder(
                             padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
                             itemCount: questions.length,
-                            onReorder: (_, __) {},
+                            onReorder: (_, _) {},
                             // drag-to-reorder hint (order save via API not implemented)
                             itemBuilder: (_, i) {
                               final q = questions[i];
@@ -1082,8 +1082,9 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
   }
 
   void _addOption() {
-    if (mounted) if (mounted)
+    if (mounted) if (mounted) {
       setState(() => _optionCtrls.add(TextEditingController()));
+    }
   }
 
   void _removeOption(int i) {
@@ -1231,8 +1232,9 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                           keyboardType: const TextInputType.numberWithOptions(
                               decimal: true),
                           validator: (v) {
-                            if (v == null || v.trim().isEmpty)
+                            if (v == null || v.trim().isEmpty) {
                               return 'field_required'.tr;
+                            }
                             if (double.tryParse(v.trim()) == null) {
                               return 'field_invalid_number'.tr;
                             }
@@ -1432,9 +1434,10 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
     final t =
         await showTimePicker(context: context, initialTime: TimeOfDay.now());
     if (t == null) return;
-    if (mounted) if (mounted)
+    if (mounted) if (mounted) {
       setState(() =>
           _scheduleDate = DateTime(d.year, d.month, d.day, t.hour, t.minute));
+    }
   }
 
   Future<void> _pickDeadline() async {
@@ -1447,9 +1450,10 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
     final t = await showTimePicker(
         context: context, initialTime: const TimeOfDay(hour: 23, minute: 59));
     if (t == null) return;
-    if (mounted) if (mounted)
+    if (mounted) if (mounted) {
       setState(() =>
           _deadlineDate = DateTime(d.year, d.month, d.day, t.hour, t.minute));
+    }
   }
 
   Future<void> _submit() async {
@@ -1560,8 +1564,9 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                       label: 'toggle_passcode'.tr,
                       value: _hasPasscode,
                       onChanged: (v) {
-                        if (mounted) if (mounted)
+                        if (mounted) if (mounted) {
                           setState(() => _hasPasscode = v);
+                        }
                       },
                       child: _hasPasscode
                           ? _Field(
@@ -1585,8 +1590,9 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                       label: 'toggle_schedule'.tr,
                       value: _hasSchedule,
                       onChanged: (v) {
-                        if (mounted) if (mounted)
+                        if (mounted) if (mounted) {
                           setState(() => _hasSchedule = v);
+                        }
                       },
                       child: _hasSchedule
                           ? GestureDetector(
@@ -1626,8 +1632,9 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                       label: 'toggle_deadline'.tr,
                       value: _hasDeadline,
                       onChanged: (v) {
-                        if (mounted) if (mounted)
+                        if (mounted) if (mounted) {
                           setState(() => _hasDeadline = v);
+                        }
                       },
                       child: _hasDeadline
                           ? GestureDetector(
@@ -1667,8 +1674,9 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                       label: 'toggle_max_submissions'.tr,
                       value: _hasMaxSubmissions,
                       onChanged: (v) {
-                        if (mounted) if (mounted)
+                        if (mounted) if (mounted) {
                           setState(() => _hasMaxSubmissions = v);
+                        }
                       },
                       child: _hasMaxSubmissions
                           ? _Field(
@@ -1678,8 +1686,9 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                               keyboardType: TextInputType.number,
                               validator: (v) {
                                 final n = int.tryParse(v ?? '');
-                                if (n == null || n < 1)
+                                if (n == null || n < 1) {
                                   return 'field_max_submissions_error'.tr;
+                                }
                                 return null;
                               },
                             )

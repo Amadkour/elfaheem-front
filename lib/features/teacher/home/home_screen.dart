@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/courses/course_form_screen.dart';
 import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboard_provider.dart';
@@ -270,7 +269,7 @@ class Shimmer extends StatefulWidget {
   final double width, height;
   final double radius;
 
-  const Shimmer({required this.width, required this.height, this.radius = 0});
+  const Shimmer({super.key, required this.width, required this.height, this.radius = 0});
 
   @override
   State<Shimmer> createState() => _ShimmerState();
@@ -299,7 +298,7 @@ class _ShimmerState extends State<Shimmer> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: _anim,
-    builder: (_, __) => Container(
+    builder: (_, _) => Container(
       width: widget.width,
       height: widget.height,
       decoration: BoxDecoration(
@@ -345,8 +344,8 @@ class CoursesShimmer extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 20),
       itemCount: count ?? 3,
-      separatorBuilder: (_, __) => const SizedBox(width: 14),
-      itemBuilder: (_, __) =>
+      separatorBuilder: (_, _) => const SizedBox(width: 14),
+      itemBuilder: (_, _) =>
           Shimmer(width: width ?? 170, height: height ?? 200),
     ),
   );

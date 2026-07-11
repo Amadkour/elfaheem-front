@@ -41,9 +41,9 @@ class CoursesProvider extends BaseProvider {
         queryParams: {
           'skip': _skip,
           'limit':pageSize?? _pageSize,
-          if (categoryId != null) 'category_id': categoryId,
-          if (teacherId != null) 'teacher_id': teacherId,
-          if (search != null) 'search': search
+          'category_id': ?categoryId,
+          'teacher_id': ?teacherId,
+          'search': ?search
         },
         auth: true));
     if (r is Map && r['items'] is List) {

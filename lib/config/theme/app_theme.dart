@@ -13,6 +13,7 @@
 ///   • AppColors — full dynamic palette resolved per brightness
 ///   • context.colors — the only import any widget needs
 /// ─────────────────────────────────────────────────────────────────────────────
+library;
 
 import 'package:flutter/material.dart';
 

@@ -408,7 +408,7 @@ class _TeamRow extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: team.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        separatorBuilder: (_, _) => const SizedBox(width: 12),
         itemBuilder: (_, i) {
           final m = team[i];
           return Container(
@@ -725,13 +725,12 @@ class _TermsHeader extends StatelessWidget {
             if (meta != null) ...[
               const SizedBox(height: 4),
               Text(
-                _l(context, 'آخر تحديث:', 'Last updated:') +
-                    ' ${meta!.lastUpdated}',
+                '${_l(context, 'آخر تحديث:', 'Last updated:')} ${meta!.lastUpdated}',
                 style: c.caption.copyWith(fontSize: 12),
               ),
               if ((meta!.version ?? '').isNotEmpty)
                 Text(
-                  _l(context, 'الإصدار', 'Version') + ' ${meta!.version}',
+                  '${_l(context, 'الإصدار', 'Version')} ${meta!.version}',
                   style: c.caption.copyWith(fontSize: 11, color: c.textLight),
                 ),
             ],

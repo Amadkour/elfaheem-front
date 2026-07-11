@@ -4,7 +4,6 @@ library;
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart'
     show TeacherCourse, CourseSchedule, ScheduleSession;
 
-import '../../../config/app_config.dart';
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
 

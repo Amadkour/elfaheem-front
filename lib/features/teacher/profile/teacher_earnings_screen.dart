@@ -14,7 +14,7 @@ import '../../../utils/widget/base_page.dart';
 // ═══════════════════════════════════════════════════════════════════════════
 
 class _ApiService {
-  static ApiClient _api = ApiClient();
+  static final ApiClient _api = ApiClient();
 
   static Future<EarningsSummary> getSummary() async {
     final res = await _api.get('/api/v1/teacher/earnings/summary');
@@ -29,7 +29,7 @@ class _ApiService {
     final res = await _api.get('/api/v1/teacher/earnings', queryParams: {
       'skip': skip,
       'limit': limit,
-      if (status != null) 'status': status,
+      'status': ?status,
     });
     return EarningsPage.fromJson(res as Map<String, dynamic>);
   }
@@ -660,7 +660,9 @@ class _EarningsTabState extends State<_EarningsTab>
       if (_scroll.position.pixels >=
           _scroll.position.maxScrollExtent - 200 &&
           !_loadingMore &&
-          _items.length < _total) _loadMore();
+          _items.length < _total) {
+        _loadMore();
+      }
     });
   }
 
@@ -776,7 +778,7 @@ class _EarningsTabState extends State<_EarningsTab>
             const EdgeInsets.fromLTRB(16, 0, 16, 32),
             itemCount:
             _items.length + (_loadingMore ? 1 : 0),
-            separatorBuilder: (_, __) =>
+            separatorBuilder: (_, _) =>
             const SizedBox(height: 10),
             itemBuilder: (_, i) {
               if (i == _items.length) {
@@ -956,10 +958,11 @@ class _WithdrawalsTabState extends State<_WithdrawalsTab>
     super.build(context);
     if (_loading) return const Center(child: _Loader());
     if (_error != null) return _ErrorPanel(message: _error!, onRetry: _load);
-    if (_items.isEmpty)
+    if (_items.isEmpty) {
       return _EmptyState(
           message: 'no_withdrawals_yet'.tr,
           icon: Icons.account_balance_outlined);
+    }
 
     return RefreshIndicator(
       onRefresh: _load,
@@ -967,7 +970,7 @@ class _WithdrawalsTabState extends State<_WithdrawalsTab>
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         itemCount: _items.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
         itemBuilder: (_, i) => _WithdrawalCard(
           w: _items[i],
           onCancel: () => _confirmCancel(context, _items[i].id),

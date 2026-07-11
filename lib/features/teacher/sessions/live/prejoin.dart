@@ -398,7 +398,7 @@ class _PreJoinPageState extends State<PreJoinPage> with TickerProviderStateMixin
             // Animated aurora mesh
             AnimatedBuilder(
               animation: _auroraAnim,
-              builder: (_, __) => CustomPaint(
+              builder: (_, _) => CustomPaint(
                 painter: _AuroraPainter(_auroraAnim.value),
                 child: const SizedBox.expand(),
               ),
@@ -477,7 +477,7 @@ class _PreJoinPageState extends State<PreJoinPage> with TickerProviderStateMixin
     }
     return AnimatedBuilder(
       animation: _pulse,
-      builder: (_, __) => Container(
+      builder: (_, _) => Container(
         color: _DS.bg,
         child: Center(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -592,7 +592,7 @@ class _PreJoinPageState extends State<PreJoinPage> with TickerProviderStateMixin
         // Pulsing 1080p badge
         AnimatedBuilder(
           animation: _pulse,
-          builder: (_, __) => Container(
+          builder: (_, _) => Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(9),
@@ -792,7 +792,7 @@ class _PreJoinPageState extends State<PreJoinPage> with TickerProviderStateMixin
         ),
         child: AnimatedBuilder(
           animation: _pulse,
-          builder: (_, __) => AnimatedContainer(
+          builder: (_, _) => AnimatedContainer(
             duration: const Duration(milliseconds: 250),
             height: 62,
             decoration: BoxDecoration(

@@ -771,7 +771,7 @@ class MaterialImageViewerDialog extends StatelessWidget {
                     : const Center(
                     child: CircularProgressIndicator(
                         color: Colors.white)),
-                errorBuilder: (_, __, ___) => const Icon(
+                errorBuilder: (_, _, _) => const Icon(
                   Icons.broken_image_rounded,
                   color: Colors.white54,
                   size: 64,

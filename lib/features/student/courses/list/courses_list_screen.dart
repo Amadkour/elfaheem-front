@@ -2,7 +2,6 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
 import 'package:flutter_education_app/features/student/courses/my_courses/my_courses_provider.dart';
 import 'package:provider/provider.dart';
@@ -11,14 +10,10 @@ import '../../../../config/app_config.dart' as Helpers;
 import '../../../../config/theme/app_theme.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/widget/app_bar.dart';
-import '../../../../utils/widget/app_network_image.dart';
 import '../../../../utils/widget/base_page.dart';
 import '../../../../utils/widget/search_text_field.dart';
-import '../../../shared/profile/course_instractor_profile.dart';
 import '../../models.dart';
-import '../details/components/app_responsive.dart';
 import '../details/course_detail_screen.dart';
-import 'courses_provider.dart';
 
 class CoursesListScreen extends StatefulWidget {
   const CoursesListScreen(

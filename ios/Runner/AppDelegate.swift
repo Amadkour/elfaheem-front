@@ -149,7 +149,7 @@ import CoreVideo
     //   the old string and update every occurrence in the same commit.
     //   If your bundle ID differs, update kAppGroup in BOTH this file and
     //   SampleHandler.swift — they must be identical.
-    private let kAppGroup           = "group.com.example.flutterEducationApp"
+    private let kAppGroup           = "group.com.softkour.alfaheem"
     private let kDarwinFrameNotif   = "com.example.flutter_education_app.frame"
     private let kDarwinStopNotif    = "com.example.flutter_education_app.stop"
     private let kFrameFileName      = "broadcast_frame.bin"

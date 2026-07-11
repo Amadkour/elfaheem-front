@@ -53,6 +53,7 @@ class TeacherDocumentProvider extends BaseProvider {
   bool isLoadingPublic = false;
 
   // Last error message (upload rejected, finalize blocked, etc.)
+  @override
   String? errorMessage;
 
   bool isFinalizing = false;
@@ -100,7 +101,7 @@ class TeacherDocumentProvider extends BaseProvider {
         '/api/v1/auth/teacher-documents/$teacherUserId/public',
       );
       if (res != null && res is List) {
-        _publicDocs = (res as List)
+        _publicDocs = (res)
             .map(
               (e) => TeacherDocumentModel.fromJson(e as Map<String, dynamic>),
             )
@@ -150,9 +151,8 @@ class TeacherDocumentProvider extends BaseProvider {
           'file_name': uploadRes['file_name'],
           'file_type': uploadRes['file_type'],
           'file_size': uploadRes['file_size'],
-          if (requiredTypeId != null)
-            'required_document_type_id': requiredTypeId,
-          if (customTitle != null) 'custom_title': customTitle,
+          'required_document_type_id': ?requiredTypeId,
+          'custom_title': ?customTitle,
         },
       );
       if (res == null) return false;

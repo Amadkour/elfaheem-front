@@ -110,7 +110,7 @@ class _StudentExamResultScreenState extends State<StudentExamResultScreen>
                         // Animated score ring
                         AnimatedBuilder(
                           animation: _scoreAnim,
-                          builder: (_, __) => Stack(
+                          builder: (_, _) => Stack(
                             alignment: Alignment.center,
                             children: [
                               SizedBox(

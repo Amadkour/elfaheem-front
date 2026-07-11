@@ -62,7 +62,7 @@ class _EnrollView extends StatelessWidget {
         backgroundColor: context.themeConfig.background,
         body: SafeArea(
           child: Consumer<EnrollmentProvider>(
-            builder: (_, enroll, __) => AnimatedSwitcher(
+            builder: (_, enroll, _) => AnimatedSwitcher(
               duration: const Duration(milliseconds: 380),
               transitionBuilder: (child, anim) => FadeTransition(
                 opacity: anim,

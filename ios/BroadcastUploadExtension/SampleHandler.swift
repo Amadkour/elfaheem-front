@@ -36,7 +36,7 @@ import ReplayKit
 import CoreMedia
 import CoreVideo
 
-private let kAppGroup         = "group.com.example.flutterEducationApp"
+private let kAppGroup         = "group.com.softkour.alfaheem"
 private let kDarwinFrameNotif = "com.example.flutter_education_app.frame"
 private let kDarwinStopNotif  = "com.example.flutter_education_app.stop"
 private let kFrameFileName    = "broadcast_frame.bin"

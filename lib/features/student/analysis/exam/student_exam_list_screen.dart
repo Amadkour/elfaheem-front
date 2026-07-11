@@ -55,7 +55,7 @@ class _StudentExamListScreenState extends State<StudentExamListScreen>
         backgroundColor: c.background,
         body: NestedScrollView(
           physics: const BouncingScrollPhysics(),
-          headerSliverBuilder: (_, __) => [
+          headerSliverBuilder: (_, _) => [
             SliverAppBar(
               expandedHeight: 160,
               pinned: true,
@@ -142,7 +142,7 @@ class _ExamList extends StatelessWidget {
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
       itemCount: exams.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (_, i) => _ExamCard(exam: exams[i]),
     );
   }

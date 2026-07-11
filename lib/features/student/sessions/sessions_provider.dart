@@ -2,13 +2,9 @@
 // ─────────────────────────────────────────────────────
 // Student sessions provider — now includes material fetching.
 
-import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
-import '../../auth/auth_provider.dart';
 import '../../teacher/sessions/model/live_response_model.dart';
 import '../../shared/session/material/session_material_model.dart';
 import '../models.dart';
@@ -129,7 +125,7 @@ class StudentSessionsProvider extends BaseProvider {
       'source_id': sessionId,
       'type': 'session',
       'value': value,
-      if (review != null) 'review': review,
+      'review': ?review,
     }));
     return r != null;
   }

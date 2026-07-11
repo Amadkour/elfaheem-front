@@ -5,9 +5,7 @@
 import 'dart:developer';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path/path.dart' as p;
 
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
@@ -360,7 +358,7 @@ class ComplaintProvider extends BaseProvider {
         'description': description,
         'category':    category.toJson(),
         'priority':    priority.toJson(),
-        if (courseId != null) 'course_id': courseId,
+        'course_id': ?courseId,
         if (attachmentUrls.isNotEmpty) 'attachment_urls': attachmentUrls,
         if (trimmedSuggestion != null && trimmedSuggestion.isNotEmpty)
           'suggested_solution': trimmedSuggestion,       // ← NEW

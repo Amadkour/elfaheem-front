@@ -42,7 +42,7 @@ class CoursesRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20),
         scrollDirection: isFullScreen ? Axis.vertical : Axis.horizontal,
         itemCount: courses.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 14),
+        separatorBuilder: (_, _) => const SizedBox(width: 14),
         itemBuilder: (_, i) => CourseCard(
             course: courses[i],
             fixedWidth: 188,
@@ -155,7 +155,7 @@ class CourseCard extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          if (!isTeacher && course.teacher != Null)
+                          if (!isTeacher && course.teacher != null)
                             Expanded(
                               flex: 1,
                               child: InstructorAvatar(
