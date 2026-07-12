@@ -96,7 +96,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     return s;
   }
 
-  Color _strengthColor(AppColors c) {
+  Color _strengthColor(ThemeConfigProvider c) {
     switch (_strength) {
       case 1: return c.danger;
       case 2: return c.warning;
@@ -129,10 +129,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     if (!mounted) return;
 
     if (result != null) {
-      _showSnack('password_changed_success'.tr, context.themeConfig.success);
+      _showSnack('password_changed_success'.tr, context.colors.success);
       Navigator.of(context).pop();
     } else {
-      _showSnack('wrong_current_password'.tr, context.themeConfig.danger);
+      _showSnack('wrong_current_password'.tr, context.colors.danger);
     }
   }
 
@@ -197,7 +197,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   // WEB — centered card
   // ══════════════════════════════════════════════════════════════════════════
 
-  Widget _webLayout(ProfileProvider p, AppColors c) {
+  Widget _webLayout(ProfileProvider p, ThemeConfigProvider c) {
     Widget w = Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
@@ -228,7 +228,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   // MOBILE — full scroll
   // ══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildForm(ProfileProvider p, AppColors c) => Column(
+  Widget _buildForm(ProfileProvider p, ThemeConfigProvider c) => Column(
     children: [
       // ── Security icon badge ──────────────────────────────────────────
       Container(
@@ -276,7 +276,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     ],
   );
 
-  Widget _mobileLayout(ProfileProvider p, AppColors c) {
+  Widget _mobileLayout(ProfileProvider p, ThemeConfigProvider c) {
     return SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
@@ -290,7 +290,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
 class _PasswordCard extends StatelessWidget {
   final ProfileProvider p;
-  final AppColors c;
+  final ThemeConfigProvider c;
   final TextEditingController oldCtrl;
   final TextEditingController newCtrl;
   final TextEditingController confCtrl;
@@ -449,7 +449,7 @@ class StrengthBar extends StatelessWidget {
   final int strength;
   final Color strengthColor;
   final String strengthLabel;
-  final AppColors c;
+  final ThemeConfigProvider c;
 
   const StrengthBar({
     super.key,
@@ -503,7 +503,7 @@ class StrengthBar extends StatelessWidget {
 class PasswordReq extends StatelessWidget {
   final bool met;
   final String label;
-  final AppColors c;
+  final ThemeConfigProvider c;
 
   const PasswordReq(
       {super.key, required this.met, required this.label, required this.c});
@@ -545,7 +545,7 @@ class PasswordReq extends StatelessWidget {
 
 class _SectionLabel extends StatelessWidget {
   final String label;
-  final AppColors c;
+  final ThemeConfigProvider c;
 
   const _SectionLabel({required this.label, required this.c});
 

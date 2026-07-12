@@ -22,32 +22,32 @@ class MySearchBar extends StatelessWidget {
         style: TextStyle(
           fontFamily: 'tajawal',
           fontSize: 14,
-          color: context.themeConfig.textDark,
+          color: context.colors.textDark,
         ),
         decoration: InputDecoration(
           hintText: hint.tr,
           hintStyle: TextStyle(
             fontFamily: 'tajawal',
-            color: context.themeConfig.textMedium,
+            color: context.colors.textMedium,
             fontSize: 13,
           ),
           prefixIcon: Icon(Icons.search_rounded,
-              size: 20, color: context.themeConfig.textMedium),
+              size: 20, color: context.colors.textMedium),
           filled: true,
-          fillColor: context.themeConfig.surfaceCard,
+          fillColor: context.colors.cardBg,
           contentPadding:
           const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: context.themeConfig.divider, width: 0.5),
+            borderSide: BorderSide(color: context.colors.divider, width: 0.5),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: context.themeConfig.divider, width: 0.5),
+            borderSide: BorderSide(color: context.colors.divider, width: 0.5),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: context.themeConfig.primary, width: 1),
+            borderSide: BorderSide(color: context.colors.primary, width: 1),
           ),
         ),
         onChanged: onChanged,

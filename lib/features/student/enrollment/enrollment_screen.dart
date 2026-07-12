@@ -59,7 +59,7 @@ class _EnrollView extends StatelessWidget {
     return Directionality(
       textDirection: helpers.pageDirection,
       child: Scaffold(
-        backgroundColor: context.themeConfig.background,
+        backgroundColor: context.colors.background,
         body: SafeArea(
           child: Consumer<EnrollmentProvider>(
             builder: (_, enroll, __) => AnimatedSwitcher(

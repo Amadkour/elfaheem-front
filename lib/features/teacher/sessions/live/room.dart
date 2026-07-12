@@ -1112,7 +1112,7 @@ class _RoomPageState extends State<RoomPage>
                             _buildRecordingIndicator(),
 
                             // iOS broadcast share banner + stop button
-                            if (Platform.isIOS && widget.isTeacher)
+                            if (widget.isTeacher)
                               _buildIOSShareBanner(),
 
                             // Participant count badge

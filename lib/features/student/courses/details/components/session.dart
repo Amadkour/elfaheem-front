@@ -16,7 +16,7 @@ class SessionsTab extends StatelessWidget {
         padding: EdgeInsets.all(48),
         child: Center(
           child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation(context.themeConfig.primary),
+            valueColor: AlwaysStoppedAnimation(context.colors.primary),
             strokeWidth: 2.5,
           ),
         ),
@@ -33,11 +33,11 @@ class SessionsTab extends StatelessWidget {
                 width: 72,
                 height: 72,
                 decoration: BoxDecoration(
-                  color: context.themeConfig.primaryLight.withValues(alpha: 0.3),
+                  color: context.colors.primaryLight.withValues(alpha: 0.3),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(Icons.video_library_outlined,
-                    size: 36, color: context.themeConfig.primary),
+                    size: 36, color: context.colors.primary),
               ),
               const SizedBox(height: 14),
               Text('لا توجد دروس بعد', style: context.colors.body),

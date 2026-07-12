@@ -2,7 +2,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../../../config/app_config.dart';
-import '../../../config/theme/app_theme.dart';
 import '../../../config/theme/theme_config_provider.dart';
 
 class ProgressBanner extends StatelessWidget {
@@ -15,7 +14,7 @@ class ProgressBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Gradient primary=progress>90?context.themeConfig.linearSuccess:progress>30?context.themeConfig.linearPrimary:context.themeConfig.linearDanger;
+    Gradient primary=progress>90?context.colors.successGradient:progress>30?context.colors.primaryGradient:context.colors.dangerGradient;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
@@ -24,7 +23,7 @@ class ProgressBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: context.themeConfig.primary.withValues(alpha: 0.32),
+            color: context.colors.primary.withValues(alpha: 0.32),
             blurRadius: 18,
             offset: const Offset(0, 5),
           ),

@@ -25,34 +25,34 @@ class StudentAttendanceWidget extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: inSession
-            ? context.themeConfig.danger.withValues(alpha: 0.06)
-            : context.themeConfig.primary.withValues(alpha: 0.06),
+            ? context.colors.danger.withValues(alpha: 0.06)
+            : context.colors.primary.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(context.colors.radiusMedium),
         border: Border.all(
-            color: (inSession ? context.themeConfig.danger : context.themeConfig.primary)
+            color: (inSession ? context.colors.danger : context.colors.primary)
                 .withValues(alpha: 0.2)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(Icons.fact_check_rounded,
-              color: inSession ? context.themeConfig.danger : context.themeConfig.primary,
+              color: inSession ? context.colors.danger : context.colors.primary,
               size: 20),
           const SizedBox(width: 8),
           Text('سجل الحضور',
               style: context.colors.h3.copyWith(
                   color: inSession
-                      ? context.themeConfig.danger
-                      : context.themeConfig.primary)),
+                      ? context.colors.danger
+                      : context.colors.primary)),
         ]),
         const SizedBox(height: 12),
         // Record summary
         if (provider.activeRecord != null) ...[
           _RecordRow('وقت الدخول', _fmt(provider.activeRecord!.checkInAt),
-              Icons.login_rounded, context.themeConfig.success),
+              Icons.login_rounded, context.colors.success),
           if (provider.activeRecord!.checkOutAt != null) ...[
             const SizedBox(height: 6),
             _RecordRow('وقت الخروج', _fmt(provider.activeRecord!.checkOutAt),
-                Icons.logout_rounded, context.themeConfig.danger),
+                Icons.logout_rounded, context.colors.danger),
           ],
           const SizedBox(height: 12),
         ],
@@ -64,10 +64,10 @@ class StudentAttendanceWidget extends StatelessWidget {
               decoration: BoxDecoration(
                   gradient: inSession
                       ? LinearGradient(
-                          colors: [context.themeConfig.danger, Color(0xFFFF6B6B)])
-                      : context.themeConfig.linearPrimary,
+                          colors: [context.colors.danger, Color(0xFFFF6B6B)])
+                      : context.colors.primaryGradient,
                   borderRadius: BorderRadius.circular(22),
-                  boxShadow: inSession ? [] : context.themeConfig.primaryShadow(isDark:context.colors.isDark)),
+                  boxShadow: inSession ? [] : context.colors.primaryShadow),
               child: provider.isLoading
                   ? const Center(
                       child: SizedBox(
@@ -110,7 +110,7 @@ class StudentAttendanceWidget extends StatelessWidget {
                   ? (p.isCheckedIn ? 'تم تسجيل مغادرتك' : 'تم تسجيل حضورك ✓')
                   : 'حدث خطأ',
               style: TextStyle(fontFamily: 'bahji', color: Colors.white)),
-          backgroundColor: ok ? context.themeConfig.success : context.themeConfig.danger,
+          backgroundColor: ok ? context.colors.success : context.colors.danger,
           behavior: SnackBarBehavior.floating,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))));
@@ -142,6 +142,6 @@ class _RecordRow extends StatelessWidget {
         Text('$label: ', style: context.colors.caption),
         Text(value,
             style: context.colors.caption.copyWith(
-                color: context.themeConfig.textDark, fontWeight: FontWeight.w700))
+                color: context.colors.textDark, fontWeight: FontWeight.w700))
       ]);
 }

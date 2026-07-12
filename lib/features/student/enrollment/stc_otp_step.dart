@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../config/theme/app_theme.dart';
+import '../../../config/theme/theme_config_provider.dart';
 import 'enrollment_provider.dart';
 
 class StcOtpStep extends StatefulWidget {

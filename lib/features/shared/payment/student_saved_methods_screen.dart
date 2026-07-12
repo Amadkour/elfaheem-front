@@ -473,8 +473,8 @@ class _CardAction extends StatelessWidget {
       child: Icon(icon,
           size:  16,
           color: danger
-              ? context.themeConfig.danger
-              : context.themeConfig.primary),
+              ? context.colors.danger
+              : context.colors.primary),
     ),
   );
 }
@@ -761,7 +761,7 @@ class _AddStudentBankFormState extends State<_AddStudentBankForm> {
           SnackBar(
             content: Text('bank_account_saved_success'.tr,
                 style: const TextStyle(fontFamily: 'bahji', color: Colors.white)),
-            backgroundColor: context.themeConfig.success,
+            backgroundColor: context.colors.success,
             behavior:        SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12)),

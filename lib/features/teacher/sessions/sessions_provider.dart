@@ -339,13 +339,13 @@ class TeacherCourseScreenProvider extends BaseProvider {
       int maxParticipants,
       bool liveNow,
       ) async {
-    final user = context.read<AuthProvider>().currentUser;
+    final AuthProvider provider = context.read<AuthProvider>();
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => PreJoinPage(
         args: JoinArgs(
-          isTeacher:  user!.isTeacher,
-          userId:     user.id,
-          userName:   user.name,
+          isTeacher:  provider.isTeacher,
+          userId:     provider.currentUser?.id??-1,
+          userName:    provider.currentUser?.name??'--',
           sessionId:  sessionId,
           courseId:   courseId,
           maxStudents: maxParticipants,
@@ -353,13 +353,13 @@ class TeacherCourseScreenProvider extends BaseProvider {
           // _ClientRecorder in RoomPage needs baseUrl + authToken to POST
           // chunks to /api/v1/live-sessions/{id}/recording-chunk.
           apiClient: _api,
-          onEnd: () => _confirmEndSession(user, sessionId, context),
+          onEnd: () => _confirmEndSession( provider.currentUser, sessionId, context),
           // Teachers start the room; students fetch a personal join token.
-          onStart: user.isTeacher && !liveNow
-              ? () => _onStartLive(user, sessionId, context)
+          onStart:  provider.isTeacher && !liveNow
+              ? () => _onStartLive( provider.currentUser, sessionId, context)
               : () => _onJoinLiveAsStudent(sessionId, context),
           // Students: automatically mark live session complete when they leave
-          onComplete: user.isTeacher
+          onComplete:  provider.isTeacher
               ? null
               : () => markSessionComplete(sessionId),
         ),

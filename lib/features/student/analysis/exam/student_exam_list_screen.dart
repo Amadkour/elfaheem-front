@@ -495,7 +495,7 @@ class _ErrorState extends StatelessWidget {
           icon: const Icon(Icons.refresh_rounded, size: 18),
           label: const Text('إعادة المحاولة', style: TextStyle(fontFamily: 'bahji')),
           style: ElevatedButton.styleFrom(
-            backgroundColor: context.themeConfig.primary,
+            backgroundColor: context.colors.primary,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),

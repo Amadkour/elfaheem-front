@@ -5,10 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
-/// Application configuration and context.themeConfig.
+/// Application configuration and context.colors.
 class AppConfig {
   static const String baseUrl =
-      'https://elevation-verde-downloads-douglas.trycloudflare.com';
+      'https://beans-treatment-loads-containing.trycloudflare.com';
   static String lang = 'ar';
   static bool showLogs = false;
 

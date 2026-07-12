@@ -44,11 +44,11 @@ Future<void> addItemDialog(
             onPressed: () => Navigator.pop(dialogContext),
             child:  Text('إلغاء',
                 style: TextStyle(
-                    fontFamily: 'bahji', color: context.themeConfig.textMedium)),
+                    fontFamily: 'bahji', color: context.colors.textMedium)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: context.themeConfig.primary,
+              backgroundColor: context.colors.primary,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
             ),

@@ -4,7 +4,6 @@
 /// so dark / light mode is automatic — no extra logic needed here.
 /// ─────────────────────────────────────────────────────────────────────────────
 library;
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/profile/components/setting_group.dart';
@@ -13,7 +12,6 @@ import 'package:flutter_education_app/features/teacher/home/teacher_provider.dar
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
-import '../../../config/theme/app_theme.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_network_image.dart';
 import '../../auth/auth_provider.dart';
@@ -195,7 +193,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                                 value: p.notificationsEnabled,
                                 onChanged: p.toggleNotifications,
                                 activeThumbColor:
-                                    context.themeConfig.primaryDark,
+                                    context.colors.primaryDark,
                                 thumbColor: const WidgetStatePropertyAll(
                                   Colors.white,
                                 ),
@@ -225,7 +223,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                                   await p.changeMode(b);
                                 },
                                 activeThumbColor:
-                                    context.themeConfig.primaryDark,
+                                    context.colors.primaryDark,
                                 thumbColor: const WidgetStatePropertyAll(
                                   Colors.white,
                                 ),
@@ -357,7 +355,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _webHeader(AppColors c) => Container(
+  Widget _webHeader(ThemeConfigProvider c) => Container(
     height: 56,
     padding: const EdgeInsets.symmetric(horizontal: 24),
     child: Row(
@@ -383,9 +381,9 @@ class ProfileHeader extends StatelessWidget {
               height: context.height / 8,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: context.themeConfig.primary.withValues(alpha: 0.1),
+                color: context.colors.primary.withValues(alpha: 0.1),
                 border: Border.all(
-                  color: context.themeConfig.primaryDark,
+                  color: context.colors.primaryDark,
                   width: 2.5,
                 ),
               ),
@@ -399,7 +397,7 @@ class ProfileHeader extends StatelessWidget {
                   : Icon(
                       Icons.person_rounded,
                       size: 52,
-                      color: context.themeConfig.primaryDark,
+                      color: context.colors.primaryDark,
                     ),
             ),
           ],

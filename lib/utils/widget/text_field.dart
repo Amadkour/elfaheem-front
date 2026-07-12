@@ -23,7 +23,7 @@ class MyTextField extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       shadowColor: const Color.fromRGBO(0, 0, 0, 0.25),
-      color: context.themeConfig.inputBg(isDark:context.colors.isDark),
+      color: context.colors.inputBg,
       borderRadius: BorderRadius.circular(10),
       elevation: 4,
       clipBehavior: Clip.antiAliasWithSaveLayer,
@@ -38,12 +38,12 @@ class MyTextField extends StatelessWidget {
             fontFamily: 'tajawal',
             fontWeight: FontWeight.w500,
             fontSize: 15,
-          color: context.themeConfig.textDark,
+          color: context.colors.textDark,
         ),
         decoration: InputDecoration(
           hintTextDirection: pageDirection,
           floatingLabelBehavior: FloatingLabelBehavior.never,
-          fillColor: context.themeConfig.inputBg(isDark:context.colors.isDark),
+          fillColor: context.colors.inputBg,
 
           alignLabelWithHint: true,
           hint: Text(
@@ -51,7 +51,7 @@ class MyTextField extends StatelessWidget {
             style:  TextStyle(
                 fontFamily: 'tajawal',
                 fontWeight: FontWeight.w600,
-              color: context.themeConfig.textDark,
+              color: context.colors.textDark,
             ),
             textDirection: TextDirection.rtl,
           ),

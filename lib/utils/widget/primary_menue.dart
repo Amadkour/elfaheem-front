@@ -26,7 +26,7 @@ class MyPrimaryMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       shadowColor: const Color.fromRGBO(0, 0, 0, 0.25),
-      color: context.themeConfig.inputBg(isDark:context.colors.isDark),
+      color: context.colors.inputBg,
       borderRadius: BorderRadius.circular(10),
       child: ExpansionTile(
 
@@ -38,7 +38,7 @@ class MyPrimaryMenu extends StatelessWidget {
             fontFamily: 'tajawal',
             fontWeight: FontWeight.w100,
             fontSize: 17,
-            color: context.themeConfig.textDark,
+            color: context.colors.textDark,
           ),
         ),
         children: List.generate(
@@ -46,9 +46,9 @@ class MyPrimaryMenu extends StatelessWidget {
             (int i) => Column(
                   children: [
                     DecoratedBox(
-                      decoration:  BoxDecoration(color: context.themeConfig.background),
+                      decoration:  BoxDecoration(color: context.colors.background),
                       child: ListTile(
-                        tileColor: context.themeConfig.inputBg(isDark:context.colors.isDark),
+                        tileColor: context.colors.inputBg,
                         splashColor: Colors.transparent,
                         hoverColor: Colors.transparent,
                         leading: haveLogo
@@ -65,12 +65,12 @@ class MyPrimaryMenu extends StatelessWidget {
                             fontFamily: 'tajawal',
                             fontWeight: FontWeight.w100,
                             fontSize: 17,
-                            color: context.themeConfig.textMedium,
+                            color: context.colors.textMedium,
                           ),
                         ),
                         trailing:(initValue?['text']==options[i]['text'])?
-                        Icon( CupertinoIcons.check_mark_circled_solid,color: context.themeConfig.primary,):
-                        Icon( CupertinoIcons.circle,color: context.themeConfig.secondText.withAlpha(100),),
+                        Icon( CupertinoIcons.check_mark_circled_solid,color: context.colors.primary,):
+                        Icon( CupertinoIcons.circle,color: context.colors.secondText.withAlpha(100),),
                         onTap: () => onChange(i),
                       ),
                     ),

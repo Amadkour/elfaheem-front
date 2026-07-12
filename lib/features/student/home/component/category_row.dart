@@ -18,7 +18,7 @@ class CategoriesRow extends StatelessWidget {
             height: 112,
             child: Center(
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation(context.themeConfig.primaryDark),
+                valueColor: AlwaysStoppedAnimation(context.colors.primaryDark),
                 strokeWidth: 2.5,
               ),
             ),
@@ -33,7 +33,7 @@ class CategoriesRow extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.category_outlined,
-                      size: 36, color: context.themeConfig.primaryDark),
+                      size: 36, color: context.colors.primaryDark),
                   SizedBox(height: 8),
                   Text('لا توجد أقسام', style: context.colors.caption),
                 ],
@@ -67,19 +67,19 @@ class CategoriesRow extends StatelessWidget {
                       height: 66,
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? context.themeConfig.primaryLight
-                            : context.themeConfig.cardBg,
+                            ? context.colors.primaryLight
+                            : context.colors.cardBg,
                         shape: BoxShape.circle,
                         border: isSelected
                             ? Border.all(
-                            color: context.themeConfig.primaryDark, width: 2)
+                            color: context.colors.primaryDark, width: 2)
                             : Border.all(
                             color: Colors.transparent, width: 2),
                         boxShadow: isSelected
                             ? [
                           BoxShadow(
                             color:
-                            context.themeConfig.primaryDark.withValues(alpha:0.28),
+                            context.colors.primaryDark.withValues(alpha:0.28),
                             blurRadius: 14,
                             offset: const Offset(0, 4),
                           )
@@ -99,13 +99,13 @@ class CategoriesRow extends StatelessWidget {
                           child: Image.network(
                             cat.imageUrl,
                             color: isSelected
-                                ? context.themeConfig.primaryDark
-                                : context.themeConfig.accent2,
+                                ? context.colors.primaryDark
+                                : context.colors.accent2,
                             errorBuilder: (_, __, ___) => Icon(
                               Icons.category_rounded,
                               color: isSelected
-                                  ? context.themeConfig.primaryDark
-                                  : context.themeConfig.primaryDark,
+                                  ? context.colors.primaryDark
+                                  : context.colors.primaryDark,
                               size: 28,
                             ),
                           ),
@@ -114,8 +114,8 @@ class CategoriesRow extends StatelessWidget {
                           : Icon(
                         Icons.category_rounded,
                         color: isSelected
-                            ? context.themeConfig.primary
-                            : context.themeConfig.primaryDark,
+                            ? context.colors.primary
+                            : context.colors.primaryDark,
                         size: 28,
                       ),
                     ),
@@ -126,8 +126,8 @@ class CategoriesRow extends StatelessWidget {
                         cat.name,
                         style: context.colors.caption.copyWith(
                           color: isSelected
-                              ? context.themeConfig.primary
-                              : context.themeConfig.textDark,
+                              ? context.colors.primary
+                              : context.colors.textDark,
                           fontWeight: isSelected
                               ? FontWeight.w700
                               : FontWeight.w500,

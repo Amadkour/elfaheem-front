@@ -349,7 +349,7 @@ class _BankAccountCard extends StatelessWidget {
             onPressed: () => Navigator.pop(context, true),
             child: Text('btn_delete'.tr,
                 style: TextStyle(
-                    color: context.themeConfig.danger, fontFamily: 'bahji')),
+                    color: context.colors.danger, fontFamily: 'bahji')),
           ),
         ],
       ),
@@ -405,11 +405,11 @@ class _AddBankFormState extends State<_AddBankForm> {
         _ibanCtrl.clear();
         _swiftCtrl.clear();
         ScaffoldMessenger.of(context).showSnackBar(
-          _snack('bank_account_saved_success'.tr, context.themeConfig.success),
+          _snack('bank_account_saved_success'.tr, context.colors.success),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          _snack(p.errorMessage ?? 'error_occurred'.tr, context.themeConfig.danger),
+          _snack(p.errorMessage ?? 'error_occurred'.tr, context.colors.danger),
         );
       }
     }

@@ -115,14 +115,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
       Fluttertoast.showToast(
           msg: 'password must be identical',
           timeInSecForIosWeb: 3,
-          backgroundColor: context.themeConfig.danger);
+          backgroundColor: context.colors.danger);
       return;
     }
     if (_dobController.text.isEmpty) {
       Fluttertoast.showToast(
           msg: 'please select your birth of date',
           timeInSecForIosWeb: 3,
-          backgroundColor: context.themeConfig.danger);
+          backgroundColor: context.colors.danger);
       return;
     }
     final authProvider = context.read<AuthProvider>();
@@ -130,14 +130,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
       Fluttertoast.showToast(
           msg: 'please select your role',
           timeInSecForIosWeb: 3,
-          backgroundColor: context.themeConfig.danger);
+          backgroundColor: context.colors.danger);
       return;
     }
     if (!_termsAccepted) {
       Fluttertoast.showToast(
           msg: 'يجب قراءة والموافقة على الشروط والأحكام',
           timeInSecForIosWeb: 3,
-          backgroundColor: context.themeConfig.danger);
+          backgroundColor: context.colors.danger);
       return;
     }
     final success = await authProvider.register(
@@ -391,7 +391,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return s;
   }
 
-  Color _strengthColor(AppColors c) => switch (_strength) {
+  Color _strengthColor(ThemeConfigProvider c) => switch (_strength) {
         1 => c.danger,
         2 => c.warning,
         3 => c.success,
@@ -659,7 +659,7 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
     );
   }
 
-  Widget _buildContent(AboutTermsProvider p, AppColors c) {
+  Widget _buildContent(AboutTermsProvider p, ThemeConfigProvider c) {
     // Loading
     if (p.isLoadingTerms) {
       return const Center(child: CircularProgressIndicator());

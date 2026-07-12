@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/auth/teacher_document_model.dart';
 import 'package:flutter_education_app/features/auth/teacher_document_provider.dart';
 import 'package:image_picker/image_picker.dart';

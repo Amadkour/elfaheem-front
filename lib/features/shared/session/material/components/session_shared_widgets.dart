@@ -37,7 +37,7 @@ class RtlDialog extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: AlertDialog(
-        backgroundColor: context.themeConfig.cardBg,
+        backgroundColor: context.colors.cardBg,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(title, style: context.colors.h3),
         content: content,
@@ -47,7 +47,7 @@ class RtlDialog extends StatelessWidget {
             child: Text(
               'cancel'.tr,
               style: TextStyle(
-                  fontFamily: 'bahji', color: context.themeConfig.textMedium),
+                  fontFamily: 'bahji', color: context.colors.textMedium),
             ),
           ),
           ElevatedButton(
@@ -95,20 +95,20 @@ class SessionField extends StatelessWidget {
         labelText: label,
         labelStyle: context.colors.caption,
         filled: true,
-        fillColor: context.themeConfig.background,
+        fillColor: context.colors.background,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(
-              color: context.themeConfig.textLight.withValues(alpha: 0.2)),
+              color: context.colors.textLight.withValues(alpha: 0.2)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(
-              color: context.themeConfig.textLight.withValues(alpha: 0.2)),
+              color: context.colors.textLight.withValues(alpha: 0.2)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: context.themeConfig.primary),
+          borderSide: BorderSide(color: context.colors.primary),
         ),
       ),
     );
@@ -126,7 +126,7 @@ class SessionTypePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = isLive ? context.themeConfig.danger : context.themeConfig.primary;
+    final c = isLive ? context.colors.danger : context.colors.primary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(

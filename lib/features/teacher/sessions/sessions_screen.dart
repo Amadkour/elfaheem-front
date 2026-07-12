@@ -99,8 +99,8 @@ class _TeacherSessionsView extends StatelessWidget {
       useWebCard: true,
       child: SafeArea(
         child: RefreshIndicator(
-          color: context.themeConfig.primary,
-          backgroundColor: context.themeConfig.primary,
+          color: context.colors.primary,
+          backgroundColor: context.colors.primary,
           onRefresh: () => provider.refresh(),
           child: CustomScrollView(
             physics: const BouncingScrollPhysics(),

@@ -41,7 +41,7 @@ class CourseStatsRow extends StatelessWidget {
         icon: Icons.play_lesson_rounded,
         label: 'sessions'.tr,
         value: '$sessionCount',
-        color: context.themeConfig.primary,
+        color: context.colors.primary,
       ),
       _StatItem(
         icon: Icons.sell_rounded,
@@ -60,9 +60,9 @@ class CourseStatsRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: context.themeConfig.surfaceCard,
+        color: context.colors.cardBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.themeConfig.divider, width: 1),
+        border: Border.all(color: context.colors.divider, width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.06),
@@ -124,7 +124,7 @@ class _StatChip extends StatelessWidget {
             fontFamily: 'tajawal',
             fontSize: 14,
             fontWeight: FontWeight.w800,
-            color: context.themeConfig.textDark,
+            color: context.colors.textDark,
           ),
         ),
         const SizedBox(height: 2),
@@ -137,7 +137,7 @@ class _StatChip extends StatelessWidget {
                 item.onTap == null ? null : TextDecoration.underline,
             decorationColor: Colors.blueAccent,
             decorationThickness: 2,
-            color: context.themeConfig.textMedium,
+            color: context.colors.textMedium,
           ),
         ),
       ],

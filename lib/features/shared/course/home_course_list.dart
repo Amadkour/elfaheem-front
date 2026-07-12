@@ -45,7 +45,7 @@ class HomeCourseList extends StatelessWidget {
               if (i >= courses.length) {
                 return Center(
                   child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation(context.themeConfig.primary),
+                    valueColor: AlwaysStoppedAnimation(context.colors.primary),
                     strokeWidth: 2,
                   ),
                 );

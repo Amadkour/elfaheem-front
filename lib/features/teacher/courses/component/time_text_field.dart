@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-
-import '../../../../config/theme/app_theme.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 
 class TimeField extends StatelessWidget {
   final String label;

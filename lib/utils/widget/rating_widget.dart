@@ -282,7 +282,7 @@ class _RatingWidgetState extends State<RatingWidget>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(e.toString()),
-            backgroundColor: context.themeConfig.danger,
+            backgroundColor: context.colors.danger,
             behavior: SnackBarBehavior.floating,
           ),
         );

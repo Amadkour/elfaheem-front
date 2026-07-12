@@ -499,7 +499,7 @@ class _QuestionBreakdownTile extends StatelessWidget {
       color = Colors.grey;
       icon = Icons.remove_circle_outline_rounded;
     } else if (isCorrect == true) {
-      color = context.themeConfig.success;
+      color = context.colors.success;
       icon = Icons.check_circle_rounded;
     } else {
       color = Colors.redAccent;

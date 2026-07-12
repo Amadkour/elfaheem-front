@@ -136,7 +136,7 @@ class Helpers {
           ]),
       ),
       backgroundColor:
-      !isError ? context.themeConfig.success : context.themeConfig.danger,
+      !isError ? context.colors.success : context.colors.danger,
       behavior: SnackBarBehavior.floating,
       margin: const EdgeInsets.all(16),
       shape:
@@ -175,11 +175,11 @@ class Helpers {
               }            },
             child:  Text(cancel??'cancel'.tr,
                 style:  TextStyle(
-                    fontFamily: 'tajawal', color: context.themeConfig.textMedium)),
+                    fontFamily: 'tajawal', color: context.colors.textMedium)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: context.themeConfig.danger,
+              backgroundColor: context.colors.danger,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
             ),

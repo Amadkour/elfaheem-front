@@ -45,7 +45,7 @@ class SettingsTile extends StatelessWidget {
             Expanded(
               child: Text(label,
                   style: context.colors.label
-                      .copyWith(color: context.themeConfig.textDark, fontSize: 14)),
+                      .copyWith(color: context.colors.textDark, fontSize: 14)),
             ),
             const SizedBox(width: 12),
             // Icon container on the left
@@ -57,7 +57,7 @@ class SettingsTile extends StatelessWidget {
                Padding(
                 padding: EdgeInsets.only(left: 4),
                 child: Icon(Icons.chevron_right_rounded,
-                    color: context.themeConfig.textLight, size: 20),
+                    color: context.colors.textLight, size: 20),
               ),
           ],
         ),

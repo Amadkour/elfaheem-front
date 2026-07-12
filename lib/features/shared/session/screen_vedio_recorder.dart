@@ -512,7 +512,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                 alignment: Alignment.centerLeft,
                 child: FractionallySizedBox(
                   widthFactor: fraction,
-                  child: Container(color: context.themeConfig.primary),
+                  child: Container(color: context.colors.primary),
                 ),
               ),
             ),

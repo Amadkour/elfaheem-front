@@ -120,7 +120,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
                     fontFamily: 'tajawal',
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    color: context.themeConfig.textDark,
+                    color: context.colors.textDark,
                   ),
                 ),
               ],
@@ -135,7 +135,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
               fontFamily: 'tajawal',
               fontSize: 26,
               fontWeight: FontWeight.bold,
-              color: context.themeConfig.textDark,),
+              color: context.colors.textDark,),
           ),
           const SizedBox(height: 6),
           Text(
@@ -143,7 +143,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
             style: TextStyle(
               fontFamily: 'tajawal',
               fontSize: 14,
-              color: context.themeConfig.secondText,
+              color: context.colors.secondText,
               height: 1.6,
             ),
           ),
@@ -161,7 +161,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
           Row(
             children: [
               Icon(Icons.info_outline_rounded, size: 13,
-                color: context.themeConfig.primaryDark,
+                color: context.colors.primaryDark,
               ),
               const SizedBox(width: 6),
               Text(
@@ -169,7 +169,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
                 style: TextStyle(
                   fontFamily: 'tajawal',
                   fontSize: 12,
-                  color: context.themeConfig.primaryDark,
+                  color: context.colors.primaryDark,
                 ),
               ),
             ],
@@ -202,7 +202,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
       padding: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(context.colors.radiusXL),
-        color: context.themeConfig.cardBg,
+        color: context.colors.cardBg,
       ),
       child: form
     );

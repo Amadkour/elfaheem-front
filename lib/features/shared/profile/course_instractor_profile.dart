@@ -525,7 +525,7 @@ class InstructorAvatar extends StatelessWidget {
           ? BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: context.themeConfig.background,
+                color: context.colors.background,
                 width: 3,
               ),
               boxShadow: [
@@ -539,7 +539,7 @@ class InstructorAvatar extends StatelessWidget {
           : BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: context.themeConfig.background,
+                color: context.colors.background,
                 width: 1,
               ),
             ),

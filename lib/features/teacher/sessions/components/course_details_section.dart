@@ -28,9 +28,9 @@ class _AddButton extends StatelessWidget {
             height: 36,
             padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(
-              gradient: context.themeConfig.linearAccent,
+              gradient: context.colors.accentGradient,
               borderRadius: BorderRadius.circular(10),
-              boxShadow: context.themeConfig.primaryShadow(isDark:context.colors.isDark),
+              boxShadow: context.colors.primaryShadow,
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               const Icon(Icons.add_rounded, color: Colors.white, size: 18),
@@ -77,7 +77,7 @@ class CourseDetailsSection extends StatelessWidget {
     width: 4,
       height: 18,
       decoration: BoxDecoration(
-        gradient: context.themeConfig.linearPrimary,
+        gradient: context.colors.primaryGradient,
         borderRadius: BorderRadius.circular(2),
       ),
     ),
@@ -208,12 +208,12 @@ class CourseDetailsSection extends StatelessWidget {
   Widget build(BuildContext context) {
   return Container(
   decoration: BoxDecoration(
-  color: context.themeConfig.surfaceCard,
+  color: context.colors.cardBg,
   borderRadius: BorderRadius.circular(16),
   border: Border.all(
   color: _expanded
   ? widget.color.withValues(alpha: 0.35)
-      : context.themeConfig.divider,
+      : context.colors.divider,
   width: 1.2,
   ),
   boxShadow: [
@@ -253,7 +253,7 @@ class CourseDetailsSection extends StatelessWidget {
   fontFamily: 'tajawal',
   fontSize: 13,
   fontWeight: FontWeight.w700,
-  color: context.themeConfig.textDark,
+  color: context.colors.textDark,
   ),
   ),
   ),
@@ -283,7 +283,7 @@ class CourseDetailsSection extends StatelessWidget {
   duration: const Duration(milliseconds: 250),
   child: Icon(
   Icons.keyboard_arrow_down_rounded,
-  color: context.themeConfig.textMedium,
+  color: context.colors.textMedium,
   size: 20,
   ),
   ),
@@ -358,7 +358,7 @@ class CourseDetailsSection extends StatelessWidget {
   Icon(
   Icons.access_time_rounded,
   size: 13,
-  color: context.themeConfig.textMedium,
+  color: context.colors.textMedium,
   ),
   const SizedBox(width: 4),
   Text(
@@ -367,7 +367,7 @@ class CourseDetailsSection extends StatelessWidget {
   fontFamily: 'tajawal',
   fontSize: 12,
   fontWeight: FontWeight.w600,
-  color: context.themeConfig.textDark,
+  color: context.colors.textDark,
   ),
   ),
   ],
@@ -387,7 +387,7 @@ class CourseDetailsSection extends StatelessWidget {
   children: [
   Padding(
   padding: const EdgeInsets.only(top: 5),
-  child: Icon(Icons.circle, size: 6, color: context.themeConfig.textMedium),
+  child: Icon(Icons.circle, size: 6, color: context.colors.textMedium),
   ),
   const SizedBox(width: 10),
   Expanded(
@@ -396,7 +396,7 @@ class CourseDetailsSection extends StatelessWidget {
   style: TextStyle(
   fontFamily: 'tajawal',
   fontSize: 13,
-  color: context.themeConfig.textDark,
+  color: context.colors.textDark,
   height: 1.4,
   ),
   ),
@@ -428,7 +428,7 @@ class CourseDetailsSection extends StatelessWidget {
   fontFamily: 'tajawal',
   fontSize: 13,
   fontWeight: FontWeight.w600,
-  color: context.themeConfig.textDark,
+  color: context.colors.textDark,
   ),
   ),
   if (cert.description != null && cert.description!.isNotEmpty) ...[
@@ -438,7 +438,7 @@ class CourseDetailsSection extends StatelessWidget {
   style: TextStyle(
   fontFamily: 'tajawal',
   fontSize: 11,
-  color: context.themeConfig.textMedium,
+  color: context.colors.textMedium,
   height: 1.4,
   ),
   ),

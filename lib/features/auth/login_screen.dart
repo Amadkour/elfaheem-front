@@ -66,14 +66,14 @@ class _LoginScreenState extends State<LoginScreen> {
             Navigator.pop(context);
           },
           onCancel: () async {
-            print("0n cancle buttons----------------------->");
+            print("0n cancel buttons----------------------->");
             isTeacher = false;
             Navigator.pop(context);
           },
         );
       }
       await authProvider.savePersona(isTeacher ? 'teacher' : 'student');
-
+       authProvider.loadCachedUser();
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
@@ -101,8 +101,8 @@ class _LoginScreenState extends State<LoginScreen> {
           background: context.colors.isDark
               ? null
               : isWide
-              ? context.themeConfig.background.withValues(alpha: 0.5)
-              : context.themeConfig.background,
+              ? context.colors.background.withValues(alpha: 0.5)
+              : context.colors.background,
           child: isWide ? _buildWideLayout() : _buildNarrowLayout(),
         );
       },
@@ -127,8 +127,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(context.colors.radiusXL),
                   color: context.colors.isDark
-                      ? context.themeConfig.cardBg
-                      : context.themeConfig.background,
+                      ? context.colors.cardBg
+                      : context.colors.background,
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadiusGeometry.circular(
@@ -183,7 +183,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: 100,
                 height: 100,
                 heroTag: "logo-login",
-                color: context.themeConfig.background,
+                color: context.colors.background,
               ),
               LangDropdown(),
 
@@ -197,7 +197,7 @@ class _LoginScreenState extends State<LoginScreen> {
               fontFamily: 'tajawal',
               fontSize: 26,
               fontWeight: FontWeight.bold,
-              color: context.themeConfig.textDark,
+              color: context.colors.textDark,
             ),
           ),
           Text(
@@ -206,7 +206,7 @@ class _LoginScreenState extends State<LoginScreen> {
               fontFamily: 'tajawal',
               fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: context.themeConfig.secondText,
+              color: context.colors.secondText,
             ),
           ),
 
@@ -240,7 +240,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: TextStyle(
                   fontFamily: 'tajawal',
                   fontSize: 13,
-                  color: context.themeConfig.primaryDark,
+                  color: context.colors.primaryDark,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -285,7 +285,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ? const LinearGradient(
                             colors: [Color(0xff0F172A), Color(0xff1E293B)],
                           )
-                        : context.themeConfig.linearAccent,
+                        : context.colors.accentGradient,
                   ),
                   child: Stack(
                     children: [

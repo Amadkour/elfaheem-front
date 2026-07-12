@@ -94,7 +94,7 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
             'complaint_sent_success'.tr,
             style: const TextStyle(fontFamily: 'bahji'),
           ),
-          backgroundColor: context.themeConfig.success,
+          backgroundColor: context.colors.success,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -109,7 +109,7 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
             'error_try_again'.tr,
             style: const TextStyle(fontFamily: 'bahji'),
           ),
-          backgroundColor: context.themeConfig.danger,
+          backgroundColor: context.colors.danger,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -206,7 +206,7 @@ class _TabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.themeConfig;
+    final c = context.colors;
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       padding: const EdgeInsets.all(4),
@@ -432,7 +432,7 @@ class _SuggestedSolutionField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.themeConfig;
+    final c = context.colors;
 
     // Teal/green accent to visually separate from the red-problem description
     const Color accent = Color(0xFF059669); // emerald-600
@@ -448,7 +448,7 @@ class _SuggestedSolutionField extends StatelessWidget {
           color: isExpanded ? accent.withValues(alpha: 0.55) : c.divider,
           width: 1.5,
         ),
-        boxShadow: isExpanded ? c.cardShadow() : [],
+        boxShadow: isExpanded ? c.cardShadow : [],
       ),
       child: Column(
         children: [
@@ -675,7 +675,7 @@ class _ComplaintHistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.themeConfig;
+    final c = context.colors;
     final statusClr = _statusColor(complaint.status);
     final hasUnread = !complaint.isReadByUser;
 
@@ -685,7 +685,7 @@ class _ComplaintHistoryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.cardBg,
         borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-        boxShadow: c.cardShadow(),
+        boxShadow: c.cardShadow,
         border: hasUnread && !isExpanded
             ? Border.all(color: c.primary.withValues(alpha: 0.45), width: 1.5)
             : isExpanded
@@ -871,7 +871,7 @@ class _ExpandedBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.themeConfig;
+    final c = context.colors;
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
       child: Column(
@@ -929,7 +929,7 @@ class _SuggestedSolutionBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.themeConfig;
+    final c = context.colors;
     const Color accent = Color(0xFF059669);
     const Color tint = Color(0xFFD1FAE5);
     return Container(
@@ -1001,7 +1001,7 @@ class _AttachmentSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.themeConfig;
+    final c = context.colors;
     final canAdd = attachments.length < _max;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1074,7 +1074,7 @@ class _AttachmentThumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.themeConfig;
+    final c = context.colors;
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -1085,7 +1085,7 @@ class _AttachmentThumb extends StatelessWidget {
                   width: _size,
                   height: _size,
                   decoration: BoxDecoration(
-                    gradient: c.linearAccent2.withOpacity(1),
+                    gradient: c.accentGradient.withOpacity(1),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1172,7 +1172,7 @@ class _AddImageButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.themeConfig;
+    final c = context.colors;
     return GestureDetector(
       onTap: () => _show(context),
       child: Container(
@@ -1213,7 +1213,7 @@ class _AddImageButton extends StatelessWidget {
   }
 
   void _show(BuildContext context) {
-    final c = context.themeConfig;
+    final c = context.colors;
     showModalBottomSheet(
       context: context,
       backgroundColor: c.cardBg,
@@ -1281,7 +1281,7 @@ class _AddImageButton extends StatelessWidget {
                 leading: _iconBubble(
                   Icons.folder_open_outlined,
                   c.textLight,
-                  c.inputBg(),
+                  c.inputBg,
                 ),
                 title: Text(
                   'browse_file_pdf_or_image'.tr,
@@ -1321,7 +1321,7 @@ class _AttachmentGallery extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.themeConfig;
+    final c = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1354,7 +1354,7 @@ class _HistoryReplyBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.themeConfig;
+    final c = context.colors;
     final isAdmin = reply.isAdmin;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -1450,7 +1450,7 @@ class _ResolvedBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.themeConfig;
+    final c = context.colors;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -1480,7 +1480,7 @@ class _ResolvedBanner extends StatelessWidget {
 class _EmptyHistory extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final c = context.themeConfig;
+    final c = context.colors;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1489,9 +1489,9 @@ class _EmptyHistory extends StatelessWidget {
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              gradient: c.linearPrimary,
+              gradient: c.primaryGradient,
               shape: BoxShape.circle,
-              boxShadow: c.primaryShadow(),
+              boxShadow: c.primaryShadow,
             ),
             child: const Icon(
               Icons.inbox_outlined,
@@ -1586,7 +1586,7 @@ class _RepliesCountChip extends StatelessWidget {
   const _RepliesCountChip({required this.count, required this.c});
 
   final int count;
-  final dynamic c; // AppColors
+  final dynamic c; // ThemeConfigProvider
   @override
   Widget build(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
@@ -1608,7 +1608,7 @@ class _CategoryPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.themeConfig;
+    final c = context.colors;
     final labels = {
       ComplaintCategory.general: (
         'category_general'.tr,
@@ -1650,7 +1650,7 @@ class _CategoryPicker extends StatelessWidget {
                 color: sel ? c.primary : c.divider,
                 width: 1.5,
               ),
-              boxShadow: sel ? c.primaryShadow() : c.cardShadow(),
+              boxShadow: sel ? c.primaryShadow : c.cardShadow,
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -1685,7 +1685,7 @@ class _PriorityPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.themeConfig;
+    final c = context.colors;
     final meta = {
       ComplaintPriority.low: ('priority_low'.tr, const Color(0xFF10B981)),
       ComplaintPriority.medium: ('priority_medium'.tr, const Color(0xFFF59E0B)),

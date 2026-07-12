@@ -27,7 +27,7 @@ class SearchBarIcon extends StatelessWidget {
         child: Container(
           height: 52,
           decoration: BoxDecoration(
-            color: context.themeConfig.cardBg,
+            color: context.colors.cardBg,
             borderRadius: BorderRadius.circular(context.colors.radiusLarge),
             boxShadow: [
               BoxShadow(
@@ -43,7 +43,7 @@ class SearchBarIcon extends StatelessWidget {
                 padding: EdgeInsets.symmetric(horizontal: 16),
                 child: Icon(
                   Icons.search_rounded,
-                  color: context.themeConfig.textLight,
+                  color: context.colors.textLight,
                   size: 22,
                 ),
               ),
@@ -52,7 +52,7 @@ class SearchBarIcon extends StatelessWidget {
                   'search'.tr,
                   style: context.colors.caption.copyWith(
                     fontSize: 14,
-                    color: context.themeConfig.textLight,
+                    color: context.colors.textLight,
                   ),
                 ),
               ),

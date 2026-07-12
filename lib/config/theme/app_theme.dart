@@ -1,17 +1,21 @@
 /// ─────────────────────────────────────────────────────────────────────────────
 /// app_theme.dart
-/// Premium Theme — Brand Yellow & Dark Charcoal
+/// Premium Theme — Brand Teal & Purple Accents
 ///
-/// This file is the LAST-RESORT fallback palette only. The live palette
-/// comes from ThemeConfigProvider (fetched from the API and cached in
-/// SharedPreferences) — see theme_config_provider.dart. These constants
-/// are only ever used before the first theme load resolves, or if both
-/// the API call and the SharedPreferences cache are unavailable.
+/// This file holds only:
+///   • Raw static design tokens (colours, radii, text styles, gradients,
+///     shadows) — the last-resort fallback values.
+///   • ThemeData factories (themeData / darkThemeData) for MaterialApp.
 ///
-/// Everything in ONE place:
-///   • AppTheme  — raw static tokens + ThemeData factories
-///   • AppColors — full dynamic palette resolved per brightness
-///   • context.colors — the only import any widget needs
+/// The live palette comes from ThemeConfigProvider (fetched from the API,
+/// cached in SharedPreferences) — see theme_config_provider.dart. Every
+/// token here is only ever used as a fallback, before the first theme load
+/// resolves or if both the API call and the cache are unavailable.
+///
+/// There is no `context.colors` / ThemeConfigProvider anymore — the single theme
+/// accessor across the whole app is `context.themeConfig`, defined in
+/// theme_config_provider.dart. Nothing outside this file and that one
+/// should ever reference `AppTheme.*` directly.
 /// ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
@@ -24,25 +28,25 @@ class AppTheme {
   AppTheme._();
 
   // ── Premium Brand palette ─────────────────────────────────────────────────
-  static const Color primary         = Color(0xFFF4C542);   // Main Brand Yellow
-  static const Color primaryDark     = Color(0xFFE5B030);   // Deeper yellow for hover/press
-  static const Color primaryLight    = Color(0xFFFFF5D6);   // Soft yellow tint
-  static const Color lightPrimary    = Color(0x20F4C542);   // 12% opacity yellow
+  static const Color primary         = Color(0xFF24B1B1);   // Main Brand Teal
+  static const Color primaryDark     = Color(0xFFE5B030);   // Deeper hover/press tone
+  static const Color primaryLight    = Color(0xFF24B1B1);   // Same as primary (per palette)
+  static const Color lightPrimary    = Color(0x2024B1B1);   // 12% opacity teal
 
   static const Color charcoal        = Color(0xFF2E2E2E);   // Dark Charcoal
   static const Color charcoalLight   = Color(0xFF4A4A4A);   // Lighter charcoal
   static const Color charcoalDark    = Color(0xFF1A1A1A);   // Near Black
 
-  static const Color accent          = Color(0xFFF4C542);   // Same as primary (monochromatic accent)
-  static const Color accent2         = Color(0xFF2E2E2E);   // Charcoal accent
+  static const Color accent          = Color(0xFFD7C3F1);   // Light purple accent
+  static const Color accent2         = Color(0xFF7E5CAD);   // Deeper purple accent
   static const Color success         = Color(0xFF34C270);
   static const Color danger          = Color(0xFFFF3B5C);
-  static const Color warning         = Color(0xFFF4A742);   // Warm amber (complements yellow)
+  static const Color warning         = Color(0xFFF4A742);   // Warm amber
   static const Color secondText      = Color(0xFF8A8A8A);   // Muted gray for secondary text
   static const Color purple          = Color(0xFF8B6FFF);   // Kept for special states
 
   // ── Light surfaces (Premium Clean) ────────────────────────────────────────
-  static const Color background           = Color(0xFFF8F4EF);   // Light Gray Background
+  static const Color background           = Color(0xFFD4FEFD);   // Light teal-tinted background
   static const Color surfaceCard          = Color(0xFFFFFFFF);   // Pure White cards
   static const Color cardBg                 = Color(0xFFFFFFFF);   // Pure White
   static const Color textFieldBackground    = Color(0xFFF8F8F8);   // Slightly off-white inputs
@@ -76,7 +80,7 @@ class AppTheme {
   static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFFF4C542), Color(0xFFF8D670), Color(0xFFF4C542)],
+    colors: [Color(0xFF24B1B1), Color(0xFF71CCCC), Color(0xFF24B1B1)],
   );
   static const LinearGradient disableGradient = LinearGradient(
     colors: [Color(0x501A1A1A), Color(0x504A4A4A)],
@@ -104,7 +108,7 @@ class AppTheme {
     colors: [Color(0xFF2E2E2E), Color(0xFF4A4A4A), Color(0xFF2E2E2E)],
   );
   static const LinearGradient accentGradient = LinearGradient(
-    colors: [Color(0xFFF4C542), Color(0xFFF8D670)],
+    colors: [Color(0xFF7E5CAD), Color(0xFFD7C3F1)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -114,7 +118,7 @@ class AppTheme {
     colors: [Color(0xFF2E2E2E), Color(0xFF4A4A4A), Color(0xFF2E2E2E)],
   );
   static const LinearGradient tealGradient = LinearGradient(
-    colors: [Color(0xFF2E2E2E), Color(0xFF4A4A4A)],
+    colors: [Color(0xFF24B1B1), Color(0xFF71CCCC)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -134,7 +138,7 @@ class AppTheme {
     end: Alignment.bottomRight,
   );
   static const LinearGradient goldCharcoalGradient = LinearGradient(
-    colors: [Color(0xFFF4C542), Color(0xFF2E2E2E)],
+    colors: [Color(0xFF24B1B1), Color(0xFF2E2E2E)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -178,7 +182,7 @@ class AppTheme {
   ];
   static List<BoxShadow> primaryShadowDark = [
     BoxShadow(
-        color: const Color(0xFFF4C542).withValues(alpha: 0.15),
+        color: primary.withValues(alpha: 0.15),
         blurRadius: 20,
         offset: const Offset(0, 8))
   ];
@@ -215,7 +219,7 @@ class AppTheme {
         offset: const Offset(0, -2)),
   ];
 
-  // ── Text styles (color from light palette; AppColors overrides per mode) ──
+  // ── Text styles (color from light palette; ThemeConfigProvider overrides per mode) ──
   static const TextStyle h1 = TextStyle(
     fontSize: 28,
     fontWeight: FontWeight.w800,
@@ -404,7 +408,7 @@ class AppTheme {
     style: ElevatedButton.styleFrom(
       elevation: 0,
       backgroundColor: primary,
-      foregroundColor: charcoalDark,   // Dark text on yellow for premium contrast
+      foregroundColor: charcoalDark,   // Dark text on teal for premium contrast
       disabledBackgroundColor: const Color(0xFFE8E8E8),
       disabledForegroundColor: textLight,
       shape: RoundedRectangleBorder(
@@ -424,242 +428,4 @@ class AppTheme {
       textStyle: buttonSmall,
     ),
   );
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// AppColors
-// Every AppTheme token exposed as a dynamic getter — light or dark resolved
-// from the current theme brightness.
-//
-// Usage:
-//   final c = context.colors;
-//   Scaffold(backgroundColor: c.background)
-//   Text('title', style: c.h2)
-//   Container(gradient: c.primaryGradient, boxShadow: c.cardShadow)
-// ═════════════════════════════════════════════════════════════════════════════
-
-class AppColors {
-  final bool isDark;
-
-  const AppColors._(this.isDark);
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // SURFACES
-  // ══════════════════════════════════════════════════════════════════════════
-
-  Color get background =>
-      isDark ? AppTheme.darkBackground : AppTheme.background;
-
-  Color get surface => isDark ? AppTheme.darkSurface : AppTheme.surfaceCard;
-
-  Color get cardBg => isDark ? AppTheme.darkCard : AppTheme.cardBg;
-
-  Color get cardBg2 => isDark ? AppTheme.darkBackground : AppTheme.cardBg;
-
-  Color get inputBg =>
-      isDark ? AppTheme.darkInput : AppTheme.textFieldBackground;
-
-  Color get divider => isDark ? AppTheme.darkDivider : AppTheme.divider;
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // TEXT
-  // ══════════════════════════════════════════════════════════════════════════
-
-  Color get textDark => isDark ? AppTheme.darkTextPrimary : AppTheme.textDark;
-
-  Color get textMedium => isDark ? AppTheme.darkTextMuted : AppTheme.textMedium;
-
-  Color get textLight => isDark ? AppTheme.darkTextLight : AppTheme.textLight;
-
-  Color get textAction => AppTheme.charcoal;
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // BRAND  (same in both modes)
-  // ══════════════════════════════════════════════════════════════════════════
-
-  Color get primary => AppTheme.primary;
-
-  Color get primaryDark => AppTheme.primaryDark;
-
-  Color get primaryLight => AppTheme.primaryLight;
-
-  Color get lightPrimary => AppTheme.lightPrimary;
-
-  Color get accent => AppTheme.accent;
-
-  Color get accent2 => AppTheme.accent2;
-
-  Color get success => AppTheme.success;
-
-  Color get danger => AppTheme.danger;
-
-  Color get warning => AppTheme.warning;
-
-  Color get purple => AppTheme.purple;
-
-  Color get secondText => AppTheme.secondText;
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // PREMIUM CHARCOAL TONES
-  // ══════════════════════════════════════════════════════════════════════════
-
-  Color get charcoal => AppTheme.charcoal;
-
-  Color get charcoalLight => AppTheme.charcoalLight;
-
-  Color get charcoalDark => AppTheme.charcoalDark;
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // TINTED ICON BACKGROUNDS
-  // ══════════════════════════════════════════════════════════════════════════
-
-  Color get primaryTint =>
-      AppTheme.primary.withValues(alpha: isDark ? 0.20 : 0.12);
-
-  Color get blueTint =>
-      AppTheme.charcoal.withValues(alpha: isDark ? 0.20 : 0.12);
-
-  Color get accentTint =>
-      AppTheme.accent.withValues(alpha: isDark ? 0.20 : 0.12);
-
-  Color get successTint =>
-      AppTheme.success.withValues(alpha: isDark ? 0.20 : 0.12);
-
-  Color get dangerTint =>
-      AppTheme.danger.withValues(alpha: isDark ? 0.14 : 0.06);
-
-  Color get purpleTint =>
-      AppTheme.purple.withValues(alpha: isDark ? 0.20 : 0.12);
-
-  Color get tealTint =>
-      AppTheme.accent2.withValues(alpha: isDark ? 0.20 : 0.12);
-
-  Color get darkIconBg => isDark
-      ? Colors.white.withValues(alpha: 0.08)
-      : AppTheme.textDark.withValues(alpha: 0.08);
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // RADII
-  // ══════════════════════════════════════════════════════════════════════════
-
-  double get radiusSmall => AppTheme.radiusSmall;
-
-  double get radiusMedium => AppTheme.radiusMedium;
-
-  double get radiusLarge => AppTheme.radiusLarge;
-
-  double get radiusXL => AppTheme.radiusXL;
-
-  BorderRadius get brSmall => BorderRadius.circular(AppTheme.radiusSmall);
-
-  BorderRadius get brMedium => BorderRadius.circular(AppTheme.radiusMedium);
-
-  BorderRadius get brLarge => BorderRadius.circular(AppTheme.radiusLarge);
-
-  BorderRadius get brXL => BorderRadius.circular(AppTheme.radiusXL);
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // GRADIENTS
-  // ══════════════════════════════════════════════════════════════════════════
-  LinearGradient get primaryGradientOnColor => AppTheme.primaryGradient;
-
-  LinearGradient get primaryGradient =>
-      isDark ? AppTheme.darkSlideBarGradient : AppTheme.primaryGradient;
-
-  LinearGradient get primarySliderGradient =>
-      isDark ? AppTheme.darkSlideBarGradient : AppTheme.sliderGradient;
-
-  LinearGradient get disableGradient => AppTheme.disableGradient;
-
-  LinearGradient get accentGradient => AppTheme.accentGradient;
-  LinearGradient get sliderGradient => AppTheme.sliderGradient;
-
-  LinearGradient get tealGradient => AppTheme.tealGradient;
-
-  LinearGradient get successGradient => AppTheme.successGradient;
-
-  LinearGradient get dangerGradient => AppTheme.dangerGradient;
-
-  LinearGradient get purpleGradient => AppTheme.purpleGradient;
-
-  LinearGradient get goldCharcoalGradient => AppTheme.goldCharcoalGradient;
-
-  /// Background gradient adapts to mode
-  LinearGradient get backgroundGradient =>
-      isDark ? AppTheme.darkBackgroundGradient : AppTheme.backgroundGradient;
-
-  /// Background gradient adapts to mode
-  LinearGradient get slideBarGradient =>
-      isDark ? AppTheme.darkSlideBarGradient : AppTheme.lightSlideBarGradient;
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // SHADOWS
-  // ══════════════════════════════════════════════════════════════════════════
-
-  List<BoxShadow> get cardShadow =>
-      isDark ? AppTheme.cardShadowDark : AppTheme.cardShadow;
-
-  List<BoxShadow> get primaryShadow =>
-      isDark ? AppTheme.primaryShadowDark : AppTheme.primaryShadow;
-
-  List<BoxShadow> get dangerShadow =>
-      isDark ? AppTheme.dangerShadowDark : AppTheme.dangerShadow;
-
-  List<BoxShadow> get disableShadow => AppTheme.disableShadow;
-
-  List<BoxShadow> get bottomNavShadow =>
-      isDark ? AppTheme.bottomNavShadowDark : AppTheme.bottomNavShadow;
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // TEXT STYLES  (color auto-resolved for current mode)
-  // ══════════════════════════════════════════════════════════════════════════
-
-  TextStyle get h1 => AppTheme.h1.copyWith(color: textDark);
-
-  TextStyle get h2 => AppTheme.h2.copyWith(color: textDark);
-
-  TextStyle get h3 => AppTheme.h3.copyWith(color: textDark);
-
-  TextStyle get h4 => AppTheme.h4.copyWith(color: textDark);
-
-  TextStyle get body => AppTheme.body.copyWith(color: textMedium);
-
-  TextStyle get bodyBold => AppTheme.bodyBold.copyWith(color: textDark);
-
-  TextStyle get caption => AppTheme.caption.copyWith(color: textLight);
-
-  TextStyle get label => AppTheme.label.copyWith(color: textMedium);
-
-  /// Button text — charcoal on yellow (premium contrast)
-  TextStyle get button => AppTheme.button.copyWith(color: charcoalDark);
-
-  TextStyle get buttonSm => AppTheme.buttonSmall.copyWith(color: charcoalDark);
-
-  TextStyle get navLabelSelected =>
-      AppTheme.navLabelSelected.copyWith(color: primary);
-
-  TextStyle get navLabelUnselected =>
-      AppTheme.navLabelUnselected.copyWith(color: textLight);
-
-  // ── Helpers for one-off overrides ─────────────────────────────────────────
-  /// Body text in any colour — e.g. c.bodyColored(c.primary)
-  TextStyle bodyColored(Color color) => AppTheme.body.copyWith(color: color);
-
-  /// h3 in any colour
-  TextStyle h3Colored(Color color) => AppTheme.h3.copyWith(color: color);
-
-  /// label at a custom font size
-  TextStyle labelSized(double size) =>
-      AppTheme.label.copyWith(fontSize: size, color: textMedium);
-}
-
-// ════════════════════════════════════════════════════════════════════════
-// context.colors — attach AppColors to every BuildContext
-// ═════════════════════════════════════════════════════════════════════════════
-
-extension AppColorsX on BuildContext {
-  AppColors get colors {
-    final brightness = Theme.of(this).brightness;
-    return AppColors._(brightness == Brightness.dark);
-  }
 }

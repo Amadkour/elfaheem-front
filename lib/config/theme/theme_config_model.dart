@@ -109,7 +109,6 @@ class ThemeConfigModel {
     required this.purple,
     required this.secondText,
     required this.background,
-    required this.surfaceCard,
     required this.cardBg,
     required this.textFieldBackground,
     required this.divider,
@@ -148,7 +147,7 @@ class ThemeConfigModel {
     required this.gradientTeal,
     required this.platform,
     required this.isActive,
-    this.updatedAt,
+    this.updatedAt, required this.surfaceCard,
   });
 
   // ── Parsing helpers ───────────────────────────────────────────────────────
@@ -163,6 +162,12 @@ class ThemeConfigModel {
 
   static List<Color> _cl(dynamic list) =>
       (list as List).map((e) => _c(e as String)).toList();
+
+  /// Serialises a Color back to "#AARRGGBB" — the inverse of [_c].
+  static String _hex(Color c) =>
+      '#${c.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}';
+
+  static List<String> _hexList(List<Color> colors) => colors.map(_hex).toList();
 
   // ── Factory ───────────────────────────────────────────────────────────────
 
@@ -250,107 +255,62 @@ class ThemeConfigModel {
   // ── Serialise (for SharedPreferences cache) ───────────────────────────────
 
   Map<String, dynamic> toJson() => {
-    'primary':
-        '#${primary.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'primary_dark':
-        '#${primaryDark.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'primary_light':
-        '#${primaryLight.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'light_primary':
-        '#${lightPrimary.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'accent':
-        '#${accent.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'primary_tint':
-        '#${primaryTint.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'primary_tint_dark':
-        '#${primaryTintDark.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'charcoal':
-        '#${charcoal.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'charcoal_light':
-        '#${charcoalLight.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'charcoal_dark':
-        '#${charcoalDark.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'accent2':
-        '#${accent2.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'success':
-        '#${success.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'danger':
-        '#${danger.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'warning':
-        '#${warning.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'purple':
-        '#${purple.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'second_text':
-        '#${secondText.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'background':
-        '#${background.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'surface_card':
-        '#${surfaceCard.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'card_bg':
-        '#${cardBg.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'text_field_background':
-        '#${textFieldBackground.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'divider':
-        '#${divider.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'text_dark':
-        '#${textDark.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'text_medium':
-        '#${textMedium.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'text_light':
-        '#${textLight.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'text_action':
-        '#${textAction.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'dark_background':
-        '#${darkBackground.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'dark_surface':
-        '#${darkSurface.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'dark_card':
-        '#${darkCard.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'dark_input':
-        '#${darkInput.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'dark_divider':
-        '#${darkDivider.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'dark_text_primary':
-        '#${darkTextPrimary.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'dark_text_muted':
-        '#${darkTextMuted.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'dark_text_light':
-        '#${darkTextLight.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'input_bg':
-        '#${inputBg.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'input_bg_dark':
-        '#${inputBgDark.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'primary_shadow_color':
-        '#${primaryShadowColor.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'primary_shadow_color_dark':
-        '#${primaryShadowColorDark.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'card_shadow_color':
-        '#${cardShadowColor.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'card_shadow_color_dark':
-        '#${cardShadowColorDark.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-    'gradient_primary': _serializeGradient(gradientPrimary),
-    'gradient_accent': _serializeGradient(gradientAccent),
-    'gradient_slider': _serializeGradient(gradientSlider),
-    'primary_slider_gradient': _serializeGradient(primarySliderGradient),
-    'gradient_light_slide_bar': _serializeGradient(gradientLightSlideBar),
-    'gradient_dark_slide_bar': _serializeGradient(gradientDarkSlideBar),
-    'gradient_background': _serializeGradient(gradientBackground),
-    'gradient_dark_background': _serializeGradient(gradientDarkBackground),
-    'gradient_disable': _serializeGradient(gradientDisable),
-    'gradient_gold_charcoal': _serializeGradient(gradientGoldCharcoal),
-    'gradient_success': _serializeGradient(gradientSuccess),
-    'gradient_danger': _serializeGradient(gradientDanger),
-    'gradient_purple': _serializeGradient(gradientPurple),
-    'gradient_teal': _serializeGradient(gradientTeal),
+    'primary': _hex(primary),
+    'primary_dark': _hex(primaryDark),
+    'primary_light': _hex(primaryLight),
+    'light_primary': _hex(lightPrimary),
+    'accent': _hex(accent),
+    'primary_tint': _hex(primaryTint),
+    'primary_tint_dark': _hex(primaryTintDark),
+    'charcoal': _hex(charcoal),
+    'charcoal_light': _hex(charcoalLight),
+    'charcoal_dark': _hex(charcoalDark),
+    'accent2': _hex(accent2),
+    'success': _hex(success),
+    'danger': _hex(danger),
+    'warning': _hex(warning),
+    'purple': _hex(purple),
+    'second_text': _hex(secondText),
+    'background': _hex(background),
+    'surface_card': _hex(surfaceCard),
+    'card_bg': _hex(cardBg),
+    'text_field_background': _hex(textFieldBackground),
+    'divider': _hex(divider),
+    'text_dark': _hex(textDark),
+    'text_medium': _hex(textMedium),
+    'text_light': _hex(textLight),
+    'text_action': _hex(textAction),
+    'dark_background': _hex(darkBackground),
+    'dark_surface': _hex(darkSurface),
+    'dark_card': _hex(darkCard),
+    'dark_input': _hex(darkInput),
+    'dark_divider': _hex(darkDivider),
+    'dark_text_primary': _hex(darkTextPrimary),
+    'dark_text_muted': _hex(darkTextMuted),
+    'dark_text_light': _hex(darkTextLight),
+    'input_bg': _hex(inputBg),
+    'input_bg_dark': _hex(inputBgDark),
+    'primary_shadow_color': _hex(primaryShadowColor),
+    'primary_shadow_color_dark': _hex(primaryShadowColorDark),
+    'card_shadow_color': _hex(cardShadowColor),
+    'card_shadow_color_dark': _hex(cardShadowColorDark),
+    'gradient_primary': _hexList(gradientPrimary),
+    'gradient_accent': _hexList(gradientAccent),
+    'gradient_accent2': _hexList(gradientAccent2),
+    'gradient_slider': _hexList(gradientSlider),
+    'primary_slider_gradient': _hexList(primarySliderGradient),
+    'gradient_light_slide_bar': _hexList(gradientLightSlideBar),
+    'gradient_dark_slide_bar': _hexList(gradientDarkSlideBar),
+    'gradient_background': _hexList(gradientBackground),
+    'gradient_dark_background': _hexList(gradientDarkBackground),
+    'gradient_disable': _hexList(gradientDisable),
+    'gradient_gold_charcoal': _hexList(gradientGoldCharcoal),
+    'gradient_success': _hexList(gradientSuccess),
+    'gradient_danger': _hexList(gradientDanger),
+    'gradient_purple': _hexList(gradientPurple),
+    'gradient_teal': _hexList(gradientTeal),
     'platform': platform,
     'is_active': isActive,
     'updated_at': updatedAt,
   };
-
-  static List<String> _serializeGradient(List<Color> colors) => colors
-      .map(
-        (c) =>
-            '#${c.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}',
-      )
-      .toList();
 }

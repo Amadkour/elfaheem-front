@@ -19,7 +19,7 @@ class StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = iconColor ?? context.themeConfig.primary;
+    final fg = iconColor ?? context.colors.primary;
     final bg = iconBg ?? fg.withValues(alpha:0.12);
 
     return Expanded(
@@ -29,7 +29,7 @@ class StatChip extends StatelessWidget {
         margin: EdgeInsets.all(3),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
         decoration: BoxDecoration(
-          color: context.themeConfig.cardBg,
+          color: context.colors.cardBg,
           //borderRadius: BorderRadius.circular(16),
             shape: BoxShape.circle,
           border: Border.all(color: fg.withValues(alpha:0.12)),
@@ -58,7 +58,7 @@ class StatChip extends StatelessWidget {
               style: context.colors.caption.copyWith(
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
-                color: context.themeConfig.textDark,
+                color: context.colors.textDark,
                 height: 1.35,
               ),
               textAlign: TextAlign.center,
@@ -94,10 +94,10 @@ class MiniStatChip extends StatelessWidget {
         width: 18,
         height: 18,
         decoration: BoxDecoration(
-          color: (color??context.themeConfig.textLight).withValues(alpha:0.12),
+          color: (color??context.colors.textLight).withValues(alpha:0.12),
           borderRadius: BorderRadius.circular(5),
         ),
-        child: Icon(icon, size: 11, color: color??context.themeConfig.textLight),
+        child: Icon(icon, size: 11, color: color??context.colors.textLight),
       ),
       const SizedBox(width: 4),
       Text(label, style: context.colors.caption.copyWith(fontSize: 11)),

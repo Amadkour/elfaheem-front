@@ -41,7 +41,7 @@ class BasePage extends StatelessWidget {
            mainAxisAlignment: MainAxisAlignment.center,
            children: [
              Text('🚀',style: TextStyle(fontSize: 70),),
-             Text('coming_soon'.tr , style: context.colors.h2.copyWith(color: context.themeConfig.accent2),),
+             Text('coming_soon'.tr , style: context.colors.h2.copyWith(color: context.colors.accent2),),
            ],
          )
         ),
@@ -52,7 +52,7 @@ class BasePage extends StatelessWidget {
       child: Scaffold(
         appBar: appBar,
         backgroundColor:
-        background ??(context.showSidebar?context.themeConfig.background.withValues(alpha: 0.3):context.themeConfig.background),
+        background ??(context.showSidebar?context.colors.background.withValues(alpha: 0.3):context.colors.background),
         floatingActionButton: floatingActionButton,
         bottomNavigationBar: bottomNavigationBar,
         body: DecoratedBox(
@@ -67,14 +67,14 @@ class BasePage extends StatelessWidget {
     if (useWebCard && context.width > 599) {
       return Scaffold(
         backgroundColor:
-            background ??(context.showSidebar?context.themeConfig.background.withValues(alpha: 0.3):context.themeConfig.background),
+            background ??(context.showSidebar?context.colors.background.withValues(alpha: 0.3):context.colors.background),
 
         body: Stack(
           children: [
             Positioned.fill(
               child: CustomPaint(
                 painter: ElearningPatternPainter(
-                  color: context.themeConfig.background,
+                  color: context.colors.background,
                   width: Helpers.calculateRemainingWidth(context),
                 ),
               ),
@@ -90,11 +90,11 @@ class BasePage extends StatelessWidget {
                 padding: const EdgeInsets.all(0.0),
                 decoration: BoxDecoration(
                   // border: BoxBorder.all(
-                  //   color: context.themeConfig.primary,
+                  //   color: context.colors.primary,
                   //   width: 1,
                   // ),
                   borderRadius: BorderRadius.circular(context.colors.radiusXL),
-                  color: context.themeConfig.background,
+                  color: context.colors.background,
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadiusGeometry.circular(

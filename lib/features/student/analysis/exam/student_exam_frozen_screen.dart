@@ -68,7 +68,7 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: context.themeConfig.background,
+        backgroundColor: context.colors.background,
         appBar: AppBar(
           backgroundColor: _accent,
           foregroundColor: Colors.white,
@@ -182,7 +182,7 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
                   icon: Icons.help_outline_rounded,
                   label: 'عدد الأسئلة',
                   value: '${e.questionCount}',
-                  color: context.themeConfig.primary,
+                  color: context.colors.primary,
                 ),
               if (e.passingScore != null)
                 _InfoRow(

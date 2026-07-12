@@ -19,7 +19,7 @@ class MyDatePicker extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       shadowColor:  Color.fromRGBO(0, 0, 0, 0.25),
-      color: context.themeConfig.inputBg(isDark:context.colors.isDark),
+      color: context.colors.inputBg,
       borderRadius: BorderRadius.circular(10),
       elevation: 4,
       clipBehavior: Clip.antiAliasWithSaveLayer,
@@ -30,17 +30,17 @@ class MyDatePicker extends StatelessWidget {
             fontFamily: 'tajawal',
             fontWeight: FontWeight.w500,
             fontSize: 15,
-            color: context.themeConfig.textDark),
+            color: context.colors.textDark),
         decoration: InputDecoration(
             hintTextDirection: TextDirection.rtl,
             floatingLabelBehavior: FloatingLabelBehavior.never,
-            fillColor: context.themeConfig.inputBg(isDark:context.colors.isDark),
+            fillColor: context.colors.inputBg,
             hint: Text(
               label,
               style:  TextStyle(
                   fontFamily: 'tajawal',
                   fontWeight: FontWeight.w600,
-                  color: context.themeConfig.textMedium),
+                  color: context.colors.textMedium),
               textDirection: TextDirection.rtl,
             ),
             border: const OutlineInputBorder(borderSide: BorderSide.none),
@@ -66,19 +66,19 @@ class MyDatePicker extends StatelessWidget {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            primaryColorDark: context.themeConfig.inputBg(isDark:context.colors.isDark),
+            primaryColorDark: context.colors.inputBg,
             colorScheme: isDark
                 ? ColorScheme.dark(
-              primary: context.themeConfig.accent,       // Selected day circle
-              onPrimary: context.themeConfig.background, // Selected day text
-              surface: context.themeConfig.cardBg,       // Picker background
-              onSurface: context.themeConfig.textDark, // Day & header text
+              primary: context.colors.accent,       // Selected day circle
+              onPrimary: context.colors.background, // Selected day text
+              surface: context.colors.cardBg,       // Picker background
+              onSurface: context.colors.textDark, // Day & header text
             )
                 : ColorScheme.light(
-              primary: context.themeConfig.accent,       // Selected day circle
-              onPrimary: context.themeConfig.background, // Selected day text
-              surface: context.themeConfig.cardBg,       // Picker background
-              onSurface: context.themeConfig.textDark, // Day & header text
+              primary: context.colors.accent,       // Selected day circle
+              onPrimary: context.colors.background, // Selected day text
+              surface: context.colors.cardBg,       // Picker background
+              onSurface: context.colors.textDark, // Day & header text
             ),
             textTheme: TextTheme.of(context).copyWith(
               displaySmall: const TextStyle(fontFamily: 'tajawal'),

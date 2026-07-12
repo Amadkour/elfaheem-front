@@ -36,15 +36,15 @@ class ChangeLanguageScreen extends StatelessWidget {
                         duration: const Duration(milliseconds: 200),
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: context.themeConfig.cardBg,
+                          color: context.colors.cardBg,
                           borderRadius: BorderRadius.circular(
                               context.colors.radiusMedium),
                           border: Border.all(
                               color: isSelected
-                                  ? context.themeConfig.primaryDark
-                                  : context.themeConfig.divider,
+                                  ? context.colors.primaryDark
+                                  : context.colors.divider,
                               width: isSelected ? 2 : 1),
-                          boxShadow: context.themeConfig.cardShadow(isDark:context.colors.isDark),
+                          boxShadow: context.colors.cardShadow,
                         ),
                         child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -52,13 +52,13 @@ class ChangeLanguageScreen extends StatelessWidget {
                               Text(l.tr,
                                   style: context.colors.label.copyWith(
                                       color: isSelected
-                                          ? context.themeConfig.primaryDark
-                                          : context.themeConfig.textDark,
+                                          ? context.colors.primaryDark
+                                          : context.colors.textDark,
                                       fontWeight: FontWeight.w700,
                                       fontSize: 15)),
                               if (isSelected)
                                 Icon(Icons.check_circle_rounded,
-                                    color: context.themeConfig.primaryDark,
+                                    color: context.colors.primaryDark,
                                     size: 22),
                             ]),
                       ),

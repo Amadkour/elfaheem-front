@@ -57,7 +57,7 @@ class _CourseAnalyticsViewState extends State<_CourseAnalyticsView>
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: context.themeConfig.background,
+        backgroundColor: context.colors.background,
         body: NestedScrollView(
           headerSliverBuilder: (ctx, _) => [_buildAppBar(ctx, prov)],
           body: TabBarView(
@@ -78,7 +78,7 @@ class _CourseAnalyticsViewState extends State<_CourseAnalyticsView>
       SliverAppBar(
         expandedHeight: 210,
         pinned: true,
-        backgroundColor: context.themeConfig.primary,
+        backgroundColor: context.colors.primary,
         leading: IconButton(
           icon: const Icon(Icons.arrow_forward_ios,
               color: Colors.white, size: 20),
@@ -96,7 +96,7 @@ class _CourseAnalyticsViewState extends State<_CourseAnalyticsView>
               gradient: LinearGradient(
                 begin: Alignment.topRight,
                 end: Alignment.bottomLeft,
-                colors: [Color(0xFF1565C0), context.themeConfig.primary],
+                colors: [Color(0xFF1565C0), context.colors.primary],
               ),
             ),
             child: SafeArea(
@@ -262,7 +262,7 @@ class _AttendanceSummaryCard extends StatelessWidget {
                   style: TextStyle(
                       fontFamily: 'bahji', fontSize: 13, color: Colors.grey)),
               const SizedBox(height: 6),
-              _BarRow('حضر', present, total, context.themeConfig.success),
+              _BarRow('حضر', present, total, context.colors.success),
               const SizedBox(height: 6),
               _BarRow('غاب', total - present, total, Colors.redAccent),
             ]),
@@ -320,7 +320,7 @@ class _AttendanceTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: record.attendance.first.isPresent
-              ? context.themeConfig.success.withValues(alpha: 0.3)
+              ? context.colors.success.withValues(alpha: 0.3)
               : Colors.redAccent.withValues(alpha: 0.25),
         ),
         boxShadow: [
@@ -338,7 +338,7 @@ class _AttendanceTile extends StatelessWidget {
           height: 42,
           decoration: BoxDecoration(
             color: record.attendance.first.isPresent
-                ? context.themeConfig.success.withValues(alpha: 0.1)
+                ? context.colors.success.withValues(alpha: 0.1)
                 : Colors.redAccent.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
@@ -346,7 +346,7 @@ class _AttendanceTile extends StatelessWidget {
             record.attendance.first.isPresent
                 ? Icons.check_circle_rounded
                 : Icons.cancel_rounded,
-            color: record.attendance.first.isPresent ? context.themeConfig.success : Colors.redAccent,
+            color: record.attendance.first.isPresent ? context.colors.success : Colors.redAccent,
             size: 24,
           ),
         ),
@@ -371,7 +371,7 @@ class _AttendanceTile extends StatelessWidget {
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: record.attendance.first.isPresent
-                          ? context.themeConfig.success
+                          ? context.colors.success
                           : Colors.redAccent)),
               if (record.attendance.first.duration != null)
                 Text('${record.attendance.first.duration} دقيقة',
@@ -620,7 +620,7 @@ class _ErrorRetry extends StatelessWidget {
               label: const Text('إعادة المحاولة',
                   style: TextStyle(fontFamily: 'bahji')),
               style: ElevatedButton.styleFrom(
-                backgroundColor: context.themeConfig.primary,
+                backgroundColor: context.colors.primary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),

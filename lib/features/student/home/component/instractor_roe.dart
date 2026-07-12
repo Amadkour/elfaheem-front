@@ -69,7 +69,7 @@ class InstructorsRow extends StatelessWidget {
                   Text(ins.teacher!.teacherProfile!.specialization!.name,
                     style: context.colors.caption.copyWith(
                       fontSize: 10,
-                      color: context.themeConfig.textLight,
+                      color: context.colors.textLight,
                     ),
                     textAlign: TextAlign.center,
                     maxLines: 1,

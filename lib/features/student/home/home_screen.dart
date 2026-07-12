@@ -343,10 +343,10 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
         final isOngoing = next?.isOngoing ?? false;
 
         final gradient = isOngoing
-            ? context.themeConfig.linearDanger
+            ? context.colors.dangerGradient
             : next != null
-            ? context.themeConfig.linearPrimary
-            : context.themeConfig.linearSuccess;
+            ? context.colors.primaryGradient
+            : context.colors.successGradient;
 
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -359,8 +359,8 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
               boxShadow: [
                 BoxShadow(
                   color: (isOngoing
-                      ? context.themeConfig.danger
-                      : context.themeConfig.primary)
+                      ? context.colors.danger
+                      : context.colors.primary)
                       .withValues(alpha: 0.38),
                   blurRadius: 24,
                   offset: const Offset(0, 8),

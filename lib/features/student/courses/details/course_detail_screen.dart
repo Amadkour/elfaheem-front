@@ -56,7 +56,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                 width: context.width / 5,
                 height: context.width / 5,
                 child: CircularProgressIndicator(
-                  color: context.themeConfig.primary,
+                  color: context.colors.primary,
                   strokeWidth: context.width / 80,
                 ),
               ),
@@ -86,7 +86,7 @@ class _MobileDetail extends StatelessWidget {
           children: [
             Expanded(
               child: RefreshIndicator(
-                color: context.themeConfig.primary,
+                color: context.colors.primary,
                 onRefresh: () => provider.refresh(),
                 child: CustomScrollView(
                   physics: const BouncingScrollPhysics(),
@@ -137,7 +137,7 @@ class _WebDetail extends StatelessWidget {
                   maxWidth: Breakpoints.contentMax,
                 ),
                 child: RefreshIndicator(
-                  color: context.themeConfig.primary,
+                  color: context.colors.primary,
                   onRefresh: () =>
                       context.read<CourseDetailProvider>().refresh(),
                   child: CustomScrollView(
@@ -160,7 +160,7 @@ class _WebDetail extends StatelessWidget {
                                       Text(
                                         provider.course.name,
                                         style: TextStyle(
-                                          color: context.themeConfig.primary,
+                                          color: context.colors.primary,
                                           fontSize: 20,
                                           fontWeight: FontWeight.w600,
                                           fontFamily: 'bahji',
@@ -176,7 +176,7 @@ class _WebDetail extends StatelessWidget {
                                         margin: EdgeInsets.all(10),
                                         decoration: BoxDecoration(
                                           gradient:
-                                              context.themeConfig.linearAccent2,
+                                              context.colors.accentGradient,
                                           borderRadius: BorderRadius.circular(
                                             10,
                                           ),
@@ -298,7 +298,7 @@ class _WebSidebar extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: context.themeConfig.cardBg,
+              color: context.colors.cardBg,
               borderRadius: BorderRadius.circular(18),
               boxShadow: [
                 BoxShadow(
@@ -320,7 +320,7 @@ class _WebSidebar extends StatelessWidget {
                     fontWeight: FontWeight.w900,
                     color: c.price == 0
                         ? const Color(0xFF0F6E56)
-                        : context.themeConfig.primary,
+                        : context.colors.primary,
                     fontFamily: 'bahji',
                   ),
                 ),
@@ -349,7 +349,7 @@ class _WebCourseFacts extends StatelessWidget {
         _Fact(
           icon: Icons.people_alt_rounded,
           label: '${course.studentsCount} طالب مسجّل',
-          color: context.themeConfig.primary,
+          color: context.colors.primary,
         ),
         _Fact(
           icon: Icons.video_library_rounded,
@@ -365,19 +365,19 @@ class _WebCourseFacts extends StatelessWidget {
           _Fact(
             icon: Icons.workspace_premium_rounded,
             label: 'شهادة إتمام معتمدة',
-            color: context.themeConfig.accent,
+            color: context.colors.accent,
           ),
         if (course.type == 'live')
           _Fact(
             icon: Icons.sensors_rounded,
             label: 'بث مباشر',
-            color: context.themeConfig.danger,
+            color: context.colors.danger,
           )
         else
           _Fact(
             icon: Icons.play_circle_outline_rounded,
             label: 'كورس مسجّل',
-            color: context.themeConfig.primary,
+            color: context.colors.primary,
           ),
       ],
     );
@@ -493,7 +493,7 @@ class _HeroBadge extends StatelessWidget {
   Widget build(BuildContext context) => Text(
     label,
     style: TextStyle(
-      color: context.themeConfig.textLight,
+      color: context.colors.textLight,
       fontSize: 11,
       fontWeight: FontWeight.w700,
       fontFamily: 'bahji',
@@ -507,7 +507,7 @@ class _FavButton extends StatelessWidget {
     final isFav = context.watch<CourseDetailProvider>().course.isFavorite;
     return _CircleIconBtn(
       icon: isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-      iconColor: isFav ? context.themeConfig.danger : null,
+      iconColor: isFav ? context.colors.danger : null,
       onTap: () => context.read<CourseDetailProvider>().toggleFavorite(),
     );
   }
@@ -544,7 +544,7 @@ class _CircleIconBtn extends StatelessWidget {
       child: Icon(
         icon,
         size: 20,
-        color: iconColor ?? context.themeConfig.textDark,
+        color: iconColor ?? context.colors.textDark,
       ),
     ),
   );
@@ -572,7 +572,7 @@ class _CourseMeta extends StatelessWidget {
                 StatChip(
                   icon: Icons.people_alt_rounded,
                   label: '${c.studentsCount} ${'student'.tr}',
-                  iconColor: context.themeConfig.primary,
+                  iconColor: context.colors.primary,
                   maxHeight: context.height / 10,
                 ),
                 StatChip(
@@ -593,7 +593,7 @@ class _CourseMeta extends StatelessWidget {
                   StatChip(
                     icon: Icons.workspace_premium_rounded,
                     label: 'شهادة إتمام',
-                    iconColor: context.themeConfig.accent,
+                    iconColor: context.colors.accent,
                     iconBg: Color(0xFFFAEEDA),
                     maxHeight: context.height / 10,
                   )
@@ -604,8 +604,8 @@ class _CourseMeta extends StatelessWidget {
                         : Icons.play_circle_outline_rounded,
                     label: c.type == 'live' ? 'مباشر' : 'مسجّل',
                     iconColor: c.type == 'live'
-                        ? context.themeConfig.danger
-                        : context.themeConfig.primary,
+                        ? context.colors.danger
+                        : context.colors.primary,
                     maxHeight: context.height / 10,
                   ),
               ],
@@ -636,7 +636,7 @@ class _TabBarWidget extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: context.themeConfig.cardBg,
+          color: context.colors.cardBg,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
@@ -663,8 +663,8 @@ class _TabBarWidget extends StatelessWidget {
                     border: Border(
                       bottom: BorderSide(
                         color: isActive
-                            ? context.themeConfig.primary
-                            : context.themeConfig.textLight,
+                            ? context.colors.primary
+                            : context.colors.textLight,
                       ),
                     ),
                   ),
@@ -675,16 +675,16 @@ class _TabBarWidget extends StatelessWidget {
                         icon,
                         size: 14,
                         color: isActive
-                            ? context.themeConfig.primary
-                            : context.themeConfig.textLight,
+                            ? context.colors.primary
+                            : context.colors.textLight,
                       ),
                       const SizedBox(width: 5),
                       Text(
                         label,
                         style: context.colors.label.copyWith(
                           color: isActive
-                              ? context.themeConfig.primary
-                              : context.themeConfig.textLight,
+                              ? context.colors.primary
+                              : context.colors.textLight,
                           fontWeight: isActive
                               ? FontWeight.w700
                               : FontWeight.w500,
@@ -717,23 +717,23 @@ class _EnrollButton extends StatelessWidget {
         child: Container(
           height: 52,
           decoration: BoxDecoration(
-            color: context.themeConfig.accent2.withValues(alpha: 0.1),
+            color: context.colors.accent2.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(32),
-            border: Border.all(color: context.themeConfig.accent2),
+            border: Border.all(color: context.colors.accent2),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 Icons.check_circle_rounded,
-                color: context.themeConfig.accent2,
+                color: context.colors.accent2,
                 size: 20,
               ),
               SizedBox(width: 8),
               Text(
                 'تم الاشتراك بنجاح',
                 style: TextStyle(
-                  color: context.themeConfig.accent2,
+                  color: context.colors.accent2,
                   fontWeight: FontWeight.w800,
                   fontSize: 15,
                   fontFamily: 'bahji',
@@ -765,11 +765,11 @@ class _EnrollButton extends StatelessWidget {
         child: Container(
           height: 52,
           decoration: BoxDecoration(
-            gradient: context.themeConfig.linearPrimary,
+            gradient: context.colors.primaryGradient,
             borderRadius: BorderRadius.circular(32),
             boxShadow: [
               BoxShadow(
-                color: context.themeConfig.primary.withValues(alpha: 0.42),
+                color: context.colors.primary.withValues(alpha: 0.42),
                 blurRadius: 22,
                 offset: const Offset(0, 7),
               ),

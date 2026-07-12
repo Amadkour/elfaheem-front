@@ -70,7 +70,7 @@ class CourseHero extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: context.themeConfig.primary.withValues(alpha: 0.85),
+                    color: context.colors.primary.withValues(alpha: 0.85),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -122,7 +122,7 @@ class CourseHero extends StatelessWidget {
     if (imageUrl.isNotEmpty) {
       return Container(
         decoration:  BoxDecoration(
-          gradient: context.themeConfig.linearPrimary,
+          gradient: context.colors.primaryGradient,
         ),
         child: DecoratedBox(
           decoration: BoxDecoration(
@@ -155,7 +155,7 @@ class _GradientBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         decoration:  BoxDecoration(
-          gradient: context.themeConfig.linearAccent,
+          gradient: context.colors.accentGradient,
         ),
         child: Center(
           child: Icon(

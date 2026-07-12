@@ -3,7 +3,6 @@ import 'package:flutter_education_app/features/shared/notification/notifications
 import 'package:provider/provider.dart';
 
 import '../../../../config/app_config.dart';
-import '../../../../config/theme/app_theme.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../auth/auth_provider.dart';
 import '../../dashboard/dashboard_screen.dart';
@@ -13,9 +12,9 @@ class TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<AuthProvider>().currentUser;
+    final AuthProvider provider = context.watch<AuthProvider>();
     final unread = context.watch<NotificationsProvider>().unreadCount;
-    final name = user?.name ?? 'sir'.tr;
+    final name = provider.currentUser?.name ?? 'sir'.tr;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
@@ -23,9 +22,10 @@ class TopBar extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Gradient avatar with glow
-          if(user!=null)
+          if(provider.currentUser!=null)
           UserChipButton(
-            user: user,
+            user: provider.currentUser!,
+            isTeacher: provider.isTeacher,
             showLabel: false,
           ),
           // Greeting + name
@@ -37,7 +37,7 @@ class TopBar extends StatelessWidget {
                   '${'welcome'.tr} 👋',
                   style: context.colors.caption.copyWith(
                     fontSize: 12,
-                    color: context.themeConfig.textLight,
+                    color: context.colors.textLight,
                   ),
                 ),
                 const SizedBox(height: 1),

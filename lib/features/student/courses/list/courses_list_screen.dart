@@ -107,10 +107,10 @@ class _EmptyState extends StatelessWidget {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: context.themeConfig.primaryLight.withValues(alpha: 0.3),
+                color: context.colors.primaryLight.withValues(alpha: 0.3),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 38, color: context.themeConfig.primary),
+              child: Icon(icon, size: 38, color: context.colors.primary),
             ),
             const SizedBox(height: 16),
             Text(message,

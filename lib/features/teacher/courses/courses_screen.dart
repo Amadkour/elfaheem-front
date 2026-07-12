@@ -69,7 +69,7 @@ class _WebHeader extends StatelessWidget {
     height: 60,
     padding: const EdgeInsets.symmetric(horizontal: 28),
     decoration: BoxDecoration(
-      color: context.themeConfig.cardBg,
+      color: context.colors.cardBg,
       boxShadow: [
         BoxShadow(
           color: Colors.black.withValues(alpha: 0.06),
@@ -84,7 +84,7 @@ class _WebHeader extends StatelessWidget {
           width: 4,
           height: 24,
           decoration: BoxDecoration(
-            gradient: context.themeConfig.linearPrimary,
+            gradient: context.colors.primaryGradient,
             borderRadius: BorderRadius.circular(4),
           ),
         ),
@@ -109,9 +109,9 @@ class _FloatingAddBtn extends StatelessWidget {
       width: 56,
       height: 56,
       decoration: BoxDecoration(
-        gradient: context.themeConfig.linearPrimary,
+        gradient: context.colors.primaryGradient,
         shape: BoxShape.circle,
-        boxShadow: context.themeConfig.primaryShadow(isDark:context.colors.isDark),
+        boxShadow: context.colors.primaryShadow,
       ),
       child: const Icon(Icons.add_rounded, color: Colors.white, size: 26),
     ),
@@ -132,11 +132,11 @@ class _AddCourseButton extends StatelessWidget {
       height: 38,
       padding: EdgeInsets.symmetric(horizontal: compact ? 14 : 18),
       decoration: BoxDecoration(
-        gradient: context.themeConfig.linearPrimary,
+        gradient: context.colors.primaryGradient,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: context.themeConfig.primary.withValues(alpha: 0.32),
+            color: context.colors.primary.withValues(alpha: 0.32),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -184,7 +184,7 @@ class _FilterTabs extends StatelessWidget {
         height: 46,
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: context.themeConfig.cardBg,
+          color: context.colors.cardBg,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
@@ -204,11 +204,11 @@ class _FilterTabs extends StatelessWidget {
                 child: Container(
                   //  duration: const Duration(milliseconds: 220),
                   decoration: BoxDecoration(
-                    // gradient: active ? context.themeConfig.linearPrimary : null,
+                    // gradient: active ? context.colors.primaryGradient : null,
                     border: active
                         ? Border(
                             bottom: BorderSide(
-                              color: context.themeConfig.primaryDark,
+                              color: context.colors.primaryDark,
                               width: 1,
                             ),
                           )
@@ -223,16 +223,16 @@ class _FilterTabs extends StatelessWidget {
                           icon,
                           size: 13,
                           color: active
-                              ? context.themeConfig.primaryDark
-                              : context.themeConfig.textLight,
+                              ? context.colors.primaryDark
+                              : context.colors.textLight,
                         ),
                         const SizedBox(width: 5),
                         Text(
                           labelKey.tr,
                           style: context.colors.label.copyWith(
                             color: active
-                                ? context.themeConfig.primaryDark
-                                : context.themeConfig.textLight,
+                                ? context.colors.primaryDark
+                                : context.colors.textLight,
                             fontWeight: active
                                 ? FontWeight.w700
                                 : FontWeight.w500,
@@ -270,7 +270,7 @@ class _CourseList extends StatelessWidget {
     if (p.isLoading && p.filteredCourses.isEmpty) {
       return Center(
         child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation(context.themeConfig.primary),
+          valueColor: AlwaysStoppedAnimation(context.colors.primary),
           strokeWidth: 2.5,
         ),
       );
@@ -280,7 +280,7 @@ class _CourseList extends StatelessWidget {
     if (courses.isEmpty) return const _EmptyState();
 
     return RefreshIndicator(
-      color: context.themeConfig.primary,
+      color: context.colors.primary,
       onRefresh: () => p.fetchMyCourses(),
       child: Align(
         alignment: Alignment.topCenter,
@@ -373,8 +373,8 @@ class _EmptyState extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  context.themeConfig.primaryLight.withValues(alpha: 0.5),
-                  context.themeConfig.primaryLight.withValues(alpha: 0.15),
+                  context.colors.primaryLight.withValues(alpha: 0.5),
+                  context.colors.primaryLight.withValues(alpha: 0.15),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -384,7 +384,7 @@ class _EmptyState extends StatelessWidget {
             child: Icon(
               Icons.school_outlined,
               size: 40,
-              color: context.themeConfig.primary,
+              color: context.colors.primary,
             ),
           ),
           const SizedBox(height: 18),
@@ -400,7 +400,7 @@ class _EmptyState extends StatelessWidget {
           Text(
             'add_first_course_hint'.tr,
             style: context.colors.caption.copyWith(
-              color: context.themeConfig.textLight,
+              color: context.colors.textLight,
             ),
             textAlign: TextAlign.center,
           ),
@@ -412,9 +412,9 @@ class _EmptyState extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
               decoration: BoxDecoration(
-                gradient: context.themeConfig.linearPrimary,
+                gradient: context.colors.primaryGradient,
                 borderRadius: BorderRadius.circular(24),
-                boxShadow: context.themeConfig.primaryShadow(isDark:context.colors.isDark),
+                boxShadow: context.colors.primaryShadow,
               ),
               child: Text(
                 'add_new_course'.tr,
@@ -455,7 +455,7 @@ class _CourseCardState extends State<_CourseCard> {
       builder: (_) => Directionality(
         textDirection: Helpers.pageDirection,
         child: AlertDialog(
-          backgroundColor: context.themeConfig.cardBg,
+          backgroundColor: context.colors.cardBg,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
@@ -477,13 +477,13 @@ class _CourseCardState extends State<_CourseCard> {
                 'cancel'.tr,
                 style: TextStyle(
                   fontFamily: 'bahji',
-                  color: context.themeConfig.textMedium,
+                  color: context.colors.textMedium,
                 ),
               ),
             ),
             Container(
               decoration: BoxDecoration(
-                color: context.themeConfig.danger,
+                color: context.colors.danger,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: TextButton(
@@ -513,7 +513,7 @@ class _CourseCardState extends State<_CourseCard> {
               'course_deleted'.tr,
               style: const TextStyle(fontFamily: 'bahji', color: Colors.white),
             ),
-            backgroundColor: context.themeConfig.success,
+            backgroundColor: context.colors.success,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -538,12 +538,12 @@ class _CourseCardState extends State<_CourseCard> {
 
     return Container(
       decoration: BoxDecoration(
-        color: context.themeConfig.cardBg,
+        color: context.colors.cardBg,
         borderRadius: BorderRadius.circular(20),
-        //  border: Border.all(color: context.themeConfig.primaryDark),
+        //  border: Border.all(color: context.colors.primaryDark),
         boxShadow: [
           BoxShadow(
-            color: context.themeConfig.primary.withValues(alpha: 0.7),
+            color: context.colors.primary.withValues(alpha: 0.7),
             blurRadius: 1.5,
             offset: const Offset(0, 0.4),
           ),
@@ -615,7 +615,7 @@ class _CourseCardState extends State<_CourseCard> {
                   Text(
                     _expanded ? 'hide_details'.tr : 'show_details'.tr,
                     style: context.colors.label.copyWith(
-                      color: context.themeConfig.primary,
+                      color: context.colors.primary,
                       fontSize: 12,
                     ),
                   ),
@@ -626,7 +626,7 @@ class _CourseCardState extends State<_CourseCard> {
                     child: Icon(
                       Icons.keyboard_arrow_down_rounded,
                       size: 16,
-                      color: context.themeConfig.primary,
+                      color: context.colors.primary,
                     ),
                   ),
                 ],
@@ -680,7 +680,7 @@ class _CourseCardState extends State<_CourseCard> {
                 SizedBox(width: 5),
                 _OverlayBtn(
                   icon: Icons.edit_rounded,
-                  color: context.themeConfig.primaryDark,
+                  color: context.colors.primaryDark,
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -717,7 +717,7 @@ class _StatsGrid extends StatelessWidget {
         (
           Icons.people_alt_rounded,
           '${c.studentsCount} ${'student'.tr}',
-          context.themeConfig.primary,
+          context.colors.primary,
         ),
         (
           Icons.video_library_rounded,
@@ -734,7 +734,7 @@ class _StatsGrid extends StatelessWidget {
         (
           Icons.star_rounded,
           c.rateSummary?.average.toStringAsFixed(1),
-          context.themeConfig.accent,
+          context.colors.accent,
         ),
       ],
     ];
@@ -814,14 +814,14 @@ class _StatusBadge extends StatelessWidget {
       color: Colors.white,
       borderRadius: BorderRadius.circular(8),
       border: Border.all(
-        color: isDraft ? const Color(0xFFf59e0b) : context.themeConfig.accent2,
+        color: isDraft ? const Color(0xFFf59e0b) : context.colors.accent2,
       ),
     ),
     child: Text(
       isDraft ? 'status_draft'.tr : 'status_published'.tr,
       textAlign: TextAlign.center,
       style: TextStyle(
-        color: isDraft ? const Color(0xFFf59e0b) : context.themeConfig.accent2,
+        color: isDraft ? const Color(0xFFf59e0b) : context.colors.accent2,
         fontSize: 16,
         fontWeight: FontWeight.w800,
         fontFamily: 'bahji',
@@ -854,7 +854,7 @@ class _OverlayBtn extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: context.themeConfig.primaryDark),
+        border: Border.all(color: context.colors.primaryDark),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.12),
@@ -880,7 +880,7 @@ class _PublishButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color primaryColor = isDraft ? context.themeConfig.primaryDark : Colors.red;
+    Color primaryColor = isDraft ? context.colors.primaryDark : Colors.red;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -940,7 +940,7 @@ class _ExtrasPanel extends StatelessWidget {
               child: Text(
                 'no_extra_details'.tr,
                 style: context.colors.caption.copyWith(
-                  color: context.themeConfig.textLight,
+                  color: context.colors.textLight,
                 ),
               ),
             ),
@@ -1009,17 +1009,17 @@ class _ExtRow extends StatelessWidget {
               width: 22,
               height: 22,
               decoration: BoxDecoration(
-                color: context.themeConfig.primary.withValues(alpha: 0.1),
+                color: context.colors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: Icon(icon, size: 13, color: context.themeConfig.primary),
+              child: Icon(icon, size: 13, color: context.colors.primary),
             ),
             const SizedBox(width: 7),
             Expanded(
               child: Text(
                 label,
                 style: context.colors.label.copyWith(
-                  color: context.themeConfig.primary,
+                  color: context.colors.primary,
                   fontSize: 12,
                 ),
               ),
@@ -1028,7 +1028,7 @@ class _ExtRow extends StatelessWidget {
               Icon(
                 CupertinoIcons.settings,
                 size: 16,
-                color: context.themeConfig.primary,
+                color: context.colors.primary,
               ),
           ],
         ),
@@ -1047,7 +1047,7 @@ class _ExtRow extends StatelessWidget {
                         width: 5,
                         height: 5,
                         decoration: BoxDecoration(
-                          color: context.themeConfig.textLight,
+                          color: context.colors.textLight,
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -1064,7 +1064,7 @@ class _ExtRow extends StatelessWidget {
             child: Text(
               '+ ${items.length - 3} ${'others'.tr}',
               style: context.colors.caption.copyWith(
-                color: context.themeConfig.primary,
+                color: context.colors.primary,
                 fontWeight: FontWeight.w600,
               ),
             ),

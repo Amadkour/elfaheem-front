@@ -48,7 +48,7 @@ class AboutTab extends StatelessWidget {
             _SectionTitle(
                 title: 'المواعيد الأسبوعية',
                 icon: Icons.calendar_month_rounded,
-                color: context.themeConfig.primary),
+                color: context.colors.primary),
             const SizedBox(height: 12),
             ...c.schedules.map((s) => Padding(
                   padding: const EdgeInsets.only(bottom: 8),
@@ -60,12 +60,12 @@ class AboutTab extends StatelessWidget {
             _SectionTitle(
                 title: 'الشهادات',
                 icon: Icons.workspace_premium_rounded,
-                color: context.themeConfig.accent),
+                color: context.colors.accent),
             const SizedBox(height: 12),
             ...c.certificates.map((x) => _InfoCard(
                   icon: Icons.verified_rounded,
                   iconBg: const Color(0xFFFAEEDA),
-                  iconColor: context.themeConfig.accent,
+                  iconColor: context.colors.accent,
                   title: x.title,
                   subtitle: x.description,
                 )),
@@ -77,7 +77,7 @@ class AboutTab extends StatelessWidget {
             ...c.tools.map((x) => _InfoCard(
                   icon: Icons.settings_rounded,
                   iconBg: const Color(0xFFEEEDFE),
-                  iconColor: context.themeConfig.primary,
+                  iconColor: context.colors.primary,
                   title: x.name,
                   subtitle: x.description,
                 )),
@@ -87,12 +87,12 @@ class AboutTab extends StatelessWidget {
             _SectionTitle(
                 title: 'المتطلبات المسبقة',
                 icon: Icons.checklist_rounded,
-                color: context.themeConfig.accent2),
+                color: context.colors.accent2),
             const SizedBox(height: 12),
             ...c.prerequisites.map((x) => _InfoCard(
                   icon: Icons.check_circle_outline_rounded,
                   iconBg: const Color(0xFFE1F5EE),
-                  iconColor: context.themeConfig.accent2,
+                  iconColor: context.colors.accent2,
                   title: x.title,
                   subtitle: x.description,
                 )),
@@ -114,7 +114,7 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? context.themeConfig.primary;
+    final c = color ?? context.colors.primary;
     return Row(
       children: [
         Container(
@@ -146,10 +146,10 @@ class ScheduleChip extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
         decoration: BoxDecoration(
-          color: context.themeConfig.primaryLight.withValues(alpha: 0.12),
+          color: context.colors.primaryLight.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(14),
           border:
-              Border.all(color: context.themeConfig.primary.withValues(alpha: 0.2)),
+              Border.all(color: context.colors.primary.withValues(alpha: 0.2)),
         ),
         child: Row(
           children: [
@@ -157,29 +157,29 @@ class ScheduleChip extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: context.themeConfig.primary.withValues(alpha: 0.1),
+                color: context.colors.primary.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(Icons.access_time_filled_rounded,
-                  color: context.themeConfig.primary, size: 18),
+                  color: context.colors.primary, size: 18),
             ),
             const SizedBox(width: 12),
             Text(
               schedule.dayLabel,
               style: context.colors.label.copyWith(
-                  color: context.themeConfig.primary, fontWeight: FontWeight.w700),
+                  color: context.colors.primary, fontWeight: FontWeight.w700),
             ),
             const Spacer(),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
               decoration: BoxDecoration(
-                color: context.themeConfig.primary.withValues(alpha: 0.1),
+                color: context.colors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
                 '${schedule.startTime} — ${schedule.endTime}',
                 style: context.colors.label.copyWith(
-                    color: context.themeConfig.textDark,
+                    color: context.colors.textDark,
                     fontWeight: FontWeight.w600),
               ),
             ),
@@ -199,11 +199,11 @@ class _InstructorCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          gradient: context.themeConfig.linearPrimary,
+          gradient: context.colors.primaryGradient,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: context.themeConfig.primary.withValues(alpha: 0.36),
+              color: context.colors.primary.withValues(alpha: 0.36),
               blurRadius: 22,
               offset: const Offset(0, 7),
             ),
@@ -306,7 +306,7 @@ class _InfoCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: context.themeConfig.cardBg,
+            color: context.colors.cardBg,
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
@@ -336,7 +336,7 @@ class _InfoCard extends StatelessWidget {
                     Text(
                       title,
                       style: context.colors.label.copyWith(
-                          color: context.themeConfig.textDark,
+                          color: context.colors.textDark,
                           fontSize: 14,
                           fontWeight: FontWeight.w700),
                     ),
@@ -364,7 +364,7 @@ class SectionHdr extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = iconColor ?? context.themeConfig.primary;
+    final c = iconColor ?? context.colors.primary;
     return Row(
       children: [
         if (icon != null) ...[

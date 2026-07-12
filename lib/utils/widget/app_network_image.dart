@@ -48,7 +48,7 @@ class AppNetworkImage extends StatelessWidget {
       errorBuilder: (_, __, ___) => Container(
         width: width,
         height: height,
-        color:color ?? context.themeConfig.cardBg,
+        color:color ?? context.colors.cardBg,
         child: Center(
           child: Image.asset(
             'assets/images/logo.png',
@@ -61,11 +61,11 @@ class AppNetworkImage extends StatelessWidget {
         return Container(
           width: width,
           height: height,
-          color: color ?? context.themeConfig.cardBg,
+          color: color ?? context.colors.cardBg,
           child: Center(
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation(context.themeConfig.primary),
+              valueColor: AlwaysStoppedAnimation(context.colors.primary),
             ),
           ),
         );
@@ -80,7 +80,7 @@ class AppNetworkImage extends StatelessWidget {
       img = Container(
         padding: padding,
         decoration: BoxDecoration(
-          color: color ?? context.themeConfig.cardBg,
+          color: color ?? context.colors.cardBg,
           borderRadius: borderRadius,
         ),
         child: ClipRRect(borderRadius: borderRadius!, child: img),

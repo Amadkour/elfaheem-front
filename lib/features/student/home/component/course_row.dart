@@ -92,7 +92,7 @@ class CourseCard extends StatelessWidget {
       child: Container(
         width: fixedWidth,
         decoration: BoxDecoration(
-          color: context.themeConfig.cardBg,
+          color: context.colors.cardBg,
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
@@ -142,7 +142,7 @@ class CourseCard extends StatelessWidget {
                         Text(
                           course.description!,
                           style: context.colors.caption.copyWith(
-                            color: context.themeConfig.textLight,
+                            color: context.colors.textLight,
                             fontWeight: FontWeight.w700,
                             fontSize: 9,
                           ),
@@ -174,7 +174,7 @@ class CourseCard extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 4, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: context.themeConfig.primary,
+                                  color: context.colors.primary,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
@@ -198,8 +198,8 @@ class CourseCard extends StatelessWidget {
                                     horizontal: 9, vertical: 3),
                                 decoration: BoxDecoration(
                                     color: course.isPublished
-                                        ? context.themeConfig.success
-                                        : context.themeConfig.warning,
+                                        ? context.colors.success
+                                        : context.colors.warning,
                                     borderRadius: BorderRadius.circular(8)),
                                 child: Text(
                                   course.isPublished
@@ -346,13 +346,13 @@ class _Thumbnail extends StatelessWidget {
             decoration: BoxDecoration(
               color: course.price == 0
                   ? const Color(0xFF0F6E56)
-                  : context.themeConfig.primary,
+                  : context.colors.primary,
               borderRadius: BorderRadius.circular(10),
               boxShadow: [
                 BoxShadow(
                   color: (course.price == 0
                           ? const Color(0xFF0F6E56)
-                          : context.themeConfig.primary)
+                          : context.colors.primary)
                       .withValues(alpha: 0.35),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
@@ -424,12 +424,12 @@ class _StatsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(Icons.star_rounded, color: context.themeConfig.accent, size: 13),
+        Icon(Icons.star_rounded, color: context.colors.accent, size: 13),
         const SizedBox(width: 3),
         Text(
           course.rateSummary?.average.toStringAsFixed(1) ?? '',
           style: context.colors.caption.copyWith(
-            color: context.themeConfig.textDark,
+            color: context.colors.textDark,
             fontWeight: FontWeight.w700,
             fontSize: 12,
           ),
@@ -455,7 +455,7 @@ class _MetaRow extends StatelessWidget {
       children: [
         if (hasLectures) ...[
           IconColored(
-            color: context.themeConfig.primary,
+            color: context.colors.primary,
             icon: Icons.play_circle_outline_rounded,
           ),
           const SizedBox(width: 3),
@@ -467,7 +467,7 @@ class _MetaRow extends StatelessWidget {
         if (hasLectures && hasHours) Spacer(),
         if (hasHours) ...[
           IconColored(
-            color: context.themeConfig.accent,
+            color: context.colors.accent,
             icon: Icons.access_time_rounded,
           ),
           const SizedBox(width: 3),
@@ -498,7 +498,7 @@ class _StudentRow extends StatelessWidget {
       children: [
         if (hasCertificate) ...[
           IconColored(
-              color: context.themeConfig.success,
+              color: context.colors.success,
               icon: Icons.workspace_premium_rounded),
           const SizedBox(width: 3),
           Text(
@@ -509,7 +509,7 @@ class _StudentRow extends StatelessWidget {
         if (hasStudents && hasCertificate) Spacer(),
         if (hasStudents) ...[
           IconColored(
-              color: context.themeConfig.accent2, icon: CupertinoIcons.group),
+              color: context.colors.accent2, icon: CupertinoIcons.group),
           const SizedBox(width: 3),
           Text(
             '${course.studentsCount} ${'student'.tr}',
@@ -531,10 +531,10 @@ class _ProgressBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Color primary = progress > 90
-        ? context.themeConfig.success
+        ? context.colors.success
         : progress > 30
-            ? context.themeConfig.primary
-            : context.themeConfig.danger;
+            ? context.colors.primary
+            : context.colors.danger;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -548,7 +548,7 @@ class _ProgressBar extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: (progress / 100).clamp(0.0, 1.0),
                 minHeight: 5,
-                backgroundColor: context.themeConfig.primaryLight,
+                backgroundColor: context.colors.primaryLight,
                 valueColor: AlwaysStoppedAnimation(primary),
               ),
             ),

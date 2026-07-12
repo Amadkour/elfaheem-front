@@ -81,11 +81,11 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView>
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: context.themeConfig.primary.withValues(alpha: 0.08),
+              color: context.colors.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(Icons.analytics_rounded,
-                color: context.themeConfig.primary, size: 24),
+                color: context.colors.primary, size: 24),
           ),
         ]),
       );
@@ -143,7 +143,7 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView>
               label: const Text('إعادة المحاولة',
                   style: TextStyle(fontFamily: 'bahji')),
               style: ElevatedButton.styleFrom(
-                backgroundColor: context.themeConfig.primary,
+                backgroundColor: context.colors.primary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
@@ -235,7 +235,7 @@ class _CourseCard extends StatelessWidget {
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
                   colors: [
-                    context.themeConfig.primary.withValues(alpha: 0.06),
+                    context.colors.primary.withValues(alpha: 0.06),
                     Colors.transparent,
                   ],
                 ),
@@ -281,7 +281,7 @@ class _CourseCard extends StatelessWidget {
                           child: LinearProgressIndicator(
                             value: course.progress / 100,
                             backgroundColor: Colors.grey.shade100,
-                            color: context.themeConfig.primary,
+                            color: context.colors.primary,
                             minHeight: 5,
                           ),
                         ),
@@ -305,7 +305,7 @@ class _CourseCard extends StatelessWidget {
                 _ActionChip(
                   icon: Icons.fact_check_rounded,
                   label: 'الحضور',
-                  color: context.themeConfig.success,
+                  color: context.colors.success,
                 ),
                 const SizedBox(width: 10),
                 InkWell(
@@ -323,7 +323,7 @@ class _CourseCard extends StatelessWidget {
                   child: _ActionChip(
                     icon: Icons.quiz_rounded,
                     label: 'الاختبارات',
-                    color: context.themeConfig.primary,
+                    color: context.colors.primary,
                   ),
                 ),
                 const Spacer(),
@@ -347,10 +347,10 @@ class _CourseCard extends StatelessWidget {
         width: 48,
         height: 48,
         decoration: BoxDecoration(
-          color: context.themeConfig.primary.withValues(alpha: 0.1),
+          color: context.colors.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Icon(Icons.menu_book_rounded, color: context.themeConfig.primary, size: 22),
+        child: Icon(Icons.menu_book_rounded, color: context.colors.primary, size: 22),
       );
 }
 

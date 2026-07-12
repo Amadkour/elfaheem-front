@@ -145,7 +145,7 @@ class WideShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<AuthProvider>().currentUser;
+    AuthProvider provider = context.watch<AuthProvider>();
     return BasePage(
       child: Row(
         children: [
@@ -155,7 +155,7 @@ class WideShell extends StatelessWidget {
             child: Container(
               width: Breakpoints.sidebarW,
               decoration:
-                  BoxDecoration(gradient: context.themeConfig.linearSlider),
+                  BoxDecoration(gradient: context.colors.sliderGradient),
               child: Stack(
                 children: [
                   // Decorative circles
@@ -187,7 +187,7 @@ class WideShell extends StatelessWidget {
                               width: 42,
                               height: 42,
                               decoration: BoxDecoration(
-                                color: context.themeConfig.primary
+                                color: context.colors.primary
                                     .withValues(alpha: 0.3),
                                 borderRadius: BorderRadius.circular(13),
                               ),
@@ -237,9 +237,10 @@ class WideShell extends StatelessWidget {
                           height: 1,
                           color: Colors.white.withValues(alpha: 0.07)),
                       const SizedBox(height: 14),
-                      if (user != null)
+                      if (provider.currentUser != null)
                         UserChipButton(
-                          user: user,
+                          user: provider.currentUser!,
+                          isTeacher: provider.isTeacher,
                           showLabel: true,
                         )
                     ],
@@ -276,10 +277,11 @@ class WideShell extends StatelessWidget {
 
 class UserChipButton extends StatelessWidget {
   final UserModel user;
+  final bool isTeacher;
   final bool showLabel;
 
   const UserChipButton(
-      {super.key, required this.user, required this.showLabel});
+      {super.key, required this.user, required this.showLabel, required this.isTeacher});
 
   @override
   Widget build(BuildContext context) {
@@ -306,7 +308,7 @@ class UserChipButton extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                gradient: context.themeConfig.linearPrimary,
+                gradient: context.colors.primaryGradient,
                 shape: BoxShape.circle,
               ),
               alignment: Alignment.center,
@@ -316,9 +318,9 @@ class UserChipButton extends StatelessWidget {
                       height: 35,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: context.themeConfig.primary.withValues(alpha: 0.1),
+                        color: context.colors.primary.withValues(alpha: 0.1),
                         border: Border.all(
-                            color: context.themeConfig.primaryDark, width: 2.5),
+                            color: context.colors.primaryDark, width: 2.5),
                       ),
                       child: ClipOval(
                           child: AppNetworkImage(
@@ -347,7 +349,7 @@ class UserChipButton extends StatelessWidget {
                             fontWeight: FontWeight.w700,
                             fontFamily: 'bahji'),
                         overflow: TextOverflow.ellipsis),
-                    Text(user.isTeacher ? 'teacher'.tr : 'student'.tr,
+                    Text(isTeacher ? 'teacher'.tr : 'student'.tr,
                         style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.45),
                             fontSize: 10,
@@ -393,12 +395,12 @@ class _SidebarTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         decoration: BoxDecoration(
           color: selected
-              ? context.themeConfig.accent2.withValues(alpha: 0.2)
+              ? context.colors.accent2.withValues(alpha: 0.2)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: selected
-                ? context.themeConfig.primary.withValues(alpha: 0.3)
+                ? context.colors.primary.withValues(alpha: 0.3)
                 : Colors.transparent,
           ),
         ),
@@ -410,7 +412,7 @@ class _SidebarTile extends StatelessWidget {
                 width: 3,
                 height: 20,
                 decoration: BoxDecoration(
-                  color: context.themeConfig.accent,
+                  color: context.colors.accent,
                   borderRadius: BorderRadius.circular(2),
                 ),
                 margin: const EdgeInsetsDirectional.only(end: 10),
@@ -440,7 +442,7 @@ class _SidebarTile extends StatelessWidget {
             //   Container(
             //     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
             //     decoration: BoxDecoration(
-            //         color: context.themeConfig.danger,
+            //         color: context.colors.danger,
             //         borderRadius: BorderRadius.circular(20)),
             //     child: Text('$badge',
             //         style: const TextStyle(
@@ -471,10 +473,10 @@ class _WideTopBar extends StatelessWidget {
     return Container(
       height: 64,
       decoration: BoxDecoration(
-        color: context.themeConfig.primary,
+        color: context.colors.primary,
         border: Border(
             bottom: BorderSide(
-                color: context.themeConfig.primary.withValues(alpha: 0.08))),
+                color: context.colors.primary.withValues(alpha: 0.08))),
         boxShadow: [
           BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
@@ -512,7 +514,7 @@ class NotificationIcon extends StatelessWidget {
         margin: EdgeInsets.all(5),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
-          color: context.themeConfig.accent2,
+          color: context.colors.accent2,
         ),
         child: Stack(clipBehavior: Clip.none, children: [
           Icon(Icons.notifications_rounded, color: Colors.white, size: 20),
@@ -524,7 +526,7 @@ class NotificationIcon extends StatelessWidget {
                 padding: EdgeInsets.all(2),
                 alignment: AlignmentGeometry.center,
                 decoration: BoxDecoration(
-                    color: context.themeConfig.danger, shape: BoxShape.circle),
+                    color: context.colors.danger, shape: BoxShape.circle),
                 child: Text( unreadCount>99? '99+':
                 unreadCount.toString(),
                   style: AppTheme.small.copyWith(color: Colors.white),
@@ -557,25 +559,26 @@ class RailShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AuthProvider provider=context.watch<AuthProvider>();
     return BasePage(
       child: Row(
         children: [
           DecoratedBox(
             decoration:
-                BoxDecoration(gradient: context.themeConfig.linearSlider),
+                BoxDecoration(gradient: context.colors.sliderGradient),
             child: Column(
               children: [
                 Expanded(
                   child: NavigationRail(
                     backgroundColor: context.colors.isDark
-                        ? context.themeConfig.cardBg
-                        : context.themeConfig.primaryDark,
+                        ? context.colors.cardBg
+                        : context.colors.primaryDark,
                     selectedIndex: currentIndex,
                     onDestinationSelected: onTap,
                     minWidth: 66,
                     labelType: NavigationRailLabelType.none,
                     indicatorColor:
-                        context.themeConfig.primary.withValues(alpha: 0.35),
+                        context.colors.primary.withValues(alpha: 0.35),
                     selectedIconTheme:
                         const IconThemeData(color: Colors.white, size: 23),
                     unselectedIconTheme: IconThemeData(
@@ -598,7 +601,8 @@ class RailShell extends StatelessWidget {
                 ),
                 if (context.watch<AuthProvider>().currentUser != null)
                   UserChipButton(
-                    user: context.watch<AuthProvider>().currentUser!,
+                    user: provider.currentUser!,
+                    isTeacher: provider.isTeacher,
                     showLabel: false,
                   )
               ],
@@ -673,7 +677,7 @@ class _BottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         decoration: BoxDecoration(
-          color: context.themeConfig.cardBg,
+          color: context.colors.cardBg,
           border: Border(
               top: BorderSide(
                   color: Colors.black.withValues(alpha: 0.07), width: 0.5)),
@@ -705,12 +709,12 @@ class _BottomNav extends StatelessWidget {
                           height: 30,
                           decoration: BoxDecoration(
                             gradient:
-                                active ? context.themeConfig.linearPrimary : null,
+                                active ? context.colors.primaryGradient : null,
                             borderRadius: BorderRadius.circular(10),
                             boxShadow: active
                                 ? [
                                     BoxShadow(
-                                        color: context.themeConfig.primaryDark
+                                        color: context.colors.primaryDark
                                             .withValues(alpha: 0.3),
                                         blurRadius: 8,
                                         offset: const Offset(0, 2))
@@ -722,7 +726,7 @@ class _BottomNav extends StatelessWidget {
                             size: 20,
                             color: active
                                 ? Colors.white
-                                : context.themeConfig.textLight,
+                                : context.colors.textLight,
                           ),
                         ),
                         const SizedBox(height: 3),
@@ -733,8 +737,8 @@ class _BottomNav extends StatelessWidget {
                             fontWeight:
                                 active ? FontWeight.w700 : FontWeight.w500,
                             color: active
-                                ? context.themeConfig.primaryDark
-                                : context.themeConfig.textLight,
+                                ? context.colors.primaryDark
+                                : context.colors.textLight,
                             fontFamily: 'bahji',
                           ),
                         ),

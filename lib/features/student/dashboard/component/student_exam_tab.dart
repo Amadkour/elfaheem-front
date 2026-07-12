@@ -54,7 +54,7 @@ class _StudentExamsTabState extends State<StudentExamsTab>
       for (final exam in list) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showMaterialBanner(MaterialBanner(
-          backgroundColor: context.themeConfig.accent.withValues(alpha: 0.95),
+          backgroundColor: context.colors.accent.withValues(alpha: 0.95),
           content: Row(children: [
             const Icon(Icons.alarm_rounded, color: Colors.white, size: 20),
             const SizedBox(width: 10),
@@ -108,7 +108,7 @@ class _StudentExamsTabState extends State<StudentExamsTab>
     return Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
-            backgroundColor: context.themeConfig.background,
+            backgroundColor: context.colors.background,
             body: SafeArea(
                 child: Column(children: [
                   Padding(
@@ -128,26 +128,26 @@ class _StudentExamsTabState extends State<StudentExamsTab>
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
-                                  color: context.themeConfig.primary.withValues(alpha: 0.1),
+                                  color: context.colors.primary.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(20)),
                               child: Text(
                                   '${_exams.where((e) => e.isSubmitted).length} / ${_exams.length} مكتمل',
                                   style: context.colors.label
-                                      .copyWith(color: context.themeConfig.primary))),
+                                      .copyWith(color: context.colors.primary))),
                       ])),
                   if (_upcoming.isNotEmpty)
                     Container(
                         margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                            color: context.themeConfig.accent.withValues(alpha: 0.08),
+                            color: context.colors.accent.withValues(alpha: 0.08),
                             borderRadius:
                             BorderRadius.circular(context.colors.radiusMedium),
                             border: Border.all(
-                                color: context.themeConfig.accent.withValues(alpha: 0.3))),
+                                color: context.colors.accent.withValues(alpha: 0.3))),
                         child: Row(children: [
                            Icon(Icons.schedule_rounded,
-                              color: context.themeConfig.accent, size: 18),
+                              color: context.colors.accent, size: 18),
                           const SizedBox(width: 8),
                           Expanded(
                               child: Text(
@@ -155,7 +155,7 @@ class _StudentExamsTabState extends State<StudentExamsTab>
                                       ? 'اختبار "${_upcoming.first.name}" يبدأ بعد ${_upcoming.first.minutesLeft} دقيقة'
                                       : '${_upcoming.length} اختبارات قادمة قريباً',
                                   style: context.colors.label
-                                      .copyWith(color: context.themeConfig.accent))),
+                                      .copyWith(color: context.colors.accent))),
                         ])),
                   const SizedBox(height: 12),
                   Expanded(
@@ -163,14 +163,14 @@ class _StudentExamsTabState extends State<StudentExamsTab>
                           ?  Center(
                           child: CircularProgressIndicator(
                               valueColor:
-                              AlwaysStoppedAnimation(context.themeConfig.primary)))
+                              AlwaysStoppedAnimation(context.colors.primary)))
                           : _error != null
                           ? Center(
                           child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                  Icon(Icons.error_outline,
-                                    size: 48, color: context.themeConfig.danger),
+                                    size: 48, color: context.colors.danger),
                                 const SizedBox(height: 12),
                                 Text(_error!,
                                     style: context.colors.body,
@@ -188,7 +188,7 @@ class _StudentExamsTabState extends State<StudentExamsTab>
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(Icons.quiz_outlined,
-                                    size: 64, color: context.themeConfig.textLight),
+                                    size: 64, color: context.colors.textLight),
                                 SizedBox(height: 12),
                                 Text('لا توجد اختبارات متاحة حالياً',
                                     style: context.colors.body),
@@ -199,7 +199,7 @@ class _StudentExamsTabState extends State<StudentExamsTab>
                                     textAlign: TextAlign.center),
                               ]))
                           : RefreshIndicator(
-                          color: context.themeConfig.primary,
+                          color: context.colors.primary,
                           onRefresh: _load,
                           child: ListView.separated(
                               padding: const EdgeInsets.fromLTRB(
@@ -225,13 +225,13 @@ class _ExamCard extends StatelessWidget {
     final passed = exam.passed;
     final sub = exam.isSubmitted;
     final color =
-    sub ? (passed ? context.themeConfig.success : context.themeConfig.danger) : context.themeConfig.primary;
+    sub ? (passed ? context.colors.success : context.colors.danger) : context.colors.primary;
     return Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-            color: context.themeConfig.cardBg,
+            color: context.colors.cardBg,
             borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-            boxShadow: context.themeConfig.cardShadow(isDark:context.colors.isDark),
+            boxShadow: context.colors.cardShadow,
             border:
             Border.all(color: color.withValues(alpha: 0.25), width: 0.8)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -283,7 +283,7 @@ class _ExamCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
                           value: pct / 100,
-                          backgroundColor: context.themeConfig.divider,
+                          backgroundColor: context.colors.divider,
                           valueColor: AlwaysStoppedAnimation(color),
                           minHeight: 6))),
               const SizedBox(width: 10),
@@ -320,7 +320,7 @@ class _Chip extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(i, size: 12, color: context.themeConfig.textLight),
+        Icon(i, size: 12, color: context.colors.textLight),
         const SizedBox(width: 3),
         Text(l, style: context.colors.caption)
       ]);

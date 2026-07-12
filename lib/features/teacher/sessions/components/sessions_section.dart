@@ -89,7 +89,7 @@ class _SectionHeader extends StatelessWidget {
             width: 4,
             height: 20,
             decoration: BoxDecoration(
-              gradient: context.themeConfig.linearPrimary,
+              gradient: context.colors.primaryGradient,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -103,7 +103,7 @@ class _SectionHeader extends StatelessWidget {
             padding: const EdgeInsets.symmetric(
                 horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: context.themeConfig.primary.withValues(alpha: 0.12),
+              color: context.colors.primary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
@@ -112,7 +112,7 @@ class _SectionHeader extends StatelessWidget {
                 fontFamily: 'tajawal',
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: context.themeConfig.primary,
+                color: context.colors.primary,
               ),
             ),
           ),
@@ -142,9 +142,9 @@ class _AddButton extends StatelessWidget {
         height: 36,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
-          gradient: context.themeConfig.linearAccent,
+          gradient: context.colors.accentGradient,
           borderRadius: BorderRadius.circular(10),
-          boxShadow: context.themeConfig.primaryShadow(isDark:context.colors.isDark),
+          boxShadow: context.colors.primaryShadow,
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           const Icon(Icons.add_rounded, color: Colors.white, size: 18),
@@ -181,9 +181,9 @@ class _LoadingState extends StatelessWidget {
             width: 40,
             height: 40,
             child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation(context.themeConfig.primary),
+              valueColor: AlwaysStoppedAnimation(context.colors.primary),
               strokeWidth: 3,
-              backgroundColor: context.themeConfig.primaryLight,
+              backgroundColor: context.colors.primaryLight,
             ),
           ),
           const SizedBox(height: 16),
@@ -213,9 +213,9 @@ class _EmptyState extends StatelessWidget {
             width: 90,
             height: 90,
             decoration: BoxDecoration(
-              gradient: context.themeConfig.linearPrimary,
+              gradient: context.colors.primaryGradient,
               shape: BoxShape.circle,
-              boxShadow: context.themeConfig.primaryShadow(isDark:context.colors.isDark),
+              boxShadow: context.colors.primaryShadow,
             ),
             child: const Icon(
               Icons.video_library_rounded,
@@ -226,7 +226,7 @@ class _EmptyState extends StatelessWidget {
           const SizedBox(height: 20),
           Text(
             'no_sessions_yet'.tr,
-            style: context.colors.h3.copyWith(color: context.themeConfig.textDark),
+            style: context.colors.h3.copyWith(color: context.colors.textDark),
           ),
           const SizedBox(height: 8),
           Text(
@@ -240,9 +240,9 @@ class _EmptyState extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
               decoration: BoxDecoration(
-                gradient: context.themeConfig.linearAccent,
+                gradient: context.colors.accentGradient,
                 borderRadius: BorderRadius.circular(24),
-                boxShadow: context.themeConfig.primaryShadow(isDark:context.colors.isDark),
+                boxShadow: context.colors.primaryShadow,
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 const Icon(Icons.add_rounded, color: Colors.white, size: 20),

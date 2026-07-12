@@ -18,6 +18,25 @@ import '../../../core/base_provider.dart';
 import '../../category/categories_provider.dart';
 import '../home/teacher_models.dart';
 // ─────────────────────────────────────────────────────────────────────────────
+// PendingSchedule  — a locally-added weekly appointment for a course that
+// doesn't exist on the server yet (CREATE mode). Kept separate from
+// [CourseSchedule] so we don't need to know its full constructor shape;
+// it's only ever sent to the API via day/startTime/endTime strings.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class PendingSchedule {
+  final String day;
+  final String startTime;
+  final String endTime;
+
+  const PendingSchedule({
+    required this.day,
+    required this.startTime,
+    required this.endTime,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // CourseFormState  (immutable value object)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -49,9 +68,9 @@ class CourseFormState {
 
   bool get isEmpty =>
       schedules.isEmpty &&
-      certificates.isEmpty &&
-      tools.isEmpty &&
-      prerequisites.isEmpty;
+          certificates.isEmpty &&
+          tools.isEmpty &&
+          prerequisites.isEmpty;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -86,6 +105,12 @@ class CourseFormProvider extends BaseProvider {
   bool _listsChanged = false;
   bool get listsChanged => _listsChanged;
 
+  /// Weekly appointments added locally while creating a new course (the
+  /// course has no id yet, so these can't be POSTed until after creation).
+  List<PendingSchedule> _pendingSchedules = [];
+  List<PendingSchedule> get pendingSchedules =>
+      List.unmodifiable(_pendingSchedules);
+
   // ─────────────────────────────────────────────────────────────────────────
   // Initialise
   // ─────────────────────────────────────────────────────────────────────────
@@ -96,6 +121,7 @@ class CourseFormProvider extends BaseProvider {
     selectedSpecialization = null;
     selectedTeachingType = null;
     _listsChanged = false;
+    _pendingSchedules = [];
     notifyListeners();
     await _loadCategories(context);
   }
@@ -111,6 +137,7 @@ class CourseFormProvider extends BaseProvider {
     selectedSpecialization = null;
     selectedTeachingType = null;
     _listsChanged = false;
+    _pendingSchedules = [];
     notifyListeners();
 
     await _loadCategories(context);
@@ -119,7 +146,7 @@ class CourseFormProvider extends BaseProvider {
 
   Future<void> _loadCategories(BuildContext context) async {
     specializations =
-        await context.read<CategoriesProvider>().getSpecialization();
+    await context.read<CategoriesProvider>().getSpecialization();
     notifyListeners();
   }
 
@@ -181,6 +208,25 @@ class CourseFormProvider extends BaseProvider {
     notifyListeners();
   }
 
+  void removeFormSchedule(int index) {
+    _form = _form.copyWith(
+        schedules: List.of(_form.schedules)..removeAt(index));
+    _listsChanged = true;
+    notifyListeners();
+  }
+
+  void addPendingSchedule(PendingSchedule schedule) {
+    _pendingSchedules = [..._pendingSchedules, schedule];
+    _listsChanged = true;
+    notifyListeners();
+  }
+
+  void removePendingSchedule(int index) {
+    _pendingSchedules = List.of(_pendingSchedules)..removeAt(index);
+    _listsChanged = true;
+    notifyListeners();
+  }
+
   void addFormPrerequisite(String title) {
     _form = _form.copyWith(prerequisites: [..._form.prerequisites, title]);
     _listsChanged = true;
@@ -205,6 +251,9 @@ class CourseFormProvider extends BaseProvider {
     double fees = 0,
     double? totalHours,
     XFile? logoFile,
+    /// When true, the course is published immediately after creation.
+    /// When false, it's left as a draft (the server-side default).
+    bool publish = false,
   }) async {
     // Step 1: create course record (JSON, no file)
     final result = await run(() => _api.post(
@@ -226,13 +275,20 @@ class CourseFormProvider extends BaseProvider {
     // Step 2: upload image if provided
     if (logoFile != null) {
       final withImage =
-          await _uploadImage(logoFile, courseId: created.id);
+      await _uploadImage(logoFile, courseId: created.id);
       if (withImage != null) created = withImage;
     }
 
-    // Step 3: persist extras in parallel
+    // Step 3: publish immediately if requested (otherwise stays a draft)
+    if (publish) {
+      final pubResult = await run(
+              () => _api.post('/api/v1/courses/${created.id}/publish'));
+      if (pubResult != null) created = created.copyWith(isPublished: true);
+    }
+
+    // Step 4: persist extras in parallel
     await Future.wait([
-      for (final s in _form.schedules)
+      for (final s in _pendingSchedules)
         _addSchedule(created.id,
             day: s.day, startTime: s.startTime, endTime: s.endTime),
       for (final t in _form.certificates)
@@ -242,8 +298,10 @@ class CourseFormProvider extends BaseProvider {
         _addPrerequisite(created.id, title: pr),
     ]);
 
-    // Step 4: re-fetch to get full populated course
-    return await _fetchCourseDetail(created.id) ?? created;
+    // Step 5: re-fetch to get full populated course
+    final refreshed = await _fetchCourseDetail(created.id) ?? created;
+    _pendingSchedules = [];
+    return refreshed;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -251,13 +309,13 @@ class CourseFormProvider extends BaseProvider {
   // ─────────────────────────────────────────────────────────────────────────
 
   Future<TeacherCourse?> submitUpdate(
-    TeacherCourse original, {
-    required String name,
-    String? description,
-    double? fees,
-    double? totalHours,
-    XFile? logoFile,
-  }) async {
+      TeacherCourse original, {
+        required String name,
+        String? description,
+        double? fees,
+        double? totalHours,
+        XFile? logoFile,
+      }) async {
     // Step 1: patch scalar fields
     final patchResult = await run(() => _api.put(
       '/api/v1/courses/${original.id}',
@@ -278,8 +336,6 @@ class CourseFormProvider extends BaseProvider {
         .where((o) => !_form.schedules.any((f) => f.id == o.id))
         .map((s) => s.id)
         .toList();
-    final newSchedules =
-        _form.schedules.where((s) => s.id == -1).toList();
 
     final removedCertIds = original.certificates
         .where((o) => !_form.certificates.contains(o.title))
@@ -312,7 +368,7 @@ class CourseFormProvider extends BaseProvider {
       for (final id in removedCertIds) _removeCertificate(id),
       for (final id in removedToolIds) _removeTool(id),
       for (final id in removedPrereqIds) _removePrerequisite(id),
-      for (final s in newSchedules)
+      for (final s in _pendingSchedules)
         _addSchedule(original.id,
             day: s.day, startTime: s.startTime, endTime: s.endTime),
       for (final t in newCerts) _addCertificate(original.id, title: t),
@@ -320,8 +376,10 @@ class CourseFormProvider extends BaseProvider {
       for (final pr in newPrereqs) _addPrerequisite(original.id, title: pr),
     ]);
 
-    return await _fetchCourseDetail(original.id) ??
-        TeacherCourse.fromJson(patchResult);
+    final refreshed =
+        await _fetchCourseDetail(original.id) ?? TeacherCourse.fromJson(patchResult);
+    _pendingSchedules = [];
+    return refreshed;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -338,7 +396,7 @@ class CourseFormProvider extends BaseProvider {
       {required int courseId}) async {
     try {
       final ext =
-          p.extension(logoFile.path).replaceFirst('.', '').toLowerCase();
+      p.extension(logoFile.path).replaceFirst('.', '').toLowerCase();
       final mimeType = switch (ext) {
         'png' => 'image/png',
         'webp' => 'image/webp',
@@ -372,8 +430,8 @@ class CourseFormProvider extends BaseProvider {
 
   Future<void> _addSchedule(int courseId,
       {required String day,
-      required String startTime,
-      required String endTime}) =>
+        required String startTime,
+        required String endTime}) =>
       run(() => _api.post('/api/v1/courses/$courseId/schedules',
           body: {'day': day, 'start_time': startTime, 'end_time': endTime}));
 

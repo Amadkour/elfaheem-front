@@ -26,7 +26,7 @@ class SettingsGroup extends StatelessWidget {
               child,
               if (idx < children.length - 1)
                 Divider(
-                    height: 1, color: context.themeConfig.divider, indent: 48),
+                    height: 1, color: context.colors.divider, indent: 48),
             ],
           );
         }).toList(),
@@ -39,14 +39,14 @@ class SettingsGroup extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(0, 0, 0, 10),
           child: Text(title,
               style: context.colors.h3
-                  .copyWith(color: context.themeConfig.textMedium, fontSize: 14)),
+                  .copyWith(color: context.colors.textMedium, fontSize: 14)),
         ),
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 0),
           decoration: BoxDecoration(
-            color:context.themeConfig.cardBg,
+            color:context.colors.cardBg,
             borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-            boxShadow: context.themeConfig.cardShadow(isDark:context.colors.isDark),
+            boxShadow: context.colors.cardShadow,
           ),
           child: itemBackground==null? mainWidgets: DecoratedBox(decoration:BoxDecoration(
               color: itemBackground!,

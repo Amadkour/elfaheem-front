@@ -168,11 +168,11 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
       }
 
       if (mounted) {
-        _showSnack('changes_saved'.tr, context.themeConfig.success);
+        _showSnack('changes_saved'.tr, context.colors.success);
         Navigator.of(context).pop();
       }
     } catch (e) {
-      if (mounted) _showSnack(e.toString(), context.themeConfig.danger);
+      if (mounted) _showSnack(e.toString(), context.colors.danger);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -234,7 +234,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
   // WEB LAYOUT — left sticky profile card + right scrollable form
   // ══════════════════════════════════════════════════════════════════════════
 
-  Widget _webLayout(ProfileProvider p, AppColors c) {
+  Widget _webLayout(ProfileProvider p, ThemeConfigProvider c) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -307,7 +307,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
   // MOBILE LAYOUT — hero header + form
   // ══════════════════════════════════════════════════════════════════════════
 
-  Widget _mobileLayout(ProfileProvider p, AppColors c) {
+  Widget _mobileLayout(ProfileProvider p, ThemeConfigProvider c) {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       child: Column(
@@ -496,7 +496,7 @@ class _DocumentsTabView extends StatelessWidget {
 
 class _ProfileSideCard extends StatelessWidget {
   final ProfileProvider p;
-  final AppColors c;
+  final ThemeConfigProvider c;
   final bool isTeacher;
 
   const _ProfileSideCard({
@@ -595,7 +595,7 @@ class _ProfileSideCard extends StatelessWidget {
 class _InfoRow extends StatelessWidget {
   final IconData icon;
   final String label;
-  final AppColors c;
+  final ThemeConfigProvider c;
   const _InfoRow(
       {required this.icon, required this.label, required this.c});
 
@@ -624,7 +624,7 @@ class _InfoRow extends StatelessWidget {
 
 class _MobileHero extends StatelessWidget {
   final ProfileProvider p;
-  final AppColors c;
+  final ThemeConfigProvider c;
   final Future<void> Function(XFile) onImageChange;
 
   const _MobileHero({
@@ -667,13 +667,13 @@ class _MobileHero extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: context.themeConfig.cardBg,
+                  color: context.colors.cardBg,
                   borderRadius: BorderRadius.circular(14),
-                  boxShadow: context.themeConfig.cardShadow(isDark:context.colors.isDark),
+                  boxShadow: context.colors.cardShadow,
                 ),
                 child: Icon(
                   CupertinoIcons.back,
-                  color: context.themeConfig.textDark,
+                  color: context.colors.textDark,
                   size: 22,
                 ),
               ),
@@ -723,7 +723,7 @@ class _MobileHero extends StatelessWidget {
 
 class _AvatarCircle extends StatelessWidget {
   final ProfileProvider p;
-  final AppColors c;
+  final ThemeConfigProvider c;
   final double size;
 
   const _AvatarCircle(
@@ -767,7 +767,7 @@ class _AvatarCircle extends StatelessWidget {
 
 class _FormCard extends StatelessWidget {
   final ProfileProvider p;
-  final AppColors c;
+  final ThemeConfigProvider c;
   final bool isTeacher;
   final TextEditingController nameCtrl;
   final TextEditingController emailCtrl;
@@ -1340,7 +1340,7 @@ class _StatusChip extends StatelessWidget {
 
 class _SectionHeader extends StatelessWidget {
   final String label;
-  final AppColors c;
+  final ThemeConfigProvider c;
   const _SectionHeader({required this.label, required this.c});
 
   @override

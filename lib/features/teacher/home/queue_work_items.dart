@@ -159,7 +159,7 @@ class _QueueHeader extends StatelessWidget {
               fontFamily: 'bahji',
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: context.themeConfig.textMedium,
+              color: context.colors.textMedium,
               letterSpacing: 0.5,
             ),
           ),
@@ -167,8 +167,8 @@ class _QueueHeader extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
             decoration: BoxDecoration(
-              color: context.themeConfig.background,
-              border: Border.all(color: context.themeConfig.divider),
+              color: context.colors.background,
+              border: Border.all(color: context.colors.divider),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
@@ -177,7 +177,7 @@ class _QueueHeader extends StatelessWidget {
                 fontFamily: 'bahji',
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: context.themeConfig.textMedium,
+                color: context.colors.textMedium,
               ),
             ),
           ),
@@ -213,7 +213,7 @@ class _DayGroup extends StatelessWidget {
               fontFamily: 'bahji',
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: context.themeConfig.textMedium.withValues(alpha: 0.6),
+              color: context.colors.textMedium.withValues(alpha: 0.6),
               letterSpacing: 0.8,
             ),
           ),
@@ -259,12 +259,12 @@ class ScheduleSessionCard extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
         child: Container(
           decoration: BoxDecoration(
-            color: background??context.themeConfig.background,
+            color: background??context.colors.background,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isOngoing
                   ? _accent.withValues(alpha: 0.5)
-                  : context.themeConfig.divider,
+                  : context.colors.divider,
               width: isOngoing ? 1.2 : 0.5,
             ),
             boxShadow: [
@@ -717,14 +717,14 @@ class _MetaChip extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
-      Icon(icon, size: 11, color: context.themeConfig.textMedium),
+      Icon(icon, size: 11, color: context.colors.textMedium),
       const SizedBox(width: 3),
       Text(
         label,
         style: TextStyle(
           fontFamily: 'bahji',
           fontSize: 11,
-          color: context.themeConfig.textMedium,
+          color: context.colors.textMedium,
         ),
       ),
     ],
@@ -821,10 +821,10 @@ class _EmptyQueue extends StatelessWidget {
     child: Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: context.themeConfig.primary.withValues(alpha: 0.06),
+        color: context.colors.primary.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: context.themeConfig.primary.withValues(alpha: 0.15),
+          color: context.colors.primary.withValues(alpha: 0.15),
         ),
       ),
       child: Row(
@@ -833,12 +833,12 @@ class _EmptyQueue extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: context.themeConfig.primary.withValues(alpha: 0.1),
+              color: context.colors.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.calendar_today_outlined,
-              color: context.themeConfig.primary,
+              color: context.colors.primary,
               size: 20,
             ),
           ),
@@ -847,7 +847,7 @@ class _EmptyQueue extends StatelessWidget {
             child: Text(
               'لا توجد مواعيد خلال الأسبوع القادم',
               style: context.colors.caption.copyWith(
-                color: context.themeConfig.textMedium,
+                color: context.colors.textMedium,
               ),
             ),
           ),
@@ -922,7 +922,7 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
         bottom: MediaQuery.of(context).viewInsets.bottom + 32,
       ),
       decoration: BoxDecoration(
-        color: context.themeConfig.cardBg,
+        color: context.colors.cardBg,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Form(
@@ -936,7 +936,7 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: context.themeConfig.divider,
+                  color: context.colors.divider,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -948,7 +948,7 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    gradient: context.themeConfig.linearPrimary,
+                    gradient: context.colors.primaryGradient,
                     borderRadius: BorderRadius.circular(13),
                   ),
                   child: const Icon(
@@ -966,7 +966,7 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
                       Text(
                         widget.session.courseName,
                         style: context.colors.caption.copyWith(
-                          color: context.themeConfig.primary,
+                          color: context.colors.primary,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -979,17 +979,17 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: context.themeConfig.primary.withValues(alpha: 0.06),
+                color: context.colors.primary.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: context.themeConfig.primary.withValues(alpha: 0.15),
+                  color: context.colors.primary.withValues(alpha: 0.15),
                 ),
               ),
               child: Row(
                 children: [
                   Icon(
                     Icons.schedule_rounded,
-                    color: context.themeConfig.primary,
+                    color: context.colors.primary,
                     size: 16,
                   ),
                   const SizedBox(width: 8),
@@ -997,7 +997,7 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
                     '${widget.session.dayLabel}  '
                     '${widget.session.startTime} — ${widget.session.endTime}',
                     style: context.colors.label.copyWith(
-                      color: context.themeConfig.primary,
+                      color: context.colors.primary,
                     ),
                   ),
                 ],
@@ -1048,11 +1048,11 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
               child: Container(
                 height: 52,
                 decoration: BoxDecoration(
-                  gradient: context.themeConfig.linearPrimary,
+                  gradient: context.colors.primaryGradient,
                   borderRadius: BorderRadius.circular(30),
                   boxShadow: [
                     BoxShadow(
-                      color: context.themeConfig.primary.withValues(alpha: 0.38),
+                      color: context.colors.primary.withValues(alpha: 0.38),
                       blurRadius: 18,
                       offset: const Offset(0, 6),
                     ),
@@ -1086,7 +1086,7 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
               child: Text(
                 'إلغاء',
                 style: context.colors.label.copyWith(
-                  color: context.themeConfig.textMedium,
+                  color: context.colors.textMedium,
                 ),
               ),
             ),

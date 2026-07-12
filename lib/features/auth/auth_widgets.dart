@@ -30,7 +30,7 @@ class AuthSidebar extends StatelessWidget {
     return Container(
       width: context.width/3 >400?400:context.width/3 ,
       decoration:  BoxDecoration(
-        gradient:context.themeConfig.linearSlider,
+        gradient:context.colors.sliderGradient,
       ),
       child: Stack(
         children: [
@@ -263,7 +263,7 @@ class ScreenIcon extends StatelessWidget {
           color: _kBrandLight,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Icon(icon, color: context.themeConfig.accent, size: 26),
+        child: Icon(icon, color: context.colors.accent, size: 26),
       );
 }
 
@@ -294,7 +294,7 @@ class IconTextField extends StatelessWidget {
           style:  TextStyle(
             fontFamily: 'tajawal',
             fontSize: 14,
-            color: context.themeConfig.textDark,
+            color: context.colors.textDark,
 
           ),
           decoration: InputDecoration(
@@ -303,11 +303,11 @@ class IconTextField extends StatelessWidget {
             hintStyle:  TextStyle(
               fontFamily: 'tajawal',
               fontSize: 14,
-              color: context.themeConfig.textDark,
+              color: context.colors.textDark,
 
             ),
             filled: true,
-            fillColor: context.themeConfig.inputBg(isDark:context.colors.isDark),
+            fillColor: context.colors.inputBg,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             border: OutlineInputBorder(
@@ -320,7 +320,7 @@ class IconTextField extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide:  BorderSide(color: context.themeConfig.textAction.withAlpha(150), width: 1.5),
+              borderSide:  BorderSide(color: context.colors.textAction.withAlpha(150), width: 1.5),
             ),
           ),
           validator: (v) =>
@@ -371,7 +371,7 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
           style:  TextStyle(
             fontFamily: 'tajawal',
             fontSize: 14,
-            color: context.themeConfig.textDark,
+            color: context.colors.textDark,
           ),
           decoration: InputDecoration(
             prefixIcon: const Icon(
@@ -396,11 +396,11 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
             hintStyle:  TextStyle(
               fontFamily: 'tajawal',
               fontSize: 14,
-              color: context.themeConfig.textDark,
+              color: context.colors.textDark,
 
             ),
             filled: true,
-            fillColor: context.themeConfig.inputBg(isDark:context.colors.isDark),
+            fillColor: context.colors.inputBg,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             border: OutlineInputBorder(
@@ -413,7 +413,7 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide:  BorderSide(color: context.themeConfig.textAction.withAlpha(150), width: 1.5),
+              borderSide:  BorderSide(color: context.colors.textAction.withAlpha(150), width: 1.5),
             ),
           ),
           validator: (v) =>
@@ -448,8 +448,8 @@ class PrimaryButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: isLoading || !enable ? null : onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: enable? context.themeConfig.accent2.withValues(alpha:0.7):context.themeConfig.textDark,
-          disabledBackgroundColor: context.themeConfig.accent.withValues(alpha:0.6),
+          backgroundColor: enable? context.colors.accent2.withValues(alpha:0.7):context.colors.textDark,
+          disabledBackgroundColor: context.colors.accent.withValues(alpha:0.6),
           foregroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
@@ -536,7 +536,7 @@ class LinkRow extends StatelessWidget {
               style:  TextStyle(
                 fontFamily: 'tajawal',
                 fontSize: 14,
-                color: context.themeConfig.primaryDark,
+                color: context.colors.primaryDark,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -561,7 +561,7 @@ class ProgressBar extends StatelessWidget {
               margin: EdgeInsets.only(right: i < totalSteps - 1 ? 6 : 0),
               height: 4,
               decoration: BoxDecoration(
-                color: done ? context.themeConfig.accent : _kBorder,
+                color: done ? context.colors.accent : _kBorder,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -598,10 +598,10 @@ class RolePicker extends StatelessWidget {
                 ),
                 padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
                 decoration: BoxDecoration(
-                  color:  context.themeConfig.inputBg(isDark:context.colors.isDark),
+                  color:  context.colors.inputBg,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: isSelected ? context.themeConfig.primaryDark : _kBorder,
+                    color: isSelected ? context.colors.primaryDark : _kBorder,
                     width: isSelected ? 2 : 1.5,
                   ),
                 ),
@@ -612,7 +612,7 @@ class RolePicker extends StatelessWidget {
                       height: 40,
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? context.themeConfig.primaryDark.withValues(alpha:0.15)
+                            ? context.colors.primaryDark.withValues(alpha:0.15)
                             : const Color(0xFF9CA3AF).withValues(alpha:0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -620,7 +620,7 @@ class RolePicker extends StatelessWidget {
                         role['text'] == 'teacher'
                             ? Icons.cast_for_education_outlined
                             : Icons.school_outlined,
-                        color: isSelected ? context.themeConfig.primaryDark : _kMuted,
+                        color: isSelected ? context.colors.primaryDark : _kMuted,
                         size: 20,
                       ),
                     ),
@@ -631,7 +631,7 @@ class RolePicker extends StatelessWidget {
                         fontFamily: 'tajawal',
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: isSelected ? context.themeConfig.primary : context.themeConfig.textDark,
+                        color: isSelected ? context.colors.primary : context.colors.textDark,
                       ),
                     ),
                   ],
@@ -667,7 +667,7 @@ class StyledDropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: context.themeConfig.inputBg(isDark:context.colors.isDark),
+        color: context.colors.inputBg,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: _kBorder, width: 1.5),
       ),
@@ -715,10 +715,10 @@ class LangRow extends StatelessWidget {
               duration: const Duration(milliseconds: 180),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
               decoration: BoxDecoration(
-                color: isActive ? _kBrandLight : context.themeConfig.inputBg(isDark:context.colors.isDark),
+                color: isActive ? _kBrandLight : context.colors.inputBg,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isActive ? context.themeConfig.primary : _kBorder,
+                  color: isActive ? context.colors.primary : _kBorder,
                   width: 1.5,
                 ),
               ),
@@ -728,7 +728,7 @@ class LangRow extends StatelessWidget {
                   Icon(
                     Icons.language_rounded,
                     size: 14,
-                    color: isActive ? context.themeConfig.primary : _kMuted,
+                    color: isActive ? context.colors.primary : _kMuted,
                   ),
                   const SizedBox(width: 6),
                   Text(
@@ -737,7 +737,7 @@ class LangRow extends StatelessWidget {
                       fontFamily: 'tajawal',
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
-                      color: isActive ? context.themeConfig.primary : _kMuted,
+                      color: isActive ? context.colors.primary : _kMuted,
                     ),
                   ),
                 ],
@@ -801,7 +801,7 @@ class LangDropdown extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-           Icon(Icons.language, size: 20,color: context.themeConfig.primaryDark,),
+           Icon(Icons.language, size: 20,color: context.colors.primaryDark,),
 
           const SizedBox(width: 5), // 👈 تحكمي فيها (0 لو عايزة تلزقيهم)
 

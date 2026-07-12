@@ -22,7 +22,7 @@ class ScreenAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.themeConfig;
+    final c = context.colors;
     return AppBar(
       backgroundColor: background ?? c.background,
       automaticallyImplyLeading: false,

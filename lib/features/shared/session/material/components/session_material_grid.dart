@@ -86,12 +86,12 @@ class SessionMaterialGrid extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(children: [
           Icon(Icons.folder_open_rounded,
-              size: 18, color: context.themeConfig.textLight),
+              size: 18, color: context.colors.textLight),
           const SizedBox(width: 8),
           Text(
             'no_attachments_yet'.tr,
             style: context.colors.caption
-                .copyWith(color: context.themeConfig.textLight),
+                .copyWith(color: context.colors.textLight),
           ),
         ]),
       );
@@ -133,7 +133,7 @@ class SessionMaterialGrid extends StatelessWidget {
     final isRecorded  = m.type == SessionMaterialType.recorded;
 
     final icon       = _typeIcons[m.type] ?? Icons.attach_file_rounded;
-    final color      = _typeColors[m.type] ?? context.themeConfig.primary;
+    final color      = _typeColors[m.type] ?? context.colors.primary;
     final labelKey   = _typeLabelKeys[m.type] ?? 'material_type_link';
     final isCompleted = m.completed;
 
@@ -150,7 +150,7 @@ class SessionMaterialGrid extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
-          color: context.themeConfig.cardBg,
+          color: context.colors.cardBg,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isCompleted
@@ -228,7 +228,7 @@ class SessionMaterialGrid extends StatelessWidget {
                                         ? FontStyle.italic
                                         : FontStyle.normal,
                                     color: isCompleted
-                                        ? context.themeConfig.textMedium
+                                        ? context.colors.textMedium
                                         : isRecording
                                         ? color
                                         : null,
@@ -298,13 +298,13 @@ class SessionMaterialGrid extends StatelessWidget {
                         if (!isRecording) ...[
                           _iconBtn(
                             icon: CupertinoIcons.settings_solid,
-                            color: context.themeConfig.textMedium,
+                            color: context.colors.textMedium,
                             onTap: () => _showEditDialog(context, m),
                           ),
                         ],
                         _iconBtn(
                           icon: CupertinoIcons.minus_circle_fill,
-                          color: context.themeConfig.danger,
+                          color: context.colors.danger,
                           onTap: () => _showDeleteDialog(context, m),
                         ),
                       ])
@@ -333,7 +333,7 @@ class SessionMaterialGrid extends StatelessWidget {
                                 key: ValueKey('empty')),
                           ),
                           Icon(Icons.open_in_new_rounded,
-                              size: 16, color: context.themeConfig.textLight),
+                              size: 16, color: context.colors.textLight),
                         ],
                       ),
                   ],
@@ -456,7 +456,7 @@ class SessionMaterialGrid extends StatelessWidget {
           );
         },
         confirmLabel: 'save'.tr,
-        confirmColor: context.themeConfig.primary,
+        confirmColor: context.colors.primary,
       ),
     );
   }
@@ -475,7 +475,7 @@ class SessionMaterialGrid extends StatelessWidget {
               .deleteMaterial(session.id, m.id);
         },
         confirmLabel: 'delete'.tr,
-        confirmColor: context.themeConfig.danger,
+        confirmColor: context.colors.danger,
       ),
     );
   }

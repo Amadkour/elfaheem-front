@@ -9,6 +9,7 @@ import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../config/theme/app_theme.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/helpers.dart';
 import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/base_page.dart';
@@ -96,7 +97,7 @@ class _AboutScreenState extends State<AboutScreen> {
     );
   }
 
-  Widget _buildBody(AboutTermsProvider p, AppColors c, bool isWide) {
+  Widget _buildBody(AboutTermsProvider p, ThemeConfigProvider c, bool isWide) {
     if (p.isLoadingAbout) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -620,7 +621,7 @@ class _TermsScreenState extends State<TermsScreen> {
     );
   }
 
-  Widget _buildBody(AboutTermsProvider p, AppColors c) {
+  Widget _buildBody(AboutTermsProvider p, ThemeConfigProvider c) {
     if (p.isLoadingTerms) {
       return const Center(child: CircularProgressIndicator());
     }

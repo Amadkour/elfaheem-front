@@ -157,7 +157,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
               );
         },
         confirmLabel: 'save'.tr,
-        confirmColor: context.themeConfig.primary,
+        confirmColor: context.colors.primary,
       ),
     );
   }
@@ -180,7 +180,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
           }
         },
         confirmLabel: 'delete'.tr,
-        confirmColor: context.themeConfig.danger,
+        confirmColor: context.colors.danger,
       ),
     );
   }
@@ -218,15 +218,15 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
                 ? 'end_session'.tr
                 : 'meet_now'.tr,
             color: _session.isLiveActive
-                ? context.themeConfig.danger
-                : context.themeConfig.success,
+                ? context.colors.danger
+                : context.colors.success,
             onTap: _toggleLive,
           ),
         if (_session.isLiveActive)
           SessionActionBtn(
             icon: CupertinoIcons.video_camera_solid,
             label: 'join_live_session'.tr,
-            color: context.themeConfig.success,
+            color: context.colors.success,
             onTap: _joinLive,
           ),
         if (_session.totalMaterial > 0)
@@ -253,14 +253,14 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: context.themeConfig.cardBg,
+        color: context.colors.cardBg,
         borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-        boxShadow: context.themeConfig.cardShadow(isDark:context.colors.isDark),
+        boxShadow: context.colors.cardShadow,
         border: Border(
           right: BorderSide(
             color: isLiveNow
-                ? context.themeConfig.danger.withValues(alpha: 0.8)
-                : context.themeConfig.primary.withValues(alpha: 0.8),
+                ? context.colors.danger.withValues(alpha: 0.8)
+                : context.colors.primary.withValues(alpha: 0.8),
             width: 4,
           ),
         ),
@@ -310,7 +310,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
                   SessionTypePill(isLive: isLiveNow),
                   const SizedBox(width: 8),
                   Icon(Icons.access_time_rounded,
-                      size: 12, color: context.themeConfig.textLight),
+                      size: 12, color: context.colors.textLight),
                   const SizedBox(width: 3),
                   Text(
                     '${_session.durationMinutes} ${'m'.tr}',
@@ -346,13 +346,13 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
                       Row(children: [
                         _iconAction(
                           icon: CupertinoIcons.settings_solid,
-                          color: context.themeConfig.textMedium,
+                          color: context.colors.textMedium,
                           tooltip: 'edit_session'.tr,
                           onTap: _showEditSessionDialog,
                         ),
                         _iconAction(
                           icon: Icons.delete,
-                          color: context.themeConfig.danger,
+                          color: context.colors.danger,
                           tooltip: 'delete_session'.tr,
                           onTap: _showDeleteSessionDialog,
                         ),
@@ -368,9 +368,9 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
               child: LinearProgressIndicator(
-                color: context.themeConfig.primary,
+                color: context.colors.primary,
                 backgroundColor:
-                    context.themeConfig.primary.withValues(alpha: 0.1),
+                    context.colors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -430,14 +430,14 @@ class _MaterialsPanel extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: context.themeConfig.background.withValues(alpha: 0.5),
+        color: context.colors.background.withValues(alpha: 0.5),
         borderRadius: BorderRadius.only(
           bottomRight: Radius.circular(context.colors.radiusMedium),
           bottomLeft: Radius.circular(context.colors.radiusMedium),
         ),
         border: Border(
           top: BorderSide(
-              color: context.themeConfig.textLight.withValues(alpha: 0.1)),
+              color: context.colors.textLight.withValues(alpha: 0.1)),
         ),
       ),
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
@@ -447,12 +447,12 @@ class _MaterialsPanel extends StatelessWidget {
           // Panel header
           Row(children: [
             Icon(Icons.attach_file_rounded,
-                size: 14, color: context.themeConfig.primary),
+                size: 14, color: context.colors.primary),
             const SizedBox(width: 6),
             Text(
               'attachments'.tr,
               style: context.colors.caption.copyWith(
-                  color: context.themeConfig.primary,
+                  color: context.colors.primary,
                   fontWeight: FontWeight.w700),
             ),
             const Spacer(),
@@ -504,7 +504,7 @@ class _MaterialsToggleButton extends StatelessWidget {
           children: [
             Text(
               '$count ${'materials'.tr}',
-              style: TextStyle(color: context.themeConfig.purple),
+              style: TextStyle(color: context.colors.purple),
               textDirection: TextDirection.ltr,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -513,7 +513,7 @@ class _MaterialsToggleButton extends StatelessWidget {
               turns: expanded ? 0.5 : 0,
               duration: const Duration(milliseconds: 280),
               child: Icon(Icons.keyboard_arrow_down_rounded,
-                  color: context.themeConfig.purple),
+                  color: context.colors.purple),
             ),
           ],
         ),

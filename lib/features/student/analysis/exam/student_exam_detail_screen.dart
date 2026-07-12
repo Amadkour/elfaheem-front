@@ -320,9 +320,9 @@ class _InfoCard extends StatelessWidget {
     width: double.infinity,
     padding: const EdgeInsets.all(18),
     decoration: BoxDecoration(
-      color: context.themeConfig.cardBg,
+      color: context.colors.cardBg,
       borderRadius: BorderRadius.circular(20),
-      boxShadow: context.themeConfig.cardShadow(isDark:context.colors.isDark),
+      boxShadow: context.colors.cardShadow,
       border: Border.all(color: accent.withValues(alpha: .10)),
     ),
     child: Column(

@@ -87,14 +87,14 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen>
                 decoration: BoxDecoration(
                   color: unanswered > 0
                       ? Colors.orange.withValues(alpha: .12)
-                      : context.themeConfig.success.withValues(alpha: .12),
+                      : context.colors.success.withValues(alpha: .12),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   unanswered > 0
                       ? Icons.warning_amber_rounded
                       : Icons.check_circle_outline_rounded,
-                  color: unanswered > 0 ? Colors.orange : context.themeConfig.success,
+                  color: unanswered > 0 ? Colors.orange : context.colors.success,
                   size: 32,
                 ),
               ),
@@ -130,7 +130,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen>
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(context, true),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: context.themeConfig.primary,
+                      backgroundColor: context.colors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 13),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       elevation: 0,

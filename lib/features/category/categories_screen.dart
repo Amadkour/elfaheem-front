@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
 import '../../config/app_config.dart' as Helpers;
-import '../../config/theme/app_theme.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../../utils/widget/app_network_image.dart';
 import '../../utils/widget/app_bar.dart';
@@ -33,7 +32,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Scaffold(
-        backgroundColor: context.themeConfig.background,
+        backgroundColor: context.colors.background,
         body: SafeArea(
           child: Column(
             children: [
@@ -76,7 +75,7 @@ class _CategoryGrid extends StatelessWidget {
         child: Padding(
           padding: EdgeInsets.all(32),
           child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation(context.themeConfig.primary),
+            valueColor: AlwaysStoppedAnimation(context.colors.primary),
           ),
         ),
       );
@@ -107,22 +106,22 @@ class _CategoryGrid extends StatelessWidget {
                 height: 65,
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? context.themeConfig.primary.withValues(alpha: 0.12)
-                      : context.themeConfig.cardBg,
+                      ? context.colors.primary.withValues(alpha: 0.12)
+                      : context.colors.cardBg,
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: isSelected ? context.themeConfig.primary : Colors.transparent,
+                    color: isSelected ? context.colors.primary : Colors.transparent,
                     width: 2,
                   ),
                   boxShadow:
-                      isSelected ? context.themeConfig.primaryShadow(isDark:context.colors.isDark) : context.themeConfig.cardShadow(isDark:context.colors.isDark),
+                      isSelected ? context.colors.primaryShadow : context.colors.cardShadow,
                 ),
                 child: AppNetworkImage(
                   url: cat.imageUrl,
                   height: 40,
                   width: 40,
                   padding: const EdgeInsets.all(8),
-                  color: isSelected ? context.themeConfig.primary : context.themeConfig.cardBg,
+                  color: isSelected ? context.colors.primary : context.colors.cardBg,
                   borderRadius: BorderRadius.circular(30),
                   heroTag: "category-profile-${cat.id}",
 
@@ -131,7 +130,7 @@ class _CategoryGrid extends StatelessWidget {
               Expanded(
                 child: Text(cat.name,
                     style: context.colors.caption.copyWith(
-                      color: isSelected ? context.themeConfig.primary : context.themeConfig.textDark,
+                      color: isSelected ? context.colors.primary : context.colors.textDark,
                       fontFamily: 'tajawal',
                       overflow: TextOverflow.ellipsis,
                       fontWeight:
@@ -171,7 +170,7 @@ class _FilteredCoursesSection extends StatelessWidget {
                 onTap: () => context.read<CategoriesProvider>().clearFilter(),
                 child: Text(
                   'عرض الكل',
-                  style: context.colors.label.copyWith(color: context.themeConfig.primary),
+                  style: context.colors.label.copyWith(color: context.colors.primary),
                 ),
               ),
           ],
@@ -210,9 +209,9 @@ class _SmallCourseCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: context.themeConfig.cardBg,
+          color: context.colors.cardBg,
           borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-          boxShadow: context.themeConfig.cardShadow(isDark:context.colors.isDark),
+          boxShadow: context.colors.cardShadow,
         ),
         child: Row(
           children: [
@@ -241,12 +240,12 @@ class _SmallCourseCard extends StatelessWidget {
                   Row(
                     children: [
                        Icon(Icons.star_rounded,
-                          color: context.themeConfig.accent, size: 14),
+                          color: context.colors.accent, size: 14),
                       const SizedBox(width: 3),
                       Text(
                         course.rating.toStringAsFixed(1),
                         style:
-                            context.colors.caption.copyWith(color: context.themeConfig.textDark),
+                            context.colors.caption.copyWith(color: context.colors.textDark),
                       ),
                     ],
                   ),
@@ -256,7 +255,7 @@ class _SmallCourseCard extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               '\$ ${course.price.toStringAsFixed(2)}',
-              style: context.colors.h3.copyWith(color: context.themeConfig.accent),
+              style: context.colors.h3.copyWith(color: context.colors.accent),
             ),
           ],
         ),

@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/app_theme.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/helpers.dart';
 import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/base_page.dart';

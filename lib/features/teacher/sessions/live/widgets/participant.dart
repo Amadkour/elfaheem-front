@@ -133,7 +133,7 @@ abstract class _ParticipantWidgetState<T extends ParticipantWidget>
           border: widget.participant.isSpeaking && !isScreenShare
               ? Border.all(
                   width: 5,
-                  color: context.themeConfig.primary,
+                  color: context.colors.primary,
                 )
               : null,
         ),

@@ -84,14 +84,14 @@ class _StudentCourseExamsWidgetState extends State<StudentCourseExamsWidget> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           child: Row(children: [
-            Icon(Icons.quiz_rounded, size: 18, color: context.themeConfig.primary),
+            Icon(Icons.quiz_rounded, size: 18, color: context.colors.primary),
             const SizedBox(width: 8),
             Text('الاختبارات',
                 style: TextStyle(
                     fontFamily: 'bahji',
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: context.themeConfig.primary)),
+                    color: context.colors.primary)),
             const Spacer(),
             Text('${exams.length} اختبار',
                 style: const TextStyle(
@@ -151,7 +151,7 @@ class _CourseExamTile extends StatelessWidget {
     } else if (isDone) {
       accent = exam.passed == true ? AppTheme.success : Colors.redAccent;
     } else {
-      accent = context.themeConfig.primary;
+      accent = context.colors.primary;
     }
 
     return Padding(

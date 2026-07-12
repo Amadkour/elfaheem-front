@@ -136,7 +136,7 @@ class _LabelRow extends StatelessWidget {
                   fontFamily: 'bahji',
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: context.themeConfig.textLight,
+                  color: context.colors.textLight,
                 ),
               ),
             ],
@@ -274,7 +274,7 @@ class SegmentedProgressBar extends StatelessWidget {
                     : null,
                 color: filled
                     ? null
-                    : context.themeConfig.textLight.withValues(alpha: 0.12),
+                    : context.colors.textLight.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(4),
                 boxShadow: filled
                     ? [
@@ -300,7 +300,7 @@ class SegmentedProgressBar extends StatelessWidget {
           Container(
             height: 8,
             decoration: BoxDecoration(
-              color: context.themeConfig.textLight.withValues(alpha: 0.12),
+              color: context.colors.textLight.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(8),
             ),
           ),

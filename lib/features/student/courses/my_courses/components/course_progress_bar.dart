@@ -12,7 +12,7 @@ class CourseProgressBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final pct          = (progress * 100).round();
     final isDone       = progress >= 1.0;
-    final effectiveClr = color ?? context.themeConfig.primary;
+    final effectiveClr = color ?? context.colors.primary;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -44,7 +44,7 @@ class CourseProgressBar extends StatelessWidget {
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color:
-                    isDone ? effectiveClr : context.themeConfig.textLight,
+                    isDone ? effectiveClr : context.colors.textLight,
                   ),
                 ),
               ],

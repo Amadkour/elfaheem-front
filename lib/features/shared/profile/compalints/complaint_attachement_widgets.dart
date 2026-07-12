@@ -132,7 +132,7 @@ class AttachmentGalleryGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (attachments.isEmpty) return const SizedBox.shrink();
-    final c = context.themeConfig;
+    final c = context.colors;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       if (showLabel) ...[
         Row(children: [
@@ -299,7 +299,7 @@ class _PdfFace extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Builder(builder: (context) {
-      final c = context.themeConfig;
+      final c = context.colors;
       return Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -387,7 +387,7 @@ class _ImageViewer extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════════════
 
 void _showPdfSheet(BuildContext context, {required String? name, required String url, int? bytes}) {
-  final c = context.themeConfig;
+  final c = context.colors;
   showModalBottomSheet(
     context: context,
     backgroundColor: c.cardBg,

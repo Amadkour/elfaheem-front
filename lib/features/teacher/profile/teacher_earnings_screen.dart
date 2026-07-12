@@ -5,6 +5,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:intl/intl.dart';
 
 import '../../../config/theme/app_theme.dart';
+import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/api_client.dart';
 import '../../../utils/helpers.dart';
 import '../../../utils/widget/base_page.dart';
@@ -399,7 +400,7 @@ class _TeacherEarningsScreenState extends State<TeacherEarningsScreen>
     );
   }
 
-  Widget _buildTabBar(AppColors c) => Padding(
+  Widget _buildTabBar(ThemeConfigProvider c) => Padding(
     padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
     child: Container(
       decoration: BoxDecoration(

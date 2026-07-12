@@ -50,7 +50,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             child: Icon(
                               Icons.notifications_active_rounded,
                               size: 50,
-                              color: context.themeConfig.primary,
+                              color: context.colors.primary,
                             ),
                           )
                         : ListView(
@@ -111,7 +111,7 @@ class _NotifGroup extends StatelessWidget {
               child: Text(
                 'mark_all_read'.tr,
                 style: context.colors.label.copyWith(
-                  color: context.themeConfig.primary,
+                  color: context.colors.primary,
                 ),
               ),
             ),
@@ -142,22 +142,22 @@ class _NotifTile extends StatelessWidget {
       case 'payment':
         return _IconBadge(
           icon: Icons.credit_card_rounded,
-          bg: context.themeConfig.primary.withValues(alpha: 0.15),
-          iconColor: context.themeConfig.primary,
+          bg: context.colors.primary.withValues(alpha: 0.15),
+          iconColor: context.colors.primary,
         );
       case 'badge':
         return _IconBadge(
           icon: Icons.workspace_premium_rounded,
-          bg: context.themeConfig.accent.withValues(alpha: 0.15),
-          iconColor: context.themeConfig.accent,
+          bg: context.colors.accent.withValues(alpha: 0.15),
+          iconColor: context.colors.accent,
         );
       case 'new':
         return _NewBadgeIcon();
       default:
         return _IconBadge(
           icon: Icons.notifications_rounded,
-          bg: context.themeConfig.background,
-          iconColor: context.themeConfig.textMedium,
+          bg: context.colors.background,
+          iconColor: context.colors.textMedium,
         );
     }
   }
@@ -204,15 +204,15 @@ class _NotifTile extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: isRead
-              ? context.themeConfig.cardBg
-              : context.themeConfig.primaryDark.withValues(alpha: 0.05),
+              ? context.colors.cardBg
+              : context.colors.primaryDark.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(context.colors.radiusMedium),
           border: Border.all(
             color: isRead
                 ? Colors.transparent
-                : context.themeConfig.primaryDark.withValues(alpha: 0.2),
+                : context.colors.primaryDark.withValues(alpha: 0.2),
           ),
-          boxShadow: context.themeConfig.cardShadow(isDark:context.colors.isDark),
+          boxShadow: context.colors.cardShadow,
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -230,8 +230,8 @@ class _NotifTile extends StatelessWidget {
                           notif.title,
                           style: context.colors.h3.copyWith(
                             color: isRead
-                                ? context.themeConfig.textDark
-                                : context.themeConfig.primary,
+                                ? context.colors.textDark
+                                : context.colors.primary,
                           ),
                         ),
                       ),
@@ -240,7 +240,7 @@ class _NotifTile extends StatelessWidget {
                           width: 8,
                           height: 8,
                           decoration: BoxDecoration(
-                            color: context.themeConfig.primaryDark,
+                            color: context.colors.primaryDark,
                             shape: BoxShape.circle,
                           ),
                         ),

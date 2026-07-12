@@ -3173,6 +3173,18 @@
     "en": "Suggestion",
     "ar": "اقتراح"
   },
+  "my_favorite": {
+    "en": "Favorite",
+    "ar": "المفضلة"
+  },
+  "publish_course_btn": {
+    "en": "Publish for Students",
+    "ar": "نشر الدورة للجميع"
+  },
+  "save_as_draft_btn": {
+    "en": "Save as draft",
+    "ar": "حفظ في المسودة"
+  },
   "by_student": {
     "en": "By student",
     "ar": "من الطالب"

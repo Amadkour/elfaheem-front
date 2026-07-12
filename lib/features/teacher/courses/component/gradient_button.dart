@@ -30,9 +30,9 @@ class GradientButton extends StatelessWidget {
       height: 50,
       decoration: BoxDecoration(
         gradient:
-        enable ? context.themeConfig.linearPrimary : context.themeConfig.linearDisable,
+        enable ? context.colors.primaryGradient : context.colors.disableGradient,
         borderRadius: BorderRadius.circular(10),
-        boxShadow: enable ? context.themeConfig.primaryShadow(isDark:context.colors.isDark) : null,
+        boxShadow: enable ? context.colors.primaryShadow : null,
       ),
       child: Center(
         child: isLoading
