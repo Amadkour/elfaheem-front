@@ -1,7 +1,6 @@
 /// saved_methods_provider.dart
 library;
 
-import 'package:http/http.dart';
 
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
@@ -60,7 +59,7 @@ class SavedMethodsProvider extends BaseProvider {
       'card_last4':          last4,
       'card_expiry_month':   expiryMonth,
       'card_expiry_year':    expiryYear,
-      if (holderName != null) 'card_holder_name': holderName,
+      'card_holder_name': ?holderName,
       'set_as_default':      setAsDefault,
     }));
     if (r is Map<String, dynamic>) {
@@ -87,8 +86,8 @@ class SavedMethodsProvider extends BaseProvider {
       'bank_name':      bankName,
       'account_name':   accountName,
       'iban':           iban,
-      if (swiftCode     != null) 'swift_code':     swiftCode,
-      if (accountNumber != null) 'account_number': accountNumber,
+      'swift_code':     ?swiftCode,
+      'account_number': ?accountNumber,
       'set_as_default': setAsDefault,
     }));
     if (r is Map<String, dynamic>) {

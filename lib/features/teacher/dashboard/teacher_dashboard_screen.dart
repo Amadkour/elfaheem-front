@@ -85,7 +85,7 @@ class _State extends State<TeacherDashboardScreen> {
             .watch<TeacherDashboardProvider>();
         return PopScope(
           canPop: false,
-          onPopInvokedWithResult: (_,__){
+          onPopInvokedWithResult: (_,_){
             provider.onChangeTab(0);
           },
           child: LayoutBuilder(

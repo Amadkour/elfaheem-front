@@ -569,8 +569,9 @@ class _SuggestedSolutionField extends StatelessWidget {
                       // actually started typing something.
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) return null;
-                        if (v.trim().length < 5)
+                        if (v.trim().length < 5) {
                           return 'suggested__too_short'.tr;
+                        }
                         return null;
                       },
                     ),
@@ -581,7 +582,7 @@ class _SuggestedSolutionField extends StatelessWidget {
                     alignment: AlignmentDirectional.centerEnd,
                     child: ValueListenableBuilder<TextEditingValue>(
                       valueListenable: controller,
-                      builder: (_, v, __) => Text(
+                      builder: (_, v, _) => Text(
                         '${v.text.length} / 2000',
                         style: TextStyle(
                           fontFamily: 'bahji',
@@ -634,7 +635,7 @@ class _HistoryTab extends StatelessWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
         itemCount: provider.complaints.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        separatorBuilder: (_, _) => const SizedBox(height: 12),
         itemBuilder: (_, i) {
           final complaint = provider.complaints[i];
           final isExpanded = expandedIds.contains(complaint.id);

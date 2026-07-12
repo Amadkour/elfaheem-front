@@ -87,7 +87,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
                   itemCount:
                   p.complaints.length + (p.isLoadingList ? 1 : 0),
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (_, i) {
                     if (i >= p.complaints.length) {
                       return const Center(
@@ -515,10 +515,12 @@ class _ComplaintCard extends StatelessWidget {
 
   String _formatDate(DateTime d) {
     final diff = DateTime.now().difference(d);
-    if (diff.inMinutes < 60)
+    if (diff.inMinutes < 60) {
       return 'ago_minutes_short'.tr.replaceAll('{n}', '${diff.inMinutes}');
-    if (diff.inHours < 24)
+    }
+    if (diff.inHours < 24) {
       return 'ago_hours_short'.tr.replaceAll('{n}', '${diff.inHours}');
+    }
     return '${d.day}/${d.month}/${d.year}';
   }
 }
@@ -1305,7 +1307,7 @@ class _PendingImageStrip extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: attachments.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (_, i) => PendingAttachmentTile(
           attachment: attachments[i],
           onRemove: () => onRemove(i),

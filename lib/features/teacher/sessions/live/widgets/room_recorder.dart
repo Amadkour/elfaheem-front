@@ -28,7 +28,6 @@
 
 import 'dart:async';
 import 'dart:developer';
-import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb, ChangeNotifier;
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -173,9 +172,7 @@ class ClientRecorder extends ChangeNotifier {
     // 'videoChunksActive' event to confirm the AVAssetWriter is live.
     // prepareUpgradeWait() in room.dart pre-creates the completer so the
     // event is never missed even on fast devices.
-    if (_upgradeCompleter == null) {
-      _upgradeCompleter = Completer<void>();
-    }
+    _upgradeCompleter ??= Completer<void>();
 
     try {
       // Native emits 'videoChunksActive' from startRPScreenRecorder's

@@ -21,7 +21,6 @@ import '../features/student/reward/rewards_provider.dart';
 import '../features/student/sessions/sessions_provider.dart';
 import '../features/teacher/home/teacher_provider.dart';
 import '../features/teacher/schedules/schedules_provider.dart';
-import '../features/teacher/sessions/sessions_provider.dart';
 import '../features/teacher/sessions/students/course_student_provider.dart';
 
 List<SingleChildWidget> appProviders({

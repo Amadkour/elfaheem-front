@@ -17,6 +17,7 @@
 /// theme_config_provider.dart. Nothing outside this file and that one
 /// should ever reference `AppTheme.*` directly.
 /// ─────────────────────────────────────────────────────────────────────────────
+library;
 
 import 'package:flutter/material.dart';
 

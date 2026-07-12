@@ -1083,7 +1083,7 @@ class _DocImagePreview extends StatelessWidget {
             width: double.infinity,
             height: 180,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
+            errorBuilder: (_, _, _) => Container(
               width: double.infinity,
               height: 100,
               decoration: BoxDecoration(
@@ -1271,7 +1271,7 @@ class _LoadingSkeletonState extends State<_LoadingSkeleton>
     final c = context.colors;
     return AnimatedBuilder(
       animation: _shimmer,
-      builder: (_, __) {
+      builder: (_, _) {
         final color = Color.lerp(c.divider, c.inputBg, _shimmer.value)!;
         return SingleChildScrollView(
           child: Column(

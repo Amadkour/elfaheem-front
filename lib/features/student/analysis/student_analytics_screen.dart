@@ -1,7 +1,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import '../../../utils/widget/base_page.dart';
 import 'attendance/student_attendance_model.dart';
@@ -186,7 +185,7 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView>
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         physics: const AlwaysScrollableScrollPhysics(),
         itemCount: list.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 14),
+        separatorBuilder: (_, _) => const SizedBox(height: 14),
         itemBuilder: (_, i) => _CourseCard(
           course: list[i],
           onTap: () => Navigator.push(
@@ -251,7 +250,7 @@ class _CourseCard extends StatelessWidget {
                           width: 48,
                           height: 48,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _coursePlaceholder(context))
+                          errorBuilder: (_, _, _) => _coursePlaceholder(context))
                       : _coursePlaceholder(context),
                 ),
                 const SizedBox(width: 12),

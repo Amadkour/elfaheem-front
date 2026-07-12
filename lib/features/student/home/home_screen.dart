@@ -50,8 +50,8 @@ class _CoursesShimmer extends StatelessWidget {
           scrollDirection: Axis.vertical,
           padding: const EdgeInsets.symmetric(horizontal: 20),
           itemCount: 3,
-          separatorBuilder: (_, __) => const SizedBox(width: 14),
-          itemBuilder: (_, __) =>
+          separatorBuilder: (_, _) => const SizedBox(width: 14),
+          itemBuilder: (_, _) =>
           const Shimmer(width: 50, height: 50, radius: 25),
         ),
       ),
@@ -63,8 +63,8 @@ class _CoursesShimmer extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
             itemCount: 3,
-            separatorBuilder: (_, __) => const SizedBox(width: 14),
-            itemBuilder: (_, __) =>
+            separatorBuilder: (_, _) => const SizedBox(width: 14),
+            itemBuilder: (_, _) =>
                 Shimmer(width: context.width / 5, height: context.height / 5),
           ),
         ),
@@ -76,8 +76,8 @@ class _CoursesShimmer extends StatelessWidget {
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 20),
           itemCount: 3,
-          separatorBuilder: (_, __) => const SizedBox(width: 14),
-          itemBuilder: (_, __) =>
+          separatorBuilder: (_, _) => const SizedBox(width: 14),
+          itemBuilder: (_, _) =>
               Shimmer(width: context.width / 5, height: context.height / 5),
         ),
       ),
@@ -89,8 +89,8 @@ class _CoursesShimmer extends StatelessWidget {
             scrollDirection: Axis.vertical,
             padding: const EdgeInsets.symmetric(horizontal: 20),
             itemCount: 3,
-            separatorBuilder: (_, __) => const SizedBox(width: 14),
-            itemBuilder: (_, __) =>
+            separatorBuilder: (_, _) => const SizedBox(width: 14),
+            itemBuilder: (_, _) =>
             const Shimmer(width: 50, height: 50, radius: 25),
           ),
         ),
@@ -315,8 +315,9 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
       return;
     }
     if (next.isOngoing) {
-      if (mounted)
+      if (mounted) {
         setState(() => _secondsLeft = (next.minutesUntilEnd ?? 0) * 60);
+      }
     } else {
       final mu = next.minutesUntilStart ?? 0;
       if (mounted) setState(() => _secondsLeft = mu > 0 ? mu * 60 : 0);
@@ -338,7 +339,7 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: _schedProv,
-      builder: (_, __) {
+      builder: (_, _) {
         final next = _schedProv.nextSlot;
         final isOngoing = next?.isOngoing ?? false;
 

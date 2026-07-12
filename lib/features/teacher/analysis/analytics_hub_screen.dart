@@ -64,7 +64,7 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen>
                           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                           physics: const BouncingScrollPhysics(),
                           itemCount: filtered.length,
-                          separatorBuilder: (_, __) =>
+                          separatorBuilder: (_, _) =>
                               const SizedBox(height: 14),
                           itemBuilder: (_, i) =>
                               _CourseAnalyticsCard(course: filtered[i]),

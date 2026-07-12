@@ -68,6 +68,7 @@ class ProfileProvider extends BaseProvider {
 
   bool get notificationsEnabled => _notificationsEnabled;
 
+  @override
   bool isLoading = false;
 
   void toggleNotifications(bool value) {

@@ -540,7 +540,7 @@ class _RecordingStatusBannerState extends State<RecordingStatusBanner>
         children: [
           AnimatedBuilder(
             animation: _pulse,
-            builder: (_, __) => Opacity(
+            builder: (_, _) => Opacity(
               // Paused: solid dot (no pulse). Active: pulsing dot.
               opacity: widget.isPaused ? 1.0 : _opacity.value,
               child: Container(

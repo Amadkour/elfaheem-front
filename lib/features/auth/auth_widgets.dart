@@ -10,7 +10,6 @@ import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
-import '../../config/theme/theme_config_provider.dart';
 import '../../utils/widget/primary_menue.dart' show MyPrimaryMenu;
 import 'auth_provider.dart';
 // مهم للـ blur

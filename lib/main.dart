@@ -28,7 +28,6 @@ import 'features/shared/notification/notification_service.dart';
 import 'features/shared/notification/notifications_screen.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'features/student/courses/details/course_detail_screen.dart';
-import 'features/student/courses/list/courses_list_screen.dart';
 import 'features/teacher/dashboard/teacher_dashboard_screen.dart';
 import 'features/shared/profile/profile_provider.dart';
 import 'firebase_options.dart';
@@ -221,8 +220,8 @@ class _ElFaheemAppState extends State<ElFaheemApp> {
   }
 
   PageRoute _fade(Widget page) => PageRouteBuilder(
-    pageBuilder: (_, __, ___) => page,
-    transitionsBuilder: (_, anim, __, child) =>
+    pageBuilder: (_, _, _) => page,
+    transitionsBuilder: (_, anim, _, child) =>
         FadeTransition(opacity: anim, child: child),
     transitionDuration: const Duration(milliseconds: 300),
   );
@@ -260,7 +259,7 @@ class _PremiumLoadingScreen extends StatelessWidget {
                 'assets/images/splash.png',
                 width: 120,
                 height: 120,
-                errorBuilder: (_, __, ___) => const Text(
+                errorBuilder: (_, _, _) => const Text(
                   'الفهيم',
                   style: TextStyle(
                     fontFamily: 'bahji',

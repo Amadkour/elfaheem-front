@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 class MyPrimaryButton extends StatelessWidget {

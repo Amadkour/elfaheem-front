@@ -93,7 +93,7 @@ class _ScheduleTabBodyState extends State<ScheduleTabBody>
     super.build(context);
     return  ListenableBuilder(
           listenable: widget.provider,
-          builder: (_, __) {
+          builder: (_, _) {
             final data        = widget.getData();
             final lastFetched = widget.getLastFetched();
             _syncOngoing(data);
@@ -154,7 +154,7 @@ class _ScheduleTabBodyState extends State<ScheduleTabBody>
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
                       sliver: SliverList.separated(
                         itemCount: shownSlots.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        separatorBuilder: (_, _) => const SizedBox(height: 12),
                         itemBuilder: (_, i) =>
                             ScheduleSessionCard(
                               background:context.colors.cardBg,
@@ -501,7 +501,7 @@ class _WeekStrip extends StatelessWidget {
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           itemCount: kDayOrder.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 8),
+          separatorBuilder: (_, _) => const SizedBox(width: 8),
           itemBuilder: (_, i) {
             final day        = kDayOrder[i];
             final isActive   = activeDays.contains(day);
@@ -788,7 +788,7 @@ class _ManageList extends StatelessWidget {
     padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
     physics: const BouncingScrollPhysics(),
     itemCount: _sorted.length,
-    separatorBuilder: (_, __) => const SizedBox(height: 10),
+    separatorBuilder: (_, _) => const SizedBox(height: 10),
     itemBuilder: (ctx, i) => _ManageCard(schedule: _sorted[i]),
   );
 }
@@ -1096,7 +1096,7 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: _days.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
                 itemBuilder: (_, i) {
                   final (v, l) = _days[i];
                   final sel = _day == v;

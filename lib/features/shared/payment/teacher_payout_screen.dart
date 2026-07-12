@@ -3,10 +3,8 @@
 /// Premium design: deep emerald + gold fintech aesthetic, animated hero card.
 library;
 
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 

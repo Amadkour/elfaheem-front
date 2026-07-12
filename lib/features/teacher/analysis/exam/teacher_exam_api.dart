@@ -31,14 +31,14 @@ class TeacherExamApi {
     final data = await _api.post('/api/v1/exams', body: {
       'name': name,
       'course_id': courseId,
-      if (description != null) 'description': description,
+      'description': ?description,
       if (startDate != null) 'start_date': startDate.toUtc().toIso8601String(),
       if (endDate != null) 'end_date': endDate.toUtc().toIso8601String(),
-      if (duration != null) 'duration': duration,
-      if (maxSubmissions != null) 'max_submissions': maxSubmissions,
-      if (passingScore != null) 'passing_score': passingScore,
-      if (totalMarks != null) 'total_marks': totalMarks,
-      if (passcode != null) 'passcode': passcode,
+      'duration': ?duration,
+      'max_submissions': ?maxSubmissions,
+      'passing_score': ?passingScore,
+      'total_marks': ?totalMarks,
+      'passcode': ?passcode,
     });
     return ExamModel.fromJson(data as Map<String, dynamic>);
   }

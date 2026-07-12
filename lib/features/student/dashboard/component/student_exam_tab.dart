@@ -206,7 +206,7 @@ class _StudentExamsTabState extends State<StudentExamsTab>
                                   20, 4, 20, 32),
                               physics: const BouncingScrollPhysics(),
                               itemCount: _exams.length,
-                              separatorBuilder: (_, __) =>
+                              separatorBuilder: (_, _) =>
                               const SizedBox(height: 12),
                               itemBuilder: (_, i) =>
                                   _ExamCard(exam: _exams[i])))),

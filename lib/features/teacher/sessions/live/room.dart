@@ -16,8 +16,6 @@ import 'widgets/participant_info.dart';
 import 'widgets/room_recorder.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'widgets/room_screen_share.dart';
-import 'widgets/recorder_web_stub.dart'
-if (dart.library.html) 'widgets/recorder_web_impl.dart' as web_rec;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Design System
@@ -653,7 +651,7 @@ class _RoomPageState extends State<RoomPage>
           .map<String>((p) => p['leave_date'] as String)
           .toList();
       if (resp['students'] is List) {
-        if (mounted)
+        if (mounted) {
           setState(() {
             _enrolledStudents = (resp['students'] as List)
                 .map(
@@ -667,6 +665,7 @@ class _RoomPageState extends State<RoomPage>
                 .toList()
                 .cast<EnrolledStudent>();
           });
+        }
       }
     } catch (e) {
       log('fetchEnrolledStudents error: $e');
@@ -959,8 +958,8 @@ class _RoomPageState extends State<RoomPage>
 
     final allScreen = [...screenTracks, ...localScreen];
     final ordered = allScreen.isNotEmpty
-        ? [...allScreen, if (localCamera != null) localCamera, ...userMedia]
-        : [if (localCamera != null) localCamera, ...userMedia];
+        ? [...allScreen, ?localCamera, ...userMedia]
+        : [?localCamera, ...userMedia];
 
     if (mounted) setState(() => participantTracks = ordered);
     if (ordered.length > 1) {
@@ -1055,7 +1054,7 @@ class _RoomPageState extends State<RoomPage>
             // Aurora background
             AnimatedBuilder(
               animation: _auroraAnim,
-              builder: (_, __) => CustomPaint(
+              builder: (_, _) => CustomPaint(
                 painter: _AuroraPainter(_auroraAnim.value),
                 child: const SizedBox.expand(),
               ),
@@ -1204,7 +1203,7 @@ class _RoomPageState extends State<RoomPage>
                         const SizedBox(height: 8),
                         ListenableBuilder(
                           listenable: _recorder ?? ChangeNotifier(),
-                          builder: (_, __) {
+                          builder: (_, _) {
                             final r = _recorder;
                             if (r == null) return const SizedBox.shrink();
                             final mb = (r.totalBytes / (1024 * 1024))
@@ -1466,7 +1465,7 @@ class _RoomPageState extends State<RoomPage>
                 tween: Tween(begin: 0.3, end: 1.0),
                 duration: const Duration(milliseconds: 800),
                 onEnd: () { if (mounted) setState(() {}); },
-                builder: (_, v, __) => Opacity(
+                builder: (_, v, _) => Opacity(
                   opacity: v,
                   child: Container(
                     width: 8, height: 8,
@@ -1549,7 +1548,7 @@ class _RoomPageState extends State<RoomPage>
       badges.add(
         AnimatedBuilder(
           animation: _recDotAnim,
-          builder: (_, __) => _RecBadge(
+          builder: (_, _) => _RecBadge(
             dotColor: _recRed,
             dotOpacity: _recDotOpacity.value,
             pulsing: true,
@@ -1618,7 +1617,7 @@ class _RoomPageState extends State<RoomPage>
         badges.add(
           AnimatedBuilder(
             animation: _recDotAnim,
-            builder: (_, __) => _RecBadge(
+            builder: (_, _) => _RecBadge(
               dotColor:   dotColor,
               dotOpacity: pulsing ? _recDotOpacity.value : 1.0,
               pulsing:    pulsing,
@@ -2795,7 +2794,7 @@ class _PremiumScreenShareViewState extends State<_PremiumScreenShareView>
         ),
         AnimatedBuilder(
           animation: widget.auroraAnim,
-          builder: (_, __) => CustomPaint(
+          builder: (_, _) => CustomPaint(
             painter: _ScreenShareAuroraPainter(
               widget.auroraAnim.value * 2 * 3.14159,
             ),
@@ -3273,7 +3272,7 @@ class _PremiumWaitingPlaceholderState
           // Aurora background
           AnimatedBuilder(
             animation: widget.auroraAnim,
-            builder: (_, __) => CustomPaint(
+            builder: (_, _) => CustomPaint(
               painter: _AuroraPainter(widget.auroraAnim.value),
               child: const SizedBox.expand(),
             ),
@@ -3294,7 +3293,7 @@ class _PremiumWaitingPlaceholderState
                       // Pulse ring
                       AnimatedBuilder(
                         animation: _ringAnim,
-                        builder: (_, __) => Transform.scale(
+                        builder: (_, _) => Transform.scale(
                           scale: _ringScale.value,
                           child: Opacity(
                             opacity: _ringOpacity.value,
@@ -3514,7 +3513,7 @@ class _AVChip extends StatelessWidget {
 
 // ── Old _WaitingPlaceholder kept as fallback ──────────────────────────────────
 class _WaitingPlaceholder extends StatelessWidget {
-  const _WaitingPlaceholder({this.message = 'Waiting for participants…'});
+  const _WaitingPlaceholder() : message = 'Waiting for participants…';
 
   final String message;
 

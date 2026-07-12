@@ -14,7 +14,6 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import '../../../config/app_config.dart';
-import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/helpers.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -257,11 +256,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       }
     } catch (_) {
       await next.dispose();
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isLoading = false;
           _hasError = true;
         });
+      }
     }
   }
 
@@ -337,17 +337,19 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     pos = pos < Duration.zero ? Duration.zero : (pos > dur ? dur : pos);
     _vc!.seekTo(pos);
     setState(() {
-      if (forward)
+      if (forward) {
         _flashForward = true;
-      else
+      } else {
         _flashRewind = true;
+      }
     });
     Future.delayed(const Duration(milliseconds: 650), () {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _flashForward = false;
           _flashRewind = false;
         });
+      }
     });
     _showControls();
   }
@@ -862,7 +864,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
           // Speed
           _ControlChip(
             icon: Icons.speed_rounded,
-            label: _speed == 1.0 ? 'normal_speed'.tr : '${_speed}×',
+            label: _speed == 1.0 ? 'normal_speed'.tr : '$_speed×',
             onTap: _openSpeedSheet,
           ),
           const SizedBox(width: 6),
@@ -1460,7 +1462,7 @@ class _SpeedSheet extends StatelessWidget {
           alignment: WrapAlignment.center,
           children: speeds.map((s) {
             final sel = s == current;
-            final label = s == 1.0 ? 'normal_speed'.tr : '${s}×';
+            final label = s == 1.0 ? 'normal_speed'.tr : '$s×';
             return GestureDetector(
               onTap: () => onSelect(s),
               child: AnimatedContainer(

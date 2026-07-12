@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
@@ -380,7 +379,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.only(bottom: 4),
                     itemCount: prov.sessions.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 10),
+                    separatorBuilder: (_, _) => const SizedBox(width: 10),
                     itemBuilder: (_, i) {
                       final s = prov.sessions[i];
                       final sel = prov.selectedSession?.id == s.id;

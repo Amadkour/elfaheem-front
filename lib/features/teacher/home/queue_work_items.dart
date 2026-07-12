@@ -118,7 +118,7 @@ class _ScheduleQueueListState extends State<ScheduleQueueList> {
       ..sort((a, b) {
         if (a.isOngoing != b.isOngoing) return a.isOngoing ? -1 : 1;
         if (a.isToday != b.isToday) return a.isToday ? -1 : 1;
-        final dc = a.scheduledDate!.compareTo(b.scheduledDate!);
+        final dc = a.scheduledDate.compareTo(b.scheduledDate);
         return dc != 0 ? dc : a.startTime.compareTo(b.startTime);
       });
 
@@ -664,7 +664,7 @@ class _CourseInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dur = session.durationMinutes! > 0
+    final dur = session.durationMinutes > 0
         ? '${session.durationMinutes}د'
         : '—';
     final students = session.maxStudents != null
@@ -881,7 +881,7 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
     _nameCtrl = TextEditingController(text: widget.session.defaultSessionName);
     _descCtrl = TextEditingController();
     _durCtrl = TextEditingController(
-      text: widget.session.durationMinutes! > 0
+      text: widget.session.durationMinutes > 0
           ? '${widget.session.durationMinutes}'
           : '60',
     );
@@ -903,7 +903,7 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
     final sessionId = await context.read<TeacherProvider>().createSession(
       courseId: widget.session.courseId,
       name: _nameCtrl.text.trim(),
-      durationMinutes: duration!,
+      durationMinutes: duration,
       description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
     );
     if (context.mounted) {

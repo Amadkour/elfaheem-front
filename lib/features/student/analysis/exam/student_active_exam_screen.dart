@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../../../../config/theme/app_theme.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../core/api_client.dart';
 import '../../../teacher/analysis/exam/exam_model.dart';
@@ -818,7 +817,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                 tween: Tween(begin: 0, end: pct / 100),
                 duration: const Duration(milliseconds: 1200),
                 curve: Curves.easeOut,
-                builder: (_, v, __) =>
+                builder: (_, v, _) =>
                     Stack(alignment: Alignment.center, children: [
                       SizedBox(
                         width: 160,

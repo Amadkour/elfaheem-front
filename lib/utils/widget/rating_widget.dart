@@ -855,7 +855,7 @@ class _SkeletonState extends State<_Skeleton>
     final c = context.colors;
     return AnimatedBuilder(
       animation: _shimmer,
-      builder: (_, __) {
+      builder: (_, _) {
         final color = Color.lerp(c.divider, c.inputBg, _shimmer.value)!;
         if (widget.compact) {
           return Row(

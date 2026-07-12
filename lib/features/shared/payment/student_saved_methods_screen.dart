@@ -179,7 +179,7 @@ class _VisualCardState extends State<_VisualCard>
     final p = context.read<SavedMethodsProvider>();
     return AnimatedBuilder(
       animation: _anim,
-      builder: (_, __) => _buildCard(context, m, p),
+      builder: (_, _) => _buildCard(context, m, p),
     );
   }
 

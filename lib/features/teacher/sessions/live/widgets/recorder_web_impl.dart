@@ -22,7 +22,7 @@ external bool get _compositorDone;
 external bool _isTypeSupported(String mimeType);
 
 extension _MediaDevicesExt on web.MediaDevices {
-  external JSPromise<web.MediaStream> getDisplayMedia([JSAny? constraints]);
+  external JSPromise<web.MediaStream> getDisplayMedia();
 }
 
 // ── Typed compositor wrappers ─────────────────────────────────────────────────
