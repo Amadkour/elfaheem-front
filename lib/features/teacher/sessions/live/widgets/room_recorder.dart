@@ -124,6 +124,15 @@ class ClientRecorder extends ChangeNotifier {
   // recorder's single subscription.
   void Function(Map<dynamic, dynamic> event)? onBroadcastEvent;
 
+  // ── Web: no-camera/mic warning ────────────────────────────────────────────
+  // Called (web only) when BOTH getUserMedia and getAudioOnly failed to
+  // acquire any camera/mic source, even after retries. The session still
+  // proceeds in screen-only mode, but the teacher should know up front that
+  // nothing will be recorded unless/until they start a screen share — this
+  // was previously silent, so the teacher had no idea a whole session could
+  // end up with zero recorded content.
+  void Function()? onNoMediaWarning;
+
   void prepareMicReadyForShareWait() =>
       _micReadyForShareCompleter = Completer<void>();
 
@@ -211,7 +220,16 @@ class ClientRecorder extends ChangeNotifier {
   }
 
   Future<void> attachScreenToRecorder(Object? screenStream) async {
-    if (!kIsWeb || _webRecorder == null) return;
+    if (!kIsWeb) return;
+    if (_webRecorder == null) {
+      log('[REC] attachScreenToRecorder: _webRecorder is null — screen '
+          'stream dropped, nothing will be recorded for this share');
+      return;
+    }
+    if (screenStream == null) {
+      log('[REC] attachScreenToRecorder: screenStream is null — nothing to attach');
+      return;
+    }
     _webRecorder!.addStream(screenStream, 'screen');
   }
 
@@ -293,6 +311,7 @@ class ClientRecorder extends ChangeNotifier {
     _pauseCompleter            = null;
     _resumeCompleter           = null;
     onBroadcastEvent           = null;
+    onNoMediaWarning           = null;
     try { await _webRecorder?.stop(); } catch (_) {}
     _webRecorder = null;
     super.dispose();
@@ -302,20 +321,64 @@ class ClientRecorder extends ChangeNotifier {
 
   Future<void> _startWeb() async {
     try {
-      Object? stream = await web_rec.getUserMedia(video: true);
-      stream ??= await web_rec.getAudioOnly();
+      // IMPORTANT: create _webRecorder and mark the session as recording
+      // IMMEDIATELY, before touching the camera/mic at all.
+      //
+      // room.dart calls startWebCompositor() right after this method
+      // returns. Camera/mic acquisition can take several seconds (multiple
+      // retries with backoff), and if a teacher starts screen-sharing
+      // during that window, attachScreenToRecorder() reaches _webRecorder
+      // while it's still null and the stream is silently dropped — which
+      // is exactly what "record from the start of the session" needs to
+      // never happen. So camera/mic acquisition now happens in the
+      // background and attaches itself later if it ever succeeds; it no
+      // longer blocks compositor startup or screen-share attachment.
       _webRecorder = web_rec.WebRecorder(
         onBlob: (size) { _totalBytes += size; notifyListeners(); },
       );
-      await _webRecorder!.start(stream, '');
+      await _webRecorder!.start(null, '');
       _set(RecState.recording);
       _screenRecording = true;
       notifyListeners();
+
+      unawaited(_acquireWebMediaInBackground());
     } catch (e, st) {
       log('[REC] Web start error: $e\n$st');
       _setError('Web recording failed: $e');
     }
   }
+
+  /// Acquires camera/mic in the background (with its own retries) and
+  /// attaches it to the already-running compositor if/when it succeeds.
+  /// Runs independently of session start and screen-share attachment.
+  Future<void> _acquireWebMediaInBackground() async {
+    try {
+      // getUserMedia() already falls back to audio-only internally when no
+      // camera is available — do not call getAudioOnly() again here, that
+      // previously ran the whole retry sequence twice.
+      final stream = await web_rec.getUserMedia(video: true);
+
+      if (stream == null) {
+        log('[REC] Web: no camera/mic available after retries — '
+            'continuing with screen-share/placeholder only');
+        onNoMediaWarning?.call();
+        return;
+      }
+
+      log('[REC] Web: camera/mic acquired in background — attaching to compositor');
+      _webRecorder?.addStream(stream, 'camera');
+    } catch (e, st) {
+      log('[REC] Web background media acquisition error: $e\n$st');
+    }
+  }
+
+  /// Web only: whether the session ever captured a real (non-empty) chunk.
+  /// False after the recording has stopped means nothing was recorded —
+  /// worth surfacing to the teacher rather than reporting silent success.
+  bool get webHadRealData => _webRecorder?.hadRealData ?? false;
+
+  /// Web only: number of chunks actually confirmed uploaded to the server.
+  int get webChunksUploaded => _webRecorder?.chunksUploaded ?? 0;
 
   // ── Mobile: Phase 1 ───────────────────────────────────────────────────────
 

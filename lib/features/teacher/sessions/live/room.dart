@@ -562,6 +562,19 @@ class _RoomPageState extends State<RoomPage>
       } catch (e) {
         log('[REC] stopRecordingOnly error: $e');
       }
+
+      // Web only: stopRecordingOnly() has just awaited the compositor's full
+      // drain, so webHadRealData/webChunksUploaded are final now. Check
+      // BEFORE popping the screen (and while context is still mounted) so
+      // the teacher actually sees the warning if the session recorded
+      // nothing — this used to fail completely silently.
+      if (kIsWeb && !rec.webHadRealData && mounted) {
+        _showSnack(
+          'لم يتم حفظ أي تسجيل لهذه الجلسة بسبب مشكلة تقنية في التسجيل، '
+              'حتى لو تمت مشاركة الشاشة أو الكاميرا. يرجى إبلاغ الدعم الفني.',
+        );
+      }
+
       // Drain any remaining state (web compositor or residual events).
       // Runs quickly since native already confirmed the final upload above.
       unawaited(_drainAndDispose(rec));
@@ -838,6 +851,13 @@ class _RoomPageState extends State<RoomPage>
       apiClient: widget.apiClient,
     );
     _recorder!.addListener(_onRecorderUpdate);
+    _recorder!.onNoMediaWarning = () {
+      if (!mounted) return;
+      _showSnack(
+        'تعذر الوصول إلى الكاميرا أو الميكروفون — سيتم تسجيل مشاركة الشاشة '
+            'فقط عند بدئها. تأكد من عدم استخدام الكاميرا/الميكروفون في تطبيق آخر.',
+      );
+    };
 
     // Step 1: Configure the service with session params.
     // No dialog is shown yet; the service enters its ready state.
@@ -958,14 +978,14 @@ class _RoomPageState extends State<RoomPage>
 
     final allScreen = [...screenTracks, ...localScreen];
     final ordered = allScreen.isNotEmpty
-        ? [...allScreen, ?localCamera, ...userMedia]
+    ? [...allScreen, ?localCamera, ...userMedia]
         : [?localCamera, ...userMedia];
 
     if (mounted) setState(() => participantTracks = ordered);
     if (ordered.length > 1) {
-      _thumbBarAnim.forward();
+    _thumbBarAnim.forward();
     } else {
-      _thumbBarAnim.reverse();
+    _thumbBarAnim.reverse();
     }
   }
 

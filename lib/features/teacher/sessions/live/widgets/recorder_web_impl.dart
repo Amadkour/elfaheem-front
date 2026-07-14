@@ -18,6 +18,17 @@ external JSAny? _dispatch(String cmd,
 @JS('_ElFaheemCompositorDone')
 external bool get _compositorDone;
 
+// JS sets this to true the first time a non-empty chunk was captured.
+// Lets us tell "drained, all N chunks uploaded" apart from
+// "drained, but N was zero the whole time" (the latter used to be reported
+// as success even though nothing was ever actually recorded).
+@JS('_ElFaheemCompositorHadRealData')
+external bool get _compositorHadRealData;
+
+// Running count of chunks that actually reached the server successfully.
+@JS('_ElFaheemCompositorChunksUploaded')
+external int get _compositorChunksUploaded;
+
 @JS('MediaRecorder.isTypeSupported')
 external bool _isTypeSupported(String mimeType);
 
@@ -55,39 +66,69 @@ bool isTypeSupported(String mime) {
   try { return _isTypeSupported(mime); } catch (_) { return false; }
 }
 
+/// Attempts [action] up to [maxAttempts] times with a short backoff.
+///
+/// getUserMedia can fail with a transient error (most commonly
+/// NotReadableError / TrackStartError) when the mic or camera is still
+/// momentarily locked by the OS/browser right after a previous session
+/// released it. Previously a single failure here was treated as final and
+/// the whole session silently fell back to "no media at all", even though
+/// the device was usually free again a few hundred ms later.
+Future<web.MediaStream?> _withRetries(
+    Future<web.MediaStream> Function() action, {
+      required String label,
+      int maxAttempts = 3,
+    }) async {
+  for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      final stream = await action();
+      if (attempt > 1) _log('$label succeeded on attempt $attempt/$maxAttempts');
+      return stream;
+    } catch (e) {
+      final isLast = attempt == maxAttempts;
+      _log('$label failed (attempt $attempt/$maxAttempts): $e'
+          '${isLast ? '' : ' — retrying'}');
+      if (isLast) return null;
+      await Future.delayed(Duration(milliseconds: 400 * attempt));
+    }
+  }
+  return null;
+}
+
 Future<web.MediaStream?> getUserMedia({bool video = true}) async {
   final devices = web.window.navigator.mediaDevices;
   if (video) {
-    try {
-      return await devices.getUserMedia(web.MediaStreamConstraints(
+    final ideal = await _withRetries(
+          () => devices.getUserMedia(web.MediaStreamConstraints(
         audio: true.toJS,
         video: {
           'width':     {'ideal': 1280},
           'height':    {'ideal': 720},
           'frameRate': {'ideal': 30},
         }.jsify()!,
-      )).toDart;
-    } catch (_) {}
-    try {
-      return await devices.getUserMedia(
+      )).toDart,
+      label: 'getUserMedia (camera+mic, ideal constraints)',
+    );
+    if (ideal != null) return ideal;
+
+    final basic = await _withRetries(
+          () => devices.getUserMedia(
         web.MediaStreamConstraints(audio: true.toJS, video: true.toJS),
-      ).toDart;
-    } catch (e) {
-      _log('getUserMedia failed: $e');
-    }
+      ).toDart,
+      label: 'getUserMedia (camera+mic, basic constraints)',
+    );
+    if (basic != null) return basic;
   }
   return getAudioOnly();
 }
 
 Future<web.MediaStream?> getAudioOnly() async {
-  try {
-    return await web.window.navigator.mediaDevices.getUserMedia(
+  return _withRetries(
+        () => web.window.navigator.mediaDevices.getUserMedia(
       web.MediaStreamConstraints(audio: true.toJS, video: false.toJS),
-    ).toDart;
-  } catch (e) {
-    _log('getAudioOnly failed: $e');
-    return null;
-  }
+    ).toDart,
+    label: 'getAudioOnly',
+  );
 }
 
 Future<web.MediaStream?> getDisplayMedia() async {
@@ -156,7 +197,14 @@ class WebRecorder {
   }
 
   void addStream(Object? stream, String label) {
-    if (!_started || stream == null) return;
+    if (!_started) {
+      _log('addStream($label) DROPPED — compositor not started (_started=false)');
+      return;
+    }
+    if (stream == null) {
+      _log('addStream($label) DROPPED — stream is null');
+      return;
+    }
     try {
       _compositorAddStream(stream as web.MediaStream, label);
       _log('addStream($label) sent');
@@ -185,6 +233,18 @@ class WebRecorder {
   }
 
   void requestData() {}
+
+  /// Whether the compositor ever captured a real (non-empty) chunk this
+  /// session. False means the recording is empty — no camera/mic and no
+  /// usable screen-share frames were captured before stop().
+  bool get hadRealData {
+    try { return _compositorHadRealData; } catch (_) { return false; }
+  }
+
+  /// Number of chunks that were actually confirmed uploaded to the server.
+  int get chunksUploaded {
+    try { return _compositorChunksUploaded; } catch (_) { return 0; }
+  }
 
   /// Stop recording and wait until ALL chunks have been uploaded to the server.
   /// This MUST complete before room.dart calls onEnd(), otherwise the server
@@ -215,6 +275,18 @@ class WebRecorder {
       _log('compositor drained — all chunks uploaded ✅');
     } else {
       _log('compositor drain TIMED OUT after 5 min ⚠️');
+    }
+
+    // "Drained" only means the compositor finished its stop sequence — it
+    // does NOT mean anything was actually recorded. Surface that distinctly
+    // instead of letting a silent zero-chunk session look identical to a
+    // successful one in the logs.
+    if (!hadRealData || chunksUploaded == 0) {
+      _log('⚠️ WARNING: session ended with ZERO real chunks uploaded — '
+          'nothing was recorded (no camera/mic and no usable screen-share '
+          'frames were ever captured).');
+    } else {
+      _log('session recorded $chunksUploaded real chunk(s)');
     }
   }
 

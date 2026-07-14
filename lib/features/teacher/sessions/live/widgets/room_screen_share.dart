@@ -176,6 +176,10 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
           showSnack('Screen share cancelled.');
           return;
         }
+        if (recorder == null) {
+          log('[SS] Web: recorder is null — screen stream will NOT reach '
+              'the compositor (nothing will be recorded for this share)');
+        }
         await recorder?.attachScreenToRecorder(screenStream);
         try {
           await _safeNegotiate(() => local.setScreenShareEnabled(

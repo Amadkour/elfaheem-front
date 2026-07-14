@@ -259,7 +259,7 @@ class ScheduleSessionCard extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
         child: Container(
           decoration: BoxDecoration(
-            color: background??context.colors.background,
+            color: background??context.colors.primary.withAlpha(50),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isOngoing

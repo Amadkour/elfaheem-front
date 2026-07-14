@@ -15,6 +15,8 @@ class WebRecorder {
   void addStream(Object? stream, String label) {}
   void removeStream(String label) {}
   void requestData() {}
+  bool get hadRealData => false;
+  int get chunksUploaded => 0;
   Future<void> stop() async {}
   Future<void> attachScreenStream(Object? s) async {}
   Future<void> detachScreenStream() async {}

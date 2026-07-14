@@ -74,7 +74,7 @@ class CourseHero extends StatelessWidget {
                           padding:
                               const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: context.themeConfig.primary.withValues(alpha: 0.85),
+                            color: context.colors.primary.withValues(alpha: 0.85),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(

@@ -241,8 +241,8 @@ class _ElFaheemAppState extends State<ElFaheemApp> {
 class _PremiumLoadingScreen extends StatelessWidget {
   const _PremiumLoadingScreen();
 
-  static const _bg = Color(0xFF1A1A1A); // matches flutter_native_splash color
-  static const _accent = Color(0xFFF4C542); // matches flutter_native_splash color
+  static const _bg = AppTheme.background; // matches flutter_native_splash color
+  static const _accent =AppTheme.accent2; // matches flutter_native_splash color
 
   @override
   Widget build(BuildContext context) {
