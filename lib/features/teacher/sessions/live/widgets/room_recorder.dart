@@ -158,10 +158,30 @@ class ClientRecorder extends ChangeNotifier {
     }
   }
 
-  Future<void> startWebCompositor() async {
+  Future<void> startWebCompositor({
+    String teacherName = '',
+    String sessionTitle = '',
+    int participantCount = 0,
+  }) async {
     if (!kIsWeb || _webRecorder == null) return;
     final token = (await apiClient.accessToken) ?? '';
-    _webRecorder!.startCompositor(sessionId, apiClient.baseUrl, 'Bearer $token');
+    _webRecorder!.startCompositor(
+      sessionId,
+      apiClient.baseUrl,
+      'Bearer $token',
+      teacherName: teacherName,
+      sessionTitle: sessionTitle,
+      participantCount: participantCount,
+    );
+  }
+
+  /// Web only: pushes a live participant-count update to the recorder's
+  /// placeholder (shown on the recorded canvas when there's no screen
+  /// share/camera yet). No-op on mobile/desktop and if the compositor
+  /// hasn't started yet.
+  void updateParticipantCount(int count) {
+    if (!kIsWeb) return;
+    _webRecorder?.updateParticipantCount(count);
   }
 
   /// Phase 2 confirmation: called from room.dart AFTER startScreenCaptureService

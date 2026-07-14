@@ -2,6 +2,7 @@
 // ignore_for_file: avoid_web_libraries_in_flutter
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:js_interop';
 import 'dart:typed_data';
 
@@ -12,7 +13,7 @@ import 'package:web/web.dart' as web;
 // dart:js_interop @JS() can only bind top-level global names (no dots).
 @JS('_elfaheemCompositor')
 external JSAny? _dispatch(String cmd,
-    [JSAny? a1, JSAny? a2, JSAny? a3]);
+    [JSAny? a1, JSAny? a2, JSAny? a3, JSAny? a4]);
 
 // JS sets this to true once all chunk uploads have finished.
 @JS('_ElFaheemCompositorDone')
@@ -38,8 +39,27 @@ extension _MediaDevicesExt on web.MediaDevices {
 
 // ── Typed compositor wrappers ─────────────────────────────────────────────────
 
-void _compositorStart(int sessionId, String apiUrl, String authToken) {
-  _dispatch('start', sessionId.toJS, apiUrl.toJS, authToken.toJS);
+void _compositorStart(
+    int sessionId,
+    String apiUrl,
+    String authToken, {
+      String teacherName = '',
+      String sessionTitle = '',
+      int participantCount = 0,
+    }) {
+  // Bundled as JSON rather than adding more positional a5/a6/... params to
+  // the dispatcher — keeps the JS-interop surface stable as more placeholder
+  // fields get added later.
+  final meta = jsonEncode({
+    'teacherName': teacherName,
+    'sessionTitle': sessionTitle,
+    'participantCount': participantCount,
+  });
+  _dispatch('start', sessionId.toJS, apiUrl.toJS, authToken.toJS, meta.toJS);
+}
+
+void _compositorUpdateParticipants(int count) {
+  _dispatch('updateParticipants', count.toJS);
 }
 
 void _compositorAddStream(web.MediaStream stream, String label) {
@@ -175,11 +195,25 @@ class WebRecorder {
     return true;
   }
 
-  void startCompositor(int sessionId, String apiUrl, String authToken) {
+  void startCompositor(
+      int sessionId,
+      String apiUrl,
+      String authToken, {
+        String teacherName = '',
+        String sessionTitle = '',
+        int participantCount = 0,
+      }) {
     _started = true;
     _log('calling compositor start() sessionId=$sessionId apiUrl=$apiUrl');
     try {
-      _compositorStart(sessionId, apiUrl, authToken);
+      _compositorStart(
+        sessionId,
+        apiUrl,
+        authToken,
+        teacherName: teacherName,
+        sessionTitle: sessionTitle,
+        participantCount: participantCount,
+      );
     } catch (e) {
       _log('compositorStart error: $e — is recorder_compositor.js loaded in index.html?');
       return;
@@ -194,6 +228,14 @@ class WebRecorder {
     } else {
       _log('no initial media stream — compositor in screen-only mode (OK)');
     }
+  }
+
+  /// Pushes a live participant-count update to the placeholder shown on the
+  /// recorded canvas whenever there's no screen share/camera to draw. Safe
+  /// to call at any point during (or before) the session.
+  void updateParticipantCount(int count) {
+    try { _compositorUpdateParticipants(count); }
+    catch (e) { _log('updateParticipantCount error: $e'); }
   }
 
   void addStream(Object? stream, String label) {

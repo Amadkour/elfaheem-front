@@ -326,6 +326,12 @@
   let _silentGain      = null;
   let _uploadChain     = Promise.resolve(); // serializes chunk uploads — see _uploadChunk below
   let _queueDepth      = 0;       // chunks waiting-or-uploading, for backpressure diagnostics
+  // Placeholder metadata (teacher/session/participants), shown on the
+  // recorded canvas whenever there's no screen share or camera to draw.
+  let _teacherName      = '';
+  let _sessionTitle     = '';
+  let _participantCount = 0;
+  let _sessionStartMs   = 0;      // Date.now() at start() — drives the placeholder's live clock
 
   const _sources = {};
 
@@ -450,16 +456,195 @@
     // encode and flushed an empty (0-byte) blob on stop().
   }
 
-  function _drawPlaceholder() {
-    _ctx.fillStyle = '#1A1A1A';
-    _ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  // ── Premium placeholder design tokens ──────────────────────────────────
+  // Mirrors the in-app _PremiumWaitingPlaceholder palette (room.dart) so the
+  // recorded video matches the live UI's branding exactly.
+  const _PH = {
+    bg:        '#060810',
+    bgSurface: '#0E1120',
+    cyan:      '#00D4FF',
+    indigo:    '#6B6EF9',
+    rose:      '#FF4F72',
+    textHigh:  '#FFFFFF',
+    textMid:   'rgba(255,255,255,0.70)',
+    textLow:   'rgba(255,255,255,0.45)',
+    glassBdr:  'rgba(255,255,255,0.18)',
+    glass:     'rgba(255,255,255,0.08)',
+  };
 
-    _ctx.fillStyle = '#F4C542';
-    _ctx.font = 'bold 56px sans-serif';
+  function _initialsOf(name) {
+    const trimmed = (name || '').trim();
+    if (!trimmed) return '؟';
+    const parts = trimmed.split(/\s+/).slice(0, 2);
+    return parts.map(w => w[0]).join('').toUpperCase();
+  }
+
+  function _roundRectPath(x, y, w, h, r) {
+    if (typeof _ctx.roundRect === 'function') {
+      _ctx.beginPath();
+      _ctx.roundRect(x, y, w, h, r);
+      return;
+    }
+    // Fallback for engines without roundRect (older Chromium).
+    const rr = Math.min(r, w / 2, h / 2);
+    _ctx.beginPath();
+    _ctx.moveTo(x + rr, y);
+    _ctx.arcTo(x + w, y,     x + w, y + h, rr);
+    _ctx.arcTo(x + w, y + h, x,     y + h, rr);
+    _ctx.arcTo(x,     y + h, x,     y,     rr);
+    _ctx.arcTo(x,     y,     x + w, y,     rr);
+    _ctx.closePath();
+  }
+
+  function _drawPlaceholder() {
+    const w = CANVAS_W, h = CANVAS_H;
+    const cx = w / 2, cy = h / 2;
+    const now = Date.now();
+    const elapsedSec = Math.max(0, Math.floor((now - (_sessionStartMs || now)) / 1000));
+
+    // ── Background: dark base + two soft brand-color glows (aurora-lite) ──
+    _ctx.fillStyle = _PH.bg;
+    _ctx.fillRect(0, 0, w, h);
+
+    const glow1 = _ctx.createRadialGradient(w * 0.22, h * 0.18, 0, w * 0.22, h * 0.18, w * 0.5);
+    glow1.addColorStop(0, 'rgba(0,212,255,0.16)');
+    glow1.addColorStop(1, 'rgba(0,212,255,0)');
+    _ctx.fillStyle = glow1;
+    _ctx.fillRect(0, 0, w, h);
+
+    const glow2 = _ctx.createRadialGradient(w * 0.8, h * 0.85, 0, w * 0.8, h * 0.85, w * 0.5);
+    glow2.addColorStop(0, 'rgba(107,110,249,0.16)');
+    glow2.addColorStop(1, 'rgba(107,110,249,0)');
+    _ctx.fillStyle = glow2;
+    _ctx.fillRect(0, 0, w, h);
+
+    // ── REC indicator, top-right ───────────────────────────────────────────
+    const pulse = 0.55 + 0.45 * Math.abs(Math.sin(now / 700));
+    const recPadX = 18, recY = 28, recW = 118, recH = 40;
+    const recX = w - recW - 32;
+    _ctx.fillStyle = _PH.glass;
+    _roundRectPath(recX, recY, recW, recH, recH / 2);
+    _ctx.fill();
+    _ctx.strokeStyle = _PH.glassBdr;
+    _ctx.lineWidth = 1;
+    _roundRectPath(recX, recY, recW, recH, recH / 2);
+    _ctx.stroke();
+    _ctx.fillStyle = `rgba(255,79,114,${pulse.toFixed(2)})`;
+    _ctx.beginPath();
+    _ctx.arc(recX + recPadX, recY + recH / 2, 6, 0, Math.PI * 2);
+    _ctx.fill();
+    _ctx.fillStyle = _PH.textHigh;
+    _ctx.font = '600 16px sans-serif';
+    _ctx.textAlign = 'left';
+    _ctx.textBaseline = 'middle';
+    _ctx.direction = 'ltr';
+    _ctx.fillText('REC', recX + recPadX + 16, recY + recH / 2 + 1);
+
+    // ── Elapsed session clock, top-left ────────────────────────────────────
+    const mm = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
+    const ss = String(elapsedSec % 60).padStart(2, '0');
+    _ctx.fillStyle = _PH.textLow;
+    _ctx.font = '600 15px sans-serif';
+    _ctx.textAlign = 'left';
+    _ctx.fillText(`${mm}:${ss}`, 32, recY + recH / 2 + 1);
+
+    // ── Avatar with pulsing ring ───────────────────────────────────────────
+    const avatarY   = cy - 120;
+    const avatarR   = 56;
+    const ringT     = (now / 2000) % 1;               // 0→1 loop, matches Flutter's 2s ring
+    const ringScale = 1 + 0.55 * ringT;
+    const ringAlpha = 0.45 * (1 - ringT);
+    _ctx.strokeStyle = `rgba(0,212,255,${ringAlpha.toFixed(2)})`;
+    _ctx.lineWidth = 2.5;
+    _ctx.beginPath();
+    _ctx.arc(cx, avatarY, (avatarR - 8) * ringScale, 0, Math.PI * 2);
+    _ctx.stroke();
+
+    const avatarGrad = _ctx.createLinearGradient(
+      cx - avatarR, avatarY - avatarR, cx + avatarR, avatarY + avatarR,
+    );
+    avatarGrad.addColorStop(0, _PH.cyan);
+    avatarGrad.addColorStop(1, _PH.indigo);
+    _ctx.save();
+    _ctx.shadowColor = 'rgba(0,212,255,0.35)';
+    _ctx.shadowBlur = 28;
+    _ctx.fillStyle = avatarGrad;
+    _ctx.beginPath();
+    _ctx.arc(cx, avatarY, avatarR, 0, Math.PI * 2);
+    _ctx.fill();
+    _ctx.restore();
+
+    _ctx.fillStyle = _PH.textHigh;
+    _ctx.font = '800 34px sans-serif';
     _ctx.textAlign = 'center';
     _ctx.textBaseline = 'middle';
+    _ctx.fillText(_initialsOf(_teacherName), cx, avatarY + 2);
+
+    // ── Teacher name ────────────────────────────────────────────────────────
     _ctx.direction = 'rtl';
-    _ctx.fillText('في انتظار مشاركة الشاشة أو الكاميرا', CANVAS_W / 2, CANVAS_H / 2);
+    _ctx.fillStyle = _PH.textHigh;
+    _ctx.font = '800 30px sans-serif';
+    _ctx.textAlign = 'center';
+    _ctx.fillText(_teacherName || 'المعلم', cx, avatarY + avatarR + 46);
+
+    // ── Session title, as a glass pill ─────────────────────────────────────
+    const title = _sessionTitle || 'حصة مباشرة';
+    _ctx.font = '600 18px sans-serif';
+    const titleWidth = _ctx.measureText(title).width;
+    const pillW = Math.min(w - 120, titleWidth + 64);
+    const pillH = 44;
+    const pillY = avatarY + avatarR + 74;
+    _ctx.fillStyle = 'rgba(0,212,255,0.12)';
+    _roundRectPath(cx - pillW / 2, pillY, pillW, pillH, pillH / 2);
+    _ctx.fill();
+    _ctx.strokeStyle = 'rgba(0,212,255,0.35)';
+    _ctx.lineWidth = 1;
+    _roundRectPath(cx - pillW / 2, pillY, pillW, pillH, pillH / 2);
+    _ctx.stroke();
+    _ctx.fillStyle = _PH.cyan;
+    _ctx.textAlign = 'center';
+    _ctx.textBaseline = 'middle';
+    _ctx.fillText(title, cx, pillY + pillH / 2 + 1);
+
+    // ── Participant count chip ─────────────────────────────────────────────
+    const chipLabel = `${_participantCount} مشارك`;
+    _ctx.font = '600 17px sans-serif';
+    const chipTextW = _ctx.measureText(chipLabel).width;
+    const chipW = chipTextW + 64;
+    const chipH = 40;
+    const chipY = pillY + pillH + 22;
+    _ctx.fillStyle = _PH.glass;
+    _roundRectPath(cx - chipW / 2, chipY, chipW, chipH, chipH / 2);
+    _ctx.fill();
+    _ctx.strokeStyle = _PH.glassBdr;
+    _ctx.lineWidth = 1;
+    _roundRectPath(cx - chipW / 2, chipY, chipW, chipH, chipH / 2);
+    _ctx.stroke();
+
+    // Simple two-circle "people" glyph, drawn left of the chip's Arabic text
+    // (canvas has no icon fonts available, so this is hand-drawn).
+    const glyphCx = cx + chipW / 2 - 30;
+    const glyphCy = chipY + chipH / 2;
+    _ctx.fillStyle = _PH.textMid;
+    _ctx.beginPath(); _ctx.arc(glyphCx - 6, glyphCy - 2, 5, 0, Math.PI * 2); _ctx.fill();
+    _ctx.beginPath(); _ctx.arc(glyphCx + 6, glyphCy - 2, 5, 0, Math.PI * 2); _ctx.fill();
+    _ctx.beginPath();
+    _ctx.ellipse(glyphCx - 6, glyphCy + 7, 7, 5, 0, 0, Math.PI * 2);
+    _ctx.fill();
+    _ctx.beginPath();
+    _ctx.ellipse(glyphCx + 6, glyphCy + 7, 7, 5, 0, 0, Math.PI * 2);
+    _ctx.fill();
+
+    _ctx.fillStyle = _PH.textHigh;
+    _ctx.textAlign = 'center';
+    _ctx.textBaseline = 'middle';
+    _ctx.fillText(chipLabel, cx - 16, chipY + chipH / 2 + 1);
+
+    // ── Bottom status line ──────────────────────────────────────────────────
+    _ctx.fillStyle = _PH.textLow;
+    _ctx.font = '500 16px sans-serif';
+    _ctx.textAlign = 'center';
+    _ctx.fillText('في انتظار مشاركة الشاشة أو الكاميرا', cx, h - 56);
   }
 
   function _connectAudio(stream, label) {
@@ -581,7 +766,7 @@
 
   const compositor = {
 
-    async start(sessionId, apiUrl, authToken) {
+    async start(sessionId, apiUrl, authToken, meta) {
       if (_recorder && _recorder.state !== 'inactive') {
         console.warn('[Compositor] start() ignored — recorder still active');
         return;
@@ -603,6 +788,25 @@
       window._ElFaheemCompositorDone        = false;
       window._ElFaheemCompositorHadRealData = false;
       window._ElFaheemCompositorChunksUploaded = 0;
+
+      // meta is a JSON string: {"teacherName":"...","sessionTitle":"...","participantCount":N}
+      // Parsed defensively — a missing/malformed meta must never block the
+      // recording itself from starting; the placeholder just falls back to
+      // generic labels.
+      _teacherName      = '';
+      _sessionTitle     = '';
+      _participantCount = 0;
+      try {
+        if (meta) {
+          const parsed = JSON.parse(meta);
+          _teacherName      = String(parsed.teacherName  || '');
+          _sessionTitle     = String(parsed.sessionTitle || '');
+          _participantCount = Number(parsed.participantCount) || 0;
+        }
+      } catch (e) {
+        console.warn('[Compositor] failed to parse start() meta — using defaults:', e);
+      }
+      _sessionStartMs = Date.now();
 
       _sessionId = sessionId;
       _apiUrl    = apiUrl.replace(/\/$/, '');
@@ -857,6 +1061,15 @@
     isActive() {
       return !!_recorder && _recorder.state !== 'inactive';
     },
+
+    // Live participant count changes throughout a session (students join/
+    // leave) — this lets the Dart side push updates without restarting the
+    // compositor. Only affects the next placeholder frame drawn; harmless
+    // to call whether or not the placeholder is currently on-screen.
+    updateParticipants(count) {
+      const n = Number(count);
+      _participantCount = Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0;
+    },
   };
 
   window._ElFaheemCompositor     = compositor;
@@ -864,16 +1077,17 @@
   window._ElFaheemCompositorHadRealData    = false;
   window._ElFaheemCompositorChunksUploaded = 0;
 
-  window._elfaheemCompositor = function(cmd, a1, a2, a3) {
+  window._elfaheemCompositor = function(cmd, a1, a2, a3, a4) {
     switch (cmd) {
-      case 'start':        return compositor.start(a1, a2, a3);
-      case 'addStream':    return compositor.addStream(a1, a2);
-      case 'removeStream': return compositor.removeStream(a1);
-      case 'stop':         return compositor.stop();
-      case 'isActive':     return compositor.isActive();
+      case 'start':             return compositor.start(a1, a2, a3, a4);
+      case 'addStream':         return compositor.addStream(a1, a2);
+      case 'removeStream':      return compositor.removeStream(a1);
+      case 'stop':              return compositor.stop();
+      case 'isActive':          return compositor.isActive();
+      case 'updateParticipants':return compositor.updateParticipants(a1);
       default: console.warn('[Compositor] unknown cmd:', cmd);
     }
   };
 
-  console.log('[Compositor] loaded — version 9 (VP9/VP8-first mime selection, placeholder frame when idle, setInterval draw loop, periodic safety-flush, real-data/upload tracking)');
+  console.log('[Compositor] loaded — version 10 (premium branded placeholder w/ teacher+session+participant info, VP9/VP8-first mime selection, setInterval draw loop, periodic safety-flush, real-data/upload tracking)');
 })();

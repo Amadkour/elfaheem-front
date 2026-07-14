@@ -208,6 +208,11 @@ class RoomPage extends StatefulWidget {
   final ApiClient apiClient;
   final bool enableAudio;
   final bool enableVideo;
+  // Optional: shown on the recording's placeholder frame (and nowhere else
+  // yet) whenever there's no screen share/camera to draw. Pass the actual
+  // session/lecture title from wherever the caller already has it (e.g. the
+  // session list); falls back to a generic label if omitted.
+  final String? sessionName;
 
   const RoomPage(
       this.room,
@@ -221,6 +226,7 @@ class RoomPage extends StatefulWidget {
         required this.apiClient,
         this.enableAudio = true,
         this.enableVideo = true,
+        this.sessionName,
       });
 
   @override
@@ -865,7 +871,16 @@ class _RoomPageState extends State<RoomPage>
     log('[REC] Recorder service configured');
 
     if (kIsWeb) {
-      await _recorder!.startWebCompositor();
+      final local = widget.room.localParticipant;
+      await _recorder!.startWebCompositor(
+        teacherName: local?.name.isNotEmpty == true
+            ? local!.name
+            : (local?.identity ?? ''),
+        sessionTitle: widget.sessionName ?? 'حصة مباشرة',
+        // +1 to include the local participant (teacher) themselves —
+        // remoteParticipants only counts everyone else in the room.
+        participantCount: widget.room.remoteParticipants.length + 1,
+      );
       return;
     }
 
@@ -986,6 +1001,14 @@ class _RoomPageState extends State<RoomPage>
     _thumbBarAnim.forward();
     } else {
     _thumbBarAnim.reverse();
+    }
+
+    // Keep the (web) recording placeholder's participant count in sync —
+    // this runs on every join/leave/track event, same as the on-screen UI.
+    if (kIsWeb) {
+    _recorder?.updateParticipantCount(
+    widget.room.remoteParticipants.length + 1,
+    );
     }
   }
 

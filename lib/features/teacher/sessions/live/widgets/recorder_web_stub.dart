@@ -11,7 +11,15 @@ Object? streamFromLivekitTrack(Object? track) => null;
 class WebRecorder {
   WebRecorder({required void Function(int) onBlob});
   Future<bool> start(Object? stream, String mimeType) async => false;
-  void startCompositor(int sessionId, String apiUrl, String authToken) {}
+  void startCompositor(
+      int sessionId,
+      String apiUrl,
+      String authToken, {
+        String teacherName = '',
+        String sessionTitle = '',
+        int participantCount = 0,
+      }) {}
+  void updateParticipantCount(int count) {}
   void addStream(Object? stream, String label) {}
   void removeStream(String label) {}
   void requestData() {}
