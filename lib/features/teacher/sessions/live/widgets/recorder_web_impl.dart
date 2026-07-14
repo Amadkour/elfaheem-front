@@ -30,6 +30,13 @@ external bool get _compositorHadRealData;
 @JS('_ElFaheemCompositorChunksUploaded')
 external int get _compositorChunksUploaded;
 
+// JS sets this once every queued/in-flight chunk — including ones still
+// uploading in the background when stop() was called — has actually
+// reached the server. Distinct from _compositorDone, which now flips as
+// soon as the recorder itself has stopped, without waiting for uploads.
+@JS('_ElFaheemCompositorUploadsDone')
+external bool get _compositorUploadsDone;
+
 @JS('MediaRecorder.isTypeSupported')
 external bool _isTypeSupported(String mimeType);
 
@@ -288,13 +295,27 @@ class WebRecorder {
     try { return _compositorChunksUploaded; } catch (_) { return 0; }
   }
 
-  /// Stop recording and wait until ALL chunks have been uploaded to the server.
-  /// This MUST complete before room.dart calls onEnd(), otherwise the server
-  /// closes the session and rejects in-flight chunk uploads with 4xx.
+  /// Whether every chunk — including any still uploading in the background
+  /// when stop() was called — has now actually reached the server. Check
+  /// this (or listen via [waitForBackgroundUploads]) if you need to know
+  /// when the recording is *fully* delivered, as opposed to just "the
+  /// recorder has stopped" (which [stop] itself no longer waits on).
+  bool get uploadsFullyDone {
+    try { return _compositorUploadsDone; } catch (_) { return true; }
+  }
+
+  /// Stop recording. Returns as soon as the recorder itself has stopped and
+  /// the final chunk has been handed off for upload — it does NOT wait for
+  /// that upload (or any others still queued) to actually finish. Ending a
+  /// session no longer has to stall on a slow connection: remaining chunks
+  /// keep uploading in the background via the compositor's own upload
+  /// queue, independent of this function returning. Use
+  /// [waitForBackgroundUploads] if some other part of the app specifically
+  /// needs to know once every chunk has truly landed on the server.
   Future<void> stop() async {
     if (!_started) return;
     _started = false;
-    _log('sending stop to compositor — waiting for all chunks to upload...');
+    _log('sending stop to compositor...');
 
     try {
       _compositorStop();
@@ -302,10 +323,11 @@ class WebRecorder {
       _log('compositorStop error: $e');
     }
 
-    // Poll _ElFaheemCompositorDone — the JS sets this only after:
-    //   1. MediaRecorder has stopped (all data flushed)
-    //   2. Every pending fetch() upload has resolved
-    // Timeout: 5 minutes (same as JS side)
+    // Poll _ElFaheemCompositorDone — the JS now sets this as soon as the
+    // recorder has stopped and the final chunk is enqueued, WITHOUT waiting
+    // for uploads to finish, so this normally resolves in well under a
+    // second. The 5-minute ceiling is just a safety net in case something
+    // upstream (e.g. _recorder.stop() itself) never fires its events.
     const timeout = Duration(minutes: 5);
     final deadline = DateTime.now().add(timeout);
 
@@ -314,21 +336,44 @@ class WebRecorder {
     }
 
     if (_compositorDone) {
-      _log('compositor drained — all chunks uploaded ✅');
+      _log('compositor stopped — any remaining chunks upload in the background');
     } else {
-      _log('compositor drain TIMED OUT after 5 min ⚠️');
+      _log('compositor stop TIMED OUT after 5 min ⚠️');
     }
 
-    // "Drained" only means the compositor finished its stop sequence — it
-    // does NOT mean anything was actually recorded. Surface that distinctly
-    // instead of letting a silent zero-chunk session look identical to a
-    // successful one in the logs.
-    if (!hadRealData || chunksUploaded == 0) {
-      _log('⚠️ WARNING: session ended with ZERO real chunks uploaded — '
+    // Diagnostic only, and intentionally based on hadRealData rather than
+    // chunksUploaded: at this point background chunks may genuinely still
+    // be in flight, so chunksUploaded==0 here would NOT mean the session
+    // was empty — only hadRealData (set synchronously the moment any real
+    // chunk was captured) is safe to check without waiting for the network.
+    if (!hadRealData) {
+      _log('⚠️ WARNING: session ended with ZERO chunks captured — '
           'nothing was recorded (no camera/mic and no usable screen-share '
           'frames were ever captured).');
     } else {
-      _log('session recorded $chunksUploaded real chunk(s)');
+      _log('recorder captured real data this session — '
+          '$chunksUploaded chunk(s) confirmed uploaded so far '
+          '(more may still be uploading in the background)');
+    }
+  }
+
+  /// Optional: resolves once every chunk has actually reached the server,
+  /// including any still uploading in the background after [stop] returned.
+  /// Nothing in the normal recording flow needs to await this — it's only
+  /// useful if some part of the app wants to show/confirm "fully uploaded"
+  /// rather than just "recording stopped". Safe to call any time after
+  /// [stop]; resolves immediately if uploads were already done.
+  Future<void> waitForBackgroundUploads({
+    Duration timeout = const Duration(minutes: 5),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (!uploadsFullyDone && DateTime.now().isBefore(deadline)) {
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
+    if (uploadsFullyDone) {
+      _log('background uploads complete — $chunksUploaded chunk(s) delivered ✅');
+    } else {
+      _log('waitForBackgroundUploads TIMED OUT after ${timeout.inMinutes} min ⚠️');
     }
   }
 

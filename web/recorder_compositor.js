@@ -1,314 +1,20 @@
-//// recorder_compositor.js
-//// Place this file in your Flutter project's  web/  directory.
-//// Loaded by index.html: <script src="recorder_compositor.js"></script>
-//
-//(function () {
-//  'use strict';
-//
-//  const CHUNK_INTERVAL_MS = 10_000;    // 10 s timeslice
-//  const CANVAS_W          = 1280;
-//  const CANVAS_H          = 720;
-//  const VIDEO_BITRATE     = 1_500_000; // 1.5 Mbps
-//
-//  // ── Per-session state (fully reset on every start()) ──────────────────────
-//  let _canvas, _ctx, _audioCtx, _dest, _recorder;
-//  let _rafId          = null;
-//  let _sessionId, _apiUrl, _authToken;
-//  let _chunkIndex     = 0;
-//  let _pendingUploads = 0;
-//  let _stopping       = false;   // ← MUST be false when a new session starts
-//  let _nextChunkIsFinal = false;
-//
-//  const _sources = {};
-//
-//  // ── Helpers ────────────────────────────────────────────────────────────────
-//
-//  function _bestMime() {
-//    const candidates = [
-//      'video/webm;codecs=vp9,opus',
-//      'video/webm;codecs=vp8,opus',
-//      'video/webm',
-//    ];
-//    return candidates.find(m => MediaRecorder.isTypeSupported(m)) || 'video/webm';
-//  }
-//
-//  function _drawFrame() {
-//    if (!_ctx) return;
-//    _ctx.fillStyle = '#000';
-//    _ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-//
-//    const screen = _sources['screen'];
-//    if (screen && screen.videoEl && screen.videoEl.readyState >= 2) {
-//      _ctx.drawImage(screen.videoEl, 0, 0, CANVAS_W, CANVAS_H);
-//    }
-//
-//    const camera = _sources['camera'];
-//    if (camera && camera.videoEl && camera.videoEl.readyState >= 2) {
-//      if (screen && screen.videoEl) {
-//        _ctx.drawImage(camera.videoEl, CANVAS_W - 220, CANVAS_H - 130, 200, 120);
-//        _ctx.strokeStyle = '#00D4FF';
-//        _ctx.lineWidth = 2;
-//        _ctx.strokeRect(CANVAS_W - 220, CANVAS_H - 130, 200, 120);
-//      } else {
-//        _ctx.drawImage(camera.videoEl, 0, 0, CANVAS_W, CANVAS_H);
-//      }
-//    }
-//
-//    _rafId = requestAnimationFrame(_drawFrame);
-//  }
-//
-//  function _connectAudio(stream, label) {
-//    if (!_audioCtx || !_dest) return null;
-//    try {
-//      const tracks = stream.getAudioTracks();
-//      if (!tracks.length) return null;
-//      const node = _audioCtx.createMediaStreamSource(new MediaStream(tracks));
-//      node.connect(_dest);
-//      return node;
-//    } catch (e) {
-//      console.warn('[Compositor] audio connect error', label, e);
-//      return null;
-//    }
-//  }
-//
-//  function _makeVideoEl(stream) {
-//    const tracks = stream.getVideoTracks();
-//    if (!tracks.length) return null;
-//    const el = document.createElement('video');
-//    el.srcObject = new MediaStream(tracks);
-//    el.muted = true;
-//    el.autoplay = true;
-//    el.playsInline = true;
-//    el.play().catch(() => {});
-//    return el;
-//  }
-//
-//  async function _uploadChunk(blob, index, isFinal) {
-//    _pendingUploads++;
-//    const form = new FormData();
-//    form.append('chunk_index', String(index));
-//    form.append('is_final',    isFinal ? '1' : '0');
-//    form.append('chunk', blob, `chunk_${String(index).padStart(6,'0')}.webm`);
-//
-//    console.log(`[Compositor] uploading chunk #${index} size=${blob.size} final=${isFinal}`);
-//
-//    let attempt = 0;
-//    let uploaded = false;
-//
-//    while (attempt <= 3) {
-//      try {
-//        const r = await fetch(
-//          `${_apiUrl}/api/v1/live-sessions/${_sessionId}/recording-chunk`,
-//          { method: 'POST', headers: { Authorization: _authToken }, body: form }
-//        );
-//        if (r.ok) {
-//          console.log(`[Compositor] chunk #${index} OK`);
-//          uploaded = true;
-//          break;
-//        }
-//        const body = await r.text().catch(() => '(unreadable)');
-//        console.error(`[Compositor] chunk #${index} REJECTED status=${r.status} body=${body.slice(0,300)}`);
-//        if (r.status >= 400 && r.status < 500) break; // don't retry 4xx
-//      } catch (e) {
-//        console.warn(`[Compositor] chunk #${index} network error attempt ${attempt}:`, e);
-//      }
-//      attempt++;
-//      if (attempt <= 3) await new Promise(res => setTimeout(res, 1000 * (1 << attempt)));
-//    }
-//
-//    if (!uploaded) console.error(`[Compositor] chunk #${index} FAILED after ${attempt} attempts`);
-//
-//    _pendingUploads--;
-//
-//    // Only signal done when BOTH stopping AND all uploads are complete.
-//    // If _stopping is false we are mid-session — never signal done early.
-//    if (_stopping && _pendingUploads === 0) {
-//      console.log('[Compositor] all chunks uploaded — done');
-//      window._ElFaheemCompositorDone = true;
-//    }
-//  }
-//
-//  // ── Compositor API ─────────────────────────────────────────────────────────
-//
-//  const compositor = {
-//
-//    start(sessionId, apiUrl, authToken) {
-//      // If a recorder is still active from a previous session, refuse.
-//      if (_recorder && _recorder.state !== 'inactive') {
-//        console.warn('[Compositor] start() ignored — recorder still active');
-//        return;
-//      }
-//
-//      // ── Full state reset for this session ─────────────────────────────────
-//      // Stop any leftover draw loop
-//      if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null; }
-//      // Clear leftover sources
-//      Object.keys(_sources).forEach(k => compositor.removeStream(k));
-//      // Reset ALL flags — critical: _stopping must be false here
-//      _chunkIndex       = 0;
-//      _pendingUploads   = 0;
-//      _stopping         = false;
-//      _nextChunkIsFinal = false;
-//      window._ElFaheemCompositorDone = false;
-//
-//      _sessionId = sessionId;
-//      _apiUrl    = apiUrl.replace(/\/$/, '');
-//      _authToken = authToken;
-//
-//      console.log(`[Compositor] start() sessionId=${sessionId} apiUrl=${_apiUrl}`);
-//
-//      // Canvas
-//      _canvas        = document.createElement('canvas');
-//      _canvas.width  = CANVAS_W;
-//      _canvas.height = CANVAS_H;
-//      _ctx           = _canvas.getContext('2d');
-//
-//      // AudioContext
-//      _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-//      _audioCtx.resume().catch(() => {});
-//      _dest = _audioCtx.createMediaStreamDestination();
-//
-//      // Composite stream
-//      const canvasStream = _canvas.captureStream(30);
-//      const audioTrack   = _dest.stream.getAudioTracks()[0];
-//      if (audioTrack) canvasStream.addTrack(audioTrack);
-//
-//      const mime = _bestMime();
-//      console.log(`[Compositor] using mime: ${mime}`);
-//
-//      _recorder = new MediaRecorder(canvasStream, {
-//        mimeType: mime,
-//        videoBitsPerSecond: VIDEO_BITRATE,
-//      });
-//
-//      _recorder.ondataavailable = (e) => {
-//        if (!e.data || e.data.size === 0) return;
-//        const idx     = _chunkIndex++;
-//        const isFinal = _nextChunkIsFinal;
-//        _nextChunkIsFinal = false;
-//        console.log(`[Compositor] ondataavailable size=${e.data.size} final=${isFinal}`);
-//        _uploadChunk(e.data, idx, isFinal);
-//      };
-//
-//      _recorder.onerror = (e) => console.error('[Compositor] MediaRecorder error:', e);
-//
-//      _recorder.start(CHUNK_INTERVAL_MS);
-//      console.log(`[Compositor] MediaRecorder started timeslice=${CHUNK_INTERVAL_MS}ms`);
-//
-//      _drawFrame();
-//      console.log('[Compositor] fully started');
-//    },
-//
-//    addStream(stream, label) {
-//      if (!stream) return;
-//      if (_sources[label]) compositor.removeStream(label);
-//      const videoEl   = _makeVideoEl(stream);
-//      const audioNode = _connectAudio(stream, label);
-//      _sources[label] = { stream, videoEl, audioNode };
-//      console.log(`[Compositor] addStream: ${label} | video=${stream.getVideoTracks().length} audio=${stream.getAudioTracks().length}`);
-//    },
-//
-//    removeStream(label) {
-//      const src = _sources[label];
-//      if (!src) return;
-//      if (src.videoEl)   src.videoEl.srcObject = null;
-//      if (src.audioNode) try { src.audioNode.disconnect(); } catch (_) {}
-//      delete _sources[label];
-//      console.log(`[Compositor] removeStream: ${label}`);
-//    },
-//
-//    async stop() {
-//      // Guard: if already stopping or nothing ever started, signal done and return.
-//      if (_stopping) {
-//        console.warn('[Compositor] stop() called while already stopping — ignored');
-//        return;
-//      }
-//      if (!_recorder || _recorder.state === 'inactive') {
-//        console.warn('[Compositor] stop() called but recorder not active — signalling done');
-//        window._ElFaheemCompositorDone = true;
-//        return;
-//      }
-//
-//      console.log('[Compositor] stop() called');
-//      _stopping = true;
-//
-//      // Stop draw loop
-//      if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null; }
-//
-//      // Mark NEXT ondataavailable blob as final, then flush + stop recorder
-//      _nextChunkIsFinal = true;
-//      _recorder.requestData();                    // fires ondataavailable synchronously (or very soon)
-//      await new Promise(r => setTimeout(r, 500)); // let ondataavailable fire
-//      _recorder.stop();
-//      await new Promise(r => setTimeout(r, 300)); // let state settle to 'inactive'
-//
-//      // Stop all media tracks
-//      Object.values(_sources).forEach(src => {
-//        if (src.stream) src.stream.getTracks().forEach(t => { try { t.stop(); } catch(_){} });
-//      });
-//      try { if (_audioCtx) await _audioCtx.close(); } catch (_) {}
-//
-//      // Wait for all in-flight uploads (max 5 min)
-//      if (_pendingUploads === 0) {
-//        console.log('[Compositor] no pending uploads — done immediately');
-//        window._ElFaheemCompositorDone = true;
-//      } else {
-//        console.log(`[Compositor] waiting for ${_pendingUploads} pending uploads…`);
-//        const deadline = Date.now() + 5 * 60 * 1000;
-//        while (_pendingUploads > 0 && Date.now() < deadline) {
-//          await new Promise(r => setTimeout(r, 300));
-//        }
-//        if (!window._ElFaheemCompositorDone) {
-//          window._ElFaheemCompositorDone = true;
-//        }
-//        console.log('[Compositor] stopped — uploads complete');
-//      }
-//
-//      // Reset _stopping so start() can be called again for a new session
-//      // without the idempotency guard blocking the next stop().
-//      _stopping = false;
-//    },
-//
-//    isActive() {
-//      return !!_recorder && _recorder.state !== 'inactive';
-//    },
-//  };
-//
-//  window._ElFaheemCompositor     = compositor;
-//  window._ElFaheemCompositorDone = false;
-//
-//  // Single dispatcher — dart:js_interop @JS() can only bind top-level globals
-//  window._elfaheemCompositor = function(cmd, a1, a2, a3) {
-//    switch (cmd) {
-//      case 'start':        return compositor.start(a1, a2, a3);
-//      case 'addStream':    return compositor.addStream(a1, a2);
-//      case 'removeStream': return compositor.removeStream(a1);
-//      case 'stop':         return compositor.stop();
-//      case 'isActive':     return compositor.isActive();
-//      default: console.warn('[Compositor] unknown cmd:', cmd);
-//    }
-//  };
-//
-//  console.log('[Compositor] loaded — version 4');
-//})();
-
-// recorder_compositor.js
-// Place this file in your Flutter project's web/ directory.
-// Loaded by index.html: <script src="recorder_compositor.js"></script>
-
 (function () {
   'use strict';
 
   const CHUNK_INTERVAL_MS = 10_000;   // native timeslice — recorder auto-flushes every 10s
-  const CANVAS_W = 1280;
-  const CANVAS_H = 720;
-  const VIDEO_BITRATE = 2_000_000;    // 2 Mbps — ~2.5MB/10s chunk, leaves headroom
-                                       // on slower connections/tunnels so uploads can
-                                       // keep up with the recorder in real time. Raise
-                                       // this only once you've confirmed the target
-                                       // network can sustain it — see the upload
-                                       // queueing note in ondataavailable below for
-                                       // what happens when it can't.
+  const CANVAS_W = 1920;
+  const CANVAS_H = 1080;
+  const VIDEO_BITRATE = 3_500_000;    // 3.5 Mbps — ~4.4MB/10s chunk.
+                                       // Chunk uploads are serialized and queue-depth
+                                       // tracked (see ondataavailable/_uploadChunk below),
+                                       // so a slow network can no longer LOSE chunks —
+                                       // worst case they just arrive/queue up later,
+                                       // logged as "upload queue backing up". If you see
+                                       // that warning constantly on your target network,
+                                       // lower this before raising it further; going much
+                                       // past this on a constrained connection (e.g. a
+                                       // temporary tunnel) trades a bit of image quality
+                                       // for a recording that's ready sooner after stop().
 
   // ── Per-session state ──────────────────────────────────────────
   let _canvas, _ctx, _audioCtx, _dest, _recorder;
@@ -418,12 +124,15 @@
       );
     }
 
-    if (!screenReady && !cameraReady) {
-      // Nothing to show yet (no screen share, no camera/mic). Draw a
-      // branded placeholder instead of leaving the canvas solid black —
-      // this guarantees the recording always has real, meaningful content
-      // from t=0, even if screen share is never started or camera/mic
-      // never becomes available during the session.
+    if (!screenReady) {
+      // Screen share is the primary recorded content in this app — camera
+      // is only ever meant to appear as a PiP accessory alongside it, never
+      // as a standalone main view. So the placeholder is shown any time
+      // screen share isn't active: before the first share, AND any time
+      // later in the session that sharing is stopped (even if the camera
+      // is still on) — not just when nothing at all is available. This
+      // also guarantees the recording always has real, meaningful content
+      // from t=0 if screen share is never started.
       _drawPlaceholder();
       return;
     }
@@ -431,21 +140,23 @@
     _ctx.fillStyle = '#000';
     _ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-    if (screenReady) {
-      _ctx.drawImage(screen.videoEl, 0, 0, CANVAS_W, CANVAS_H);
-    }
+    _ctx.drawImage(screen.videoEl, 0, 0, CANVAS_W, CANVAS_H);
 
     if (cameraReady) {
-      if (screenReady) {
-        // PiP: 320×180 bottom-right
-        _ctx.drawImage(camera.videoEl, CANVAS_W - 340, CANVAS_H - 200, 320, 180);
-        // PiP border
-        _ctx.strokeStyle = '#00D4FF';
-        _ctx.lineWidth = 3;
-        _ctx.strokeRect(CANVAS_W - 340, CANVAS_H - 200, 320, 180);
-      } else {
-        _ctx.drawImage(camera.videoEl, 0, 0, CANVAS_W, CANVAS_H);
-      }
+      // PiP: 25% of canvas width/height, bottom-right, with a fixed-ratio
+      // margin — scales automatically with CANVAS_W/CANVAS_H instead of
+      // assuming 1280×720, so it stays the same relative size (and margin)
+      // if the resolution changes.
+      const pipW = Math.round(CANVAS_W * 0.25);
+      const pipH = Math.round(CANVAS_H * 0.25);
+      const pipMargin = Math.round(CANVAS_W * 0.0156); // ~20px at 1280 wide
+      const pipX = CANVAS_W - pipW - pipMargin;
+      const pipY = CANVAS_H - pipH - pipMargin;
+      _ctx.drawImage(camera.videoEl, pipX, pipY, pipW, pipH);
+      // PiP border
+      _ctx.strokeStyle = '#00D4FF';
+      _ctx.lineWidth = 3;
+      _ctx.strokeRect(pipX, pipY, pipW, pipH);
     }
     // NOTE: drawing is driven by a setInterval (see start()), not by
     // requestAnimationFrame. rAF is throttled/paused by browsers when the
@@ -756,9 +467,16 @@
     _pendingUploads--;
     _queueDepth--;
 
+    // NOTE: this does NOT set window._ElFaheemCompositorDone — that now
+    // signals "the recorder itself has stopped, safe to end the session",
+    // set immediately in stop() without waiting for uploads to drain (see
+    // the comment there for why). This flag is purely informational: it
+    // tells anyone polling it that every chunk — including ones still
+    // queued/uploading when stop() was called — has now actually reached
+    // the server, entirely in the background.
     if (_stopping && _queueDepth === 0) {
-      console.log('[Compositor] all chunks uploaded — done');
-      window._ElFaheemCompositorDone = true;
+      console.log('[Compositor] background uploads complete — all chunks delivered ✅');
+      window._ElFaheemCompositorUploadsDone = true;
     }
   }
 
@@ -788,6 +506,7 @@
       window._ElFaheemCompositorDone        = false;
       window._ElFaheemCompositorHadRealData = false;
       window._ElFaheemCompositorChunksUploaded = 0;
+      window._ElFaheemCompositorUploadsDone = false;
 
       // meta is a JSON string: {"teacherName":"...","sessionTitle":"...","participantCount":N}
       // Parsed defensively — a missing/malformed meta must never block the
@@ -981,6 +700,7 @@
       if (!_recorder || _recorder.state === 'inactive') {
         console.warn('[Compositor] stop() called but recorder not active — signalling done');
         window._ElFaheemCompositorDone = true;
+        window._ElFaheemCompositorUploadsDone = true;
         return;
       }
 
@@ -1014,6 +734,9 @@
         try { _recorder.stop(); } catch (_) { finish(); }
         setTimeout(finish, 3000); // safety timeout in case no event arrives
       });
+      // By the time the await above resolves, the final chunk (if any) has
+      // already been synchronously enqueued onto _uploadChain by the
+      // ondataavailable handler — so _queueDepth already reflects it here.
 
       await new Promise(r => setTimeout(r, 300));
 
@@ -1027,29 +750,49 @@
       _silentGain   = null;
       try { if (_audioCtx) await _audioCtx.close(); } catch (_) {}
 
-      if (_queueDepth === 0) {
-        console.log('[Compositor] no pending uploads — done immediately');
-        window._ElFaheemCompositorDone = true;
-      } else {
-        console.log(`[Compositor] waiting for ${_queueDepth} pending upload(s)…`);
-        const deadline = Date.now() + 5 * 60 * 1000;
-        while (_queueDepth > 0 && Date.now() < deadline) {
-          await new Promise(r => setTimeout(r, 300));
-        }
-        if (!window._ElFaheemCompositorDone) {
-          window._ElFaheemCompositorDone = true;
-        }
-        console.log('[Compositor] stopped — uploads complete');
-      }
-
       if (_visibleContainer && _visibleContainer.parentNode) {
         _visibleContainer.parentNode.removeChild(_visibleContainer);
         _visibleContainer = null;
       }
 
-      if (_chunksUploaded === 0) {
+      // IMPORTANT: do NOT block here waiting for the upload queue to drain.
+      // Previously this awaited every queued/in-flight chunk (up to a 5-
+      // minute timeout) before signalling done, which meant ending a
+      // session — and whatever the app does next (leaving the room, calling
+      // the server's session-end endpoint, navigating away) — could stall
+      // for however long uploads needed on a slow connection.
+      //
+      // The recorder itself is fully finished at this point: MediaRecorder
+      // has stopped and the final chunk is already enqueued on
+      // _uploadChain. Any chunks still queued/uploading (see the
+      // "upload queue backing up" warning in ondataavailable) keep
+      // uploading completely independently of this function returning —
+      // they're driven by _uploadChain's own promise chain, not by anyone
+      // awaiting it. As long as this browser tab/page stays open (it does;
+      // ending a session navigates within the same Flutter Web app, it
+      // doesn't reload the page), those fetch() calls run to completion in
+      // the background and the server-side idle/assembly logic picks them
+      // up whenever they land — see _uploadChunk above for the
+      // "background uploads complete" log that fires once that's done.
+      if (_queueDepth === 0) {
+        console.log('[Compositor] no pending uploads — done immediately');
+        window._ElFaheemCompositorUploadsDone = true;
+      } else {
+        console.log(
+          `[Compositor] recorder stopped — ${_queueDepth} chunk(s) still ` +
+          `uploading in the background (not blocking session end)`
+        );
+      }
+      window._ElFaheemCompositorDone = true;
+
+      // Diagnostic only — doesn't depend on network/upload completion.
+      // _hadRealData is set synchronously the moment any genuine non-empty
+      // chunk was captured, so this is accurate immediately, unlike
+      // _chunksUploaded (which only updates once a chunk's upload — now
+      // possibly still in flight — actually succeeds).
+      if (!_hadRealData) {
         console.error(
-          '[Compositor] ⚠️ Session ended with ZERO chunks uploaded — ' +
+          '[Compositor] ⚠️ Session ended with ZERO chunks captured — ' +
           'nothing was recorded. No camera/mic and no usable screen-share ' +
           'frames were ever captured before stop() was called.'
         );
@@ -1076,6 +819,7 @@
   window._ElFaheemCompositorDone = false;
   window._ElFaheemCompositorHadRealData    = false;
   window._ElFaheemCompositorChunksUploaded = 0;
+  window._ElFaheemCompositorUploadsDone    = false;
 
   window._elfaheemCompositor = function(cmd, a1, a2, a3, a4) {
     switch (cmd) {
