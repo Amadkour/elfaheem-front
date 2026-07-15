@@ -542,9 +542,17 @@ class _RoomPageState extends State<RoomPage>
   //   only after all pendingUploads reach zero (up to 120s).
   //   _drainAndDispose runs unawaited and waits for RecState.done via polling.
   //
-  // Web: stopRecordingOnly() → WebRecorder.stop() which internally polls
-  //   _compositorDone for up to 5 min. Must be fully awaited before onEnd()
-  //   so the server doesn't reject in-flight uploads with 4xx.
+  // Web: stopRecordingOnly() now only stops the LOCAL recorder/compositor —
+  //   it no longer waits for chunk uploads to finish (see WebRecorder.stop()
+  //   in recorder_web_impl.dart), so this resolves in well under a second.
+  //   Any chunks still queued/uploading, AND the widget.onEnd() call itself
+  //   (which hits the server's /live-sessions/{id}/end endpoint — an
+  //   endpoint that can itself wait up to ~150s server-side for the
+  //   recording to finish processing), both run in the background below
+  //   instead of blocking this function. The server tolerates the client
+  //   moving on before the final chunk lands (see local_recorder.py's
+  //   assembly pipeline), so there's nothing left that genuinely needs the
+  //   teacher's screen to stay frozen while waiting on either of them.
   Future<dynamic> _endSessionWithRecording() async {
     if (_endingSession) return null;
     if (mounted) setState(() => _endingSession = true);
@@ -552,28 +560,21 @@ class _RoomPageState extends State<RoomPage>
     final rec = _recorder;
     _recorder = null; // detach so dispose() never interferes
 
-    // Stop recording and WAIT for the final chunk to reach the server before
-    // calling onEnd(). On iOS there is no ForegroundService — once onEnd()
-    // fires the app backgrounds and any in-flight URLSession task is killed.
-    // Native's invokeMethod('stopRecording') now holds its FlutterResult open
-    // until the final upload is confirmed (or retries exhausted), so this
-    // await genuinely blocks until the server has isFinal=True.
     if (widget.isTeacher &&
         rec != null &&
         rec.state != RecState.done &&
         rec.state != RecState.error) {
       try {
         await rec.stopRecordingOnly();
-        log('[REC] stopRecordingOnly complete — final chunk confirmed, safe to end');
+        log('[REC] stopRecordingOnly complete — recorder stopped locally; '
+            'any remaining chunks upload in the background');
       } catch (e) {
         log('[REC] stopRecordingOnly error: $e');
       }
 
-      // Web only: stopRecordingOnly() has just awaited the compositor's full
-      // drain, so webHadRealData/webChunksUploaded are final now. Check
-      // BEFORE popping the screen (and while context is still mounted) so
-      // the teacher actually sees the warning if the session recorded
-      // nothing — this used to fail completely silently.
+      // Web only: hadRealData is set synchronously the moment any real
+      // chunk was ever captured, so this is accurate immediately — it does
+      // NOT depend on whether background uploads have finished yet.
       if (kIsWeb && !rec.webHadRealData && mounted) {
         _showSnack(
           'لم يتم حفظ أي تسجيل لهذه الجلسة بسبب مشكلة تقنية في التسجيل، '
@@ -581,16 +582,21 @@ class _RoomPageState extends State<RoomPage>
         );
       }
 
-      // Drain any remaining state (web compositor or residual events).
-      // Runs quickly since native already confirmed the final upload above.
+      // Drains any remaining chunk uploads / native state and disposes the
+      // recorder, entirely in the background — the teacher's screen has
+      // already moved on by the time this finishes.
       unawaited(_drainAndDispose(rec));
     }
 
-    try {
-      await widget.onEnd();
-    } catch (e) {
-      log('[REC] onEnd error: $e');
-    }
+    // Fire the end-session call but do NOT let the UI wait on it — see the
+    // comment above the function for why awaiting it here would freeze the
+    // screen. Errors are only logged; there's no UI left waiting to react
+    // to them since the teacher has already left this screen.
+    unawaited(
+      widget.onEnd().catchError((e) {
+        log('[REC] onEnd error: $e');
+      }),
+    );
 
     if (mounted) Navigator.pop(context);
     if (mounted) Navigator.pop(context);
