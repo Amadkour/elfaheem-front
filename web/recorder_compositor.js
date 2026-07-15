@@ -336,6 +336,7 @@
   let _sessionTitle     = '';
   let _participantCount = 0;
   let _sessionStartMs   = 0;      // Date.now() at start() — drives the placeholder's live clock
+  let _isPaused          = false; // true between pause() and resume() — drives the placeholder's badge
 
   const _sources = {};
 
@@ -533,9 +534,11 @@
     _ctx.fillStyle = glow2;
     _ctx.fillRect(0, 0, w, h);
 
-    // ── REC indicator, top-right ───────────────────────────────────────────
-    const pulse = 0.55 + 0.45 * Math.abs(Math.sin(now / 700));
-    const recPadX = 18, recY = 28, recW = 118, recH = 40;
+    // ── REC / PAUSED indicator, top-right ──────────────────────────────────
+    const recPadX = 18, recY = 28, recH = 40;
+    const recLabel = _isPaused ? 'PAUSED' : 'REC';
+    _ctx.font = '600 15px sans-serif';
+    const recW = Math.max(118, _ctx.measureText(recLabel).width + recPadX + 40);
     const recX = w - recW - 32;
     _ctx.fillStyle = _PH.glass;
     _roundRectPath(recX, recY, recW, recH, recH / 2);
@@ -544,16 +547,31 @@
     _ctx.lineWidth = 1;
     _roundRectPath(recX, recY, recW, recH, recH / 2);
     _ctx.stroke();
-    _ctx.fillStyle = `rgba(255,79,114,${pulse.toFixed(2)})`;
-    _ctx.beginPath();
-    _ctx.arc(recX + recPadX, recY + recH / 2, 6, 0, Math.PI * 2);
-    _ctx.fill();
     _ctx.fillStyle = _PH.textHigh;
-    _ctx.font = '600 16px sans-serif';
+    _ctx.font = '600 15px sans-serif';
     _ctx.textAlign = 'left';
     _ctx.textBaseline = 'middle';
     _ctx.direction = 'ltr';
-    _ctx.fillText('REC', recX + recPadX + 16, recY + recH / 2 + 1);
+    if (_isPaused) {
+      // Matches controls.dart's _amber (0xFFFFB800) pause indicator, so the
+      // recorded placeholder and the live pause UI agree visually.
+      _ctx.fillStyle = '#FFB800';
+      _ctx.beginPath();
+      _ctx.rect(recX + recPadX - 5, recY + recH / 2 - 6, 4, 12);
+      _ctx.rect(recX + recPadX + 3, recY + recH / 2 - 6, 4, 12);
+      _ctx.fill();
+      _ctx.fillStyle = _PH.textHigh;
+      _ctx.fillText('PAUSED', recX + recPadX + 16, recY + recH / 2 + 1);
+    } else {
+      const pulse = 0.55 + 0.45 * Math.abs(Math.sin(now / 700));
+      _ctx.fillStyle = `rgba(255,79,114,${pulse.toFixed(2)})`;
+      _ctx.beginPath();
+      _ctx.arc(recX + recPadX, recY + recH / 2, 6, 0, Math.PI * 2);
+      _ctx.fill();
+      _ctx.fillStyle = _PH.textHigh;
+      _ctx.font = '600 16px sans-serif';
+      _ctx.fillText('REC', recX + recPadX + 16, recY + recH / 2 + 1);
+    }
 
     // ── Elapsed session clock, top-left ────────────────────────────────────
     const mm = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
@@ -857,6 +875,7 @@
         console.warn('[Compositor] failed to parse start() meta — using defaults:', e);
       }
       _sessionStartMs = Date.now();
+      _isPaused = false;
 
       _sessionId = sessionId;
       _apiUrl    = apiUrl.replace(/\/$/, '');
@@ -1136,6 +1155,53 @@
       return !!_recorder && _recorder.state !== 'inactive';
     },
 
+    // Pause/resume use MediaRecorder's own native pause()/resume() rather
+    // than any manual chunk-gating logic. This is deliberate: a paused
+    // MediaRecorder is GUARANTEED by spec to fire zero 'dataavailable'
+    // events — automatic (timeslice) or otherwise — until resume() is
+    // called, so "don't send future chunks until resume" falls directly
+    // out of the browser's own behavior rather than something we have to
+    // track and enforce ourselves. Chunk numbering (_chunkIndex) simply
+    // continues where it left off once resumed — no gap-handling needed on
+    // the server side. The draw loop keeps running while paused (cheap, and
+    // keeps the camera/screen video elements actively decoding — see
+    // _pumpVideoFrames — so there's no freeze/black-frame moment right
+    // after resume); MediaRecorder just doesn't consume any of those frames
+    // until it's resumed.
+    pause() {
+      if (!_recorder || _recorder.state !== 'recording') {
+        console.warn(
+          `[Compositor] pause() ignored — recorder not in 'recording' state `
+          + `(state=${_recorder ? _recorder.state : 'none'})`
+        );
+        return;
+      }
+      try {
+        _recorder.pause();
+        _isPaused = true;
+        console.log('[Compositor] paused — no new chunks will be generated until resume()');
+      } catch (e) {
+        console.error('[Compositor] pause() error:', e);
+      }
+    },
+
+    resume() {
+      if (!_recorder || _recorder.state !== 'paused') {
+        console.warn(
+          `[Compositor] resume() ignored — recorder not in 'paused' state `
+          + `(state=${_recorder ? _recorder.state : 'none'})`
+        );
+        return;
+      }
+      try {
+        _recorder.resume();
+        _isPaused = false;
+        console.log('[Compositor] resumed — chunk generation continues');
+      } catch (e) {
+        console.error('[Compositor] resume() error:', e);
+      }
+    },
+
     // Live participant count changes throughout a session (students join/
     // leave) — this lets the Dart side push updates without restarting the
     // compositor. Only affects the next placeholder frame drawn; harmless
@@ -1160,6 +1226,8 @@
       case 'stop':              return compositor.stop();
       case 'isActive':          return compositor.isActive();
       case 'updateParticipants':return compositor.updateParticipants(a1);
+      case 'pause':             return compositor.pause();
+      case 'resume':            return compositor.resume();
       default: console.warn('[Compositor] unknown cmd:', cmd);
     }
   };

@@ -259,7 +259,15 @@ class ClientRecorder extends ChangeNotifier {
   }
 
   Future<void> pauseRecording() async {
-    if (kIsWeb) { log('[REC] pauseRecording: not supported on web'); return; }
+    if (kIsWeb) {
+      if (_state != RecState.recording) return;
+      log('[REC] pauseRecording (web)');
+      // Synchronous under the hood (MediaRecorder.pause() is not async) —
+      // no completer/timeout needed like the native mobile path below.
+      _webRecorder?.pause();
+      _applyPaused();
+      return;
+    }
     if (_state != RecState.recording || _stopping) return;
     log('[REC] pauseRecording');
     try {
@@ -277,7 +285,13 @@ class ClientRecorder extends ChangeNotifier {
   }
 
   Future<void> resumeRecording() async {
-    if (kIsWeb) { log('[REC] resumeRecording: not supported on web'); return; }
+    if (kIsWeb) {
+      if (_state != RecState.paused) return;
+      log('[REC] resumeRecording (web)');
+      _webRecorder?.resume();
+      _applyResumed();
+      return;
+    }
     if (_state != RecState.paused) return;
     log('[REC] resumeRecording');
     try {

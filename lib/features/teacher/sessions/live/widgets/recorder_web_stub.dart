@@ -20,6 +20,8 @@ class WebRecorder {
         int participantCount = 0,
       }) {}
   void updateParticipantCount(int count) {}
+  void pause() {}
+  void resume() {}
   void addStream(Object? stream, String label) {}
   void removeStream(String label) {}
   void requestData() {}

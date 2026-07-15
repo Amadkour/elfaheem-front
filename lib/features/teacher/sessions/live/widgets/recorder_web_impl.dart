@@ -69,6 +69,14 @@ void _compositorUpdateParticipants(int count) {
   _dispatch('updateParticipants', count.toJS);
 }
 
+void _compositorPause() {
+  _dispatch('pause');
+}
+
+void _compositorResume() {
+  _dispatch('resume');
+}
+
 void _compositorAddStream(web.MediaStream stream, String label) {
   _dispatch('addStream', stream as JSAny, label.toJS);
 }
@@ -262,6 +270,40 @@ class WebRecorder {
   void updateParticipantCount(int count) {
     try { _compositorUpdateParticipants(count); }
     catch (e) { _log('updateParticipantCount error: $e'); }
+  }
+
+  /// Pauses the underlying MediaRecorder. Per spec, a paused MediaRecorder
+  /// fires ZERO 'dataavailable' events — automatic (timeslice) or manual —
+  /// until resume() is called, so no new chunks are generated (and
+  /// therefore none are uploaded) for the duration of the pause. Safe to
+  /// call even if the compositor hasn't started or is already paused/
+  /// stopped — those cases are just ignored (logged) on the JS side.
+  void pause() {
+    if (!_started) {
+      _log('pause() ignored — compositor not started');
+      return;
+    }
+    try {
+      _compositorPause();
+      _log('pause() sent to compositor');
+    } catch (e) {
+      _log('pause() error: $e');
+    }
+  }
+
+  /// Resumes a paused recording. Chunk indexing/upload continues exactly
+  /// where it left off — no gap-handling needed server-side.
+  void resume() {
+    if (!_started) {
+      _log('resume() ignored — compositor not started');
+      return;
+    }
+    try {
+      _compositorResume();
+      _log('resume() sent to compositor');
+    } catch (e) {
+      _log('resume() error: $e');
+    }
   }
 
   void addStream(Object? stream, String label) {
