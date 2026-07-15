@@ -119,12 +119,9 @@ abstract class NativeRecorderBackend {
       });
 
       if (ok == true) {
-        // iOS: arrives almost immediately (emitted synchronously in the handler).
-        // Android: also immediate (params stored, event emitted).
-        await _startCompleter!.future.timeout(
-          const Duration(seconds: 10),
-          onTimeout: () => log('[REC] Phase-1 screenLoopStarted timeout'),
-        );
+        // Overridable — see AndroidNativeRecorderBackend for why Android
+        // skips this wait entirely rather than always eating a 10s timeout.
+        await awaitPhase1Confirmation();
         _startCompleter = null;
         log('[REC] Phase-1 complete — params stored, ready for startScreenCaptureService');
         return true;
@@ -143,6 +140,22 @@ abstract class NativeRecorderBackend {
       onError('Recording failed: $e');
       return false;
     }
+  }
+
+  /// Waits for Phase-1 confirmation after startMicRecording returns true.
+  /// Default (iOS) behavior: wait up to 10s for a real 'screenLoopStarted'
+  /// event, which iOS's AppDelegate emits synchronously from its own
+  /// startMicRecording handler. Overridden on Android — see
+  /// recorder_native_android.dart — since ScreenCaptureService's
+  /// ACTION_START_MIC_ONLY branch stores session params and promotes the
+  /// mic-only foreground service but never emits any event at all, so
+  /// waiting here would just eat the full 10s timeout on every single
+  /// session start for no reason.
+  Future<void> awaitPhase1Confirmation() {
+    return _startCompleter!.future.timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => log('[REC] Phase-1 screenLoopStarted timeout'),
+    );
   }
 
   // ── Phase 2 ──────────────────────────────────────────────────────────────
@@ -259,24 +272,34 @@ abstract class NativeRecorderBackend {
 
     switch (type) {
       case 'screenLoopStarted':
-        // Phase-1 ONLY: resolves start() — native emits this immediately
-        // and synchronously from startMicRecording. Do NOT treat this as
-        // "screen recording confirmed" — that's Phase-2's job via
-        // 'videoChunksActive' below. Conflating the two used to make
-        // upgradeToScreenRecording() see screen-recording already true and
-        // return early before its own completer resolved, leaving Phase-2
-        // stuck until a 20s timeout.
-        log('[REC] screenLoopStarted received (Phase-1)');
+      // On Android (verified against ScreenCaptureService.kt), this is
+      // the ONLY confirmation event that exists — it's emitted both from
+      // ACTION_STORE_PROJECTION's recordLoop() (the real recording loop
+      // starting after the recorder's own screen-capture grant) AND from
+      // ACTION_UPGRADE_TO_SCREEN (after the FGS is promoted to include
+      // FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION for flutter_webrtc).
+      // Android has no separate 'videoChunksActive' event at all — so
+      // this resolves whichever of the two completers is currently
+      // pending, in order (Phase-1 first, since it's the earlier one).
+      // On iOS, only Phase-1 ever fires this event (see 'videoChunksActive'
+      // below for iOS's actual Phase-2 signal), so in practice at most one
+      // of the two branches below ever fires per event there.
+        log('[REC] screenLoopStarted received');
         if (_startCompleter != null && !_startCompleter!.isCompleted) {
           _startCompleter!.complete();
           onStateChange(RecState.recording);
           return;
         }
-        log('[REC] screenLoopStarted: extra event ignored (Phase-1 already consumed)');
+        if (_upgradeCompleter != null && !_upgradeCompleter!.isCompleted) {
+          _upgradeCompleter!.complete();
+          onScreenRecordingConfirmed();
+          return;
+        }
+        log('[REC] screenLoopStarted: extra event ignored (nothing pending)');
         return;
 
       case 'videoChunksActive':
-        // Phase-2 ONLY: the chunk loop is writing real audio+video frames.
+      // Phase-2 ONLY: the chunk loop is writing real audio+video frames.
         log('[REC] videoChunksActive received (Phase-2)');
         if (_upgradeCompleter != null && !_upgradeCompleter!.isCompleted) {
           _upgradeCompleter!.complete();
@@ -313,8 +336,8 @@ abstract class NativeRecorderBackend {
         return;
 
       default:
-        // Platform-specific events (e.g. Android's 'micReadyForShare' /
-        // 'micLoopStarted') are handled by the subclass.
+      // Platform-specific events (e.g. Android's 'micReadyForShare' /
+      // 'micLoopStarted') are handled by the subclass.
         handlePlatformEvent(type, event);
     }
   }

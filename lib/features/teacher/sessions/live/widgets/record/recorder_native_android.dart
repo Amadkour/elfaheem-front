@@ -40,6 +40,15 @@ class AndroidNativeRecorderBackend extends NativeRecorderBackend {
   void prepareMicLoopStartedWait() =>
       _micLoopStartedCompleter = Completer<void>();
 
+  /// ACTION_START_MIC_ONLY (see ScreenCaptureService.kt) stores the session
+  /// params and promotes the mic-only foreground service, but never emits
+  /// any confirmation event — startMicRecording's successful method-channel
+  /// return is the only confirmation Android ever gives for Phase 1.
+  /// Waiting on the shared base's _startCompleter here would just eat its
+  /// full 10s timeout on every single session start for nothing.
+  @override
+  Future<void> awaitPhase1Confirmation() async {}
+
   @override
   void handlePlatformEvent(String? type, Map event) {
     switch (type) {

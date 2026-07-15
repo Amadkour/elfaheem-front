@@ -90,6 +90,26 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
         await _stopScreenForShare();
         log('[SS] Android: share preparation complete');
 
+        // Step 2.5: Make SURE the foreground service is actually promoted to
+        // FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION before flutter_webrtc
+        // requests its own MediaProjection below. Normally this already
+        // happened during the initial recording setup (room.dart's
+        // _startRecorderOnce Phase 2, via upgradeToScreenRecording()) — but
+        // that involves a system dialog the teacher has to respond to, and
+        // if screen share gets tapped before that finishes (or recording
+        // was never fully upgraded for any other reason), the foreground
+        // service is still mic-only-typed. flutter_webrtc's own
+        // getMediaProjection() call then throws SecurityException
+        // ("Media projections require a foreground service of type
+        // FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION") and the whole app
+        // crashes — this isn't a warning, it's fatal. isScreenRecording
+        // makes this a no-op (no extra dialog) once it's already true.
+        if (recorder != null && !recorder!.isScreenRecording) {
+          log('[SS] Android: FGS not yet promoted to mediaProjection type — '
+              'upgrading before flutter_webrtc requests its own projection');
+          await recorder!.upgradeToScreenRecording();
+        }
+
         // Step 3: flutter_webrtc shows ITS OWN projection dialog and streams.
         await _safeNegotiate(() => local.setScreenShareEnabled(
           true,
