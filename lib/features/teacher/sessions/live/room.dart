@@ -1319,10 +1319,32 @@ class _RoomPageState extends State<RoomPage>
         : participantTracks;
 
     if (mainTracks.isEmpty) {
-      // Premium placeholder — shown while waiting for remote participants.
-      final teacherName = local?.name ?? local?.identity ?? 'Teacher';
+      // Mirror the recording's fallback order (see recorder_compositor.js's
+      // draw loop): screen share > full-screen camera > placeholder. Before
+      // this, an enabled camera never appeared here at all — only in the
+      // small PiP corner — so the placeholder showed even while the
+      // teacher's own camera was live. Now, with no screen share and no
+      // other participant showing video, an enabled camera fills the main
+      // view instead; the placeholder is reserved for when nothing at all
+      // is available, same as the recorded output.
       final isMicOn = local?.isMicrophoneEnabled() ?? false;
       final isCamOn = local?.isCameraEnabled() ?? false;
+
+      if (!_pipSwapped && isCamOn) {
+        final cameraTrack = local != null ? _resolveCameraTrack(local) : null;
+        if (cameraTrack != null) {
+          return VideoTrackRenderer(
+            cameraTrack,
+            renderMode: VideoRenderMode.texture,
+            fit: VideoViewFit.cover,
+          );
+        }
+      }
+
+      // Premium placeholder — shown only when there's truly nothing to
+      // display: no screen share, no other participant's video, and no
+      // (or not-yet-ready) local camera.
+      final teacherName = local?.name ?? local?.identity ?? 'Teacher';
       return _PremiumWaitingPlaceholder(
         teacherName: teacherName,
         isMicOn: isMicOn,
@@ -1375,6 +1397,16 @@ class _RoomPageState extends State<RoomPage>
     !(t.participant == local &&
         t.type != ParticipantTrackType.kScreenShare)).toList()
         : participantTracks;
+
+    // When there's no screen share/remote content, an enabled camera is
+    // already shown full-screen as the main view's fallback (see
+    // _buildMainVideo) — showing that same feed again in the small PiP
+    // corner would just be a redundant duplicate, so the PiP hides itself
+    // in exactly that state instead.
+    if (!_pipSwapped && mainTracks.isEmpty && cameraTrack != null) {
+      return const SizedBox.shrink();
+    }
+
     final pipTrack = _pipSwapped && mainTracks.isNotEmpty ? mainTracks.first : null;
 
     return Positioned(
