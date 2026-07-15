@@ -639,7 +639,7 @@ import 'record/recorder_types.dart';
 import 'recorder_web_stub.dart'
 if (dart.library.html) 'recorder_web_impl.dart' as web_rec;
 import 'record/recorder_native_stub.dart'
-if (dart.library.io) 'recorder_native_select.dart' as native_rec;
+if (dart.library.io) 'record/recorder_native_select.dart' as native_rec;
 
 export 'record/recorder_types.dart';
 

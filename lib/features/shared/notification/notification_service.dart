@@ -1,4 +1,5 @@
 // lib/features/notification/notification_service.dart
+import 'dart:developer';
 import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -69,7 +70,7 @@ class NotificationService {
         requestSoundPermission: true,
       );
       await _plugin.initialize(
-        const InitializationSettings(
+          settings:const InitializationSettings(
             android: androidSettings, iOS: iosSettings),
         onDidReceiveNotificationResponse: _onTap,
       );
@@ -160,7 +161,7 @@ class NotificationService {
   // BUG 3 FIX: _plugin.show() is not supported on web. onMessage fires on
   // web too, so without this guard it crashes every time a push arrives.
   Future<void> _onForegroundMessage(RemoteMessage message) async {
-    print('[FCM] Foreground message on web:');
+    log('[FCM] Foreground message on web:');
     final notification = message.notification;
     if (notification == null) return;
 
@@ -173,10 +174,10 @@ class NotificationService {
     }
 
     await _plugin.show(
-      message.hashCode,
-      notification.title,
-      notification.body,
-      _notifDetails,
+      id:message.hashCode,
+      title:notification.title,
+      body:notification.body,
+     notificationDetails:  _notifDetails,
     );
   }
 
@@ -199,7 +200,7 @@ class NotificationService {
     required String body,
   }) async {
     if (kIsWeb) return;
-    await _plugin.show(id, title, body, _notifDetails);
+    await _plugin.show(id:id, title:title, body:body,notificationDetails:  _notifDetails);
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
@@ -208,7 +209,7 @@ class NotificationService {
 
   Future<void> cancel(int id) async {
     if (kIsWeb) return;
-    await _plugin.cancel(id);
+    await _plugin.cancel(id:id);
   }
 
   Future<void> cancelAll() async {
