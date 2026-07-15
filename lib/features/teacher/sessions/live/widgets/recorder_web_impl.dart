@@ -194,6 +194,11 @@ class WebRecorder {
 
   bool    _started       = false;
   Object? _pendingStream;
+  // A stream (usually 'camera') that arrived via addStream() BEFORE
+  // startCompositor() actually ran — see the race explained in addStream()
+  // below. Queued here and flushed once startCompositor() sets _started,
+  // instead of being silently dropped.
+  final Map<String, Object> _queuedStreams = {};
 
   WebRecorder({required this.onBlob});
 
@@ -235,6 +240,20 @@ class WebRecorder {
     } else {
       _log('no initial media stream — compositor in screen-only mode (OK)');
     }
+
+    // Flush anything that raced ahead of us — e.g. camera/mic acquired in
+    // the background (room_recorder.dart's _acquireWebMediaInBackground)
+    // resolving fast enough to call addStream() before this method had
+    // actually run yet. Without this, that stream would have hit the
+    // "compositor not started" guard in addStream() below and been
+    // silently discarded — meaning the camera might never appear in the
+    // recording at all, not just late.
+    if (_queuedStreams.isNotEmpty) {
+      _log('flushing ${_queuedStreams.length} stream(s) queued before start');
+      final queued = Map<String, Object>.from(_queuedStreams);
+      _queuedStreams.clear();
+      queued.forEach((label, stream) => addStream(stream, label));
+    }
   }
 
   /// Pushes a live participant-count update to the placeholder shown on the
@@ -247,7 +266,13 @@ class WebRecorder {
 
   void addStream(Object? stream, String label) {
     if (!_started) {
-      _log('addStream($label) DROPPED — compositor not started (_started=false)');
+      if (stream != null) {
+        _log('addStream($label) arrived before compositor started — '
+            'queuing, will attach once startCompositor() runs');
+        _queuedStreams[label] = stream;
+      } else {
+        _log('addStream($label) DROPPED — compositor not started and stream is null');
+      }
       return;
     }
     if (stream == null) {
