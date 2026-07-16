@@ -92,24 +92,70 @@ import CoreVideo
     //   • It is not shared with any other consumer, so LiveKit cannot cancel it.
     //   • waitsForConnectivity queues tasks instead of failing when the network
     //     is momentarily lost during LiveKit's socket teardown.
-    //   • httpMaximumConnectionsPerHost=1 serialises requests to the Cloudflare
-    //     tunnel (avoids per-IP connection-limit resets from trycloudflare.com).
+    //   • httpMaximumConnectionsPerHost=1, and — more importantly — the
+    //     explicit serial queue below (enqueueUpload/uploadFinished), keep
+    //     chunk uploads strictly one-at-a-time. This used to be set to 4 to
+    //     let the last few chunks upload in parallel during the stop-
+    //     recording wait window, but on a constrained connection (e.g. the
+    //     Cloudflare quick tunnels used in testing) that let several chunks
+    //     compete for bandwidth simultaneously: EARLIER chunks would time
+    //     out and exhaust their retries (each attempt permanently deletes
+    //     the chunk file on final failure — see uploadChunkAsync) while a
+    //     LATER chunk, uploaded once the earlier ones had already failed
+    //     and cleared out of the way, sailed through uncontested. That's
+    //     exactly why only the last of several chunks was ever reaching the
+    //     server — not corruption, not a dropped chunk, just several large
+    //     uploads fighting over one slow tunnel at once. Serial upload
+    //     removes the contention entirely; see the queue below for the
+    //     actual ordering guarantee (the connection-count setting alone
+    //     isn't sufficient, since a chunk sleeping in its retry backoff
+    //     isn't holding a connection, so the next chunk could still start
+    //     early even with this set to 1).
     private lazy var uploadSession: URLSession = {
         let cfg = URLSessionConfiguration.default
         cfg.waitsForConnectivity          = true
         cfg.timeoutIntervalForRequest     = 120
         cfg.timeoutIntervalForResource    = 300
-        // Allow up to 4 concurrent connections so chunks upload in parallel.
-        // Previously set to 1 (serial) to avoid Cloudflare tunnel connection-
-        // limit resets — but serial uploads mean chunk N+1 sits on disk waiting
-        // for chunk N to finish, so on a slow tunnel only 1 chunk uploads per
-        // session interval. With 4 parallel connections, the last few chunks
-        // can all upload simultaneously during the stop-recording wait window.
-        // trycloudflare.com doesn't enforce a strict per-IP connection limit
-        // in practice; if you see resets in production, lower this to 2.
-        cfg.httpMaximumConnectionsPerHost = 4
+        cfg.httpMaximumConnectionsPerHost = 1
         return URLSession(configuration: cfg)
     }()
+
+    // ── Serial upload queue ─────────────────────────────────────────────────
+    // Guarantees chunk uploads happen strictly one at a time, IN ORDER,
+    // including every retry — the next chunk's first attempt never starts
+    // until the current chunk's entire attempt sequence (success, or all
+    // retries exhausted) has concluded. uploadChunkAsync's recursive retry
+    // calls do NOT go through this queue (they're a continuation of the
+    // same in-flight chunk, not a new one) — only the top-level call from
+    // finaliseChunk does.
+    private var uploadQueue: [() -> Void] = []
+    private var uploadInFlight = false
+
+    private func enqueueUpload(_ work: @escaping () -> Void) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.uploadQueue.append(work)
+            self.drainUploadQueueIfIdle()
+        }
+    }
+
+    private func drainUploadQueueIfIdle() {
+        guard !uploadInFlight, !uploadQueue.isEmpty else { return }
+        uploadInFlight = true
+        let next = uploadQueue.removeFirst()
+        next()
+    }
+
+    /// Call exactly once per chunk, at whichever point its upload attempt
+    /// sequence truly concludes — success, or retries exhausted. NOT called
+    /// between individual retries, since those are the same chunk continuing.
+    private func uploadFinished() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.uploadInFlight = false
+            self.drainUploadQueueIfIdle()
+        }
+    }
 
     // ── Broadcast source control ──────────────────────────────────────────────
     // When isBroadcasting = true, frames from RPScreenRecorder are suppressed
@@ -1040,7 +1086,7 @@ import CoreVideo
                     return
                 }
                 NSLog("[REC] finalised chunk #\(idx) (\(size)B isFinal=\(isFinal))")
-                DispatchQueue.global(qos: .utility).async { [weak self] in
+                self?.enqueueUpload {
                     self?.uploadChunkAsync(fileURL: fileURL, index: idx, isFinal: isFinal)
                 }
                 DispatchQueue.main.async { completion(true) }
@@ -1051,6 +1097,7 @@ import CoreVideo
     private func uploadChunkAsync(fileURL: URL, index: Int, isFinal: Bool, attempt: Int = 0) {
         guard let url = URL(string: uploadUrl) else {
             NSLog("[REC] chunk #\(index) bad uploadUrl — skipping")
+            uploadFinished()
             return
         }
 
@@ -1060,6 +1107,7 @@ import CoreVideo
         let fileSize = (try? fileURL.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0
         guard fileSize > 0 else {
             NSLog("[REC] chunk #\(index) file missing or empty — skipping")
+            uploadFinished()
             return
         }
 
@@ -1092,6 +1140,7 @@ import CoreVideo
         // Write header + video bytes + footer into a single temp file.
         guard let videoData = try? Data(contentsOf: fileURL) else {
             NSLog("[REC] chunk #\(index) could not read video file")
+            uploadFinished()
             return
         }
         var multipart = Data(capacity: header.count + videoData.count + footer.count)
@@ -1102,6 +1151,7 @@ import CoreVideo
             try multipart.write(to: tmpURL, options: .atomic)
         } catch {
             NSLog("[REC] chunk #\(index) could not write multipart temp: \(error)")
+            uploadFinished()
             return
         }
 
@@ -1137,6 +1187,7 @@ import CoreVideo
                 } else {
                     try? FileManager.default.removeItem(at: fileURL)
                     self.emitError("chunk #\(index) failed after 4 retries: \(reason)")
+                    self.uploadFinished()
                     // Final chunk failed permanently — still unblock Dart so the
                     // session can close. The idle watchdog on the server will
                     // assemble whatever chunks landed successfully.
@@ -1155,6 +1206,7 @@ import CoreVideo
             // Success — delete the original chunk file and notify Dart.
             try? FileManager.default.removeItem(at: fileURL)
             NSLog("[REC] chunk #\(index) uploaded OK (\(fileSize)B isFinal=\(isFinal))")
+            self.uploadFinished()
             DispatchQueue.main.async {
                 self.emitEvent(["event": "chunkUploaded", "chunkIndex": index,
                                 "bytes": fileSize, "isFinal": isFinal])
