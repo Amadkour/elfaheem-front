@@ -500,9 +500,11 @@ import CoreVideo
         rp.startCapture(handler: { [weak self] sampleBuffer, bufferType, error in
             guard let self = self, self.recording, !self.stopping else { return }
             if let e = error { self.emitError(e.localizedDescription); return }
-            if !self.isBroadcasting {
-                self.processSampleFromRecorder(sampleBuffer, type: bufferType)
-            }
+            // NOTE: do NOT gate this whole call on !isBroadcasting — audio
+            // must keep flowing here even while a broadcast is active (see
+            // processSampleFromRecorder's .video case for where video
+            // actually gets suppressed during a broadcast).
+            self.processSampleFromRecorder(sampleBuffer, type: bufferType)
         }, completionHandler: { [weak self] error in
             guard let self = self else { return }
             DispatchQueue.main.async {
@@ -607,6 +609,18 @@ import CoreVideo
 
             switch type {
             case .video:
+                // While a broadcast extension is active, VIDEO comes from
+                // SampleHandler/processSampleFromBroadcast instead (it can
+                // capture the whole device screen, not just this app's own
+                // content) — suppress RPScreenRecorder's own video here to
+                // avoid writing two competing video streams into the same
+                // chunk. Audio is NOT suppressed here — see the .audioMic/
+                // .audioApp case below, which intentionally has no such
+                // guard, since SampleHandler never forwards audio at all
+                // (see its header comment) and relies entirely on this path
+                // continuing to supply it during a broadcast.
+                guard !self.isBroadcasting else { return }
+
                 let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
                 guard CMTIME_IS_VALID(pts) else { return }
 
@@ -634,6 +648,14 @@ import CoreVideo
                 }
 
             case .audioMic, .audioApp:
+                // Deliberately NOT gated on isBroadcasting — this is the
+                // ONLY source of audio while a broadcast is active, since
+                // SampleHandler.swift only ever forwards video. Suppressing
+                // this during a broadcast (as a previous version of the
+                // capture-handler guard used to do, by skipping
+                // processSampleFromRecorder entirely) silently produced
+                // video-only chunks with no audio track at all.
+                //
                 // Drop audio that arrives before the first video frame —
                 // those samples precede the session start time and would
                 // cause "sample out of order" log spam and audio glitches
