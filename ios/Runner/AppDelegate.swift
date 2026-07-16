@@ -1306,6 +1306,20 @@ import CoreVideo
 
             if self.recording && !self.paused && !self.stopping {
                 self.paused = true
+                // Without this, the pre-share chunk's still-pending 5s timer
+                // survives the pause untouched. If the whole picker-confirm→
+                // extension-launch→first-frame sequence finishes before that
+                // stale timer happens to fire (easily 1-2s, well within its
+                // remaining life), scheduleChunkTimer() for the broadcast's
+                // first chunk sees chunkTimer != nil and skips scheduling a
+                // proper new one — leaving chunk rotation for the broadcast
+                // riding on a leftover timer with the wrong fire time instead
+                // of a clean 5s cadence from when the broadcast actually
+                // started. pauseRecording() (the explicit pause handler)
+                // already does this; this path was the one inconsistent case
+                // that didn't.
+                self.chunkTimer?.invalidate()
+                self.chunkTimer = nil
                 NSLog("[SHARE] picker: recording paused before system overlay")
                 self.finaliseChunk(isFinal: false) { [weak self] _ in
                     guard let self = self else { return }
