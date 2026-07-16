@@ -46,21 +46,50 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
 
   bool _isNegotiating = false;
 
+  // Guards the ENTIRE toggle flow (picker/dialogs, native upgrade calls,
+  // LiveKit negotiation, everything) from the moment it's entered until it
+  // fully finishes — success or failure. This is deliberately separate from
+  // _isNegotiating: that flag is only ever set inside _safeNegotiate(),
+  // which the iOS/Android start-share paths call via unawaited(...) —
+  // fire-and-forget. That leaves a real window where a first tap has
+  // already started the whole showBroadcastPicker → upgradeToScreenRecording
+  // sequence (which takes several seconds — a system dialog, the extension
+  // launching) but _isNegotiating hasn't actually flipped true yet, since
+  // the negotiation it guards hasn't been reached/scheduled. A second tap
+  // during that window sailed straight past _isNegotiating's check and ran
+  // the ENTIRE flow again in parallel: two broadcast pickers shown, two
+  // upgradeToScreenRecording waits, two competing extension-launch attempts
+  // stepping on each other — which is exactly what a second, overlapping
+  // "stop" signal from one of them looked like from the outside ("shares
+  // fine alone, but breaks right after a previous session used sharing" —
+  // in practice this can happen within a single session too, any time the
+  // button gets tapped again before the first tap's flow visibly finishes).
+  bool _isTogglingShare = false;
+
   // ── Entry point ───────────────────────────────────────────────────────────
 
   Future<void> toggleScreenShare() async {
-    final local = room.localParticipant;
-    if (local == null) return;
-    final isSharing = local.isScreenShareEnabled();
+    if (_isTogglingShare) {
+      log('[SS] toggleScreenShare ignored — previous toggle still in progress');
+      return;
+    }
+    _isTogglingShare = true;
+    try {
+      final local = room.localParticipant;
+      if (local == null) return;
+      final isSharing = local.isScreenShareEnabled();
 
-    if (kIsWeb) {
-      await _toggleScreenShareWeb(local, isSharing);
-    } else if (lkPlatformIs(PlatformType.android)) {
-      await _toggleScreenShareAndroid(local, isSharing);
-    } else if (lkPlatformIs(PlatformType.iOS)) {
-      await _toggleScreenShareIOS(local, isSharing);
-    } else {
-      await _toggleScreenShareDesktop(local, isSharing);
+      if (kIsWeb) {
+        await _toggleScreenShareWeb(local, isSharing);
+      } else if (lkPlatformIs(PlatformType.android)) {
+        await _toggleScreenShareAndroid(local, isSharing);
+      } else if (lkPlatformIs(PlatformType.iOS)) {
+        await _toggleScreenShareIOS(local, isSharing);
+      } else {
+        await _toggleScreenShareDesktop(local, isSharing);
+      }
+    } finally {
+      _isTogglingShare = false;
     }
   }
 
