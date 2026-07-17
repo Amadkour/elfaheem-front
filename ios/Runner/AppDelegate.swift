@@ -1435,7 +1435,24 @@ import CoreVideo
     }
 
     private func stopBroadcastShare(result: @escaping FlutterResult) {
-        isBroadcasting = false
+        // NOTE: isBroadcasting is intentionally NOT cleared here at the top.
+        // RPScreenRecorder's own capture handler (processSampleFromRecorder)
+        // keeps running the whole time a broadcast is active — that's the
+        // audio fix — and it gates its VIDEO append on `!isBroadcasting`.
+        // If we flipped the flag to false before the broadcast's writer was
+        // torn down, a frame arriving on RPScreenRecorder's queue in that
+        // window would see isBroadcasting == false and start appending into
+        // the same, still-live AVAssetWriter the broadcast was using —
+        // two independent frame sources on two different timelines writing
+        // into one track that enforces strictly increasing timestamps,
+        // producing a corrupt/zero-byte chunk.
+        //
+        // finaliseChunk() nils out assetWriter/videoInput/audioInput
+        // synchronously (before it dispatches the async finishWriting work),
+        // so calling it first and only THEN clearing isBroadcasting closes
+        // that window: any RPScreenRecorder frame that lands after this
+        // function returns will find assetWriter already nil and bail out
+        // via its own guard, regardless of isBroadcasting's value.
         removeDarwinListeners()
         endBgTask()
         pickerWatchdog?.invalidate()
@@ -1446,21 +1463,29 @@ import CoreVideo
         NSLog("[SHARE] broadcast stopped by app")
         if recording && !stopping {
             if paused {
-                // Broadcast was never confirmed (user cancelled picker).
-                // Resume RPScreenRecorder which was paused by showBroadcastPicker.
+                // Broadcast was never confirmed (user cancelled picker) — no
+                // writer was ever live for the broadcast, so there's no
+                // teardown race here. Safe to clear isBroadcasting directly.
+                isBroadcasting = false
                 paused = false
                 beginChunkWriter()
                 NSLog("[SHARE] picker cancelled — RPScreenRecorder resumed at chunk #\(chunkIndex)")
             } else {
-                // Broadcast was active: finalise the broadcast chunk and start
-                // a fresh RPScreenRecorder chunk.
+                // Broadcast was active: finalise the broadcast chunk (which
+                // synchronously tears down the writer) BEFORE clearing
+                // isBroadcasting, then start a fresh RPScreenRecorder chunk.
                 finaliseChunk(isFinal: false) { [weak self] _ in
                     guard let self = self, self.recording, !self.stopping, !self.paused else { return }
                     self.chunkIndex += 1
                     self.beginChunkWriter()
                     NSLog("[SHARE] broadcast chunk rotated — RPScreenRecorder resuming at chunk #\(self.chunkIndex)")
                 }
+                isBroadcasting = false
             }
+        } else {
+            // Not actively recording (or already stopping) — no writer race
+            // to worry about, just clear the flag.
+            isBroadcasting = false
         }
         result(nil)
     }
@@ -1548,8 +1573,11 @@ import CoreVideo
 
     /// Called on the main thread when the extension posted a stop notification.
     private func onDarwinStopNotif() {
+        // Same race as stopBroadcastShare (see its comment above): don't
+        // clear isBroadcasting until finaliseChunk has synchronously torn
+        // down the writer, so RPScreenRecorder's capture handler can't slip
+        // a frame into the still-live broadcast writer in between.
         NSLog("[SHARE] broadcast extension finished (Darwin stop)")
-        isBroadcasting = false
         removeDarwinListeners()
         pickerWatchdog?.invalidate()
         pickerWatchdog = nil
@@ -1558,7 +1586,9 @@ import CoreVideo
         emitEvent(["event": "broadcastStopped"])
         if recording && !stopping {
             if paused {
-                // Extension stopped before we got the first frame (race).
+                // Extension stopped before we got the first frame (race) — no
+                // writer was ever live for the broadcast, so no teardown race.
+                isBroadcasting = false
                 paused = false
                 beginChunkWriter()
                 NSLog("[SHARE] Darwin stop: resumed from paused state at chunk #\(chunkIndex)")
@@ -1569,7 +1599,10 @@ import CoreVideo
                     self.beginChunkWriter()
                     NSLog("[SHARE] Darwin stop: chunk rotated at #\(self.chunkIndex)")
                 }
+                isBroadcasting = false
             }
+        } else {
+            isBroadcasting = false
         }
     }
 
