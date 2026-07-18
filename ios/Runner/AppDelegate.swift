@@ -1317,9 +1317,22 @@ import CoreVideo
         addField("is_final", "1")
         // Empty file part — zero bytes read server-side triggers the
         // "finalize ping" branch instead of trying to save a chunk.
+        //
+        // IMPORTANT: every multipart part needs a CRLF terminating its
+        // content — even when that content is zero bytes — before the next
+        // boundary marker. This part used to jump straight from the blank
+        // line ending its headers to "--boundary--" with no content
+        // terminator in between. That malformed a well-formed *header*
+        // section into an ambiguous part, and the multipart parser
+        // (Starlette, server-side) failed to recognize "chunk" as present
+        // at all rather than treating it as an empty file — which is why
+        // the server reported it as MISSING ("input": null), not empty,
+        // and every finalize ping 422'd before ever reaching the "assemble
+        // now" branch this ping exists to trigger.
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"chunk\"; filename=\"ping.mp4\"\r\n".data(using: .utf8)!)
         body.append("Content-Type: video/mp4\r\n\r\n".data(using: .utf8)!)
+        body.append("\r\n".data(using: .utf8)!)   // content terminator for the (empty) file part
         body.append("--\(boundary)--\r\n".data(using: .utf8)!)
 
         var request        = URLRequest(url: url)
