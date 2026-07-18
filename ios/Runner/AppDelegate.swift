@@ -1666,8 +1666,26 @@ import CoreVideo
                 // The extension is running, iOS has fully resumed, it's safe to write.
                 if recording && paused && !stopping {
                     paused = false
-                    beginChunkWriter()
-                    NSLog("[SHARE] recording resumed from picker-pause — broadcast chunk #\(chunkIndex)")
+                    // IMPORTANT: beginChunkWriter() detects it isn't on the main
+                    // thread (we're on ipcReadQueue here) and re-dispatches
+                    // itself there — but returns immediately without waiting.
+                    // processSampleFromBroadcast (below) reads self.assetWriter
+                    // via its own separate writerQueue dispatch, with no
+                    // ordering guarantee against beginChunkWriter's pending
+                    // main-thread work. Calling it right after beginChunkWriter()
+                    // here could easily see assetWriter still nil and silently
+                    // drop this — and potentially several more — broadcast
+                    // frames with nothing logged anywhere. Dispatching both
+                    // calls together onto the main thread makes them run in
+                    // that exact order: the writer is guaranteed to exist
+                    // before this first frame is processed.
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self = self else { return }
+                        self.beginChunkWriter()
+                        NSLog("[SHARE] recording resumed from picker-pause — broadcast chunk #\(self.chunkIndex)")
+                        self.processSampleFromBroadcast(jpegData: payload, ptsNs: ptsNs)
+                    }
+                    return
                 }
             }
             guard recording, !stopping, !paused else { return }
