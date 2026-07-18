@@ -678,32 +678,48 @@ import CoreVideo
                 // processSampleFromRecorder entirely) silently produced
                 // video-only chunks with no audio track at all.
                 //
-                // Drop audio that arrives before the first video frame —
-                // those samples precede the session start time and would
-                // cause "sample out of order" log spam and audio glitches
-                // at the very beginning of each chunk.
-                guard self.writerSessionStarted else { return }
-
-                // ── Why audio could disappear entirely ──────────────────
-                // .audioMic and .audioApp are TWO INDEPENDENTLY-CLOCKED
-                // sample streams, both funnelled into the SAME
-                // AVAssetWriterInput track. AVAssetWriter requires strictly
-                // increasing presentation timestamps per track — if a
-                // sample from one stream arrives with a PTS at or before
-                // the last sample WE appended (which may have come from the
-                // OTHER stream), the writer silently rejects it. Because the
-                // append() return value was never checked, that rejection
-                // was invisible — and once it starts happening, most/all
-                // subsequent samples on that track can be rejected the same
-                // way, which is exactly what "no audio in the recording"
-                // looks like with zero errors in the log.
+                // ── Why audio could disappear entirely (root cause #2) ───
+                // This branch used to hard-require `writerSessionStarted`
+                // (set ONLY by the .video case, or by processSampleFromBroadcast)
+                // before accepting any audio sample. writerSessionStarted is
+                // reset to false on EVERY chunk rotation (see beginChunkWriter),
+                // so at the start of every chunk we'd silently drop every audio
+                // sample that arrived before that chunk's first video frame —
+                // with no log line, since the drop happened before append() was
+                // ever called. RPScreenRecorder's own video/audio share one tight
+                // callback loop so the gap there is negligible, but during a
+                // broadcast, video comes from processSampleFromBroadcast via a
+                // much slower path (Darwin notification → shared file read →
+                // JPEG decode on ipcReadQueue) while audio keeps flowing
+                // continuously from RPScreenRecorder — so this guard could
+                // discard most or all of a chunk's audio while video looked
+                // completely normal (right byte counts, HTTP 201, no errors).
                 //
-                // This guard makes the ordering explicit: skip (don't even
-                // attempt to append) any sample that wouldn't be strictly
-                // increasing, and log real append failures so any remaining
-                // issue is visible instead of silent.
+                // Fix: let audio open the session itself if nothing has yet,
+                // instead of only ever waiting on video. Both audio and
+                // RPScreenRecorder's own video share the same host clock, and
+                // the broadcast path's reconstructed pts is derived from that
+                // same clock too, so anchoring on whichever track's sample
+                // happens to arrive first is safe either way.
                 let audioPts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
                 guard CMTIME_IS_VALID(audioPts) else { return }
+                if !self.writerSessionStarted {
+                    writer.startSession(atSourceTime: audioPts)
+                    self.writerSessionStarted = true
+                    NSLog("[REC] writer session started (audio) at \(CMTimeGetSeconds(audioPts))s")
+                }
+
+                // .audioMic and .audioApp are TWO INDEPENDENTLY-CLOCKED sample
+                // streams, both funnelled into the SAME AVAssetWriterInput
+                // track. AVAssetWriter requires strictly increasing
+                // presentation timestamps per track — if a sample from one
+                // stream arrives with a PTS at or before the last sample WE
+                // appended (which may have come from the OTHER stream), the
+                // writer silently rejects it. This guard makes the ordering
+                // explicit: skip (don't even attempt to append) any sample
+                // that wouldn't be strictly increasing, and log real append
+                // failures below so any remaining issue is visible instead
+                // of silent.
                 if let last = self.lastAudioPts, CMTimeCompare(audioPts, last) <= 0 {
                     return
                 }
@@ -1312,10 +1328,19 @@ import CoreVideo
         request.setValue(authToken,                                      forHTTPHeaderField: "Authorization")
         request.timeoutInterval = 30
 
-        uploadSession.uploadTask(with: request, from: body) { [weak self] _, response, error in
+        uploadSession.uploadTask(with: request, from: body) { [weak self] data, response, error in
             guard let self = self else { return }
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             NSLog("[REC] finalize ping HTTP \(code)")
+            // On a validation failure (422) or any other non-2xx, log the
+            // response body — FastAPI's 422 detail names the exact field
+            // that failed validation, which the status code alone doesn't
+            // tell us. Without this we can only see "HTTP 422" and have to
+            // guess why the server rejected the ping.
+            if (error != nil || code < 200 || code > 299),
+               let data = data, let bodyText = String(data: data, encoding: .utf8), !bodyText.isEmpty {
+                NSLog("[REC] finalize ping error body: \(bodyText)")
+            }
             if (error != nil || code < 200 || code > 299), attempt < 3 {
                 NSLog("[REC] finalize ping attempt \(attempt + 1) failed: "
                       + "\(error?.localizedDescription ?? "HTTP \(code)") — retrying")
