@@ -352,8 +352,20 @@ class ApiClient {
   // never triggers a receive timeout because sendTimeout is unlimited.
   //
   // Parameters:
-  //   filePath  — path to a file on disk (preferred: streams, low memory use)
-  //   fileBytes — fallback when no file is on disk (e.g. web blob)
+  //   filePath      — path to a file on disk (preferred: streams, low memory use)
+  //   fileBytes     — fallback when no file is on disk (e.g. web blob)
+  //   onSendProgress— (sent, total) callback, useful for showing upload
+  //                   progress on larger chunks (e.g. camera+share-screen
+  //                   chunks, which can be several MB instead of a few
+  //                   hundred KB — see beginChunkWriter's bitrate comment
+  //                   on the native side for why those got bigger).
+  //   maxRetries    — automatic retry count for transient failures
+  //                   (timeouts, connection errors, 5xx). Each retry waits
+  //                   `retryDelay * (attempt)` — simple linear backoff.
+  //                   Does NOT retry on 4xx (client errors won't fix
+  //                   themselves by retrying) — only on network-level
+  //                   failures or 5xx server errors.
+  //   retryDelay    — base delay between retries (default 2s).
   //
   // Both [fileField] + ([filePath] or [fileBytes]) are required.
 
@@ -365,6 +377,9 @@ class ApiClient {
         String?    filePath,    // preferred: stream from disk, no receive timeout
         Uint8List? fileBytes,  // fallback: in-memory bytes
         bool auth = true,
+        void Function(int sent, int total)? onSendProgress,
+        int maxRetries = 0,
+        Duration retryDelay = const Duration(seconds: 2),
       }) async {
     assert(filePath != null || fileBytes != null,
     'postMultipart: provide filePath or fileBytes');
@@ -372,17 +387,20 @@ class ApiClient {
     final ext  = p.extension(fileName).replaceFirst('.', '').toLowerCase();
     final mime = _fileMime(ext);
 
-    MultipartFile multipartFile;
-    if (!kIsWeb && filePath != null && File(filePath).existsSync()) {
-      // Stream from disk — memory-efficient and no timeout issues.
-      // dart:io's File is unavailable on web (throws "Unsupported
-      // operation: _Namespace"), so web always falls through to bytes below.
-      multipartFile = await MultipartFile.fromFile(
-        filePath,
-        filename:    fileName,
-        contentType: MediaType.parse(mime),
-      );
-    } else {
+    // Building the MultipartFile is repeated per attempt because
+    // MultipartFile streams are single-use — a retried request needs a
+    // fresh one built from the same source (file on disk, or bytes).
+    Future<MultipartFile> buildMultipartFile() async {
+      if (!kIsWeb && filePath != null && File(filePath).existsSync()) {
+        // Stream from disk — memory-efficient and no timeout issues.
+        // dart:io's File is unavailable on web (throws "Unsupported
+        // operation: _Namespace"), so web always falls through to bytes below.
+        return MultipartFile.fromFile(
+          filePath,
+          filename:    fileName,
+          contentType: MediaType.parse(mime),
+        );
+      }
       // Fallback: bytes (web, or when file was already deleted)
       if (fileBytes == null) {
         throw Exception(
@@ -390,24 +408,45 @@ class ApiClient {
               '(web platform, or file missing on disk).',
         );
       }
-      multipartFile = MultipartFile.fromBytes(
+      return MultipartFile.fromBytes(
         fileBytes,
         filename:    fileName,
         contentType: MediaType.parse(mime),
       );
     }
 
-    final form = FormData.fromMap({
-      ...fields,
-      fileField: multipartFile,
-    });
+    int attempt = 0;
+    while (true) {
+      attempt++;
+      try {
+        final form = FormData.fromMap({
+          ...fields,
+          fileField: await buildMultipartFile(),
+        });
 
-    final res = await _dio.post(
-      path,
-      data:    form,
-      options: _fileOpts(auth: auth),   // unlimited send + receive timeout
-    );
-    return _handle(res);
+        final res = await _dio.post(
+          path,
+          data:    form,
+          options: _fileOpts(auth: auth),   // unlimited send + receive timeout
+          onSendProgress: onSendProgress,
+        );
+        return _handle(res);
+      } on DioException catch (e) {
+        final status = e.response?.statusCode;
+        // Only retry transient failures: network-level errors (timeout,
+        // connection dropped, etc.) or a 5xx from the server. A 4xx means
+        // the server rejected the request itself — retrying identical bytes
+        // won't change that outcome.
+        final isTransient = status == null || status >= 500;
+        if (!isTransient || attempt > maxRetries) rethrow;
+        if (AppConfig.showLogs) {
+          log('[postMultipart] $path attempt $attempt failed '
+              '(${e.type}, status=$status) — retrying in '
+              '${retryDelay.inSeconds * attempt}s');
+        }
+        await Future.delayed(retryDelay * attempt);
+      }
+    }
   }
 
   // ── Token helpers ─────────────────────────────────────────────────────────

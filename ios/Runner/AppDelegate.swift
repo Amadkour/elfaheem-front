@@ -57,7 +57,27 @@ import CoreVideo
     private var assetWriter:        AVAssetWriter?
     private var videoInput:         AVAssetWriterInput?
     private var audioInput:         AVAssetWriterInput?
+    // Pixel buffer adaptor for the broadcast-extension path. Broadcast frames
+    // arrive as decoded JPEGs (see jpegToPixelBuffer), and MUST be appended
+    // through an AVAssetWriterInputPixelBufferAdaptor rather than by manually
+    // constructing a CMSampleBuffer and calling videoInput.append(_:) — see
+    // the long comment in jpegToPixelBuffer() for why the manual-CMSampleBuffer
+    // approach silently poisoned the writer for the rest of the session.
+    private var pixelBufferAdaptor: AVAssetWriterInputPixelBufferAdaptor?
+    // Last successfully-appended broadcast-frame PTS for the CURRENT chunk —
+    // guards against non-monotonic timestamps the same way lastAudioPts does.
+    private var lastBroadcastVideoPts: CMTime?
+    // Exact width/height the CURRENT chunk's pixelBufferAdaptor pool was
+    // configured with (set in beginChunkWriter). Every broadcast frame MUST
+    // be drawn into a buffer of exactly this size — see jpegToPixelBuffer.
+    private var chunkVideoWidth:  Int = 0
+    private var chunkVideoHeight: Int = 0
     private var writerSessionStarted = false    // true once startSession() called
+    // Last successfully-appended audio PTS for the CURRENT chunk's audioInput.
+    // See processSampleFromRecorder's .audioMic/.audioApp case for why this
+    // is required — it's the fix for audio silently disappearing from
+    // recordings. Reset to nil every time a new chunk/writer is created.
+    private var lastAudioPts: CMTime?
     private var writerQueue = DispatchQueue(label: "com.elfaheem.writer", qos: .userInitiated)
 
     // ── Session params ────────────────────────────────────────────────────────
@@ -162,11 +182,12 @@ import CoreVideo
     // and frames from the broadcast extension are written instead.
     private var isBroadcasting      = false
 
-    // Tracks the previous broadcast frame's presentation timestamp so we can
-    // compute each frame's REAL duration (extension frame arrival is not a
-    // fixed cadence — JPEG encode + file write + Darwin notify round-trip
-    // introduces jitter). nil until the first broadcast frame is written.
-    private var lastBroadcastPts:   CMTime?
+    // NOTE: per-frame duration for broadcast frames used to be hand-computed
+    // here from a tracked "previous PTS" because the old code appended raw
+    // CMSampleBuffers. Now that processSampleFromBroadcast appends through
+    // AVAssetWriterInputPixelBufferAdaptor, the adaptor derives each frame's
+    // duration itself from the delta between consecutive presentation times,
+    // so no extra state is needed here.
 
     // ── Broadcast Extension IPC (App Group + Darwin notifications) ───────────
     //
@@ -518,6 +539,7 @@ import CoreVideo
                     self.assetWriter = nil
                     self.videoInput  = nil
                     self.audioInput  = nil
+                    self.pixelBufferAdaptor = nil
                     self.writerSessionStarted = false
                     self.releaseAudioSessionLock()
                     result(FlutterError(code: "RP_START_ERROR",
@@ -661,8 +683,37 @@ import CoreVideo
                 // cause "sample out of order" log spam and audio glitches
                 // at the very beginning of each chunk.
                 guard self.writerSessionStarted else { return }
+
+                // ── Why audio could disappear entirely ──────────────────
+                // .audioMic and .audioApp are TWO INDEPENDENTLY-CLOCKED
+                // sample streams, both funnelled into the SAME
+                // AVAssetWriterInput track. AVAssetWriter requires strictly
+                // increasing presentation timestamps per track — if a
+                // sample from one stream arrives with a PTS at or before
+                // the last sample WE appended (which may have come from the
+                // OTHER stream), the writer silently rejects it. Because the
+                // append() return value was never checked, that rejection
+                // was invisible — and once it starts happening, most/all
+                // subsequent samples on that track can be rejected the same
+                // way, which is exactly what "no audio in the recording"
+                // looks like with zero errors in the log.
+                //
+                // This guard makes the ordering explicit: skip (don't even
+                // attempt to append) any sample that wouldn't be strictly
+                // increasing, and log real append failures so any remaining
+                // issue is visible instead of silent.
+                let audioPts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+                guard CMTIME_IS_VALID(audioPts) else { return }
+                if let last = self.lastAudioPts, CMTimeCompare(audioPts, last) <= 0 {
+                    return
+                }
+                self.lastAudioPts = audioPts
+
                 if self.audioInput?.isReadyForMoreMediaData == true {
-                    self.audioInput?.append(sampleBuffer)
+                    if self.audioInput?.append(sampleBuffer) == false {
+                        NSLog("[REC] audio append FAILED (\(type == .audioMic ? "mic" : "app")) "
+                              + "— writer status=\(writer.status.rawValue) error=\(String(describing: writer.error))")
+                    }
                 }
 
             @unknown default:
@@ -685,83 +736,104 @@ import CoreVideo
             guard let self = self,
                   let writer = self.assetWriter,
                   writer.status == .writing,
+                  let adaptor = self.pixelBufferAdaptor,
+                  let pool = adaptor.pixelBufferPool,
                   self.videoInput?.isReadyForMoreMediaData == true else { return }
 
-            // Reconstruct a CMSampleBuffer from the JPEG bytes.
-            guard let pixelBuffer = self.jpegToPixelBuffer(jpegData) else { return }
+            // Always draw into a buffer pulled from the adaptor's OWN pool,
+            // sized to this chunk's fixed geometry — see jpegToPixelBuffer's
+            // header comment for why this (not the JPEG's own dimensions)
+            // is what eliminates the intermittent append failures that were
+            // silently dropping whole chunks (e.g. chunk #3 in the logs).
+            guard self.chunkVideoWidth > 0, self.chunkVideoHeight > 0,
+                  let pixelBuffer = self.jpegToPixelBuffer(
+                      jpegData, pool: pool,
+                      targetWidth: self.chunkVideoWidth,
+                      targetHeight: self.chunkVideoHeight
+                  ) else { return }
 
-            let pts  = CMTimeMake(value: Int64(ptsNs / 1_000_000),
+            let pts = CMTimeMake(value: Int64(ptsNs / 1_000_000),
                                   timescale: 1_000)   // millisecond timescale
-
-            // Real per-frame duration = delta from the previous broadcast
-            // frame's PTS. Extension frame cadence is not fixed (JPEG encode +
-            // shared-file write + Darwin notify round-trip jitters), so a
-            // hardcoded 1/30s duration would be wrong on most frames even
-            // though the PTS itself is accurate. Clamp to a sane range so a
-            // single dropped/delayed notification (or the first frame, which
-            // has no prior PTS to diff against) can't produce a zero-length
-            // or absurdly long sample.
-            let fallbackDuration = CMTime(value: 1, timescale: 30)
-            var duration = fallbackDuration
-            if let last = self.lastBroadcastPts {
-                let delta = CMTimeSubtract(pts, last)
-                let deltaSeconds = CMTimeGetSeconds(delta)
-                if deltaSeconds.isFinite, deltaSeconds > 0.005, deltaSeconds < 1.0 {
-                    duration = delta
-                }
-                // else: out-of-range delta (clock jump, dropped notification,
-                // or out-of-order frame) — keep fallbackDuration rather than
-                // writing a degenerate sample.
-            }
-            self.lastBroadcastPts = pts
-
-            var timingInfo = CMSampleTimingInfo(
-                duration:               duration,
-                presentationTimeStamp:  pts,
-                decodeTimeStamp:        .invalid
-            )
-
-            var fmtDesc: CMVideoFormatDescription?
-            guard CMVideoFormatDescriptionCreateForImageBuffer(
-                allocator:              kCFAllocatorDefault,
-                imageBuffer:            pixelBuffer,
-                formatDescriptionOut:   &fmtDesc
-            ) == noErr, fmtDesc != nil else { return }
-
-            var sampleBuffer: CMSampleBuffer?
-            guard CMSampleBufferCreateReadyWithImageBuffer(
-                allocator:              kCFAllocatorDefault,
-                imageBuffer:            pixelBuffer,
-                formatDescription:      fmtDesc!,
-                sampleTiming:           &timingInfo,
-                sampleBufferOut:        &sampleBuffer
-            ) == noErr, let sb = sampleBuffer else { return }
 
             if !self.writerSessionStarted {
                 writer.startSession(atSourceTime: pts)
                 self.writerSessionStarted = true
                 NSLog("[REC] writer session (broadcast) started at \(CMTimeGetSeconds(pts))s")
             }
-            self.videoInput?.append(sb)
+
+            // Same monotonic-PTS protection as audio (see lastAudioPts) —
+            // guards against a stray out-of-order broadcast frame being
+            // silently rejected by the writer.
+            if let last = self.lastBroadcastVideoPts, CMTimeCompare(pts, last) <= 0 {
+                return
+            }
+            self.lastBroadcastVideoPts = pts
+
+            // append(_:withPresentationTime:) is the adaptor-based API and is
+            // the only supported way to feed decoded CVPixelBuffers into an
+            // AVAssetWriterInput — see jpegToPixelBuffer's header comment for
+            // why the old approach (manually building a CMSampleBuffer and
+            // calling videoInput.append(sampleBuffer) directly) permanently
+            // failed the writer as soon as broadcast frames started arriving.
+            // The adaptor also derives each frame's duration itself from the
+            // delta between consecutive presentation times, so there's no
+            // need to hand-compute a duration/CMSampleTimingInfo here.
+            if !adaptor.append(pixelBuffer, withPresentationTime: pts) {
+                NSLog("[REC] broadcast frame append FAILED — writer status=\(writer.status.rawValue) error=\(String(describing: writer.error))")
+            }
         }
     }
 
-    /// Decode a JPEG Data into a CVPixelBuffer suitable for AVAssetWriterInput.
-    private func jpegToPixelBuffer(_ data: Data) -> CVPixelBuffer? {
+    /// Decode a JPEG Data into a CVPixelBuffer suitable for the broadcast
+    /// pixel-buffer adaptor.
+    //
+    // ROOT CAUSE #1 (fixed) OF "records fine, then dies silently the moment
+    // Share Screen starts": this buffer used to be created with plain
+    // CVPixelBufferCreate + kCVPixelFormatType_32ARGB and NO
+    // kCVPixelBufferIOSurfacePropertiesKey. That produces a pixel buffer
+    // that is NOT IOSurface-backed.
+    //
+    // AVAssetWriter's H.264 encode session runs out-of-process (mediaserverd)
+    // and can only accept pixel buffers across that XPC boundary if they are
+    // IOSurface-backed — a plain malloc'd CVPixelBuffer cannot be shared that
+    // way. Handing one to the writer doesn't fail loudly; the encoder XPC
+    // call fails deep inside CoreMedia, which is exactly the
+    // "FigSampleBufferSerialization ... err=-19642" seen in the logs, and
+    // that failure flips the WHOLE AVAssetWriter to .failed.
+    //
+    // ROOT CAUSE #2 (fixed here) OF "an occasional chunk (e.g. #3) just
+    // disappears, and it's always around a camera-open-while-sharing
+    // moment": this function used to size the CVPixelBuffer to whatever the
+    // JPEG's OWN width/height happened to be, frame by frame. But the
+    // AVAssetWriterInputPixelBufferAdaptor created in beginChunkWriter is
+    // configured with a FIXED pool geometry (kCVPixelBufferWidthKey/
+    // HeightKey = the chunk's w×h). The moment ReplayKit's broadcast frame
+    // briefly reports different pixel dimensions than that fixed pool size
+    // — which is exactly what can happen for a frame or two when a camera
+    // overlay/PiP appears on top of the shared screen, or on a rotation —
+    // adaptor.append() fails with an intermittent
+    // "AVFoundationErrorDomain -11800 / NSOSStatusErrorDomain -16364" error,
+    // which (same as root cause #1) flips the writer to .failed and the
+    // whole in-flight chunk is lost.
+    //
+    // Fix: ALWAYS allocate the pixel buffer from the adaptor's own
+    // `pixelBufferPool` (guaranteeing the exact pool geometry + IOSurface
+    // backing every time, regardless of what's on screen) and aspect-fit
+    // the decoded JPEG into that fixed canvas (letterboxed with black bars
+    // if the source frame's aspect ratio doesn't match) instead of ever
+    // creating a differently-sized buffer.
+    private func jpegToPixelBuffer(
+        _ data: Data,
+        pool: CVPixelBufferPool,
+        targetWidth: Int,
+        targetHeight: Int
+    ) -> CVPixelBuffer? {
         guard let uiImage = UIImage(data: data),
               let cgImage = uiImage.cgImage else { return nil }
 
-        let w = cgImage.width
-        let h = cgImage.height
-        let attrs: [CFString: Any] = [
-            kCVPixelBufferCGImageCompatibilityKey:       true,
-            kCVPixelBufferCGBitmapContextCompatibilityKey: true,
-        ]
         var pixelBuffer: CVPixelBuffer?
-        guard CVPixelBufferCreate(kCFAllocatorDefault, w, h,
-                                  kCVPixelFormatType_32ARGB,
-                                  attrs as CFDictionary,
-                                  &pixelBuffer) == kCVReturnSuccess,
+        guard CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &pixelBuffer)
+                == kCVReturnSuccess,
               let pb = pixelBuffer else { return nil }
 
         CVPixelBufferLockBaseAddress(pb, [])
@@ -769,15 +841,36 @@ import CoreVideo
 
         guard let ctx = CGContext(
             data:             CVPixelBufferGetBaseAddress(pb),
-            width:            w,
-            height:           h,
+            width:            targetWidth,
+            height:           targetHeight,
             bitsPerComponent: 8,
             bytesPerRow:      CVPixelBufferGetBytesPerRow(pb),
             space:            CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo:       CGImageAlphaInfo.noneSkipFirst.rawValue
+            bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
+                        | CGBitmapInfo.byteOrder32Little.rawValue
         ) else { return nil }
 
-        ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: w, height: h))
+        // Clear to black first — if the source aspect ratio doesn't exactly
+        // match the fixed canvas we'll letterbox rather than stretch, and
+        // the letterbox bars must not be leftover pool-buffer garbage.
+        ctx.setFillColor(red: 0, green: 0, blue: 0, alpha: 1)
+        ctx.fill(CGRect(x: 0, y: 0, width: targetWidth, height: targetHeight))
+
+        // Aspect-fit + center the decoded frame into the fixed canvas so the
+        // OUTPUT pixel buffer is always exactly targetWidth×targetHeight —
+        // the pool's fixed geometry — no matter what size ReplayKit's frame
+        // (or the camera overlay on top of it) actually was.
+        let srcW = CGFloat(cgImage.width)
+        let srcH = CGFloat(cgImage.height)
+        if srcW > 0, srcH > 0 {
+            let scale  = min(CGFloat(targetWidth) / srcW, CGFloat(targetHeight) / srcH)
+            let drawW  = srcW * scale
+            let drawH  = srcH * scale
+            let originX = (CGFloat(targetWidth)  - drawW) / 2
+            let originY = (CGFloat(targetHeight) - drawH) / 2
+            ctx.draw(cgImage, in: CGRect(x: originX, y: originY, width: drawW, height: drawH))
+        }
+
         return pb
     }
 
@@ -820,12 +913,25 @@ import CoreVideo
         let w      = (Int(CGFloat(rawW) * ratio) / 2) * 2   // must be even
         let h      = (Int(CGFloat(rawH) * ratio) / 2) * 2
 
+        // ── Bitrate ────────────────────────────────────────────────────────────
+        // Broadcast-sourced chunks (Share Screen, especially with a camera
+        // overlay on top of it) come from JPEG-decoded frames that are
+        // already lossy — re-encoding them at the same 4 Mbps used for
+        // RPScreenRecorder's own crisp, native-resolution frames spends a
+        // lot of bits re-compressing JPEG blocking artifacts for no real
+        // quality gain, which is why these chunks were coming out 5-6×
+        // larger (e.g. ~2.6 MB per 5 s vs ~400 KB) than the in-app-only
+        // chunks. Use a meaningfully lower bitrate whenever the chunk being
+        // created is (or will be) a broadcast chunk.
+        let isBroadcastChunk = isBroadcasting
+        let bitrate = isBroadcastChunk ? 1_800_000 : 4_000_000   // bps
+
         let vSettings: [String: Any] = [
             AVVideoCodecKey:  AVVideoCodecType.h264,
             AVVideoWidthKey:  w,
             AVVideoHeightKey: h,
             AVVideoCompressionPropertiesKey: [
-                AVVideoAverageBitRateKey:       4_000_000,   // 4 Mbps — clear for screen content
+                AVVideoAverageBitRateKey:       bitrate,
                 AVVideoMaxKeyFrameIntervalKey:  60,
                 AVVideoProfileLevelKey:         AVVideoProfileLevelH264HighAutoLevel,
                 AVVideoAllowFrameReorderingKey: false,
@@ -834,6 +940,23 @@ import CoreVideo
         let vi = AVAssetWriterInput(mediaType: .video, outputSettings: vSettings)
         vi.expectsMediaDataInRealTime = true
         videoInput = vi
+
+        // Adaptor used by the broadcast-extension path (processSampleFromBroadcast)
+        // to feed decoded JPEG frames in as CVPixelBuffers. Must be created here,
+        // once per chunk/writer, same as videoInput — see jpegToPixelBuffer's
+        // header comment for why appending through this adaptor (vs. manually
+        // building a CMSampleBuffer) is required for the writer to survive a
+        // Share Screen broadcast.
+        let sourcePixelAttrs: [String: Any] = [
+            kCVPixelBufferPixelFormatTypeKey as String:   kCVPixelFormatType_32BGRA,
+            kCVPixelBufferWidthKey as String:              w,
+            kCVPixelBufferHeightKey as String:             h,
+            kCVPixelBufferIOSurfacePropertiesKey as String: [:] as CFDictionary,
+        ]
+        pixelBufferAdaptor = AVAssetWriterInputPixelBufferAdaptor(
+            assetWriterInput:            vi,
+            sourcePixelBufferAttributes: sourcePixelAttrs
+        )
 
         let aSettings: [String: Any] = [
             AVFormatIDKey:         kAudioFormatMPEG4AAC,
@@ -854,12 +977,17 @@ import CoreVideo
         // every subsequent real frame (which has pts > 0) to be treated as
         // "before the session" and silently dropped → black video track.
         writerSessionStarted = false
-        // New chunk = new writer = new timeline, so the previous chunk's last
-        // broadcast-frame PTS is no longer a valid baseline for a duration
-        // delta. Reset it so the first broadcast frame of this chunk falls
-        // back to fallbackDuration instead of computing a (likely huge,
-        // cross-chunk) delta.
-        lastBroadcastPts = nil
+        // Fresh chunk = fresh writer/track = fresh timeline. The previous
+        // chunk's last audio PTS is not a valid baseline for this one.
+        lastAudioPts = nil
+        // Fresh chunk = fresh broadcast video timeline too.
+        lastBroadcastVideoPts = nil
+        // Record the exact geometry this chunk's pixelBufferAdaptor pool was
+        // configured with, so processSampleFromBroadcast can always draw
+        // decoded JPEG frames into a buffer of this exact size (see
+        // jpegToPixelBuffer's header comment).
+        chunkVideoWidth  = w
+        chunkVideoHeight = h
 
         NSLog("[REC] beginChunkWriter: chunk #\(chunkIndex) \(w)×\(h)")
         scheduleChunkTimer()
@@ -907,6 +1035,37 @@ import CoreVideo
         chunkTimer?.invalidate()
         chunkTimer = nil
         guard recording, !stopping, !paused else { return }
+
+        // ── Why chunk #0 was always the one that went missing ──────────────────
+        // The chunk timer's 5s countdown starts the instant beginChunkWriter()
+        // runs — NOT from whenever the first real frame actually arrives (see
+        // beginChunkWriter's own comment on why startSession can't just use
+        // .zero). At the very start of a session, RPScreenRecorder and
+        // LiveKit's own camera capture are handing the capture pipeline back
+        // and forth (this is exactly what the "FigCaptureSourceRemote ...
+        // err=-17281" / "Stop video capturer" lines at the very top of every
+        // session's log are — a normal but non-instant handoff). If that
+        // handoff isn't done by the time this 5s timer fires, chunk #0's
+        // writer never received a single frame — writerSessionStarted is
+        // still false — and finaliseChunk's own "no frames yet" guard
+        // silently DELETES it and reports nothing to upload. Because this
+        // code used to rotate unconditionally, chunkIndex still advanced to
+        // 1 and a brand-new chunk began right as real frames were *finally*
+        // about to start flowing — so the first ~5 real seconds of the
+        // session were thrown away every single time, deterministically.
+        //
+        // Fix: if this chunk never got its first real frame, DON'T finalize/
+        // rotate it away — keep the SAME writer open and just give it more
+        // time. There is nothing to lose by waiting (an unstarted writer has
+        // no content to lose), and this is what actually preserves those
+        // first few seconds once real frames do arrive.
+        guard writerSessionStarted else {
+            NSLog("[REC] rotateChunk: chunk #\(chunkIndex) has received no frames yet "
+                  + "— extending its window instead of rotating")
+            scheduleChunkTimer()
+            return
+        }
+
         finaliseChunk(isFinal: false) { [weak self] _ in
             guard let self = self, self.recording, !self.stopping, !self.paused else { return }
             self.chunkIndex += 1
@@ -929,6 +1088,7 @@ import CoreVideo
             self.assetWriter  = nil
             self.videoInput   = nil
             self.audioInput   = nil
+            self.pixelBufferAdaptor = nil
             self.writerSessionStarted = false
             self.emitEvent(["event": "recordingPaused"])
             result(nil)
@@ -973,67 +1133,51 @@ import CoreVideo
         // is killed silently on suspension. So we must NOT call result(nil)
         // until the final chunk has actually landed on the server.
         //
-        // Flow:
-        //   finaliseChunk → finishWriting → uploadChunkAsync(isFinal:true)
-        //     success/final-failure → stopCapture → result(nil)   ← Dart unblocks
+        // ── Why THIS chunk's own isFinal flag is not trusted alone ─────────────
+        // If stopRecording() lands at almost the same instant as a chunk-timer
+        // rotation (rotateChunk), finaliseChunk() here can find assetWriter/
+        // videoInput/audioInput already nil — rotateChunk's own finaliseChunk
+        // call nils them synchronously the moment IT runs, well before its
+        // async finishWriting/upload chain completes. In that case THIS call
+        // has nothing to finalize, so `uploadQueued` comes back false and the
+        // actual last content-bearing chunk ends up uploaded by the ROTATION
+        // with isFinal=false instead of true. No recorded content is lost —
+        // but nothing ever tells the server "that was the last one", so
+        // assembly would otherwise sit waiting on the server's slow idle
+        // watchdog (up to CHUNK_IDLE_TIMEOUT) instead of running immediately,
+        // and could even lose the race against the app being backgrounded/
+        // suspended right after this call returns.
         //
-        // This means Dart's `await invokeMethod('stopRecording')` truly waits
-        // for the upload, so _endSessionWithRecording's `await stopRecordingOnly()`
-        // blocks until the server has the final chunk before onEnd() is called.
-        //
-        // BUT: if finaliseChunk had nothing to finalise — e.g. the user ended
-        // the session while still `paused` waiting on a broadcast picker that
-        // never actually started, so no AVAssetWriter/frames ever existed for
-        // this "chunk" — no upload will EVER be queued, and waiting on
-        // stopResult would hang until Dart's own 90s timeout. uploadQueued
-        // tells us which case we're in.
-        finaliseChunk(isFinal: isFinal) { [weak self] uploadQueued in
+        // Fix: regardless of which branch fires, ALWAYS follow up with an
+        // explicit "finalize ping" (see uploadFinalizePingAsync) once
+        // RPScreenRecorder has actually stopped. It's enqueued through the
+        // same serial upload queue as every real chunk, so it's guaranteed
+        // to run strictly after any chunk from an in-flight rotation has
+        // fully finished uploading — the server already has every byte on
+        // disk by the time the ping tells it to assemble.
+        finaliseChunk(isFinal: isFinal) { [weak self] _ in
             guard let self = self else { result(nil); return }
             self.isBroadcasting = false
-            // Pass result into uploadChunkAsync — it will call result(nil) once
-            // the upload succeeds or exhausts its retries. If the chunk is
-            // not-final or there's nothing to upload, uploadChunkAsync calls
-            // result(nil) immediately after the final attempt.
-            self.stopCaptureThenSignal(result: result, expectFinalUpload: uploadQueued)
+            self.stopCaptureThenSignal(result: result)
         }
     }
 
-    /// Called after finaliseChunk completes. Stops RPScreenRecorder and waits
-    /// for uploadChunkAsync to fire stopResult when the final upload lands.
-    /// IMPORTANT: stopCapture's completion must NOT call result(nil) — on a
-    /// slow network (Cloudflare tunnel) stopCapture completes in <1s but the
-    /// upload takes much longer. Firing result here would unblock Dart before
-    /// the chunk reaches the server, causing onEnd() to kill the upload.
-    ///
-    /// `expectFinalUpload` must be false when finaliseChunk produced nothing
-    /// to upload (e.g. stop was called mid-pause with no frames captured) —
-    /// in that case nothing will ever call uploadChunkAsync's isFinal path,
-    /// so we must fire result(nil) right here instead of waiting forever.
+    /// Called after finaliseChunk completes. Stops RPScreenRecorder, then
+    /// ALWAYS enqueues an explicit finalize ping and waits for it (see
+    /// uploadFinalizePingAsync) before firing `result`.
     private var stopResult: FlutterResult?
 
-    private func stopCaptureThenSignal(result: @escaping FlutterResult, expectFinalUpload: Bool) {
-        if expectFinalUpload {
-            stopResult = result
-        }
+    private func stopCaptureThenSignal(result: @escaping FlutterResult) {
+        stopResult = result
         RPScreenRecorder.shared().stopCapture { [weak self] error in
             if let e = error { NSLog("[REC] stopCapture: \(e.localizedDescription)") }
+            guard let self = self else { return }
             DispatchQueue.main.async {
-                self?.stopping = false
-                if expectFinalUpload {
-                    // Do NOT fire result(nil) here — uploadChunkAsync holds
-                    // stopResult and fires it when the server confirms the
-                    // final chunk (or after all retries fail). Firing here
-                    // would unblock Dart before the upload completes, killing
-                    // the in-flight URLSession task when onEnd() backgrounds
-                    // the app.
-                    NSLog("[REC] stopCapture done — waiting for final chunk upload to confirm")
-                } else {
-                    // Nothing was queued to upload — there is nothing left to
-                    // wait for, so unblock Dart now instead of stalling for
-                    // 90s until its own timeout gives up.
-                    NSLog("[REC] stopCapture done — no final chunk was produced, unblocking Dart now")
-                    result(nil)
-                }
+                self.stopping = false
+                NSLog("[REC] stopCapture done — queuing finalize ping")
+                // Enqueued (not called directly) so it strictly follows any
+                // real chunk upload already ahead of it in the queue.
+                self.enqueueUpload { self.uploadFinalizePingAsync() }
             }
         }
     }
@@ -1068,7 +1212,7 @@ import CoreVideo
         }
         guard writer.status == .writing else {
             NSLog("[REC] finaliseChunk skipped (writer status=\(writer.status.rawValue))")
-            assetWriter = nil; videoInput = nil; audioInput = nil
+            assetWriter = nil; videoInput = nil; audioInput = nil; pixelBufferAdaptor = nil
             currentFile = nil; writerSessionStarted = false
             DispatchQueue.main.async { [weak self] in
                 if let r = self?.stopResult { self?.stopResult = nil; r(nil) }
@@ -1080,7 +1224,7 @@ import CoreVideo
         // calling finishWriting produces a corrupt/empty container. Drop it.
         guard writerSessionStarted else {
             NSLog("[REC] finaliseChunk skipped — startSession never called (no frames yet)")
-            assetWriter = nil; videoInput = nil; audioInput = nil
+            assetWriter = nil; videoInput = nil; audioInput = nil; pixelBufferAdaptor = nil
             currentFile = nil; writerSessionStarted = false
             try? FileManager.default.removeItem(at: fileURL)
             DispatchQueue.main.async { [weak self] in
@@ -1089,7 +1233,7 @@ import CoreVideo
             }
             return
         }
-        assetWriter = nil; videoInput = nil; audioInput = nil
+        assetWriter = nil; videoInput = nil; audioInput = nil; pixelBufferAdaptor = nil
         currentFile = nil; writerSessionStarted = false
         let idx = chunkIndex
         writerQueue.async { [weak self] in
@@ -1121,6 +1265,70 @@ import CoreVideo
                 DispatchQueue.main.async { completion(true) }
             }
         }
+    }
+
+    /// Sends an explicit "finalize ping" — an empty-body chunk request with
+    /// is_final=1 — which the server's receive_recording_chunk already treats
+    /// as "all data already uploaded, assemble now" (see its
+    /// `if not contents:` branch). This is the guaranteed trigger stopRecording
+    /// falls back on so assembly never depends on exactly which chunk upload
+    /// happened to carry isFinal=true (see stopCaptureThenSignal's comment).
+    /// Always terminates: on success OR after retries are exhausted, it calls
+    /// uploadFinished() and fires stopResult so Dart is never left hanging.
+    private func uploadFinalizePingAsync(attempt: Int = 0) {
+        func finish() {
+            uploadFinished()
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                if let r = self.stopResult { self.stopResult = nil; r(nil) }
+            }
+        }
+
+        guard let url = URL(string: uploadUrl) else {
+            NSLog("[REC] finalize ping: bad uploadUrl — skipping")
+            finish()
+            return
+        }
+
+        let boundary = "----ElFaheemPingBoundary\(attempt)"
+        var body = Data()
+        func addField(_ name: String, _ value: String) {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(value)\r\n".data(using: .utf8)!)
+        }
+        addField("chunk_index", "\(chunkIndex)")
+        addField("is_final", "1")
+        // Empty file part — zero bytes read server-side triggers the
+        // "finalize ping" branch instead of trying to save a chunk.
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"chunk\"; filename=\"ping.mp4\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: video/mp4\r\n\r\n".data(using: .utf8)!)
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+
+        var request        = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.setValue(authToken,                                      forHTTPHeaderField: "Authorization")
+        request.timeoutInterval = 30
+
+        uploadSession.uploadTask(with: request, from: body) { [weak self] _, response, error in
+            guard let self = self else { return }
+            let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+            NSLog("[REC] finalize ping HTTP \(code)")
+            if (error != nil || code < 200 || code > 299), attempt < 3 {
+                NSLog("[REC] finalize ping attempt \(attempt + 1) failed: "
+                      + "\(error?.localizedDescription ?? "HTTP \(code)") — retrying")
+                DispatchQueue.global().asyncAfter(deadline: .now() + Double(3 * (1 << attempt))) {
+                    self.uploadFinalizePingAsync(attempt: attempt + 1)
+                }
+                return
+            }
+            if error != nil || code < 200 || code > 299 {
+                NSLog("[REC] finalize ping failed permanently — server will fall back to its idle watchdog")
+            }
+            finish()
+        }.resume()
     }
 
     private func uploadChunkAsync(fileURL: URL, index: Int, isFinal: Bool, attempt: Int = 0) {
@@ -1656,10 +1864,6 @@ import CoreVideo
                 // resumed RPScreenRecorder on a no-show is no longer needed.
                 pickerWatchdog?.invalidate()
                 pickerWatchdog = nil
-                // Fresh broadcast session — any previous PTS baseline is from
-                // a prior (now-stopped) broadcast and would produce a bogus
-                // duration delta on the first frame of this one.
-                lastBroadcastPts = nil
                 NSLog("[SHARE] first broadcast frame — switching recording source")
                 // If recording was paused by showBroadcastPicker (to protect
                 // against the iOS overlay suspension window), resume it now.
