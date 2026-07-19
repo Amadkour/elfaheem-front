@@ -299,6 +299,57 @@ class _RoomPageState extends State<RoomPage>
   bool _isPausingRecording = false; // true while pauseRecording() is in flight
   bool _isResumingRecording = false; // true while resumeRecording() is in flight
 
+  // ── LiveKit mic PCM tap → native recorder ─────────────────────────────────
+  // RPScreenRecorder's own .audioMic/.audioApp capture never delivers a
+  // single sample while a LiveKit call is simultaneously active — its
+  // internal mic tap can't get access to hardware LiveKit's WebRTC audio
+  // engine already owns (confirmed via testing: audioSeen stayed 0
+  // regardless of permission, duration, or session count). Instead, tap the
+  // audio LiveKit is already successfully capturing for the call itself via
+  // LocalAudioTrack.addAudioRenderer(), and forward those raw PCM frames to
+  // the native recorder over the SAME method channel it already uses for
+  // startMicRecording/stopRecording — see AppDelegate.swift's "sendAudioFrame"
+  // case. iOS-only for now: Android's native recorder backend doesn't have
+  // the corresponding handler yet.
+  static const MethodChannel _audioFrameChannel =
+  MethodChannel('com.example.flutter_education_app/native_recorder');
+  CancelListenFunc? _audioTapCancel;
+
+  void _startLiveKitAudioTap() {
+    if (kIsWeb || !Platform.isIOS || _audioTapCancel != null) return;
+
+    final micTrack = widget.room.localParticipant?.audioTrackPublications
+        .map((pub) => pub.track)
+        .whereType<LocalAudioTrack>()
+        .firstOrNull;
+
+    if (micTrack == null) {
+      log('[REC] LiveKit audio tap: no published mic track yet — skipping');
+      return;
+    }
+
+    _audioTapCancel = micTrack.addAudioRenderer(
+      onFrame: (frame) {
+        // Fire-and-forget: don't await, this fires on every audio frame
+        // (dropping the returned Future rather than awaiting keeps this
+        // callback from ever blocking on channel round-trip time).
+        _audioFrameChannel.invokeMethod('sendAudioFrame', {
+          'data': frame.data,
+          'sampleRate': frame.sampleRate,
+          'channels': frame.channels,
+          'format': frame.format.name,
+        });
+      },
+    );
+    log('[REC] LiveKit audio tap: started');
+  }
+
+  void _stopLiveKitAudioTap() {
+    _audioTapCancel?.call();
+    _audioTapCancel = null;
+    log('[REC] LiveKit audio tap: stopped');
+  }
+
   // ── Recording elapsed-time clock ──────────────────────────────────────────
   // Ticks every second while RecState.recording. Paused when recording is
   // paused, stopped when recording ends. Displayed in the REC badge.
@@ -525,6 +576,7 @@ class _RoomPageState extends State<RoomPage>
     if (_recorder != null) {
       final rec = _recorder!;
       _recorder = null;
+      _stopLiveKitAudioTap();
       unawaited(_drainAndDispose(rec));
     }
     super.dispose();
@@ -565,6 +617,7 @@ class _RoomPageState extends State<RoomPage>
         rec.state != RecState.done &&
         rec.state != RecState.error) {
       try {
+        _stopLiveKitAudioTap();
         await rec.stopRecordingOnly();
         log('[REC] stopRecordingOnly complete — recorder stopped locally; '
             'any remaining chunks upload in the background');
@@ -875,6 +928,11 @@ class _RoomPageState extends State<RoomPage>
     // No dialog is shown yet; the service enters its ready state.
     await _recorder!.start();
     log('[REC] Recorder service configured');
+
+    // Start capturing mic PCM from LiveKit's own already-working audio
+    // pipeline (see _startLiveKitAudioTap's comment) — internally a no-op
+    // on web/Android where it isn't needed/wired yet.
+    _startLiveKitAudioTap();
 
     if (kIsWeb) {
       final local = widget.room.localParticipant;
@@ -3060,6 +3118,7 @@ class _ScreenShareBottomBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final micOn = participant.isMicrophoneEnabled();
     final camOn = participant.isCameraEnabled();
+
     return Container(
       height: 64,
       decoration: BoxDecoration(

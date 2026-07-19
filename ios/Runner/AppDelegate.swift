@@ -78,6 +78,16 @@ import CoreVideo
     // is required — it's the fix for audio silently disappearing from
     // recordings. Reset to nil every time a new chunk/writer is created.
     private var lastAudioPts: CMTime?
+    // Per-chunk counters, purely for diagnostics: logged in finaliseChunk's
+    // "finalised chunk #N" line so we can tell, from the log alone, whether
+    // RPScreenRecorder is delivering ANY audio samples at all (audioSamplesSeen
+    // stays 0 the whole session ⇒ capture/permission problem, look upstream of
+    // the writer) versus samples arriving but something downstream dropping
+    // them (audioSamplesSeen > 0 but audioSamplesAppended is much lower, or
+    // the final assembled video still has no sound despite both being > 0,
+    // which would point at the server's ffmpeg step instead).
+    private var audioSamplesSeenThisChunk: Int = 0
+    private var audioSamplesAppendedThisChunk: Int = 0
     private var writerQueue = DispatchQueue(label: "com.elfaheem.writer", qos: .userInitiated)
 
     // ── Session params ────────────────────────────────────────────────────────
@@ -174,6 +184,14 @@ import CoreVideo
             guard let self = self else { return }
             self.uploadInFlight = false
             self.drainUploadQueueIfIdle()
+            // Once nothing is running AND nothing is queued behind it, any
+            // background-execution grace period requested for draining the
+            // post-stop upload queue (see beginDrainBackgroundTask) is no
+            // longer needed — release it immediately rather than holding it
+            // until iOS's own expiration timeout.
+            if !self.uploadInFlight, self.uploadQueue.isEmpty {
+                self.endBgTask()
+            }
         }
     }
 
@@ -417,6 +435,32 @@ import CoreVideo
                 let isFinal = (call.arguments as? [String: Any])?["isFinal"] as? Bool ?? true
                 self.stopRecording(isFinal: isFinal, result: result)
 
+            case "sendAudioFrame":
+                // Raw PCM audio frames forwarded from Dart via
+                // LocalAudioTrack.addAudioRenderer() (see room.dart) — this
+                // replaces RPScreenRecorder's own .audioMic/.audioApp capture,
+                // which never delivers a single sample while a LiveKit call
+                // is simultaneously active (confirmed via audioSeen=0 in
+                // testing regardless of permission/timing/session count —
+                // RPScreenRecorder's internal mic tap can't get access to
+                // hardware LiveKit's WebRTC audio engine already owns).
+                guard let args = call.arguments as? [String: Any],
+                      let typedData = args["data"] as? FlutterStandardTypedData,
+                      let sampleRate = args["sampleRate"] as? Int,
+                      let channels = args["channels"] as? Int else {
+                    result(nil)   // fire-and-forget from Dart's side regardless
+                    return
+                }
+                let format = (args["format"] as? String) ?? "int16"
+                self.handleIncomingAudioFrame(
+                    data: typedData.data, sampleRate: sampleRate,
+                    channels: channels, format: format
+                )
+                // Acknowledge immediately — the actual writer append happens
+                // asynchronously on writerQueue. Dart doesn't need (and
+                // shouldn't wait for) this to block the audio callback.
+                result(nil)
+
             default:
                 result(FlutterMethodNotImplemented)
             }
@@ -577,6 +621,18 @@ import CoreVideo
 
     private func configureAudioSessionForRecording() {
         let session = AVAudioSession.sharedInstance()
+        // Cheap, one-line way to rule out "mic permission was never actually
+        // granted" as the cause of audioSeen staying 0 — if permission is
+        // .denied, RPScreenRecorder will happily keep recording video and
+        // just never deliver .audioMic samples, with no error anywhere.
+        let permissionStr: String
+        switch session.recordPermission {
+        case .granted:      permissionStr = "granted"
+        case .denied:       permissionStr = "denied"
+        case .undetermined: permissionStr = "undetermined"
+        @unknown default:   permissionStr = "unknown"
+        }
+        NSLog("[REC] mic recordPermission=\(permissionStr) isInputAvailable=\(session.isInputAvailable)")
         do {
             try session.setCategory(
                 .playAndRecord,
@@ -670,6 +726,12 @@ import CoreVideo
                 }
 
             case .audioMic, .audioApp:
+                // Counted BEFORE any guard below, on purpose — this tells us
+                // definitively whether RPScreenRecorder is calling us with
+                // audio at all, independent of whether writerSessionStarted
+                // or the ordering guard below end up dropping it.
+                self.audioSamplesSeenThisChunk += 1
+
                 // Deliberately NOT gated on isBroadcasting — this is the
                 // ONLY source of audio while a broadcast is active, since
                 // SampleHandler.swift only ever forwards video. Suppressing
@@ -678,48 +740,32 @@ import CoreVideo
                 // processSampleFromRecorder entirely) silently produced
                 // video-only chunks with no audio track at all.
                 //
-                // ── Why audio could disappear entirely (root cause #2) ───
-                // This branch used to hard-require `writerSessionStarted`
-                // (set ONLY by the .video case, or by processSampleFromBroadcast)
-                // before accepting any audio sample. writerSessionStarted is
-                // reset to false on EVERY chunk rotation (see beginChunkWriter),
-                // so at the start of every chunk we'd silently drop every audio
-                // sample that arrived before that chunk's first video frame —
-                // with no log line, since the drop happened before append() was
-                // ever called. RPScreenRecorder's own video/audio share one tight
-                // callback loop so the gap there is negligible, but during a
-                // broadcast, video comes from processSampleFromBroadcast via a
-                // much slower path (Darwin notification → shared file read →
-                // JPEG decode on ipcReadQueue) while audio keeps flowing
-                // continuously from RPScreenRecorder — so this guard could
-                // discard most or all of a chunk's audio while video looked
-                // completely normal (right byte counts, HTTP 201, no errors).
+                // Drop audio that arrives before the first video frame —
+                // those samples precede the session start time and would
+                // cause "sample out of order" log spam and audio glitches
+                // at the very beginning of each chunk.
+                guard self.writerSessionStarted else { return }
+
+                // ── Why audio could disappear entirely ──────────────────
+                // .audioMic and .audioApp are TWO INDEPENDENTLY-CLOCKED
+                // sample streams, both funnelled into the SAME
+                // AVAssetWriterInput track. AVAssetWriter requires strictly
+                // increasing presentation timestamps per track — if a
+                // sample from one stream arrives with a PTS at or before
+                // the last sample WE appended (which may have come from the
+                // OTHER stream), the writer silently rejects it. Because the
+                // append() return value was never checked, that rejection
+                // was invisible — and once it starts happening, most/all
+                // subsequent samples on that track can be rejected the same
+                // way, which is exactly what "no audio in the recording"
+                // looks like with zero errors in the log.
                 //
-                // Fix: let audio open the session itself if nothing has yet,
-                // instead of only ever waiting on video. Both audio and
-                // RPScreenRecorder's own video share the same host clock, and
-                // the broadcast path's reconstructed pts is derived from that
-                // same clock too, so anchoring on whichever track's sample
-                // happens to arrive first is safe either way.
+                // This guard makes the ordering explicit: skip (don't even
+                // attempt to append) any sample that wouldn't be strictly
+                // increasing, and log real append failures so any remaining
+                // issue is visible instead of silent.
                 let audioPts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
                 guard CMTIME_IS_VALID(audioPts) else { return }
-                if !self.writerSessionStarted {
-                    writer.startSession(atSourceTime: audioPts)
-                    self.writerSessionStarted = true
-                    NSLog("[REC] writer session started (audio) at \(CMTimeGetSeconds(audioPts))s")
-                }
-
-                // .audioMic and .audioApp are TWO INDEPENDENTLY-CLOCKED sample
-                // streams, both funnelled into the SAME AVAssetWriterInput
-                // track. AVAssetWriter requires strictly increasing
-                // presentation timestamps per track — if a sample from one
-                // stream arrives with a PTS at or before the last sample WE
-                // appended (which may have come from the OTHER stream), the
-                // writer silently rejects it. This guard makes the ordering
-                // explicit: skip (don't even attempt to append) any sample
-                // that wouldn't be strictly increasing, and log real append
-                // failures below so any remaining issue is visible instead
-                // of silent.
                 if let last = self.lastAudioPts, CMTimeCompare(audioPts, last) <= 0 {
                     return
                 }
@@ -729,6 +775,8 @@ import CoreVideo
                     if self.audioInput?.append(sampleBuffer) == false {
                         NSLog("[REC] audio append FAILED (\(type == .audioMic ? "mic" : "app")) "
                               + "— writer status=\(writer.status.rawValue) error=\(String(describing: writer.error))")
+                    } else {
+                        self.audioSamplesAppendedThisChunk += 1
                     }
                 }
 
@@ -746,6 +794,123 @@ import CoreVideo
     // frame into the SAME AVAssetWriter chunk that RPScreenRecorder uses.
     // This means the foreign app's screen appears seamlessly in the recording.
     // ─────────────────────────────────────────────────────────────────────────
+
+    // ── LiveKit PCM audio path ──────────────────────────────────────────────
+    //
+    // Replaces reliance on RPScreenRecorder's .audioMic/.audioApp, which
+    // never fires while a LiveKit call is active (see the sendAudioFrame
+    // case's comment). Frames arrive from Dart via LocalAudioTrack's
+    // addAudioRenderer(), with no per-frame timestamp of their own — LiveKit's
+    // PCMAudioFrame only carries {data, format, channels, sampleRate}. We
+    // timestamp on arrival using the same host-time clock domain the video
+    // writer's session already runs on (CMClockGetHostTimeClock()), which is
+    // shared across processes/threads on the device. Method-channel dispatch
+    // latency is small enough (single-digit ms) that "time of arrival" is a
+    // fine proxy for true capture time — audio/video sync doesn't need
+    // frame-perfect alignment, just consistent monotonic ordering, which the
+    // existing lastAudioPts guard already enforces.
+    private func handleIncomingAudioFrame(data: Data, sampleRate: Int, channels: Int, format: String) {
+        writerQueue.async { [weak self] in
+            guard let self = self,
+                  let writer = self.assetWriter,
+                  writer.status == .writing,
+                  self.writerSessionStarted,
+                  self.audioInput?.isReadyForMoreMediaData == true else { return }
+
+            self.audioSamplesSeenThisChunk += 1
+
+            guard let sampleBuffer = self.makeAudioSampleBuffer(
+                data: data, sampleRate: sampleRate, channels: channels, format: format
+            ) else { return }
+
+            let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+            // Same monotonic-ordering guard as the RPScreenRecorder audio
+            // path — protects against this new source and any residual
+            // RPScreenRecorder audio (should there ever be any) racing.
+            if let last = self.lastAudioPts, CMTimeCompare(pts, last) <= 0 { return }
+            self.lastAudioPts = pts
+
+            if self.audioInput?.append(sampleBuffer) == false {
+                NSLog("[REC] audio append FAILED (livekit) — writer status=\(writer.status.rawValue) "
+                      + "error=\(String(describing: writer.error))")
+            } else {
+                self.audioSamplesAppendedThisChunk += 1
+            }
+        }
+    }
+
+    /// Builds a CMSampleBuffer of raw interleaved PCM from the bytes LiveKit's
+    /// PCMAudioFrame hands us over the method channel. `format` is "int16" or
+    /// "float32" (matches AVAudioPCMBuffer.serializeAsBytes()'s "commonFormat"
+    /// on the plugin's own native side).
+    private func makeAudioSampleBuffer(
+        data: Data, sampleRate: Int, channels: Int, format: String
+    ) -> CMSampleBuffer? {
+        let isFloat = (format == "float32")
+        let bytesPerSample = isFloat ? 4 : 2
+        let bytesPerFrame  = bytesPerSample * channels
+        guard bytesPerFrame > 0 else { return nil }
+        let frameCount = data.count / bytesPerFrame
+        guard frameCount > 0 else { return nil }
+
+        var asbd = AudioStreamBasicDescription(
+            mSampleRate:       Float64(sampleRate),
+            mFormatID:         kAudioFormatLinearPCM,
+            mFormatFlags:      isFloat
+                ? (kAudioFormatFlagIsFloat | kAudioFormatFlagIsPacked)
+                : (kAudioFormatFlagIsSignedInteger | kAudioFormatFlagIsPacked),
+            mBytesPerPacket:   UInt32(bytesPerFrame),
+            mFramesPerPacket:  1,
+            mBytesPerFrame:    UInt32(bytesPerFrame),
+            mChannelsPerFrame: UInt32(channels),
+            mBitsPerChannel:   UInt32(bytesPerSample * 8),
+            mReserved:         0
+        )
+
+        var formatDesc: CMAudioFormatDescription?
+        guard CMAudioFormatDescriptionCreate(
+            allocator: kCFAllocatorDefault, asbd: &asbd,
+            layoutSize: 0, layout: nil,
+            magicCookieSize: 0, magicCookie: nil,
+            extensions: nil, formatDescriptionOut: &formatDesc
+        ) == noErr, let fmt = formatDesc else { return nil }
+
+        var blockBuffer: CMBlockBuffer?
+        guard CMBlockBufferCreateWithMemoryBlock(
+            allocator: kCFAllocatorDefault, memoryBlock: nil,
+            blockLength: data.count, blockAllocator: kCFAllocatorDefault,
+            customBlockSource: nil, offsetToData: 0,
+            dataLength: data.count, flags: 0,
+            blockBufferOut: &blockBuffer
+        ) == kCMBlockBufferNoErr, let bb = blockBuffer else { return nil }
+
+        let copyStatus = data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) -> OSStatus in
+            guard let base = raw.baseAddress else { return kCMBlockBufferBlockAllocationFailedErr }
+            return CMBlockBufferReplaceDataBytes(
+                with: base, blockBuffer: bb, offsetIntoDestination: 0, dataLength: data.count
+            )
+        }
+        guard copyStatus == kCMBlockBufferNoErr else { return nil }
+
+        let pts = CMClockGetTime(CMClockGetHostTimeClock())
+        var timing = CMSampleTimingInfo(
+            duration: CMTimeMake(value: Int64(frameCount), timescale: Int32(sampleRate)),
+            presentationTimeStamp: pts,
+            decodeTimeStamp: .invalid
+        )
+        var sampleSize = bytesPerFrame
+
+        var sampleBuffer: CMSampleBuffer?
+        guard CMSampleBufferCreate(
+            allocator: kCFAllocatorDefault, dataBuffer: bb, dataReady: true,
+            makeDataReadyCallback: nil, refcon: nil, formatDescription: fmt,
+            sampleCount: CMItemCount(frameCount), sampleTimingEntryCount: 1, sampleTimingArray: &timing,
+            sampleSizeEntryCount: 1, sampleSizeArray: &sampleSize,
+            sampleBufferOut: &sampleBuffer
+        ) == noErr else { return nil }
+
+        return sampleBuffer
+    }
 
     private func processSampleFromBroadcast(jpegData: Data, ptsNs: UInt64) {
         writerQueue.async { [weak self] in
@@ -1252,6 +1417,14 @@ import CoreVideo
         assetWriter = nil; videoInput = nil; audioInput = nil; pixelBufferAdaptor = nil
         currentFile = nil; writerSessionStarted = false
         let idx = chunkIndex
+        // Snapshot then reset — see the properties' declaration for why these
+        // exist. Must be captured now (not read later) since the NEXT
+        // chunk's beginChunkWriter can start incrementing them again before
+        // this async block below even runs.
+        let audioSeen     = audioSamplesSeenThisChunk
+        let audioAppended = audioSamplesAppendedThisChunk
+        audioSamplesSeenThisChunk     = 0
+        audioSamplesAppendedThisChunk = 0
         writerQueue.async { [weak self] in
             vi.markAsFinished()
             ai.markAsFinished()
@@ -1274,7 +1447,15 @@ import CoreVideo
                     }
                     return
                 }
-                NSLog("[REC] finalised chunk #\(idx) (\(size)B isFinal=\(isFinal))")
+                // audioSeen=0 for every chunk in a session ⇒ RPScreenRecorder
+                // isn't delivering audio samples at all (permission/session
+                // issue upstream of the writer). audioSeen>0 but
+                // audioAppended much lower ⇒ samples are arriving but being
+                // dropped by the ordering guard above. Both > 0 but the
+                // final assembled video still has no sound ⇒ look at the
+                // server's ffmpeg concat/transcode step instead.
+                NSLog("[REC] finalised chunk #\(idx) (\(size)B isFinal=\(isFinal) "
+                      + "audioSeen=\(audioSeen) audioAppended=\(audioAppended))")
                 self?.enqueueUpload {
                     self?.uploadChunkAsync(fileURL: fileURL, index: idx, isFinal: isFinal)
                 }
@@ -1317,23 +1498,17 @@ import CoreVideo
         addField("is_final", "1")
         // Empty file part — zero bytes read server-side triggers the
         // "finalize ping" branch instead of trying to save a chunk.
-        //
-        // IMPORTANT: every multipart part needs a CRLF terminating its
-        // content — even when that content is zero bytes — before the next
-        // boundary marker. This part used to jump straight from the blank
-        // line ending its headers to "--boundary--" with no content
-        // terminator in between. That malformed a well-formed *header*
-        // section into an ambiguous part, and the multipart parser
-        // (Starlette, server-side) failed to recognize "chunk" as present
-        // at all rather than treating it as an empty file — which is why
-        // the server reported it as MISSING ("input": null), not empty,
-        // and every finalize ping 422'd before ever reaching the "assemble
-        // now" branch this ping exists to trigger.
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"chunk\"; filename=\"ping.mp4\"\r\n".data(using: .utf8)!)
         body.append("Content-Type: video/mp4\r\n\r\n".data(using: .utf8)!)
-        body.append("\r\n".data(using: .utf8)!)   // content terminator for the (empty) file part
-        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        // REQUIRED \r\n terminating the (empty) file part's content before the
+        // closing boundary delimiter — every multipart body part, even an
+        // empty one, must end with CRLF before "--boundary--". Missing this
+        // is exactly what caused the "finalize ping HTTP 422" seen in the
+        // logs: the server's multipart parser saw a malformed body and
+        // FastAPI rejected it before ever reaching the route handler.
+        // Compare uploadChunkAsync's `footer`, which already has this.
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
 
         var request        = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -1341,19 +1516,10 @@ import CoreVideo
         request.setValue(authToken,                                      forHTTPHeaderField: "Authorization")
         request.timeoutInterval = 30
 
-        uploadSession.uploadTask(with: request, from: body) { [weak self] data, response, error in
+        uploadSession.uploadTask(with: request, from: body) { [weak self] _, response, error in
             guard let self = self else { return }
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             NSLog("[REC] finalize ping HTTP \(code)")
-            // On a validation failure (422) or any other non-2xx, log the
-            // response body — FastAPI's 422 detail names the exact field
-            // that failed validation, which the status code alone doesn't
-            // tell us. Without this we can only see "HTTP 422" and have to
-            // guess why the server rejected the ping.
-            if (error != nil || code < 200 || code > 299),
-               let data = data, let bodyText = String(data: data, encoding: .utf8), !bodyText.isEmpty {
-                NSLog("[REC] finalize ping error body: \(bodyText)")
-            }
             if (error != nil || code < 200 || code > 299), attempt < 3 {
                 NSLog("[REC] finalize ping attempt \(attempt + 1) failed: "
                       + "\(error?.localizedDescription ?? "HTTP \(code)") — retrying")
