@@ -100,6 +100,13 @@ import CoreVideo
     // which would point at the server's ffmpeg step instead).
     private var audioSamplesSeenThisChunk: Int = 0
     private var audioSamplesAppendedThisChunk: Int = 0
+    // Mirrors the two counters above, but for the broadcast extension's
+    // .audioApp (shared video/app's own audio) path — this path previously
+    // had NO visibility at all, unlike the mic path, which made it
+    // impossible to tell whether SampleHandler stopped sending .audioApp
+    // buffers vs. this app silently failing to append ones it received.
+    private var systemAudioSamplesSeenThisChunk: Int = 0
+    private var systemAudioSamplesAppendedThisChunk: Int = 0
     private var writerQueue = DispatchQueue(label: "com.elfaheem.writer", qos: .userInitiated)
 
     // ── Session params ────────────────────────────────────────────────────────
@@ -1204,6 +1211,8 @@ import CoreVideo
         // chunk's last audio PTS is not a valid baseline for this one.
         lastAudioPts = nil
         lastSystemAudioPts = nil
+        systemAudioSamplesSeenThisChunk = 0
+        systemAudioSamplesAppendedThisChunk = 0
         // Fresh chunk = fresh broadcast video timeline too.
         lastBroadcastVideoPts = nil
         // Record the exact geometry this chunk's pixelBufferAdaptor pool was
@@ -1477,6 +1486,10 @@ import CoreVideo
         let audioAppended = audioSamplesAppendedThisChunk
         audioSamplesSeenThisChunk     = 0
         audioSamplesAppendedThisChunk = 0
+        let sysAudioSeen     = systemAudioSamplesSeenThisChunk
+        let sysAudioAppended = systemAudioSamplesAppendedThisChunk
+        systemAudioSamplesSeenThisChunk     = 0
+        systemAudioSamplesAppendedThisChunk = 0
         writerQueue.async { [weak self] in
             vi.markAsFinished()
             ai.markAsFinished()
@@ -1508,7 +1521,8 @@ import CoreVideo
                 // final assembled video still has no sound ⇒ look at the
                 // server's ffmpeg concat/transcode step instead.
                 NSLog("[REC] finalised chunk #\(idx) (\(size)B isFinal=\(isFinal) "
-                      + "audioSeen=\(audioSeen) audioAppended=\(audioAppended))")
+                      + "audioSeen=\(audioSeen) audioAppended=\(audioAppended) "
+                      + "sysAudioSeen=\(sysAudioSeen) sysAudioAppended=\(sysAudioAppended))")
                 self?.enqueueUpload {
                     self?.uploadChunkAsync(fileURL: fileURL, index: idx, isFinal: isFinal)
                 }
@@ -2218,24 +2232,50 @@ import CoreVideo
         guard sampleRate > 0, channels > 0, !pcm.isEmpty else { return }
 
         writerQueue.async { [weak self] in
-            guard let self = self,
-                  let writer = self.assetWriter,
-                  writer.status == .writing,
-                  self.writerSessionStarted,
-                  self.systemAudioInput?.isReadyForMoreMediaData == true else { return }
+            guard let self = self else { return }
+            // Counted before any guard below — same reasoning as
+            // audioSamplesSeenThisChunk: this tells us definitively whether
+            // handleBroadcastData is routing .audioApp payloads here at all,
+            // independent of whatever guard below ends up dropping them.
+            self.systemAudioSamplesSeenThisChunk += 1
+
+            guard let writer = self.assetWriter,
+                  writer.status == .writing else {
+                NSLog("[REC] system-audio dropped — writer not active (status="
+                      + "\(self.assetWriter?.status.rawValue.description ?? "nil"))")
+                return
+            }
+            guard self.writerSessionStarted else {
+                NSLog("[REC] system-audio dropped — writer session not started yet")
+                return
+            }
+            guard self.systemAudioInput?.isReadyForMoreMediaData == true else {
+                NSLog("[REC] system-audio dropped — systemAudioInput not ready "
+                      + "(nil=\(self.systemAudioInput == nil))")
+                return
+            }
 
             guard let sampleBuffer = self.makeAudioSampleBuffer(
                 data: pcm, sampleRate: Int(sampleRate), channels: Int(channels),
                 format: isFloat ? "float32" : "int16", ptsNs: ptsNs
-            ) else { return }
+            ) else {
+                NSLog("[REC] system-audio dropped — makeAudioSampleBuffer failed")
+                return
+            }
 
             let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
-            if let last = self.lastSystemAudioPts, CMTimeCompare(pts, last) <= 0 { return }
+            if let last = self.lastSystemAudioPts, CMTimeCompare(pts, last) <= 0 {
+                NSLog("[REC] system-audio dropped — non-monotonic pts "
+                      + "(\(CMTimeGetSeconds(pts))s <= \(CMTimeGetSeconds(last))s)")
+                return
+            }
             self.lastSystemAudioPts = pts
 
             if self.systemAudioInput?.append(sampleBuffer) == false {
                 NSLog("[REC] system-audio append FAILED — writer status=\(writer.status.rawValue) "
                       + "error=\(String(describing: writer.error))")
+            } else {
+                self.systemAudioSamplesAppendedThisChunk += 1
             }
         }
     }
