@@ -314,9 +314,18 @@ class _RoomPageState extends State<RoomPage>
   static const MethodChannel _audioFrameChannel =
   MethodChannel('com.example.flutter_education_app/native_recorder');
   CancelListenFunc? _audioTapCancel;
+  // The exact LocalAudioTrack instance _audioTapCancel is currently bound
+  // to. WebRTC renegotiation (e.g. adding a screen-share track) can cause
+  // LiveKit to unpublish and republish the mic as a NEW LocalAudioTrack
+  // object — if that happens, the OLD tap keeps existing (isn't cancelled,
+  // doesn't log anything) but silently stops receiving frames forever,
+  // since PCM now flows through the new object instead. Tracking the bound
+  // instance lets _startLiveKitAudioTap() detect that mismatch and rebind,
+  // rather than assuming "a tap exists" always means "the tap is live".
+  LocalAudioTrack? _tappedAudioTrack;
 
   void _startLiveKitAudioTap() {
-    if (kIsWeb || !Platform.isIOS || _audioTapCancel != null) return;
+    if (kIsWeb || !Platform.isIOS) return;
 
     final micTrack = widget.room.localParticipant?.audioTrackPublications
         .map((pub) => pub.track)
@@ -327,6 +336,18 @@ class _RoomPageState extends State<RoomPage>
       log('[REC] LiveKit audio tap: no published mic track yet — skipping');
       return;
     }
+
+    if (_audioTapCancel != null && identical(_tappedAudioTrack, micTrack)) {
+      // Already bound to the current track — nothing to do. Calling this
+      // repeatedly (e.g. from LocalTrackPublishedEvent) must be a safe
+      // no-op in the common case, not a churn of cancel+rebind every time.
+      return;
+    }
+
+    // Either no tap yet, or it's bound to a stale/replaced track instance
+    // — drop the old one (if any) before attaching to the current track.
+    _audioTapCancel?.call();
+    _audioTapCancel = null;
 
     _audioTapCancel = micTrack.addAudioRenderer(
       onFrame: (frame) {
@@ -341,14 +362,24 @@ class _RoomPageState extends State<RoomPage>
         });
       },
     );
+    _tappedAudioTrack = micTrack;
     log('[REC] LiveKit audio tap: started');
   }
 
   void _stopLiveKitAudioTap() {
     _audioTapCancel?.call();
     _audioTapCancel = null;
+    _tappedAudioTrack = null;
     log('[REC] LiveKit audio tap: stopped');
   }
+
+  // Exposed to RoomScreenShareMixin (see restartAudioTap contract) so the
+  // iOS share-start flow can force a rebind check right after negotiation
+  // settles, in addition to the automatic LocalTrackPublishedEvent hook
+  // below — belt and suspenders, since renegotiation timing across
+  // flutter_webrtc/LiveKit internals isn't something this app controls.
+  @override
+  void restartAudioTap() => _startLiveKitAudioTap();
 
   // ── Recording elapsed-time clock ──────────────────────────────────────────
   // Ticks every second while RecState.recording. Paused when recording is
@@ -872,7 +903,16 @@ class _RoomPageState extends State<RoomPage>
     ..on<RoomAttemptReconnectEvent>(
           (e) => log('Reconnect ${e.attempt}/${e.maxAttemptsRetry}'),
     )
-    ..on<LocalTrackPublishedEvent>((_) => _sortParticipants())
+    ..on<LocalTrackPublishedEvent>((_) {
+      _sortParticipants();
+      // Cheap no-op if already bound to the current mic track (see
+      // _startLiveKitAudioTap's identical() check) — but if screen-share
+      // negotiation (or anything else) caused LiveKit to republish the mic
+      // as a new LocalAudioTrack instance, this is what catches it and
+      // rebinds, instead of the recording silently losing mic audio for
+      // the rest of the session with no error anywhere.
+      if (widget.isTeacher) _startLiveKitAudioTap();
+    })
     ..on<LocalTrackUnpublishedEvent>((_) => _sortParticipants())
     ..on<TrackSubscribedEvent>((_) => _sortParticipants())
     ..on<TrackUnsubscribedEvent>((event) {

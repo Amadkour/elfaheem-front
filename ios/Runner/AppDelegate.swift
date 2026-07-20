@@ -57,6 +57,18 @@ import CoreVideo
     private var assetWriter:        AVAssetWriter?
     private var videoInput:         AVAssetWriterInput?
     private var audioInput:         AVAssetWriterInput?
+    // Second audio track for the SHARED APP's own audio (e.g. a video/game
+    // playing on the screen being broadcast) — see SampleHandler.swift's
+    // .audioApp forwarding. Deliberately a SEPARATE AVAssetWriterInput
+    // rather than mixed into `audioInput`: putting two independently-clocked
+    // PCM streams (mic + system audio) into one track hits the exact
+    // "strictly increasing PTS per track" problem documented on lastAudioPts
+    // below — a second track sidesteps that entirely, at the cost of the
+    // two tracks needing to be mixed down (e.g. ffmpeg `amix`) server-side
+    // during the existing post-transcode step, since most players only play
+    // one audio track at a time by default.
+    private var systemAudioInput:   AVAssetWriterInput?
+    private var lastSystemAudioPts: CMTime?
     // Pixel buffer adaptor for the broadcast-extension path. Broadcast frames
     // arrive as decoded JPEGs (see jpegToPixelBuffer), and MUST be appended
     // through an AVAssetWriterInputPixelBufferAdaptor rather than by manually
@@ -236,8 +248,14 @@ import CoreVideo
     //   SampleHandler.swift — they must be identical.
     private let kAppGroup           = "group.com.softkour.alfaheem"
     private let kDarwinFrameNotif   = "com.example.flutter_education_app.frame"
+    // NEW: shared app's own audio (e.g. sound from a video/game on the
+    // shared screen) — see SampleHandler.swift's .audioApp case. Kept on a
+    // separate file+notification from video so the two never race each
+    // other for the same shared file.
+    private let kDarwinAudioNotif   = "com.example.flutter_education_app.audioframe"
     private let kDarwinStopNotif    = "com.example.flutter_education_app.stop"
     private let kFrameFileName      = "broadcast_frame.bin"
+    private let kAudioFrameFileName = "broadcast_audio.bin"
     private var darwinObserverAdded = false
     private let ipcReadQueue        = DispatchQueue(label: "com.elfaheem.ipc", qos: .userInteractive)
 
@@ -583,6 +601,7 @@ import CoreVideo
                     self.assetWriter = nil
                     self.videoInput  = nil
                     self.audioInput  = nil
+                    self.systemAudioInput = nil
                     self.pixelBufferAdaptor = nil
                     self.writerSessionStarted = false
                     self.releaseAudioSessionLock()
@@ -844,7 +863,7 @@ import CoreVideo
     /// "float32" (matches AVAudioPCMBuffer.serializeAsBytes()'s "commonFormat"
     /// on the plugin's own native side).
     private func makeAudioSampleBuffer(
-        data: Data, sampleRate: Int, channels: Int, format: String
+        data: Data, sampleRate: Int, channels: Int, format: String, ptsNs: UInt64? = nil
     ) -> CMSampleBuffer? {
         let isFloat = (format == "float32")
         let bytesPerSample = isFloat ? 4 : 2
@@ -892,7 +911,20 @@ import CoreVideo
         }
         guard copyStatus == kCMBlockBufferNoErr else { return nil }
 
-        let pts = CMClockGetTime(CMClockGetHostTimeClock())
+        // LiveKit mic frames (ptsNs == nil) have no per-frame timestamp of
+        // their own — timestamp on arrival using the host clock (see the
+        // header comment above). Broadcast system-audio frames DO carry a
+        // real ptsNs from the extension's own CMSampleBufferGetPresentationTimeStamp
+        // (same host-time clock domain, shared across processes on-device),
+        // matching how processSampleFromBroadcast times its video frames —
+        // using arrival time for these instead would drift out of sync with
+        // the broadcast video track over a multi-second chunk.
+        let pts: CMTime
+        if let ns = ptsNs {
+            pts = CMTimeMake(value: Int64(ns / 1_000_000), timescale: 1_000)
+        } else {
+            pts = CMClockGetTime(CMClockGetHostTimeClock())
+        }
         var timing = CMSampleTimingInfo(
             duration: CMTimeMake(value: Int64(frameCount), timescale: Int32(sampleRate)),
             presentationTimeStamp: pts,
@@ -1149,8 +1181,18 @@ import CoreVideo
         ai.expectsMediaDataInRealTime = true
         audioInput = ai
 
+        // Second, independent audio track for the shared app's own audio —
+        // only ever populated while isBroadcasting is true, but always
+        // created so a broadcast that starts mid-chunk (rotating in) never
+        // races the writer's `.add()` calls, which must all happen before
+        // startWriting() below.
+        let sai = AVAssetWriterInput(mediaType: .audio, outputSettings: aSettings)
+        sai.expectsMediaDataInRealTime = true
+        systemAudioInput = sai
+
         writer.add(vi)
         writer.add(ai)
+        writer.add(sai)
         writer.startWriting()
         // ── Do NOT call startSession here ─────────────────────────────────────
         // Session is started in processSampleFromRecorder/Broadcast on the
@@ -1161,6 +1203,7 @@ import CoreVideo
         // Fresh chunk = fresh writer/track = fresh timeline. The previous
         // chunk's last audio PTS is not a valid baseline for this one.
         lastAudioPts = nil
+        lastSystemAudioPts = nil
         // Fresh chunk = fresh broadcast video timeline too.
         lastBroadcastVideoPts = nil
         // Record the exact geometry this chunk's pixelBufferAdaptor pool was
@@ -1269,6 +1312,7 @@ import CoreVideo
             self.assetWriter  = nil
             self.videoInput   = nil
             self.audioInput   = nil
+            self.systemAudioInput = nil
             self.pixelBufferAdaptor = nil
             self.writerSessionStarted = false
             self.emitEvent(["event": "recordingPaused"])
@@ -1391,9 +1435,15 @@ import CoreVideo
             }
             return
         }
+        // Captured as a local separately from the guard above (not required)
+        // — systemAudioInput is always created in beginChunkWriter alongside
+        // audioInput, but treating it as non-critical here means a future
+        // code path that skips creating it can never break chunk finalisation.
+        let sai = systemAudioInput
         guard writer.status == .writing else {
             NSLog("[REC] finaliseChunk skipped (writer status=\(writer.status.rawValue))")
-            assetWriter = nil; videoInput = nil; audioInput = nil; pixelBufferAdaptor = nil
+            assetWriter = nil; videoInput = nil; audioInput = nil
+            systemAudioInput = nil; pixelBufferAdaptor = nil
             currentFile = nil; writerSessionStarted = false
             DispatchQueue.main.async { [weak self] in
                 if let r = self?.stopResult { self?.stopResult = nil; r(nil) }
@@ -1405,7 +1455,8 @@ import CoreVideo
         // calling finishWriting produces a corrupt/empty container. Drop it.
         guard writerSessionStarted else {
             NSLog("[REC] finaliseChunk skipped — startSession never called (no frames yet)")
-            assetWriter = nil; videoInput = nil; audioInput = nil; pixelBufferAdaptor = nil
+            assetWriter = nil; videoInput = nil; audioInput = nil
+            systemAudioInput = nil; pixelBufferAdaptor = nil
             currentFile = nil; writerSessionStarted = false
             try? FileManager.default.removeItem(at: fileURL)
             DispatchQueue.main.async { [weak self] in
@@ -1414,7 +1465,8 @@ import CoreVideo
             }
             return
         }
-        assetWriter = nil; videoInput = nil; audioInput = nil; pixelBufferAdaptor = nil
+        assetWriter = nil; videoInput = nil; audioInput = nil
+        systemAudioInput = nil; pixelBufferAdaptor = nil
         currentFile = nil; writerSessionStarted = false
         let idx = chunkIndex
         // Snapshot then reset — see the properties' declaration for why these
@@ -1428,6 +1480,7 @@ import CoreVideo
         writerQueue.async { [weak self] in
             vi.markAsFinished()
             ai.markAsFinished()
+            sai?.markAsFinished()
             writer.finishWriting {
                 if writer.status == .failed {
                     NSLog("[REC] writer failed chunk #\(idx): \(writer.error?.localizedDescription ?? "unknown")")
@@ -1958,6 +2011,17 @@ import CoreVideo
             kDarwinFrameNotif as CFString, nil, .deliverImmediately
         )
 
+        // System/app audio notification (shared app's own audio)
+        CFNotificationCenterAddObserver(
+            center, selfPtr,
+            { _, selfPtr, _, _, _ in
+                guard let selfPtr = selfPtr else { return }
+                let me = Unmanaged<AppDelegate>.fromOpaque(selfPtr).takeUnretainedValue()
+                me.onDarwinAudioFrameNotif()
+            },
+            kDarwinAudioNotif as CFString, nil, .deliverImmediately
+        )
+
         // Stop notification
         CFNotificationCenterAddObserver(
             center, selfPtr,
@@ -1980,6 +2044,8 @@ import CoreVideo
         CFNotificationCenterRemoveObserver(center, selfPtr,
             CFNotificationName(kDarwinFrameNotif as CFString), nil)
         CFNotificationCenterRemoveObserver(center, selfPtr,
+            CFNotificationName(kDarwinAudioNotif as CFString), nil)
+        CFNotificationCenterRemoveObserver(center, selfPtr,
             CFNotificationName(kDarwinStopNotif  as CFString), nil)
         NSLog("[SHARE] Darwin listeners removed")
     }
@@ -1994,6 +2060,19 @@ import CoreVideo
                 return
             }
             let fileURL = container.appendingPathComponent(self.kFrameFileName)
+            guard let data = try? Data(contentsOf: fileURL), data.count >= 16 else { return }
+            self.handleBroadcastData(data)
+        }
+    }
+
+    /// Called on the main thread when the extension posted a system-audio
+    /// frame notification (SampleHandler's .audioApp path).
+    private func onDarwinAudioFrameNotif() {
+        ipcReadQueue.async { [weak self] in
+            guard let self = self else { return }
+            guard let container = FileManager.default
+                    .containerURL(forSecurityApplicationGroupIdentifier: self.kAppGroup) else { return }
+            let fileURL = container.appendingPathComponent(self.kAudioFrameFileName)
             guard let data = try? Data(contentsOf: fileURL), data.count >= 16 else { return }
             self.handleBroadcastData(data)
         }
@@ -2099,14 +2178,65 @@ import CoreVideo
             guard recording, !stopping, !paused else { return }
             processSampleFromBroadcast(jpegData: payload, ptsNs: ptsNs)
 
-        case 1, 2:
-            // Audio from the extension.
-            // RPScreenRecorder already captures mic audio (clean, with LiveKit
-            // AEC/NS applied), so we skip the extension audio to avoid doubles.
+        case 1:
+            // Extension mic audio — still intentionally dropped. The
+            // teacher's mic is already forwarded via the LiveKit audio tap
+            // (see handleIncomingAudioFrame / room.dart's
+            // _startLiveKitAudioTap), so this would just be a duplicate.
             break
+
+        case 2:
+            // Shared app's own audio (e.g. sound from a video/game on the
+            // screen being broadcast) — genuinely different content from
+            // the mic, NOT a duplicate. Written into the second, independent
+            // systemAudioInput track (see its declaration for why it's a
+            // separate track rather than mixed into the mic track).
+            guard recording, !stopping, !paused else { return }
+            processSystemAudioFromBroadcast(payload, ptsNs: ptsNs)
 
         default:
             break
+        }
+    }
+
+    /// Decodes a [sampleRate:4B BE][channels:4B BE][isFloat:4B BE][raw PCM]
+    /// payload (see SampleHandler.swift's serialiseAudio) and appends it to
+    /// systemAudioInput, anchored to the SAME ptsNs clock domain the
+    /// broadcast video frames use (both come from CMSampleBufferGetPresentationTimeStamp
+    /// inside the extension process, on the shared host-time clock).
+    private func processSystemAudioFromBroadcast(_ payload: Data, ptsNs: UInt64) {
+        guard payload.count > 12 else { return }
+        func beUInt32(_ bytes: Data, _ offset: Int) -> UInt32 {
+            var v: UInt32 = 0
+            for i in 0..<4 { v = (v << 8) | UInt32(bytes[bytes.startIndex + offset + i]) }
+            return v
+        }
+        let sampleRate = beUInt32(payload, 0)
+        let channels   = beUInt32(payload, 4)
+        let isFloat    = beUInt32(payload, 8) != 0
+        let pcm        = Data(payload.dropFirst(12))
+        guard sampleRate > 0, channels > 0, !pcm.isEmpty else { return }
+
+        writerQueue.async { [weak self] in
+            guard let self = self,
+                  let writer = self.assetWriter,
+                  writer.status == .writing,
+                  self.writerSessionStarted,
+                  self.systemAudioInput?.isReadyForMoreMediaData == true else { return }
+
+            guard let sampleBuffer = self.makeAudioSampleBuffer(
+                data: pcm, sampleRate: Int(sampleRate), channels: Int(channels),
+                format: isFloat ? "float32" : "int16", ptsNs: ptsNs
+            ) else { return }
+
+            let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+            if let last = self.lastSystemAudioPts, CMTimeCompare(pts, last) <= 0 { return }
+            self.lastSystemAudioPts = pts
+
+            if self.systemAudioInput?.append(sampleBuffer) == false {
+                NSLog("[REC] system-audio append FAILED — writer status=\(writer.status.rawValue) "
+                      + "error=\(String(describing: writer.error))")
+            }
         }
     }
 }

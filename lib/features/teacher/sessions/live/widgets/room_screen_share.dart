@@ -33,6 +33,10 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
   ClientRecorder? get recorder;
   bool get isTeacher;
   void showSnack(String msg);
+  // iOS-only rebind hook for the LiveKit mic audio tap (see room.dart's
+  // _startLiveKitAudioTap doc comment). Calling this when there's nothing
+  // to rebind is a safe no-op. Other platforms can leave this a no-op.
+  void restartAudioTap() {}
 
   static const _recChannel = MethodChannel(
     'com.example.flutter_education_app/native_recorder',
@@ -392,6 +396,15 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
         log('[SS] iOS: waiting for broadcast Phase-2 upgrade...');
         await recorder?.upgradeToScreenRecording();
         log('[SS] iOS: Phase-2 confirmed — broadcast chunks active');
+
+        // Defensive: setScreenShareEnabled(true) above renegotiates the
+        // peer connection to add the screen-share track, which can cause
+        // LiveKit to republish the mic as a new LocalAudioTrack instance.
+        // room.dart's LocalTrackPublishedEvent listener already catches
+        // this automatically, but that event's timing relative to this
+        // await chain isn't guaranteed, so re-check here too — a cheap
+        // no-op if the tap is already bound to the current track.
+        restartAudioTap();
 
         // Update UI — banner + toast appear
         _isBroadcastActive = true;
