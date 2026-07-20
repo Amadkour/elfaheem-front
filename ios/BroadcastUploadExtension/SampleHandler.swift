@@ -70,14 +70,6 @@ class SampleHandler: RPBroadcastSampleHandler {
     private var frameFileURL: URL?
     private var audioFileURL: URL?
 
-    // Diagnostic only: counts .audioApp buffers actually delivered by
-    // ReplayKit to this extension. Logged every 50 samples (not every
-    // sample, to avoid flooding) so Console.app can show whether delivery
-    // just stops mid-broadcast (a platform/AVAudioSession-route issue,
-    // nothing this extension can fix) vs. keeps arriving fine while the
-    // host app fails to append it (a bug in AppDelegate's write path).
-    private var audioAppSampleCount = 0
-
     override func broadcastStarted(withSetupInfo setupInfo: [String: NSObject]?) {
         // Resolve the shared container URL.
         guard let container = FileManager.default
@@ -101,8 +93,7 @@ class SampleHandler: RPBroadcastSampleHandler {
 
     override func broadcastFinished() {
         notify(kDarwinStopNotif)
-        NSLog("[SampleHandler] finished — stop notification posted; "
-              + "total .audioApp buffers received this broadcast=\(audioAppSampleCount)")
+        NSLog("[SampleHandler] finished — stop notification posted")
     }
 
     override func processSampleBuffer(_ sampleBuffer: CMSampleBuffer,
@@ -121,10 +112,6 @@ class SampleHandler: RPBroadcastSampleHandler {
             // already forwarded separately in the host app via the LiveKit
             // audio tap (see room.dart's _startLiveKitAudioTap). Forwarding
             // this too lets the recording include both.
-            audioAppSampleCount += 1
-            if audioAppSampleCount == 1 || audioAppSampleCount % 50 == 0 {
-                NSLog("[SampleHandler] .audioApp buffer #\(audioAppSampleCount) received")
-            }
             guard let data = serialiseAudio(sampleBuffer) else { return }
             write(data, to: audioFileURL, notif: kDarwinAudioNotif)
 

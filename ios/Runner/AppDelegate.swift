@@ -100,14 +100,18 @@ import CoreVideo
     // which would point at the server's ffmpeg step instead).
     private var audioSamplesSeenThisChunk: Int = 0
     private var audioSamplesAppendedThisChunk: Int = 0
-    // Mirrors the two counters above, but for the broadcast extension's
-    // .audioApp (shared video/app's own audio) path — this path previously
-    // had NO visibility at all, unlike the mic path, which made it
-    // impossible to tell whether SampleHandler stopped sending .audioApp
-    // buffers vs. this app silently failing to append ones it received.
-    private var systemAudioSamplesSeenThisChunk: Int = 0
-    private var systemAudioSamplesAppendedThisChunk: Int = 0
+    private var sysAudioSamplesSeenThisChunk: Int = 0
+    private var sysAudioSamplesAppendedThisChunk: Int = 0
     private var writerQueue = DispatchQueue(label: "com.elfaheem.writer", qos: .userInitiated)
+    // Same reasoning as audioIpcReadQueue above, one level further down the
+    // pipeline: writerQueue does video JPEG decode + append (expensive) AND
+    // mic-audio append. Appending system audio there too means a slow video
+    // decode can stall system-audio appends behind it — its own queue keeps
+    // that append path independent. AVAssetWriterInput.append() is safe to
+    // call from a different thread per input; it's only unsafe to call
+    // concurrently on the SAME input from multiple threads, which this
+    // doesn't do (systemAudioInput is only ever touched from this queue).
+    private var systemAudioQueue = DispatchQueue(label: "com.elfaheem.writer.systemAudio", qos: .userInteractive)
 
     // ── Session params ────────────────────────────────────────────────────────
     private var sessionId:  Int    = 0
@@ -265,6 +269,16 @@ import CoreVideo
     private let kAudioFrameFileName = "broadcast_audio.bin"
     private var darwinObserverAdded = false
     private let ipcReadQueue        = DispatchQueue(label: "com.elfaheem.ipc", qos: .userInteractive)
+    // Audio buffers (from LiveKit's mic tap AND the broadcast's .audioApp)
+    // arrive far more often than video frames (every ~10-25ms vs every
+    // ~33-100ms), and reading the video frame file involves decoding a full
+    // JPEG. Sharing one serial queue between the two means a slow video
+    // read can back up behind it every audio notification that fires while
+    // it's working — and once that backlog exists it never drains, since
+    // more audio keeps arriving faster than the queue can process it. A
+    // dedicated queue means video work can never delay audio work or vice
+    // versa.
+    private let audioIpcReadQueue   = DispatchQueue(label: "com.elfaheem.ipc.audio", qos: .userInteractive)
 
     // ── Broadcast-picker watchdog ─────────────────────────────────────────────
     // showBroadcastPicker() pauses RPScreenRecorder and waits for the extension
@@ -928,7 +942,17 @@ import CoreVideo
         // the broadcast video track over a multi-second chunk.
         let pts: CMTime
         if let ns = ptsNs {
-            pts = CMTimeMake(value: Int64(ns / 1_000_000), timescale: 1_000)
+            // Microsecond precision, not millisecond: audio buffers can
+            // arrive every ~10-25ms, so rounding to whole milliseconds
+            // risks two consecutive buffers landing on the identical
+            // timestamp — which the strictly-increasing-PTS guard in
+            // processSystemAudioFromBroadcast would then treat as a
+            // duplicate and silently drop, forever, since it never
+            // increases again relative to a "last" that was rounded the
+            // same way. Video frames (using this same helper's PTS via
+            // processSampleFromBroadcast) don't share this risk since they
+            // arrive far less often, so this only needed tightening here.
+            pts = CMTimeMake(value: Int64(ns / 1_000), timescale: 1_000_000)
         } else {
             pts = CMClockGetTime(CMClockGetHostTimeClock())
         }
@@ -1211,8 +1235,6 @@ import CoreVideo
         // chunk's last audio PTS is not a valid baseline for this one.
         lastAudioPts = nil
         lastSystemAudioPts = nil
-        systemAudioSamplesSeenThisChunk = 0
-        systemAudioSamplesAppendedThisChunk = 0
         // Fresh chunk = fresh broadcast video timeline too.
         lastBroadcastVideoPts = nil
         // Record the exact geometry this chunk's pixelBufferAdaptor pool was
@@ -1484,12 +1506,12 @@ import CoreVideo
         // this async block below even runs.
         let audioSeen     = audioSamplesSeenThisChunk
         let audioAppended = audioSamplesAppendedThisChunk
+        let sysAudioSeen     = sysAudioSamplesSeenThisChunk
+        let sysAudioAppended = sysAudioSamplesAppendedThisChunk
         audioSamplesSeenThisChunk     = 0
         audioSamplesAppendedThisChunk = 0
-        let sysAudioSeen     = systemAudioSamplesSeenThisChunk
-        let sysAudioAppended = systemAudioSamplesAppendedThisChunk
-        systemAudioSamplesSeenThisChunk     = 0
-        systemAudioSamplesAppendedThisChunk = 0
+        sysAudioSamplesSeenThisChunk     = 0
+        sysAudioSamplesAppendedThisChunk = 0
         writerQueue.async { [weak self] in
             vi.markAsFinished()
             ai.markAsFinished()
@@ -2082,7 +2104,7 @@ import CoreVideo
     /// Called on the main thread when the extension posted a system-audio
     /// frame notification (SampleHandler's .audioApp path).
     private func onDarwinAudioFrameNotif() {
-        ipcReadQueue.async { [weak self] in
+        audioIpcReadQueue.async { [weak self] in
             guard let self = self else { return }
             guard let container = FileManager.default
                     .containerURL(forSecurityApplicationGroupIdentifier: self.kAppGroup) else { return }
@@ -2231,18 +2253,13 @@ import CoreVideo
         let pcm        = Data(payload.dropFirst(12))
         guard sampleRate > 0, channels > 0, !pcm.isEmpty else { return }
 
-        writerQueue.async { [weak self] in
+        systemAudioQueue.async { [weak self] in
             guard let self = self else { return }
-            // Counted before any guard below — same reasoning as
-            // audioSamplesSeenThisChunk: this tells us definitively whether
-            // handleBroadcastData is routing .audioApp payloads here at all,
-            // independent of whatever guard below ends up dropping them.
-            self.systemAudioSamplesSeenThisChunk += 1
+            self.sysAudioSamplesSeenThisChunk += 1
 
-            guard let writer = self.assetWriter,
-                  writer.status == .writing else {
+            guard let writer = self.assetWriter, writer.status == .writing else {
                 NSLog("[REC] system-audio dropped — writer not active (status="
-                      + "\(self.assetWriter?.status.rawValue.description ?? "nil"))")
+                      + "\(String(describing: self.assetWriter?.status.rawValue)))")
                 return
             }
             guard self.writerSessionStarted else {
@@ -2259,7 +2276,8 @@ import CoreVideo
                 data: pcm, sampleRate: Int(sampleRate), channels: Int(channels),
                 format: isFloat ? "float32" : "int16", ptsNs: ptsNs
             ) else {
-                NSLog("[REC] system-audio dropped — makeAudioSampleBuffer failed")
+                NSLog("[REC] system-audio dropped — makeAudioSampleBuffer failed "
+                      + "(sr=\(sampleRate) ch=\(channels) bytes=\(pcm.count))")
                 return
             }
 
@@ -2271,11 +2289,11 @@ import CoreVideo
             }
             self.lastSystemAudioPts = pts
 
-            if self.systemAudioInput?.append(sampleBuffer) == false {
+            if self.systemAudioInput?.append(sampleBuffer) == true {
+                self.sysAudioSamplesAppendedThisChunk += 1
+            } else {
                 NSLog("[REC] system-audio append FAILED — writer status=\(writer.status.rawValue) "
                       + "error=\(String(describing: writer.error))")
-            } else {
-                self.systemAudioSamplesAppendedThisChunk += 1
             }
         }
     }
