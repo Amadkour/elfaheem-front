@@ -69,6 +69,20 @@ import CoreVideo
     // one audio track at a time by default.
     private var systemAudioInput:   AVAssetWriterInput?
     private var lastSystemAudioPts: CMTime?
+    // Small holding buffer for system-audio samples that arrive in the brief
+    // window right after a new chunk's writer is created but before its
+    // session has actually started (started by the first broadcast VIDEO
+    // frame — see processSampleFromBroadcast). Previously these were just
+    // dropped ("writer not active"/"session not started"), which bit at
+    // every chunk rotation during a screen share. Buffered here (in arrival
+    // order) and flushed once the session goes live — see
+    // flushPendingSystemAudioFrames(). Only ever touched on systemAudioQueue.
+    private var pendingSystemAudioFrames:
+        [(sampleRate: UInt32, channels: UInt32, isFloat: Bool, pcm: Data, ptsNs: UInt64)] = []
+    // ~1-1.5s of audio at a 10-25ms buffer interval — comfortably covers
+    // the chunk-rotation gap without buffering unbounded amounts if
+    // something is genuinely stuck.
+    private let kPendingSystemAudioCap = 60
     // Pixel buffer adaptor for the broadcast-extension path. Broadcast frames
     // arrive as decoded JPEGs (see jpegToPixelBuffer), and MUST be appended
     // through an AVAssetWriterInputPixelBufferAdaptor rather than by manually
@@ -260,13 +274,16 @@ import CoreVideo
     private let kAppGroup           = "group.com.softkour.alfaheem"
     private let kDarwinFrameNotif   = "com.example.flutter_education_app.frame"
     // NEW: shared app's own audio (e.g. sound from a video/game on the
-    // shared screen) — see SampleHandler.swift's .audioApp case. Kept on a
-    // separate file+notification from video so the two never race each
-    // other for the same shared file.
+    // shared screen) — see SampleHandler.swift's .audioApp case. This is
+    // backed by a QUEUE DIRECTORY (kAudioQueueDirName), not a single file
+    // like video — see SampleHandler.swift's header comment for why a
+    // single-file "mailbox" silently drops the large majority of this
+    // audio (it arrives every ~10-25ms, too fast for overwrite-and-notify
+    // to keep up with reliably).
     private let kDarwinAudioNotif   = "com.example.flutter_education_app.audioframe"
     private let kDarwinStopNotif    = "com.example.flutter_education_app.stop"
     private let kFrameFileName      = "broadcast_frame.bin"
-    private let kAudioFrameFileName = "broadcast_audio.bin"
+    private let kAudioQueueDirName  = "broadcast_audio_queue"
     private var darwinObserverAdded = false
     private let ipcReadQueue        = DispatchQueue(label: "com.elfaheem.ipc", qos: .userInteractive)
     // Audio buffers (from LiveKit's mic tap AND the broadcast's .audioApp)
@@ -760,6 +777,13 @@ import CoreVideo
                     writer.startSession(atSourceTime: pts)
                     self.writerSessionStarted = true
                     NSLog("[REC] writer session started at \(CMTimeGetSeconds(pts))s")
+                    // Normally nothing is pending here (system audio only
+                    // exists while isBroadcasting, and this path only runs
+                    // when !isBroadcasting) — flushing is just a safety net
+                    // for the downgrade-mid-chunk edge case.
+                    self.systemAudioQueue.async { [weak self] in
+                        self?.flushPendingSystemAudioFrames()
+                    }
                 }
                 if self.videoInput?.isReadyForMoreMediaData == true {
                     self.videoInput?.append(sampleBuffer)
@@ -1003,6 +1027,11 @@ import CoreVideo
                 writer.startSession(atSourceTime: pts)
                 self.writerSessionStarted = true
                 NSLog("[REC] writer session (broadcast) started at \(CMTimeGetSeconds(pts))s")
+                // Replay anything system-audio that arrived just before the
+                // session went live (see processSystemAudioFromBroadcast).
+                self.systemAudioQueue.async { [weak self] in
+                    self?.flushPendingSystemAudioFrames()
+                }
             }
 
             // Same monotonic-PTS protection as audio (see lastAudioPts) —
@@ -1237,6 +1266,13 @@ import CoreVideo
         lastSystemAudioPts = nil
         // Fresh chunk = fresh broadcast video timeline too.
         lastBroadcastVideoPts = nil
+        // Anything still buffered from the previous chunk belongs to that
+        // chunk's (now-finalising) writer/session, not this new one — its
+        // timestamps would fall before this chunk's session start and just
+        // fail to append anyway. Drop it rather than let it leak forward.
+        systemAudioQueue.async { [weak self] in
+            self?.pendingSystemAudioFrames.removeAll()
+        }
         // Record the exact geometry this chunk's pixelBufferAdaptor pool was
         // configured with, so processSampleFromBroadcast can always draw
         // decoded JPEG frames into a buffer of this exact size (see
@@ -2033,6 +2069,11 @@ import CoreVideo
         guard !darwinObserverAdded else { return }
         darwinObserverAdded = true
 
+        // Wipe any audio-queue files left over from a previous broadcast
+        // (e.g. one that ended abruptly before the host finished draining
+        // it) before this new broadcast's frames start arriving.
+        resetAudioQueueDirectory()
+
         let center = CFNotificationCenterGetDarwinNotifyCenter()
         let selfPtr = Unmanaged.passUnretained(self).toOpaque()
 
@@ -2103,15 +2144,64 @@ import CoreVideo
 
     /// Called on the main thread when the extension posted a system-audio
     /// frame notification (SampleHandler's .audioApp path).
+    ///
+    /// IMPORTANT: unlike onDarwinFrameNotif (video), this does NOT read one
+    /// fixed file. .audioApp buffers are written by SampleHandler into their
+    /// own sequentially-numbered files under kAudioQueueDirName (a queue,
+    /// not a 1-slot mailbox) precisely because they arrive too fast
+    /// (~10-25ms apart) for overwrite-and-notify to keep up with — that
+    /// single-file design was the actual cause of shared-app audio going
+    /// missing from screen-share recordings (buffers overwritten before
+    /// being read, or the same file read twice yielding a duplicate/
+    /// non-monotonic timestamp that the writer then rejected). A Darwin
+    /// notification here just means "there may be new files" — it's fine,
+    /// and expected, for several writes to coalesce into one notification;
+    /// draining the whole directory every time covers that.
     private func onDarwinAudioFrameNotif() {
         audioIpcReadQueue.async { [weak self] in
-            guard let self = self else { return }
-            guard let container = FileManager.default
-                    .containerURL(forSecurityApplicationGroupIdentifier: self.kAppGroup) else { return }
-            let fileURL = container.appendingPathComponent(self.kAudioFrameFileName)
-            guard let data = try? Data(contentsOf: fileURL), data.count >= 16 else { return }
-            self.handleBroadcastData(data)
+            self?.drainAudioQueueDirectory()
         }
+    }
+
+    /// Reads and deletes every currently-pending file in the audio queue
+    /// directory, in ascending (i.e. chronological) filename order, and
+    /// feeds each one to handleBroadcastData in that order. Must only be
+    /// called on audioIpcReadQueue (serial) so two drains never overlap.
+    private func drainAudioQueueDirectory() {
+        guard let container = FileManager.default
+                .containerURL(forSecurityApplicationGroupIdentifier: kAppGroup) else { return }
+        let dir = container.appendingPathComponent(kAudioQueueDirName)
+
+        guard let entries = try? FileManager.default.contentsOfDirectory(
+            at: dir, includingPropertiesForKeys: nil
+        ) else { return }
+
+        // Filenames are zero-padded (see SampleHandler's kAudioSeqPad), so
+        // a plain string sort is also the correct chronological order.
+        let ordered = entries
+            .filter { $0.lastPathComponent.hasPrefix("aud_") }
+            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+
+        for fileURL in ordered {
+            guard let data = try? Data(contentsOf: fileURL) else { continue }
+            // Delete first: if handleBroadcastData is slow/re-entrant, we
+            // never want a second drain pass to double-process this file.
+            try? FileManager.default.removeItem(at: fileURL)
+            guard data.count >= 16 else { continue }
+            handleBroadcastData(data)
+        }
+    }
+
+    /// Clears any leftover audio-queue files from a previous broadcast
+    /// before a new one starts, so stale audio can never leak into a new
+    /// recording. Called from registerDarwinListeners(), which runs once
+    /// per Share Screen start (see showBroadcastPicker).
+    private func resetAudioQueueDirectory() {
+        guard let container = FileManager.default
+                .containerURL(forSecurityApplicationGroupIdentifier: kAppGroup) else { return }
+        let dir = container.appendingPathComponent(kAudioQueueDirName)
+        try? FileManager.default.removeItem(at: dir)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
     }
 
     /// Called on the main thread when the extension posted a stop notification.
@@ -2257,44 +2347,84 @@ import CoreVideo
             guard let self = self else { return }
             self.sysAudioSamplesSeenThisChunk += 1
 
-            guard let writer = self.assetWriter, writer.status == .writing else {
-                NSLog("[REC] system-audio dropped — writer not active (status="
-                      + "\(String(describing: self.assetWriter?.status.rawValue)))")
-                return
-            }
-            guard self.writerSessionStarted else {
-                NSLog("[REC] system-audio dropped — writer session not started yet")
-                return
-            }
-            guard self.systemAudioInput?.isReadyForMoreMediaData == true else {
-                NSLog("[REC] system-audio dropped — systemAudioInput not ready "
-                      + "(nil=\(self.systemAudioInput == nil))")
-                return
-            }
-
-            guard let sampleBuffer = self.makeAudioSampleBuffer(
-                data: pcm, sampleRate: Int(sampleRate), channels: Int(channels),
-                format: isFloat ? "float32" : "int16", ptsNs: ptsNs
-            ) else {
-                NSLog("[REC] system-audio dropped — makeAudioSampleBuffer failed "
-                      + "(sr=\(sampleRate) ch=\(channels) bytes=\(pcm.count))")
+            guard let writer = self.assetWriter, writer.status == .writing,
+                  self.writerSessionStarted else {
+                // Writer/session not live yet — this is expected for a brief
+                // window right at the start of each chunk during a screen
+                // share (the session only starts once the first broadcast
+                // VIDEO frame arrives). Buffer instead of dropping; replayed
+                // in order by flushPendingSystemAudioFrames() as soon as the
+                // session actually starts.
+                if self.pendingSystemAudioFrames.count >= self.kPendingSystemAudioCap {
+                    self.pendingSystemAudioFrames.removeFirst()
+                }
+                self.pendingSystemAudioFrames.append(
+                    (sampleRate, channels, isFloat, pcm, ptsNs)
+                )
                 return
             }
 
-            let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
-            if let last = self.lastSystemAudioPts, CMTimeCompare(pts, last) <= 0 {
-                NSLog("[REC] system-audio dropped — non-monotonic pts "
-                      + "(\(CMTimeGetSeconds(pts))s <= \(CMTimeGetSeconds(last))s)")
-                return
-            }
-            self.lastSystemAudioPts = pts
+            self.appendSystemAudioSample(
+                sampleRate: sampleRate, channels: channels, isFloat: isFloat,
+                pcm: pcm, ptsNs: ptsNs
+            )
+        }
+    }
 
-            if self.systemAudioInput?.append(sampleBuffer) == true {
-                self.sysAudioSamplesAppendedThisChunk += 1
-            } else {
-                NSLog("[REC] system-audio append FAILED — writer status=\(writer.status.rawValue) "
-                      + "error=\(String(describing: writer.error))")
-            }
+    /// Actually appends one system-audio sample to systemAudioInput. Must
+    /// only be called on systemAudioQueue, and only once the writer/session
+    /// are confirmed live (either directly from processSystemAudioFromBroadcast,
+    /// or via flushPendingSystemAudioFrames once they become live).
+    private func appendSystemAudioSample(
+        sampleRate: UInt32, channels: UInt32, isFloat: Bool, pcm: Data, ptsNs: UInt64
+    ) {
+        guard self.systemAudioInput?.isReadyForMoreMediaData == true else {
+            NSLog("[REC] system-audio dropped — systemAudioInput not ready "
+                  + "(nil=\(self.systemAudioInput == nil))")
+            return
+        }
+
+        guard let sampleBuffer = self.makeAudioSampleBuffer(
+            data: pcm, sampleRate: Int(sampleRate), channels: Int(channels),
+            format: isFloat ? "float32" : "int16", ptsNs: ptsNs
+        ) else {
+            NSLog("[REC] system-audio dropped — makeAudioSampleBuffer failed "
+                  + "(sr=\(sampleRate) ch=\(channels) bytes=\(pcm.count))")
+            return
+        }
+
+        let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+        if let last = self.lastSystemAudioPts, CMTimeCompare(pts, last) <= 0 {
+            NSLog("[REC] system-audio dropped — non-monotonic pts "
+                  + "(\(CMTimeGetSeconds(pts))s <= \(CMTimeGetSeconds(last))s)")
+            return
+        }
+        self.lastSystemAudioPts = pts
+
+        if self.systemAudioInput?.append(sampleBuffer) == true {
+            self.sysAudioSamplesAppendedThisChunk += 1
+        } else {
+            NSLog("[REC] system-audio append FAILED — writer status="
+                  + "\(String(describing: self.assetWriter?.status.rawValue)) "
+                  + "error=\(String(describing: self.assetWriter?.error))")
+        }
+    }
+
+    /// Replays anything buffered by processSystemAudioFromBroadcast while
+    /// the writer/session weren't live yet, now that they are. Called (via
+    /// systemAudioQueue.async) right after processSampleFromBroadcast starts
+    /// a new writer session. Order-preserving: the buffer is FIFO and this
+    /// drains it front-to-back before anything newly-arriving is processed,
+    /// since it all runs serially on systemAudioQueue.
+    private func flushPendingSystemAudioFrames() {
+        guard !pendingSystemAudioFrames.isEmpty else { return }
+        let queued = pendingSystemAudioFrames
+        pendingSystemAudioFrames.removeAll()
+        for frame in queued {
+            appendSystemAudioSample(
+                sampleRate: frame.sampleRate, channels: frame.channels,
+                isFloat: frame.isFloat, pcm: frame.pcm, ptsNs: frame.ptsNs
+            )
         }
     }
 }
