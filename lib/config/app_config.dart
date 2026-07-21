@@ -8,7 +8,7 @@ import 'package:timeago/timeago.dart' as timeago;
 /// Application configuration and context.colors.
 class AppConfig {
   static const String baseUrl =
-      'https://recommendation-accommodation-thunder-taste.trycloudflare.com';
+      'https://prevention-artistic-flour-modification.trycloudflare.com';
   static String lang = 'ar';
   static bool showLogs = false;
 
