@@ -99,6 +99,7 @@ class SampleHandler: RPBroadcastSampleHandler {
         frameFileURL = container.appendingPathComponent(kFrameFileName)
         audioFileURL = container.appendingPathComponent(kAudioFileName)
         NSLog("[SampleHandler] started — container: \(container.path)")
+        NSLog("[SampleHandler] BUILD-CHECK-\(Date()) started")
     }
 
     override func broadcastPaused()  {}
