@@ -317,6 +317,20 @@ import CoreVideo
     // ── Video dimensions (read from first RPScreenRecorder video frame) ───────
     private var videoWidth:  Int = 0
     private var videoHeight: Int = 0
+    // The (w, h) actually used for chunk #0's writer — whatever source it
+    // came from (real frame dims, or the UIScreen.main.bounds fallback if
+    // chunk #0 had to be created before any frame arrived). Every later
+    // chunk in the session reuses THESE exact values instead of
+    // recomputing from videoWidth/videoHeight, which can otherwise differ
+    // from chunk #0's by a couple of px (see beginChunkWriter). ffmpeg's
+    // concat demuxer does not handle a mid-stream resolution change
+    // cleanly — it was truncating/muting the audio track right at that
+    // seam, which read as "recording muted a moment after chunk #0" (and,
+    // since Share Screen forces an early chunk rotation, that seam usually
+    // landed right when sharing started — hence looking like a
+    // screen-share-specific bug when it wasn't).
+    private var lockedChunkWidth:  Int = 0
+    private var lockedChunkHeight: Int = 0
 
     // ── Background keepalive task ─────────────────────────────────────────────
     private var bgTask: UIBackgroundTaskIdentifier = .invalid
@@ -584,6 +598,8 @@ import CoreVideo
         stopping     = false
         videoWidth   = 0
         videoHeight  = 0
+        lockedChunkWidth  = 0
+        lockedChunkHeight = 0
         sweepStaleChunks()
 
         // ── Audio session setup ───────────────────────────────────────────────
@@ -1176,15 +1192,30 @@ import CoreVideo
         // Use actual screen dimensions (populated from first video frame on
         // previous chunk, or screen bounds for the very first chunk).
         // Both values must be even for H.264 encoding.
-        let scale  = UIScreen.main.scale
-        let rawW   = videoWidth  > 0 ? videoWidth  : Int(UIScreen.main.bounds.width  * scale)
-        let rawH   = videoHeight > 0 ? videoHeight : Int(UIScreen.main.bounds.height * scale)
-        // Clamp to 720p on the short side to keep files manageable.
-        let maxShort = 720
-        let shortSide = min(rawW, rawH)
-        let ratio  = shortSide > maxShort ? CGFloat(maxShort) / CGFloat(shortSide) : 1.0
-        let w      = (Int(CGFloat(rawW) * ratio) / 2) * 2   // must be even
-        let h      = (Int(CGFloat(rawH) * ratio) / 2) * 2
+        let w: Int
+        let h: Int
+        if lockedChunkWidth > 0 && lockedChunkHeight > 0 {
+            // Every chunk after the first REUSES the first chunk's exact
+            // resolution — do not recompute from videoWidth/videoHeight,
+            // which may since have been populated more precisely from a
+            // real frame than whatever chunk #0 had available. A
+            // mid-session resolution change is what was breaking ffmpeg's
+            // concat-demuxer assembly (audio truncated right at the seam).
+            w = lockedChunkWidth
+            h = lockedChunkHeight
+        } else {
+            let scale  = UIScreen.main.scale
+            let rawW   = videoWidth  > 0 ? videoWidth  : Int(UIScreen.main.bounds.width  * scale)
+            let rawH   = videoHeight > 0 ? videoHeight : Int(UIScreen.main.bounds.height * scale)
+            // Clamp to 720p on the short side to keep files manageable.
+            let maxShort = 720
+            let shortSide = min(rawW, rawH)
+            let ratio  = shortSide > maxShort ? CGFloat(maxShort) / CGFloat(shortSide) : 1.0
+            w = (Int(CGFloat(rawW) * ratio) / 2) * 2   // must be even
+            h = (Int(CGFloat(rawH) * ratio) / 2) * 2
+            lockedChunkWidth  = w
+            lockedChunkHeight = h
+        }
 
         // ── Bitrate ────────────────────────────────────────────────────────────
         // Broadcast-sourced chunks (Share Screen, especially with a camera
