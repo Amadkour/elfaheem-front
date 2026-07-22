@@ -190,30 +190,38 @@ class SampleHandler: RPBroadcastSampleHandler {
         let channels = Int(asbd.mChannelsPerFrame)
         guard channels > 0 else { return nil }
 
-        // Allocate room for up to `channels` separate buffers, not just 1.
-        // The previous version always sized this for exactly one AudioBuffer
-        // (MemoryLayout<AudioBufferList>.size), which is only correct for
-        // INTERLEAVED audio (one buffer holding all channels). ReplayKit's
-        // system audio can legitimately be delivered NON-INTERLEAVED
-        // (planar) instead — one buffer per channel. If that happened here,
-        // the old code would read ONLY buffer 0 (e.g. just the Left channel
-        // for stereo) while still reporting channels=2 in the wire payload
-        // — the decoder then pairs up consecutive mono samples as fake L/R
-        // stereo frames, which sounds like harsh noise/static, not the real
-        // audio. Sizing for the real buffer count and explicitly handling
-        // both layouts (interleaving planar channels ourselves before
-        // sending) fixes that regardless of which layout this device uses.
-        let listPointer = AudioBufferList.allocate(maximumBuffers: channels)
-        defer { free(listPointer.unsafeMutablePointer) }
-        let bufferListSize = MemoryLayout<AudioBufferList>.size
-            + (channels - 1) * MemoryLayout<AudioBuffer>.size
+        // Two-call pattern (the correct, documented way to do this — no
+        // guessing at struct sizes): first ask CoreMedia exactly how many
+        // bytes an AudioBufferList big enough for this sample buffer needs,
+        // then allocate precisely that much. A previous version tried to
+        // hand-compute this size instead (MemoryLayout<AudioBufferList>.size
+        // + (channels-1)*MemoryLayout<AudioBuffer>.size); if that computed
+        // size didn't exactly match what this specific CMSampleBuffer
+        // needed, the call below would fail and this function would return
+        // nil for every single frame — total silence, not just wrong
+        // channel data. Querying the real size up front removes that risk
+        // entirely, regardless of whether the source turns out to be
+        // interleaved or non-interleaved (planar) underneath.
+        var sizeNeeded = 0
+        let sizeStatus = CMSampleBufferGetAudioBufferListWithRetainedBlockBuffer(
+            sb, bufferListSizeNeededOut: &sizeNeeded, bufferListOut: nil,
+            bufferListSize: 0, blockBufferAllocator: nil,
+            blockBufferMemoryAllocator: nil, flags: 0, blockBufferOut: nil
+        )
+        guard sizeStatus == noErr, sizeNeeded > 0 else { return nil }
+
+        let rawList = UnsafeMutableRawPointer.allocate(
+            byteCount: sizeNeeded, alignment: MemoryLayout<AudioBufferList>.alignment
+        )
+        defer { rawList.deallocate() }
+        let listPtr = rawList.assumingMemoryBound(to: AudioBufferList.self)
 
         var blockBuffer: CMBlockBuffer?
         let status = CMSampleBufferGetAudioBufferListWithRetainedBlockBuffer(
             sb,
             bufferListSizeNeededOut: nil,
-            bufferListOut: listPointer.unsafeMutablePointer,
-            bufferListSize: bufferListSize,
+            bufferListOut: listPtr,
+            bufferListSize: sizeNeeded,
             blockBufferAllocator: nil,
             blockBufferMemoryAllocator: nil,
             flags: kCMSampleBufferFlag_AudioBufferList_Assure16ByteAlignment,
@@ -221,9 +229,10 @@ class SampleHandler: RPBroadcastSampleHandler {
         )
         guard status == noErr else { return nil }
 
+        let listPointer = UnsafeMutableAudioBufferListPointer(listPtr)
         let isFloat: UInt32 = (asbd.mFormatFlags & kAudioFormatFlagIsFloat) != 0 ? 1 : 0
         let bytesPerSample  = isFloat == 1 ? 4 : 2
-        let numBuffers      = Int(listPointer.unsafeMutablePointer.pointee.mNumberBuffers)
+        let numBuffers      = listPointer.count
 
         var pcmData: Data
         if numBuffers <= 1 {
