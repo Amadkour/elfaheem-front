@@ -71,6 +71,18 @@ class SampleHandler: RPBroadcastSampleHandler {
     private var frameFileURL: URL?
     private var audioFileURL: URL?
 
+    // Reused across every audio callback rather than allocated+freed per
+    // frame. Broadcast extensions have a very tight CPU/memory budget, and
+    // audio callbacks can fire every ~10-25ms — allocating and
+    // deallocating raw memory on every single one of those was enough
+    // overhead that ReplayKit started dropping/muting audio buffers after
+    // a short initial burst (they don't queue if the extension doesn't
+    // keep up; they just get skipped). The channel count/format is stable
+    // for the life of a broadcast session, so the buffer only needs to be
+    // sized once and can be reused indefinitely after that.
+    private var audioListBuffer: UnsafeMutableRawPointer?
+    private var audioListBufferSize: Int = 0
+
     override func broadcastStarted(withSetupInfo setupInfo: [String: NSObject]?) {
         // Resolve the shared container URL.
         guard let container = FileManager.default
@@ -94,6 +106,9 @@ class SampleHandler: RPBroadcastSampleHandler {
 
     override func broadcastFinished() {
         notify(kDarwinStopNotif)
+        audioListBuffer?.deallocate()
+        audioListBuffer = nil
+        audioListBufferSize = 0
         NSLog("[SampleHandler] finished — stop notification posted")
     }
 
@@ -210,11 +225,18 @@ class SampleHandler: RPBroadcastSampleHandler {
         )
         guard sizeStatus == noErr, sizeNeeded > 0 else { return nil }
 
-        let rawList = UnsafeMutableRawPointer.allocate(
-            byteCount: sizeNeeded, alignment: MemoryLayout<AudioBufferList>.alignment
-        )
-        defer { rawList.deallocate() }
-        let listPtr = rawList.assumingMemoryBound(to: AudioBufferList.self)
+        // Reuse the cached buffer across calls — only (re)allocate if it
+        // doesn't exist yet or this frame genuinely needs more room than
+        // what's cached (channel count/format is stable for the life of a
+        // session, so growth here should be rare to never in practice).
+        if audioListBuffer == nil || audioListBufferSize < sizeNeeded {
+            audioListBuffer?.deallocate()
+            audioListBuffer = UnsafeMutableRawPointer.allocate(
+                byteCount: sizeNeeded, alignment: MemoryLayout<AudioBufferList>.alignment
+            )
+            audioListBufferSize = sizeNeeded
+        }
+        let listPtr = audioListBuffer!.assumingMemoryBound(to: AudioBufferList.self)
 
         var blockBuffer: CMBlockBuffer?
         let status = CMSampleBufferGetAudioBufferListWithRetainedBlockBuffer(
