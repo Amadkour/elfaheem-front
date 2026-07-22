@@ -317,20 +317,6 @@ import CoreVideo
     // ── Video dimensions (read from first RPScreenRecorder video frame) ───────
     private var videoWidth:  Int = 0
     private var videoHeight: Int = 0
-    // The (w, h) actually used for chunk #0's writer — whatever source it
-    // came from (real frame dims, or the UIScreen.main.bounds fallback if
-    // chunk #0 had to be created before any frame arrived). Every later
-    // chunk in the session reuses THESE exact values instead of
-    // recomputing from videoWidth/videoHeight, which can otherwise differ
-    // from chunk #0's by a couple of px (see beginChunkWriter). ffmpeg's
-    // concat demuxer does not handle a mid-stream resolution change
-    // cleanly — it was truncating/muting the audio track right at that
-    // seam, which read as "recording muted a moment after chunk #0" (and,
-    // since Share Screen forces an early chunk rotation, that seam usually
-    // landed right when sharing started — hence looking like a
-    // screen-share-specific bug when it wasn't).
-    private var lockedChunkWidth:  Int = 0
-    private var lockedChunkHeight: Int = 0
 
     // ── Background keepalive task ─────────────────────────────────────────────
     private var bgTask: UIBackgroundTaskIdentifier = .invalid
@@ -598,8 +584,6 @@ import CoreVideo
         stopping     = false
         videoWidth   = 0
         videoHeight  = 0
-        lockedChunkWidth  = 0
-        lockedChunkHeight = 0
         sweepStaleChunks()
 
         // ── Audio session setup ───────────────────────────────────────────────
@@ -719,6 +703,59 @@ import CoreVideo
             NSLog("[REC] AVAudioSession: playAndRecord / videoChat / mixWithOthers — active")
         } catch {
             NSLog("[REC] AVAudioSession configure error: \(error.localizedDescription)")
+        }
+    }
+
+    // ── AVAudioSession management — screen-share/broadcast override ──────────
+    //
+    // ROOT CAUSE of "shared video sound is very quiet even after server-side
+    // volume balancing": AVAudioSession.Mode .videoChat (like .voiceChat)
+    // makes iOS AUTOMATICALLY apply its .duckOthers behavior to every OTHER
+    // app's audio output — silently, regardless of whether .duckOthers is
+    // in OUR OWN options array. This is a documented iOS quirk, not a bug in
+    // our code: Apple's system audio mixer attenuates the shared app's
+    // actual rendered output (e.g. a video playing in Safari) BEFORE
+    // ReplayKit's broadcast extension ever captures it via .audioApp — so
+    // no amount of server-side gain/loudnorm can fully recover it, because
+    // the samples we receive are already quiet at the source, not just
+    // quiet in the mix.
+    //
+    // Fix (same approach Teams/Zoom/Meet use): while a broadcast (screen
+    // share) is actually active, switch the audio session to
+    // .videoRecording mode instead of .videoChat. .videoRecording keeps
+    // .playAndRecord + mixWithOthers + defaultToSpeaker + Bluetooth working
+    // exactly the same, but — unlike .videoChat/.voiceChat — does NOT
+    // implicitly force .duckOthers, so the shared app's audio plays (and
+    // gets captured) at its natural, un-ducked volume.
+    //
+    // Trade-off: .videoRecording does not get the same hardware-assisted
+    // acoustic echo cancellation / noise suppression tuning as .videoChat,
+    // so mic pickup during a share may pick up slightly more room echo if
+    // the teacher is near a speaker. This is the same trade-off Teams/Zoom/
+    // Meet accept for "share sound" — avoiding it would mean the shared
+    // content's audio stays silently ducked, which is strictly worse for a
+    // recording where the shared content IS the primary audio.
+    //
+    // Called from handleBroadcastData (broadcast confirmed live → switch
+    // to this) and from every broadcast-stop path (→ configureAudioSessionForRecording()
+    // switches back to .videoChat for normal call-quality mic audio).
+
+    private func configureAudioSessionForBroadcastShare() {
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(
+                .playAndRecord,
+                mode: .videoRecording,                     // does NOT auto-duck other apps
+                options: [.defaultToSpeaker,
+                          .allowBluetooth,
+                          .allowBluetoothA2DP,
+                          .mixWithOthers]                  // coexist with the shared app's audio
+            )
+            try session.setActive(true, options: .notifyOthersOnDeactivation)
+            NSLog("[REC] AVAudioSession: playAndRecord / videoRecording / mixWithOthers "
+                  + "— active (broadcast share, non-ducking mode)")
+        } catch {
+            NSLog("[REC] AVAudioSession broadcast-share configure error: \(error.localizedDescription)")
         }
     }
 
@@ -1192,30 +1229,15 @@ import CoreVideo
         // Use actual screen dimensions (populated from first video frame on
         // previous chunk, or screen bounds for the very first chunk).
         // Both values must be even for H.264 encoding.
-        let w: Int
-        let h: Int
-        if lockedChunkWidth > 0 && lockedChunkHeight > 0 {
-            // Every chunk after the first REUSES the first chunk's exact
-            // resolution — do not recompute from videoWidth/videoHeight,
-            // which may since have been populated more precisely from a
-            // real frame than whatever chunk #0 had available. A
-            // mid-session resolution change is what was breaking ffmpeg's
-            // concat-demuxer assembly (audio truncated right at the seam).
-            w = lockedChunkWidth
-            h = lockedChunkHeight
-        } else {
-            let scale  = UIScreen.main.scale
-            let rawW   = videoWidth  > 0 ? videoWidth  : Int(UIScreen.main.bounds.width  * scale)
-            let rawH   = videoHeight > 0 ? videoHeight : Int(UIScreen.main.bounds.height * scale)
-            // Clamp to 720p on the short side to keep files manageable.
-            let maxShort = 720
-            let shortSide = min(rawW, rawH)
-            let ratio  = shortSide > maxShort ? CGFloat(maxShort) / CGFloat(shortSide) : 1.0
-            w = (Int(CGFloat(rawW) * ratio) / 2) * 2   // must be even
-            h = (Int(CGFloat(rawH) * ratio) / 2) * 2
-            lockedChunkWidth  = w
-            lockedChunkHeight = h
-        }
+        let scale  = UIScreen.main.scale
+        let rawW   = videoWidth  > 0 ? videoWidth  : Int(UIScreen.main.bounds.width  * scale)
+        let rawH   = videoHeight > 0 ? videoHeight : Int(UIScreen.main.bounds.height * scale)
+        // Clamp to 720p on the short side to keep files manageable.
+        let maxShort = 720
+        let shortSide = min(rawW, rawH)
+        let ratio  = shortSide > maxShort ? CGFloat(maxShort) / CGFloat(shortSide) : 1.0
+        let w      = (Int(CGFloat(rawW) * ratio) / 2) * 2   // must be even
+        let h      = (Int(CGFloat(rawH) * ratio) / 2) * 2
 
         // ── Bitrate ────────────────────────────────────────────────────────────
         // Broadcast-sourced chunks (Share Screen, especially with a camera
@@ -1481,6 +1503,11 @@ import CoreVideo
         finaliseChunk(isFinal: isFinal) { [weak self] _ in
             guard let self = self else { result(nil); return }
             self.isBroadcasting = false
+            // If the whole session ends while a broadcast was still active,
+            // don't leave the audio session parked in the non-ducking
+            // .videoRecording mode for the rest of the app's lifetime — see
+            // configureAudioSessionForBroadcastShare's doc comment.
+            self.configureAudioSessionForRecording()
             self.stopCaptureThenSignal(result: result)
         }
     }
@@ -2028,6 +2055,11 @@ import CoreVideo
                 // active broadcast writer exists yet, so there's no race to
                 // protect against. Safe to flip isBroadcasting immediately.
                 isBroadcasting = false
+                // Harmless no-op if configureAudioSessionForBroadcastShare()
+                // was never actually applied (picker cancelled before the
+                // first broadcast frame) — still correct to re-assert
+                // .videoChat here in case it was.
+                configureAudioSessionForRecording()
                 paused = false
                 beginChunkWriter()
                 NSLog("[SHARE] picker cancelled — RPScreenRecorder resumed at chunk #\(chunkIndex)")
@@ -2062,6 +2094,10 @@ import CoreVideo
                 finaliseChunk(isFinal: false) { [weak self] _ in
                     guard let self = self else { return }
                     self.isBroadcasting = false
+                    // Restore .videoChat mode now that the shared app's
+                    // audio no longer needs un-ducked capture — see
+                    // configureAudioSessionForBroadcastShare's doc comment.
+                    self.configureAudioSessionForRecording()
                     guard self.recording, !self.stopping, !self.paused else { return }
                     self.chunkIndex += 1
                     self.beginChunkWriter()
@@ -2070,6 +2106,7 @@ import CoreVideo
             }
         } else {
             isBroadcasting = false
+            configureAudioSessionForRecording()
         }
         result(nil)
     }
@@ -2239,6 +2276,10 @@ import CoreVideo
     private func onDarwinStopNotif() {
         NSLog("[SHARE] broadcast extension finished (Darwin stop)")
         isBroadcasting = false
+        // Restore .videoChat mode (AEC/NS for the live call) now that the
+        // shared app's audio no longer needs to be captured un-ducked —
+        // see configureAudioSessionForBroadcastShare's doc comment.
+        configureAudioSessionForRecording()
         removeDarwinListeners()
         pickerWatchdog?.invalidate()
         pickerWatchdog = nil
@@ -2304,6 +2345,11 @@ import CoreVideo
                 // resumed RPScreenRecorder on a no-show is no longer needed.
                 pickerWatchdog?.invalidate()
                 pickerWatchdog = nil
+                // Switch OFF the auto-ducking .videoChat mode NOW, before any
+                // real system audio from the shared app has a chance to be
+                // rendered (and silently attenuated) under the old mode —
+                // see configureAudioSessionForBroadcastShare's doc comment.
+                configureAudioSessionForBroadcastShare()
                 NSLog("[SHARE] first broadcast frame — switching recording source")
                 // If recording was paused by showBroadcastPicker (to protect
                 // against the iOS overlay suspension window), resume it now.
