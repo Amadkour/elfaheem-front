@@ -116,6 +116,18 @@ import CoreVideo
     private var audioSamplesAppendedThisChunk: Int = 0
     private var sysAudioSamplesSeenThisChunk: Int = 0
     private var sysAudioSamplesAppendedThisChunk: Int = 0
+    // Peak absolute sample value (normalized 0.0–1.0) seen in system-audio
+    // payloads THIS CHUNK. This is the key diagnostic for "shared audio is
+    // very quiet/absent": sysAudioSeen>0 with sysAudioPeak sitting at
+    // (or extremely near) 0.0 for the WHOLE recording proves ReplayKit is
+    // handing us literal silence/zeroed-out buffers for the specific app
+    // being shared — a documented, longstanding ReplayKit limitation for
+    // certain apps (Apple has open radars on this; it is NOT something
+    // fixable from gain/ducking/loudnorm on our side, since there is no
+    // real signal to amplify). A non-trivial peak (say > 0.02) means real
+    // signal IS arriving and any remaining quietness is a mixing/gain
+    // question further down the pipeline, not a capture problem.
+    private var sysAudioPeakThisChunk: Float = 0.0
     private var writerQueue = DispatchQueue(label: "com.elfaheem.writer", qos: .userInitiated)
     // Same reasoning as audioIpcReadQueue above, one level further down the
     // pipeline: writerQueue does video JPEG decode + append (expensive) AND
@@ -1602,10 +1614,12 @@ import CoreVideo
         let audioAppended = audioSamplesAppendedThisChunk
         let sysAudioSeen     = sysAudioSamplesSeenThisChunk
         let sysAudioAppended = sysAudioSamplesAppendedThisChunk
+        let sysAudioPeak     = sysAudioPeakThisChunk
         audioSamplesSeenThisChunk     = 0
         audioSamplesAppendedThisChunk = 0
         sysAudioSamplesSeenThisChunk     = 0
         sysAudioSamplesAppendedThisChunk = 0
+        sysAudioPeakThisChunk = 0.0
         writerQueue.async { [weak self] in
             vi.markAsFinished()
             ai.markAsFinished()
@@ -1636,9 +1650,18 @@ import CoreVideo
                 // dropped by the ordering guard above. Both > 0 but the
                 // final assembled video still has no sound ⇒ look at the
                 // server's ffmpeg concat/transcode step instead.
+                //
+                // sysAudioPeak is the critical one for "shared video sound
+                // is very quiet/missing": sysAudioSeen>0 with sysAudioPeak
+                // ≈ 0.0000 for the WHOLE recording means ReplayKit handed
+                // us real sample-count but literally silent/zeroed PCM for
+                // this specific shared app — a ReplayKit-level limitation,
+                // not fixable via audio-session/gain changes. A non-trivial
+                // sysAudioPeak (> ~0.02) proves real signal IS arriving.
                 NSLog("[REC] finalised chunk #\(idx) (\(size)B isFinal=\(isFinal) "
                       + "audioSeen=\(audioSeen) audioAppended=\(audioAppended) "
-                      + "sysAudioSeen=\(sysAudioSeen) sysAudioAppended=\(sysAudioAppended))")
+                      + "sysAudioSeen=\(sysAudioSeen) sysAudioAppended=\(sysAudioAppended) "
+                      + "sysAudioPeak=\(String(format: "%.5f", sysAudioPeak)))")
                 self?.enqueueUpload {
                     self?.uploadChunkAsync(fileURL: fileURL, index: idx, isFinal: isFinal)
                 }
@@ -2423,6 +2446,10 @@ import CoreVideo
         systemAudioQueue.async { [weak self] in
             guard let self = self else { return }
             self.sysAudioSamplesSeenThisChunk += 1
+            self.sysAudioPeakThisChunk = max(
+                self.sysAudioPeakThisChunk,
+                Self.peakAmplitude(pcm, isFloat: isFloat)
+            )
 
             guard let writer = self.assetWriter, writer.status == .writing,
                   self.writerSessionStarted else {
@@ -2503,6 +2530,41 @@ import CoreVideo
                 isFloat: frame.isFloat, pcm: frame.pcm, ptsNs: frame.ptsNs
             )
         }
+    }
+
+    /// Cheap peak-amplitude scan (normalized 0.0–1.0) of a raw PCM buffer,
+    /// used purely for the sysAudioPeak diagnostic in finaliseChunk's log
+    /// line — see sysAudioPeakThisChunk's doc comment for what this is
+    /// actually being used to distinguish (real-but-quiet vs. literally
+    /// silent/zeroed samples from ReplayKit). Sampling every 8th value is
+    /// deliberate: this runs on every system-audio packet and only needs to
+    /// answer "is there ANY meaningful signal here", not produce a
+    /// perfectly exact peak — full-buffer precision isn't worth the extra
+    /// CPU on every single packet.
+    private static func peakAmplitude(_ pcm: Data, isFloat: Bool) -> Float {
+        var peak: Float = 0.0
+        pcm.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
+            if isFloat {
+                let count = raw.count / MemoryLayout<Float>.size
+                guard count > 0 else { return }
+                let floats = raw.bindMemory(to: Float.self)
+                var i = 0
+                while i < count {
+                    peak = max(peak, abs(floats[i]))
+                    i += 8
+                }
+            } else {
+                let count = raw.count / MemoryLayout<Int16>.size
+                guard count > 0 else { return }
+                let ints = raw.bindMemory(to: Int16.self)
+                var i = 0
+                while i < count {
+                    peak = max(peak, abs(Float(ints[i]) / Float(Int16.max)))
+                    i += 8
+                }
+            }
+        }
+        return peak
     }
 }
 
