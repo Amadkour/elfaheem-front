@@ -18,43 +18,15 @@
 //   1. SampleHandler serialises each video frame (and each .audioApp — the
 //      SHARED APP'S OWN audio, e.g. a video/game playing on the shared
 //      screen) into a binary blob.
-//   2. Writes it to the App Group shared container:
-//        <AppGroup>/broadcast_frame.bin              (video — single
-//                                                       "mailbox" file,
-//                                                       overwritten each
-//                                                       frame; fine because
-//                                                       video arrives slowly,
-//                                                       every ~33-100ms)
-//        <AppGroup>/broadcast_audio_queue/aud_NNNNNNNNNN.bin   (system/app
-//                                                       audio — see note
-//                                                       below for why this
-//                                                       one is a QUEUE, not
-//                                                       a single file)
+//   2. Writes it atomically to the App Group shared container:
+//        <AppGroup>/broadcast_frame.bin   (video)
+//        <AppGroup>/broadcast_audio.bin   (system/app audio)
 //   3. Posts a Darwin notification per type: "…flutter_education_app.frame"
 //      / "…flutter_education_app.audioframe".
 //   4. AppDelegate receives the notification (Darwin center crosses the
-//      sandbox boundary safely), reads the corresponding file(s), decodes,
+//      sandbox boundary safely), reads the corresponding file, decodes,
 //      and writes to the AVAssetWriter recording chunk.
 //   5. On broadcast end, posts "…flutter_education_app.stop".
-//
-//   WHY AUDIO USES A QUEUE DIRECTORY INSTEAD OF ONE FILE (unlike video):
-//   .audioApp buffers arrive every ~10-25ms — much faster than video frames,
-//   on the same order as the cross-process notify→read→decode round trip.
-//   A single "last write wins" file for something arriving that fast causes
-//   two failure modes at once: (a) this handler overwrites the file with
-//   buffer N+1 before the host has read buffer N, silently losing N; and
-//   (b) since Darwin notifications carry no payload and aren't guaranteed
-//   1:1 with posts, the host's serialized read tasks can fire twice before
-//   this handler writes anything new, so it reads the SAME file content
-//   twice — which decodes to the exact same timestamp and gets rejected as
-//   "non-monotonic" on the host side. In practice that dropped the large
-//   majority of shared-app audio for the ENTIRE broadcast (not just at the
-//   edges), which is what actually made screen-share recordings come out
-//   with no shared-app sound. Giving every buffer its own sequentially
-//   numbered file turns the Darwin notification into a plain "there's new
-//   work, go look" wake-up instead of a fragile 1-buffer mailbox — the host
-//   drains whatever has piled up, in order, and nothing is silently
-//   clobbered or double-read.
 //
 //   NOTE: the teacher's own MIC audio is NOT sent from here — it is
 //   forwarded separately from the host app via room.dart's
@@ -77,40 +49,27 @@ import ReplayKit
 import CoreMedia
 import CoreVideo
 import CoreAudio
+import AudioToolbox
 
-private let kAppGroup          = "group.com.softkour.alfaheem"
-private let kDarwinFrameNotif  = "com.example.flutter_education_app.frame"
+private let kAppGroup         = "group.com.softkour.alfaheem"
+private let kDarwinFrameNotif = "com.example.flutter_education_app.frame"
 // NEW: system/app audio (the audio OF the app being shared — e.g. a video
-// or game playing on the shared screen). Deliberately its own Darwin
-// notification, separate from the video frame notification — but note this
-// is now backed by a QUEUE DIRECTORY, not a single file (see header comment
-// above for why: .audioApp buffers arrive far too fast for a 1-slot mailbox
-// to keep up with, which was silently eating almost all of this audio).
-private let kDarwinAudioNotif  = "com.example.flutter_education_app.audioframe"
-private let kDarwinStopNotif   = "com.example.flutter_education_app.stop"
-private let kFrameFileName     = "broadcast_frame.bin"
-private let kAudioQueueDirName = "broadcast_audio_queue"
-// Filenames are zero-padded so lexicographic directory listing order is
-// also numeric/chronological order — the host just needs to sort the
-// directory listing, no need to parse/compare anything.
-private let kAudioSeqPad = 10
+// or game playing on the shared screen). This is a SEPARATE file+notification
+// pair from the video frame, deliberately — video and audio buffers arrive
+// concurrently from ReplayKit on independent internal queues, and reusing a
+// single "last write wins" file for both would silently drop whichever one
+// lost the race, exactly like the original single-file design would if we
+// crammed both types through it.
+private let kDarwinAudioNotif = "com.example.flutter_education_app.audioframe"
+private let kDarwinStopNotif  = "com.example.flutter_education_app.stop"
+private let kFrameFileName    = "broadcast_frame.bin"
+private let kAudioFileName    = "broadcast_audio.bin"
 
 class SampleHandler: RPBroadcastSampleHandler {
 
     // Resolved once in broadcastStarted() and reused for every frame.
     private var frameFileURL: URL?
-    private var audioQueueDirURL: URL?
-    // Monotonically increasing per-broadcast sequence number, one per
-    // .audioApp buffer written. Encoded into the filename so the host can
-    // drain the directory in the exact order buffers were produced.
-    private var audioSeq: UInt64 = 0
-    // Soft cap on how many not-yet-consumed audio files can pile up in the
-    // queue directory. Under normal conditions the host drains this almost
-    // as fast as it's written; this only protects against runaway disk
-    // usage in the App Group container in the pathological case where the
-    // host stops reading entirely (e.g. suspended) for an extended period.
-    // ~1200 files at a ~15ms buffer interval is ~18s of buffered audio.
-    private let kAudioQueueSoftCap = 1200
+    private var audioFileURL: URL?
 
     override func broadcastStarted(withSetupInfo setupInfo: [String: NSObject]?) {
         // Resolve the shared container URL.
@@ -126,18 +85,7 @@ class SampleHandler: RPBroadcastSampleHandler {
             return
         }
         frameFileURL = container.appendingPathComponent(kFrameFileName)
-
-        let queueDir = container.appendingPathComponent(kAudioQueueDirName)
-        // Clear out anything left over from a previous broadcast (e.g. one
-        // that crashed or was force-stopped before the host finished
-        // draining it) so stale audio never leaks into a new recording.
-        try? FileManager.default.removeItem(at: queueDir)
-        try? FileManager.default.createDirectory(
-            at: queueDir, withIntermediateDirectories: true
-        )
-        audioQueueDirURL = queueDir
-        audioSeq = 0
-
+        audioFileURL = container.appendingPathComponent(kAudioFileName)
         NSLog("[SampleHandler] started — container: \(container.path)")
     }
 
@@ -165,11 +113,8 @@ class SampleHandler: RPBroadcastSampleHandler {
             // already forwarded separately in the host app via the LiveKit
             // audio tap (see room.dart's _startLiveKitAudioTap). Forwarding
             // this too lets the recording include both.
-            //
-            // Queued write (own file per buffer), NOT the single-mailbox
-            // `write()` used for video — see the header comment for why.
             guard let data = serialiseAudio(sampleBuffer) else { return }
-            writeQueuedAudio(data)
+            write(data, to: audioFileURL, notif: kDarwinAudioNotif)
 
         case .audioMic:
             // Still intentionally dropped: this extension has no mic
@@ -242,30 +187,84 @@ class SampleHandler: RPBroadcastSampleHandler {
         let pts   = CMSampleBufferGetPresentationTimeStamp(sb)
         let ptsNs = UInt64(max(0, CMTimeGetSeconds(pts) * 1_000_000_000))
 
+        let channels = Int(asbd.mChannelsPerFrame)
+        guard channels > 0 else { return nil }
+
+        // Allocate room for up to `channels` separate buffers, not just 1.
+        // The previous version always sized this for exactly one AudioBuffer
+        // (MemoryLayout<AudioBufferList>.size), which is only correct for
+        // INTERLEAVED audio (one buffer holding all channels). ReplayKit's
+        // system audio can legitimately be delivered NON-INTERLEAVED
+        // (planar) instead — one buffer per channel. If that happened here,
+        // the old code would read ONLY buffer 0 (e.g. just the Left channel
+        // for stereo) while still reporting channels=2 in the wire payload
+        // — the decoder then pairs up consecutive mono samples as fake L/R
+        // stereo frames, which sounds like harsh noise/static, not the real
+        // audio. Sizing for the real buffer count and explicitly handling
+        // both layouts (interleaving planar channels ourselves before
+        // sending) fixes that regardless of which layout this device uses.
+        let listPointer = AudioBufferList.allocate(maximumBuffers: channels)
+        defer { free(listPointer.unsafeMutablePointer) }
+        let bufferListSize = MemoryLayout<AudioBufferList>.size
+            + (channels - 1) * MemoryLayout<AudioBuffer>.size
+
         var blockBuffer: CMBlockBuffer?
-        var audioBufferList = AudioBufferList()
         let status = CMSampleBufferGetAudioBufferListWithRetainedBlockBuffer(
             sb,
             bufferListSizeNeededOut: nil,
-            bufferListOut: &audioBufferList,
-            bufferListSize: MemoryLayout<AudioBufferList>.size,
+            bufferListOut: listPointer.unsafeMutablePointer,
+            bufferListSize: bufferListSize,
             blockBufferAllocator: nil,
             blockBufferMemoryAllocator: nil,
             flags: kCMSampleBufferFlag_AudioBufferList_Assure16ByteAlignment,
             blockBufferOut: &blockBuffer
         )
-        guard status == noErr,
-              let buffer = audioBufferList.mBuffers.mData,
-              audioBufferList.mBuffers.mDataByteSize > 0 else { return nil }
+        guard status == noErr else { return nil }
 
-        let pcmData = Data(bytes: buffer, count: Int(audioBufferList.mBuffers.mDataByteSize))
-        let sampleRate = UInt32(asbd.mSampleRate)
-        let channels   = asbd.mChannelsPerFrame
         let isFloat: UInt32 = (asbd.mFormatFlags & kAudioFormatFlagIsFloat) != 0 ? 1 : 0
+        let bytesPerSample  = isFloat == 1 ? 4 : 2
+        let numBuffers      = Int(listPointer.unsafeMutablePointer.pointee.mNumberBuffers)
+
+        var pcmData: Data
+        if numBuffers <= 1 {
+            // Interleaved: one buffer already holds every channel in
+            // L,R,L,R... order — use it as-is.
+            guard let buffer = listPointer[0].mData,
+                  listPointer[0].mDataByteSize > 0 else { return nil }
+            pcmData = Data(bytes: buffer, count: Int(listPointer[0].mDataByteSize))
+        } else {
+            // Non-interleaved (planar): one buffer per channel, each
+            // holding that channel's samples back-to-back in mono. Manually
+            // interleave them sample-by-sample into one combined buffer so
+            // the wire format (and the decoder on the other end) can keep
+            // assuming "interleaved" universally rather than needing to
+            // carry a layout flag through the whole pipeline.
+            guard listPointer[0].mData != nil, listPointer[0].mDataByteSize > 0
+            else { return nil }
+            let frameCount = Int(listPointer[0].mDataByteSize) / bytesPerSample
+            var interleaved = Data(count: frameCount * bytesPerSample * numBuffers)
+            let channelPtrs: [UnsafeMutableRawPointer?] = (0..<numBuffers).map { listPointer[$0].mData }
+            guard channelPtrs.allSatisfy({ $0 != nil }) else { return nil }
+
+            interleaved.withUnsafeMutableBytes { (dst: UnsafeMutableRawBufferPointer) in
+                for frame in 0..<frameCount {
+                    for ch in 0..<numBuffers {
+                        let srcOffset = frame * bytesPerSample
+                        let dstOffset = (frame * numBuffers + ch) * bytesPerSample
+                        let src = channelPtrs[ch]!.advanced(by: srcOffset)
+                        dst.baseAddress!.advanced(by: dstOffset)
+                            .copyMemory(from: src, byteCount: bytesPerSample)
+                    }
+                }
+            }
+            pcmData = interleaved
+        }
+
+        let sampleRate = UInt32(asbd.mSampleRate)
 
         var payload = Data(capacity: 9 + pcmData.count)
         var sr = sampleRate.bigEndian
-        var ch = channels.bigEndian
+        var ch = UInt32(channels).bigEndian
         var fl = isFloat.bigEndian
         payload.append(Data(bytes: &sr, count: 4))
         payload.append(Data(bytes: &ch, count: 4))
@@ -286,59 +285,11 @@ class SampleHandler: RPBroadcastSampleHandler {
 
     // ── File write + Darwin notification ──────────────────────────────────────
 
-    /// Single-"mailbox"-file write, used only for video frames. Video
-    /// arrives slowly enough (~33-100ms apart) that overwrite-and-notify is
-    /// fine — occasionally losing a frame to the race is imperceptible.
-    /// Do NOT use this for .audioApp; see writeQueuedAudio below.
     private func write(_ data: Data, to url: URL?, notif: String) {
         guard let url = url else { return }
         // Write atomically so the host app never reads a partial file.
         try? data.write(to: url, options: .atomic)
         notify(notif)
-    }
-
-    /// Queued write for .audioApp buffers: each buffer gets its OWN file
-    /// (sequence-numbered) instead of overwriting a shared one. This is
-    /// the actual fix for shared-app audio going missing from recordings —
-    /// see the header comment for the full explanation of why a single
-    /// mailbox file can't keep up with ~10-25ms audio buffer intervals.
-    /// The Darwin notification here is just a "go check the directory"
-    /// wake-up; it's fine (and expected) if several of these coalesce into
-    /// fewer deliveries, since the host always drains everything present.
-    private func writeQueuedAudio(_ data: Data) {
-        guard let dir = audioQueueDirURL else { return }
-
-        audioSeq += 1
-        // Manual zero-padding rather than String(format: "%d", …) — %d
-        // expects Int32 in Swift's C-variadic bridging, which is not a
-        // reliable match for UInt64 on every platform/architecture.
-        let seqStr = String(audioSeq)
-        let padded = String(repeating: "0", count: max(0, kAudioSeqPad - seqStr.count)) + seqStr
-        let name   = "aud_\(padded).bin"
-        let url    = dir.appendingPathComponent(name)
-
-        // Soft cap: if the host has stopped draining (e.g. suspended) for
-        // long enough that a large backlog has built up, drop new buffers
-        // rather than growing the App Group container without bound. This
-        // only ever engages in a pathological stall — under normal
-        // operation the host drains this directory continuously.
-        if audioSeq % 100 == 0 {
-            let pending = (try? FileManager.default.contentsOfDirectory(
-                at: dir, includingPropertiesForKeys: nil
-            ).count) ?? 0
-            if pending > kAudioQueueSoftCap {
-                NSLog("[SampleHandler] audio queue backlog (\(pending)) exceeds cap — dropping buffer")
-                return
-            }
-        }
-
-        do {
-            try data.write(to: url, options: .atomic)
-        } catch {
-            NSLog("[SampleHandler] audio queue write failed: \(error)")
-            return
-        }
-        notify(kDarwinAudioNotif)
     }
 
     private func notify(_ name: String) {
