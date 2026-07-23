@@ -153,6 +153,10 @@ import CoreVideo
     private var paused        = false
     private var stopping      = false
     private var audioSessionObserver: NSObjectProtocol?
+    // See startAudioSessionObserver's doc comment — this is what actually
+    // keeps the shared app's audio un-ducked for the WHOLE share, not just
+    // the first second of it.
+    private var audioSessionReassertTimer: Timer?
 
     private func startAudioSessionObserver() {
         audioSessionObserver = NotificationCenter.default.addObserver(
@@ -166,12 +170,46 @@ import CoreVideo
             self.configureAudioSessionForBroadcastShare()
             NSLog("[REC] Audio session observer: re-applied broadcast-share mode after route change")
         }
+
+        // WHY A TIMER, NOT JUST THE ROUTE-CHANGE OBSERVER ABOVE:
+        // LiveKit's WebRTC audio engine manages AVAudioSession on ITS OWN
+        // internal triggers too (track publish/subscribe, mic mute toggles,
+        // internal route/session bookkeeping) — not just route changes we
+        // can observe. It can silently revert our non-ducking
+        // .videoRecording mode back to its own .videoChat default on one of
+        // those triggers, without posting a routeChangeNotification at all.
+        // That's exactly what was producing "shared audio is fine for
+        // about a second, then goes quiet for the rest of the share": our
+        // one-time switch wins briefly, then LiveKit's own reconfiguration
+        // silently stomps it, and nothing we're observing fires to let us
+        // re-win it. Rather than depend on WebRTC/LiveKit's internal APIs
+        // directly (risky to link against from this target without
+        // knowing the exact module name this project vendors), just keep
+        // re-winning that fight for the whole share: re-assert our config
+        // on a short repeating timer regardless of whether anything
+        // observable changed. configureAudioSessionForBroadcastShare() is
+        // a cheap no-op when the session is already correctly configured,
+        // so polling this often is safe.
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.audioSessionReassertTimer?.invalidate()
+            self.audioSessionReassertTimer = Timer.scheduledTimer(
+                withTimeInterval: 0.5, repeats: true
+            ) { [weak self] _ in
+                guard let self = self, self.isBroadcasting else { return }
+                self.configureAudioSessionForBroadcastShare()
+            }
+        }
     }
 
     private func stopAudioSessionObserver() {
         if let observer = audioSessionObserver {
             NotificationCenter.default.removeObserver(observer)
             audioSessionObserver = nil
+        }
+        DispatchQueue.main.async { [weak self] in
+            self?.audioSessionReassertTimer?.invalidate()
+            self?.audioSessionReassertTimer = nil
         }
     }
     // ── Upload URLSession ─────────────────────────────────────────────────────
