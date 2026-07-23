@@ -18,13 +18,32 @@
 //   1. SampleHandler serialises each video frame (and each .audioApp — the
 //      SHARED APP'S OWN audio, e.g. a video/game playing on the shared
 //      screen) into a binary blob.
-//   2. Writes it atomically to the App Group shared container:
-//        <AppGroup>/broadcast_frame.bin   (video)
-//        <AppGroup>/broadcast_audio.bin   (system/app audio)
+//   2. VIDEO is written atomically to a single fixed file:
+//        <AppGroup>/broadcast_frame.bin
+//      This is fine for video — frames arrive only a few times a second,
+//      slow enough that "last write wins" never loses one before the host
+//      reads it.
+//      AUDIO is DIFFERENT: .audioApp buffers arrive every ~10-25ms, which
+//      is fast enough that a single fixed filename becomes a race — the
+//      extension can overwrite the file again before the host's Darwin
+//      callback gets around to reading it, or the host can read the exact
+//      same (not-yet-overwritten) file twice. That second case is the
+//      dangerous one: the host feeds the same audio blob to the writer
+//      twice, gets a duplicate/non-monotonic timestamp, and the writer's
+//      strictly-increasing-PTS guard then silently rejects it and every
+//      write after it — which looks exactly like "audio works for the
+//      first sample then goes silent for the rest of the share". So each
+//      audio sample instead gets its OWN sequentially-numbered file under
+//      a queue directory:
+//        <AppGroup>/broadcast_audio_queue/aud_0000000001.bin
+//        <AppGroup>/broadcast_audio_queue/aud_0000000002.bin  ...
+//      Nothing is ever overwritten, so there is nothing to race — the host
+//      just drains the directory in filename order on each notification
+//      (see AppDelegate's drainAudioQueueDirectory).
 //   3. Posts a Darwin notification per type: "…flutter_education_app.frame"
 //      / "…flutter_education_app.audioframe".
 //   4. AppDelegate receives the notification (Darwin center crosses the
-//      sandbox boundary safely), reads the corresponding file, decodes,
+//      sandbox boundary safely), reads the corresponding file(s), decodes,
 //      and writes to the AVAssetWriter recording chunk.
 //   5. On broadcast end, posts "…flutter_education_app.stop".
 //
@@ -53,23 +72,36 @@ import AudioToolbox
 
 private let kAppGroup         = "group.com.softkour.alfaheem"
 private let kDarwinFrameNotif = "com.example.flutter_education_app.frame"
-// NEW: system/app audio (the audio OF the app being shared — e.g. a video
-// or game playing on the shared screen). This is a SEPARATE file+notification
-// pair from the video frame, deliberately — video and audio buffers arrive
-// concurrently from ReplayKit on independent internal queues, and reusing a
-// single "last write wins" file for both would silently drop whichever one
-// lost the race, exactly like the original single-file design would if we
-// crammed both types through it.
-private let kDarwinAudioNotif = "com.example.flutter_education_app.audioframe"
-private let kDarwinStopNotif  = "com.example.flutter_education_app.stop"
-private let kFrameFileName    = "broadcast_frame.bin"
-private let kAudioFileName    = "broadcast_audio.bin"
+// System/app audio (the audio OF the app being shared — e.g. a video or
+// game playing on the shared screen). Posted once per audio sample, same
+// as the video notification, but the payload lives in a QUEUE DIRECTORY
+// of numbered files rather than one fixed filename — see the header
+// comment above for why a single overwritten file silently muted audio
+// after the first sample.
+private let kDarwinAudioNotif   = "com.example.flutter_education_app.audioframe"
+private let kDarwinStopNotif    = "com.example.flutter_education_app.stop"
+private let kFrameFileName      = "broadcast_frame.bin"
+// Must match AppDelegate's kAudioQueueDirName exactly.
+private let kAudioQueueDirName  = "broadcast_audio_queue"
+// Width of the zero-padded sequence number in each audio filename
+// (e.g. "aud_0000000001.bin"). Fixed width is required so AppDelegate's
+// drainAudioQueueDirectory can rely on a plain string sort to recover
+// chronological order — must match what AppDelegate assumes.
+private let kAudioSeqPad        = 10
 
 class SampleHandler: RPBroadcastSampleHandler {
 
     // Resolved once in broadcastStarted() and reused for every frame.
     private var frameFileURL: URL?
-    private var audioFileURL: URL?
+    // Directory each audio sample gets its own numbered file under —
+    // see kAudioQueueDirName's doc comment for why this replaced a single
+    // fixed audio file.
+    private var audioQueueDirURL: URL?
+    // Monotonically increasing per-broadcast counter used to name each
+    // audio sample's file (aud_0000000001.bin, aud_0000000002.bin, ...).
+    // Only ever touched from processSampleBuffer's .audioApp case, which
+    // ReplayKit calls serially, so no locking is needed.
+    private var audioSeq: UInt64 = 0
 
     // Reused across every audio callback rather than allocated+freed per
     // frame. Broadcast extensions have a very tight CPU/memory budget, and
@@ -97,7 +129,20 @@ class SampleHandler: RPBroadcastSampleHandler {
             return
         }
         frameFileURL = container.appendingPathComponent(kFrameFileName)
-        audioFileURL = container.appendingPathComponent(kAudioFileName)
+
+        let audioDir = container.appendingPathComponent(kAudioQueueDirName)
+        // AppDelegate's registerDarwinListeners() already wipes+recreates
+        // this directory right before the broadcast picker is shown, but
+        // create it defensively here too in case the extension is ever
+        // launched without that having run first — writing into a
+        // directory that doesn't exist yet would silently no-op every
+        // audio sample for the whole broadcast.
+        try? FileManager.default.createDirectory(
+            at: audioDir, withIntermediateDirectories: true
+        )
+        audioQueueDirURL = audioDir
+        audioSeq = 0
+
         NSLog("[SampleHandler] started — container: \(container.path)")
         NSLog("[SampleHandler] BUILD-CHECK-\(Date()) started")
     }
@@ -110,6 +155,7 @@ class SampleHandler: RPBroadcastSampleHandler {
         audioListBuffer?.deallocate()
         audioListBuffer = nil
         audioListBufferSize = 0
+        audioSeq = 0
         NSLog("[SampleHandler] finished — stop notification posted")
     }
 
@@ -131,7 +177,7 @@ class SampleHandler: RPBroadcastSampleHandler {
                 return
             }
             guard let data = serialiseAudio(sampleBuffer) else { return }
-            write(data, to: audioFileURL, notif: kDarwinAudioNotif)
+            writeAudioSample(data)
 
         case .audioMic:
             // Still intentionally dropped: this extension has no mic
@@ -323,6 +369,31 @@ class SampleHandler: RPBroadcastSampleHandler {
         // Write atomically so the host app never reads a partial file.
         try? data.write(to: url, options: .atomic)
         notify(notif)
+    }
+
+    /// Writes ONE audio sample to its own file in the queue directory and
+    /// posts the audio Darwin notification. Deliberately never reuses a
+    /// filename — each call gets the next sequence number, so there is
+    /// nothing for a fast producer / slower consumer to race over (unlike
+    /// the old single fixed-file design, which could get overwritten
+    /// before the host read it, or read twice yielding a duplicate
+    /// timestamp — see this file's header comment for why that silenced
+    /// audio after the very first sample).
+    private func writeAudioSample(_ data: Data) {
+        guard let dir = audioQueueDirURL else { return }
+        let seq = audioSeq
+        audioSeq += 1
+        let fileURL = dir.appendingPathComponent("aud_\(paddedSeq(seq)).bin")
+        try? data.write(to: fileURL, options: .atomic)
+        notify(kDarwinAudioNotif)
+    }
+
+    /// Zero-pads `n` to kAudioSeqPad digits (e.g. 42 → "0000000042") so a
+    /// plain string sort on the host side is also chronological order.
+    private func paddedSeq(_ n: UInt64) -> String {
+        let s = String(n)
+        guard s.count < kAudioSeqPad else { return s }
+        return String(repeating: "0", count: kAudioSeqPad - s.count) + s
     }
 
     private func notify(_ name: String) {
