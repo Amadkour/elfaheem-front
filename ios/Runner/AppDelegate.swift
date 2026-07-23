@@ -152,7 +152,28 @@ import CoreVideo
     private var recording     = false
     private var paused        = false
     private var stopping      = false
+    private var audioSessionObserver: NSObjectProtocol?
 
+    private func startAudioSessionObserver() {
+        audioSessionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.routeChangeNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: .main
+        ) { [weak self] _ in
+            guard let self = self, self.isBroadcasting else { return }
+            // Re-assert non-ducking mode every time the session changes
+            // while a broadcast is active. Cheap no-op if already correct.
+            self.configureAudioSessionForBroadcastShare()
+            NSLog("[REC] Audio session observer: re-applied broadcast-share mode after route change")
+        }
+    }
+
+    private func stopAudioSessionObserver() {
+        if let observer = audioSessionObserver {
+            NotificationCenter.default.removeObserver(observer)
+            audioSessionObserver = nil
+        }
+    }
     // ── Upload URLSession ─────────────────────────────────────────────────────
     //
     // URLSession.shared is cancelled by LiveKit's WebRTC stack when it tears
@@ -2129,7 +2150,9 @@ import CoreVideo
             }
         } else {
             isBroadcasting = false
+            stopAudioSessionObserver()  // ← NEW
             configureAudioSessionForRecording()
+
         }
         result(nil)
     }
@@ -2302,6 +2325,7 @@ import CoreVideo
         // Restore .videoChat mode (AEC/NS for the live call) now that the
         // shared app's audio no longer needs to be captured un-ducked —
         // see configureAudioSessionForBroadcastShare's doc comment.
+        stopAudioSessionObserver()  // ← NEW
         configureAudioSessionForRecording()
         removeDarwinListeners()
         pickerWatchdog?.invalidate()
@@ -2324,6 +2348,7 @@ import CoreVideo
                 }
             }
         }
+        stopAudioSessionObserver()
     }
 
     /// Parse a frame blob and route it to the writer.
@@ -2374,6 +2399,8 @@ import CoreVideo
                 // see configureAudioSessionForBroadcastShare's doc comment.
                 configureAudioSessionForBroadcastShare()
                 NSLog("[SHARE] first broadcast frame — switching recording source")
+                startAudioSessionObserver()
+
                 // If recording was paused by showBroadcastPicker (to protect
                 // against the iOS overlay suspension window), resume it now.
                 // The extension is running, iOS has fully resumed, it's safe to write.

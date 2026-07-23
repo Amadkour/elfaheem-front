@@ -123,12 +123,13 @@ class SampleHandler: RPBroadcastSampleHandler {
             write(data, to: frameFileURL, notif: kDarwinFrameNotif)
 
         case .audioApp:
-            // This is the audio OF THE SHARED APP/SCREEN (e.g. a video or
-            // game playing on the foreign app being broadcast) — genuinely
-            // different content from the teacher's own mic, which is
-            // already forwarded separately in the host app via the LiveKit
-            // audio tap (see room.dart's _startLiveKitAudioTap). Forwarding
-            // this too lets the recording include both.
+            guard let formatDesc = CMSampleBufferGetFormatDescription(sampleBuffer),
+                  let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(formatDesc),
+                  asbd.pointee.mFormatID == kAudioFormatLinearPCM
+            else {
+                // Non-PCM (e.g. AAC from DRM-protected apps) — skip, can't forward
+                return
+            }
             guard let data = serialiseAudio(sampleBuffer) else { return }
             write(data, to: audioFileURL, notif: kDarwinAudioNotif)
 

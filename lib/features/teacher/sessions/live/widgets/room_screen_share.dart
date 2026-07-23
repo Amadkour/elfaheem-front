@@ -377,6 +377,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
                 () => local.setScreenShareEnabled(true).catchError((_) {}),
           ),
         );
+        await Future.delayed(const Duration(milliseconds: 300));
 
         // Show the "Start Broadcast" confirmation sheet for OUR extension.
         // Internally this: pauses RPScreenRecorder, finalises + rotates chunk,
