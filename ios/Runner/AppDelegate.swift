@@ -813,6 +813,26 @@ import CoreVideo
 
     private func configureAudioSessionForBroadcastShare() {
         let session = AVAudioSession.sharedInstance()
+
+        // IMPORTANT: setCategory/setActive interrupt the underlying Core
+        // Audio I/O even when the values being set are IDENTICAL to what's
+        // already active — mic capture and the shared-app audio capture
+        // both briefly glitch. That's fine for a one-off call, but this
+        // function is now also polled every 0.5s by the reassert timer in
+        // startAudioSessionObserver() to fight LiveKit's own internal
+        // session management — polling that blindly reconfigured a LIVE
+        // session constantly, which is what turned into audible clicking/
+        // noise/static instead of clean audio. So: read the current state
+        // first and only actually touch the session if it's genuinely
+        // drifted away from non-ducking mode. Most polls should hit this
+        // early return and do nothing.
+        let alreadyCorrect =
+            session.category == .playAndRecord &&
+            session.mode == .videoRecording &&
+            session.categoryOptions.contains(.mixWithOthers) &&
+            !session.categoryOptions.contains(.duckOthers)
+        guard !alreadyCorrect else { return }
+
         do {
             try session.setCategory(
                 .playAndRecord,
