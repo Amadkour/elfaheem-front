@@ -109,6 +109,12 @@ import WebRTC
     // a row hit "systemAudioInput not ready" — only one retry needs to be in
     // flight at a time since it drains the whole queue when it fires.
     private var notReadyRetryScheduled = false
+    // True while a not-ready sample is queued and waiting for its retry —
+    // see processSystemAudioFromBroadcast's guard and appendSystemAudioSample's
+    // not-ready branch. Keeps ordering strict: newly-arriving samples queue
+    // up behind the retry instead of appending directly and landing ahead
+    // of it.
+    private var systemAudioBackpressured = false
     // Pixel buffer adaptor for the broadcast-extension path. Broadcast frames
     // arrive as decoded JPEGs (see jpegToPixelBuffer), and MUST be appended
     // through an AVAssetWriterInputPixelBufferAdaptor rather than by manually
@@ -1491,6 +1497,7 @@ import WebRTC
         // fail to append anyway. Drop it rather than let it leak forward.
         systemAudioQueue.async { [weak self] in
             self?.pendingSystemAudioFrames.removeAll()
+            self?.systemAudioBackpressured = false
         }
         // Record the exact geometry this chunk's pixelBufferAdaptor pool was
         // configured with, so processSampleFromBroadcast can always draw
@@ -2655,7 +2662,16 @@ import WebRTC
             self.sysAudioRmsSampleCountThisChunk += stats.count
 
             guard let writer = self.assetWriter, writer.status == .writing,
-                  self.writerSessionStarted else {
+                  self.writerSessionStarted,
+                  // Also route through the pending queue while a not-ready
+                  // retry is outstanding (see appendSystemAudioSample) —
+                  // otherwise this NEWER sample would append directly and
+                  // land ahead of the OLDER one still waiting to retry,
+                  // which then gets rejected as non-monotonic once the
+                  // retry finally runs. Queuing everything behind it keeps
+                  // strict arrival order.
+                  !self.systemAudioBackpressured
+            else {
                 // Writer/session not live yet — this is expected for a brief
                 // window right at the start of each chunk during a screen
                 // share (the session only starts once the first broadcast
@@ -2707,11 +2723,17 @@ import WebRTC
             self.pendingSystemAudioFrames.append(
                 (sampleRate, channels, isFloat, pcm, ptsNs)
             )
+            self.systemAudioBackpressured = true
             if !self.notReadyRetryScheduled {
                 self.notReadyRetryScheduled = true
                 self.systemAudioQueue.asyncAfter(deadline: .now() + 0.02) { [weak self] in
                     guard let self = self else { return }
                     self.notReadyRetryScheduled = false
+                    // Clear optimistically before draining — if the writer
+                    // is still busy, appendSystemAudioSample's not-ready
+                    // branch below will just set this back to true and
+                    // schedule another retry, same as the first time.
+                    self.systemAudioBackpressured = false
                     self.flushPendingSystemAudioFrames()
                 }
             }
