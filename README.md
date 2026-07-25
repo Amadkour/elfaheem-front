@@ -2,65 +2,45 @@
 `UIScene` lifecycle will soon be required. Failure to adopt will result in an assert in the future.
 FlutterView implements focusItemsInRect: - caching for linear focus movement is limited as long as this view is on screen.
 Dart execution mode: JIT
-flutter: The Dart VM service is listening on http://127.0.0.1:50857/ObPC3Wci9xw=/
 12.15.0 - [FirebaseCore][I-COR000008] The project's Bundle ID is inconsistent with either the Bundle ID in 'GoogleService-Info.plist', or the Bundle ID in the options if you are using a customized options. To ensure that everything can be configured correctly, you may need to make the Bundle IDs consistent. To continue with this plist file, you may change your app's bundle identifier to 'com.example.flutterEducationApp'. Or you can download a new configuration file that matches your bundle identifier from https://console.firebase.google.com/ and replace the current one.
 12.15.0 - [FirebaseMessaging][I-FCM001000] FIRMessaging Remote Notifications proxy enabled, will swizzle remote notification receiver handlers. If you'd prefer to manually integrate Firebase Messaging, add "FirebaseAppDelegateProxyEnabled" to your Info.plist, and set it to NO. Follow the instructions at:
 https://firebase.google.com/docs/cloud-messaging/ios/client#method_swizzling_in_firebase_messaging
 to ensure proper integration.
+flutter: The Dart VM service is listening on http://127.0.0.1:51144/LjLQdhDa2rs=/
 [Firebase/Crashlytics] Version 12.15.0
 FlutterView implements focusItemsInRect: - caching for linear focus movement is limited as long as this view is on screen.
-Failed to send CA Event for app launch measurements for ca_event_type: 0 event_name: com.apple.app_launch_measurement.FirstFramePresentationMetric
 no valid “aps-environment” entitlement string found for application
 no valid “aps-environment” entitlement string found for application
 12.15.0 - [FirebaseMessaging][I-FCM012002] Error in application:didFailToRegisterForRemoteNotificationsWithError: no valid “aps-environment” entitlement string found for application
-Failed to send CA Event for app launch measurements for ca_event_type: 1 event_name: com.apple.app_launch_measurement.ExtendedLaunchMetrics
 Reading from public effective user settings.
-Thread Performance Checker: Thread running at User-interactive quality-of-service class waiting on a thread without a QoS class specified (base priority 0). Investigate ways to avoid priority inversions
-PID: 769, TID: 51689
-Backtrace
-=================================================================
-0   Flutter                             0x000000010a5a1f1c _ZN13SkStrikeCache18findOrCreateStrikeERK12SkStrikeSpec + 80
-1   Flutter                             0x000000010a563110 _ZNK6SkFont10getMetricsEP13SkFontMetrics + 72
-2   Flutter                             0x000000010a70d338 _ZN8impeller29MakeTextFrameFromTextBlobSkiaERK5sk_spI10SkTextBlobE + 704
-3   Flutter                             0x000000010a70ac5c _ZN3txt12_GLOBAL__N_127DisplayListParagraphPainter12drawTextBlobERK5sk_spI10SkTextBlobEffRKNSt4__fl7variantIJ7SkPaintiEEE + 732
-4   Flutter                             0x000000010a7a2054 _ZN4skia10textlayout8TextLine5paintEPNS0_16ParagraphPainterEff + 356
-5   Flutter                             0x000000010a79ba44 _ZN4skia10textlayout13ParagraphImpl5paintEPNS0_16ParagraphPainterEff + 72
-6   Flutter                             0x000000010a709420 _ZN3txt13ParagraphSkia5PaintEPN7flutter18DisplayListBuilderEdd + 68
-7   Flutter                             0x000000010a99b104 _ZN4dart9DartEntry14InvokeFunctionERKNS_8FunctionERKNS_5ArrayES6_ + 596
-8   Flutter                             0x000000010adc969c Dart_InvokeClosure + 1268
-9   Flutter                             0x000000010a872e04 _ZN7flutter5Shell20OnAnimatorBeginFrameEN3fml9TimePointEy + 768
-10  Flutter                             0x000000010a854e94 _ZNSt4__fl10__function6__funcIZN7flutter8Animator10AwaitVSyncEvE3$_0NS_9allocatorIS4_EEFvNS_10unique_ptrINS2_20FrameTimingsRecorderENS_14default_deleteIS8_EEEEEEclEOSB_ + 1248
-11  Flutter                             0x000000010a886250 _ZNSt4__fl10__function6__funcIZN7flutter11VsyncWaiter12FireCallbackEN3fml9TimePointES5_bE3$_0NS_9allocatorIS6_EEFvvEEclEv + 856
-12  Flutter                             0x000000010a4a6060 _ZN3fml15MessageLoopImpl10FlushTasksENS_9FlushTypeE + 336
-13  Flutter                             0x000000010a4aab1c _ZN3fml17MessageLoopDarwin11OnTimerFireEP16__CFRunLoopTimerPS0_ + 32
-14  CoreFoundation                      0x0000000192dd3960 DDA24297-289C-30EC-8228-4C426AAD4D7F + 452960
-15  CoreFoundation                      0x0000000192dd3658 DDA24297-289C-30EC-8228-4C426AAD4D7F + 452184
-16  CoreFoundation                      0x0000000192dd31cc DDA24297-289C-30EC-8228-4C426AAD4D7F + 451020
-17  CoreFoundation                      0x0000000192d94584 DDA24297-289C-30EC-8228-4C426AAD4D7F + 193924
-18  CoreFoundation                      0x0000000192d9354c DDA24297-289C-30EC-8228-4C426AAD4D7F + 189772
-19  GraphicsServices                    0x0000000238537498 GSEventRunModal + 120
-20  UIKitCore                           0x0000000198a8c244 9EE8C19A-A370-3599-823B-34B84131AAD7 + 1184324
-21  UIKitCore                           0x00000001989f7158 UIApplicationMain + 332
-22  UIKitCore                           0x0000000198c03618 9EE8C19A-A370-3599-823B-34B84131AAD7 + 2721304
-23  Runner.debug.dylib                  0x00000001063999c0 $sSo21UIApplicationDelegateP5UIKitE4mainyyFZ + 128
-24  Runner.debug.dylib                  0x0000000106399930 $s6Runner11AppDelegateC5$mainyyFZ + 44
-25  Runner.debug.dylib                  0x000000010639ce48 __debug_main_executable_dylib_entry_point + 28
-26  dyld                                0x000000018f9a1c1c 02F772FD-9E38-35A4-B9FA-9CCE3A090E6D + 19484
+Reporter disconnected. { function=sendMessage, reporterID=3740916514818 }
+Reporter disconnected. { function=sendMessage, reporterID=3740916514818 }
+Reporter disconnected. { function=sendMessage, reporterID=3740916514818 }
+Reporter disconnected. { function=sendMessage, reporterID=3740916514818 }
+Reporter disconnected. { function=sendMessage, reporterID=3740916514818 }
+Reporter disconnected. { function=sendMessage, reporterID=3740916514818 }
+Reporter disconnected. { function=sendMessage, reporterID=3740916514818 }
+Reporter disconnected. { function=sendMessage, reporterID=3740916514818 }
+Reporter disconnected. { function=sendMessage, reporterID=3740916514818 }
+containerToPush is nil, will not push anything to candidate receiver for request token: A12D2D5E
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+containerToPush is nil, will not push anything to candidate receiver for request token: 787ED2F3
 (Fig) signalled err=-12710 at <>:601
 (Fig) signalled err=-12710 at <>:601
 (Fig) signalled err=-12710 at <>:601
 target format 1920x1080, targetFps: 0, selected format: 1920x1080, selected fps 0
 <<<< FigXPCUtilities >>>> signalled err=-17281 at <>:308
 <<<< FigCaptureSourceRemote >>>> Fig assert: "err == 0 " at bail (FigCaptureSourceRemote.m:569) - (err=-17281)
-Stop video capturer, trackID 9AC027D2-FF3D-4449-88FC-563B2C37767F
+Stop video capturer, trackID DC132869-1F97-480E-BB35-C798281C55CF
 <<<< FigXPCUtilities >>>> signalled err=-17281 at <>:308
 <<<< FigCaptureSourceRemote >>>> Fig assert: "err == 0 " at bail (FigCaptureSourceRemote.m:569) - (err=-17281)
-video capturer stopped, trackID = 9AC027D2-FF3D-4449-88FC-563B2C37767F
+video capturer stopped, trackID = DC132869-1F97-480E-BB35-C798281C55CF
 [LiveKit] Configuring category:  AVAudioSessionCategoryPlayAndRecord
 [LiveKit] Configuring categoryOptions:  ["allowBluetooth", "allowBluetoothA2DP", "allowAirPlay"]
 [LiveKit] Configuring mode:  AVAudioSessionModeVideoChat
 [LiveKit] RTCAudioSession Configure success
-[REC] startMicRecording: session=27 chunkSecs=5
+[REC] startMicRecording: session=28 chunkSecs=5
 [REC] mic recordPermission=granted isInputAvailable=true
 [REC] AVAudioSession: playAndRecord / videoChat / mixWithOthers — active
 [REC] mic recordPermission=granted isInputAvailable=true
@@ -70,64 +50,56 @@ video capturer stopped, trackID = 9AC027D2-FF3D-4449-88FC-563B2C37767F
 [REC] beginChunkWriter: chunk #0 720×1564
 [REC] chunk timer scheduled: 5s for chunk #0
 [REC] RPScreenRecorder started — chunk #0
-[REC] writer session started at 3240.193398333s
+[REC] writer session started at 5801.13100725s
 [REC] mic recordPermission=granted isInputAvailable=true
 [REC] AVAudioSession: playAndRecord / videoChat / mixWithOthers — active
 [REC] AVAudioSession: delayed re-arm applied
 [REC] AVAudioSession: playAndRecord / videoRecording / mixWithOthers — active (broadcast share, non-ducking mode)
 [SHARE] Darwin listeners registered
-[REC] background task started id=16
+[REC] background task started id=43
 [SHARE] picker: recording paused before system overlay
 [SHARE] showBroadcastPicker — extension: com.softkour.alfaheem.BroadcastUploadExtension
-[REC] finalised chunk #0 (531811B isFinal=false audioSeen=412 audioAppended=412 sysAudioSeen=0 sysAudioAppended=0 sysAudioPeak=0.00000 sysAudioRms=0.00000)
+[REC] finalised chunk #0 (315341B isFinal=false audioSeen=310 audioAppended=310 sysAudioSeen=0 sysAudioAppended=0 sysAudioPeak=0.00000 sysAudioRms=0.00000)
 [SHARE] picker: paused chunk rotated at #1
+[REC] chunk #0 HTTP 201 isFinal=false size=315341B
+[REC] chunk #0 uploaded OK (315341B isFinal=false)
+[REC] background task ended
 [SHARE] first broadcast frame — switching recording source
 [REC] beginChunkWriter: chunk #1 720×1562
 [REC] chunk timer scheduled: 5s for chunk #1
 [SHARE] recording resumed from picker-pause — broadcast chunk #1
-[REC] writer session (broadcast) started at 3250.803s
-[REC] chunk #0 HTTP 201 isFinal=false size=531811B
-[REC] chunk #0 uploaded OK (531811B isFinal=false)
-[REC] background task ended
-[REC] writer session (broadcast) started at 3255.754s
-[REC] finalised chunk #1 (1165521B isFinal=false audioSeen=493 audioAppended=493 sysAudioSeen=227 sysAudioAppended=227 sysAudioPeak=0.97665 sysAudioRms=0.02483)
+[REC] writer session (broadcast) started at 5808.263s
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = dismissAutoFillPanel, customInfoType = UIUserInteractionRemoteInputOperations
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = dismissAutoFillPanel, customInfoType = UIUserInteractionRemoteInputOperations
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = dismissAutoFillPanel, customInfoType = UIUserInteractionRemoteInputOperations
+[REC] background task started id=61
+Snapshotting a view (0x104b2f000, UIKeyboardImpl) that is not in a visible window requires afterScreenUpdates:YES.
+[REC] finalised chunk #1 (1189422B isFinal=false audioSeen=500 audioAppended=500 sysAudioSeen=220 sysAudioAppended=220 sysAudioPeak=0.99997 sysAudioRms=0.23412)
 [REC] beginChunkWriter: chunk #2 720×1562
 [REC] chunk timer scheduled: 5s for chunk #2
-[REC] writer session (broadcast) started at 3255.854s
-[REC] background task started id=35
-[REC] writer session (broadcast) started at 3260.896s
-[REC] finalised chunk #2 (1038033B isFinal=false audioSeen=500 audioAppended=500 sysAudioSeen=227 sysAudioAppended=226 sysAudioPeak=1.00003 sysAudioRms=0.52812)
+[REC] writer session (broadcast) started at 5813.305s
+Reporter disconnected or already stopped. { func=stop, reporterID=3740916514818 }
+[REC] finalised chunk #2 (1219294B isFinal=false audioSeen=498 audioAppended=498 sysAudioSeen=232 sysAudioAppended=232 sysAudioPeak=1.00003 sysAudioRms=0.56247)
 [REC] beginChunkWriter: chunk #3 720×1562
 [REC] chunk timer scheduled: 5s for chunk #3
-[REC] writer session (broadcast) started at 3260.929s
-[REC] writer session (broadcast) started at 3265.913s
-[REC] finalised chunk #3 (1107629B isFinal=false audioSeen=500 audioAppended=500 sysAudioSeen=232 sysAudioAppended=231 sysAudioPeak=1.00003 sysAudioRms=0.56285)
-[REC] beginChunkWriter: chunk #4 720×1562
-[REC] chunk timer scheduled: 5s for chunk #4
-[REC] writer session (broadcast) started at 3265.946s
+[REC] writer session (broadcast) started at 5818.339s
 [REC] background task ended
-[REC] finalised chunk #4 (854089B isFinal=false audioSeen=486 audioAppended=486 sysAudioSeen=209 sysAudioAppended=209 sysAudioPeak=1.00003 sysAudioRms=0.16795)
-[REC] beginChunkWriter: chunk #5 720×1562
-[REC] chunk timer scheduled: 5s for chunk #5
-[REC] writer session (broadcast) started at 3270.922s
+[REC] system-audio dropped — non-monotonic pts (5822.562396s <= 5822.632063s)
 [REC] stopRecording: isFinal=true isBroadcasting=true
 [SHARE] Darwin listeners removed
-[REC] finalised chunk #5 (19440B isFinal=true audioSeen=8 audioAppended=8 sysAudioSeen=4 sysAudioAppended=3 sysAudioPeak=0.00000 sysAudioRms=0.00000)
+[REC] writer session (broadcast) started at 5822.473s
+[REC] finalised chunk #3 (942663B isFinal=true audioSeen=404 audioAppended=404 sysAudioSeen=185 sysAudioAppended=184 sysAudioPeak=0.99997 sysAudioRms=0.29695)
 [REC] mic recordPermission=granted isInputAvailable=true
 [REC] AVAudioSession: playAndRecord / videoChat / mixWithOthers — active
 [ERROR] -[RPScreenRecorder stopCaptureWithHandler:]:564 failed to stop in app capture because we're not recording
 [REC] stopCapture: Failed due to attempting to stop a recording that wasn’t in recording state
 [REC] stopCapture done — queuing finalize ping
-[REC] chunk #1 HTTP 201 isFinal=false size=1165521B
-[REC] chunk #1 uploaded OK (1165521B isFinal=false)
-[REC] chunk #2 HTTP 201 isFinal=false size=1038033B
-[REC] chunk #2 uploaded OK (1038033B isFinal=false)
-[REC] chunk #3 HTTP 201 isFinal=false size=1107629B
-[REC] chunk #3 uploaded OK (1107629B isFinal=false)
-[REC] chunk #4 HTTP 201 isFinal=false size=854089B
-[REC] chunk #4 uploaded OK (854089B isFinal=false)
-[REC] chunk #5 HTTP 201 isFinal=true size=19440B
-[REC] chunk #5 uploaded OK (19440B isFinal=true)
+[REC] chunk #1 HTTP 201 isFinal=false size=1189422B
+[REC] chunk #1 uploaded OK (1189422B isFinal=false)
+[REC] chunk #2 HTTP 201 isFinal=false size=1219294B
+[REC] chunk #2 uploaded OK (1219294B isFinal=false)
+[REC] chunk #3 HTTP 201 isFinal=true size=942663B
+[REC] chunk #3 uploaded OK (942663B isFinal=true)
 [REC] finalize ping HTTP 201
 RTC AudioSession deactive is successful
 [LiveKit] Configuring category:  AVAudioSessionCategorySoloAmbient
