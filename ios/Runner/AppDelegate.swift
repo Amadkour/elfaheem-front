@@ -776,9 +776,35 @@ import WebRTC
                     return
                 }
                 // ── Re-arm audio session AFTER startCapture completes ────────
+                // GUARDED on !isBroadcasting — this is the actual root cause
+                // of "shared video sound is fine for ~0.5s then very very
+                // quiet": this 1-second one-shot timer is armed the moment
+                // RPScreenRecorder starts, completely independent of when
+                // screen sharing begins. The Flutter share flow
+                // (room_screen_share.dart) taps "Share Screen" only ~300ms
+                // after recording starts, so by the time this timer fires,
+                // a broadcast is very often ALREADY LIVE and
+                // configureAudioSessionForBroadcastShare() has already put
+                // the session in non-ducking .videoRecording mode for it.
+                // Without this guard, this call would unconditionally stomp
+                // that back to the auto-ducking .videoChat mode mid-share.
+                // The 0.15s reassert timer (startAudioSessionObserver) DOES
+                // correct the category back afterward, but that's not
+                // enough: iOS engages .duckOthers on the shared app's
+                // rendered audio almost instantly, then only RELEASES the
+                // duck over its own slow, multi-second fade envelope (see
+                // configureAudioSessionForBroadcastShare's doc comment) —
+                // so even one instant of the wrong mode, corrected 150ms
+                // later, is enough to duck the shared audio and leave it
+                // crawling back up for the rest of the chunk. That's
+                // exactly "clear for a fraction of a second, then very
+                // quiet." Never touch the session here while a broadcast is
+                // active — the broadcast-share reassert timer alone owns
+                // the session for the duration of the share.
+                guard !self.isBroadcasting else { return }
                 self.configureAudioSessionForRecording()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-                    guard let self = self, self.recording else { return }
+                    guard let self = self, self.recording, !self.isBroadcasting else { return }
                     self.configureAudioSessionForRecording()
                     NSLog("[REC] AVAudioSession: delayed re-arm applied")
                 }
