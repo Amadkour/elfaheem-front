@@ -195,10 +195,28 @@ import WebRTC
     private var paused        = false
     private var stopping      = false
     private var audioSessionObserver: NSObjectProtocol?
+    // NEW: separate observer for AVAudioSession.interruptionNotification.
+    // See startAudioSessionObserver's doc comment for why routeChange alone
+    // was an incomplete fix — category/mode survive an interruption but the
+    // session's ACTIVE state does not, and alreadyCorrect only checks
+    // category/mode, so a route-change-only observer could leave the
+    // session silently inactive (and the shared app ducked) with nothing
+    // logged to explain it.
+    private var audioInterruptionObserver: NSObjectProtocol?
     // See startAudioSessionObserver's doc comment — this is what actually
     // keeps the shared app's audio un-ducked for the WHOLE share, not just
     // the first second of it.
     private var audioSessionReassertTimer: Timer?
+    // Diagnostics: how many times THIS broadcast actually reconfigured the
+    // session (as opposed to alreadyCorrect short-circuiting). A healthy
+    // share should show this stay very low (ideally 1 — the initial
+    // pre-picker call) after the first ~second. If this climbs steadily for
+    // the whole share, something is repeatedly kicking the session out of
+    // non-ducking mode and the reassert timer is fighting it the entire
+    // time — worth knowing, since that repeated setActive/setCategory
+    // churn is itself audible as clicking/static on the shared app's audio.
+    private var audioReconfigCount = 0
+    private var audioReconfigCountAtShareStart = 0
 
     private func startAudioSessionObserver() {
         // Idempotent: this is now called both pre-emptively from
@@ -210,6 +228,9 @@ import WebRTC
         // from zero for no reason.
         guard audioSessionObserver == nil else { return }
 
+        audioReconfigCount = 0
+        audioReconfigCountAtShareStart = 0
+
         audioSessionObserver = NotificationCenter.default.addObserver(
             forName: AVAudioSession.routeChangeNotification,
             object: AVAudioSession.sharedInstance(),
@@ -220,6 +241,47 @@ import WebRTC
             // while a broadcast is active. Cheap no-op if already correct.
             self.configureAudioSessionForBroadcastShare()
             NSLog("[REC] Audio session observer: re-applied broadcast-share mode after route change")
+        }
+
+        // NEW — the gap routeChangeNotification alone doesn't cover:
+        // an interruption (Siri, a phone call, another app's transient
+        // audio session, even certain background-task edge cases) can
+        // deactivate our session WITHOUT changing category/mode. Since
+        // configureAudioSessionForBroadcastShare()'s alreadyCorrect guard
+        // only inspects category/mode/options — not whether the session is
+        // actually active — a route-change-only observer can miss this
+        // entirely: the guard reads "already correct", skips reactivating,
+        // and the session stays silently inactive/ducked with nothing in
+        // the log to explain it. This observer forces a real reconfigure
+        // (bypassing the cheap early-return) specifically on interruption
+        // end, since that's the one case where category/mode alone aren't
+        // enough evidence that the session is actually live.
+        audioInterruptionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self, self.isBroadcasting else { return }
+            guard let info = notification.userInfo,
+                  let typeValue = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  let type = AVAudioSession.InterruptionType(rawValue: typeValue)
+            else { return }
+
+            switch type {
+            case .began:
+                NSLog("[REC] Audio session interruption BEGAN during broadcast — "
+                      + "session likely deactivated by the system")
+            case .ended:
+                // Force a real reconfigure — do NOT rely on alreadyCorrect
+                // here, since category/mode can still read "correct" while
+                // the session itself is inactive. forceReconfigureAudioSessionForBroadcastShare()
+                // bypasses the early-return specifically for this case.
+                NSLog("[REC] Audio session interruption ENDED during broadcast — "
+                      + "forcing reactivation (bypassing alreadyCorrect)")
+                self.forceReconfigureAudioSessionForBroadcastShare()
+            @unknown default:
+                break
+            }
         }
 
         // WHY KEEP A TIMER AT ALL, GIVEN useManualAudio=true:
@@ -256,6 +318,21 @@ import WebRTC
             NotificationCenter.default.removeObserver(observer)
             audioSessionObserver = nil
         }
+        if let observer = audioInterruptionObserver {
+            NotificationCenter.default.removeObserver(observer)
+            audioInterruptionObserver = nil
+        }
+        // Diagnostic summary: how many times THIS share actually
+        // reconfigured the session vs. the initial pre-picker call. A
+        // healthy share should show this at or near 1. Anything
+        // meaningfully higher means something kept knocking the session
+        // out of non-ducking mode for the whole share — check for
+        // repeated "[REC] AVAudioSession:" reconfigure lines in this same
+        // log window to see what triggered each one (route change vs.
+        // interruption vs. timer).
+        let deltaThisShare = audioReconfigCount - audioReconfigCountAtShareStart
+        NSLog("[REC] Audio session diagnostic: reconfigured \(deltaThisShare) time(s) "
+              + "during this share (total since app launch: \(audioReconfigCount))")
         DispatchQueue.main.async { [weak self] in
             self?.audioSessionReassertTimer?.invalidate()
             self?.audioSessionReassertTimer = nil
@@ -918,12 +995,39 @@ import WebRTC
         // first and only actually touch the session if it's genuinely
         // drifted away from non-ducking mode. Most polls should hit this
         // early return and do nothing.
+        //
+        // CAVEAT (see forceReconfigureAudioSessionForBroadcastShare below):
+        // this check only looks at category/mode/options. It says nothing
+        // about whether the session is actually ACTIVE. An interruption
+        // (Siri, a call, another app's transient session) can deactivate
+        // the session while leaving category/mode untouched — this guard
+        // would then say "already correct" and skip reactivating, leaving
+        // the shared app silently ducked. That path is handled separately
+        // by the interruption observer calling the force variant below.
         let alreadyCorrect =
             session.category == .playAndRecord &&
             session.mode == .videoRecording &&
             session.categoryOptions.contains(.mixWithOthers) &&
             !session.categoryOptions.contains(.duckOthers)
         guard !alreadyCorrect else { return }
+        applyBroadcastShareAudioSessionConfig(reason: "reassert/route-change")
+    }
+
+    /// Bypasses the alreadyCorrect early-return entirely. Only call this
+    /// from a point where you have independent evidence (not just
+    /// category/mode) that the session actually needs reactivating — e.g.
+    /// AVAudioSession.interruptionNotification's .ended case, where
+    /// category/mode can read "correct" even though the session itself
+    /// went inactive. Calling this from the 0.15s poll timer would
+    /// reintroduce the "audible clicking/static from constant reconfigure"
+    /// regression the alreadyCorrect guard exists to prevent — don't wire
+    /// it up there.
+    private func forceReconfigureAudioSessionForBroadcastShare() {
+        applyBroadcastShareAudioSessionConfig(reason: "interruption-ended (forced)")
+    }
+
+    private func applyBroadcastShareAudioSessionConfig(reason: String) {
+        let session = AVAudioSession.sharedInstance()
 
         // Go through RTCAudioSession's lock, same as
         // configureAudioSessionForRecording(). With useManualAudio=true set
@@ -946,10 +1050,13 @@ import WebRTC
             )
             try session.setActive(true, options: .notifyOthersOnDeactivation)
             rtcSession.isAudioEnabled = true
+            audioReconfigCount += 1
             NSLog("[REC] AVAudioSession: playAndRecord / videoRecording / mixWithOthers "
-                  + "— active (broadcast share, non-ducking mode)")
+                  + "— active (broadcast share, non-ducking mode) [reason: \(reason), "
+                  + "count=\(audioReconfigCount)]")
         } catch {
-            NSLog("[REC] AVAudioSession broadcast-share configure error: \(error.localizedDescription)")
+            NSLog("[REC] AVAudioSession broadcast-share configure error "
+                  + "[reason: \(reason)]: \(error.localizedDescription)")
         }
     }
 
