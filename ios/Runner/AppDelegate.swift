@@ -105,6 +105,10 @@ import WebRTC
     // the chunk-rotation gap without buffering unbounded amounts if
     // something is genuinely stuck.
     private let kPendingSystemAudioCap = 60
+    // Guards against scheduling overlapping retries when several samples in
+    // a row hit "systemAudioInput not ready" — only one retry needs to be in
+    // flight at a time since it drains the whole queue when it fires.
+    private var notReadyRetryScheduled = false
     // Pixel buffer adaptor for the broadcast-extension path. Broadcast frames
     // arrive as decoded JPEGs (see jpegToPixelBuffer), and MUST be appended
     // through an AVAssetWriterInputPixelBufferAdaptor rather than by manually
@@ -191,6 +195,15 @@ import WebRTC
     private var audioSessionReassertTimer: Timer?
 
     private func startAudioSessionObserver() {
+        // Idempotent: this is now called both pre-emptively from
+        // showBroadcastPicker() and again (defensively) from
+        // handleBroadcastData() on the first broadcast frame. Without this
+        // guard, the second call would stack a duplicate route-change
+        // observer (each future route change would then re-apply the
+        // broadcast-share config twice) and restart the 0.15s reassert timer
+        // from zero for no reason.
+        guard audioSessionObserver == nil else { return }
+
         audioSessionObserver = NotificationCenter.default.addObserver(
             forName: AVAudioSession.routeChangeNotification,
             object: AVAudioSession.sharedInstance(),
@@ -2067,6 +2080,33 @@ import WebRTC
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { result(nil); return }
 
+            // ── Switch to non-ducking mode BEFORE the picker even appears ──
+            // Previously this only happened reactively, in handleBroadcastData,
+            // on the FIRST BROADCAST VIDEO FRAME. That is too late: the user
+            // still has to (1) confirm "Start Broadcast" in the system sheet,
+            // then (2) manually switch to the app they want to share, then
+            // (3) that app has to actually be showing something before its
+            // first frame reaches us — commonly 1-3+ seconds, during which our
+            // session was STILL in .videoChat (auto-duck) mode from normal
+            // mic recording. If the shared app started playing its audio
+            // anywhere in that window, iOS ducked it right then — and that
+            // duck does NOT lift the instant we switch modes afterward, it
+            // releases on iOS's own multi-second fade envelope. That slow
+            // fade-back-up is exactly what a "clear for a fraction of a
+            // second, then very quiet for the next 15-20s" recording looks
+            // like (see sysAudioRms climbing chunk over chunk in the logs:
+            // 0.053 → 0.0 → 0.195 → 0.562 → 0.562 → 0.565 → 0.540 — a slow
+            // release curve, not a step change).
+            // Configuring non-ducking mode here instead means the shared
+            // app's audio is never ducked in the first place — there is
+            // nothing left to release/fade back from.
+            //
+            // Safe even if the user cancels the picker: stopBroadcastShare's
+            // `paused == true` branch already reverts to .videoChat via
+            // configureAudioSessionForRecording() for exactly that case.
+            self.configureAudioSessionForBroadcastShare()
+            self.startAudioSessionObserver()
+
             // ── ORDER MATTERS ────────────────────────────────────────────
             // registerDarwinListeners() MUST run before appDidEnterBackground().
             // appDidEnterBackground()'s very first line is:
@@ -2646,8 +2686,35 @@ import WebRTC
         sampleRate: UInt32, channels: UInt32, isFloat: Bool, pcm: Data, ptsNs: UInt64
     ) {
         guard self.systemAudioInput?.isReadyForMoreMediaData == true else {
-            NSLog("[REC] system-audio dropped — systemAudioInput not ready "
-                  + "(nil=\(self.systemAudioInput == nil))")
+            // Genuinely nil input (no active chunk) — nothing to retry.
+            guard self.systemAudioInput != nil else {
+                NSLog("[REC] system-audio dropped — systemAudioInput is nil")
+                return
+            }
+            // Input exists but is momentarily busy (e.g. right after a new
+            // chunk's writer session starts, competing with the video track
+            // for encoder throughput — this is exactly the burst of drops
+            // seen at the start of chunk #1 in the logs). Re-queue instead
+            // of dropping outright and retry shortly; the encoder catches up
+            // within a few milliseconds in practice, and losing this window
+            // every chunk read as an audible stutter/brief mute right after
+            // the "clear" opening moment. Same bounded queue/cap used for
+            // "session not live yet" — the ordering guarantee (FIFO, drained
+            // in appendSystemAudioSample calls) is the same either way.
+            if self.pendingSystemAudioFrames.count >= self.kPendingSystemAudioCap {
+                self.pendingSystemAudioFrames.removeFirst()
+            }
+            self.pendingSystemAudioFrames.append(
+                (sampleRate, channels, isFloat, pcm, ptsNs)
+            )
+            if !self.notReadyRetryScheduled {
+                self.notReadyRetryScheduled = true
+                self.systemAudioQueue.asyncAfter(deadline: .now() + 0.02) { [weak self] in
+                    guard let self = self else { return }
+                    self.notReadyRetryScheduled = false
+                    self.flushPendingSystemAudioFrames()
+                }
+            }
             return
         }
 
