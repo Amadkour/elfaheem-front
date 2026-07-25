@@ -22,12 +22,33 @@
 //     only the foreign app's screen goes into the recording.
 //
 //  Audio:
-//     NEVER reconfigure AVAudioSession in this file.
-//     LiveKit owns the session in .videoChat mode with echo cancellation
-//     and noise suppression. Changing the session breaks those DSP
-//     filters, causing the noise burst the user hears.
-//     RPScreenRecorder inherits whatever session is already active —
-//     it records the mic audio LiveKit is already processing cleanly.
+//     This app uses livekit_client (Flutter) → flutter_webrtc → Google's
+//     native WebRTC framework — there is NO client-sdk-swift/AudioManager
+//     in this dependency tree, only WebRTC's own RTCAudioSession. By
+//     default RTCAudioSession configures/activates AVAudioSession
+//     automatically in response to its OWN audio engine lifecycle events
+//     (mic publish/unpublish, track subscribe, internal reconnects) —
+//     independently of anything this file does, and without necessarily
+//     posting a routeChangeNotification we could observe.
+//
+//     THIS WAS THE ROOT CAUSE of "shared video sound is fine for a
+//     fraction of a second, then goes quiet for the rest of the share":
+//     configureAudioSessionForBroadcastShare() below would set the
+//     non-ducking .videoRecording mode, then RTCAudioSession's own
+//     automatic handling would silently stomp it back to .videoChat
+//     (which force-ducks the shared app's audio) on its next internal
+//     trigger — often under a second later, well before our old 0.5s
+//     poll timer even got a chance to look.
+//
+//     FIX: RTCAudioSession.sharedInstance().useManualAudio = true is set
+//     once at launch (see application(_:didFinishLaunchingWithOptions:)).
+//     This tells WebRTC's audio engine to stop reconfiguring
+//     AVAudioSession on its own — WE now own every transition, funneled
+//     through lockForConfiguration()/unlockForConfiguration() so WebRTC's
+//     engine and our AVAudioSession calls never race each other. The
+//     reassert timer stays as a defensive fallback only (interval
+//     shortened — see startAudioSessionObserver), it should now rarely if
+//     ever need to actually do anything.
 //
 //  ════════════════════════════════════════════════════════════════════
 
@@ -38,6 +59,7 @@ import ReplayKit
 import AVFoundation
 import CoreMedia
 import CoreVideo
+import WebRTC
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -128,6 +150,16 @@ import CoreVideo
     // signal IS arriving and any remaining quietness is a mixing/gain
     // question further down the pipeline, not a capture problem.
     private var sysAudioPeakThisChunk: Float = 0.0
+    // Running sum-of-squares + sample count for an RMS (average loudness)
+    // reading per chunk, alongside the existing peak-only diagnostic. Peak
+    // alone was insufficient to catch the ducking-oscillation bug: a single
+    // loud sample landing during a brief un-ducked window makes the peak
+    // look healthy (~1.0) even while the audio was ducked/near-silent for
+    // the rest of the chunk. RMS surfaces that gap — a chunk that's mostly
+    // ducked will show a high peak but a low RMS, whereas one that's
+    // genuinely clear throughout will show both high.
+    private var sysAudioSquareSumThisChunk: Double = 0.0
+    private var sysAudioRmsSampleCountThisChunk: Int = 0
     private var writerQueue = DispatchQueue(label: "com.elfaheem.writer", qos: .userInitiated)
     // Same reasoning as audioIpcReadQueue above, one level further down the
     // pipeline: writerQueue does video JPEG decode + append (expensive) AND
@@ -171,30 +203,28 @@ import CoreVideo
             NSLog("[REC] Audio session observer: re-applied broadcast-share mode after route change")
         }
 
-        // WHY A TIMER, NOT JUST THE ROUTE-CHANGE OBSERVER ABOVE:
-        // LiveKit's WebRTC audio engine manages AVAudioSession on ITS OWN
-        // internal triggers too (track publish/subscribe, mic mute toggles,
-        // internal route/session bookkeeping) — not just route changes we
-        // can observe. It can silently revert our non-ducking
-        // .videoRecording mode back to its own .videoChat default on one of
-        // those triggers, without posting a routeChangeNotification at all.
-        // That's exactly what was producing "shared audio is fine for
-        // about a second, then goes quiet for the rest of the share": our
-        // one-time switch wins briefly, then LiveKit's own reconfiguration
-        // silently stomps it, and nothing we're observing fires to let us
-        // re-win it. Rather than depend on WebRTC/LiveKit's internal APIs
-        // directly (risky to link against from this target without
-        // knowing the exact module name this project vendors), just keep
-        // re-winning that fight for the whole share: re-assert our config
-        // on a short repeating timer regardless of whether anything
-        // observable changed. configureAudioSessionForBroadcastShare() is
-        // a cheap no-op when the session is already correctly configured,
-        // so polling this often is safe.
+        // WHY KEEP A TIMER AT ALL, GIVEN useManualAudio=true:
+        // Setting RTCAudioSession.sharedInstance().useManualAudio = true at
+        // launch (see didFinishLaunchingWithOptions) stops WebRTC's engine
+        // from auto-reconfiguring AVAudioSession on its own internal
+        // triggers — that was the actual root cause of "shared audio is
+        // fine for about a second, then goes quiet for the rest of the
+        // share", and is now fixed at the source. This timer is kept only
+        // as a defensive fallback for anything else that could still drift
+        // the session (e.g. another plugin, a Bluetooth reconnect edge
+        // case) — it should now rarely if ever find `alreadyCorrect ==
+        // false` in configureAudioSessionForBroadcastShare(). Interval
+        // shortened from the old 0.5s to 0.15s: 0.5s was long enough for a
+        // human to perceive as "briefly clear, then muted" if anything did
+        // slip through; 0.15s keeps any residual drift below the threshold
+        // of being audible as a distinct dropout. configureAudioSessionForBroadcastShare()
+        // is a cheap no-op when the session is already correctly
+        // configured, so polling this often is safe.
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             self.audioSessionReassertTimer?.invalidate()
             self.audioSessionReassertTimer = Timer.scheduledTimer(
-                withTimeInterval: 0.5, repeats: true
+                withTimeInterval: 0.15, repeats: true
             ) { [weak self] _ in
                 guard let self = self, self.isBroadcasting else { return }
                 self.configureAudioSessionForBroadcastShare()
@@ -401,6 +431,14 @@ import CoreVideo
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
         FirebaseApp.configure()
+
+        // Take over AVAudioSession ownership from WebRTC's automatic
+        // engine-lifecycle handling. Must be set exactly once, as early as
+        // possible, before livekit_client/flutter_webrtc ever touches the
+        // session — see the Audio section of the architecture comment at
+        // the top of this file for why this is required.
+        RTCAudioSession.sharedInstance().useManualAudio = true
+        RTCAudioSession.sharedInstance().isAudioEnabled = true
 
         let engine = FlutterEngine(name: "main_engine")
         engine.run()
@@ -761,6 +799,14 @@ import CoreVideo
         @unknown default:   permissionStr = "unknown"
         }
         NSLog("[REC] mic recordPermission=\(permissionStr) isInputAvailable=\(session.isInputAvailable)")
+
+        // Go through RTCAudioSession's lock (not AVAudioSession directly) —
+        // now that useManualAudio=true, this is how WebRTC's engine finds
+        // out about our change instead of fighting it later. See the Audio
+        // section of the top-of-file comment.
+        let rtcSession = RTCAudioSession.sharedInstance()
+        rtcSession.lockForConfiguration()
+        defer { rtcSession.unlockForConfiguration() }
         do {
             try session.setCategory(
                 .playAndRecord,
@@ -771,6 +817,7 @@ import CoreVideo
                           .mixWithOthers]                  // coexist with LiveKit WebRTC
             )
             try session.setActive(true, options: .notifyOthersOnDeactivation)
+            rtcSession.isAudioEnabled = true
             NSLog("[REC] AVAudioSession: playAndRecord / videoChat / mixWithOthers — active")
         } catch {
             NSLog("[REC] AVAudioSession configure error: \(error.localizedDescription)")
@@ -833,6 +880,16 @@ import CoreVideo
             !session.categoryOptions.contains(.duckOthers)
         guard !alreadyCorrect else { return }
 
+        // Go through RTCAudioSession's lock, same as
+        // configureAudioSessionForRecording(). With useManualAudio=true set
+        // at launch, WebRTC's engine no longer reconfigures the session on
+        // its own lifecycle events, so this switch to non-ducking mode
+        // actually STAYS non-ducking for the rest of the share instead of
+        // being silently reverted within roughly a second — which was the
+        // actual root cause of "shared audio clear at first, then muted".
+        let rtcSession = RTCAudioSession.sharedInstance()
+        rtcSession.lockForConfiguration()
+        defer { rtcSession.unlockForConfiguration() }
         do {
             try session.setCategory(
                 .playAndRecord,
@@ -843,6 +900,7 @@ import CoreVideo
                           .mixWithOthers]                  // coexist with the shared app's audio
             )
             try session.setActive(true, options: .notifyOthersOnDeactivation)
+            rtcSession.isAudioEnabled = true
             NSLog("[REC] AVAudioSession: playAndRecord / videoRecording / mixWithOthers "
                   + "— active (broadcast share, non-ducking mode)")
         } catch {
@@ -855,6 +913,9 @@ import CoreVideo
         // Restore the session to LiveKit's preferred state so the live call
         // continues to work normally after recording ends.
         let session = AVAudioSession.sharedInstance()
+        let rtcSession = RTCAudioSession.sharedInstance()
+        rtcSession.lockForConfiguration()
+        defer { rtcSession.unlockForConfiguration() }
         do {
             try session.setCategory(
                 .playAndRecord,
@@ -863,6 +924,7 @@ import CoreVideo
                           .allowBluetoothA2DP, .mixWithOthers]
             )
             try session.setActive(true, options: .notifyOthersOnDeactivation)
+            rtcSession.isAudioEnabled = true
             NSLog("[REC] AVAudioSession: restored after recording stop")
         } catch {
             NSLog("[REC] AVAudioSession restore error: \(error.localizedDescription)")
@@ -1694,11 +1756,16 @@ import CoreVideo
         let sysAudioSeen     = sysAudioSamplesSeenThisChunk
         let sysAudioAppended = sysAudioSamplesAppendedThisChunk
         let sysAudioPeak     = sysAudioPeakThisChunk
+        let sysAudioRms: Float = sysAudioRmsSampleCountThisChunk > 0
+            ? Float(sqrt(sysAudioSquareSumThisChunk / Double(sysAudioRmsSampleCountThisChunk)))
+            : 0.0
         audioSamplesSeenThisChunk     = 0
         audioSamplesAppendedThisChunk = 0
         sysAudioSamplesSeenThisChunk     = 0
         sysAudioSamplesAppendedThisChunk = 0
         sysAudioPeakThisChunk = 0.0
+        sysAudioSquareSumThisChunk = 0.0
+        sysAudioRmsSampleCountThisChunk = 0
         writerQueue.async { [weak self] in
             vi.markAsFinished()
             ai.markAsFinished()
@@ -1737,10 +1804,21 @@ import CoreVideo
                 // this specific shared app — a ReplayKit-level limitation,
                 // not fixable via audio-session/gain changes. A non-trivial
                 // sysAudioPeak (> ~0.02) proves real signal IS arriving.
+                //
+                // sysAudioRms catches what peak alone can't: ducking
+                // oscillation. A chunk that's mostly ducked but briefly
+                // un-ducked (e.g. right when our config wins a race against
+                // WebRTC's own session handling) can still show a healthy
+                // peak from that one brief window, while the RMS stays low
+                // because most of the chunk really was quiet. peak high +
+                // rms low ⇒ suspect ducking is still slipping through
+                // somewhere; peak and rms both high ⇒ genuinely clear audio
+                // for the whole chunk.
                 NSLog("[REC] finalised chunk #\(idx) (\(size)B isFinal=\(isFinal) "
                       + "audioSeen=\(audioSeen) audioAppended=\(audioAppended) "
                       + "sysAudioSeen=\(sysAudioSeen) sysAudioAppended=\(sysAudioAppended) "
-                      + "sysAudioPeak=\(String(format: "%.5f", sysAudioPeak)))")
+                      + "sysAudioPeak=\(String(format: "%.5f", sysAudioPeak)) "
+                      + "sysAudioRms=\(String(format: "%.5f", sysAudioRms)))")
                 self?.enqueueUpload {
                     self?.uploadChunkAsync(fileURL: fileURL, index: idx, isFinal: isFinal)
                 }
@@ -2531,10 +2609,10 @@ import CoreVideo
         systemAudioQueue.async { [weak self] in
             guard let self = self else { return }
             self.sysAudioSamplesSeenThisChunk += 1
-            self.sysAudioPeakThisChunk = max(
-                self.sysAudioPeakThisChunk,
-                Self.peakAmplitude(pcm, isFloat: isFloat)
-            )
+            let stats = Self.peakAndRms(pcm, isFloat: isFloat)
+            self.sysAudioPeakThisChunk = max(self.sysAudioPeakThisChunk, stats.peak)
+            self.sysAudioSquareSumThisChunk += stats.squareSum
+            self.sysAudioRmsSampleCountThisChunk += stats.count
 
             guard let writer = self.assetWriter, writer.status == .writing,
                   self.writerSessionStarted else {
@@ -2617,39 +2695,49 @@ import CoreVideo
         }
     }
 
-    /// Cheap peak-amplitude scan (normalized 0.0–1.0) of a raw PCM buffer,
-    /// used purely for the sysAudioPeak diagnostic in finaliseChunk's log
-    /// line — see sysAudioPeakThisChunk's doc comment for what this is
-    /// actually being used to distinguish (real-but-quiet vs. literally
-    /// silent/zeroed samples from ReplayKit). Sampling every 8th value is
-    /// deliberate: this runs on every system-audio packet and only needs to
-    /// answer "is there ANY meaningful signal here", not produce a
-    /// perfectly exact peak — full-buffer precision isn't worth the extra
-    /// CPU on every single packet.
-    private static func peakAmplitude(_ pcm: Data, isFloat: Bool) -> Float {
+    /// Cheap peak + sum-of-squares scan (normalized 0.0–1.0 samples) of a
+    /// raw PCM buffer. Feeds both the sysAudioPeak diagnostic (real-but-
+    /// quiet vs. literally silent/zeroed samples from ReplayKit — see
+    /// sysAudioPeakThisChunk's doc comment) and the sysAudioRms diagnostic
+    /// (catches ducking-oscillation: peak alone can look healthy off a
+    /// single loud sample even when most of the chunk was ducked — see
+    /// sysAudioSquareSumThisChunk's doc comment). Sampling every 8th value
+    /// is deliberate: this runs on every system-audio packet and only needs
+    /// a representative reading, not full-buffer precision.
+    private static func peakAndRms(
+        _ pcm: Data, isFloat: Bool
+    ) -> (peak: Float, squareSum: Double, count: Int) {
         var peak: Float = 0.0
+        var squareSum: Double = 0.0
+        var count = 0
         pcm.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
             if isFloat {
-                let count = raw.count / MemoryLayout<Float>.size
-                guard count > 0 else { return }
+                let total = raw.count / MemoryLayout<Float>.size
+                guard total > 0 else { return }
                 let floats = raw.bindMemory(to: Float.self)
                 var i = 0
-                while i < count {
-                    peak = max(peak, abs(floats[i]))
+                while i < total {
+                    let sample = abs(floats[i])
+                    peak = max(peak, sample)
+                    squareSum += Double(sample) * Double(sample)
+                    count += 1
                     i += 8
                 }
             } else {
-                let count = raw.count / MemoryLayout<Int16>.size
-                guard count > 0 else { return }
+                let total = raw.count / MemoryLayout<Int16>.size
+                guard total > 0 else { return }
                 let ints = raw.bindMemory(to: Int16.self)
                 var i = 0
-                while i < count {
-                    peak = max(peak, abs(Float(ints[i]) / Float(Int16.max)))
+                while i < total {
+                    let sample = abs(Float(ints[i]) / Float(Int16.max))
+                    peak = max(peak, sample)
+                    squareSum += Double(sample) * Double(sample)
+                    count += 1
                     i += 8
                 }
             }
         }
-        return peak
+        return (peak, squareSum, count)
     }
 }
 
