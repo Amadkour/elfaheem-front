@@ -844,7 +844,9 @@ import WebRTC
                     self.assetWriter = nil
                     self.videoInput  = nil
                     self.audioInput  = nil
-                    self.systemAudioInput = nil
+                    // Synchronized for consistency with the other teardown
+                    // sites — see beginChunkWriter's matching .sync.
+                    self.systemAudioQueue.sync { self.systemAudioInput = nil }
                     self.pixelBufferAdaptor = nil
                     self.writerSessionStarted = false
                     self.releaseAudioSessionLock()
@@ -1606,7 +1608,25 @@ import WebRTC
         // startWriting() below.
         let sai = AVAssetWriterInput(mediaType: .audio, outputSettings: aSettings)
         sai.expectsMediaDataInRealTime = true
-        systemAudioInput = sai
+        // Publish through systemAudioQueue rather than assigning directly
+        // here on the main thread. systemAudioInput is read/appended-to
+        // exclusively on systemAudioQueue (see its declaration comment),
+        // but until this fix beginChunkWriter (main thread) and
+        // finaliseChunk (also not systemAudioQueue) both mutated it with
+        // zero synchronization against that queue — a genuine data race,
+        // not just a logical timing gap. That race is the actual cause of
+        // "system-audio dropped — systemAudioInput is nil" firing WHILE
+        // the previous chunk's writer/session were still reported live:
+        // processSystemAudioFromBroadcast's guard reads self.assetWriter/
+        // writerSessionStarted, decides the old chunk is still active, and
+        // calls appendSystemAudioSample — which can then observe a
+        // just-nilled systemAudioInput if finaliseChunk's teardown lands
+        // on the main thread in between, since nothing serialized the two.
+        // Using .sync here keeps ordering identical to before (this still
+        // completes before writer.add(sai)/startWriting() below run) while
+        // guaranteeing systemAudioQueue never observes a torn/mid-write
+        // reference.
+        systemAudioQueue.sync { self.systemAudioInput = sai }
 
         writer.add(vi)
         writer.add(ai)
@@ -1738,7 +1758,10 @@ import WebRTC
             self.assetWriter  = nil
             self.videoInput   = nil
             self.audioInput   = nil
-            self.systemAudioInput = nil
+            // Redundant with finaliseChunk's own teardown in the normal
+            // case (it already ran and nil'd this), but still synchronized
+            // for consistency — see beginChunkWriter's matching .sync.
+            self.systemAudioQueue.sync { self.systemAudioInput = nil }
             self.pixelBufferAdaptor = nil
             self.writerSessionStarted = false
             self.emitEvent(["event": "recordingPaused"])
@@ -1874,7 +1897,12 @@ import WebRTC
         guard writer.status == .writing else {
             NSLog("[REC] finaliseChunk skipped (writer status=\(writer.status.rawValue))")
             assetWriter = nil; videoInput = nil; audioInput = nil
-            systemAudioInput = nil; pixelBufferAdaptor = nil
+            // See beginChunkWriter's matching .sync — this teardown path
+            // must publish through systemAudioQueue too, or systemAudioQueue
+            // can observe a torn/racing reference against a concurrent
+            // append.
+            systemAudioQueue.sync { self.systemAudioInput = nil }
+            pixelBufferAdaptor = nil
             currentFile = nil; writerSessionStarted = false
             DispatchQueue.main.async { [weak self] in
                 if let r = self?.stopResult { self?.stopResult = nil; r(nil) }
@@ -1887,7 +1915,9 @@ import WebRTC
         guard writerSessionStarted else {
             NSLog("[REC] finaliseChunk skipped — startSession never called (no frames yet)")
             assetWriter = nil; videoInput = nil; audioInput = nil
-            systemAudioInput = nil; pixelBufferAdaptor = nil
+            // See beginChunkWriter's matching .sync — same reasoning.
+            systemAudioQueue.sync { self.systemAudioInput = nil }
+            pixelBufferAdaptor = nil
             currentFile = nil; writerSessionStarted = false
             try? FileManager.default.removeItem(at: fileURL)
             DispatchQueue.main.async { [weak self] in
@@ -1897,7 +1927,17 @@ import WebRTC
             return
         }
         assetWriter = nil; videoInput = nil; audioInput = nil
-        systemAudioInput = nil; pixelBufferAdaptor = nil
+        // Publish through systemAudioQueue — this is the hot-path teardown
+        // that runs on EVERY chunk rotation during a screen share (unlike
+        // the two early-return branches above, which only fire on error
+        // paths). It's this specific assignment racing against
+        // processSystemAudioFromBroadcast's guard-then-append on
+        // systemAudioQueue that produced "system-audio dropped —
+        // systemAudioInput is nil" while the previous chunk's writer was
+        // still reported as live. See beginChunkWriter's matching .sync
+        // for the other half of this fix.
+        systemAudioQueue.sync { self.systemAudioInput = nil }
+        pixelBufferAdaptor = nil
         currentFile = nil; writerSessionStarted = false
         let idx = chunkIndex
         // Snapshot then reset — see the properties' declaration for why these
