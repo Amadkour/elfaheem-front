@@ -170,6 +170,25 @@ import WebRTC
     // genuinely clear throughout will show both high.
     private var sysAudioSquareSumThisChunk: Double = 0.0
     private var sysAudioRmsSampleCountThisChunk: Int = 0
+    // Mirrors audioSeen/audioAppended above, but for broadcast VIDEO frames
+    // (processSampleFromBroadcast) instead of audio. There was previously no
+    // numeric visibility into whether broadcast video frames were even
+    // reaching that function, being silently rejected by one of its guards
+    // (writer/adaptor/pool/isReadyForMoreMediaData/chunkVideoWidth/Height),
+    // or reaching adaptor.append() and failing there — any of which would
+    // produce the same symptom (audio present, shared screen video absent)
+    // with nothing in the log to distinguish which stage was actually at
+    // fault. videoBroadcastSeen=0 for a chunk known to be broadcast-sourced
+    // ⇒ frames aren't reaching this function at all (IPC/routing problem
+    // upstream, e.g. handleBroadcastData not dispatching typeId=0). Seen>0
+    // but Appended==0 ⇒ one of the guards at the top of
+    // processSampleFromBroadcast is rejecting every frame. Both > 0 ⇒
+    // frames are genuinely being written into the chunk's video track, and
+    // an all-black or missing appearance in the ASSEMBLED file points
+    // downstream (jpegToPixelBuffer's letterbox math, or the server's
+    // ffmpeg step) instead.
+    private var videoBroadcastSeenThisChunk: Int = 0
+    private var videoBroadcastAppendedThisChunk: Int = 0
     private var writerQueue = DispatchQueue(label: "com.elfaheem.writer", qos: .userInitiated)
     // Same reasoning as audioIpcReadQueue above, one level further down the
     // pipeline: writerQueue does video JPEG decode + append (expensive) AND
@@ -1361,8 +1380,14 @@ import WebRTC
 
     private func processSampleFromBroadcast(jpegData: Data, ptsNs: UInt64) {
         writerQueue.async { [weak self] in
-            guard let self = self,
-                  let writer = self.assetWriter,
+            guard let self = self else { return }
+            // Counted BEFORE the guards below so the log can distinguish
+            // "frames never reached this function" (seen stays 0) from
+            // "frames arrived but got rejected by a guard here" (seen>0,
+            // appended stays 0) — see the property's doc comment.
+            self.videoBroadcastSeenThisChunk += 1
+
+            guard let writer = self.assetWriter,
                   writer.status == .writing,
                   let adaptor = self.pixelBufferAdaptor,
                   let pool = adaptor.pixelBufferPool,
@@ -1413,6 +1438,8 @@ import WebRTC
             // need to hand-compute a duration/CMSampleTimingInfo here.
             if !adaptor.append(pixelBuffer, withPresentationTime: pts) {
                 NSLog("[REC] broadcast frame append FAILED — writer status=\(writer.status.rawValue) error=\(String(describing: writer.error))")
+            } else {
+                self.videoBroadcastAppendedThisChunk += 1
             }
         }
     }
@@ -1952,6 +1979,8 @@ import WebRTC
         let sysAudioRms: Float = sysAudioRmsSampleCountThisChunk > 0
             ? Float(sqrt(sysAudioSquareSumThisChunk / Double(sysAudioRmsSampleCountThisChunk)))
             : 0.0
+        let videoBroadcastSeen     = videoBroadcastSeenThisChunk
+        let videoBroadcastAppended = videoBroadcastAppendedThisChunk
         audioSamplesSeenThisChunk     = 0
         audioSamplesAppendedThisChunk = 0
         sysAudioSamplesSeenThisChunk     = 0
@@ -1959,6 +1988,8 @@ import WebRTC
         sysAudioPeakThisChunk = 0.0
         sysAudioSquareSumThisChunk = 0.0
         sysAudioRmsSampleCountThisChunk = 0
+        videoBroadcastSeenThisChunk     = 0
+        videoBroadcastAppendedThisChunk = 0
         writerQueue.async { [weak self] in
             vi.markAsFinished()
             ai.markAsFinished()
@@ -2011,7 +2042,9 @@ import WebRTC
                       + "audioSeen=\(audioSeen) audioAppended=\(audioAppended) "
                       + "sysAudioSeen=\(sysAudioSeen) sysAudioAppended=\(sysAudioAppended) "
                       + "sysAudioPeak=\(String(format: "%.5f", sysAudioPeak)) "
-                      + "sysAudioRms=\(String(format: "%.5f", sysAudioRms)))")
+                      + "sysAudioRms=\(String(format: "%.5f", sysAudioRms)) "
+                      + "videoBroadcastSeen=\(videoBroadcastSeen) "
+                      + "videoBroadcastAppended=\(videoBroadcastAppended))")
                 self?.enqueueUpload {
                     self?.uploadChunkAsync(fileURL: fileURL, index: idx, isFinal: isFinal)
                 }
