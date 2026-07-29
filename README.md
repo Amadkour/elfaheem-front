@@ -165,3 +165,16 @@ System Information
 macOS Version 26.6 (Build 25G5028f)
 Xcode 26.5 (24943) (Build 17F42)
 Timestamp: 2026-07-29T05:36:09+03:00
+
+
+xcrun devicectl device copy from \
+--device <DEVICE-UDID> \
+--domain-type appDataContainer \
+--domain-identifier com.softkour.alfaheem \
+--source / \
+--destination ~/Desktop/alfaheem_container
+
+
+
+
+xcrun devicectl list devices
