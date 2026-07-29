@@ -136,3 +136,32 @@ RTC AudioSession deactive is successful
 [LiveKit] Configuring categoryOptions:  []
 [LiveKit] Configuring mode:  AVAudioSessionModeDefault
 [LiveKit] RTCAudioSession Configure success
+
+
+The specified file could not be transferred.
+Domain: com.apple.dt.CoreDeviceError
+Code: 7000
+User Info: {
+DVTErrorCreationDateKey = "2026-07-29 02:36:09 +0000";
+NSURL = "file:///Users/admin/ahmed/Desktop/com.softkour.alfaheem%202026-07-29%2005:36.01.826.xcappdata/AppData/Library/Caches/";
+}
+--
+The specified file could not be transferred.
+Domain: com.apple.dt.CoreDeviceError
+Code: 7000
+User Info: {
+NSURL = "file:///Users/admin/ahmed/Desktop/com.softkour.alfaheem%202026-07-29%2005:36.01.826.xcappdata/AppData/Library/Caches/";
+}
+--
+Failed to perform I/O operations.
+Domain: com.apple.dt.remoteservices.error
+Code: 11001
+Failure Reason: Cannot open destination file /Users/admin/ahmed/Desktop/com.softkour.alfaheem 2026-07-29 05:36.01.826.xcappdata/AppData/Library/Caches/com.apple.dyld/Runner.dyld4: Permission denied
+--
+
+
+System Information
+
+macOS Version 26.6 (Build 25G5028f)
+Xcode 26.5 (24943) (Build 17F42)
+Timestamp: 2026-07-29T05:36:09+03:00
