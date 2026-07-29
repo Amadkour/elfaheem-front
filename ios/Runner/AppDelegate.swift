@@ -1633,7 +1633,27 @@ import WebRTC
         // created so a broadcast that starts mid-chunk (rotating in) never
         // races the writer's `.add()` calls, which must all happen before
         // startWriting() below.
-        let sai = AVAssetWriterInput(mediaType: .audio, outputSettings: aSettings)
+        // ── UNVERIFIED HYPOTHESIS FIX (2026-07-29) ──────────────────────────
+        // System audio (.audioApp) is very often genuine stereo from
+        // ReplayKit, but was previously forced through the same mono
+        // `aSettings` as the mic track. This declares systemAudioInput's
+        // output as stereo instead, in case an implicit stereo→mono
+        // downmix during AVAssetWriter's internal conversion was producing
+        // the static/noise reported in the 2026-07-29 investigation.
+        // NOT CONFIRMED as the root cause — the raw pre-mix .audioApp
+        // track was already noisy when extracted directly from the
+        // AVAssetWriter chunk, which was never isolated further down to
+        // capture vs. reconstruction before this was applied. If this
+        // does not resolve the issue, revert to reusing `aSettings` and
+        // continue the raw-PCM bisection (see writeAudioSample's TEMP
+        // DEBUG block in SampleHandler.swift) instead of guessing further.
+        let saiSettings: [String: Any] = [
+            AVFormatIDKey:         kAudioFormatMPEG4AAC,
+            AVSampleRateKey:       44100,
+            AVNumberOfChannelsKey: 2,
+            AVEncoderBitRateKey:   128_000,
+        ]
+        let sai = AVAssetWriterInput(mediaType: .audio, outputSettings: saiSettings)
         sai.expectsMediaDataInRealTime = true
         // Publish through systemAudioQueue rather than assigning directly
         // here on the main thread. systemAudioInput is read/appended-to
