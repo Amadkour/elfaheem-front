@@ -6,6 +6,8 @@
 		<true/>
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
+		<key>NSPhotoLibraryAddUsageDescription</key>
+		<string>used to save records</string>
 		<key>CFBundleDisplayName</key>
 		<string>Flutter Education App</string>
 		<key>CFBundleExecutable</key>
