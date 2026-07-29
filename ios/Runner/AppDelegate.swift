@@ -715,6 +715,30 @@ import WebRTC
                 let isFinal = (call.arguments as? [String: Any])?["isFinal"] as? Bool ?? true
                 self.stopRecording(isFinal: isFinal, result: result)
 
+            case "startLocalDebugSave":
+                // TEMP DIAGNOSTIC (2026-07-29) — runs a separate, single,
+                // non-chunked local recording in parallel to the main
+                // pipeline and saves it straight to Photos on stop. Exists
+                // purely to isolate on-device capture from the
+                // upload/backend pipeline while debugging the system-audio
+                // issue. Safe to call even if chunkVideoWidth/Height aren't
+                // set yet — falls back to a placeholder size that gets
+                // corrected once the first real video frame arrives isn't
+                // needed here since LocalDebugRecorder anchors off the
+                // same sampleBuffers as the main writer.
+                LocalDebugRecorder.shared.start(
+                    videoWidth: max(self.chunkVideoWidth, 720),
+                    videoHeight: max(self.chunkVideoHeight, 1280)
+                )
+                result(true)
+
+            case "stopLocalDebugSave":
+                LocalDebugRecorder.shared.stopAndSaveToPhotos { success, error in
+                    DispatchQueue.main.async {
+                        result(["success": success, "error": error?.localizedDescription as Any])
+                    }
+                }
+
             case "sendAudioFrame":
                 // Raw PCM audio frames forwarded from Dart via
                 // LocalAudioTrack.addAudioRenderer() (see room.dart) — this
@@ -1167,6 +1191,11 @@ import WebRTC
                 if self.videoInput?.isReadyForMoreMediaData == true {
                     self.videoInput?.append(sampleBuffer)
                 }
+                // TEMP DIAGNOSTIC (2026-07-29) — mirror into the parallel
+                // local-debug recorder, if active. No-ops entirely when
+                // start() hasn't been called, so this is inert in normal
+                // production use.
+                LocalDebugRecorder.shared.appendVideo(sampleBuffer)
 
             case .audioMic, .audioApp:
                 // Counted BEFORE any guard below, on purpose — this tells us
@@ -1279,6 +1308,9 @@ import WebRTC
             } else {
                 self.audioSamplesAppendedThisChunk += 1
             }
+            // TEMP DIAGNOSTIC (2026-07-29) — mirror mic audio into the
+            // parallel local-debug recorder, if active.
+            LocalDebugRecorder.shared.appendMic(sampleBuffer)
         }
     }
 
@@ -2990,6 +3022,12 @@ import WebRTC
                   + "\(String(describing: self.assetWriter?.status.rawValue)) "
                   + "error=\(String(describing: self.assetWriter?.error))")
         }
+        // TEMP DIAGNOSTIC (2026-07-29) — mirror system/shared-app audio
+        // into the parallel local-debug recorder, if active. This is the
+        // exact same sampleBuffer the main pipeline just tried to append,
+        // so whatever ends up in the local Photos copy for this track is
+        // a direct, chunking/backend-free comparison point.
+        LocalDebugRecorder.shared.appendSystemAudio(sampleBuffer)
     }
 
     /// Replays anything buffered by processSystemAudioFromBroadcast while
