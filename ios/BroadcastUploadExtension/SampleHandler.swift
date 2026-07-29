@@ -385,6 +385,29 @@ class SampleHandler: RPBroadcastSampleHandler {
         audioSeq += 1
         let fileURL = dir.appendingPathComponent("aud_\(paddedSeq(seq)).bin")
         try? data.write(to: fileURL, options: .atomic)
+
+        // ── TEMP DEBUG (2026-07-29) ─────────────────────────────────────────
+        // Preserve the first 5 raw audio-sample payloads (header + PCM,
+        // exact bytes as produced by serialiseAudio — before ANY IPC,
+        // Darwin notification, or AppDelegate-side reconstruction) so they
+        // can be pulled from the device and decoded/listened to directly.
+        // This bisects the pipeline: if THESE raw bytes already contain
+        // noise/static when decoded manually, the bug is in capture or in
+        // this serialisation step; if they're clean, the bug is downstream
+        // in AppDelegate's makeAudioSampleBuffer()/AVAssetWriter path.
+        // REMOVE once diagnosed.
+        if seq < 5, let container = FileManager.default
+                .containerURL(forSecurityApplicationGroupIdentifier: kAppGroup) {
+            let debugDir = container.appendingPathComponent("debug_audio_raw")
+            try? FileManager.default.createDirectory(
+                at: debugDir, withIntermediateDirectories: true
+            )
+            let debugURL = debugDir.appendingPathComponent("raw_\(paddedSeq(seq)).bin")
+            try? data.write(to: debugURL, options: .atomic)
+            NSLog("[DEBUG-AUDIO] seq=\(seq) bytes=\(data.count)")
+        }
+        // ── END TEMP DEBUG ───────────────────────────────────────────────────
+
         notify(kDarwinAudioNotif)
     }
 
