@@ -299,6 +299,21 @@ class SampleHandler: RPBroadcastSampleHandler {
         )
         guard status == noErr else { return nil }
 
+        // ── BUG FIX (2026-07-29) ────────────────────────────────────────────
+        // `blockBuffer` backs the memory that `listPointer`'s `mData`
+        // pointers point into, but it is never read again after the call
+        // above — only written to as an out-parameter. Swift's ARC keeps a
+        // variable alive only until its LAST USE; with no later use, the
+        // optimizer is free (especially in a Release/optimized build) to
+        // release `blockBuffer` immediately after this call returns —
+        // potentially BEFORE the code below finishes reading through
+        // `mData`. That reads freed/reused memory, producing garbage bytes
+        // — audible as static/noise, not silence or a clean failure, and
+        // easy to miss in Debug builds where deallocation timing differs.
+        // withExtendedLifetime forces `blockBuffer` to stay alive for the
+        // full duration of the closure, guaranteeing every `mData` read
+        // below happens against still-valid memory.
+        return withExtendedLifetime(blockBuffer) { () -> Data? in
         let listPointer = UnsafeMutableAudioBufferListPointer(listPtr)
         let isFloat: UInt32 = (asbd.mFormatFlags & kAudioFormatFlagIsFloat) != 0 ? 1 : 0
         let bytesPerSample  = isFloat == 1 ? 4 : 2
@@ -360,6 +375,7 @@ class SampleHandler: RPBroadcastSampleHandler {
         out.append(Data(bytes: &size4,  count: 4))
         out.append(payload)
         return out
+        } // end withExtendedLifetime(blockBuffer)
     }
 
     // ── File write + Darwin notification ──────────────────────────────────────
@@ -385,29 +401,6 @@ class SampleHandler: RPBroadcastSampleHandler {
         audioSeq += 1
         let fileURL = dir.appendingPathComponent("aud_\(paddedSeq(seq)).bin")
         try? data.write(to: fileURL, options: .atomic)
-
-        // ── TEMP DEBUG (2026-07-29) ─────────────────────────────────────────
-        // Preserve the first 5 raw audio-sample payloads (header + PCM,
-        // exact bytes as produced by serialiseAudio — before ANY IPC,
-        // Darwin notification, or AppDelegate-side reconstruction) so they
-        // can be pulled from the device and decoded/listened to directly.
-        // This bisects the pipeline: if THESE raw bytes already contain
-        // noise/static when decoded manually, the bug is in capture or in
-        // this serialisation step; if they're clean, the bug is downstream
-        // in AppDelegate's makeAudioSampleBuffer()/AVAssetWriter path.
-        // REMOVE once diagnosed.
-        if seq < 5, let container = FileManager.default
-                .containerURL(forSecurityApplicationGroupIdentifier: kAppGroup) {
-            let debugDir = container.appendingPathComponent("debug_audio_raw")
-            try? FileManager.default.createDirectory(
-                at: debugDir, withIntermediateDirectories: true
-            )
-            let debugURL = debugDir.appendingPathComponent("raw_\(paddedSeq(seq)).bin")
-            try? data.write(to: debugURL, options: .atomic)
-            NSLog("[DEBUG-AUDIO] seq=\(seq) bytes=\(data.count)")
-        }
-        // ── END TEMP DEBUG ───────────────────────────────────────────────────
-
         notify(kDarwinAudioNotif)
     }
 
