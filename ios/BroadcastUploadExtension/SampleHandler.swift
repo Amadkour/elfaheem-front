@@ -69,6 +69,7 @@ import CoreMedia
 import CoreVideo
 import CoreAudio
 import AudioToolbox
+import AVFoundation
 
 private let kAppGroup         = "group.com.softkour.alfaheem"
 private let kDarwinFrameNotif = "com.example.flutter_education_app.frame"
@@ -115,6 +116,20 @@ class SampleHandler: RPBroadcastSampleHandler {
     private var audioListBuffer: UnsafeMutableRawPointer?
     private var audioListBufferSize: Int = 0
 
+    // ── DIRECT-CAPTURE DIAGNOSTIC (2026-07-30) ──────────────────────────────
+    // Teams/Zoom-style architecture: encode the ORIGINAL ReplayKit
+    // CMSampleBuffer directly, inside the extension, at the point of
+    // capture — zero custom serialization, zero host-side reconstruction.
+    // If audio recorded this way is STILL corrupted, the bug is genuinely
+    // upstream of all custom code (ReplayKit/OS level). If it's clean,
+    // this proves the existing serialize→queue→reconstruct pipeline is
+    // where the corruption is introduced, and this becomes the
+    // replacement architecture rather than just a diagnostic.
+    private var directAudioWriter: AVAssetWriter?
+    private var directAudioInput: AVAssetWriterInput?
+    private var directAudioSessionStarted = false
+    private let directAudioQueue = DispatchQueue(label: "com.softkour.alfaheem.directaudio")
+
     override func broadcastStarted(withSetupInfo setupInfo: [String: NSObject]?) {
         // Resolve the shared container URL.
         guard let container = FileManager.default
@@ -143,6 +158,31 @@ class SampleHandler: RPBroadcastSampleHandler {
         audioQueueDirURL = audioDir
         audioSeq = 0
 
+        // ── DIRECT-CAPTURE DIAGNOSTIC: initialize the writer ────────────────
+        let directAudioURL = container.appendingPathComponent("direct_system_audio.m4a")
+        try? FileManager.default.removeItem(at: directAudioURL) // overwrite each broadcast
+        if let writer = try? AVAssetWriter(outputURL: directAudioURL, fileType: .m4a) {
+            let settings: [String: Any] = [
+                AVFormatIDKey: kAudioFormatMPEG4AAC,
+                AVSampleRateKey: 44100,
+                AVNumberOfChannelsKey: 2,
+                AVEncoderBitRateKey: 192_000,
+            ]
+            let input = AVAssetWriterInput(mediaType: .audio, outputSettings: settings)
+            input.expectsMediaDataInRealTime = true
+            if writer.canAdd(input) {
+                writer.add(input)
+                directAudioWriter = writer
+                directAudioInput = input
+                directAudioSessionStarted = false
+                NSLog("[DIRECT-AUDIO] writer initialized → \(directAudioURL.lastPathComponent)")
+            } else {
+                NSLog("[DIRECT-AUDIO] canAdd(input) returned false — writer not usable")
+            }
+        } else {
+            NSLog("[DIRECT-AUDIO] failed to create AVAssetWriter")
+        }
+
         NSLog("[SampleHandler] started — container: \(container.path)")
         NSLog("[SampleHandler] BUILD-CHECK-\(Date()) started")
     }
@@ -156,6 +196,22 @@ class SampleHandler: RPBroadcastSampleHandler {
         audioListBuffer = nil
         audioListBufferSize = 0
         audioSeq = 0
+
+        // ── DIRECT-CAPTURE DIAGNOSTIC: finalize ─────────────────────────────
+        // Synchronous on purpose — broadcastFinished() is the extension's
+        // last chance to run any code at all before the process is torn
+        // down, so this can't be fire-and-forget the way the main pipeline
+        // is elsewhere.
+        directAudioQueue.sync {
+            guard let writer = directAudioWriter else { return }
+            directAudioInput?.markAsFinished()
+            let sem = DispatchSemaphore(value: 0)
+            writer.finishWriting { sem.signal() }
+            _ = sem.wait(timeout: .now() + 5)
+            NSLog("[DIRECT-AUDIO] finalized, status=\(writer.status.rawValue) "
+                  + "error=\(String(describing: writer.error))")
+        }
+
         NSLog("[SampleHandler] finished — stop notification posted")
     }
 
@@ -178,6 +234,13 @@ class SampleHandler: RPBroadcastSampleHandler {
             }
             guard let data = serialiseAudio(sampleBuffer) else { return }
             writeAudioSample(data)
+
+            // ── DIRECT-CAPTURE DIAGNOSTIC ────────────────────────────────────
+            // Append the ORIGINAL sampleBuffer directly — no serialization,
+            // no host-side reconstruction. Isolated on its own dispatch
+            // queue so any issue here can never affect the main pipeline
+            // above.
+            appendDirectAudio(sampleBuffer)
 
         case .audioMic:
             // Still intentionally dropped: this extension has no mic
@@ -379,6 +442,37 @@ class SampleHandler: RPBroadcastSampleHandler {
     }
 
     // ── File write + Darwin notification ──────────────────────────────────────
+
+    // ── DIRECT-CAPTURE DIAGNOSTIC ────────────────────────────────────────────
+    //
+    // Appends the ORIGINAL CMSampleBuffer straight from ReplayKit into an
+    // AVAssetWriterInput running inside THIS process (the extension) —
+    // exactly the CMSampleBuffer, untouched, that ReplayKit itself handed
+    // us. There is no serialization, no IPC, no manual ASBD/CMBlockBuffer
+    // reconstruction anywhere in this path. If the resulting file is
+    // clean, every bug we've chased in the serialize→queue→reconstruct
+    // pipeline becomes moot — this becomes the real fix, not just a test.
+    private func appendDirectAudio(_ sampleBuffer: CMSampleBuffer) {
+        directAudioQueue.async { [weak self] in
+            guard let self = self,
+                  let writer = self.directAudioWriter,
+                  let input = self.directAudioInput
+            else { return }
+
+            if writer.status == .unknown {
+                writer.startWriting()
+                writer.startSession(atSourceTime: CMSampleBufferGetPresentationTimeStamp(sampleBuffer))
+                self.directAudioSessionStarted = true
+                NSLog("[DIRECT-AUDIO] session started")
+            }
+            guard self.directAudioSessionStarted, writer.status == .writing else { return }
+            guard input.isReadyForMoreMediaData else { return }
+            if !input.append(sampleBuffer) {
+                NSLog("[DIRECT-AUDIO] append FAILED — status=\(writer.status.rawValue) "
+                      + "error=\(String(describing: writer.error))")
+            }
+        }
+    }
 
     private func write(_ data: Data, to url: URL?, notif: String) {
         guard let url = url else { return }
