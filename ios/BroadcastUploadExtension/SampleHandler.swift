@@ -232,14 +232,30 @@ class SampleHandler: RPBroadcastSampleHandler {
                 // Non-PCM (e.g. AAC from DRM-protected apps) — skip, can't forward
                 return
             }
-            guard let data = serialiseAudio(sampleBuffer) else { return }
-            writeAudioSample(data)
 
-            // ── DIRECT-CAPTURE DIAGNOSTIC ────────────────────────────────────
-            // Append the ORIGINAL sampleBuffer directly — no serialization,
-            // no host-side reconstruction. Isolated on its own dispatch
-            // queue so any issue here can never affect the main pipeline
-            // above.
+            // ── 2026-07-30: per-sample file-write IPC REMOVED for audio ──────
+            // The old path here called serialiseAudio()+writeAudioSample(),
+            // which creates and writes a NEW FILE TO DISK for every single
+            // .audioApp callback (~40-100 times/second, since ReplayKit
+            // fires this every ~10-25ms). Broadcast extensions have a very
+            // tight, hard-enforced CPU/memory budget from Apple; per Apple's
+            // own documented behavior (and this file's own prior comment on
+            // audioListBuffer above), if processSampleBuffer doesn't return
+            // fast enough on every call, ReplayKit does NOT buffer or retry
+            // — it silently STOPS delivering .audioApp samples for the rest
+            // of the broadcast. That matches "works for ~1s, then muted for
+            // the rest" exactly, and is very likely the actual root cause
+            // chased through this whole investigation — independent of any
+            // reconstruction/format bug found earlier, since this throttling
+            // would silence audio regardless of how correctly the host side
+            // reconstructs whatever few samples DO get through.
+            //
+            // The direct-capture writer below does real encoding work but
+            // ZERO per-sample disk I/O (no file create/write syscall per
+            // callback), so it's dramatically cheaper per call. This is now
+            // the ONLY audio path — not running alongside the old one,
+            // which would double the per-callback cost instead of reducing
+            // it.
             appendDirectAudio(sampleBuffer)
 
         case .audioMic:
