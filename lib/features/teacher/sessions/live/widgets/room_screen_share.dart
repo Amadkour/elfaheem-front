@@ -27,6 +27,43 @@ if (dart.library.html) 'recorder_web_impl.dart' as web_rec;
 import 'package:livekit_client/livekit_client.dart';
 import 'room_recorder.dart';
 
+// ── DIAGNOSTIC (2026-07-30) ───────────────────────────────────────────────
+// Tests the hypothesis that WebRTC's Voice-Processing I/O unit (engaged by
+// echoCancellation: true on the live call's mic track) forces system-wide
+// audio ducking at the CoreAudio HAL level — below AVAudioSession's own
+// category/mode negotiation — which would silence ReplayKit's .audioApp
+// tap regardless of any of the broadcast-extension-side session
+// configuration already in place. This has been isolated as the most
+// likely remaining explanation after ruling out per-sample file I/O,
+// buffer lifetime bugs, audio-session reconfigure storms, and the
+// backend/network entirely — audio capturing correctly for ~1s then
+// muting for the rest matches the ~1s engagement delay of iOS's
+// voice-processing ducking closely.
+//
+// Same options as _hdAudioCaptureOptions (room.dart) except
+// echoCancellation: false. If disabling this for the duration of a
+// broadcast share resolves the muting, echo cancellation is confirmed as
+// the root cause — the real fix then needs to explicitly weigh AEC loss
+// during screen share against having working shared-content audio at all
+// (echo risk during a share is often lower anyway, since the teacher
+// typically isn't speaking directly over loud speaker output the whole
+// time the way a phone-call-style conversation would be).
+const _shareCompatibleAudioCaptureOptions = AudioCaptureOptions(
+  noiseSuppression: true,
+  echoCancellation: false,
+  autoGainControl: true,
+  highPassFilter: true,
+  typingNoiseDetection: true,
+);
+
+const _callQualityAudioCaptureOptions = AudioCaptureOptions(
+  noiseSuppression: true,
+  echoCancellation: true,
+  autoGainControl: true,
+  highPassFilter: true,
+  typingNoiseDetection: true,
+);
+
 mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
 
   Room get room;
@@ -379,6 +416,19 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
         );
         await Future.delayed(const Duration(milliseconds: 300));
 
+        // ── DIAGNOSTIC (2026-07-30): disable echo cancellation for the
+        // duration of the share — see the const's doc comment above for
+        // why. Non-fatal if it fails; the share proceeds either way.
+        try {
+          await local.setMicrophoneEnabled(
+            true,
+            audioCaptureOptions: _shareCompatibleAudioCaptureOptions,
+          );
+          log('[SS] iOS: echoCancellation disabled for share (diagnostic)');
+        } catch (e) {
+          log('[SS] iOS: failed to disable echoCancellation (non-fatal): $e');
+        }
+
         // Show the "Start Broadcast" confirmation sheet for OUR extension.
         // Internally this: pauses RPScreenRecorder, finalises + rotates chunk,
         // registers Darwin listeners, auto-taps the picker button.
@@ -434,6 +484,22 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
     }
     if (!_isBroadcastActive) return;
     _isBroadcastActive = false;
+
+    // ── DIAGNOSTIC (2026-07-30): restore normal call-quality echo
+    // cancellation once the share ends — see the const's doc comment
+    // near the top of this file.
+    try {
+      final local = room.localParticipant;
+      if (local != null) {
+        await local.setMicrophoneEnabled(
+          true,
+          audioCaptureOptions: _callQualityAudioCaptureOptions,
+        );
+        log('[SS] iOS: echoCancellation restored after share (diagnostic)');
+      }
+    } catch (e) {
+      log('[SS] iOS: failed to restore echoCancellation (non-fatal): $e');
+    }
 
     try {
       // Tell AppDelegate to stop the extension and rotate the recording chunk.
