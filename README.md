@@ -116,7 +116,7 @@ video capturer stopped, trackID = ABED4626-3983-4C27-B8E8-3A8BD7CF2DA0
 [REC] chunk #8 HTTP 201 isFinal=true size=373639B
 [REC] chunk #8 uploaded OK (373639B isFinal=true)
 [LOCAL-DEBUG] Recorder initialized → local_debug_60CF797E-8E4C-452D-985E-5DFE25CB5ACF.mp4
-[REC] finalize ping HTTP 201
+[REC] finalize ping HTTP 201a
 RTC AudioSession deactive is successful
 [LiveKit] Configuring category:  AVAudioSessionCategorySoloAmbient
 [LiveKit] Configuring categoryOptions:  []

@@ -14,6 +14,33 @@
 //   Apple's iOS sandbox blocks it — this is not a configuration issue,
 //   it is a platform restriction introduced in iOS 14.
 //
+// ⚠️  2026-07-30 FIX — SYSTEM/APP AUDIO WAS NOT REACHING THE RECORDING:
+//   A prior change ("DIRECT-CAPTURE DIAGNOSTIC") redirected every
+//   .audioApp sample into a standalone AVAssetWriter that encoded straight
+//   to <AppGroup>/direct_system_audio.m4a, entirely inside this extension
+//   process, and removed the call that fed audio into the real IPC path
+//   below. That diagnostic file was never read by anything — AppDelegate's
+//   actual recording pipeline (systemAudioInput, the chunked AVAssetWriter,
+//   progressive chunk upload) only ever consumes samples that arrive via
+//   the queue-directory + Darwin-notification mechanism described below.
+//   So system/app audio was captured correctly, but into a file with no
+//   connection to the session recording — it just silently never showed
+//   up in what got saved/uploaded. It also can't be fixed by muxing that
+//   file in afterward: the app records and uploads in live chunks (see
+//   RecState.uploading in recorder_types.dart), and a file only finalised
+//   in broadcastFinished() isn't available until the whole broadcast ends,
+//   which is incompatible with that chunked/progressive design.
+//
+//   The diagnostic did teach us something real, though: per-sample file
+//   writes (one file create+write syscall every ~10-25ms) were expensive
+//   enough that ReplayKit's non-buffering delivery model started silently
+//   dropping .audioApp samples after a short burst — exactly the shape of
+//   bug this was chasing. The fix below keeps that lesson without
+//   abandoning the working pipeline: audio records are now BATCHED in
+//   memory and flushed to a single queue file every few samples instead
+//   of one file per sample, cutting the syscall rate by ~kAudioBatchSize
+//   while still feeding the real recording path. See writeAudioSample.
+//
 // HOW THIS WORKS:
 //   1. SampleHandler serialises each video frame (and each .audioApp — the
 //      SHARED APP'S OWN audio, e.g. a video/game playing on the shared
@@ -32,14 +59,20 @@
 //      twice, gets a duplicate/non-monotonic timestamp, and the writer's
 //      strictly-increasing-PTS guard then silently rejects it and every
 //      write after it — which looks exactly like "audio works for the
-//      first sample then goes silent for the rest of the share". So each
-//      audio sample instead gets its OWN sequentially-numbered file under
-//      a queue directory:
+//      first sample then goes silent for the rest of the share". So audio
+//      is written under its own sequentially-numbered file under a queue
+//      directory:
 //        <AppGroup>/broadcast_audio_queue/aud_0000000001.bin
 //        <AppGroup>/broadcast_audio_queue/aud_0000000002.bin  ...
 //      Nothing is ever overwritten, so there is nothing to race — the host
 //      just drains the directory in filename order on each notification
-//      (see AppDelegate's drainAudioQueueDirectory).
+//      (see AppDelegate's drainAudioQueueDirectory). To keep the syscall
+//      rate down (see the 2026-07-30 fix note above), each file is now a
+//      BATCH of up to kAudioBatchSize samples concatenated back-to-back
+//      (still each in the same self-describing [typeId][pts][size][payload]
+//      wire format), rather than exactly one sample per file. AppDelegate's
+//      drain loop walks each file record-by-record, so batching is
+//      transparent to it beyond that loop.
 //   3. Posts a Darwin notification per type: "…flutter_education_app.frame"
 //      / "…flutter_education_app.audioframe".
 //   4. AppDelegate receives the notification (Darwin center crosses the
@@ -116,19 +149,20 @@ class SampleHandler: RPBroadcastSampleHandler {
     private var audioListBuffer: UnsafeMutableRawPointer?
     private var audioListBufferSize: Int = 0
 
-    // ── DIRECT-CAPTURE DIAGNOSTIC (2026-07-30) ──────────────────────────────
-    // Teams/Zoom-style architecture: encode the ORIGINAL ReplayKit
-    // CMSampleBuffer directly, inside the extension, at the point of
-    // capture — zero custom serialization, zero host-side reconstruction.
-    // If audio recorded this way is STILL corrupted, the bug is genuinely
-    // upstream of all custom code (ReplayKit/OS level). If it's clean,
-    // this proves the existing serialize→queue→reconstruct pipeline is
-    // where the corruption is introduced, and this becomes the
-    // replacement architecture rather than just a diagnostic.
-    private var directAudioWriter: AVAssetWriter?
-    private var directAudioInput: AVAssetWriterInput?
-    private var directAudioSessionStarted = false
-    private let directAudioQueue = DispatchQueue(label: "com.softkour.alfaheem.directaudio")
+    // ── Audio batching buffer ────────────────────────────────────────────
+    // See the 2026-07-30 header comment: writing one file per .audioApp
+    // sample (~every 10-25ms) was expensive enough that ReplayKit stopped
+    // delivering audio after a short burst. Records are accumulated here
+    // in memory and flushed to a single queue file every kAudioBatchSize
+    // samples, cutting the per-callback file-write rate by that factor.
+    // Only ever touched from processSampleBuffer's .audioApp case, which
+    // ReplayKit calls serially, so no locking is needed.
+    private var pendingAudioRecords: [Data] = []
+    // Flush after this many buffered samples. .audioApp fires every
+    // ~10-25ms, so 6 keeps added latency to roughly 60-150ms — comfortably
+    // inside what a chunked recording can tolerate — while cutting file
+    // writes to about 1/6th of the original per-sample rate.
+    private let kAudioBatchSize = 6
 
     override func broadcastStarted(withSetupInfo setupInfo: [String: NSObject]?) {
         // Resolve the shared container URL.
@@ -157,61 +191,25 @@ class SampleHandler: RPBroadcastSampleHandler {
         )
         audioQueueDirURL = audioDir
         audioSeq = 0
-
-        // ── DIRECT-CAPTURE DIAGNOSTIC: initialize the writer ────────────────
-        let directAudioURL = container.appendingPathComponent("direct_system_audio.m4a")
-        try? FileManager.default.removeItem(at: directAudioURL) // overwrite each broadcast
-        if let writer = try? AVAssetWriter(outputURL: directAudioURL, fileType: .m4a) {
-            let settings: [String: Any] = [
-                AVFormatIDKey: kAudioFormatMPEG4AAC,
-                AVSampleRateKey: 44100,
-                AVNumberOfChannelsKey: 2,
-                AVEncoderBitRateKey: 192_000,
-            ]
-            let input = AVAssetWriterInput(mediaType: .audio, outputSettings: settings)
-            input.expectsMediaDataInRealTime = true
-            if writer.canAdd(input) {
-                writer.add(input)
-                directAudioWriter = writer
-                directAudioInput = input
-                directAudioSessionStarted = false
-                NSLog("[DIRECT-AUDIO] writer initialized → \(directAudioURL.lastPathComponent)")
-            } else {
-                NSLog("[DIRECT-AUDIO] canAdd(input) returned false — writer not usable")
-            }
-        } else {
-            NSLog("[DIRECT-AUDIO] failed to create AVAssetWriter")
-        }
+        pendingAudioRecords.removeAll()
 
         NSLog("[SampleHandler] started — container: \(container.path)")
         NSLog("[SampleHandler] BUILD-CHECK-\(Date()) started")
     }
 
-    override func broadcastPaused()  {}
+    override func broadcastPaused()  { flushPendingAudio() }
     override func broadcastResumed() {}
 
     override func broadcastFinished() {
+        // Flush whatever's still buffered so the tail end of the share's
+        // audio (up to kAudioBatchSize-1 samples) isn't lost just because
+        // the batch never filled up before the broadcast ended.
+        flushPendingAudio()
         notify(kDarwinStopNotif)
         audioListBuffer?.deallocate()
         audioListBuffer = nil
         audioListBufferSize = 0
         audioSeq = 0
-
-        // ── DIRECT-CAPTURE DIAGNOSTIC: finalize ─────────────────────────────
-        // Synchronous on purpose — broadcastFinished() is the extension's
-        // last chance to run any code at all before the process is torn
-        // down, so this can't be fire-and-forget the way the main pipeline
-        // is elsewhere.
-        directAudioQueue.sync {
-            guard let writer = directAudioWriter else { return }
-            directAudioInput?.markAsFinished()
-            let sem = DispatchSemaphore(value: 0)
-            writer.finishWriting { sem.signal() }
-            _ = sem.wait(timeout: .now() + 5)
-            NSLog("[DIRECT-AUDIO] finalized, status=\(writer.status.rawValue) "
-                  + "error=\(String(describing: writer.error))")
-        }
-
         NSLog("[SampleHandler] finished — stop notification posted")
     }
 
@@ -233,30 +231,14 @@ class SampleHandler: RPBroadcastSampleHandler {
                 return
             }
 
-            // ── 2026-07-30: per-sample file-write IPC REMOVED for audio ──────
-            // The old path here called serialiseAudio()+writeAudioSample(),
-            // which creates and writes a NEW FILE TO DISK for every single
-            // .audioApp callback (~40-100 times/second, since ReplayKit
-            // fires this every ~10-25ms). Broadcast extensions have a very
-            // tight, hard-enforced CPU/memory budget from Apple; per Apple's
-            // own documented behavior (and this file's own prior comment on
-            // audioListBuffer above), if processSampleBuffer doesn't return
-            // fast enough on every call, ReplayKit does NOT buffer or retry
-            // — it silently STOPS delivering .audioApp samples for the rest
-            // of the broadcast. That matches "works for ~1s, then muted for
-            // the rest" exactly, and is very likely the actual root cause
-            // chased through this whole investigation — independent of any
-            // reconstruction/format bug found earlier, since this throttling
-            // would silence audio regardless of how correctly the host side
-            // reconstructs whatever few samples DO get through.
-            //
-            // The direct-capture writer below does real encoding work but
-            // ZERO per-sample disk I/O (no file create/write syscall per
-            // callback), so it's dramatically cheaper per call. This is now
-            // the ONLY audio path — not running alongside the old one,
-            // which would double the per-callback cost instead of reducing
-            // it.
-            appendDirectAudio(sampleBuffer)
+            // Serialise into the wire-format record AppDelegate expects,
+            // then buffer it rather than writing a file per sample — see
+            // the 2026-07-30 header comment for why one file per ~10-25ms
+            // callback made ReplayKit silently stop delivering .audioApp
+            // samples after a short burst. writeAudioSample only actually
+            // touches disk once every kAudioBatchSize samples.
+            guard let record = serialiseAudio(sampleBuffer) else { return }
+            writeAudioSample(record)
 
         case .audioMic:
             // Still intentionally dropped: this extension has no mic
@@ -459,37 +441,6 @@ class SampleHandler: RPBroadcastSampleHandler {
 
     // ── File write + Darwin notification ──────────────────────────────────────
 
-    // ── DIRECT-CAPTURE DIAGNOSTIC ────────────────────────────────────────────
-    //
-    // Appends the ORIGINAL CMSampleBuffer straight from ReplayKit into an
-    // AVAssetWriterInput running inside THIS process (the extension) —
-    // exactly the CMSampleBuffer, untouched, that ReplayKit itself handed
-    // us. There is no serialization, no IPC, no manual ASBD/CMBlockBuffer
-    // reconstruction anywhere in this path. If the resulting file is
-    // clean, every bug we've chased in the serialize→queue→reconstruct
-    // pipeline becomes moot — this becomes the real fix, not just a test.
-    private func appendDirectAudio(_ sampleBuffer: CMSampleBuffer) {
-        directAudioQueue.async { [weak self] in
-            guard let self = self,
-                  let writer = self.directAudioWriter,
-                  let input = self.directAudioInput
-            else { return }
-
-            if writer.status == .unknown {
-                writer.startWriting()
-                writer.startSession(atSourceTime: CMSampleBufferGetPresentationTimeStamp(sampleBuffer))
-                self.directAudioSessionStarted = true
-                NSLog("[DIRECT-AUDIO] session started")
-            }
-            guard self.directAudioSessionStarted, writer.status == .writing else { return }
-            guard input.isReadyForMoreMediaData else { return }
-            if !input.append(sampleBuffer) {
-                NSLog("[DIRECT-AUDIO] append FAILED — status=\(writer.status.rawValue) "
-                      + "error=\(String(describing: writer.error))")
-            }
-        }
-    }
-
     private func write(_ data: Data, to url: URL?, notif: String) {
         guard let url = url else { return }
         // Write atomically so the host app never reads a partial file.
@@ -497,20 +448,43 @@ class SampleHandler: RPBroadcastSampleHandler {
         notify(notif)
     }
 
-    /// Writes ONE audio sample to its own file in the queue directory and
-    /// posts the audio Darwin notification. Deliberately never reuses a
-    /// filename — each call gets the next sequence number, so there is
-    /// nothing for a fast producer / slower consumer to race over (unlike
-    /// the old single fixed-file design, which could get overwritten
-    /// before the host read it, or read twice yielding a duplicate
-    /// timestamp — see this file's header comment for why that silenced
-    /// audio after the very first sample).
+    /// Buffers one already-serialised audio record (from serialiseAudio)
+    /// and flushes the batch to disk once kAudioBatchSize records have
+    /// accumulated. This is the call site that used to write a brand new
+    /// file per sample; batching is what fixes ReplayKit silently halting
+    /// .audioApp delivery under that per-callback I/O cost (see the
+    /// 2026-07-30 header comment) while still feeding the exact same
+    /// queue-directory pipeline AppDelegate already knows how to drain.
     private func writeAudioSample(_ data: Data) {
-        guard let dir = audioQueueDirURL else { return }
+        pendingAudioRecords.append(data)
+        if pendingAudioRecords.count >= kAudioBatchSize {
+            flushPendingAudio()
+        }
+    }
+
+    /// Concatenates every currently-buffered audio record into ONE file
+    /// under the queue directory and posts a single Darwin notification
+    /// for the whole batch. Deliberately never reuses a filename — each
+    /// flush gets the next sequence number, so there is nothing for a fast
+    /// producer / slower consumer to race over (unlike the old single
+    /// fixed-file design, which could get overwritten before the host read
+    /// it, or read twice yielding a duplicate timestamp — see this file's
+    /// header comment for why that silenced audio after the very first
+    /// sample). Safe to call with an empty buffer (no-op).
+    private func flushPendingAudio() {
+        guard !pendingAudioRecords.isEmpty else { return }
+        guard let dir = audioQueueDirURL else {
+            pendingAudioRecords.removeAll()
+            return
+        }
+        var batch = Data()
+        for record in pendingAudioRecords { batch.append(record) }
+        pendingAudioRecords.removeAll()
+
         let seq = audioSeq
         audioSeq += 1
         let fileURL = dir.appendingPathComponent("aud_\(paddedSeq(seq)).bin")
-        try? data.write(to: fileURL, options: .atomic)
+        try? batch.write(to: fileURL, options: .atomic)
         notify(kDarwinAudioNotif)
     }
 
