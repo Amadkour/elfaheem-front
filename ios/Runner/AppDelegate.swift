@@ -1473,6 +1473,21 @@ import WebRTC
             } else {
                 self.videoBroadcastAppendedThisChunk += 1
             }
+            // TEMP DIAGNOSTIC (2026-07-31) — mirror BROADCAST video into the
+            // parallel local-debug recorder too, if active. Previously only
+            // processSampleFromRecorder (RPScreenRecorder's own-app path)
+            // fed LocalDebugRecorder.appendVideo — during a share, that path
+            // is suppressed (see processSampleFromRecorder's isBroadcasting
+            // guard), so the debug recording's video track went dark the
+            // instant a share started while its audio kept recording,
+            // making the debug file useless for confirming whether shared-
+            // app audio specifically is muted (no picture to correlate
+            // against). This call needs a matching appendBroadcastVideo(_:
+            // withPresentationTime:) method added to LocalDebugRecorder that
+            // accepts a CVPixelBuffer + CMTime (it can't reuse appendVideo's
+            // CMSampleBuffer signature — broadcast frames only exist as a
+            // decoded pixel buffer at this point, see jpegToPixelBuffer).
+            LocalDebugRecorder.shared.appendBroadcastVideo(pixelBuffer, withPresentationTime: pts)
         }
     }
 
@@ -2720,8 +2735,10 @@ import WebRTC
 
     /// Reads and deletes every currently-pending file in the audio queue
     /// directory, in ascending (i.e. chronological) filename order, and
-    /// feeds each one to handleBroadcastData in that order. Must only be
-    /// called on audioIpcReadQueue (serial) so two drains never overlap.
+    /// feeds each one to handleBatchedAudioData (which may unpack several
+    /// batched records per file — see its doc comment) in that order.
+    /// Must only be called on audioIpcReadQueue (serial) so two drains
+    /// never overlap.
     private func drainAudioQueueDirectory() {
         guard let container = FileManager.default
                 .containerURL(forSecurityApplicationGroupIdentifier: kAppGroup) else { return }
@@ -2743,7 +2760,38 @@ import WebRTC
             // never want a second drain pass to double-process this file.
             try? FileManager.default.removeItem(at: fileURL)
             guard data.count >= 16 else { continue }
-            handleBroadcastData(data)
+            handleBatchedAudioData(data)
+        }
+    }
+
+    /// Each file in the audio queue directory may contain several audio
+    /// records concatenated back-to-back (SampleHandler batches up to
+    /// kAudioBatchSize samples per file-write instead of writing one file
+    /// per sample — see SampleHandler.swift's 2026-07-30 header comment
+    /// for why). Each record is still the same self-describing
+    /// [4B typeId][8B ptsNs][4B size][payload] format handleBroadcastData
+    /// already knows how to parse, so this just walks the buffer and hands
+    /// each record to handleBroadcastData in order, one at a time, instead
+    /// of assuming the whole file is a single record.
+    private func handleBatchedAudioData(_ data: Data) {
+        var offset = data.startIndex
+        while data.distance(from: offset, to: data.endIndex) >= 16 {
+            let remaining = Data(data[offset...])
+            func beUInt32At(_ o: Int) -> UInt32 {
+                var v: UInt32 = 0
+                for i in 0..<4 { v = (v << 8) | UInt32(remaining[remaining.startIndex + o + i]) }
+                return v
+            }
+            let paySize = Int(beUInt32At(12))
+            let recordLen = 16 + paySize
+            guard remaining.count >= recordLen else {
+                // Truncated trailing record (shouldn't happen — writes are
+                // atomic — but bail out defensively rather than parsing
+                // garbage as a header).
+                break
+            }
+            handleBroadcastData(Data(remaining.prefix(recordLen)))
+            offset = data.index(offset, offsetBy: recordLen)
         }
     }
 
