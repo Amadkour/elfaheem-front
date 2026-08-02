@@ -137,6 +137,24 @@ class SampleHandler: RPBroadcastSampleHandler {
     // ReplayKit calls serially, so no locking is needed.
     private var audioSeq: UInt64 = 0
 
+    // DIAGNOSTIC (2026-08-01) — see processSampleBuffer's .audioApp case.
+    // Measures raw .audioApp loudness AT THE POINT REPLAYKIT HANDS IT TO
+    // US, before any of our own serialisation/batching/writing touches it.
+    // This extension runs as a completely separate OS process from the
+    // host app — it does not share the host app's AVAudioSession, so none
+    // of AppDelegate's category/mode/duckOthers configuration can affect
+    // what ReplayKit captures here. All prior fixes targeted the host
+    // app's session. This log answers the question those fixes couldn't:
+    // is ReplayKit itself already handing this extension quiet samples
+    // (root cause is upstream, at the OS audio-routing level, outside any
+    // app's control), or is it giving us good levels that get squashed
+    // somewhere downstream in the host app's mixing/writing (in which
+    // case a host-app-side fix is still viable)?
+    private var lastAudioAppRmsLogTime: CFAbsoluteTime = 0
+    private var audioAppRmsSquareSum: Double = 0
+    private var audioAppRmsSampleCount: Int = 0
+    private var audioAppRmsPeak: Float = 0
+
     // Reused across every audio callback rather than allocated+freed per
     // frame. Broadcast extensions have a very tight CPU/memory budget, and
     // audio callbacks can fire every ~10-25ms — allocating and
@@ -148,6 +166,9 @@ class SampleHandler: RPBroadcastSampleHandler {
     // sized once and can be reused indefinitely after that.
     private var audioListBuffer: UnsafeMutableRawPointer?
     private var audioListBufferSize: Int = 0
+    // Guards audioListBuffer against aliasing by two overlapping calls —
+    // see the FIX comment where this is used in serialiseAudio for why.
+    private let audioBufferLock = NSLock()
 
     // ── Audio batching buffer ────────────────────────────────────────────
     // See the 2026-07-30 header comment: writing one file per .audioApp
@@ -228,8 +249,19 @@ class SampleHandler: RPBroadcastSampleHandler {
                   asbd.pointee.mFormatID == kAudioFormatLinearPCM
             else {
                 // Non-PCM (e.g. AAC from DRM-protected apps) — skip, can't forward
+                NSLog("[SampleHandler][diag] .audioApp buffer is NOT LinearPCM "
+                      + "(likely DRM-protected content) — dropped, cannot forward")
                 return
             }
+
+            // DIAGNOSTIC (2026-08-01) — measure the RAW samples ReplayKit
+            // just handed us, before serialiseAudio/batching/writing touch
+            // them. Accumulated per-buffer, logged once/sec so this doesn't
+            // add per-callback overhead (see the 2026-07-30 header comment
+            // on why extra per-callback cost silently starves .audioApp
+            // delivery). isFloat vs int16 handled since either can show up
+            // depending on the shared app's own output format.
+            measureAudioAppRms(sampleBuffer, asbd: asbd.pointee)
 
             // Serialise into the wire-format record AppDelegate expects,
             // then buffer it rather than writing a file per sample — see
@@ -249,6 +281,74 @@ class SampleHandler: RPBroadcastSampleHandler {
         @unknown default:
             return
         }
+    }
+
+    // ── DIAGNOSTIC (2026-08-01): raw .audioApp loudness at the source ────────
+    // Reads straight from the CMBlockBuffer — no dependency on
+    // serialiseAudio's own extraction path, so a bug in serialisation can't
+    // mask (or fake) what's measured here.
+    private func measureAudioAppRms(_ sb: CMSampleBuffer, asbd: AudioStreamBasicDescription) {
+        guard let blockBuffer = CMSampleBufferGetDataBuffer(sb) else { return }
+        var lengthAtOffset = 0
+        var totalLength = 0
+        var dataPointer: UnsafeMutablePointer<Int8>?
+        let status = CMBlockBufferGetDataPointer(
+            blockBuffer, atOffset: 0, lengthAtOffsetOut: &lengthAtOffset,
+            totalLengthOut: &totalLength, dataPointerOut: &dataPointer
+        )
+        guard status == kCMBlockBufferNoErr, let dataPointer = dataPointer, totalLength > 0 else {
+            NSLog("[SampleHandler][diag] .audioApp: could not read raw block buffer (status=\(status))")
+            return
+        }
+
+        let isFloat = (asbd.mFormatFlags & kAudioFormatFlagIsFloat) != 0
+        let bytesPerSample = Int(asbd.mBitsPerChannel) / 8
+        guard bytesPerSample > 0 else { return }
+        let sampleCount = totalLength / bytesPerSample
+
+        var sumSquares: Double = 0
+        var peak: Float = 0
+        dataPointer.withMemoryRebound(to: UInt8.self, capacity: totalLength) { raw in
+            if isFloat && bytesPerSample == 4 {
+                raw.withMemoryRebound(to: Float32.self, capacity: sampleCount) { samples in
+                    for i in 0..<sampleCount {
+                        let v = samples[i]
+                        sumSquares += Double(v * v)
+                        peak = max(peak, abs(v))
+                    }
+                }
+            } else if !isFloat && bytesPerSample == 2 {
+                raw.withMemoryRebound(to: Int16.self, capacity: sampleCount) { samples in
+                    for i in 0..<sampleCount {
+                        let v = Float(samples[i]) / 32768.0
+                        sumSquares += Double(v * v)
+                        peak = max(peak, abs(v))
+                    }
+                }
+            }
+            // Other bit depths (e.g. 8/24/32-bit int) aren't sampled here —
+            // rare for ReplayKit's .audioApp in practice, and this is a
+            // diagnostic, not the forwarding path (serialiseAudio still
+            // forwards the buffer exactly as before regardless).
+        }
+
+        audioAppRmsSquareSum += sumSquares
+        audioAppRmsSampleCount += sampleCount
+        audioAppRmsPeak = max(audioAppRmsPeak, peak)
+
+        let now = CFAbsoluteTimeGetCurrent()
+        guard now - lastAudioAppRmsLogTime >= 1.0 else { return }
+        lastAudioAppRmsLogTime = now
+        let rms: Float = audioAppRmsSampleCount > 0
+            ? Float(sqrt(audioAppRmsSquareSum / Double(audioAppRmsSampleCount)))
+            : 0
+        NSLog("[SampleHandler][diag] RAW .audioApp @source rms=\(String(format: "%.5f", rms)) "
+              + "peak=\(String(format: "%.5f", audioAppRmsPeak)) "
+              + "sampleRate=\(asbd.mSampleRate) channels=\(asbd.mChannelsPerFrame) "
+              + "bits=\(asbd.mBitsPerChannel) isFloat=\(isFloat)")
+        audioAppRmsSquareSum = 0
+        audioAppRmsSampleCount = 0
+        audioAppRmsPeak = 0
     }
 
     // ── Serialisation ─────────────────────────────────────────────────────────
@@ -334,10 +434,36 @@ class SampleHandler: RPBroadcastSampleHandler {
         )
         guard sizeStatus == noErr, sizeNeeded > 0 else { return nil }
 
-        // Reuse the cached buffer across calls — only (re)allocate if it
-        // doesn't exist yet or this frame genuinely needs more room than
-        // what's cached (channel count/format is stable for the life of a
-        // session, so growth here should be rare to never in practice).
+        // FIX (2026-08-01) — investigating "system audio plays as noise".
+        // Direct measurement of a captured system-audio track showed 3.26%
+        // of ALL samples exceeding the valid ±1.0 float range (up to 1.31),
+        // plus 39% of samples at exact zero — a pattern that only makes
+        // sense as reads from memory whose lifetime/ownership was violated
+        // (freed/reclaimed pages often read back as zero; pages reused by
+        // something else read back as garbage). This file already has one
+        // documented fix for exactly that class of bug (withExtendedLifetime
+        // on blockBuffer, below) — audioListBuffer is a SECOND instance of
+        // the same risk: cached, mutable, INSTANCE-level memory reused
+        // across every call. If this method is ever re-entered before a
+        // prior call's read through it has finished — RPBroadcastSampleHandler
+        // doesn't publicly document a strict serial-delivery guarantee
+        // within one sample type — both calls would alias the SAME memory,
+        // and one call's in-flight read gets silently corrupted by the
+        // other's write.
+        //
+        // IMPORTANT: do NOT "fix" this by just allocating fresh memory
+        // every call instead of reusing the cache — that was tried and
+        // reverted. The cache exists because per-callback alloc/dealloc
+        // previously caused ReplayKit to drop/mute audio buffers after a
+        // short burst (see this property's declaration comment) — a real,
+        // previously-confirmed cost, not a hypothetical one. Losing that
+        // fix to gain this one would trade one production bug for another.
+        // audioBufferLock keeps the reuse (and its performance win) while
+        // making the buffer's use section exclusive, so no two calls can
+        // ever be in it at once.
+        audioBufferLock.lock()
+        defer { audioBufferLock.unlock() }
+
         if audioListBuffer == nil || audioListBufferSize < sizeNeeded {
             audioListBuffer?.deallocate()
             audioListBuffer = UnsafeMutableRawPointer.allocate(
