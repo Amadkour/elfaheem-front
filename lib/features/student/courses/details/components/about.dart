@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../../config/app_config.dart';
 import '../../../../../config/theme/app_theme.dart';
 import '../../../../shared/profile/course_instractor_profile.dart';
 import '../../../../teacher/home/teacher_models.dart';
@@ -25,77 +26,95 @@ class AboutTab extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => InstructorProfileScreen(
-                      teacher: c.teacher!,
-                    ),
+                    builder: (_) =>
+                        InstructorProfileScreen(teacher: c.teacher!),
                   ),
                 );
               },
               child: _InstructorCard(
-                  name: c.teacher!.name ?? '', category: c.categoryName ?? ''),
+                name: c.teacher!.name ?? '',
+                category: AppConfig.lang == 'ar'
+                    ? c.category!.nameAr
+                    : c.category!.nameEn,
+              ),
             ),
             const SizedBox(height: 26),
           ],
           if ((c.description ?? '').isNotEmpty) ...[
             const _SectionTitle(
-                title: 'عن الكورس', icon: Icons.info_outline_rounded),
+              title: 'عن الكورس',
+              icon: Icons.info_outline_rounded,
+            ),
             const SizedBox(height: 10),
-            Text(c.description!,
-                style: context.colors.body.copyWith(height: 1.75)),
+            Text(
+              c.description!,
+              style: context.colors.body.copyWith(height: 1.75),
+            ),
             const SizedBox(height: 26),
           ],
           if (c.schedules.isNotEmpty) ...[
             _SectionTitle(
-                title: 'المواعيد الأسبوعية',
-                icon: Icons.calendar_month_rounded,
-                color: context.colors.primary),
+              title: 'المواعيد الأسبوعية',
+              icon: Icons.calendar_month_rounded,
+              color: context.colors.primary,
+            ),
             const SizedBox(height: 12),
-            ...c.schedules.map((s) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: ScheduleChip(schedule: s),
-                )),
+            ...c.schedules.map(
+              (s) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: ScheduleChip(schedule: s),
+              ),
+            ),
             const SizedBox(height: 22),
           ],
           if (c.certificates.isNotEmpty) ...[
             _SectionTitle(
-                title: 'الشهادات',
-                icon: Icons.workspace_premium_rounded,
-                color: context.colors.accent),
+              title: 'الشهادات',
+              icon: Icons.workspace_premium_rounded,
+              color: context.colors.accent,
+            ),
             const SizedBox(height: 12),
-            ...c.certificates.map((x) => _InfoCard(
-                  icon: Icons.verified_rounded,
-                  iconBg: const Color(0xFFFAEEDA),
-                  iconColor: context.colors.accent,
-                  title: x.title,
-                  subtitle: x.description,
-                )),
+            ...c.certificates.map(
+              (x) => _InfoCard(
+                icon: Icons.verified_rounded,
+                iconBg: const Color(0xFFFAEEDA),
+                iconColor: context.colors.accent,
+                title: x.title,
+                subtitle: x.description,
+              ),
+            ),
             const SizedBox(height: 22),
           ],
           if (c.tools.isNotEmpty) ...[
             _SectionTitle(title: 'الأدوات المطلوبة', icon: Icons.build_rounded),
             const SizedBox(height: 12),
-            ...c.tools.map((x) => _InfoCard(
-                  icon: Icons.settings_rounded,
-                  iconBg: const Color(0xFFEEEDFE),
-                  iconColor: context.colors.primary,
-                  title: x.name,
-                  subtitle: x.description,
-                )),
+            ...c.tools.map(
+              (x) => _InfoCard(
+                icon: Icons.settings_rounded,
+                iconBg: const Color(0xFFEEEDFE),
+                iconColor: context.colors.primary,
+                title: x.name,
+                subtitle: x.description,
+              ),
+            ),
             const SizedBox(height: 22),
           ],
           if (c.prerequisites.isNotEmpty) ...[
             _SectionTitle(
-                title: 'المتطلبات المسبقة',
-                icon: Icons.checklist_rounded,
-                color: context.colors.accent2),
+              title: 'المتطلبات المسبقة',
+              icon: Icons.checklist_rounded,
+              color: context.colors.accent2,
+            ),
             const SizedBox(height: 12),
-            ...c.prerequisites.map((x) => _InfoCard(
-                  icon: Icons.check_circle_outline_rounded,
-                  iconBg: const Color(0xFFE1F5EE),
-                  iconColor: context.colors.accent2,
-                  title: x.title,
-                  subtitle: x.description,
-                )),
+            ...c.prerequisites.map(
+              (x) => _InfoCard(
+                icon: Icons.check_circle_outline_rounded,
+                iconBg: const Color(0xFFE1F5EE),
+                iconColor: context.colors.accent2,
+                title: x.title,
+                subtitle: x.description,
+              ),
+            ),
           ],
         ],
       ),
@@ -127,9 +146,13 @@ class _SectionTitle extends StatelessWidget {
           child: Icon(icon, size: 18, color: c),
         ),
         const SizedBox(width: 10),
-        Text(title,
-            style: context.colors.h3
-                .copyWith(fontSize: 15, fontWeight: FontWeight.w800)),
+        Text(
+          title,
+          style: context.colors.h3.copyWith(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
       ],
     );
   }
@@ -144,48 +167,53 @@ class ScheduleChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-        decoration: BoxDecoration(
-          color: context.colors.primaryLight.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(14),
-          border:
-              Border.all(color: context.colors.primary.withValues(alpha: 0.2)),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+    decoration: BoxDecoration(
+      color: context.colors.primaryLight.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: context.colors.primary.withValues(alpha: 0.2)),
+    ),
+    child: Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: context.colors.primary.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            Icons.access_time_filled_rounded,
+            color: context.colors.primary,
+            size: 18,
+          ),
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: context.colors.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.access_time_filled_rounded,
-                  color: context.colors.primary, size: 18),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              schedule.dayLabel,
-              style: context.colors.label.copyWith(
-                  color: context.colors.primary, fontWeight: FontWeight.w700),
-            ),
-            const Spacer(),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-              decoration: BoxDecoration(
-                color: context.colors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                '${schedule.startTime} — ${schedule.endTime}',
-                style: context.colors.label.copyWith(
-                    color: context.colors.textDark,
-                    fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
+        const SizedBox(width: 12),
+        Text(
+          schedule.dayLabel,
+          style: context.colors.label.copyWith(
+            color: context.colors.primary,
+            fontWeight: FontWeight.w700,
+          ),
         ),
-      );
+        const Spacer(),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          decoration: BoxDecoration(
+            color: context.colors.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            '${schedule.startTime} — ${schedule.endTime}',
+            style: context.colors.label.copyWith(
+              color: context.colors.textDark,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 // ── Instructor card ───────────────────────────────────────────────────────────
@@ -197,91 +225,94 @@ class _InstructorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          gradient: context.colors.primaryGradient,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: context.colors.primary.withValues(alpha: 0.36),
-              blurRadius: 22,
-              offset: const Offset(0, 7),
-            ),
-          ],
+    padding: const EdgeInsets.all(18),
+    decoration: BoxDecoration(
+      gradient: context.colors.primaryGradient,
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: context.colors.primary.withValues(alpha: 0.36),
+          blurRadius: 22,
+          offset: const Offset(0, 7),
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 58,
-              height: 58,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-                border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.4), width: 2),
-              ),
-              alignment: Alignment.center,
-              child: name.isNotEmpty
-                  ? Text(
-                      name[0],
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        fontFamily: 'bahji',
-                      ),
-                    )
-                  : const Icon(Icons.person_rounded,
-                      color: Colors.white, size: 28),
+      ],
+    ),
+    child: Row(
+      children: [
+        Container(
+          width: 58,
+          height: 58,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.2),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.4),
+              width: 2,
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name.isNotEmpty ? name : 'المدرس',
-                    style: context.colors.h3.copyWith(
-                        color: Colors.white,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900),
+          ),
+          alignment: Alignment.center,
+          child: name.isNotEmpty
+              ? Text(
+                  name[0],
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    fontFamily: 'bahji',
                   ),
-                  if (category.isNotEmpty) ...[
-                    const SizedBox(height: 3),
-                    Text(category,
-                        style: context.colors.caption
-                            .copyWith(color: Colors.white70)),
-                  ],
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.verified_rounded, color: Colors.white, size: 13),
-                  SizedBox(width: 5),
-                  Text(
-                    'مدرس',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'bahji',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+                )
+              : const Icon(Icons.person_rounded, color: Colors.white, size: 28),
         ),
-      );
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name.isNotEmpty ? name : 'المدرس',
+                style: context.colors.h3.copyWith(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              if (category.isNotEmpty) ...[
+                const SizedBox(height: 3),
+                Text(
+                  category,
+                  style: context.colors.caption.copyWith(color: Colors.white70),
+                ),
+              ],
+            ],
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.verified_rounded, color: Colors.white, size: 13),
+              SizedBox(width: 5),
+              Text(
+                'مدرس',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'bahji',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 // ── Info card ─────────────────────────────────────────────────────────────────
@@ -302,55 +333,56 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: context.colors.cardBg,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: context.colors.cardBg,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: iconBg,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: iconColor, size: 22),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: context.colors.label.copyWith(
-                          color: context.colors.textDark,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700),
-                    ),
-                    if (subtitle != null && subtitle!.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(subtitle!, style: context.colors.caption),
-                    ],
-                  ],
-                ),
-              ),
-            ],
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: iconColor, size: 22),
           ),
-        ),
-      );
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: context.colors.label.copyWith(
+                    color: context.colors.textDark,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (subtitle != null && subtitle!.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(subtitle!, style: context.colors.caption),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 // ── Shared section header (exported) ─────────────────────────────────────────
@@ -379,9 +411,13 @@ class SectionHdr extends StatelessWidget {
           ),
           const SizedBox(width: 10),
         ],
-        Text(title,
-            style: context.colors.h3
-                .copyWith(fontWeight: FontWeight.w800, fontSize: 15)),
+        Text(
+          title,
+          style: context.colors.h3.copyWith(
+            fontWeight: FontWeight.w800,
+            fontSize: 15,
+          ),
+        ),
       ],
     );
   }

@@ -10,6 +10,7 @@ import 'package:flutter_education_app/features/student/models.dart';
 import '../../../config/app_config.dart';
 import '../../../utils/helpers.dart';
 import '../../../utils/widget/rating_widget.dart';
+import '../../category/categories_provider.dart';
 import '../courses/component/teacher_stats.dart';
 
 class CourseSchedule {
@@ -17,12 +18,13 @@ class CourseSchedule {
   final int courseId;
   final String day, startTime, endTime;
 
-  const CourseSchedule(
-      {required this.id,
-      required this.courseId,
-      required this.day,
-      required this.startTime,
-      required this.endTime});
+  const CourseSchedule({
+    required this.id,
+    required this.courseId,
+    required this.day,
+    required this.startTime,
+    required this.endTime,
+  });
 
   String get dayLabel =>
       const {
@@ -32,7 +34,7 @@ class CourseSchedule {
         'thursday': 'الخميس',
         'friday': 'الجمعة',
         'saturday': 'السبت',
-        'sunday': 'الأحد'
+        'sunday': 'الأحد',
       }[day] ??
       day;
 
@@ -41,21 +43,21 @@ class CourseSchedule {
     required String day,
     required String startTime,
     required String endTime,
-  }) =>
-      CourseSchedule(
-        id: -1,
-        courseId: -1,
-        day: day,
-        startTime: startTime,
-        endTime: endTime,
-      );
+  }) => CourseSchedule(
+    id: -1,
+    courseId: -1,
+    day: day,
+    startTime: startTime,
+    endTime: endTime,
+  );
 
   factory CourseSchedule.fromJson(Map<String, dynamic> j) => CourseSchedule(
-      id: j['id'] as int,
-      courseId: j['course_id'] as int? ?? 0,
-      day: j['day'] as String? ?? '',
-      startTime: j['start_time'] as String? ?? '',
-      endTime: j['end_time'] as String? ?? '');
+    id: j['id'] as int,
+    courseId: j['course_id'] as int? ?? 0,
+    day: j['day'] as String? ?? '',
+    startTime: j['start_time'] as String? ?? '',
+    endTime: j['end_time'] as String? ?? '',
+  );
 }
 
 // ── CourseCertificate ─────────────────────────────────────────────────────────
@@ -64,18 +66,20 @@ class CourseCertificate {
   final String title;
   final String? description;
 
-  const CourseCertificate(
-      {required this.id,
-      required this.courseId,
-      required this.title,
-      this.description});
+  const CourseCertificate({
+    required this.id,
+    required this.courseId,
+    required this.title,
+    this.description,
+  });
 
   factory CourseCertificate.fromJson(Map<String, dynamic> j) =>
       CourseCertificate(
-          id: j['id'] as int,
-          courseId: j['course_id'] as int? ?? 0,
-          title: j['title'] as String? ?? '',
-          description: j['description'] as String?);
+        id: j['id'] as int,
+        courseId: j['course_id'] as int? ?? 0,
+        title: j['title'] as String? ?? '',
+        description: j['description'] as String?,
+      );
 }
 
 // ── CourseTool ────────────────────────────────────────────────────────────────
@@ -84,17 +88,19 @@ class CourseTool {
   final String name;
   final String? description;
 
-  const CourseTool(
-      {required this.id,
-      required this.courseId,
-      required this.name,
-      this.description});
+  const CourseTool({
+    required this.id,
+    required this.courseId,
+    required this.name,
+    this.description,
+  });
 
   factory CourseTool.fromJson(Map<String, dynamic> j) => CourseTool(
-      id: j['id'] as int,
-      courseId: j['course_id'] as int? ?? 0,
-      name: j['title'] as String? ?? '',
-      description: j['description'] as String?);
+    id: j['id'] as int,
+    courseId: j['course_id'] as int? ?? 0,
+    name: j['title'] as String? ?? '',
+    description: j['description'] as String?,
+  );
 }
 
 // ── CoursePrerequisite ────────────────────────────────────────────────────────
@@ -103,18 +109,20 @@ class CoursePrerequisite {
   final String title;
   final String? description;
 
-  const CoursePrerequisite(
-      {required this.id,
-      required this.courseId,
-      required this.title,
-      this.description});
+  const CoursePrerequisite({
+    required this.id,
+    required this.courseId,
+    required this.title,
+    this.description,
+  });
 
   factory CoursePrerequisite.fromJson(Map<String, dynamic> j) =>
       CoursePrerequisite(
-          id: j['id'] as int,
-          courseId: j['course_id'] as int? ?? 0,
-          title: j['title'] as String? ?? '',
-          description: j['description'] as String?);
+        id: j['id'] as int,
+        courseId: j['course_id'] as int? ?? 0,
+        title: j['title'] as String? ?? '',
+        description: j['description'] as String?,
+      );
 }
 
 // ─────────────────────────────────────────────
@@ -154,6 +162,7 @@ class ScheduleSession {
   final int? minutesUntilStart;
   final int? minutesUntilEnd;
   final String dayLabelStr;
+
   // ── NEW: live session fields returned by the updated backend ──────────────
   final int? sessionId; // SessionModel.id  – null if not yet created
   final int? onlineSessionId; // OnlineSession.id – null if not yet created
@@ -187,8 +196,7 @@ class ScheduleSession {
       if (liveSecondsLeft <= 0) return 'end-now'.tr;
       final m = liveSecondsLeft ~/ 60;
       final s = liveSecondsLeft % 60;
-      return 'تنتهي ${m.toString().padLeft(2, '0')}:${s.toString().padLeft(
-          2, '0')}';
+      return 'تنتهي ${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
     }
     if (!isToday) return dayLabelStr;
     final mu = minutesUntilStart ?? 0;
@@ -198,6 +206,7 @@ class ScheduleSession {
     final m = mu % 60;
     return 'بعد $hس${m > 0 ? ' $mد' : ''}';
   }
+
   static const _labels = {
     'monday': 'الاثنين',
     'tuesday': 'الثلاثاء',
@@ -223,7 +232,7 @@ class ScheduleSession {
     required this.dayLabel,
     required this.startTime,
     required this.endTime,
-     required this.durationMinutes,
+    required this.durationMinutes,
     required this.isToday,
     required this.isOngoing,
     this.courseImage,
@@ -239,7 +248,8 @@ class ScheduleSession {
     this.isLive = false,
     this.joinUrl,
     this.hostUrl,
-    this.token, required this.dayLabelStr,
+    this.token,
+    required this.dayLabelStr,
   });
 
   factory ScheduleSession.fromJson(Map<String, dynamic> j) {
@@ -256,10 +266,11 @@ class ScheduleSession {
       isOngoing: j['is_ongoing'] as bool? ?? false,
       minutesUntilStart: j['minutes_until_start'] as int?,
       minutesUntilEnd: j['minutes_until_end'] as int?,
-      scheduledDate:j['scheduled_date']!=null? (j['scheduled_date'] as String).toLocalSaTime:DateTime.now(),
-      durationMinutes: j['duration_minutes'] as int? ??0 ,
+      scheduledDate: j['scheduled_date'] != null
+          ? (j['scheduled_date'] as String).toLocalSaTime
+          : DateTime.now(),
+      durationMinutes: j['duration_minutes'] as int? ?? 0,
       maxStudents: j['max_students'] as int?,
-
 
       courseImage: j['course_image'] as String?,
       dayLabel: j['day_label'] as String? ?? _labels[day] ?? day,
@@ -281,7 +292,8 @@ class TeacherCourse {
   final int id, studentsCount, sessionsCount;
   final String title, imageUrl, type;
   final double totalHours, price, progress, expectedHours;
-  final String? categoryName, description;
+  final String? description;
+  final CategoryModel? category;
   final bool isPublished;
   final List<CourseSchedule> schedules;
   final List<CourseCertificate> certificates;
@@ -298,7 +310,7 @@ class TeacherCourse {
     this.studentsCount = 0,
     this.sessionsCount = 0,
     this.price = 0,
-    this.categoryName,
+    this.category,
     this.isPublished = false,
     this.description,
     this.schedules = const [],
@@ -309,86 +321,101 @@ class TeacherCourse {
     required this.expectedHours,
     this.rateSummary,
   });
- factory TeacherCourse.dummy(int courseId)=> TeacherCourse(id: courseId, imageUrl: '', price: 0, type: 'live',  isPublished: false, expectedHours: 0, title: '', totalHours: 0, progress: 0);
+
+  factory TeacherCourse.dummy(int courseId) => TeacherCourse(
+    id: courseId,
+    imageUrl: '',
+    price: 0,
+    type: 'live',
+    isPublished: false,
+    expectedHours: 0,
+    title: '',
+    totalHours: 0,
+    progress: 0,
+  );
+
   factory TeacherCourse.fromJson(Map<String, dynamic> j) => TeacherCourse(
-        id: j['id'] as int,
-        title: j['name'] as String? ?? '',
-        imageUrl: j['image_url'] as String? ?? '',
-        studentsCount: j['students_count'] as int? ?? 0,
-        expectedHours: j['expected_hours'] as double? ?? 0.0,
-        sessionsCount: j['sessions_count'] as int? ?? 0,
-        totalHours: (j['total_hours'] as num?)?.toDouble() ?? 0,
-        price: (j['fees'] as num?)?.toDouble() ?? 0,
-        progress: (j['progress'] as num?)?.toDouble() ?? 0.0,
-        categoryName:
-            (j['category'] as Map<String, dynamic>?)?['name'] as String?,
-        isPublished: j['is_published'] as bool? ?? false,
-        description: j['description'] as String?,
-        type: j['type'] as String? ?? 'recorded',
-        schedules: (j['schedules'] as List? ?? [])
-            .map((e) => CourseSchedule.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        certificates: (j['certificates'] as List? ?? [])
-            .map((e) => CourseCertificate.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        tools: (j['tools'] as List? ?? [])
-            .map((e) => CourseTool.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        prerequisites: (j['prerequisites'] as List? ?? [])
-            .map((e) => CoursePrerequisite.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        rateSummary: j.containsKey('rate') && j['rate'] != null
-            ? RatingSummary.fromJson(j['rate'] as Map<String, dynamic>)
-            : null,
-      );
+    id: j['id'] as int,
+    title: j['name'] as String? ?? '',
+    imageUrl: j['image_url'] as String? ?? '',
+    studentsCount: j['students_count'] as int? ?? 0,
+    expectedHours: j['expected_hours'] as double? ?? 0.0,
+    sessionsCount: j['sessions_count'] as int? ?? 0,
+    totalHours: (j['total_hours'] as num?)?.toDouble() ?? 0,
+    price: (j['fees'] as num?)?.toDouble() ?? 0,
+    progress: (j['progress'] as num?)?.toDouble() ?? 0.0,
+    category: j['category'] != null
+        ? CategoryModel.fromJson(j['category'] as Map<String, dynamic>)
+        : null,
+    isPublished: j['is_published'] as bool? ?? false,
+    description: j['description'] as String?,
+    type: j['type'] as String? ?? 'recorded',
+    schedules: (j['schedules'] as List? ?? [])
+        .map((e) => CourseSchedule.fromJson(e as Map<String, dynamic>))
+        .toList(),
+
+    certificates: (j['certificates'] as List? ?? [])
+        .map((e) => CourseCertificate.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    tools: (j['tools'] as List? ?? [])
+        .map((e) => CourseTool.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    prerequisites: (j['prerequisites'] as List? ?? [])
+        .map((e) => CoursePrerequisite.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    rateSummary: j.containsKey('rate') && j['rate'] != null
+        ? RatingSummary.fromJson(j['rate'] as Map<String, dynamic>)
+        : null,
+  );
 
   CourseModel get toCourseModel => CourseModel(
-        id: id.toString(),
-        name: title,
-        imageUrl: imageUrl,
-        price: price,
-        rateSummary: rateSummary,
-        progress: progress,
-        type: type,
-        isEnrolled: false,
-        certificates: certificates,
-        tools: tools,
-        prerequisites: prerequisites,
-        schedules: schedules,
-        description: description,
-        studentsCount: studentsCount,
-        sessionsCount: sessionsCount,
-        totalHours: totalHours,
-        expectedHours: expectedHours,
-        categoryName: categoryName,
-        isPublished: isPublished,
-      );
+    id: id.toString(),
+    name: title,
+    imageUrl: imageUrl,
+    price: price,
+    rateSummary: rateSummary,
+    progress: progress,
+    type: type,
+    isEnrolled: false,
+    certificates: certificates,
+    tools: tools,
+    prerequisites: prerequisites,
+    schedules: schedules,
+    description: description,
+    studentsCount: studentsCount,
+    sessionsCount: sessionsCount,
+    totalHours: totalHours,
+    expectedHours: expectedHours,
+    category: category,
+    isPublished: isPublished,
+  );
 
-  TeacherCourse copyWith(
-          {bool? isPublished,
-          String? imageUrl,
-          List<CourseSchedule>? schedules,
-          List<CourseCertificate>? certificates,
-          List<CourseTool>? tools,
-          List<CoursePrerequisite>? prerequisites}) =>
-      TeacherCourse(
-          id: id,
-          title: title,
-          progress: progress,
-          imageUrl: imageUrl ?? this.imageUrl,
-          totalHours: totalHours,
-          type: type,
-          expectedHours: expectedHours,
-          studentsCount: studentsCount,
-          sessionsCount: sessionsCount,
-          price: price,
-          categoryName: categoryName,
-          isPublished: isPublished ?? this.isPublished,
-          description: description,
-          schedules: schedules ?? this.schedules,
-          certificates: certificates ?? this.certificates,
-          tools: tools ?? this.tools,
-          prerequisites: prerequisites ?? this.prerequisites);
+  TeacherCourse copyWith({
+    bool? isPublished,
+    String? imageUrl,
+    List<CourseSchedule>? schedules,
+    List<CourseCertificate>? certificates,
+    List<CourseTool>? tools,
+    List<CoursePrerequisite>? prerequisites,
+  }) => TeacherCourse(
+    id: id,
+    title: title,
+    progress: progress,
+    imageUrl: imageUrl ?? this.imageUrl,
+    totalHours: totalHours,
+    type: type,
+    expectedHours: expectedHours,
+    studentsCount: studentsCount,
+    sessionsCount: sessionsCount,
+    price: price,
+    category: category,
+    isPublished: isPublished ?? this.isPublished,
+    description: description,
+    schedules: schedules ?? this.schedules,
+    certificates: certificates ?? this.certificates,
+    tools: tools ?? this.tools,
+    prerequisites: prerequisites ?? this.prerequisites,
+  );
 }
 
 // ── TeacherDashboardData ──────────────────────────────────────────────────────
@@ -397,18 +424,22 @@ class TeacherDashboardData {
   final List<TeacherCourse> courses;
   final List<ScheduleSession> schedule;
 
-  const TeacherDashboardData(
-      {required this.stats, required this.courses, required this.schedule});
+  const TeacherDashboardData({
+    required this.stats,
+    required this.courses,
+    required this.schedule,
+  });
 
   factory TeacherDashboardData.fromJson(Map<String, dynamic> j) {
     return TeacherDashboardData(
-        stats: TeacherStats.fromJson(j),
-        courses: (j['courses'] as List? ?? [])
-            .map((e) => TeacherCourse.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        schedule:
-            (j['schedule'] as List? ?? j['upcoming_sessions'] as List? ?? [])
-                .map((e) => ScheduleSession.fromJson(e as Map<String, dynamic>))
-                .toList());
+      stats: TeacherStats.fromJson(j),
+      courses: (j['courses'] as List? ?? [])
+          .map((e) => TeacherCourse.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      schedule:
+          (j['schedule'] as List? ?? j['upcoming_sessions'] as List? ?? [])
+              .map((e) => ScheduleSession.fromJson(e as Map<String, dynamic>))
+              .toList(),
+    );
   }
 }
