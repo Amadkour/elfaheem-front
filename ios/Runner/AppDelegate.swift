@@ -115,6 +115,24 @@ import WebRTC
     // up behind the retry instead of appending directly and landing ahead
     // of it.
     private var systemAudioBackpressured = false
+    // FIX (2026-08-01) — investigating a "system audio plays as noise/
+    // static" report. systemAudioInput's internal audio converter/encoder
+    // is configured from whatever format the FIRST sample buffer appended
+    // to it this chunk has — it isn't built to silently re-negotiate for
+    // a differently-shaped buffer arriving mid-stream. makeAudioSampleBuffer
+    // rebuilds the ASBD fresh from EVERY packet's own reported sampleRate/
+    // channels/isFloat (see processSystemAudioFromBroadcast) without
+    // checking it matches what systemAudioInput already locked onto — if
+    // ReplayKit ever reports a different shape mid-chunk (e.g. the shared
+    // app briefly switching mono/stereo, or a route change altering the
+    // tap's reported format), that later buffer gets forced through a
+    // converter set up for the earlier format. That mismatch is a classic
+    // cause of exactly this symptom (audible static, not silence and not
+    // just "loud") since samples get reinterpreted at the wrong stride/
+    // rate. This tracks the format actually locked in per chunk so a
+    // later mismatch can be caught and dropped-with-a-log instead of
+    // silently corrupting the track. Reset to nil in beginChunkWriter.
+    private var systemAudioLockedFormat: (sampleRate: UInt32, channels: UInt32, isFloat: Bool)?
     // Pixel buffer adaptor for the broadcast-extension path. Broadcast frames
     // arrive as decoded JPEGs (see jpegToPixelBuffer), and MUST be appended
     // through an AVAssetWriterInputPixelBufferAdaptor rather than by manually
@@ -255,9 +273,14 @@ import WebRTC
             object: AVAudioSession.sharedInstance(),
             queue: .main
         ) { [weak self] _ in
-            guard let self = self, self.isBroadcasting else { return }
+            // NOTE: (isBroadcasting || broadcastShareArmed) — a route change
+            // (the user switching to the app they're about to share) is
+            // exactly what can happen BEFORE isBroadcasting flips true. See
+            // broadcastShareArmed's doc comment.
+            guard let self = self, self.isBroadcasting || self.broadcastShareArmed else { return }
             // Re-assert non-ducking mode every time the session changes
-            // while a broadcast is active. Cheap no-op if already correct.
+            // while a broadcast is active (or about to be). Cheap no-op if
+            // already correct.
             self.configureAudioSessionForBroadcastShare()
             NSLog("[REC] Audio session observer: re-applied broadcast-share mode after route change")
         }
@@ -280,7 +303,7 @@ import WebRTC
             object: AVAudioSession.sharedInstance(),
             queue: .main
         ) { [weak self] notification in
-            guard let self = self, self.isBroadcasting else { return }
+            guard let self = self, self.isBroadcasting || self.broadcastShareArmed else { return }
             guard let info = notification.userInfo,
                   let typeValue = info[AVAudioSessionInterruptionTypeKey] as? UInt,
                   let type = AVAudioSession.InterruptionType(rawValue: typeValue)
@@ -326,7 +349,7 @@ import WebRTC
             self.audioSessionReassertTimer = Timer.scheduledTimer(
                 withTimeInterval: 0.15, repeats: true
             ) { [weak self] _ in
-                guard let self = self, self.isBroadcasting else { return }
+                guard let self = self, self.isBroadcasting || self.broadcastShareArmed else { return }
                 self.configureAudioSessionForBroadcastShare()
             }
         }
@@ -452,6 +475,27 @@ import WebRTC
     // When isBroadcasting = true, frames from RPScreenRecorder are suppressed
     // and frames from the broadcast extension are written instead.
     private var isBroadcasting      = false
+
+    // FIX (2026-08-01) — covers the "still very quiet for the WHOLE share"
+    // reports even after configureAudioSessionForBroadcastShare() was moved
+    // to run pre-emptively in showBroadcastPicker(). isBroadcasting only
+    // flips true once the FIRST broadcast video frame arrives, which is
+    // 1-3+ seconds after the user taps "Start Broadcast" (they still have
+    // to manually switch to the target app). All three reassertion
+    // mechanisms in startAudioSessionObserver — the route-change observer,
+    // the interruption-end observer, and the 0.15s timer — were gated on
+    // isBroadcasting alone, so NONE of them were watching the session
+    // during that gap. And that gap is precisely when a route change is
+    // most likely (the user switching apps IS a route/foreground change).
+    // If the session gets ducked in that window, it isn't corrected until
+    // first-frame flips isBroadcasting true — by which point, per the
+    // documented slow multi-second duck-release curve, the duck has
+    // already latched for the rest of the share. broadcastShareArmed
+    // closes that gap: it's set true the moment the picker is shown
+    // (before isBroadcasting can possibly be true) and cleared on every
+    // path that also clears/never-sets isBroadcasting for this share
+    // attempt (cancelled picker, watchdog timeout, normal stop).
+    private var broadcastShareArmed = false
 
     // NOTE: per-frame duration for broadcast frames used to be hand-computed
     // here from a tracked "previous PTS" because the old code appended raw
@@ -1482,12 +1526,44 @@ import WebRTC
             // instant a share started while its audio kept recording,
             // making the debug file useless for confirming whether shared-
             // app audio specifically is muted (no picture to correlate
-            // against). This call needs a matching appendBroadcastVideo(_:
-            // withPresentationTime:) method added to LocalDebugRecorder that
-            // accepts a CVPixelBuffer + CMTime (it can't reuse appendVideo's
-            // CMSampleBuffer signature — broadcast frames only exist as a
-            // decoded pixel buffer at this point, see jpegToPixelBuffer).
-            LocalDebugRecorder.shared.appendBroadcastVideo(pixelBuffer, withPresentationTime: pts)
+            // against).
+            //
+            // appendVideo(_:) takes a CMSampleBuffer, but at this point in
+            // processSampleFromBroadcast we only have a decoded CVPixelBuffer
+            // (see jpegToPixelBuffer above) — so wrap it in a minimal
+            // CMSampleBuffer here rather than adding a second method to
+            // LocalDebugRecorder we can't currently see/edit.
+            var debugTimingInfo = CMSampleTimingInfo(
+                duration: .invalid,
+                presentationTimeStamp: pts,
+                decodeTimeStamp: .invalid
+            )
+            var debugFormatDescription: CMVideoFormatDescription?
+            let debugFmtStatus = CMVideoFormatDescriptionCreateForImageBuffer(
+                allocator: kCFAllocatorDefault,
+                imageBuffer: pixelBuffer,
+                formatDescriptionOut: &debugFormatDescription
+            )
+            if debugFmtStatus == noErr, let debugFormatDescription = debugFormatDescription {
+                var debugSampleBuffer: CMSampleBuffer?
+                let debugSbStatus = CMSampleBufferCreateForImageBuffer(
+                    allocator: kCFAllocatorDefault,
+                    imageBuffer: pixelBuffer,
+                    dataReady: true,
+                    makeDataReadyCallback: nil,
+                    refcon: nil,
+                    formatDescription: debugFormatDescription,
+                    sampleTiming: &debugTimingInfo,
+                    sampleBufferOut: &debugSampleBuffer
+                )
+                if debugSbStatus == noErr, let debugSampleBuffer = debugSampleBuffer {
+                    LocalDebugRecorder.shared.appendVideo(debugSampleBuffer)
+                } else {
+                    NSLog("[REC][debug] CMSampleBufferCreateForImageBuffer failed: \(debugSbStatus)")
+                }
+            } else {
+                NSLog("[REC][debug] CMVideoFormatDescriptionCreateForImageBuffer failed: \(debugFmtStatus)")
+            }
         }
     }
 
@@ -1721,6 +1797,7 @@ import WebRTC
         // guaranteeing systemAudioQueue never observes a torn/mid-write
         // reference.
         systemAudioQueue.sync { self.systemAudioInput = sai }
+        systemAudioQueue.sync { self.systemAudioLockedFormat = nil }
 
         writer.add(vi)
         writer.add(ai)
@@ -2384,6 +2461,7 @@ import WebRTC
             // Safe even if the user cancels the picker: stopBroadcastShare's
             // `paused == true` branch already reverts to .videoChat via
             // configureAudioSessionForRecording() for exactly that case.
+            self.broadcastShareArmed = true
             self.configureAudioSessionForBroadcastShare()
             self.startAudioSessionObserver()
 
@@ -2528,6 +2606,7 @@ import WebRTC
                 guard self.recording, self.paused, !self.isBroadcasting, !self.stopping else { return }
                 NSLog("[SHARE] picker watchdog: no broadcast frame after " +
                       "\(self.pickerWatchdogSecs)s — resuming RPScreenRecorder")
+                self.broadcastShareArmed = false
                 self.paused = false
                 self.beginChunkWriter()
             }
@@ -2555,6 +2634,7 @@ import WebRTC
                 // active broadcast writer exists yet, so there's no race to
                 // protect against. Safe to flip isBroadcasting immediately.
                 isBroadcasting = false
+                broadcastShareArmed = false
                 // Harmless no-op if configureAudioSessionForBroadcastShare()
                 // was never actually applied (picker cancelled before the
                 // first broadcast frame) — still correct to re-assert
@@ -2594,6 +2674,7 @@ import WebRTC
                 finaliseChunk(isFinal: false) { [weak self] _ in
                     guard let self = self else { return }
                     self.isBroadcasting = false
+                    self.broadcastShareArmed = false
                     // Restore .videoChat mode now that the shared app's
                     // audio no longer needs un-ducked capture — see
                     // configureAudioSessionForBroadcastShare's doc comment.
@@ -2606,6 +2687,7 @@ import WebRTC
             }
         } else {
             isBroadcasting = false
+            broadcastShareArmed = false
             stopAudioSessionObserver()  // ← NEW
             configureAudioSessionForRecording()
 
@@ -2811,6 +2893,7 @@ import WebRTC
     private func onDarwinStopNotif() {
         NSLog("[SHARE] broadcast extension finished (Darwin stop)")
         isBroadcasting = false
+        broadcastShareArmed = false
         // Restore .videoChat mode (AEC/NS for the live call) now that the
         // shared app's audio no longer needs to be captured un-ducked —
         // see configureAudioSessionForBroadcastShare's doc comment.
@@ -3046,13 +3129,41 @@ import WebRTC
             return
         }
 
+        let pcmWithHeadroom = Self.applyHeadroomGain(
+            pcm, isFloat: isFloat, gain: Self.kSystemAudioHeadroomGain
+        )
         guard let sampleBuffer = self.makeAudioSampleBuffer(
-            data: pcm, sampleRate: Int(sampleRate), channels: Int(channels),
+            data: pcmWithHeadroom, sampleRate: Int(sampleRate), channels: Int(channels),
             format: isFloat ? "float32" : "int16", ptsNs: ptsNs
         ) else {
             NSLog("[REC] system-audio dropped — makeAudioSampleBuffer failed "
                   + "(sr=\(sampleRate) ch=\(channels) bytes=\(pcm.count))")
             return
+        }
+
+        // FIX (2026-08-01) — see systemAudioLockedFormat's doc comment.
+        // Lock to whichever format the FIRST sample of this chunk actually
+        // had, and refuse (rather than silently feed through) any later
+        // packet reporting a different shape — that mismatch is the likely
+        // cause of "system audio plays as noise/static" reports.
+        if let locked = self.systemAudioLockedFormat {
+            guard locked.sampleRate == sampleRate, locked.channels == channels,
+                  locked.isFloat == isFloat
+            else {
+                NSLog("[REC] system-audio dropped — format changed mid-chunk "
+                      + "(locked sr=\(locked.sampleRate) ch=\(locked.channels) "
+                      + "float=\(locked.isFloat) vs this packet sr=\(sampleRate) "
+                      + "ch=\(channels) float=\(isFloat)) — would otherwise feed "
+                      + "a mismatched buffer through the already-configured "
+                      + "audio converter and produce audible static")
+                return
+            }
+        } else {
+            self.systemAudioLockedFormat = (sampleRate, channels, isFloat)
+            let branchName = isFloat ? "float" : "int16"
+            NSLog("[REC] system-audio format locked for this chunk: "
+                  + "sr=\(sampleRate) ch=\(channels) isFloat=\(isFloat) "
+                  + "(headroom-gain will use the \(branchName) branch)")
         }
 
         let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
@@ -3139,6 +3250,121 @@ import WebRTC
             }
         }
         return (peak, squareSum, count)
+    }
+
+    // FIX (2026-08-01) — "system audio plays as noise/static" investigation.
+    // sysAudioPeak has measured essentially exactly 1.0 (occasionally
+    // fractionally OVER 1.0) in every chunk across multiple test sessions
+    // — never comfortably under it. That's consistent with the signal
+    // already riding at/past the clipping ceiling before it reaches this
+    // pipeline at all, which leaves zero headroom for AAC encoding here
+    // and the server's amix/alimiter afterward — processing an
+    // already-at-ceiling signal further tends to compound audible harsh
+    // distortion ("noise") rather than fix it. Backing the gain off
+    // slightly before encoding can only help: if the source truly is
+    // already clipped, this at least stops this pipeline from adding
+    // further clipping on top of it; if it's not actually clipped and
+    // this was a red herring, a ~2dB reduction is inaudible as a level
+    // change and won't affect diagnosing whatever the real cause turns
+    // out to be. NOT applied to sysAudioPeak/Rms measurement itself
+    // (measured pre-gain, in processSystemAudioFromBroadcast) so those
+    // diagnostics keep reflecting the true as-captured level for
+    // comparison across builds.
+    private static let kSystemAudioHeadroomGain: Float = 0.8   // ≈ -2dB
+
+    // DIAGNOSTIC (2026-08-02) — the float clamp added last round should have
+    // made it mathematically impossible for output to exceed ±1.0, yet the
+    // next test still measured 1.88 in the final file — nearly unchanged
+    // from before the clamp existed (1.85). That can only mean one of two
+    // things: (a) that build didn't actually contain this code, or (b) the
+    // out-of-range values are being introduced AFTER this point — inside
+    // AVAssetWriterInput's own AAC encoder, which is an Apple black box we
+    // can't edit or clamp. This counter proves which: if it logs a
+    // meaningful clamp-hit rate, we KNOW this code is running and the
+    // overshoot really is happening downstream in the encoder (a different
+    // problem requiring a different fix — e.g. checking what the encoder
+    // does to already-near-full-scale input). If it logs ~0 hits while the
+    // exported file still shows values over 1.0, the build under test
+    // didn't include this fix and we need to confirm the rebuild actually
+    // took before investigating further.
+    private static var headroomClampHitCount: Int = 0
+    private static var headroomClampSampleCount: Int = 0
+    private static var lastHeadroomClampLogTime: CFAbsoluteTime = 0
+
+    private static func applyHeadroomGain(_ pcm: Data, isFloat: Bool, gain: Float) -> Data {
+        var out = pcm
+        out.withUnsafeMutableBytes { (raw: UnsafeMutableRawBufferPointer) in
+            if isFloat {
+                let total = raw.count / MemoryLayout<Float>.size
+                guard total > 0 else { return }
+                let floats = raw.bindMemory(to: Float.self)
+                // FIX (2026-08-01, follow-up) — this branch multiplied by
+                // gain but never clamped afterward, unlike the int16 branch
+                // below. Direct measurement of a captured system-audio
+                // track found real samples up to 1.85 — genuinely,
+                // sometimes drastically outside the valid ±1.0 range for
+                // float PCM. Even after this fix's own 0.8x gain reduction,
+                // 1.85 × 0.8 = 1.48 — STILL out of range, so those samples
+                // were still being handed to the AAC encoder unclamped.
+                // Depending on how the encoder's internal fixed-point
+                // conversion handles an out-of-range float, that can
+                // produce wraparound artifacts rather than a clean clip —
+                // audible as static, not just "loud". Hard-clamping here
+                // guarantees nothing downstream of this point ever sees an
+                // out-of-range sample, regardless of how hot the source
+                // audio genuinely is.
+                for i in 0..<total {
+                    let scaled = floats[i] * gain
+                    let clamped = max(Float(-1.0), min(Float(1.0), scaled))
+                    if scaled != clamped { Self.headroomClampHitCount += 1 }
+                    floats[i] = clamped
+                }
+                Self.headroomClampSampleCount += total
+                let now = CFAbsoluteTimeGetCurrent()
+                if now - Self.lastHeadroomClampLogTime >= 1.0 {
+                    Self.lastHeadroomClampLogTime = now
+                    let pct = Self.headroomClampSampleCount > 0
+                        ? Double(Self.headroomClampHitCount) / Double(Self.headroomClampSampleCount) * 100
+                        : 0
+                    NSLog("[REC] headroom clamp: \(Self.headroomClampHitCount)/"
+                          + "\(Self.headroomClampSampleCount) samples clamped so far "
+                          + "(\(String(format: "%.3f", pct))%)")
+                }
+            } else {
+                let total = raw.count / MemoryLayout<Int16>.size
+                guard total > 0 else { return }
+                let ints = raw.bindMemory(to: Int16.self)
+                var hits = 0
+                for i in 0..<total {
+                    let scaled = Float(ints[i]) * gain
+                    let clampedF = max(Float(Int16.min), min(Float(Int16.max), scaled))
+                    if scaled != clampedF { hits += 1 }
+                    ints[i] = Int16(clampedF)
+                }
+                // DIAGNOSTIC (2026-08-02) — the previous round's clamp-hit
+                // logging only existed in the isFloat branch above. If
+                // system audio on this device/OS is actually delivered as
+                // Int16 (not Float32) — both are valid ReplayKit formats —
+                // that log would never fire even on a correct, freshly
+                // built binary, which is exactly what was observed despite
+                // a confirmed clean rebuild with the right file. This
+                // mirrors that logging here so whichever branch is
+                // actually active, we get proof either way.
+                Self.headroomClampHitCount += hits
+                Self.headroomClampSampleCount += total
+                let now = CFAbsoluteTimeGetCurrent()
+                if now - Self.lastHeadroomClampLogTime >= 1.0 {
+                    Self.lastHeadroomClampLogTime = now
+                    let pct = Self.headroomClampSampleCount > 0
+                        ? Double(Self.headroomClampHitCount) / Double(Self.headroomClampSampleCount) * 100
+                        : 0
+                    NSLog("[REC] headroom clamp (int16 path): \(Self.headroomClampHitCount)/"
+                          + "\(Self.headroomClampSampleCount) samples clamped so far "
+                          + "(\(String(format: "%.3f", pct))%)")
+                }
+            }
+        }
+        return out
     }
 }
 
