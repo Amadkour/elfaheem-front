@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/features/teacher/sessions/sessions_provider.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/theme/app_theme.dart';
 import '../../../../config/theme/theme_config_provider.dart';
@@ -12,6 +13,7 @@ import '../../../../utils/widget/base_page.dart';
 import '../../../../utils/widget/rating_widget.dart';
 import '../../../shared/profile/compalints/complaint_provider.dart';
 import '../../../shared/profile/compalints/new_complaint_screen.dart';
+import '../../../teacher/sessions/components/course_hero.dart';
 import '../../analysis/exam/student_exam_provider.dart';
 import '../../enrollment/enrollment_provider.dart';
 import '../../enrollment/enrollment_screen.dart';
@@ -89,15 +91,33 @@ class _MobileDetail extends StatelessWidget {
                 child: CustomScrollView(
                   physics: const BouncingScrollPhysics(),
                   slivers: [
-                    SliverToBoxAdapter(child: _CourseHero()),
+                    SliverToBoxAdapter(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          border: BoxBorder.all(color: Colors.black),
+                        ),
+                        child: CourseHero(
+                          course: provider.course.toTeacherModel,
+                          onBack: () => Navigator.maybePop(context),
+                          onRefresh: () => provider.refresh(),
+                        ),
+                      ),
+                    ),
                     SliverToBoxAdapter(child: _CourseMeta()),
                     if (provider.course.isEnrolled) ...[
                       SliverToBoxAdapter(child: _TabBarWidget()),
                       const SliverToBoxAdapter(child: SizedBox(height: 4)),
                       SliverToBoxAdapter(
-                        child: TabContent(
-                          activeTab: provider.activeTab,
-                          courseId: provider.course.id,
+                        child: ChangeNotifierProvider(
+                          create: (BuildContext context) =>
+                              TeacherCourseScreenProvider(
+                                initialCourse: provider.course.toTeacherModel,
+                              ),
+                          child: TabContent(
+                            activeTab: provider.activeTab,
+                            courseId: provider.course.id,
+                          ),
                         ),
                       ),
                     ],
@@ -125,8 +145,6 @@ class _WebDetail extends StatelessWidget {
     return SafeArea(
       child: Column(
         children: [
-          // Web top bar
-          _WebTopBar(course: provider.course),
           Expanded(
             child: Align(
               alignment: Alignment.topCenter,
@@ -148,26 +166,23 @@ class _WebDetail extends StatelessWidget {
                             Expanded(
                               child: Column(
                                 children: [
-                                  _CourseHero(height: context.height / 4),
-
+                                  DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: CourseHero(
+                                      course: provider.course.toTeacherModel,
+                                      onBack: () => Navigator.maybePop(context),
+                                      onRefresh: () => provider.refresh(),
+                                      onLike: provider.toggleFavorite,
+                                      isLike: provider.course.isFavorite,
+                                    ),
+                                  ),
                                   // Stars row
                                   Row(
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text(
-                                        provider.course.name,
-                                        style: TextStyle(
-                                          color: context.colors.primary,
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.w600,
-                                          fontFamily: 'bahji',
-                                          letterSpacing: -0.4,
-                                          height: 1.25,
-                                        ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
                                       Spacer(),
 
                                       Container(
@@ -220,10 +235,14 @@ class _WebDetail extends StatelessWidget {
                                       ),
                                       Spacer(),
 
-                                      if (provider.course.categoryName !=
-                                          null) ...[
+                                      if (provider.course.category != null) ...[
                                         _HeroBadge(
-                                          provider.course.categoryName!,
+                                          AppConfig.lang == 'ar'
+                                              ? provider.course.category!.nameAr
+                                              : provider
+                                                    .course
+                                                    .category!
+                                                    .nameEn,
                                         ),
                                         //const SizedBox(height: 8),
                                       ],
@@ -248,9 +267,15 @@ class _WebDetail extends StatelessWidget {
                       SliverToBoxAdapter(child: _TabBarWidget()),
                       const SliverToBoxAdapter(child: SizedBox(height: 4)),
                       SliverToBoxAdapter(
-                        child: TabContent(
-                          activeTab: provider.activeTab,
-                          courseId: provider.course.id,
+                        child: ChangeNotifierProvider(
+                          create: (BuildContext context) =>
+                              TeacherCourseScreenProvider(
+                                initialCourse: provider.course.toTeacherModel,
+                              ),
+                          child: TabContent(
+                            activeTab: provider.activeTab,
+                            courseId: provider.course.id,
+                          ),
                         ),
                       ),
                       const SliverToBoxAdapter(child: SizedBox(height: 32)),
@@ -263,17 +288,6 @@ class _WebDetail extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-class _WebTopBar extends StatelessWidget {
-  final CourseModel course;
-
-  const _WebTopBar({required this.course});
-
-  @override
-  Widget build(BuildContext context) {
-    return ScreenAppBar(title: course.title, actions: [_FavButton()]);
   }
 }
 
@@ -416,72 +430,6 @@ class _Fact extends StatelessWidget {
   );
 }
 
-// ── Hero image ────────────────────────────────────────────────────────────────
-
-class _CourseHero extends StatelessWidget {
-  final double height;
-
-  const _CourseHero({this.height = 260});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.watch<CourseDetailProvider>().course;
-
-    return Stack(
-      children: [
-        AppNetworkImage(
-          url: c.imageUrl,
-          width: double.infinity,
-          enableFullscreen: true,
-          height: height,
-          borderRadius: const BorderRadius.only(
-            bottomLeft: Radius.circular(24),
-            bottomRight: Radius.circular(24),
-          ),
-          heroTag: "course-profile-${c.id}",
-        ),
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(24),
-                bottomRight: Radius.circular(24),
-              ),
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withValues(alpha: 0.5),
-                  Colors.transparent,
-                  Colors.black.withValues(alpha: 0.6),
-                ],
-                stops: const [0, 0.42, 1],
-              ),
-            ),
-          ),
-        ),
-        // Mobile back + fav buttons (hidden on web — web uses topbar)
-        if (!context.showSidebar)
-          Positioned(
-            top: 14,
-            right: 16,
-            left: 16,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _FavButton(),
-                _CircleIconBtn(
-                  icon: Icons.arrow_forward_rounded,
-                  onTap: () => Navigator.of(context).maybePop(),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-}
-
 class _HeroBadge extends StatelessWidget {
   final String label;
 
@@ -539,11 +487,7 @@ class _CircleIconBtn extends StatelessWidget {
           ),
         ],
       ),
-      child: Icon(
-        icon,
-        size: 20,
-        color: iconColor ?? context.colors.textDark,
-      ),
+      child: Icon(icon, size: 20, color: iconColor ?? context.colors.textDark),
     ),
   );
 }

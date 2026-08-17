@@ -1,6 +1,7 @@
 /// features/courses/models.dart  —  Student data models v3.2.0
 library;
 
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/category/categories_provider.dart';
 
 import '../../utils/helpers.dart';
@@ -331,7 +332,8 @@ class TeacherProfileDetail {
 
 class CourseModel {
   final String id, name, imageUrl, type;
-  final String? categoryId, categoryName, description;
+  final String?  description;
+  final CategoryModel? category;
   final double price, totalHours;
   final int studentsCount, sessionsCount;
   final bool isPublished;
@@ -358,8 +360,7 @@ class CourseModel {
       required this.imageUrl,
       required this.price,
       required this.type,
-      this.categoryId,
-      this.categoryName,
+      this.category,
       this.description,
       this.studentsCount = 0,
       this.sessionsCount = 0,
@@ -386,7 +387,7 @@ class CourseModel {
   factory CourseModel.fromCategoryModel(CategoryCourseModel cat) => CourseModel(
       id: cat.id,
       name: cat.title,
-      categoryId: cat.categoryId,
+      category: CategoryModel(id: cat.id, nameEn: cat.title, nameAr:  cat.title, imageUrl:  cat.imageUrl, description: ''),
       imageUrl: cat.imageUrl,
       price: cat.price,
       type: 'recorded',
@@ -403,11 +404,9 @@ class CourseModel {
         id: j['id'].toString(),
         name: j['name'] as String? ?? '',
         imageUrl: j['image_url'] as String? ?? '',
-        categoryId: j['category_id']?.toString(),
-        categoryName:
-            (j['category'] as Map<String, dynamic>?)?['name'] as String? ??
-                j['category_name'] as String? ??
-                '',
+        category: j['category'] != null
+            ? CategoryModel.fromJson(j['category'] as Map<String, dynamic>)
+            : null,
         price: (j['fees'] as num?)?.toDouble() ?? 0.0,
         studentsCount:
             j['students_count'] as int? ?? j['enrollment_count'] as int? ?? 0,
@@ -451,7 +450,7 @@ class CourseModel {
       imageUrl: imageUrl,
       totalHours: totalHours,
       description: description,
-      categoryName: categoryName,
+      category: category,
       certificates: certificates,
       schedules: schedules,
       prerequisites: prerequisites,
@@ -469,7 +468,7 @@ class CourseModel {
           int? materialsTotal,
           int? materialsCompleted,
           List<SessionModel>? sessions,
-          String? categoryName,
+          CategoryModel? category,
           int? studentsCount}) =>
       CourseModel(
           id: id,
@@ -477,8 +476,7 @@ class CourseModel {
           imageUrl: imageUrl,
           price: price,
           type: type,
-          categoryId: categoryId,
-          categoryName: categoryName ?? this.categoryName,
+          category: category ?? this.category,
           rateSummary: rateSummary,
           studentsCount: studentsCount ?? this.studentsCount,
           sessionsCount: sessionsCount,

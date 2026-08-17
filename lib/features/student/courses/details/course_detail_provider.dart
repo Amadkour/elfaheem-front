@@ -45,8 +45,8 @@ class CourseDetailProvider extends BaseProvider {
     await run(() => _api.get('/api/v1/courses/$courseId', auth: true));
     if (r is Map<String, dynamic>) {
       course = CourseModel.fromJson(r);
-      notifyListeners();
     }
+    await fetchSessions(courseId);
   }
   List<SessionModel> sessions=[];
   List<SessionModel> get liveSessions=>sessions.where((e)=>e.isLiveActive).toList();
@@ -58,8 +58,9 @@ class CourseDetailProvider extends BaseProvider {
           .map((e) => SessionModel.fromJson(e as Map<String, dynamic>))
           .toList()
         ..sort((a, b) => a.order.compareTo(b.order));
-      notifyListeners();
     }
+    notifyListeners();
+
   }
 
   Future<void> refresh() => fetchFull(course.id);

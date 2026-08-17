@@ -166,8 +166,7 @@ class CourseCard extends StatelessWidget {
                                 showImage: false,
                               ),
                             ),
-                          if (course.categoryName != null &&
-                              course.categoryName!.isNotEmpty)
+                          if (course.category != null)
                             Flexible(
                               flex: 1,
                               child: Container(
@@ -178,7 +177,7 @@ class CourseCard extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
-                                  course.categoryName!,
+                                 AppConfig.lang=='ar'? course.category!.nameAr:course.category!.nameEn,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(

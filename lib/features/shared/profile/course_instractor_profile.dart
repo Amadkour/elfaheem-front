@@ -394,7 +394,16 @@ class _HeroSliverAppBar extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            teacher.teacherProfile?.specialization?.name ?? '',
+                            (AppConfig.lang == 'ar'
+                                    ? teacher
+                                          .teacherProfile
+                                          ?.specialization
+                                          ?.nameAr
+                                    : teacher
+                                          .teacherProfile
+                                          ?.specialization
+                                          ?.nameEn) ??
+                                '',
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.75),
                               fontSize: 12,
@@ -524,10 +533,7 @@ class InstructorAvatar extends StatelessWidget {
       decoration: !canOpen
           ? BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(
-                color: context.colors.background,
-                width: 3,
-              ),
+              border: Border.all(color: context.colors.background, width: 3),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.2),
@@ -538,10 +544,7 @@ class InstructorAvatar extends StatelessWidget {
             )
           : BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(
-                color: context.colors.background,
-                width: 1,
-              ),
+              border: Border.all(color: context.colors.background, width: 1),
             ),
       child: ClipOval(
         child: teacher.imageUrl != null
@@ -589,15 +592,16 @@ class InstructorAvatar extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   textDirection: TextDirection.ltr,
                 ),
-                Text(
-                  '${teacher.teacherProfile!.experienceYears} ${'experience'.tr}',
-                  style: context.colors.navLabelUnselected.copyWith(
-                    height: 1,
-                    fontSize: size / 3.5,
+                if (teacher.teacherProfile != null)
+                  Text(
+                    '${teacher.teacherProfile!.experienceYears} ${'experience'.tr}',
+                    style: context.colors.navLabelUnselected.copyWith(
+                      height: 1,
+                      fontSize: size / 3.5,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    textDirection: TextDirection.rtl,
                   ),
-                  overflow: TextOverflow.ellipsis,
-                  textDirection: TextDirection.rtl,
-                ),
               ],
             ),
           ),

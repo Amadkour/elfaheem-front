@@ -14,15 +14,19 @@ import '../../home/teacher_models.dart';
 class CourseHero extends StatelessWidget {
   final TeacherCourse course;
   final VoidCallback onBack;
-  final VoidCallback onEditCourse;
+  final VoidCallback? onEditCourse;
+  final VoidCallback? onLike;
+  final bool? isLike;
   final Future<void> Function() onRefresh;
 
   const CourseHero({
     super.key,
     required this.course,
     required this.onBack,
-    required this.onEditCourse,
+    this.onEditCourse,
     required this.onRefresh,
+    this.onLike,
+    this.isLike,
   });
 
   @override
@@ -30,12 +34,12 @@ class CourseHero extends StatelessWidget {
     return Stack(
       children: [
         SizedBox(
-          height: context.height/3.5,
+          height: context.height / 3.5,
           width: double.infinity,
           child: _buildBackground(context),
         ),
         SizedBox(
-          height: context.height/3.5,
+          height: context.height / 3.5,
           width: double.infinity,
           child: SafeArea(
             child: Stack(
@@ -51,12 +55,23 @@ class CourseHero extends StatelessWidget {
                         onTap: onBack,
                       ),
                       const Spacer(),
-                        RefreshButton(onTap: () async => onRefresh()),
-                      const SizedBox(width: 10),
-                      _CircleBtn(
-                        icon: CupertinoIcons.settings,
-                        onTap: onEditCourse,
-                      ),
+                      RefreshButton(onTap: () async => onRefresh()),
+                      if (onEditCourse != null) ...[
+                        const SizedBox(width: 10),
+                        _CircleBtn(
+                          icon: CupertinoIcons.settings,
+                          onTap: onEditCourse!,
+                        ),
+                      ],
+                      if (onLike != null) ...[
+                        const SizedBox(width: 10),
+                        _CircleBtn(
+                          icon: (isLike ?? false)
+                              ? CupertinoIcons.heart_fill
+                              : CupertinoIcons.heart,
+                          onTap: onLike!,
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -68,17 +83,24 @@ class CourseHero extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (course.categoryName != null)
+                      if (course.category != null)
                         Container(
                           margin: const EdgeInsets.only(bottom: 8),
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
-                            color: context.colors.primary.withValues(alpha: 0.85),
+                            color: context.colors.primary.withValues(
+                              alpha: 0.85,
+                            ),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            course.categoryName ?? course.type,
+                            AppConfig.lang == 'ar'
+                                ? course.category!.nameAr
+                                : course.category!.nameEn,
+
                             style: const TextStyle(
                               fontFamily: 'tajawal',
                               fontSize: 11,
@@ -129,9 +151,7 @@ class CourseHero extends StatelessWidget {
     final imageUrl = course.imageUrl;
     if (imageUrl.isNotEmpty) {
       return Container(
-        decoration:  BoxDecoration(
-          gradient: context.colors.primaryGradient,
-        ),
+        decoration: BoxDecoration(gradient: context.colors.primaryGradient),
         child: DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -162,17 +182,15 @@ class _GradientBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        decoration:  BoxDecoration(
-          gradient: context.colors.accentGradient,
-        ),
-        child: Center(
-          child: Icon(
-            Icons.school_rounded,
-            size: 72,
-            color: Colors.white.withValues(alpha: 0.12),
-          ),
-        ),
-      );
+    decoration: BoxDecoration(gradient: context.colors.accentGradient),
+    child: Center(
+      child: Icon(
+        Icons.school_rounded,
+        size: 72,
+        color: Colors.white.withValues(alpha: 0.12),
+      ),
+    ),
+  );
 }
 
 class _CircleBtn extends StatelessWidget {

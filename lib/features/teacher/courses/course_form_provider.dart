@@ -13,10 +13,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
+import '../../../config/app_config.dart';
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
 import '../../category/categories_provider.dart';
 import '../home/teacher_models.dart';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // PendingSchedule  — a locally-added weekly appointment for a course that
 // doesn't exist on the server yet (CREATE mode). Kept separate from
@@ -58,19 +60,18 @@ class CourseFormState {
     List<String>? certificates,
     List<String>? tools,
     List<String>? prerequisites,
-  }) =>
-      CourseFormState(
-        schedules: schedules ?? this.schedules,
-        certificates: certificates ?? this.certificates,
-        tools: tools ?? this.tools,
-        prerequisites: prerequisites ?? this.prerequisites,
-      );
+  }) => CourseFormState(
+    schedules: schedules ?? this.schedules,
+    certificates: certificates ?? this.certificates,
+    tools: tools ?? this.tools,
+    prerequisites: prerequisites ?? this.prerequisites,
+  );
 
   bool get isEmpty =>
       schedules.isEmpty &&
-          certificates.isEmpty &&
-          tools.isEmpty &&
-          prerequisites.isEmpty;
+      certificates.isEmpty &&
+      tools.isEmpty &&
+      prerequisites.isEmpty;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -97,17 +98,20 @@ class CourseFormProvider extends BaseProvider {
   // ── Form list state ──────────────────────────────────────────────────────
 
   CourseFormState _form = const CourseFormState();
+
   CourseFormState get form => _form;
 
   /// True when any list (certificates / tools / prerequisites) changed vs
   /// the original course — used to enable the save button independently of
   /// the text fields.
   bool _listsChanged = false;
+
   bool get listsChanged => _listsChanged;
 
   /// Weekly appointments added locally while creating a new course (the
   /// course has no id yet, so these can't be POSTed until after creation).
   List<PendingSchedule> _pendingSchedules = [];
+
   List<PendingSchedule> get pendingSchedules =>
       List.unmodifiable(_pendingSchedules);
 
@@ -145,15 +149,23 @@ class CourseFormProvider extends BaseProvider {
   }
 
   Future<void> _loadCategories(BuildContext context) async {
-    specializations =
-    await context.read<CategoriesProvider>().getSpecialization();
+    specializations = await context
+        .read<CategoriesProvider>()
+        .getSpecialization();
     notifyListeners();
   }
 
   void _restoreSpecialization(TeacherCourse course) {
     try {
-      selectedSpecialization =
-          specializations.firstWhere((s) => s['text'] == course.categoryName);
+      selectedSpecialization = specializations.firstWhere(
+        (s) =>
+            s['text'] ==
+            (
+              AppConfig.lang == 'ar'
+                  ? course.category!.nameAr
+                  : course.category!.nameEn,
+            ),
+      );
     } catch (_) {
       selectedSpecialization = null;
     }
@@ -190,7 +202,8 @@ class CourseFormProvider extends BaseProvider {
 
   void removeFormCertificate(int index) {
     _form = _form.copyWith(
-        certificates: List.of(_form.certificates)..removeAt(index));
+      certificates: List.of(_form.certificates)..removeAt(index),
+    );
     _listsChanged = true;
     notifyListeners();
   }
@@ -202,15 +215,15 @@ class CourseFormProvider extends BaseProvider {
   }
 
   void removeFormTool(int index) {
-    _form =
-        _form.copyWith(tools: List.of(_form.tools)..removeAt(index));
+    _form = _form.copyWith(tools: List.of(_form.tools)..removeAt(index));
     _listsChanged = true;
     notifyListeners();
   }
 
   void removeFormSchedule(int index) {
     _form = _form.copyWith(
-        schedules: List.of(_form.schedules)..removeAt(index));
+      schedules: List.of(_form.schedules)..removeAt(index),
+    );
     _listsChanged = true;
     notifyListeners();
   }
@@ -235,7 +248,8 @@ class CourseFormProvider extends BaseProvider {
 
   void removeFormPrerequisite(int index) {
     _form = _form.copyWith(
-        prerequisites: List.of(_form.prerequisites)..removeAt(index));
+      prerequisites: List.of(_form.prerequisites)..removeAt(index),
+    );
     _listsChanged = true;
     notifyListeners();
   }
@@ -251,48 +265,54 @@ class CourseFormProvider extends BaseProvider {
     double fees = 0,
     double? totalHours,
     XFile? logoFile,
+
     /// When true, the course is published immediately after creation.
     /// When false, it's left as a draft (the server-side default).
     bool publish = false,
   }) async {
     // Step 1: create course record (JSON, no file)
-    final result = await run(() => _api.post(
-      '/api/v1/courses',
-      body: {
-        'name': title,
-        'type': type,
-        'fees': fees,
-        'description': ?description,
-        if (selectedSpecialization?['id'] != null)
-          'category_id': selectedSpecialization!['id'],
-        'total_hours': ?totalHours,
-      },
-    ));
+    final result = await run(
+      () => _api.post(
+        '/api/v1/courses',
+        body: {
+          'name': title,
+          'type': type,
+          'fees': fees,
+          'description': ?description,
+          if (selectedSpecialization?['id'] != null)
+            'category_id': selectedSpecialization!['id'],
+          'total_hours': ?totalHours,
+        },
+      ),
+    );
 
     if (result is! Map<String, dynamic>) return null;
     TeacherCourse created = TeacherCourse.fromJson(result);
 
     // Step 2: upload image if provided
     if (logoFile != null) {
-      final withImage =
-      await _uploadImage(logoFile, courseId: created.id);
+      final withImage = await _uploadImage(logoFile, courseId: created.id);
       if (withImage != null) created = withImage;
     }
 
     // Step 3: publish immediately if requested (otherwise stays a draft)
     if (publish) {
       final pubResult = await run(
-              () => _api.post('/api/v1/courses/${created.id}/publish'));
+        () => _api.post('/api/v1/courses/${created.id}/publish'),
+      );
       if (pubResult != null) created = created.copyWith(isPublished: true);
     }
 
     // Step 4: persist extras in parallel
     await Future.wait([
       for (final s in _pendingSchedules)
-        _addSchedule(created.id,
-            day: s.day, startTime: s.startTime, endTime: s.endTime),
-      for (final t in _form.certificates)
-        _addCertificate(created.id, title: t),
+        _addSchedule(
+          created.id,
+          day: s.day,
+          startTime: s.startTime,
+          endTime: s.endTime,
+        ),
+      for (final t in _form.certificates) _addCertificate(created.id, title: t),
       for (final t in _form.tools) _addTool(created.id, name: t),
       for (final pr in _form.prerequisites)
         _addPrerequisite(created.id, title: pr),
@@ -309,25 +329,27 @@ class CourseFormProvider extends BaseProvider {
   // ─────────────────────────────────────────────────────────────────────────
 
   Future<TeacherCourse?> submitUpdate(
-      TeacherCourse original, {
-        required String name,
-        String? description,
-        double? fees,
-        double? totalHours,
-        XFile? logoFile,
-      }) async {
+    TeacherCourse original, {
+    required String name,
+    String? description,
+    double? fees,
+    double? totalHours,
+    XFile? logoFile,
+  }) async {
     // Step 1: patch scalar fields
-    final patchResult = await run(() => _api.put(
-      '/api/v1/courses/${original.id}',
-      body: {
-        'name': name,
-        'description': ?description,
-        'fees': ?fees,
-        if (selectedSpecialization?['id'] != null)
-          'category_id': selectedSpecialization!['id'],
-        'total_hours': ?totalHours,
-      },
-    ));
+    final patchResult = await run(
+      () => _api.put(
+        '/api/v1/courses/${original.id}',
+        body: {
+          'name': name,
+          'description': ?description,
+          'fees': ?fees,
+          if (selectedSpecialization?['id'] != null)
+            'category_id': selectedSpecialization!['id'],
+          'total_hours': ?totalHours,
+        },
+      ),
+    );
 
     if (patchResult is! Map<String, dynamic>) return null;
 
@@ -369,15 +391,20 @@ class CourseFormProvider extends BaseProvider {
       for (final id in removedToolIds) _removeTool(id),
       for (final id in removedPrereqIds) _removePrerequisite(id),
       for (final s in _pendingSchedules)
-        _addSchedule(original.id,
-            day: s.day, startTime: s.startTime, endTime: s.endTime),
+        _addSchedule(
+          original.id,
+          day: s.day,
+          startTime: s.startTime,
+          endTime: s.endTime,
+        ),
       for (final t in newCerts) _addCertificate(original.id, title: t),
       for (final t in newTools) _addTool(original.id, name: t),
       for (final pr in newPrereqs) _addPrerequisite(original.id, title: pr),
     ]);
 
     final refreshed =
-        await _fetchCourseDetail(original.id) ?? TeacherCourse.fromJson(patchResult);
+        await _fetchCourseDetail(original.id) ??
+        TeacherCourse.fromJson(patchResult);
     _pendingSchedules = [];
     return refreshed;
   }
@@ -392,11 +419,15 @@ class CourseFormProvider extends BaseProvider {
     return null;
   }
 
-  Future<TeacherCourse?> _uploadImage(XFile logoFile,
-      {required int courseId}) async {
+  Future<TeacherCourse?> _uploadImage(
+    XFile logoFile, {
+    required int courseId,
+  }) async {
     try {
-      final ext =
-      p.extension(logoFile.path).replaceFirst('.', '').toLowerCase();
+      final ext = p
+          .extension(logoFile.path)
+          .replaceFirst('.', '')
+          .toLowerCase();
       final mimeType = switch (ext) {
         'png' => 'image/png',
         'webp' => 'image/webp',
@@ -415,8 +446,10 @@ class CourseFormProvider extends BaseProvider {
           contentType: MediaType.parse(mimeType),
         ),
       });
-      final response = await _api.dio
-          .post('/api/v1/courses/$courseId/image', data: formData);
+      final response = await _api.dio.post(
+        '/api/v1/courses/$courseId/image',
+        data: formData,
+      );
       if (response.statusCode != 200) return null;
       return TeacherCourse.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
@@ -428,33 +461,44 @@ class CourseFormProvider extends BaseProvider {
     }
   }
 
-  Future<void> _addSchedule(int courseId,
-      {required String day,
-        required String startTime,
-        required String endTime}) =>
-      run(() => _api.post('/api/v1/courses/$courseId/schedules',
-          body: {'day': day, 'start_time': startTime, 'end_time': endTime}));
+  Future<void> _addSchedule(
+    int courseId, {
+    required String day,
+    required String startTime,
+    required String endTime,
+  }) => run(
+    () => _api.post(
+      '/api/v1/courses/$courseId/schedules',
+      body: {'day': day, 'start_time': startTime, 'end_time': endTime},
+    ),
+  );
 
   Future<void> _removeSchedule(int scheduleId) =>
       run(() => _api.delete('/api/v1/schedules/$scheduleId'));
 
-  Future<void> _addCertificate(int courseId, {required String title}) =>
-      run(() => _api.post('/api/v1/courses/$courseId/certificates',
-          body: {'title': title}));
+  Future<void> _addCertificate(int courseId, {required String title}) => run(
+    () => _api.post(
+      '/api/v1/courses/$courseId/certificates',
+      body: {'title': title},
+    ),
+  );
 
   Future<void> _removeCertificate(int certId) =>
       run(() => _api.delete('/api/v1/certificates/$certId'));
 
-  Future<void> _addTool(int courseId, {required String name}) =>
-      run(() => _api.post('/api/v1/courses/$courseId/tools',
-          body: {'title': name}));
+  Future<void> _addTool(int courseId, {required String name}) => run(
+    () => _api.post('/api/v1/courses/$courseId/tools', body: {'title': name}),
+  );
 
   Future<void> _removeTool(int toolId) =>
       run(() => _api.delete('/api/v1/tools/$toolId'));
 
-  Future<void> _addPrerequisite(int courseId, {required String title}) =>
-      run(() => _api.post('/api/v1/courses/$courseId/prerequisites',
-          body: {'title': title}));
+  Future<void> _addPrerequisite(int courseId, {required String title}) => run(
+    () => _api.post(
+      '/api/v1/courses/$courseId/prerequisites',
+      body: {'title': title},
+    ),
+  );
 
   Future<void> _removePrerequisite(int prereqId) =>
       run(() => _api.delete('/api/v1/prerequisites/$prereqId'));
