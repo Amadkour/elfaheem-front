@@ -3,9 +3,12 @@ import 'dart:developer';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:convert';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart' hide ConnectionState;
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:livekit_client/livekit_client.dart';
@@ -947,6 +950,120 @@ class _RoomPageState extends State<RoomPage>
     });
 
 
+  /// Captures [_SessionPlaceholderCard] as a PNG without adding it to the
+  /// visible widget tree — inserted via a transient, invisible OverlayEntry
+  /// (opacity 0, IgnorePointer) so nothing in the existing build() layout
+  /// has to change. Removed again immediately after one frame is captured.
+  Future<Uint8List?> _capturePlaceholderPng({
+    required String teacherName,
+    required String sessionTitle,
+    required int participantCount,
+  }) async {
+    final boundaryKey = GlobalKey();
+    final overlay = Overlay.of(context, rootOverlay: true);
+    late OverlayEntry entry;
+    final completer = Completer<Uint8List?>();
+
+    entry = OverlayEntry(
+      builder: (_) => IgnorePointer(
+        // Opacity(opacity: 0) was used here before — WRONG: Flutter's
+        // Opacity widget deliberately skips painting entirely when opacity
+        // is exactly 0.0 (a documented performance optimization), so
+        // debugNeedsPaint could never clear and toImage() failed every
+        // single time, not just occasionally. Positioning far off-screen
+        // instead keeps the subtree fully opaque and normally painted —
+        // nothing appears on screen, but paint() actually runs.
+        child: Transform.translate(
+          offset: const Offset(-10000, -10000),
+          child: RepaintBoundary(
+            key: boundaryKey,
+            child: _SessionPlaceholderCard(
+              teacherName: teacherName,
+              sessionTitle: sessionTitle,
+              participantCount: participantCount,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlay.insert(entry);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        // A single endOfFrame wasn't reliable — toImage() could still hit
+        // '!debugNeedsPaint' on a widget inserted this same frame. Waiting
+        // for two full frame cycles, plus a small retry loop as a backstop,
+        // reliably clears the paint pipeline before capture.
+        await WidgetsBinding.instance.endOfFrame;
+        await WidgetsBinding.instance.endOfFrame;
+
+        final boundary = boundaryKey.currentContext?.findRenderObject()
+        as RenderRepaintBoundary?;
+        if (boundary == null) {
+          completer.complete(null);
+          return;
+        }
+
+        ui.Image? image;
+        for (var attempt = 0; attempt < 4; attempt++) {
+          try {
+            image = await boundary.toImage(pixelRatio: 2.0);
+            break;
+          } catch (e) {
+            if (attempt == 3) rethrow;
+            log('[REC] _capturePlaceholderPng toImage retry $attempt: $e');
+            await Future.delayed(const Duration(milliseconds: 50));
+            await WidgetsBinding.instance.endOfFrame;
+          }
+        }
+        if (image == null) {
+          completer.complete(null);
+          return;
+        }
+        final byteData =
+        await image.toByteData(format: ui.ImageByteFormat.png);
+        completer.complete(byteData?.buffer.asUint8List());
+      } catch (e) {
+        log('[REC] _capturePlaceholderPng error: $e');
+        completer.complete(null);
+      } finally {
+        entry.remove();
+      }
+    });
+
+    return completer.future;
+  }
+
+  /// Captures the session-info placeholder and sends it to
+  /// ScreenPlaceholderRenderer (native side) so the recorded placeholder
+  /// (and, if re-shown, the post-share placeholder) shows real session
+  /// info instead of a flat color. Failures are logged and swallowed —
+  /// this is cosmetic, never worth failing session start over.
+  Future<void> _sendPlaceholderImageToNative({
+    required String teacherName,
+    required String sessionTitle,
+    required int participantCount,
+  }) async {
+    try {
+      final png = await _capturePlaceholderPng(
+        teacherName: teacherName,
+        sessionTitle: sessionTitle,
+        participantCount: participantCount,
+      );
+      if (png == null) {
+        log('[REC] placeholder capture returned null — skipping');
+        return;
+      }
+      await const MethodChannel(
+        'com.example.flutter_education_app/screen_share',
+      ).invokeMethod('setPlaceholderImage', {'png': png});
+      log('[REC] placeholder image sent to native (${png.length} bytes)');
+    } catch (e) {
+      log('[REC] _sendPlaceholderImageToNative error: $e');
+    }
+  }
+
   Future<void> _startRecorderOnce() async {
     if (_recorderStarted) return;
     _recorderStarted = true;
@@ -988,6 +1105,33 @@ class _RoomPageState extends State<RoomPage>
       return;
     }
 
+    // Step 2-4 (screen-capture dialog + Phase-2 wait): iOS only from here on.
+    // Android used to request the MediaProjection grant immediately at
+    // session start, before the teacher ever intends to share — showing a
+    // system dialog for a feature they might never use, and (with the old
+    // architecture) requiring a second, separate MediaProjection grant from
+    // flutter_webrtc later that forced local recording to pause during any
+    // live share. Android now defers the single MediaProjection request
+    // entirely to the Share button (see room_screen_share.dart), where one
+    // grant drives both local recording and the live share simultaneously
+    // via ElFaheemFrameCapturer — no downgrade-for-share needed. Until
+    // Share is tapped, the session runs audio-only PLUS a rendered
+    // placeholder (see ScreenPlaceholderRenderer.kt), matching the same
+    // teacherName/sessionTitle/participantCount the web compositor above
+    // already uses — sent once here so the native placeholder shows the
+    // real session info instead of a flat color.
+    if (Platform.isAndroid) {
+      final local = widget.room.localParticipant;
+      unawaited(_sendPlaceholderImageToNative(
+        teacherName: local?.name.isNotEmpty == true
+            ? local!.name
+            : (local?.identity ?? ''),
+        sessionTitle: widget.sessionName ?? 'حصة مباشرة',
+        participantCount: widget.room.remoteParticipants.length + 1,
+      ));
+      return;
+    }
+
     // Step 2: Arm the Phase-2 completer BEFORE calling startScreenCaptureService.
     // On iOS, RPScreenRecorder.startCapture() emits 'screenLoopStarted' in its
     // async completion handler — which can fire before invokeMethod returns.
@@ -998,7 +1142,6 @@ class _RoomPageState extends State<RoomPage>
     // Step 3: Start the native screen-capture service.
     // iOS:     calls RPScreenRecorder.startCapture() → mic-permission dialog
     //          on first use → red-pill indicator → AVAssetWriter chunk loop.
-    // Android: shows the "Allow screen capture?" MediaProjection dialog.
     // Both platforms return true when capture is actively running.
     try {
       final granted = await const MethodChannel(
@@ -3639,6 +3782,133 @@ class _PremiumWaitingPlaceholderState
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _SessionPlaceholderCard — recording placeholder (Android, pre-Share)
+//
+// Captured once (or whenever session info changes) as a static PNG and sent
+// to ScreenPlaceholderRenderer.kt, which displays it in the recorded video
+// (and live-share, if reverted to placeholder) before real screen content
+// is available. Deliberately static — no animation, since only a single
+// frame is ever captured — reusing the same avatar/name/color treatment as
+// _PremiumWaitingPlaceholder above for visual consistency with the rest of
+// the app, minus the pulsing ring / aurora background that only make sense
+// live.
+//
+// Sized as a fixed 1280x720 canvas so the captured PNG's aspect ratio is
+// predictable regardless of the device screen it's captured on — the native
+// renderer letterboxes/pillarboxes to fit the actual recording resolution
+// (see ScreenPlaceholderRenderer.drawPlaceholderBitmapAspectFit), so an
+// exact size match isn't required, just a known, stable one.
+class _SessionPlaceholderCard extends StatelessWidget {
+  const _SessionPlaceholderCard({
+    required this.teacherName,
+    required this.sessionTitle,
+    required this.participantCount,
+  });
+
+  final String teacherName;
+  final String sessionTitle;
+  final int participantCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final initials = teacherName.trim().isNotEmpty
+        ? teacherName
+        .trim()
+        .split(RegExp(r'\s+'))
+        .take(2)
+        .map((w) => w[0].toUpperCase())
+        .join()
+        : '؟';
+
+    return SizedBox(
+      width: 1280,
+      height: 720,
+      child: Container(
+        color: _bg,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 140,
+                height: 140,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [_cyan, _indigo],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _cyan.withValues(alpha: 0.35),
+                      blurRadius: 40,
+                      spreadRadius: 4,
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    initials,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 48,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 28),
+              Text(
+                teacherName,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontFamily: 'tajawal',
+                  color: _textHigh,
+                  fontSize: 32,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.2,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                sessionTitle,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontFamily: 'tajawal',
+                  color: _textMid,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                decoration: BoxDecoration(
+                  color: _surfaceHi,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: _cyan.withValues(alpha: 0.4)),
+                ),
+                child: Text(
+                  '$participantCount مشارك',
+                  style: const TextStyle(
+                    fontFamily: 'tajawal',
+                    color: _cyan,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

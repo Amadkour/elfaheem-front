@@ -23,7 +23,7 @@ import 'dart:html' as html;
 import 'dart:ui_web' as ui;
 
 import 'package:flutter/material.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 /// Shown on Flutter Web. Embeds the checkout page in a full-screen <iframe>.
 /// Receives the payment status via window.postMessage from result.html.
 class IFrameCheckoutPage extends StatefulWidget {
@@ -96,7 +96,7 @@ class IFrameCheckoutPageState extends State<IFrameCheckoutPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(),
+                  AppLoadingIndicator(),
                   SizedBox(height: 16),
                   Text('جارٍ تحميل صفحة الدفع…'),
                 ],

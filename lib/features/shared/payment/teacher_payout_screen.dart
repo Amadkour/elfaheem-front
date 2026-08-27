@@ -16,6 +16,7 @@ import '../../../utils/widget/text_field.dart';
 import '../../../utils/widget/primary_button.dart';
 import 'saved_payment_models.dart';
 import 'saved_methods_provider.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 class TeacherPayoutScreen extends StatelessWidget {
   const TeacherPayoutScreen({super.key});
@@ -44,7 +45,7 @@ class _TeacherPayoutView extends StatelessWidget {
               child: Consumer<SavedMethodsProvider>(
                 builder: (context, p, _) {
                   if (p.isLoading && !p.fetched) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const Center(child: AppLoadingIndicator());
                   }
                   return SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),

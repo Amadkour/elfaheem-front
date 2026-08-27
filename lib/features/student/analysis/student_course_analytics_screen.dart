@@ -5,7 +5,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import '../../teacher/analysis/attendance/attendance_model.dart';
 import 'attendance/student_attendance_model.dart';
 import 'student_analytics_provider.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 class StudentCourseAnalyticsScreen extends StatelessWidget {
   final int courseId;
   final String courseTitle;
@@ -175,7 +175,7 @@ class _AttendanceTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (prov.loadingAtt) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: AppLoadingIndicator());
     }
     if (prov.attError != null) {
       return _ErrorRetry(message: prov.attError!, onRetry: prov.loadAttendance);
@@ -407,7 +407,7 @@ class _ExamsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (prov.loadingExams) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: AppLoadingIndicator());
     }
     if (prov.examsError != null) {
       return _ErrorRetry(message: prov.examsError!, onRetry: prov.loadExams);

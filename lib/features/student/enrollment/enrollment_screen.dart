@@ -21,7 +21,7 @@ import '../../shared/profile/course_instractor_profile.dart';
 import '../../student/models.dart';
 import 'enrollment_provider.dart';
 import 'stc_otp_step.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 // ── Colours shared across this file ──────────────────────────────────────────
 
 const _kStcColor    = Color(0xFF6A0DAD);
@@ -782,8 +782,7 @@ class _ConfirmBar extends StatelessWidget {
             child: enroll.isLoading
                 ? const SizedBox(
                 width: 24, height: 24,
-                child: CircularProgressIndicator(
-                    color: Colors.white, strokeWidth: 2.5))
+                child: AppLoadingIndicator())
                 : Text(label,
                 style: const TextStyle(
                   color: Colors.white,
@@ -1016,10 +1015,7 @@ class _VerifyingStep extends StatelessWidget {
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         SizedBox(
           width: 64, height: 64,
-          child: CircularProgressIndicator(
-            color: c.primary, strokeWidth: 3,
-            backgroundColor: c.primaryTint,
-          ),
+          child:AppLoadingIndicator(),
         ),
         const SizedBox(height: 24),
         Text('جارٍ تأكيد الدفع…',
@@ -1257,7 +1253,7 @@ class _GradientBtn extends StatelessWidget {
           child: loading
               ? const SizedBox(
               width: 22, height: 22,
-              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+              child: AppLoadingIndicator())
               : Text(label,
               style: const TextStyle(
                 color: Colors.white,

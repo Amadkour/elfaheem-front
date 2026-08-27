@@ -4,7 +4,7 @@
 // panel. Handles tap → video player / image viewer / external URL, plus
 // teacher edit / delete dialogs.
 // ─────────────────────────────────────────────────────────────────────────────
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -78,7 +78,7 @@ class SessionMaterialGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: AppLoadingIndicator());
     }
 
     if (materials.isEmpty) {
@@ -520,16 +520,7 @@ class _RecordingSpinnerIconState extends State<_RecordingSpinnerIcon>
         // Spinning ring
         RotationTransition(
           turns: _ctrl,
-          child: SizedBox(
-            width: 38,
-            height: 38,
-            child: CircularProgressIndicator(
-              strokeWidth: 2.5,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                widget.color.withValues(alpha: 0.6),
-              ),
-            ),
-          ),
+          child: AppLoadingIndicator(),
         ),
         // Static red dot in center
         Container(
@@ -769,8 +760,7 @@ class MaterialImageViewerDialog extends StatelessWidget {
                 loadingBuilder: (_, child, progress) => progress == null
                     ? child
                     : const Center(
-                    child: CircularProgressIndicator(
-                        color: Colors.white)),
+                    child: AppLoadingIndicator()),
                 errorBuilder: (_, _, _) => const Icon(
                   Icons.broken_image_rounded,
                   color: Colors.white54,

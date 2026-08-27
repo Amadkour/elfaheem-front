@@ -37,7 +37,7 @@ library;
 import 'package:flutter/material.dart';
 import '../../../config/theme/app_theme.dart';
 import '../../../config/theme/theme_config_provider.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 class PaymentCallbackPage extends StatefulWidget {
   const PaymentCallbackPage({super.key});
   @override
@@ -136,7 +136,7 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage>
   @override
   Widget build(BuildContext context) {
     if (!_ready || _title.isEmpty) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: AppLoadingIndicator()));
     }
 
     final c = context.colors;

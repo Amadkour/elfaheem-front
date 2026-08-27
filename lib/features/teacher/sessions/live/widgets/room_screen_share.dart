@@ -1,21 +1,31 @@
-// room_screen_share.dart — Standard MediaProjection screen share flow
+// room_screen_share.dart — Single-MediaProjection screen share flow
 //
-// Screen share on Android uses flutter_webrtc's own MediaProjection token
-// (its dialog appears when the teacher taps the Share Screen button).
-// Our ScreenCaptureService holds a separate token for continuous recording —
-// both coexist without conflict.
+// HISTORY: this used to defer to flutter_webrtc's own MediaProjection
+// grant (a separate system dialog from the recorder's), on the theory
+// that two independent grants could coexist. Testing showed they can't —
+// the second grant still silently killed the first's VirtualDisplay, so
+// live share always stopped local recording. The recorder was then
+// downgraded to mic-only around every share toggle as a workaround.
 //
-// START sharing:
-//   1. promoteForShare() — no-op; flutter_webrtc manages its own FGS type.
-//   2. _stopScreenForShare() — tells native to emit micReadyForShare so the
-//      recording's chunk boundary is clean before the share begins.
-//   3. setScreenShareEnabled(true) — flutter_webrtc shows ITS OWN dialog
-//      and begins streaming the screen to live participants.
-//   4. After sharing, upgradeToScreenRecording() re-confirms recording is live.
+// CURRENT DESIGN: one MediaProjection grant total, requested the first
+// time Share is tapped (not at session start — see room.dart, which now
+// only starts mic-only recording at session start on Android). That one
+// grant drives ScreenCaptureService's own VirtualDisplay/encoder AND, via
+// ElFaheemFrameCapturer reading frames from that same VirtualDisplay
+// (GetUserMediaImpl.java's useElFaheemCapturer branch — never calls
+// MediaProjectionManager itself), the live LiveKit share. No downgrade,
+// no re-upgrade, no second dialog.
+//
+// START sharing (first tap only — isScreenRecording guards repeats):
+//   1. startScreenCaptureService — the one system dialog. Confirming it
+//      starts local recording (ACTION_STORE_PROJECTION → recordLoop()).
+//   2. getDisplayMedia({'video': {'useElFaheemCapturer': true}}) — reuses
+//      that same grant's VirtualDisplay frames, publishes the live track.
+//      Zero additional dialogs.
 //
 // STOP sharing:
-//   1. setScreenShareEnabled(false)
-//   2. _stopShareAndReUpgrade() — waits for micLoopStarted, then re-confirms.
+//   Unpublish the ElFaheem track directly. Local recording was never
+//   paused, so nothing needs re-confirming — it just keeps running.
 
 import 'dart:async';
 import 'dart:developer';
@@ -25,6 +35,7 @@ import 'package:flutter/services.dart';
 import 'recorder_web_stub.dart'
 if (dart.library.html) 'recorder_web_impl.dart' as web_rec;
 import 'package:livekit_client/livekit_client.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 import 'room_recorder.dart';
 
 // ── DIAGNOSTIC (2026-07-30) ───────────────────────────────────────────────
@@ -65,6 +76,13 @@ const _callQualityAudioCaptureOptions = AudioCaptureOptions(
 );
 
 mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
+  /// The track + publication published via ElFaheemFrameCapturer
+  /// (single-projection Android path). setScreenShareEnabled(false) doesn't
+  /// know about this track since it was never published through
+  /// setScreenShareEnabled(true) — stop must unpublish it directly via
+  /// these references. .sid lives on the PUBLICATION, not the track itself.
+  LocalVideoTrack? _elFaheemScreenTrack;
+  LocalTrackPublication<LocalVideoTrack>? _elFaheemScreenPublication;
 
   Room get room;
   ClientRecorder? get recorder;
@@ -148,47 +166,65 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
           await Future.delayed(const Duration(milliseconds: 200));
         }
 
-        // Step 1: promoteForShare — no-op on our side; unblocks any Dart waiter.
-        try {
-          await _recChannel.invokeMethod<void>('promoteForShare');
-        } catch (e) {
-          log('[SS] promoteForShare error (non-fatal): $e');
-        }
-
-        // Step 2: Signal the recording service to emit micReadyForShare so
-        // the chunk boundary is clean before the share session begins.
-        await _stopScreenForShare();
-        log('[SS] Android: share preparation complete');
-
-        // Step 2.5: Make SURE the foreground service is actually promoted to
-        // FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION before flutter_webrtc
-        // requests its own MediaProjection below. Normally this already
-        // happened during the initial recording setup (room.dart's
-        // _startRecorderOnce Phase 2, via upgradeToScreenRecording()) — but
-        // that involves a system dialog the teacher has to respond to, and
-        // if screen share gets tapped before that finishes (or recording
-        // was never fully upgraded for any other reason), the foreground
-        // service is still mic-only-typed. flutter_webrtc's own
-        // getMediaProjection() call then throws SecurityException
-        // ("Media projections require a foreground service of type
-        // FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION") and the whole app
-        // crashes — this isn't a warning, it's fatal. isScreenRecording
-        // makes this a no-op (no extra dialog) once it's already true.
+        // Step 1: One-time MediaProjection grant — the ONLY system dialog
+        // in the whole session, and only shown the first time Share is
+        // tapped (isScreenRecording guards repeat taps within the same
+        // session). This single grant drives ScreenCaptureService's own
+        // VirtualDisplay/encoder (local recording) AND, via
+        // ElFaheemFrameCapturer reading frames from that same
+        // VirtualDisplay, the live LiveKit share — no second projection,
+        // no downgrade-for-share, no conflict between the two.
         if (recorder != null && !recorder!.isScreenRecording) {
-          log('[SS] Android: FGS not yet promoted to mediaProjection type — '
-              'upgrading before flutter_webrtc requests its own projection');
+          log('[SS] Android: requesting the single MediaProjection grant '
+              '(local recording + live share both start from this)');
+          // Arm the confirmation wait BEFORE the native call, matching the
+          // pattern room.dart used to use at session start — ACTION_STORE_
+          // PROJECTION's recordLoop() can emit 'screenLoopStarted' before
+          // invokeMethod's own Future resolves.
+          recorder!.prepareUpgradeWait();
+          final granted = await const MethodChannel(
+            'com.example.flutter_education_app/screen_share',
+          ).invokeMethod<bool>('startScreenCaptureService');
+          if (granted != true) {
+            log('[SS] Android: MediaProjection grant denied — aborting share');
+            showSnack('Screen sharing permission was denied.');
+            return;
+          }
+          // upgradeToScreenRecording() here no longer sends any native
+          // command (ACTION_UPGRADE_TO_SCREEN / dialog #2 is gone — see
+          // ScreenCaptureService.kt / MainActivity.kt) — it just waits for
+          // the 'screenLoopStarted' that ACTION_STORE_PROJECTION's own
+          // recordLoop() emits, then flips isScreenRecording to true.
           await recorder!.upgradeToScreenRecording();
+          log('[SS] Android: local recording is live');
         }
 
-        // Step 3: flutter_webrtc shows ITS OWN projection dialog and streams.
-        await _safeNegotiate(() => local.setScreenShareEnabled(
-          true,
-          screenShareCaptureOptions: const ScreenShareCaptureOptions(
-            captureScreenAudio: true,
-            maxFrameRate: 30,
-          ),
-        ));
-        log('[SS] Android: LiveKit screen share enabled');
+        // Step 2: Publish the live share using ElFaheemFrameCapturer via
+        // getDisplayMedia's useElFaheemCapturer branch (GetUserMediaImpl.java)
+        // — this reuses the SAME MediaProjection grant from Step 1 above; it
+        // never calls MediaProjectionManager itself, so no second dialog.
+        final stream = await rtc.navigator.mediaDevices.getDisplayMedia({
+          'video': {'useElFaheemCapturer': true},
+        });
+        final screenTrack = stream.getVideoTracks().first;
+        // Constructor confirmed against the real pinned livekit_client source:
+        // LocalVideoTrack(TrackSource, MediaStream, MediaStreamTrack,
+        // VideoCaptureOptions). ScreenShareCaptureOptions is the
+        // VideoCaptureOptions subtype matching this track's semantics
+        // (source: screenShareVideo) — mirrors what createScreenShareTrack()
+        // would have used internally, without us calling it (which would
+        // re-trigger MediaProjection).
+        _elFaheemScreenTrack = LocalVideoTrack(
+          TrackSource.screenShareVideo,
+          stream,
+          screenTrack,
+          const ScreenShareCaptureOptions(),
+        );
+        await _safeNegotiate(() async {
+          _elFaheemScreenPublication =
+          await local.publishVideoTrack(_elFaheemScreenTrack!);
+        });
+        log('[SS] Android: LiveKit screen share enabled (single-projection)');
 
         // Step 4: Publish screen audio track if available.
         await Future.delayed(const Duration(milliseconds: 300));
@@ -210,48 +246,50 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
     } else {
       // ── STOP screen share ─────────────────────────────────────────────────
       try {
-        await _safeNegotiate(() => local.setScreenShareEnabled(false));
-        log('[SS] Android: LiveKit screen share disabled');
+        if (_elFaheemScreenPublication != null) {
+          await _safeNegotiate(
+            // unpublishTrack was renamed to removePublishedTrack in a past
+            // livekit_client release (confirmed via changelog) — same
+            // signature, new name.
+                () => local.removePublishedTrack(_elFaheemScreenPublication!.sid),
+          );
+          await _elFaheemScreenTrack?.stop();
+          _elFaheemScreenTrack = null;
+          _elFaheemScreenPublication = null;
+          log('[SS] Android: LiveKit screen share disabled (single-projection)');
+        } else {
+          // Fallback for any path that still went through setScreenShareEnabled.
+          await _safeNegotiate(() => local.setScreenShareEnabled(false));
+          log('[SS] Android: LiveKit screen share disabled');
+        }
       } catch (e) {
-        log('[SS] Android stop setScreenShareEnabled: $e');
+        log('[SS] Android stop screen share error: $e');
       }
-      await _stopShareAndReUpgrade();
-      log('[SS] Android: recording confirmed after share ended');
+      // Local recording was never paused for the share (single-projection
+      // architecture — see start branch above) — it keeps running for the
+      // rest of the session regardless of share state. It does, however,
+      // revert from live screen content back to the session-info
+      // placeholder now that Share is off (per product decision — keeps
+      // the MediaProjection grant alive so re-tapping Share needs no new
+      // dialog, just stops drawing live frames into the recording/capturer).
+      try {
+        await const MethodChannel(
+          'com.example.flutter_education_app/screen_share',
+        ).invokeMethod('revertToPlaceholder');
+        log('[SS] Android: recording reverted to placeholder');
+      } catch (e) {
+        log('[SS] Android revertToPlaceholder error: $e');
+      }
+      log('[SS] Android: share ended, recording continues uninterrupted');
     }
   }
 
-  // ── Blocking helpers ──────────────────────────────────────────────────────
-
-  /// Signals the service to emit micReadyForShare (clean chunk boundary).
-  Future<void> _stopScreenForShare() async {
-    recorder?.prepareMicReadyForShareWait();
-    try {
-      await _recChannel.invokeMethod<void>('downgradeToMicForShare');
-    } catch (e) {
-      log('[SS] downgradeToMicForShare error: $e');
-      return;
-    }
-    await recorder?.micReadyForShareCompleter?.future.timeout(
-      const Duration(seconds: 5),
-      onTimeout: () => log('[SS] stopScreenForShare: timeout'),
-    );
-  }
-
-  /// After share ends: waits for micLoopStarted, then re-confirms recording.
-  Future<void> _stopShareAndReUpgrade() async {
-    recorder?.prepareMicLoopStartedWait();
-    try {
-      await _recChannel.invokeMethod<void>('stopScreenCapture');
-    } catch (e) {
-      log('[SS] stopScreenCapture error: $e');
-    }
-    await recorder?.micLoopStartedCompleter?.future.timeout(
-      const Duration(seconds: 5),
-      onTimeout: () => log('[SS] _stopShareAndReUpgrade: micLoopStarted timeout'),
-    );
-    await recorder?.upgradeToScreenRecording();
-    log('[SS] re-upgrade confirmed after share');
-  }
+  // Blocking helpers _stopScreenForShare() / _stopShareAndReUpgrade() were
+  // removed — they belonged to the old downgrade-to-mic-then-back
+  // workaround for the two-projection conflict. In the single-projection
+  // architecture (see start/stop branches above), local recording never
+  // pauses around a share toggle, so there's nothing left to downgrade or
+  // re-upgrade.
 
   // ── Web ───────────────────────────────────────────────────────────────────
 
@@ -397,7 +435,9 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
         recorder?.onBroadcastEvent = _handleBroadcastEvent;
 
         // Step 1: Rotate a clean chunk boundary before the broadcast picker
-        // appears, matching the Android path's _stopScreenForShare() call.
+        // appears. (Android's equivalent downgrade-then-reupgrade dance was
+        // removed with the single-projection architecture — see the
+        // Android start/stop branches above.)
         // This ensures the last RPScreenRecorder chunk closes cleanly before
         // iOS suspends the app during the system confirmation sheet.
         // Native's showBroadcastPicker() already handles this internally

@@ -5,6 +5,8 @@ import '../../../../shared/session/material/session_material_widget.dart';
 import '../../../../shared/session/progress_banner.dart';
 import '../../../models.dart';
 import '../course_detail_provider.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+
 class SessionsTab extends StatelessWidget {
   const SessionsTab({super.key, required this.presented, required this.provider});
   final List<SessionModel> presented;
@@ -15,10 +17,7 @@ class SessionsTab extends StatelessWidget {
       return Padding(
         padding: EdgeInsets.all(48),
         child: Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation(context.colors.primary),
-            strokeWidth: 2.5,
-          ),
+          child: AppLoadingIndicator(),
         ),
       );
     }

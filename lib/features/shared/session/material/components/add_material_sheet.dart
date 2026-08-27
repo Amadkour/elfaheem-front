@@ -14,7 +14,7 @@ import '../../../../../config/theme/app_theme.dart';
 import '../../../../../config/theme/theme_config_provider.dart';
 import '../../../../teacher/sessions/sessions_provider.dart';
 import 'session_shared_widgets.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 // Public entry — small button that opens the sheet
 // ─────────────────────────────────────────────────────────────────────────────
@@ -262,7 +262,7 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
                 child: _saving
-                    ? const Center(child: CircularProgressIndicator())
+                    ? const Center(child: AppLoadingIndicator())
                     : ElevatedButton(
                         key: const ValueKey('submit'),
                         style: ElevatedButton.styleFrom(

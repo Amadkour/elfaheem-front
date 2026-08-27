@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
 import 'package:flutter_education_app/features/teacher/sessions/sessions_screen.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart';
@@ -35,43 +36,41 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       useWebCard: true,
       child: SafeArea(
         child: provider.isLoading
-            ? Center(
-                child: CircularProgressIndicator(
-                  strokeWidth: context.width / 120,
+            ? const Center(
+          child: AppLoadingIndicator(size: 64),
+        )
+            : Column(
+          children: [
+            ScreenAppBar(title: 'notifications'.tr),
+            Expanded(
+              child: provider.allNotifs.isEmpty
+                  ? Center(
+                child: Icon(
+                  Icons.notifications_active_rounded,
+                  size: 50,
+                  color: context.colors.primary,
                 ),
               )
-            : Column(
+                  : ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                physics: const BouncingScrollPhysics(),
                 children: [
-                  ScreenAppBar(title: 'notifications'.tr),
-                  Expanded(
-                    child: provider.allNotifs.isEmpty
-                        ? Center(
-                            child: Icon(
-                              Icons.notifications_active_rounded,
-                              size: 50,
-                              color: context.colors.primary,
-                            ),
-                          )
-                        : ListView(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            physics: const BouncingScrollPhysics(),
-                            children: [
-                              const SizedBox(height: 8),
-                              _NotifGroup(
-                                group: NotifGroup.today,
-                                groupTitle: 'today'.tr,
-                              ),
-                              const SizedBox(height: 20),
-                              _NotifGroup(
-                                group: NotifGroup.yesterday,
-                                groupTitle: 'yesterday'.tr,
-                              ),
-                              const SizedBox(height: 24),
-                            ],
-                          ),
+                  const SizedBox(height: 8),
+                  _NotifGroup(
+                    group: NotifGroup.today,
+                    groupTitle: 'today'.tr,
                   ),
+                  const SizedBox(height: 20),
+                  _NotifGroup(
+                    group: NotifGroup.yesterday,
+                    groupTitle: 'yesterday'.tr,
+                  ),
+                  const SizedBox(height: 24),
                 ],
               ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -119,7 +118,7 @@ class _NotifGroup extends StatelessWidget {
         const SizedBox(height: 12),
         // Notification tiles
         ...notifs.map(
-          (n) => Padding(
+              (n) => Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: _NotifTile(notif: n),
           ),
@@ -167,21 +166,6 @@ class _NotifTile extends StatelessWidget {
 
     return GestureDetector(
       onTap: () async {
-        // FIX: The root cause of the error.
-        //
-        // BEFORE (broken):
-        //   await context.read<NotificationsProvider>().markAsRead(notif.id);
-        //   Navigator.push(context, ...);   ← crash: context deactivated
-        //
-        // WHY IT CRASHED:
-        //   markAsRead() calls notifyListeners() → the notification list
-        //   rebuilds → this tile widget is removed from the tree and
-        //   deactivated. The await then completes and Navigator.push tries
-        //   to look up the Navigator via the now-dead context → DartError.
-        //
-        // FIX: capture Navigator.of(context) BEFORE the await, while the
-        // context is still alive. The captured NavigatorState remains valid
-        // even after the widget is deactivated.
         final navigator = Navigator.of(context);
         final provider = context.read<NotificationsProvider>();
 

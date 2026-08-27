@@ -11,7 +11,7 @@ import 'package:provider/provider.dart';
 import '../../../config/theme/app_theme.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import 'enrollment_provider.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 class StcOtpStep extends StatefulWidget {
   const StcOtpStep({super.key});
 
@@ -277,9 +277,7 @@ class _StcOtpStepState extends State<StcOtpStep>
                       child: p.isLoading
                           ? const SizedBox(
                               width: 22, height: 22,
-                              child: CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2.5),
-                            )
+                              child: AppLoadingIndicator())
                           : Text(
                               'تأكيد الدفع',
                               style: TextStyle(

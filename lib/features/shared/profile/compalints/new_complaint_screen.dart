@@ -15,6 +15,7 @@ import '../../../auth/auth_widgets.dart';
 import 'complaint_attachement_widgets.dart';
 import 'complaint_model.dart';
 import 'complaint_provider.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 class NewComplaintScreen extends StatefulWidget {
   const NewComplaintScreen({super.key, this.courseId, this.courseTitle});
@@ -624,7 +625,7 @@ class _HistoryTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (provider.isLoadingList && provider.complaints.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: AppLoadingIndicator());
     }
     if (provider.complaints.isEmpty) {
       return _EmptyHistory();
@@ -790,7 +791,7 @@ class _ComplaintHistoryCard extends StatelessWidget {
             secondChild: isLoading
                 ? const Padding(
                     padding: EdgeInsets.all(20),
-                    child: Center(child: CircularProgressIndicator()),
+                    child: Center(child: AppLoadingIndicator()),
                   )
                 : _ExpandedBody(complaint: complaint),
           ),

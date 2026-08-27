@@ -12,6 +12,8 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../utils/widget/primary_menue.dart' show MyPrimaryMenu;
 import 'auth_provider.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+
 // مهم للـ blur
 
 // ── Brand colours ─────────────────────────────────────────────────────────────
@@ -459,10 +461,7 @@ class PrimaryButton extends StatelessWidget {
             ? const SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
+                child: AppLoadingIndicator(),
               )
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,

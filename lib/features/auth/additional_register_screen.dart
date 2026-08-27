@@ -15,6 +15,7 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../config/theme/app_theme.dart';
 import '../../utils/helpers.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/base_page.dart';
 import 'auth_provider.dart';
 import 'auth_widgets.dart';
@@ -197,7 +198,7 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
                     const SizedBox(height: 8),
                     auth.isLoading
                         ? const Center(
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: AppLoadingIndicator(),
                     )
                         : StyledDropdown(
                       icon: Icons.science_outlined,
@@ -370,7 +371,7 @@ class _DocumentsSection extends StatelessWidget {
           const Center(
             child: Padding(
               padding: EdgeInsets.symmetric(vertical: 24),
-              child: CircularProgressIndicator(strokeWidth: 2),
+              child: AppLoadingIndicator(),
             ),
           )
         // ── Predefined requirement rows ───────────────────────────────────────
@@ -561,7 +562,7 @@ class _RequirementRow extends StatelessWidget {
                     ? const SizedBox(
                   width: 32,
                   height: 32,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: AppLoadingIndicator(),
                 )
                     : _UploadButton(
                   fulfilled: fulfilled,
@@ -1002,10 +1003,7 @@ class _CustomDocEntryRow extends StatelessWidget {
                       ? const SizedBox(
                     width: 18,
                     height: 18,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
+                    child: AppLoadingIndicator(),
                   )
                       : Row(
                     mainAxisSize: MainAxisSize.min,

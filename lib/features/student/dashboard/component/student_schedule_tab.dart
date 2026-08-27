@@ -5,7 +5,7 @@ import '../../../../config/app_config.dart';
 import '../../../../utils/widget/base_page.dart';
 import '../../../teacher/schedules/schedules_provider.dart';
 import '../../../teacher/schedules/schedules_screen.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 class StudentScheduleTab extends StatefulWidget {
   const StudentScheduleTab({super.key});
 
@@ -40,7 +40,7 @@ class StudentScheduleTabState extends State<StudentScheduleTab>
     return BasePage(
         useWebCard: true,
         child: SafeArea(
-            child:_prov.isLoading? Center(child: CircularProgressIndicator(strokeWidth: context.width/120,),): ScheduleTabBody(
+            child:_prov.isLoading? Center(child:AppLoadingIndicator(),): ScheduleTabBody(
           provider: _prov,
           getData: () => _prov.data,
           onRefresh: _prov.fetch,

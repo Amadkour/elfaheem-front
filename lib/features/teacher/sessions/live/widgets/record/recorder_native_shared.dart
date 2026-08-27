@@ -173,13 +173,24 @@ abstract class NativeRecorderBackend {
     // after a downgrade/re-upgrade around a screen-share toggle).
     _upgradeCompleter ??= Completer<void>();
 
+    // The native invoke and the completer wait are deliberately in
+    // SEPARATE try blocks. On Android (single-projection architecture),
+    // this native action no longer exists — ACTION_UPGRADE_TO_SCREEN and
+    // its dialog were removed because ACTION_STORE_PROJECTION (triggered
+    // by startScreenCaptureService, called by the Share button) already
+    // promotes the foreground service type itself. That invoke below will
+    // throw MissingPluginException every time on Android — which must NOT
+    // skip the wait for the real 'screenLoopStarted' event that
+    // ACTION_STORE_PROJECTION's own recordLoop() emits. iOS still has this
+    // native action, so this invoke still does real work there.
     try {
-      // Native emits 'videoChunksActive' from its screen-capture start
-      // completion handler, which fires once the capture session actually
-      // succeeded and the chunk-writing timer has started. We wait for it
-      // regardless of what the invoke call itself returns, since native
-      // always emits the event separately.
       await channel.invokeMethod<bool>('upgradeToScreenRecording');
+    } catch (e) {
+      log('[REC] upgradeToScreenRecording invoke: $e '
+          '(expected on Android single-projection — continuing to wait for screenLoopStarted)');
+    }
+
+    try {
       await _upgradeCompleter!.future.timeout(
         const Duration(seconds: 20),
         onTimeout: () {
@@ -187,7 +198,7 @@ abstract class NativeRecorderBackend {
         },
       );
     } catch (e) {
-      log('[REC] upgradeToScreenRecording error: $e');
+      log('[REC] upgradeToScreenRecording wait error: $e');
     } finally {
       _upgradeCompleter = null;
     }

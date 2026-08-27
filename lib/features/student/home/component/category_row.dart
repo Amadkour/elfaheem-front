@@ -5,7 +5,7 @@ import 'package:flutter_education_app/features/category/categories_screen.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../config/app_config.dart';
-import '../../../../config/theme/app_theme.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../category/categories_provider.dart';
 
@@ -20,10 +20,7 @@ class CategoriesRow extends StatelessWidget {
           return SizedBox(
             height: 112,
             child: Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation(context.colors.primaryDark),
-                strokeWidth: 2.5,
-              ),
+              child: AppLoadingIndicator(),
             ),
           );
         }

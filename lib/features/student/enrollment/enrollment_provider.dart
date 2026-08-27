@@ -11,7 +11,7 @@ import '../../shared/payment/saved_methods_provider.dart';
 import '../../shared/payment/saved_payment_models.dart';
 import '../../student/models.dart';
 import 'enrollment_screen.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'checkout_web_impl.dart'
 if (dart.library.io) 'checkout_stub_impl.dart';
 
@@ -545,7 +545,7 @@ class _MobileCheckoutPageState extends State<MobileCheckoutPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(),
+                  AppLoadingIndicator(),
                   SizedBox(height: 16),
                   Text('جارٍ تحميل صفحة الدفع…'),
                 ],

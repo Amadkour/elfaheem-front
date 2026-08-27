@@ -13,6 +13,7 @@ import 'package:flutter_education_app/features/student/dashboard/dashboard_scree
 import 'package:flutter_education_app/features/student/home/home_screen.dart';
 import 'package:flutter_education_app/features/student/models.dart';
 import 'package:flutter_education_app/utils/remote_config_service.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:provider/provider.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -234,52 +235,28 @@ class _ElFaheemAppState extends State<ElFaheemApp> {
 /// Branded splash shown between app launch and the first theme response.
 ///
 /// IMPORTANT: colors here are hard-coded to match `flutter_native_splash`'s
-/// config in pubspec.yaml exactly (background #1A1A1A / accent #F4C542) —
-/// not read from AppTheme — so there is zero visible hand-off flash between
-/// the OS-level native splash and this Flutter splash, on every platform.
+/// config in pubspec.yaml exactly (background #D4FEFD) — not read from
+/// AppTheme — so there is zero visible hand-off flash between the OS-level
+/// native splash and this Flutter splash, on every platform.
 /// If the brand palette ever changes, update both places together.
 class _PremiumLoadingScreen extends StatelessWidget {
   const _PremiumLoadingScreen();
 
-  static const _bg = AppTheme.background; // matches flutter_native_splash color
-  static const _accent =AppTheme.accent2; // matches flutter_native_splash color
+  static const _bg = Color(0xFFD4FEFD); // matches flutter_native_splash color
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(brightness: Brightness.dark, fontFamily: 'tajawal'),
+      theme: ThemeData(brightness: Brightness.light, fontFamily: 'tajawal'),
       home: Scaffold(
         backgroundColor: _bg,
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Image.asset(
-                'assets/images/splash.png',
-                width: 120,
-                height: 120,
-                errorBuilder: (_, _, _) => const Text(
-                  'الفهيم',
-                  style: TextStyle(
-                    fontFamily: 'bahji',
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: _accent,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
-              const SizedBox(
-                width: 32,
-                height: 32,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                  valueColor: AlwaysStoppedAnimation<Color>(_accent),
-                ),
-              ),
-            ],
-          ),
+        // AppLoadingIndicator already shows the branded logo (with its own
+        // built-in fallback if the asset fails to load), so it replaces the
+        // separate Image.asset + CircularProgressIndicator that used to sit
+        // here — one branded widget doing both jobs.
+        body: const Center(
+          child: AppLoadingIndicator(size: 140),
         ),
       ),
     );

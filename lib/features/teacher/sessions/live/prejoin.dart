@@ -9,7 +9,7 @@ import '../model/live_response_model.dart';
 import '../../../../core/api_client.dart';
 import 'local_debug_save.dart';
 import 'room.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 // JoinArgs
 // ─────────────────────────────────────────────────────────────────────────────
@@ -999,10 +999,7 @@ class _PreJoinPageState extends State<PreJoinPage>
                           const SizedBox(
                             width: 24,
                             height: 24,
-                            child: CircularProgressIndicator(
-                              color: _DS.cyan,
-                              strokeWidth: 2.5,
-                            ),
+                            child: AppLoadingIndicator(),
                           ),
                         ]
                       : [

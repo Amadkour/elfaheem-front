@@ -12,7 +12,7 @@ import '../home/teacher_models.dart';
 import '../home/teacher_provider.dart';
 import 'attendance/teacher_attendance_screen.dart';
 import 'exam/teacher_exam_hub_screen.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 class TeacherAnalyticsHubScreen extends StatefulWidget {
   const TeacherAnalyticsHubScreen({super.key});
 
@@ -50,9 +50,7 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen>
       child: SafeArea(
         child: prov.isLoading
             ? Center(
-                child: CircularProgressIndicator(
-                  strokeWidth: context.width / 120,
-                ),
+                child: AppLoadingIndicator(),
               )
             : Column(children: [
                 _buildHeader(),

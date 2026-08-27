@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 class MyPrimaryButton extends StatelessWidget {
   const MyPrimaryButton(
       {super.key,
@@ -31,10 +31,7 @@ class MyPrimaryButton extends StatelessWidget {
             ? const SizedBox(
                 height: 20,
                 width: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
+                child:AppLoadingIndicator(),
               )
             : Text(
                 label,

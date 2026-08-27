@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../config/theme/theme_config_provider.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 // AppNetworkImage
 // Drop-in replacement — same constructor, adds optional [enableFullscreen].
@@ -62,10 +62,7 @@ class AppNetworkImage extends StatelessWidget {
           height: height,
           color: color ?? context.colors.cardBg,
           child: Center(
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation(context.colors.primary),
-            ),
+            child: AppLoadingIndicator(),
           ),
         );
       },
@@ -336,11 +333,7 @@ class _FullscreenImageViewerState extends State<_FullscreenImageViewer>
                                   SizedBox(
                                     width: 40,
                                     height: 40,
-                                    child: CircularProgressIndicator(
-                                      value: value,
-                                      strokeWidth: 2,
-                                      color: Colors.white54,
-                                    ),
+                                    child: AppLoadingIndicator(),
                                   ),
                                   if (value != null) ...[
                                     const SizedBox(height: 12),

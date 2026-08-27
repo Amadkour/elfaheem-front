@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
+import '../../../../utils/widget/app_loading_indicator.dart';
 import 'passcode_screen.dart';
 import 'student_exam_api.dart';
 import 'student_exam_detail_screen.dart';
@@ -38,7 +39,7 @@ class _StudentCourseExamsWidgetState extends State<StudentCourseExamsWidget> {
     if (loading) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
-        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        child: Center(child: AppLoadingIndicator()),
       );
     }
 

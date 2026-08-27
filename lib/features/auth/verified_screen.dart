@@ -12,6 +12,8 @@ import '../../config/theme/theme_config_provider.dart';
 import '../shared/profile/change_password_widget.dart';
 import 'additional_register_screen.dart';
 import 'auth_widgets.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+
 enum OtpFlowEnum { registration, forget, changePassword }
 
 class OtpVerificationScreen extends StatefulWidget {
@@ -423,9 +425,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
           ? const SizedBox(
               width: 24,
               height: 24,
-              child: CircularProgressIndicator(
-                  strokeWidth: 2, color: Colors.white),
-            )
+              child: AppLoadingIndicator())
           : Text('confirm'.tr,
               style:
                   const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),

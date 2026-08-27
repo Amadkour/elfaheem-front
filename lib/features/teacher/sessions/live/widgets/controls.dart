@@ -10,7 +10,7 @@ import 'package:flutter_education_app/features/teacher/sessions/live/widgets/roo
 import 'package:livekit_client/livekit_client.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../../components/exts.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared Design System tokens (mirrors PreJoinPage & RoomPage)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -538,9 +538,7 @@ class _CtrlButton extends StatelessWidget {
           child: loading
               ? Padding(
             padding: const EdgeInsets.all(14),
-            child: CircularProgressIndicator(
-                strokeWidth: 2, color: effectiveColor),
-          )
+            child: AppLoadingIndicator())
               : Icon(icon, color: effectiveColor, size: 22),
         ),
         const SizedBox(height: 5),

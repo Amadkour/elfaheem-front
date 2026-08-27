@@ -19,7 +19,6 @@ library;
 
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
-import 'notification_service.dart';
 
 // ── NotifGroup ────────────────────────────────────────────────────────────────
 
@@ -70,7 +69,7 @@ class NotificationModel {
     // ── Derive group from created_at ──────────────────────────────────────────
     final raw = json['created_at'] as String?;
     final createdAt =
-        raw != null ? DateTime.tryParse(raw) ?? DateTime.now() : DateTime.now();
+    raw != null ? DateTime.tryParse(raw) ?? DateTime.now() : DateTime.now();
 
     final now = DateTime.now();
     final todayMidnight = DateTime(now.year, now.month, now.day);
@@ -114,14 +113,14 @@ class NotificationModel {
   // ── Immutable copy ──────────────────────────────────────────────────────────
 
   NotificationModel copyWith({bool? isRead}) => NotificationModel(
-        id: id,
-        title: title,
-        body: body,
-        group: group,
-        iconAsset: iconAsset,
-        isRead: isRead ?? this.isRead,
-        sourceId: sourceId,
-      );
+    id: id,
+    title: title,
+    body: body,
+    group: group,
+    iconAsset: iconAsset,
+    isRead: isRead ?? this.isRead,
+    sourceId: sourceId,
+  );
 }
 
 // ── NotificationsProvider ─────────────────────────────────────────────────────
@@ -178,13 +177,13 @@ class NotificationsProvider extends BaseProvider {
 
   Future<void> _loadPage({bool unreadOnly = false}) async {
     dynamic result = await run(() => _api.get(
-          '/api/v1/notifications',
-          queryParams: {
-            'skip': 0,
-            'limit': 20,
-            'unread_only': unreadOnly,
-          },
-        ));
+      '/api/v1/notifications',
+      queryParams: {
+        'skip': 0,
+        'limit': 20,
+        'unread_only': unreadOnly,
+      },
+    ));
     if (result is Map<dynamic, dynamic> &&
         result.containsKey('items') &&
         result['items'] is List) {
@@ -197,15 +196,23 @@ class NotificationsProvider extends BaseProvider {
       _skip += page.length;
       _hasMore = page.length == _pageSize;
       notifyListeners();
-      for (final notif in page) {
-        if (!notif.isRead) {
-          await NotificationService.instance.show(
-            id: notif.id.hashCode,
-            title: notif.title,
-            body: notif.body,
-          );
-        }
-      }
+
+      // NOTE: This used to loop over every unread item in the fetched page
+      // and call NotificationService.instance.show() for each one. That was
+      // the cause of two bugs:
+      //   1. Every unread notification got re-shown as a local push EVERY
+      //      TIME this screen was opened, not just once when it originally
+      //      arrived — hence "20 notifications at once".
+      //   2. It made it *look* like notifications only worked when opening
+      //      this screen, when in reality real-time push (FCM foreground/
+      //      background handlers, registered globally in main.dart at app
+      //      startup) already works on any screen and doesn't need this.
+      //
+      // Fetching a list of notifications is a read operation, not a "new
+      // event" — it should never trigger a local notification. Real-time
+      // "new notification" alerts are already handled by
+      // NotificationService's FCM listeners (see notification_service.dart),
+      // which fire regardless of which screen is currently open.
     }
   }
 
@@ -218,7 +225,7 @@ class NotificationsProvider extends BaseProvider {
     _updateLocal(id, true);
 
     final result = await run(
-      () => _api.put('/api/v1/notifications/$id/read'),
+          () => _api.put('/api/v1/notifications/$id/read'),
     );
 
     if (result == null && hasError) {

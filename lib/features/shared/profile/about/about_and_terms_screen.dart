@@ -3,6 +3,7 @@
 // About Us + Terms & Conditions — server-driven, dark/light, AR/EN adaptive
 // ─────────────────────────────────────────────────────────────────────────────
 library;
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
@@ -99,7 +100,7 @@ class _AboutScreenState extends State<AboutScreen> {
 
   Widget _buildBody(AboutTermsProvider p, ThemeConfigProvider c, bool isWide) {
     if (p.isLoadingAbout) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: AppLoadingIndicator());
     }
     if (p.aboutError != null) {
       return _ErrorState(
@@ -108,7 +109,7 @@ class _AboutScreenState extends State<AboutScreen> {
       );
     }
     if (p.about == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: AppLoadingIndicator());
     }
 
     final about = p.about!;
@@ -623,7 +624,7 @@ class _TermsScreenState extends State<TermsScreen> {
 
   Widget _buildBody(AboutTermsProvider p, ThemeConfigProvider c) {
     if (p.isLoadingTerms) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child:AppLoadingIndicator());
     }
     if (p.termsError != null) {
       return _ErrorState(
@@ -632,7 +633,7 @@ class _TermsScreenState extends State<TermsScreen> {
       );
     }
     if (p.terms == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: AppLoadingIndicator());
     }
 
     final terms = p.terms!;

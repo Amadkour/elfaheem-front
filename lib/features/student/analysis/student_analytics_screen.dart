@@ -8,7 +8,7 @@ import 'exam/student_exam_list_screen.dart';
 import 'exam/student_exam_provider.dart';
 import 'student_analytics_provider.dart';
 import 'student_course_analytics_screen.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 class StudentAnalyticsScreen extends StatelessWidget {
   const StudentAnalyticsScreen({super.key});
 
@@ -122,7 +122,7 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView>
 
   Widget _buildBody(StudentAnalyticsProvider prov) {
     if (prov.loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: AppLoadingIndicator());
     }
     if (prov.error != null) {
       return Center(

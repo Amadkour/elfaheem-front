@@ -9,7 +9,7 @@ import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/api_client.dart';
 import '../../../utils/helpers.dart';
 import '../../../utils/widget/base_page.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 // ═══════════════════════════════════════════════════════════════════════════
 // 1.  API SERVICE
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1875,9 +1875,7 @@ class _Loader extends StatelessWidget {
       Column(mainAxisSize: MainAxisSize.min, children: [
         SizedBox(
           width: 32, height: 32,
-          child: CircularProgressIndicator(
-              strokeWidth: 2.5, color: AppTheme.primary),
-        ),
+          child: AppLoadingIndicator(),),
         const SizedBox(height: 10),
         Text('loading_label'.tr, style: context.colors.caption),
       ]);

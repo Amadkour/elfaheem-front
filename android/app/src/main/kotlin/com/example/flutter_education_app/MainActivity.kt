@@ -1,28 +1,31 @@
 package com.example.flutter_education_app
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MainActivity — two independent MediaProjection grants
+// MainActivity — single MediaProjection grant
 //
-// WHY TWO REQUEST CODES:
-//   Android allows only ONE active projection per process.  If the same grant
-//   is handed to both the recorder and flutter_webrtc, the second call to
-//   getMediaProjection() silently revokes the first — the recorder then dies
-//   after chunk #0.
+// HISTORY: this used to request two independent MediaProjection grants —
+// one for the recorder, one for flutter_webrtc's own screen capture — on
+// the theory that Android allows multiple concurrent projections as long
+// as each has separate user consent. Testing showed that theory was wrong:
+// the second grant still silently killed the first's VirtualDisplay, so
+// live share still stopped local recording, just one dialog later than
+// before, plus the second grant was itself two dialogs (a redundant FGS-
+// promotion step and flutter_webrtc's own consent) for zero benefit.
 //
-//   Solution: show the system permission dialog TWICE, once per consumer.
+// CURRENT DESIGN: exactly one MediaProjection grant for the whole session,
+// requested only when Share is first tapped (not at session start):
 //
-//   REQUEST_MEDIA_PROJECTION = 1001  →  recorder-exclusive grant
+//   REQUEST_MEDIA_PROJECTION = 1001  →  the only grant
 //     startScreenCaptureService  →  dialog  →  onActivityResult(1001)
 //       →  ACTION_STORE_PROJECTION  →  ScreenCaptureService.recordLoop()
+//          (this already promotes the FGS to
+//          FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION itself — nothing else
+//          needs to request or promote anything further)
 //
-//   REQUEST_SCREEN_SHARE = 1002  →  flutter_webrtc grant
-//     upgradeToScreenRecording   →  dialog  →  onActivityResult(1002)
-//       →  ACTION_UPGRADE_TO_SCREEN (promotes FGS type, unblocks Dart)
-//       →  flutter_webrtc calls getMediaProjection() with THIS grant
-//
-//   The two tokens are completely independent — flutter_webrtc can never
-//   invalidate the recorder's projection, and the recorder keeps chunking
-//   through the entire screen-share lifecycle.
+// flutter_webrtc never calls MediaProjectionManager itself on this path —
+// see ElFaheemFrameCapturer.java / GetUserMediaImpl.java's
+// useElFaheemCapturer branch, which reads frames from the SAME
+// VirtualDisplay above instead of requesting its own.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import android.app.NotificationChannel
@@ -46,17 +49,13 @@ class MainActivity : FlutterActivity() {
         private const val CH_NOTIFICATIONS = "com.example.flutter_education_app/notifications"
         private const val CH_REC_EVENTS    = "com.example.flutter_education_app/rec_events"
 
-        // 1001: recorder grant  → ACTION_STORE_PROJECTION
+        // 1001: the one and only MediaProjection grant → ACTION_STORE_PROJECTION
         private const val REQUEST_MEDIA_PROJECTION = 1001
-        // 1002: flutter_webrtc screen-share grant  → ACTION_UPGRADE_TO_SCREEN
-        private const val REQUEST_SCREEN_SHARE     = 1002
     }
 
     private var projectionManager: MediaProjectionManager? = null
 
-    // Each grant has its own pending callback so they never cross-resolve.
-    private var onRecorderProjectionApproved:  (() -> Unit)? = null   // 1001
-    private var onScreenShareProjectionResult: ((Boolean) -> Unit)? = null // 1002
+    private var onRecorderProjectionApproved: (() -> Unit)? = null // 1001
 
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
@@ -101,27 +100,11 @@ class MainActivity : FlutterActivity() {
                     onRecorderProjectionApproved = null
                 }
             }
-
-            // ── flutter_webrtc screen-share grant ─────────────────────────────
-            REQUEST_SCREEN_SHARE -> {
-                if (resultCode == RESULT_OK && data != null) {
-                    Log.d(TAG, "onActivityResult(1002): screen-share projection approved")
-
-                    // Promote the FGS type so flutter_webrtc can legally call
-                    // getMediaProjection() on Android 14+.
-                    startService(Intent(this, ScreenCaptureService::class.java).apply {
-                        action = ScreenCaptureService.ACTION_UPGRADE_TO_SCREEN
-                    })
-
-                    onScreenShareProjectionResult?.invoke(true)
-                    onScreenShareProjectionResult = null
-
-                } else {
-                    Log.w(TAG, "onActivityResult(1002): screen-share denied (resultCode=$resultCode)")
-                    onScreenShareProjectionResult?.invoke(false)
-                    onScreenShareProjectionResult = null
-                }
-            }
+            // REQUEST_SCREEN_SHARE (1002) removed — was a second, redundant
+            // MediaProjection dialog. ACTION_STORE_PROJECTION (triggered by
+            // the 1001 grant above) already calls promoteForegroundToProjection()
+            // itself, so there was nothing left for this second dialog to do.
+            // See ScreenCaptureService.kt for the single remaining grant path.
         }
     }
 
@@ -138,14 +121,20 @@ class MainActivity : FlutterActivity() {
                     when (call.method) {
 
                         // Shows the projection dialog for the RECORDER (grant 1001).
-                        // Called once at session start before recording begins.
+                        // Called once, the first time Share is tapped — NOT at
+                        // session start (recording itself starts earlier, at
+                        // ACTION_START_MIC_ONLY, showing a placeholder; this
+                        // grant only upgrades that already-running recording
+                        // to real screen content — see ScreenCaptureService.kt's
+                        // activateLiveProjection()).
                         "startScreenCaptureService" -> {
                             // Guard on isProjectionGranted, NOT isRunning.
-                            // isRunning is true as soon as startMicRecording starts the
-                            // service (mic-only mode).  We must still show the projection
-                            // dialog (grant 1001) so ACTION_STORE_PROJECTION can fire and
-                            // recordLoop() can start.  Only skip if the grant was already
-                            // stored and recording is genuinely active.
+                            // isRunning is true from session start (placeholder
+                            // recording via ACTION_START_MIC_ONLY already running).
+                            // We must still show the projection dialog (grant 1001)
+                            // so ACTION_STORE_PROJECTION can fire and
+                            // activateLiveProjection() can upgrade to live content.
+                            // Only skip if the grant was already stored.
                             if (ScreenCaptureService.isProjectionGranted) {
                                 Log.d(TAG, "startScreenCaptureService: projection already granted")
                                 result.success(true)
@@ -205,34 +194,56 @@ class MainActivity : FlutterActivity() {
 
                         "getChunkIndex" -> result.success(ScreenCaptureService.currentChunkIndex)
 
-                        // Shows the projection dialog for flutter_webrtc (grant 1002).
-                        // The recorder's grant (1001) is NOT touched.
-                        "upgradeToScreenRecording" -> {
-                            if (!ScreenCaptureService.isRunning) {
-                                Log.w(TAG, "upgradeToScreenRecording: service not running")
-                                result.success(false)
+                        "setPlaceholderImage" -> {
+                            val bytes = call.argument<ByteArray>("png")
+                            if (bytes == null) {
+                                result.error("BAD_ARGS", "png bytes missing", null)
                                 return@setMethodCallHandler
                             }
-                            onScreenShareProjectionResult = { approved ->
-                                result.success(approved)
+                            val bitmap = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                            if (bitmap == null) {
+                                Log.w(TAG, "setPlaceholderImage: could not decode PNG (${bytes.size} bytes)")
+                                result.error("DECODE_FAILED", "could not decode PNG", null)
+                                return@setMethodCallHandler
                             }
-                            try {
-                                @Suppress("DEPRECATION")
-                                startActivityForResult(
-                                        projectionManager!!.createScreenCaptureIntent(),
-                                        REQUEST_SCREEN_SHARE,
-                                )
-                            } catch (e: Exception) {
-                                Log.e(TAG, "upgradeToScreenRecording: ${e.message}", e)
-                                onScreenShareProjectionResult = null
-                                result.error("UPGRADE_ERROR", e.message, null)
+                            // placeholderRenderer may not exist yet if this call races
+                            // session start — setPlaceholderBitmap itself has no queue
+                            // for "renderer doesn't exist at all" (only for "renderer
+                            // exists but hasn't finished start()"), so this is a
+                            // best-effort — Dart already logs+swallows failures here.
+                            val renderer = ScreenCaptureService.placeholderRenderer
+                            if (renderer == null) {
+                                Log.w(TAG, "setPlaceholderImage: no active renderer yet")
+                                result.success(null)
+                                return@setMethodCallHandler
                             }
+                            renderer.setPlaceholderBitmap(bitmap)
+                            result.success(null)
                         }
+
+                        // "upgradeToScreenRecording" removed — dialog #2 and
+                        // REQUEST_SCREEN_SHARE (1002) are gone. Any Dart-side
+                        // caller of this action now hits MissingPluginException
+                        // by design (see recorder_native_shared.dart, which
+                        // treats that as expected on Android and continues
+                        // waiting for screenLoopStarted from the 1001 grant).
 
                         "promoteForShare" -> {
                             ScreenCaptureService.onFgsPromoted?.invoke()
                             ScreenCaptureService.onFgsPromoted = null
                             result.success(null)
+                        }
+
+                        "revertToPlaceholder" -> {
+                            try {
+                                startService(Intent(this, ScreenCaptureService::class.java).apply {
+                                    action = ScreenCaptureService.ACTION_REVERT_TO_PLACEHOLDER
+                                })
+                                result.success(null)
+                            } catch (e: Exception) {
+                                Log.e(TAG, "revertToPlaceholder: ${e.message}", e)
+                                result.error("REVERT_ERROR", e.message, null)
+                            }
                         }
 
                         "downgradeToMicForShare" -> {

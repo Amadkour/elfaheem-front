@@ -1,4 +1,11 @@
--- LLDB integration loaded --
+flutter pub get
+dart run flutter_launcher_icons
+dart run flutter_native_splash:create
+
+
+
+
+
 `UIScene` lifecycle will soon be required. Failure to adopt will result in an assert in the future.
 FlutterView implements focusItemsInRect: - caching for linear focus movement is limited as long as this view is on screen.
 Dart execution mode: JIT

@@ -13,7 +13,7 @@ import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/primary_button.dart';
 import 'schedules_provider.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 // ══════════════════════════════════════════════════════════════════════════════
 //  ScheduleTabBody
 // ══════════════════════════════════════════════════════════════════════════════
@@ -655,8 +655,7 @@ class _LoadingState extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
     child: Column(mainAxisSize: MainAxisSize.min, children: [
-       CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation(context.colors.primary)),
+      AppLoadingIndicator(),
       const SizedBox(height: 16),
        Text('loading-schedule'.tr,
           style: TextStyle(
@@ -760,9 +759,7 @@ class _TeacherSchedulesScreenState extends State<TeacherSchedulesScreen> {
           Expanded(
             child: provider.isLoading && provider.schedules.isEmpty
                 ?  Center(
-                child: CircularProgressIndicator(
-                    valueColor:
-                    AlwaysStoppedAnimation(context.colors.primary)))
+                child: AppLoadingIndicator())
                 : provider.schedules.isEmpty
                 ? _ManageEmptyState(onAdd: ()=>TeacherSchedulesScreen.openAddScheduleScreenSheet(context))
                 : _ManageList(schedules: provider.schedules),

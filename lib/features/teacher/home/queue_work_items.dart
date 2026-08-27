@@ -18,7 +18,7 @@ import '../../../utils/helpers.dart';
 import '../sessions/live/prejoin.dart';
 import '../sessions/sessions_provider.dart';
 import '../sessions/sessions_screen.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /// Parses 'HH:MM' from [session] fields and combines with [session.scheduledDate]
@@ -1063,10 +1063,7 @@ class _CreateSessionSheetState extends State<_CreateSessionSheet> {
                       ? const SizedBox(
                           width: 22,
                           height: 22,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2.5,
-                          ),
+                          child: AppLoadingIndicator(),
                         )
                       : const Text(
                           'إنشاء الحصة وبدء البث 🚀',

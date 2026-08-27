@@ -3,7 +3,7 @@
 // Entry gate: shows exam info, score history, then launches quiz.
 // NEW: shows "Try Again" when maxSubmissions allows more rounds.
 library;
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -494,7 +494,7 @@ class _ActionButton extends StatelessWidget {
         child: loading
             ? const SizedBox(
             width: 22, height: 22,
-            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+            child: AppLoadingIndicator())
             : Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [

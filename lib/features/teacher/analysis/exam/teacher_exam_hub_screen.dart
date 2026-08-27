@@ -9,7 +9,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import '../../../../config/app_config.dart';
 import 'exam_model.dart';
 import 'teacher_exam_provider.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 class TeacherExamHubScreen extends StatelessWidget {
   final int courseId;
   final String courseTitle;
@@ -189,7 +189,7 @@ class _HubViewState extends State<_HubView>
 
   Widget _buildExamsTab(TeacherExamProvider prov) {
     if (prov.loadingExams) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: AppLoadingIndicator());
     }
     if (prov.examsError != null && prov.exams.isEmpty) {
       return _ErrorView(message: prov.examsError, onRetry: prov.loadExams);
@@ -254,7 +254,7 @@ class _HubViewState extends State<_HubView>
       );
     }
     if (prov.loadingResults) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: AppLoadingIndicator());
     }
     if (prov.resultsError != null) {
       return _ErrorView(
@@ -750,7 +750,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
           // Body
           Expanded(
             child: loading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(child: AppLoadingIndicator())
                 : error != null
                     ? Center(
                         child:
@@ -1358,12 +1358,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                                 borderRadius: BorderRadius.circular(14)),
                           ),
                           child: prov.saving
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white))
-                              : Text(
+                              ? AppLoadingIndicator(): Text(
                                   isEditing
                                       ? 'btn_save_edits'.tr
                                       : 'btn_add_question'.tr,
@@ -1707,12 +1702,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                               borderRadius: BorderRadius.circular(14)),
                         ),
                         child: widget.provider.saving
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white))
-                            : Text('btn_create_exam'.tr,
+                            ? const  AppLoadingIndicator(): Text('btn_create_exam'.tr,
                                 style: const TextStyle(
                                     fontFamily: 'bahji',
                                     fontSize: 15,

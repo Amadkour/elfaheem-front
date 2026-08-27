@@ -5,6 +5,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -917,7 +918,7 @@ class _DocumentsSection extends StatelessWidget {
       return const Center(
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: 20),
-          child: CircularProgressIndicator(strokeWidth: 2),
+          child: AppLoadingIndicator(),
         ),
       );
     }

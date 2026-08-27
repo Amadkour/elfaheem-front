@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../core/api_client.dart';
 import '../../../teacher/analysis/exam/exam_model.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 // ── Entry point: passcode gate ───────────────────────────────────────────────
 class StudentExamEntryScreen extends StatefulWidget {
   final ExamModel exam;
@@ -225,8 +225,7 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
                       ? const SizedBox(
                       width: 22,
                       height: 22,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
+                      child: AppLoadingIndicator())
                       : const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -391,7 +390,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
           backgroundColor: context.colors.background,
           body: Center(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              const CircularProgressIndicator(),
+              const AppLoadingIndicator(),
               const SizedBox(height: 20),
               const Text('جارٍ إرسال إجاباتك...',
                   style: TextStyle(fontFamily: 'bahji', fontSize: 16)),
@@ -822,12 +821,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                       SizedBox(
                         width: 160,
                         height: 160,
-                        child: CircularProgressIndicator(
-                          value: v,
-                          strokeWidth: 12,
-                          backgroundColor: Colors.grey.shade100,
-                          color: passed ? context.colors.success : Colors.redAccent,
-                        ),
+                        child: AppLoadingIndicator(),
                       ),
                       Column(mainAxisSize: MainAxisSize.min, children: [
                         Text('${(v * 100).toStringAsFixed(0)}%',

@@ -21,6 +21,7 @@ import '../../../auth/auth_widgets.dart';
 import 'complaint_attachement_widgets.dart';
 import 'complaint_model.dart';
 import 'complaint_provider.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
@@ -77,7 +78,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
             _FilterRow(provider: p, searchCtrl: _searchCtrl),
             Expanded(
               child: p.isLoadingList && p.complaints.isEmpty
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const Center(child: AppLoadingIndicator())
                   : p.complaints.isEmpty
                   ? _EmptyState()
                   : RefreshIndicator(
@@ -93,7 +94,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                       return const Center(
                         child: Padding(
                           padding: EdgeInsets.all(16),
-                          child: CircularProgressIndicator(),
+                          child: AppLoadingIndicator(),
                         ),
                       );
                     }
@@ -630,7 +631,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
               ScreenAppBar(title: 'complaint_details_title'.tr),
               if (p.isLoadingDetail)
                 const Expanded(
-                  child: Center(child: CircularProgressIndicator()),
+                  child: Center(child: AppLoadingIndicator()),
                 )
               else if (complaint == null)
                 Expanded(child: Center(child: Text('complaint_not_found'.tr)))
@@ -1161,10 +1162,7 @@ class _ReplyInput extends StatelessWidget {
                     child: isSending
                         ? const Padding(
                       padding: EdgeInsets.all(13),
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
+                      child: AppLoadingIndicator(),
                     )
                         : const Icon(
                       Icons.send_rounded,

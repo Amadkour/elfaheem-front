@@ -2,7 +2,7 @@
 library;
 
 import 'package:flutter/material.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 class CustomButton extends StatelessWidget {
   final String text;
   final VoidCallback? onPressed;
@@ -37,12 +37,7 @@ class CustomButton extends StatelessWidget {
           ? SizedBox(
         height: 20,
         width: 20,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          valueColor: AlwaysStoppedAnimation<Color>(
-            textColor ?? Colors.white,
-          ),
-        ),
+        child: AppLoadingIndicator(),
       )
           : Row(
         mainAxisSize: MainAxisSize.min,

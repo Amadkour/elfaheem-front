@@ -12,7 +12,7 @@ import '../../models.dart';
 import '../details/components/app_responsive.dart';
 import '../details/course_detail_screen.dart';
 import 'my_courses_provider.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 class MyCoursesScreen extends StatefulWidget {
   const MyCoursesScreen({super.key, required this.courses});
   final List<CourseModel> courses;
@@ -275,10 +275,7 @@ class _CourseList extends StatelessWidget {
         builder:(context, provider, child) {
     if (provider.isLoading && provider.allCourses.isEmpty) {
       return Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation(context.colors.primary),
-          strokeWidth: 2.5,
-        ),
+        child: AppLoadingIndicator(),
       );
     }
 

@@ -15,7 +15,7 @@ import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import '../../../config/app_config.dart';
 import '../../../utils/helpers.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 // ════════════════════════════════════════════════════════════════════════════
 // VideoPlayerScreen
 // ════════════════════════════════════════════════════════════════════════════
@@ -934,8 +934,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       SizedBox(
           width: 44,
           height: 44,
-          child: CircularProgressIndicator(
-              strokeWidth: 2.5, valueColor: AlwaysStoppedAnimation(c.primary))),
+          child: AppLoadingIndicator()),
       const SizedBox(height: 14),
       Text('loading_video'.tr,
           style: const TextStyle(

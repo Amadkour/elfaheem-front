@@ -1,5 +1,6 @@
 package com.example.flutter_education_app
 
+import com.cloudwebrtc.webrtc.ElFaheemBridge
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -35,7 +36,7 @@ class ScreenCaptureService : Service() {
         const val ACTION_START_MIC_ONLY             = "com.example.flutter_education_app.START_MIC_ONLY"
         const val ACTION_STORE_PROJECTION           = "com.example.flutter_education_app.STORE_PROJECTION"
         const val ACTION_STOP                       = "com.example.flutter_education_app.STOP_SCREEN_CAPTURE"
-        const val ACTION_UPGRADE_TO_SCREEN          = "com.example.flutter_education_app.UPGRADE_TO_SCREEN"
+        const val ACTION_REVERT_TO_PLACEHOLDER      = "com.example.flutter_education_app.REVERT_TO_PLACEHOLDER"
         const val ACTION_DOWNGRADE_TO_MIC_FOR_SHARE = "com.example.flutter_education_app.DOWNGRADE_TO_MIC_FOR_SHARE"
         const val ACTION_DOWNGRADE_TO_MIC           = "com.example.flutter_education_app.DOWNGRADE_TO_MIC"
         const val ACTION_PROMOTE_FOR_SHARE          = "com.example.flutter_education_app.PROMOTE_FOR_SHARE"
@@ -69,6 +70,7 @@ class ScreenCaptureService : Service() {
         @Volatile var eventSink:               EventChannel.EventSink? = null
         @Volatile var onProjectionGrantStored: (() -> Unit)?           = null
         @Volatile var onFgsPromoted:           (() -> Unit)?           = null
+        @Volatile var placeholderRenderer:     ScreenPlaceholderRenderer? = null
 
         val pendingUploads = AtomicInteger(0)
 
@@ -100,9 +102,6 @@ class ScreenCaptureService : Service() {
     private var screenWidth  = 1080
     private var screenHeight = 1920
     private var screenDpi    = 420
-
-    private var pendingResultCode = 0
-    private var pendingData: Intent? = null
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -152,6 +151,31 @@ class ScreenCaptureService : Service() {
                 resolveScreenMetrics()
                 startForegroundMicOnly()
                 isRunning = true
+
+                // Single-MediaProjection architecture: recording (with a
+                // placeholder in place of real screen content) starts here,
+                // immediately, with no dialog — ScreenPlaceholderRenderer
+                // draws a placeholder frame into the encoder until Share is
+                // tapped and ACTION_STORE_PROJECTION below activates live
+                // content. See ScreenPlaceholderRenderer.kt.
+                if (uploadUrl.isEmpty()) {
+                    Log.e(TAG, "uploadUrl empty — cannot start placeholder recording")
+                } else if (shouldRecord.get()) {
+                    Log.w(TAG, "already recording — ignoring duplicate START_MIC_ONLY")
+                } else {
+                    placeholderRenderer = ScreenPlaceholderRenderer(
+                            onLiveFrameForCapturer = { w, h, rgba ->
+                                ElFaheemBridge.pushFrame(rgba, w, h, System.nanoTime())
+                            },
+                    ).also { it.start(screenWidth, screenHeight) }
+
+                    shouldStop.set(false)
+                    shouldPause.set(false)
+                    shouldRecord.set(true)
+                    isPaused = false
+
+                    Thread({ recordLoop() }, "ScreenRecorder").start()
+                }
             }
 
             ACTION_STORE_PROJECTION -> {
@@ -163,8 +187,6 @@ class ScreenCaptureService : Service() {
                             @Suppress("DEPRECATION") intent.getParcelableExtra(EXTRA_DATA)
 
                 Log.d(TAG, "ACTION_STORE_PROJECTION resultCode=$resultCode")
-                promoteForegroundToProjection()
-                isRunning = true
 
                 if (resultCode == 0 || data == null) {
                     Log.e(TAG, "invalid grant — aborting")
@@ -174,35 +196,33 @@ class ScreenCaptureService : Service() {
                     }
                     return START_STICKY
                 }
-                if (uploadUrl.isEmpty()) {
-                    Log.e(TAG, "uploadUrl empty — aborting")
+                if (!shouldRecord.get() || placeholderRenderer == null) {
+                    // Placeholder recording never started (e.g. uploadUrl was
+                    // empty at session start) — nothing to activate live.
+                    Log.e(TAG, "no active placeholder recording — cannot activate live projection")
                     mainHandler.post {
-                        emitError("uploadUrl not set")
+                        emitError("Recording not active — cannot start live sharing")
                         onProjectionGrantStored?.invoke(); onProjectionGrantStored = null
                     }
                     return START_STICKY
                 }
-                if (shouldRecord.get()) {
-                    Log.w(TAG, "already recording — ignoring duplicate STORE_PROJECTION")
+                if (isProjectionGranted) {
+                    Log.w(TAG, "projection already active — ignoring duplicate STORE_PROJECTION")
                     mainHandler.post { onProjectionGrantStored?.invoke(); onProjectionGrantStored = null }
                     return START_STICKY
                 }
 
-                pendingResultCode = resultCode
-                pendingData       = data
-                projectionRevoked.set(false)
-                shouldStop.set(false)
-                shouldPause.set(false)
-                shouldRecord.set(true)
-                isProjectionGranted = true
-                isPaused = false
+                promoteForegroundToProjection()
+                activateLiveProjection(resultCode, data)
+            }
 
-                Thread({ recordLoop() }, "ScreenRecorder").start()
-
-                mainHandler.post {
-                    onProjectionGrantStored?.invoke()
-                    onProjectionGrantStored = null
-                }
+            ACTION_REVERT_TO_PLACEHOLDER -> {
+                Log.d(TAG, "ACTION_REVERT_TO_PLACEHOLDER")
+                // Share turned off: keep the MediaProjection grant + recording
+                // alive (no new dialog needed if Share is tapped again), just
+                // stop drawing live frames into the encoder/live capturer —
+                // revert to the placeholder until Share is re-tapped.
+                placeholderRenderer?.switchToPlaceholder()
             }
 
             ACTION_STOP -> {
@@ -214,11 +234,10 @@ class ScreenCaptureService : Service() {
                 synchronized(this) { (this as Object).notifyAll() }
             }
 
-            ACTION_UPGRADE_TO_SCREEN -> {
-                Log.d(TAG, "ACTION_UPGRADE_TO_SCREEN")
-                promoteForegroundToProjection()
-                mainHandler.post { emitScreenLoopStarted() }
-            }
+            // ACTION_UPGRADE_TO_SCREEN removed — was a no-op duplicate of what
+            // ACTION_STORE_PROJECTION already does (promoteForegroundToProjection()
+            // + emitScreenLoopStarted()) when the single MediaProjection grant
+            // (1001) is confirmed. See MainActivity.kt for the single-grant flow.
 
             ACTION_DOWNGRADE_TO_MIC_FOR_SHARE -> {
                 Log.d(TAG, "ACTION_DOWNGRADE_TO_MIC_FOR_SHARE")
@@ -331,7 +350,7 @@ class ScreenCaptureService : Service() {
     //
     //   1. Prepare recorder N+1 WHILE recorder N is still encoding.
     //   2. Call recorderNext.start() first (audio capture begins immediately).
-    //   3. Swap virtualDisplay.surface to the new recorder's surface.
+    //   3. Re-point ScreenPlaceholderRenderer's output at the new recorder's surface.
     //   4. Only then call recorderCurrent.stop() — the gap is now microseconds.
     //
     // On PAUSE: finish the in-progress chunk, upload it (isFinal=false), release
@@ -342,39 +361,7 @@ class ScreenCaptureService : Service() {
     //   recording continues from the next chunk index.
 
     private fun recordLoop() {
-        // ── 1. obtain projection ──────────────────────────────────────────────
-        mediaProjection = try {
-            projectionManager!!.getMediaProjection(pendingResultCode, pendingData!!)
-        } catch (e: Exception) {
-            Log.e(TAG, "getMediaProjection failed: ${e.message}", e); null
-        }
-
-        if (mediaProjection == null) {
-            Log.e(TAG, "null MediaProjection — aborting")
-            mainHandler.post { emitError("Could not obtain MediaProjection") }
-            shouldRecord.set(false)
-            isRunning = false
-            stopSelf()
-            return
-        }
-
-        // ── 2. register revocation callback once ──────────────────────────────
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            mediaProjection!!.registerCallback(object : MediaProjection.Callback() {
-                override fun onStop() {
-                    Log.w(TAG, "MediaProjection revoked by system")
-                    projectionRevoked.set(true)
-                    shouldStop.set(true)
-                    shouldRecord.set(false)
-                    shouldPause.set(false)
-                    synchronized(this@ScreenCaptureService) {
-                        (this@ScreenCaptureService as Object).notifyAll()
-                    }
-                }
-            }, mainHandler)
-        }
-
-        Log.d(TAG, "recordLoop started — ${screenWidth}x${screenHeight} chunkSecs=$chunkSecs")
+        Log.d(TAG, "recordLoop started (placeholder) — ${screenWidth}x${screenHeight} chunkSecs=$chunkSecs")
 
         val sessionDir = File(cacheDir, "session_$sessionId").also { it.mkdirs() }
         val chunkDurationMs = chunkSecs * 1_000L
@@ -418,8 +405,12 @@ class ScreenCaptureService : Service() {
                     nextRecorder = prepareRecorder(sessionDir, chunkIndex + 1)
                     nextRecorder.start()
                     Log.d(TAG, "MediaRecorder.start() chunk #${chunkIndex + 1} (next)")
-                    // Swap surface so video also switches atomically.
-                    virtualDisplay?.surface = nextRecorder.surface
+                    // NOTE: no virtualDisplay.surface swap here — prepareRecorder()
+                    // above already re-pointed placeholderRenderer's output at
+                    // nextRecorder.surface. virtualDisplay (when live) always
+                    // targets the renderer's STABLE input surface and must never
+                    // be touched per-chunk — only prepareRecorder's encoder-side
+                    // attach changes.
                 } catch (e: Exception) {
                     Log.e(TAG, "ping-pong prepare failed: ${e.message} — will stop after this chunk")
                     nextRecorder?.release()
@@ -529,13 +520,90 @@ class ScreenCaptureService : Service() {
         Log.d(TAG, "recordLoop done")
     }
 
+    // ── Activate live projection (called once, when Share is first tapped) ────
+    //
+    // recordLoop()'s ping-pong chunk recording is ALREADY running (started
+    // from ACTION_START_MIC_ONLY, feeding on a placeholder). This does not
+    // touch that loop at all — it only obtains the real MediaProjection and
+    // points a real VirtualDisplay at placeholderRenderer's stable input
+    // surface, then flips the renderer to live mode. From the next drawn
+    // frame on, both the encoder (recording) and the live capturer
+    // (ElFaheemFrameCapturer, via the renderer's onLiveFrameForCapturer
+    // callback) receive real screen content — no new MediaRecorder, no new
+    // VirtualDisplay target on the encoder side, no gap in the recording.
+    private fun activateLiveProjection(resultCode: Int, data: Intent) {
+        val projection = try {
+            projectionManager!!.getMediaProjection(resultCode, data)
+        } catch (e: Exception) {
+            Log.e(TAG, "getMediaProjection failed: ${e.message}", e); null
+        }
+        if (projection == null) {
+            Log.e(TAG, "null MediaProjection — cannot activate live sharing")
+            mainHandler.post {
+                emitError("Could not obtain MediaProjection")
+                onProjectionGrantStored?.invoke(); onProjectionGrantStored = null
+            }
+            return
+        }
+        mediaProjection = projection
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            projection.registerCallback(object : MediaProjection.Callback() {
+                override fun onStop() {
+                    // System revoked the grant (e.g. user dismissed the
+                    // "stop sharing" system notification). Recording itself
+                    // is NOT stopped — only the live path reverts, same as
+                    // ACTION_REVERT_TO_PLACEHOLDER. Re-tapping Share will
+                    // show a fresh dialog and re-activate.
+                    Log.w(TAG, "MediaProjection revoked by system")
+                    projectionRevoked.set(true)
+                    isProjectionGranted = false
+                    placeholderRenderer?.switchToPlaceholder()
+                    try { virtualDisplay?.release() } catch (_: Exception) {}
+                    virtualDisplay = null
+                }
+            }, mainHandler)
+        }
+
+        try {
+            virtualDisplay = projection.createVirtualDisplay(
+                    "ScreenCapture",
+                    screenWidth, screenHeight, screenDpi,
+                    DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                    placeholderRenderer!!.inputSurface, null, null,
+            )
+            Log.d(TAG, "VirtualDisplay created (live) ${screenWidth}x${screenHeight}@${screenDpi}dpi")
+        } catch (e: Exception) {
+            Log.e(TAG, "createVirtualDisplay failed: ${e.message}", e)
+            mainHandler.post {
+                emitError("Could not start live screen capture")
+                onProjectionGrantStored?.invoke(); onProjectionGrantStored = null
+            }
+            return
+        }
+
+        projectionRevoked.set(false)
+        isProjectionGranted = true
+        placeholderRenderer!!.switchToLive()
+
+        mainHandler.post {
+            // Re-using the same event name Dart already waits on via
+            // upgradeToScreenRecording()'s completer — see room_screen_share.dart.
+            emitScreenLoopStarted()
+            onProjectionGrantStored?.invoke()
+            onProjectionGrantStored = null
+        }
+    }
+
     // ── Prepare a fresh MediaRecorder for one chunk ───────────────────────────
     //
     // Always writes to a .tmp file; the caller renames it to the final .mp4
     // only after recorder.stop() succeeds (guarantees a valid moov atom).
     //
-    // For the very first chunk: creates the VirtualDisplay.
-    // For subsequent chunks:    swaps the surface on the existing VirtualDisplay.
+    // The encoder-facing surface is owned by ScreenPlaceholderRenderer, not
+    // directly by a VirtualDisplay — attachEncoderSurface() re-points the
+    // renderer's EGL output to this chunk's recorder.surface, whether the
+    // renderer is currently drawing a placeholder or real live frames.
 
     private fun prepareRecorder(sessionDir: File, index: Int): MediaRecorder {
         val tmp = tmpFile(sessionDir, index)
@@ -555,19 +623,7 @@ class ScreenCaptureService : Service() {
         recorder.setOutputFile(tmp.absolutePath)
         recorder.prepare()
 
-        if (virtualDisplay == null) {
-            // First chunk — create the VirtualDisplay.
-            virtualDisplay = mediaProjection!!.createVirtualDisplay(
-                    "ScreenCapture",
-                    screenWidth, screenHeight, screenDpi,
-                    DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                    recorder.surface, null, null,
-            )
-            Log.d(TAG, "VirtualDisplay created ${screenWidth}x${screenHeight}@${screenDpi}dpi")
-        } else {
-            // Swap surface on the existing VirtualDisplay — keeps projection alive.
-            virtualDisplay!!.surface = recorder.surface
-        }
+        placeholderRenderer!!.attachEncoderSurface(recorder.surface, screenWidth, screenHeight)
 
         return recorder
     }
@@ -646,6 +702,8 @@ class ScreenCaptureService : Service() {
         virtualDisplay = null
         try { mediaProjection?.stop()   } catch (_: Exception) {}
         mediaProjection = null
+        try { placeholderRenderer?.release() } catch (_: Exception) {}
+        placeholderRenderer = null
     }
 
     // ── EventChannel ──────────────────────────────────────────────────────────

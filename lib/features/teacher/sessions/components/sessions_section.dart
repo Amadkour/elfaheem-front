@@ -16,7 +16,7 @@ import '../../../../config/theme/theme_config_provider.dart';
 import '../../../shared/session/material/session_material_widget.dart';
 import '../../home/teacher_models.dart';
 import '../sessions_provider.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 // ── Public entry point ────────────────────────────────────────────────────────
 
 /// [SliverList] + header that lives inside the parent [CustomScrollView].
@@ -31,9 +31,7 @@ List<Widget> buildSessionsSlivers(BuildContext context,
           child: Padding(
             padding: const EdgeInsets.only(top: 28.0),
             child: Center(
-                    child: CircularProgressIndicator(
-            strokeWidth: min( context.width / 120,20),
-                    ),
+                    child:AppLoadingIndicator(),
                   ),
           ))
     ];
@@ -177,11 +175,7 @@ class _LoadingState extends StatelessWidget {
           SizedBox(
             width: 40,
             height: 40,
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation(context.colors.primary),
-              strokeWidth: 3,
-              backgroundColor: context.colors.primaryLight,
-            ),
+            child: AppLoadingIndicator(),
           ),
           const SizedBox(height: 16),
           Text('loading_sessions'.tr, style: context.colors.body),

@@ -12,7 +12,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'student_exam_api.dart';
 import 'student_exam_detail_screen.dart';
 import 'student_exam_provider.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 class StudentExamListScreen extends StatefulWidget {
   const StudentExamListScreen({super.key});
 
@@ -107,7 +107,7 @@ class _StudentExamListScreenState extends State<StudentExamListScreen>
             ),
           ],
           body: prov.loadingList
-              ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+              ? const Center(child: AppLoadingIndicator())
               : prov.listError != null
               ? _ErrorState(
             message: prov.listError!,

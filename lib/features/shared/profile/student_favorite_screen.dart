@@ -38,7 +38,7 @@ class _FavouriteCoursesScreenState extends State<FavouriteCoursesScreen> {
     final provider = context.watch<ProfileProvider>();
     return BasePage(
       useWebCard: true,
-      appBar: ScreenAppBar(title: 'favorite'.tr),
+      appBar: ScreenAppBar(title: 'my_favorite'.tr),
       child: Column(children: [
         MySearchBar(
           controller: _search,

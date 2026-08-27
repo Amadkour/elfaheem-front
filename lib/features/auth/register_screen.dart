@@ -5,6 +5,7 @@
 // unlocks — and must tick the checkbox before the submit button activates.
 // ─────────────────────────────────────────────────────────────────────────────
 library;
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -661,7 +662,7 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
   Widget _buildContent(AboutTermsProvider p, ThemeConfigProvider c) {
     // Loading
     if (p.isLoadingTerms) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: AppLoadingIndicator());
     }
     // Error
     if (p.termsError != null) {

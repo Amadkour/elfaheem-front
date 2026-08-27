@@ -9,7 +9,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import '../../../teacher/analysis/exam/exam_model.dart';
 import 'student_exam_provider.dart';
 import 'student_exam_result_screen.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 class StudentExamQuizScreen extends StatefulWidget {
   const StudentExamQuizScreen({super.key});
 
@@ -169,7 +169,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen>
 
     // Session might be null briefly on hot-reload — guard
     if (s == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: AppLoadingIndicator()));
     }
 
     // Navigate to result when submitted
@@ -713,7 +713,7 @@ class _SubmitBtn extends StatelessWidget {
         child: loading
             ? const SizedBox(
             width: 20, height: 20,
-            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+            child: AppLoadingIndicator())
             : const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           Icon(Icons.send_rounded, color: Colors.white, size: 18),
           SizedBox(width: 8),

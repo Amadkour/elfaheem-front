@@ -15,7 +15,7 @@
 ///   ));
 /// ─────────────────────────────────────────────────────────────────────────────
 library;
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -872,7 +872,7 @@ class _FormCard extends StatelessWidget {
                 if (auth.isLoadingTeacherExtras) {
                   return const Padding(
                     padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    child: Center(child: AppLoadingIndicator()),
                   );
                 }
                 return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -984,7 +984,7 @@ class _TeacherDocumentsManagerState extends State<_TeacherDocumentsManager> {
     if (docs.isLoadingOverview && overview == null) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
-        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        child: Center(child: AppLoadingIndicator()),
       );
     }
 
@@ -1082,7 +1082,7 @@ class _ManagedRequirementRow extends StatelessWidget {
         if (uploading)
           const SizedBox(
             width: 20, height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
+            child: AppLoadingIndicator(),
           )
         else
           Row(mainAxisSize: MainAxisSize.min, children: [
@@ -1238,7 +1238,7 @@ class _ManagedCustomEntryRow extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         if (uploading)
-          const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+          const SizedBox(width: 20, height: 20, child: AppLoadingIndicator())
         else ...[
           IconButton(
             tooltip: 'upload_document'.tr,

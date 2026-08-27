@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/app_config.dart';
-import '../../../../config/theme/app_theme.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/helpers.dart';
 import '../../../../utils/widget/base_page.dart';
@@ -234,10 +234,7 @@ class _StudentList extends StatelessWidget {
 
     if (p.isLoading) {
       return Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation(context.colors.primary),
-          strokeWidth: 2.5,
-        ),
+        child: AppLoadingIndicator(),
       );
     }
 

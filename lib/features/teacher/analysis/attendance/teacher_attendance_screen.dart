@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../../config/app_config.dart';
 import 'attendance_model.dart';
 import 'teacher_attendance_provider.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 
 class TeacherAttendanceScreen extends StatelessWidget {
@@ -213,7 +213,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
       _buildSessionFlagBar(prov),
       if (prov.selectedSession != null) ...[
         if (prov.isLoadingStudents)
-          const Expanded(child: Center(child: CircularProgressIndicator()))
+          const Expanded(child: Center(child: AppLoadingIndicator()))
         else if (prov.hasError)
           Expanded(
               child: _buildError(prov.errorMessage,
@@ -240,10 +240,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
               SizedBox(
                 width: 52,
                 height: 52,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                  valueColor: AlwaysStoppedAnimation<Color>(_primary),
-                ),
+                child:AppLoadingIndicator(),
               ),
               const SizedBox(height: 16),
               Text(
@@ -574,8 +571,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
                   ? const SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
+                      child:AppLoadingIndicator())
                   : const Icon(Icons.save_rounded,
                       color: Colors.white, size: 18),
               label:Padding(padding: EdgeInsetsGeometry.symmetric(vertical: 11),child:  Text(

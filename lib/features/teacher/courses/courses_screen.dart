@@ -18,7 +18,7 @@ import '../schedules/schedules_screen.dart';
 import '../sessions/sessions_provider.dart';
 import '../sessions/sessions_screen.dart';
 import 'course_form_screen.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 class TeacherCoursesScreen extends StatefulWidget {
   const TeacherCoursesScreen({super.key});
 
@@ -39,9 +39,7 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
         bottom: false,
         child: p.isLoading
             ? Center(
-                child: CircularProgressIndicator(
-                  strokeWidth: context.width / 120,
-                ),
+                child:AppLoadingIndicator(),
               )
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -269,10 +267,7 @@ class _CourseList extends StatelessWidget {
 
     if (p.isLoading && p.filteredCourses.isEmpty) {
       return Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation(context.colors.primary),
-          strokeWidth: 2.5,
-        ),
+        child: AppLoadingIndicator(),
       );
     }
 

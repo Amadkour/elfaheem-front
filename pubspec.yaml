@@ -32,7 +32,7 @@ dependencies:
   flutter_svg: ^2.0.5
   collection: '>=1.16.0'
   nested: any
-  flutter_webrtc: ^1.4.0
+  flutter_webrtc: ^1.6.0
   mime: any
   responsive_framework: ^1.5.1
   moyasar: ^3.0.2
@@ -48,7 +48,14 @@ dependencies:
   video_player: ^2.9.2
   wakelock_plus: ^1.2.10
   livekit_client: ^2.8.0
+  # Modern replacement for dart:html / dart:js_util (both removed on recent
+  # Dart SDKs). Used only inside web_notification_web.dart.
+  web: ^1.1.0
 dependency_overrides:
+  flutter_webrtc:
+    git:
+      url: https://github.com/Amadkour/flutter-webrtc.git
+      ref: main
   # Pin packages that use Apple APIs unavailable on CI runner's Xcode version.
   connectivity_plus: '>=7.0.0 <7.1.0' # NWPath.isUltraConstrained
   device_info_plus: '>=12.3.0 <12.4.0' # NSProcessInfo.isiOSAppOnVision
@@ -75,6 +82,35 @@ flutter:
       fonts:
         - asset: assets/fonts/Tajawal-Regular.ttf
           style: italic
+
+# ─────────────────────────────────────────────────────────────────────────────
+# App launcher icon (was completely missing — this is why the project icon
+# was showing the default Flutter icon instead of your logo).
+# Run: dart run flutter_launcher_icons
+# ─────────────────────────────────────────────────────────────────────────────
+flutter_launcher_icons:
+  android: true
+  ios: true
+  # Pre-composited: logo centered on a solid #D4FEFD square (no alpha —
+  # required for iOS App Store acceptance) and legacy/non-adaptive Android.
+  image_path: "assets/images/app_icon.png"
+  min_sdk_android: 21
+  # Adaptive icons (Android 8+) crop the foreground into a circle/square/squircle
+  # mask depending on the device launcher, so the foreground image has generous
+  # transparent padding around the logo (logo ~58% of canvas width) so nothing
+  # gets clipped — this was the root cause of the cropped-icon issue.
+  adaptive_icon_background: "#D4FEFD"
+  adaptive_icon_foreground: "assets/images/adaptive_icon_foreground.png"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Splash screen
+# android_12 now points at a SEPARATE, padded image (splash_android12.png)
+# instead of reusing the full-bleed splash.png. Android 12+ renders this
+# image inside a fixed circular "safe zone" (~1/3 of a 960x960 canvas,
+# centered) and clips anything outside it — reusing the full-bleed logo is
+# exactly why it was being cropped before.
+# Run: dart run flutter_native_splash:create
+# ─────────────────────────────────────────────────────────────────────────────
 flutter_native_splash:
   color: "#D4FEFD"
   color_dark: "#D4FEFD"
@@ -89,10 +125,11 @@ flutter_native_splash:
 
   # Android 12+ specific configuration (required for newer Android versions)
   android_12:
-    image: assets/images/splash.png
+    image: assets/images/splash_android12.png
     icon_background_color: "#D4FEFD"
     color: "#D4FEFD"
     color_dark: "#D4FEFD"
   web: true
 dev_dependencies:
   flutter_test: any
+  flutter_launcher_icons: ^0.14.3

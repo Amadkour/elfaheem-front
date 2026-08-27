@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../../config/theme/app_theme.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../../core/api_client.dart'; // adjust import path as needed
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 // ══════════════════════════════════════════════
 //  ENUM  (mirrors Python RateType)
 // ══════════════════════════════════════════════
@@ -799,11 +799,7 @@ class _SubmitButton extends StatelessWidget {
                   SizedBox(
                     width: compact ? 14 : 18,
                     height: compact ? 14 : 18,
-                    child: const CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor:
-                          AlwaysStoppedAnimation(Colors.white),
-                    ),
+                    child: const AppLoadingIndicator(),
                   ),
                 ]
               : [

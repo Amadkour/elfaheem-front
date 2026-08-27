@@ -8,6 +8,7 @@ import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboa
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
+import '../../../utils/widget/app_loading_indicator.dart';
 import '../analysis/analytics_hub_screen.dart';
 import '../../student/dashboard/dashboard_screen.dart';
 import '../courses/courses_screen.dart';
@@ -167,9 +168,7 @@ class _TeacherScheduleTabState extends State<TeacherScheduleTab>
       child: SafeArea(
         child: _prov.isLoading
             ? Center(
-                child: CircularProgressIndicator(
-                  strokeWidth: context.width / 120,
-                ),
+                child: AppLoadingIndicator(),
               )
             : ScheduleTabBody(
                 provider: _prov,

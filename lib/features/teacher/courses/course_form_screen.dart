@@ -5,8 +5,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/utils/widget/editable_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-
-import '../../../config/theme/app_theme.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/api_client.dart';
 import '../../../utils/widget/base_page.dart';
@@ -14,8 +13,9 @@ import '../../../utils/widget/primary_menue.dart';
 import '../../../utils/widget/text_field.dart';
 import '../home/teacher_models.dart';
 import '../home/teacher_provider.dart';
-import '../schedules/schedules_provider.dart' show kDayOrder, kDayLabels, slotDayLabel;
-import '../schedules/schedules_screen.dart';
+import '../schedules/schedules_provider.dart'
+    show kDayOrder, kDayLabels, slotDayLabel;
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'component/add_item_dialog.dart';
 import 'component/gradient_button.dart';
 import 'component/section_card.dart';
@@ -83,10 +83,12 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     final c = widget.course;
     _titleCtrl = TextEditingController(text: c?.title ?? '');
     _descCtrl = TextEditingController(text: c?.description ?? '');
-    _priceCtrl =
-        TextEditingController(text: c != null ? c.price.toString() : '');
-    _hoursCtrl =
-        TextEditingController(text: c != null ? c.totalHours.toString() : '');
+    _priceCtrl = TextEditingController(
+      text: c != null ? c.price.toString() : '',
+    );
+    _hoursCtrl = TextEditingController(
+      text: c != null ? c.totalHours.toString() : '',
+    );
     _isPublished = c?.isPublished ?? false;
 
     for (final ctrl in [_titleCtrl, _descCtrl, _priceCtrl, _hoursCtrl]) {
@@ -94,7 +96,9 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     }
 
     _fadeCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 400));
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -153,8 +157,9 @@ class _CourseFormInnerState extends State<_CourseFormInner>
       result = await formProvider.submitUpdate(
         widget.course!,
         name: _titleCtrl.text.trim(),
-        description:
-        _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+        description: _descCtrl.text.trim().isEmpty
+            ? null
+            : _descCtrl.text.trim(),
         fees: double.tryParse(_priceCtrl.text),
         totalHours: double.tryParse(_hoursCtrl.text),
         logoFile: _logoFile,
@@ -165,8 +170,9 @@ class _CourseFormInnerState extends State<_CourseFormInner>
       result = await formProvider.submitCreate(
         title: _titleCtrl.text.trim(),
         type: type,
-        description:
-        _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+        description: _descCtrl.text.trim().isEmpty
+            ? null
+            : _descCtrl.text.trim(),
         fees: double.tryParse(_priceCtrl.text) ?? 0,
         totalHours: double.tryParse(_hoursCtrl.text),
         logoFile: _logoFile,
@@ -186,8 +192,8 @@ class _CourseFormInnerState extends State<_CourseFormInner>
         _isEdit
             ? 'course_updated_success'.tr
             : (publish
-            ? 'course_created_success'.tr
-            : 'course_draft_saved_success'.tr),
+                  ? 'course_created_success'.tr
+                  : 'course_draft_saved_success'.tr),
         context.colors.success,
       );
       Navigator.pop(context, result);
@@ -249,14 +255,18 @@ class _CourseFormInnerState extends State<_CourseFormInner>
   }
 
   void _showSnack(String msg, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg,
-          style: const TextStyle(fontFamily: 'bahji', color: Colors.white)),
-      backgroundColor: color,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          msg,
+          style: const TextStyle(fontFamily: 'bahji', color: Colors.white),
+        ),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      ),
+    );
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -264,217 +274,238 @@ class _CourseFormInnerState extends State<_CourseFormInner>
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<CourseFormProvider>();
-    final canSave = (_hasChanges || provider.listsChanged) &&
+    final canSave =
+        (_hasChanges || provider.listsChanged) &&
         _titleCtrl.text.trim().isNotEmpty;
 
     return BasePage(
       useWebCard: true,
       child: FadeTransition(
         opacity: _fadeAnim,
-        child: Column(children: [
-          // ── Gradient hero header ───────────────────────────────────────
-          _HeroHeader(
-            isEdit: _isEdit,
-            logoBytes: _logoBytes,
-            imageUrl: widget.course?.imageUrl,
-            logoFile: _logoFile,
-            onChange: (XFile file) async {
-              _logoBytes = await file.readAsBytes();
-              setState(() {
-                _logoFile = file;
-              });
-            },
-          ),
-          // ── Scrollable form ────────────────────────────────────────────
-          Expanded(
-            child: Form(
-              key: _formKey,
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Basic info card
-                    _FormCard(
-                      icon: Icons.info_outline_rounded,
-                      title: 'basic_info_card_title'.tr,
-                      children: [
-                        _LabeledField(
-                          label: 'course_title'.tr,
-                          child: MyTextField(
-                            controller: _titleCtrl,
+        child: Column(
+          children: [
+            // ── Gradient hero header ───────────────────────────────────────
+            _HeroHeader(
+              isEdit: _isEdit,
+              logoBytes: _logoBytes,
+              imageUrl: widget.course?.imageUrl,
+              logoFile: _logoFile,
+              onChange: (XFile file) async {
+                _logoBytes = await file.readAsBytes();
+                setState(() {
+                  _logoFile = file;
+                });
+              },
+            ),
+            // ── Scrollable form ────────────────────────────────────────────
+            Expanded(
+              child: Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Basic info card
+                      _FormCard(
+                        icon: Icons.info_outline_rounded,
+                        title: 'basic_info_card_title'.tr,
+                        children: [
+                          _LabeledField(
                             label: 'course_title'.tr,
-                            validator: (v) => (v?.trim().isEmpty ?? true)
-                                ? 'course_title_validator'.tr
-                                : null,
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        _LabeledField(
-                          label: 'course_description'.tr,
-                          child: MyTextField(
-                            controller: _descCtrl,
-                            label: 'course_description'.tr,
-                            maxLine: 4,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Status card (edit mode only)
-                    if (_isEdit) ...[
-                      _StatusCard(
-                        isPublished: _isPublished,
-                        isLoading: _statusLoading,
-                        onToggle: _toggleStatus,
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-
-                    // Pricing & hours card
-                    _FormCard(
-                      icon: Icons.attach_money_rounded,
-                      title: 'price_and_duration_title'.tr,
-                      children: [
-                        Row(children: [
-                          Expanded(
-                            child: _LabeledField(
-                              label: 'price_label'.tr,
-                              child: MyTextField(
-                                controller: _priceCtrl,
-                                label: 'price_label'.tr,
-                                keyboard:
-                                const TextInputType.numberWithOptions(
-                                    decimal: true),
-                              ),
+                            child: MyTextField(
+                              controller: _titleCtrl,
+                              label: 'course_title'.tr,
+                              validator: (v) => (v?.trim().isEmpty ?? true)
+                                  ? 'course_title_validator'.tr
+                                  : null,
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _LabeledField(
-                              label: 'expected_hours_label'.tr,
-                              child: MyTextField(
-                                controller: _hoursCtrl,
-                                label: 'hours_label'.tr,
-                                keyboard: TextInputType.number,
-                              ),
-                            ),
-                          ),
-                        ]),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Classification card
-                    _FormCard(
-                      icon: Icons.category_rounded,
-                      title: 'classification_card_title'.tr,
-                      children: [
-                        _LabeledField(
-                          label: 'Specialization'.tr,
-                          child: MyPrimaryMenu(
-                            controller: _categoryCtrl,
-                            initValue: provider.selectedSpecialization,
-                            options: provider.specializations,
-                            haveLogo: false,
-                            onChange: (i) => provider.onChangeSpecialization(
-                                i, _categoryCtrl),
-                            label: 'choose_specialization'.tr,
-                          ),
-                        ),
-                        if (!_isEdit) ...[
                           const SizedBox(height: 14),
                           _LabeledField(
-                            label: 'course_type_label'.tr,
-                            child: MyPrimaryMenu(
-                              controller: _typeCtrl,
-                              initValue: provider.selectedTeachingType,
-                              options: provider.teachingTypes
-                                  .cast<Map<String, dynamic>>(),
-                              haveLogo: false,
-                              onChange: (i) =>
-                                  provider.onChangeTeachingType(i, _typeCtrl),
-                              label: 'course_type_hint'.tr,
+                            label: 'course_description'.tr,
+                            child: MyTextField(
+                              controller: _descCtrl,
+                              label: 'course_description'.tr,
+                              maxLine: 4,
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Status card (edit mode only)
+                      if (_isEdit) ...[
+                        _StatusCard(
+                          isPublished: _isPublished,
+                          isLoading: _statusLoading,
+                          onToggle: _toggleStatus,
+                        ),
+                        const SizedBox(height: 16),
                       ],
-                    ),
-                    const SizedBox(height: 16),
 
-                    // Extras cards
+                      // Pricing & hours card
+                      _FormCard(
+                        icon: Icons.attach_money_rounded,
+                        title: 'price_and_duration_title'.tr,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _LabeledField(
+                                  label: 'price_label'.tr,
+                                  child: MyTextField(
+                                    controller: _priceCtrl,
+                                    label: 'price_label'.tr,
+                                    keyboard:
+                                        const TextInputType.numberWithOptions(
+                                          decimal: true,
+                                        ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _LabeledField(
+                                  label: 'expected_hours_label'.tr,
+                                  child: MyTextField(
+                                    controller: _hoursCtrl,
+                                    label: 'hours_label'.tr,
+                                    keyboard: TextInputType.number,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
 
-                    // Appointments (both modes). Existing, already-saved
-                    // appointments come from provider.form.schedules (edit
-                    // mode) and are staged for removal on save, same as
-                    // certificates/tools/prerequisites. Newly added ones
-                    // aren't sent to the server until save is pressed.
-                    SectionCard(
-                      icon: Icons.event_available_rounded,
-                      title: 'weekly_schedule'.tr,
-                      items: [
-                        ...provider.form.schedules.map((s) =>
-                        '${slotDayLabel(s.day)} • ${s.startTime} – ${s.endTime}'),
-                        ...provider.pendingSchedules.map((s) =>
-                        '${slotDayLabel(s.day)} • ${s.startTime} – ${s.endTime}'),
-                      ],
-                      onAdd: _showAddAppointmentSheet,
-                      onRemove: (i) {
-                        final existingCount = provider.form.schedules.length;
-                        if (i < existingCount) {
-                          provider.removeFormSchedule(i);
-                        } else {
-                          provider.removePendingSchedule(i - existingCount);
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 12),
+                      // Classification card
+                      _FormCard(
+                        icon: Icons.category_rounded,
+                        title: 'classification_card_title'.tr,
+                        children: [
+                          _LabeledField(
+                            label: 'Specialization'.tr,
+                            child: MyPrimaryMenu(
+                              controller: _categoryCtrl,
+                              initValue: provider.selectedSpecialization,
+                              options: provider.specializations,
+                              haveLogo: false,
+                              onChange: (i) => provider.onChangeSpecialization(
+                                i,
+                                _categoryCtrl,
+                              ),
+                              label: 'choose_specialization'.tr,
+                            ),
+                          ),
+                          if (!_isEdit) ...[
+                            const SizedBox(height: 14),
+                            _LabeledField(
+                              label: 'course_type_label'.tr,
+                              child: MyPrimaryMenu(
+                                controller: _typeCtrl,
+                                initValue: provider.selectedTeachingType,
+                                options: provider.teachingTypes
+                                    .cast<Map<String, dynamic>>(),
+                                haveLogo: false,
+                                onChange: (i) =>
+                                    provider.onChangeTeachingType(i, _typeCtrl),
+                                label: 'course_type_hint'.tr,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 16),
 
-                    SectionCard(
-                      icon: Icons.workspace_premium_rounded,
-                      title: 'certificates_section'.tr,
-                      items: provider.form.certificates,
-                      onAdd: () => addItemDialog(
-                          'add_certificate'.tr, provider.addFormCertificate, context),
-                      onRemove: provider.removeFormCertificate,
-                    ),
-                    const SizedBox(height: 12),
-                    SectionCard(
-                      icon: Icons.build_rounded,
-                      title: 'tools_section'.tr,
-                      items: provider.form.tools,
-                      onAdd: () => addItemDialog(
-                          'add_tool'.tr, provider.addFormTool, context),
-                      onRemove: provider.removeFormTool,
-                    ),
-                    const SizedBox(height: 12),
-                    SectionCard(
-                      icon: Icons.checklist_rounded,
-                      title: 'prerequisites_section'.tr,
-                      items: provider.form.prerequisites,
-                      onAdd: () => addItemDialog(
-                          'add_prerequisite'.tr, provider.addFormPrerequisite, context),
-                      onRemove: provider.removeFormPrerequisite,
-                    ),
-                    const SizedBox(height: 24),
-                  ],
+                      // Extras cards
+
+                      // Appointments (both modes). Existing, already-saved
+                      // appointments come from provider.form.schedules (edit
+                      // mode) and are staged for removal on save, same as
+                      // certificates/tools/prerequisites. Newly added ones
+                      // aren't sent to the server until save is pressed.
+                      SectionCard(
+                        icon: Icons.event_available_rounded,
+                        title: 'weekly_schedule'.tr,
+                        items: [
+                          ...provider.form.schedules.map(
+                            (s) =>
+                                '${slotDayLabel(s.day)} • ${s.startTime} – ${s.endTime}',
+                          ),
+                          ...provider.pendingSchedules.map(
+                            (s) =>
+                                '${slotDayLabel(s.day)} • ${s.startTime} – ${s.endTime}',
+                          ),
+                        ],
+                        onAdd: _showAddAppointmentSheet,
+                        onRemove: (i) {
+                          final existingCount = provider.form.schedules.length;
+                          if (i < existingCount) {
+                            provider.removeFormSchedule(i);
+                          } else {
+                            provider.removePendingSchedule(i - existingCount);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 12),
+
+                      SectionCard(
+                        icon: Icons.workspace_premium_rounded,
+                        title: 'certificates_section'.tr,
+                        items: provider.form.certificates,
+                        onAdd: () => addItemDialog(
+                          'add_certificate'.tr,
+                          provider.addFormCertificate,
+                          context,
+                        ),
+                        onRemove: provider.removeFormCertificate,
+                      ),
+                      const SizedBox(height: 12),
+                      SectionCard(
+                        icon: Icons.build_rounded,
+                        title: 'tools_section'.tr,
+                        items: provider.form.tools,
+                        onAdd: () => addItemDialog(
+                          'add_tool'.tr,
+                          provider.addFormTool,
+                          context,
+                        ),
+                        onRemove: provider.removeFormTool,
+                      ),
+                      const SizedBox(height: 12),
+                      SectionCard(
+                        icon: Icons.checklist_rounded,
+                        title: 'prerequisites_section'.tr,
+                        items: provider.form.prerequisites,
+                        onAdd: () => addItemDialog(
+                          'add_prerequisite'.tr,
+                          provider.addFormPrerequisite,
+                          context,
+                        ),
+                        onRemove: provider.removeFormPrerequisite,
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
 
-          // ── Sticky footer ──────────────────────────────────────────────
-          _StickyFooter(
-            isEdit: _isEdit,
-            canSave: canSave,
-            isLoading: provider.isLoading,
-            onSave: () => _submit(publish: true),
-            onSaveDraft: _isEdit ? null : () => _submit(publish: false),
-            course: widget.course,
-          ),
-        ]),
+            // ── Sticky footer ──────────────────────────────────────────────
+            _StickyFooter(
+              isEdit: _isEdit,
+              canSave: canSave,
+              isLoading: provider.isLoading,
+              onSave: () => _submit(publish: true),
+              onSaveDraft: _isEdit ? null : () => _submit(publish: false),
+              course: widget.course,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -511,7 +542,9 @@ class _HeroHeader extends StatelessWidget {
         children: [
           // Gradient background
           Positioned(
-            top: 0, right: 0, left: 0,
+            top: 0,
+            right: 0,
+            left: 0,
             child: Container(
               height: unit * 2,
               width: double.infinity,
@@ -520,7 +553,7 @@ class _HeroHeader extends StatelessWidget {
                   colors: [
                     Color(0xFF1A3C6E),
                     Color(0xFF0D6EFD),
-                    Color(0xFF4F9FFF)
+                    Color(0xFF4F9FFF),
                   ],
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
@@ -529,14 +562,18 @@ class _HeroHeader extends StatelessWidget {
             ),
           ),
           Positioned(
-            bottom: 0, right: 0, left: 0,
+            bottom: 0,
+            right: 0,
+            left: 0,
             child: Container(height: unit, color: context.colors.background),
           ),
           // Decorative circles
           Positioned(
-            top: -30, left: -30,
+            top: -30,
+            left: -30,
             child: Container(
-              width: 140, height: 140,
+              width: 140,
+              height: 140,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.white.withValues(alpha: 0.06),
@@ -544,9 +581,11 @@ class _HeroHeader extends StatelessWidget {
             ),
           ),
           Positioned(
-            bottom: 30, right: -20,
+            bottom: 30,
+            right: -20,
             child: Container(
-              width: 90, height: 90,
+              width: 90,
+              height: 90,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.white.withValues(alpha: 0.08),
@@ -555,25 +594,33 @@ class _HeroHeader extends StatelessWidget {
           ),
           // Back button + title
           Positioned(
-            top: top + 12, right: 16, left: 16,
+            top: top + 12,
+            right: 16,
+            left: 16,
             child: Row(
               children: [
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
                   child: Container(
-                    width: 38, height: 38,
+                    width: 38,
+                    height: 38,
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.arrow_back_ios_rounded,
-                        color: Colors.white, size: 16),
+                    child: const Icon(
+                      Icons.arrow_back_ios_rounded,
+                      color: Colors.white,
+                      size: 16,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    isEdit ? 'edit_course_title'.tr : 'create_new_course_title'.tr,
+                    isEdit
+                        ? 'edit_course_title'.tr
+                        : 'create_new_course_title'.tr,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -584,12 +631,17 @@ class _HeroHeader extends StatelessWidget {
                 ),
                 // Mode badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.3), width: 1),
+                      color: Colors.white.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
                   ),
                   child: Text(
                     isEdit ? 'edit_badge'.tr : 'new_badge'.tr,
@@ -613,7 +665,7 @@ class _HeroHeader extends StatelessWidget {
               imageFile: logoFile,
               size: context.height / 6,
             ),
-          )
+          ),
         ],
       ),
     );
@@ -629,8 +681,11 @@ class _FormCard extends StatelessWidget {
   final String title;
   final List<Widget> children;
 
-  const _FormCard(
-      {required this.icon, required this.title, required this.children});
+  const _FormCard({
+    required this.icon,
+    required this.title,
+    required this.children,
+  });
 
   @override
   Widget build(BuildContext context) => Container(
@@ -650,31 +705,37 @@ class _FormCard extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-          child: Row(children: [
-            Container(
-              width: 34, height: 34,
-              decoration: BoxDecoration(
-                gradient: context.colors.primaryGradient,
-                borderRadius: BorderRadius.circular(10),
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  gradient: context.colors.primaryGradient,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 17, color: Colors.white),
               ),
-              child: Icon(icon, size: 17, color: Colors.white),
-            ),
-            const SizedBox(width: 10),
-            Text(title,
+              const SizedBox(width: 10),
+              Text(
+                title,
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
                   fontFamily: 'bahji',
                   color: Color(0xFF1A1A2E),
-                )),
-          ]),
+                ),
+              ),
+            ],
+          ),
         ),
         Divider(height: 1, color: Colors.black.withValues(alpha: 0.06)),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
           child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: children),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: children,
+          ),
         ),
       ],
     ),
@@ -695,13 +756,15 @@ class _LabeledField extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            fontFamily: 'bahji',
-            color: Colors.black.withValues(alpha: 0.55),
-          )),
+      Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          fontFamily: 'bahji',
+          color: Colors.black.withValues(alpha: 0.55),
+        ),
+      ),
       const SizedBox(height: 6),
       child,
     ],
@@ -751,108 +814,112 @@ class _StickyFooter extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(children: [
-        // Save as draft (create mode only)
-        if (showDraftBtn) ...[
-          Expanded(
-            child: GestureDetector(
-              onTap: (canSave && !isLoading) ? onSaveDraft : null,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                height: 52,
-                decoration: BoxDecoration(
-                  color: canSave
-                      ? context.colors.primary.withValues(alpha: 0.08)
-                      : const Color(0xFFF0F1F4),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
+      child: Row(
+        children: [
+          // Save as draft (create mode only)
+          if (showDraftBtn) ...[
+            Expanded(
+              child: GestureDetector(
+                onTap: (canSave && !isLoading) ? onSaveDraft : null,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  height: 52,
+                  decoration: BoxDecoration(
                     color: canSave
-                        ? context.colors.primary.withValues(alpha: 0.35)
-                        : const Color(0xFFCDD5E0),
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    'save_as_draft_btn'.tr,
-                    style: TextStyle(
+                        ? context.colors.primary.withValues(alpha: 0.08)
+                        : const Color(0xFFF0F1F4),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
                       color: canSave
-                          ? context.colors.primary
-                          : context.colors.textLight,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13,
-                      fontFamily: 'bahji',
+                          ? context.colors.primary.withValues(alpha: 0.35)
+                          : const Color(0xFFCDD5E0),
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'save_as_draft_btn'.tr,
+                      style: TextStyle(
+                        color: canSave
+                            ? context.colors.primary
+                            : context.colors.textLight,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                        fontFamily: 'bahji',
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 10),
-        ],
+            const SizedBox(width: 10),
+          ],
 
-        // Primary save/publish button
-        Expanded(
-          child: GestureDetector(
-            onTap: (canSave && !isLoading) ? onSave : null,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              height: 52,
-              decoration: BoxDecoration(
-                gradient: canSave
-                    ? context.colors.primaryGradient
-                    : const LinearGradient(
-                    colors: [Color(0xFFCDD5E0), Color(0xFFCDD5E0)]),
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: canSave ? context.colors.primaryShadow : null,
-              ),
-              child: Center(
-                child: isLoading
-                    ? const SizedBox(
-                    width: 20, height: 20,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
-                    : Text(
-                  canSave
-                      ? (isEdit
-                      ? 'btn_save_edits'.tr
-                      : (showDraftBtn
-                      ? 'publish_course_btn'.tr
-                      : 'create_course_btn'.tr))
-                      : (isEdit
-                      ? 'no_changes_to_save'.tr
-                      : 'enter_course_title_first'.tr),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                    fontFamily: 'bahji',
-                  ),
+          // Primary save/publish button
+          Expanded(
+            child: GestureDetector(
+              onTap: (canSave && !isLoading) ? onSave : null,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                height: 52,
+                decoration: BoxDecoration(
+                  gradient: canSave
+                      ? context.colors.primaryGradient
+                      : const LinearGradient(
+                          colors: [Color(0xFFCDD5E0), Color(0xFFCDD5E0)],
+                        ),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: canSave ? context.colors.primaryShadow : null,
+                ),
+                child: Center(
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: AppLoadingIndicator(),
+                        )
+                      : Text(
+                          canSave
+                              ? (isEdit
+                                    ? 'btn_save_edits'.tr
+                                    : (showDraftBtn
+                                          ? 'publish_course_btn'.tr
+                                          : 'create_course_btn'.tr))
+                              : (isEdit
+                                    ? 'no_changes_to_save'.tr
+                                    : 'enter_course_title_first'.tr),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                            fontFamily: 'bahji',
+                          ),
+                        ),
                 ),
               ),
             ),
           ),
-        ),
 
-        // Schedule button (edit mode only)
-        // if (isEdit && course != null) ...[
-        //   const SizedBox(width: 10),
-        //   GestureDetector(
-        //     onTap: () => Navigator.of(context).push(MaterialPageRoute(
-        //         builder: (_) => TeacherSchedulesScreen(course: course!))),
-        //     child: Container(
-        //       width: 52, height: 52,
-        //       decoration: BoxDecoration(
-        //         color: context.colors.primary.withValues(alpha: 0.1),
-        //         borderRadius: BorderRadius.circular(14),
-        //         border: Border.all(
-        //             color: context.colors.primary.withValues(alpha: 0.3)),
-        //       ),
-        //       child: Icon(Icons.calendar_month_rounded,
-        //           size: 22, color: context.colors.primary),
-        //     ),
-        //   ),
-        // ],
-      ]),
+          // Schedule button (edit mode only)
+          // if (isEdit && course != null) ...[
+          //   const SizedBox(width: 10),
+          //   GestureDetector(
+          //     onTap: () => Navigator.of(context).push(MaterialPageRoute(
+          //         builder: (_) => TeacherSchedulesScreen(course: course!))),
+          //     child: Container(
+          //       width: 52, height: 52,
+          //       decoration: BoxDecoration(
+          //         color: context.colors.primary.withValues(alpha: 0.1),
+          //         borderRadius: BorderRadius.circular(14),
+          //         border: Border.all(
+          //             color: context.colors.primary.withValues(alpha: 0.3)),
+          //       ),
+          //       child: Icon(Icons.calendar_month_rounded,
+          //           size: 22, color: context.colors.primary),
+          //     ),
+          //   ),
+          // ],
+        ],
+      ),
     );
   }
 }
@@ -874,45 +941,45 @@ class _StatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusColor =
-    isPublished ? context.colors.accent2 : const Color(0xFFF59E0B);
+    final statusColor = isPublished
+        ? context.colors.accent2
+        : const Color(0xFFF59E0B);
     return _FormCard(
       icon: Icons.visibility_rounded,
       title: 'course_status_title'.tr,
       children: [
-        Row(children: [
-          Container(
-            width: 10,
-            height: 10,
-            decoration:
-            BoxDecoration(shape: BoxShape.circle, color: statusColor),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              isPublished ? 'status_published'.tr : 'status_draft'.tr,
-              style: TextStyle(
-                fontFamily: 'bahji',
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
+        Row(
+          children: [
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
                 color: statusColor,
               ),
             ),
-          ),
-          if (isLoading)
-            SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                  strokeWidth: 2, color: context.colors.primary),
-            )
-          else
-            Switch(
-              value: isPublished,
-              activeColor: context.colors.primary,
-              onChanged: (_) => onToggle(),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                isPublished ? 'status_published'.tr : 'status_draft'.tr,
+                style: TextStyle(
+                  fontFamily: 'bahji',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: statusColor,
+                ),
+              ),
             ),
-        ]),
+            if (isLoading)
+              AppLoadingIndicator()
+            else
+              Switch(
+                value: isPublished,
+                activeColor: context.colors.primary,
+                onChanged: (_) => onToggle(),
+              ),
+          ],
+        ),
         const SizedBox(height: 2),
         Text(
           isPublished
@@ -944,13 +1011,13 @@ class _LocalAddScheduleSheet extends StatefulWidget {
   });
 
   @override
-  State<_LocalAddScheduleSheet> createState() =>
-      _LocalAddScheduleSheetState();
+  State<_LocalAddScheduleSheet> createState() => _LocalAddScheduleSheetState();
 }
 
 class _LocalAddScheduleSheetState extends State<_LocalAddScheduleSheet> {
-  static final List<(String, String)> _days =
-  kDayOrder.map((d) => (d, kDayLabels[d] ?? d)).toList();
+  static final List<(String, String)> _days = kDayOrder
+      .map((d) => (d, kDayLabels[d] ?? d))
+      .toList();
 
   String _day = kDayOrder.first;
   TimeOfDay _start = const TimeOfDay(hour: 10, minute: 0);
@@ -964,7 +1031,9 @@ class _LocalAddScheduleSheetState extends State<_LocalAddScheduleSheet> {
 
   Future<void> _pick(bool isStart) async {
     final p = await showTimePicker(
-        context: context, initialTime: isStart ? _start : _end);
+      context: context,
+      initialTime: isStart ? _start : _end,
+    );
     if (p == null || !mounted) return;
     setState(() => isStart ? _start = p : _end = p);
   }
@@ -978,33 +1047,47 @@ class _LocalAddScheduleSheetState extends State<_LocalAddScheduleSheet> {
         builder: (_) => Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
-            shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: Text('duplicate-schedule'.tr,
-                style: const TextStyle(
-                    fontFamily: 'bahji', fontWeight: FontWeight.w700)),
-            content: Text('same-day-schedule-exists'.tr,
-                style: const TextStyle(fontFamily: 'bahji')),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Text(
+              'duplicate-schedule'.tr,
+              style: const TextStyle(
+                fontFamily: 'bahji',
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            content: Text(
+              'same-day-schedule-exists'.tr,
+              style: const TextStyle(fontFamily: 'bahji'),
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: Text('cancel'.tr,
-                    style: TextStyle(
-                        fontFamily: 'bahji',
-                        color: context.colors.textMedium)),
+                child: Text(
+                  'cancel'.tr,
+                  style: TextStyle(
+                    fontFamily: 'bahji',
+                    color: context.colors.textMedium,
+                  ),
+                ),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: context.colors.primary,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
                 onPressed: () => Navigator.pop(context, true),
-                child: Text('add'.tr,
-                    style: const TextStyle(
-                        fontFamily: 'bahji',
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700)),
+                child: Text(
+                  'add'.tr,
+                  style: const TextStyle(
+                    fontFamily: 'bahji',
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ],
           ),
@@ -1022,32 +1105,39 @@ class _LocalAddScheduleSheetState extends State<_LocalAddScheduleSheet> {
     textDirection: TextDirection.rtl,
     child: Container(
       padding: EdgeInsets.only(
-          left: 24,
-          right: 24,
-          top: 24,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 32),
+        left: 24,
+        right: 24,
+        top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 32,
+      ),
       decoration: BoxDecoration(
-          color: context.colors.cardBg,
-          borderRadius:
-          const BorderRadius.vertical(top: Radius.circular(28))),
+        color: context.colors.cardBg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Center(
-              child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                      color: context.colors.divider,
-                      borderRadius: BorderRadius.circular(2)))),
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: context.colors.divider,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
           const SizedBox(height: 18),
           Text('add-weekly-appointment'.tr, style: context.colors.h2),
           const SizedBox(height: 20),
-          Text('today'.tr,
-              style: context.colors.label.copyWith(
-                  color: context.colors.textDark,
-                  fontWeight: FontWeight.w700)),
+          Text(
+            'today'.tr,
+            style: context.colors.label.copyWith(
+              color: context.colors.textDark,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 10),
           SizedBox(
             height: 44,
@@ -1063,49 +1153,61 @@ class _LocalAddScheduleSheetState extends State<_LocalAddScheduleSheet> {
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       gradient: sel ? context.colors.primaryGradient : null,
                       color: sel ? null : context.colors.background,
                       borderRadius: BorderRadius.circular(22),
                       border: Border.all(
-                          color: sel
-                              ? Colors.transparent
-                              : context.colors.divider),
+                        color: sel
+                            ? Colors.transparent
+                            : context.colors.divider,
+                      ),
                       boxShadow: sel ? context.colors.primaryShadow : null,
                     ),
-                    child: Text(l,
-                        style: context.colors.label.copyWith(
-                            color: sel
-                                ? Colors.white
-                                : context.colors.textMedium,
-                            fontWeight:
-                            sel ? FontWeight.w700 : FontWeight.w500)),
+                    child: Text(
+                      l,
+                      style: context.colors.label.copyWith(
+                        color: sel ? Colors.white : context.colors.textMedium,
+                        fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                    ),
                   ),
                 );
               },
             ),
           ),
           const SizedBox(height: 20),
-          Row(children: [
-            Expanded(
+          Row(
+            children: [
+              Expanded(
                 child: _TimeField(
-                    label: 'start-time'.tr,
-                    time: _start,
-                    onTap: () => _pick(true))),
-            const SizedBox(width: 12),
-            Expanded(
+                  label: 'start-time'.tr,
+                  time: _start,
+                  onTap: () => _pick(true),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
                 child: _TimeField(
-                    label: 'end-time'.tr,
-                    time: _end,
-                    onTap: () => _pick(false),
-                    hasError: !_valid)),
-          ]),
+                  label: 'end-time'.tr,
+                  time: _end,
+                  onTap: () => _pick(false),
+                  hasError: !_valid,
+                ),
+              ),
+            ],
+          ),
           if (!_valid) ...[
             const SizedBox(height: 6),
-            Text('end-time-must-be-after-start-time'.tr,
-                style: context.colors.caption
-                    .copyWith(color: context.colors.danger)),
+            Text(
+              'end-time-must-be-after-start-time'.tr,
+              style: context.colors.caption.copyWith(
+                color: context.colors.danger,
+              ),
+            ),
           ],
           const SizedBox(height: 24),
           GradientButton(
@@ -1137,35 +1239,42 @@ class _TimeField extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(label,
-          style: context.colors.label.copyWith(
-              color: context.colors.textDark, fontWeight: FontWeight.w700)),
+      Text(
+        label,
+        style: context.colors.label.copyWith(
+          color: context.colors.textDark,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
       const SizedBox(height: 8),
       GestureDetector(
         onTap: onTap,
         child: Container(
-          padding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             color: context.colors.background,
-            borderRadius:
-            BorderRadius.circular(context.colors.radiusMedium),
+            borderRadius: BorderRadius.circular(context.colors.radiusMedium),
             border: Border.all(
+              color: hasError ? context.colors.danger : context.colors.divider,
+              width: hasError ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.access_time_rounded,
+                size: 18,
                 color: hasError
                     ? context.colors.danger
-                    : context.colors.divider,
-                width: hasError ? 1.5 : 1),
-          ),
-          child: Row(children: [
-            Icon(Icons.access_time_rounded,
-                size: 18,
-                color:
-                hasError ? context.colors.danger : context.colors.primary),
-            const SizedBox(width: 8),
-            Text(
+                    : context.colors.primary,
+              ),
+              const SizedBox(width: 8),
+              Text(
                 '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
-                style: context.colors.h3.copyWith(fontSize: 18)),
-          ]),
+                style: context.colors.h3.copyWith(fontSize: 18),
+              ),
+            ],
+          ),
         ),
       ),
     ],

@@ -1,6 +1,6 @@
 /// courses/details/course_detail_screen.dart
 library;
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/teacher/sessions/sessions_provider.dart';
@@ -55,10 +55,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
               child: SizedBox(
                 width: context.width / 5,
                 height: context.width / 5,
-                child: CircularProgressIndicator(
-                  color: context.colors.primary,
-                  strokeWidth: context.width / 80,
-                ),
+                child: AppLoadingIndicator(),
               ),
             )
           : isWide
@@ -722,10 +719,7 @@ class _EnrollButton extends StatelessWidget {
                 ? const SizedBox(
                     width: 24,
                     height: 24,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2.5,
-                    ),
+                    child: AppLoadingIndicator(),
                   )
                 : Text(
                     label,
