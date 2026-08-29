@@ -871,7 +871,7 @@ class _RoomPageState extends State<RoomPage>
   }
 
   // ── Placeholder card: live speaker tracking ─────────────────────────────
-  // The recording placeholder's "speaker" (see _SessionPlaceholderCard) is
+  // The recording placeholder's "speaker" (see _PremiumWaitingPlaceholder) is
   // whoever is currently talking — it changes as different participants
   // speak, unlike teacherName/sessionTitle which are static for the whole
   // session. We can't re-capture on every isSpeaking flicker (expensive:
@@ -1003,7 +1003,7 @@ class _RoomPageState extends State<RoomPage>
     });
 
 
-  /// Captures [_SessionPlaceholderCard] as a PNG without adding it to the
+  /// Captures [_PremiumWaitingPlaceholder] as a PNG without adding it to the
   /// visible widget tree — inserted via a transient, invisible OverlayEntry
   /// (opacity 0, IgnorePointer) so nothing in the existing build() layout
   /// has to change. Removed again immediately after one frame is captured.
@@ -1029,6 +1029,7 @@ class _RoomPageState extends State<RoomPage>
     late OverlayEntry entry;
     final completer = Completer<Uint8List?>();
 
+    final local = widget.room.localParticipant;
     entry = OverlayEntry(
       builder: (_) => IgnorePointer(
         // Opacity(opacity: 0) was used here before — WRONG: Flutter's
@@ -1042,12 +1043,31 @@ class _RoomPageState extends State<RoomPage>
           offset: const Offset(-10000, -10000),
           child: RepaintBoundary(
             key: boundaryKey,
-            child: _SessionPlaceholderCard(
-              teacherName: teacherName,
-              sessionTitle: sessionTitle,
-              participantCount: participantCount,
-              speakerName: speakerName,
-              participants: participants,
+            // Fixed 1280x720 canvas so the captured PNG's aspect ratio is
+            // predictable regardless of the device screen it's captured
+            // on — the native renderer letterboxes/pillarboxes to fit the
+            // actual recording resolution (see
+            // ScreenPlaceholderRenderer.drawPlaceholderBitmapAspectFit),
+            // so an exact size match isn't required, just a known one.
+            //
+            // This is the SAME widget as the live "waiting for students"
+            // view (_PremiumWaitingPlaceholder) — not a separate bespoke
+            // card — so the recording, the live in-app view, and what
+            // iOS's own screen recording naturally captures are all
+            // guaranteed to look identical.
+            child: SizedBox(
+              width: 1280,
+              height: 720,
+              child: _PremiumWaitingPlaceholder(
+                teacherName: teacherName,
+                isMicOn: local?.isMicrophoneEnabled() ?? false,
+                isCamOn: local?.isCameraEnabled() ?? false,
+                auroraAnim: _auroraAnim,
+                sessionTitle: sessionTitle,
+                speakerName: speakerName,
+                participants: participants,
+                showLogo: true,
+              ),
             ),
           ),
         ),
@@ -1675,6 +1695,9 @@ class _RoomPageState extends State<RoomPage>
         isMicOn: isMicOn,
         isCamOn: isCamOn,
         auroraAnim: _auroraAnim,
+        sessionTitle: widget.sessionName,
+        speakerName: _activeSpeakerName(),
+        participants: _enrolledStudents.where((s) => s.isAttended).toList(),
       );
     }
 
@@ -3613,6 +3636,14 @@ class _ScreenShareAuroraPainter extends CustomPainter {
 // _PremiumWaitingPlaceholder  — Teams-style no-content placeholder
 // Shows teacher avatar, name, A/V status chips, and a "Waiting for students"
 // message with animated aurora + pulse ring — all matching the room design.
+//
+// Also reused, unchanged, as the frozen recording placeholder on Android
+// (see _capturePlaceholderPng) — this is the single source of truth for
+// "what does the app show when there's nothing else to display", so the
+// recorded video and the live in-app view are guaranteed to look the same,
+// and both match what iOS's own screen recording captures naturally (iOS
+// just screen-records whatever's actually on screen, which is this same
+// widget in the equivalent state).
 // ─────────────────────────────────────────────────────────────────────────────
 class _PremiumWaitingPlaceholder extends StatefulWidget {
   const _PremiumWaitingPlaceholder({
@@ -3620,12 +3651,26 @@ class _PremiumWaitingPlaceholder extends StatefulWidget {
     required this.isMicOn,
     required this.isCamOn,
     required this.auroraAnim,
+    this.sessionTitle,
+    this.speakerName,
+    this.participants = const [],
+    this.showLogo = false,
   });
 
   final String teacherName;
   final bool isMicOn;
   final bool isCamOn;
   final AnimationController auroraAnim;
+  // Everything below is optional — omitted (as at the live in-app call
+  // site) they simply don't render, so the original "waiting for
+  // students" look is unchanged there unless callers opt in.
+  final String? sessionTitle;
+  final String? speakerName;
+  final List<EnrolledStudent> participants;
+  // Live in-app use doesn't need the corner logo (it's already in the
+  // app chrome around this tile); the recording capture sets this true
+  // since the recorded frame has no surrounding chrome at all.
+  final bool showLogo;
 
   @override
   State<_PremiumWaitingPlaceholder> createState() =>
@@ -3684,6 +3729,17 @@ class _PremiumWaitingPlaceholderState
               child: const SizedBox.expand(),
             ),
           ),
+
+          if (widget.showLogo)
+            Positioned(
+              top: 24,
+              left: 24,
+              child: Image.asset(
+                'assets/images/app_logo.png',
+                height: 40,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
+            ),
 
           // Center content
           Center(
@@ -3801,6 +3857,21 @@ class _PremiumWaitingPlaceholderState
 
                 const SizedBox(height: 22),
 
+                if (widget.sessionTitle != null &&
+                    widget.sessionTitle!.trim().isNotEmpty) ...[
+                  Text(
+                    widget.sessionTitle!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontFamily: 'tajawal',
+                      color: _textMid,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                ],
+
                 // A/V status row
                 Row(
                   mainAxisSize: MainAxisSize.min,
@@ -3827,263 +3898,93 @@ class _PremiumWaitingPlaceholderState
                   ],
                 ),
 
-                const SizedBox(height: 36),
+                const SizedBox(height: 22),
 
-                // Waiting message
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: _glass10,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: _glassBdr, width: 1),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 1.8,
-                          color: _cyan.withValues(alpha: 0.7),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      const Text(
-                        'Waiting for students to join…',
-                        style: TextStyle(
-                          fontFamily: 'tajawal',
-                          color: _textMid,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// _SessionPlaceholderCard — recording placeholder (Android, pre-Share)
-//
-// Captured once at session start, and again (debounced) whenever the active
-// speaker changes — see _maybeRefreshPlaceholderSpeaker — as a static PNG
-// sent to ScreenPlaceholderRenderer.kt, which displays it in the recorded
-// video (and live-share, if reverted to placeholder) before real screen
-// content is available. Reuses the same avatar/name/color treatment as
-// _PremiumWaitingPlaceholder above for visual consistency with the rest of
-// the app, minus the pulsing ring / aurora background that only make sense
-// live.
-//
-// Sized as a fixed 1280x720 canvas so the captured PNG's aspect ratio is
-// predictable regardless of the device screen it's captured on — the native
-// renderer letterboxes/pillarboxes to fit the actual recording resolution
-// (see ScreenPlaceholderRenderer.drawPlaceholderBitmapAspectFit), so an
-// exact size match isn't required, just a known, stable one.
-class _SessionPlaceholderCard extends StatelessWidget {
-  const _SessionPlaceholderCard({
-    required this.teacherName,
-    required this.sessionTitle,
-    required this.participantCount,
-    required this.speakerName,
-    required this.participants,
-  });
-
-  final String teacherName;
-  final String sessionTitle;
-  final int participantCount;
-  // Whoever is currently talking (changes live — see _activeSpeakerName).
-  // Shown as its own badge only when it differs from the teacher; when the
-  // teacher is the one speaking, the teacher block itself carries the "on
-  // air" indicator instead of a redundant second name.
-  final String speakerName;
-  // Currently-attended participants (name + optional photo) — capped to a
-  // handful of avatars plus a "+N" overflow chip so the card stays legible
-  // regardless of class size.
-  final List<EnrolledStudent> participants;
-
-  static String _initialsOf(String name) {
-    final trimmed = name.trim();
-    if (trimmed.isEmpty) return '؟';
-    return trimmed
-        .split(RegExp(r'\s+'))
-        .take(2)
-        .map((w) => w[0].toUpperCase())
-        .join();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isTeacherSpeaking =
-        speakerName.trim().isEmpty || speakerName.trim() == teacherName.trim();
-    const maxAvatars = 6;
-    final shown = participants.take(maxAvatars).toList();
-    final overflow = participants.length - shown.length;
-
-    return SizedBox(
-      width: 1280,
-      height: 720,
-      child: Container(
-        color: _bg,
-        padding: const EdgeInsets.all(48),
-        child: Stack(
-          children: [
-            // App logo, top-left. Update this path if your project's
-            // pubspec.yaml declares the logo under a different asset key.
-            Positioned(
-              top: 0,
-              left: 0,
-              child: Image.asset(
-                'assets/images/app_logo.png',
-                height: 56,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-              ),
-            ),
-            Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        width: 140,
-                        height: 140,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [_cyan, _indigo],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: _cyan.withValues(alpha: 0.35),
-                              blurRadius: 40,
-                              spreadRadius: 4,
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Text(
-                            _initialsOf(teacherName),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 48,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1,
-                            ),
+                // Currently-speaking badge — only shown when someone other
+                // than the person this tile represents is talking, so it
+                // never duplicates the "Teacher" role chip above.
+                if (widget.speakerName != null &&
+                    widget.speakerName!.trim().isNotEmpty &&
+                    widget.speakerName!.trim() != widget.teacherName.trim()) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: _emerald.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(999),
+                      border:
+                      Border.all(color: _emerald.withValues(alpha: 0.5)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.graphic_eq,
+                            size: 16, color: _emerald),
+                        const SizedBox(width: 8),
+                        Text(
+                          'يتحدث الآن: ${widget.speakerName}',
+                          style: const TextStyle(
+                            fontFamily: 'tajawal',
+                            color: _emerald,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                      ),
-                      // "On air" ring shown on the teacher's own avatar
-                      // when they're the one currently talking.
-                      if (isTeacherSpeaking)
-                        Positioned(
-                          bottom: -2,
-                          right: -2,
-                          child: Container(
-                            width: 34,
-                            height: 34,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: _emerald,
-                              border: Border.all(color: _bg, width: 4),
-                            ),
-                            child: const Icon(Icons.mic,
-                                size: 16, color: Colors.black87),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 28),
-                  Text(
-                    teacherName,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontFamily: 'tajawal',
-                      color: _textHigh,
-                      fontSize: 32,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.2,
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'المعلم',
-                    style: const TextStyle(
-                      fontFamily: 'tajawal',
-                      color: _textLow,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  // Distinct "currently speaking" badge — only rendered
-                  // when someone other than the teacher is talking, so the
-                  // card doesn't show two redundant "teacher" labels.
-                  if (!isTeacherSpeaking) ...[
-                    const SizedBox(height: 14),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: _emerald.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(999),
-                        border:
-                        Border.all(color: _emerald.withValues(alpha: 0.5)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.graphic_eq,
-                              size: 16, color: _emerald),
-                          const SizedBox(width: 8),
-                          Text(
-                            'يتحدث الآن: $speakerName',
-                            style: const TextStyle(
-                              fontFamily: 'tajawal',
-                              color: _emerald,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
                   const SizedBox(height: 18),
-                  Text(
-                    sessionTitle,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontFamily: 'tajawal',
-                      color: _textMid,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w500,
+                ],
+
+                // Waiting message OR real participants — once anyone has
+                // actually joined there's no reason to keep saying "waiting
+                // for students", so real names/avatars replace it.
+                if (widget.participants.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: _glass10,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: _glassBdr, width: 1),
                     ),
-                  ),
-                  const SizedBox(height: 22),
-                  // Participants: real avatars + names instead of a bare
-                  // count, capped with a "+N" overflow chip.
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 1.8,
+                            color: _cyan.withValues(alpha: 0.7),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        const Text(
+                          'Waiting for students to join…',
+                          style: TextStyle(
+                            fontFamily: 'tajawal',
+                            color: _textMid,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else ...[
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      for (final p in shown)
+                      for (final p in widget.participants.take(6))
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          padding:
+                          const EdgeInsets.symmetric(horizontal: 5),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               CircleAvatar(
-                                radius: 26,
+                                radius: 20,
                                 backgroundColor: _surfaceHi,
                                 backgroundImage: (p.imageUrl != null &&
                                     p.imageUrl!.isNotEmpty)
@@ -4092,18 +3993,20 @@ class _SessionPlaceholderCard extends StatelessWidget {
                                 child: (p.imageUrl == null ||
                                     p.imageUrl!.isEmpty)
                                     ? Text(
-                                  _initialsOf(p.name),
+                                  p.name.trim().isNotEmpty
+                                      ? p.name.trim()[0].toUpperCase()
+                                      : '؟',
                                   style: const TextStyle(
                                     color: _cyan,
-                                    fontSize: 14,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 )
                                     : null,
                               ),
-                              const SizedBox(height: 6),
+                              const SizedBox(height: 4),
                               SizedBox(
-                                width: 68,
+                                width: 56,
                                 child: Text(
                                   p.name,
                                   maxLines: 1,
@@ -4112,7 +4015,7 @@ class _SessionPlaceholderCard extends StatelessWidget {
                                   style: const TextStyle(
                                     fontFamily: 'tajawal',
                                     color: _textMid,
-                                    fontSize: 12,
+                                    fontSize: 11,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -4120,17 +4023,18 @@ class _SessionPlaceholderCard extends StatelessWidget {
                             ],
                           ),
                         ),
-                      if (overflow > 0)
+                      if (widget.participants.length > 6)
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          padding:
+                          const EdgeInsets.symmetric(horizontal: 5),
                           child: CircleAvatar(
-                            radius: 26,
+                            radius: 20,
                             backgroundColor: _surfaceHi,
                             child: Text(
-                              '+$overflow',
+                              '+${widget.participants.length - 6}',
                               style: const TextStyle(
                                 color: _textMid,
-                                fontSize: 14,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -4138,30 +4042,11 @@ class _SessionPlaceholderCard extends StatelessWidget {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 14),
-                  Container(
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: _surfaceHi,
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: _cyan.withValues(alpha: 0.4)),
-                    ),
-                    child: Text(
-                      '$participantCount مشارك',
-                      style: const TextStyle(
-                        fontFamily: 'tajawal',
-                        color: _cyan,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
                 ],
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

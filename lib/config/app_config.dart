@@ -8,7 +8,7 @@ import 'package:timeago/timeago.dart' as timeago;
 /// Application configuration and context.colors.
 class AppConfig {
   static const String baseUrl =
-      'https://extract-archives-afternoon-roy.trycloudflare.com';
+      'https://excellence-sherman-authors-colors.trycloudflare.com';
   static String lang = 'ar';
   static bool showLogs = false;
 
