@@ -90,6 +90,18 @@ void _compositorStop() {
   _dispatch('stop');
 }
 
+// Sends the same session-info placeholder PNG rendered by
+// _PremiumWaitingPlaceholder (see room.dart's _capturePlaceholderPng) to
+// the JS compositor, base64-encoded (JS interop has no clean binary
+// transfer here — a data URL string round-trips through toJS/dartify
+// cleanly, unlike a raw byte array). Requires recorder_compositor.js to
+// implement a 'setPlaceholderImage' case that decodes it and draws it
+// (e.g. via an offscreen <img>/createImageBitmap) instead of/in addition
+// to whatever it currently hand-draws for the no-content placeholder.
+void _compositorSetPlaceholderImage(String pngBase64) {
+  _dispatch('setPlaceholderImage', pngBase64.toJS);
+}
+
 bool _compositorIsActive() {
   final r = _dispatch('isActive');
   return r?.dartify() == true;
@@ -331,6 +343,25 @@ class WebRecorder {
     if (!_started) return;
     try { _compositorRemoveStream(label); }
     catch (e) { _log('removeStream($label) error: $e'); }
+  }
+
+  /// Sends the same _PremiumWaitingPlaceholder-rendered PNG used on
+  /// Android (see room.dart's _sendPlaceholderImageToNative) to the JS
+  /// compositor, so the web recording's placeholder is pixel-identical to
+  /// Android's and to what iOS's own screen recording naturally captures,
+  /// instead of the compositor's own separately hand-drawn placeholder.
+  /// No-op if the compositor hasn't started yet.
+  void setPlaceholderImage(Uint8List png) {
+    if (!_started) {
+      _log('setPlaceholderImage() ignored — compositor not started');
+      return;
+    }
+    try {
+      _compositorSetPlaceholderImage(base64Encode(png));
+      _log('setPlaceholderImage() sent (${png.length} bytes)');
+    } catch (e) {
+      _log('setPlaceholderImage() error: $e');
+    }
   }
 
   Future<void> attachScreenStream(Object? stream) async {

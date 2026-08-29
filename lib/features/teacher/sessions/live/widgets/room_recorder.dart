@@ -630,6 +630,7 @@
 
 import 'dart:async';
 import 'dart:developer';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb, ChangeNotifier;
 import 'package:flutter_education_app/core/api_client.dart';
 
@@ -817,6 +818,16 @@ class ClientRecorder extends ChangeNotifier {
   void updateParticipantCount(int count) {
     if (!kIsWeb) return;
     _webRecorder?.updateParticipantCount(count);
+  }
+
+  /// Web only: sends the same _PremiumWaitingPlaceholder PNG used on
+  /// Android (see room.dart's _sendPlaceholderImageToNative) to the web
+  /// compositor's canvas placeholder, so all platforms show the identical
+  /// placeholder graphic. No-op on mobile/desktop and if the compositor
+  /// hasn't started yet.
+  void setPlaceholderImage(Uint8List png) {
+    if (!kIsWeb) return;
+    _webRecorder?.setPlaceholderImage(png);
   }
 
   /// Phase 2 confirmation: called from room.dart AFTER startScreenCaptureService

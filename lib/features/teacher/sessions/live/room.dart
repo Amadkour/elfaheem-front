@@ -605,7 +605,8 @@ class _RoomPageState extends State<RoomPage>
     _quizPollTimer?.cancel();
     _quizTimer?.cancel();
     _recClockTimer?.cancel();
-    _speakerRefreshDebounce?.cancel();
+    _mainStageCaptureTimer?.cancel();
+    _webPlaceholderDebounce?.cancel();
     // Recorder: if user exits without pressing End Session (e.g. back-swipe),
     // stop the camera fast and drain remaining uploads in the background.
     if (_recorder != null) {
@@ -870,21 +871,93 @@ class _RoomPageState extends State<RoomPage>
     });
   }
 
-  // ── Placeholder card: live speaker tracking ─────────────────────────────
-  // The recording placeholder's "speaker" (see _PremiumWaitingPlaceholder) is
-  // whoever is currently talking — it changes as different participants
-  // speak, unlike teacherName/sessionTitle which are static for the whole
-  // session. We can't re-capture on every isSpeaking flicker (expensive:
-  // widget capture + PNG encode + platform-channel round trip), so this is
-  // debounced and skipped entirely while a real screen share is live (the
-  // placeholder isn't shown then anyway).
-  Timer? _speakerRefreshDebounce;
-  String? _lastCapturedSpeakerName;
+  // ── Recording placeholder: mirror the real live main stage ──────────────
+  // iOS records the real on-screen UI directly — whatever's genuinely
+  // rendered (camera, waiting card, anything else) is what its recording
+  // shows automatically, no extra code needed. Web's compositor already
+  // composites a live camera MediaStream when one's attached (see
+  // room_recorder.dart's addStream(stream, 'camera')) — Flutter web can't
+  // screenshot that HTML <video> platform view via RepaintBoundary even if
+  // we wanted to, so the compositor's own drawing is the only way real
+  // video gets into a web recording. Web only needs the placeholder-image
+  // swap (_sendMainStagePlaceholderWeb below) for the "nothing to show"
+  // case.
+  //
+  // Android has no such path: its pre-Share recording is entirely
+  // synthetic (a bitmap drawn by ScreenPlaceholderRenderer), so it needs
+  // an explicit push of whatever should appear. Rather than recreating
+  // camera-view/waiting-card/speaker-badge logic separately (as an earlier
+  // version of this did), this just periodically screenshots the ACTUAL
+  // on-screen main stage — see _mainStageCaptureKey's RepaintBoundary
+  // around _buildMainVideo() in build() — and sends that. Whatever's truly
+  // live (camera feed, the enriched waiting card with its speaker
+  // badge/participants, anything else _buildMainVideo() ever renders) is
+  // what gets sent, automatically, with no per-state branching to keep in
+  // sync by hand.
+  //
+  // KNOWN RISK: if _buildMainVideo() is currently showing
+  // VideoTrackRenderer(renderMode: VideoRenderMode.texture) (camera view),
+  // that may be backed by a hardware SurfaceTexture that some
+  // Skia/Impeller configurations can't read back via
+  // RepaintBoundary.toImage() — some devices could see a black frame
+  // instead of the real camera image. Test on real hardware; if frames
+  // come back black, that's this platform limitation, not a bug here, and
+  // would need a native camera-frame-bridging patch instead (mirroring
+  // how screen-share frames already reach ElFaheemBridge).
+  final GlobalKey _mainStageCaptureKey = GlobalKey();
+  Timer? _mainStageCaptureTimer;
+
+  void _startMainStageCapture() {
+    if (!widget.isTeacher || !Platform.isAndroid) return;
+    _mainStageCaptureTimer?.cancel();
+    _mainStageCaptureTimer = Timer.periodic(
+      const Duration(milliseconds: 500), // ~2fps — see cost note above
+          (_) => unawaited(_captureAndSendMainStage()),
+    );
+    unawaited(_captureAndSendMainStage()); // don't wait for the first tick
+  }
+
+  void _stopMainStageCapture() {
+    _mainStageCaptureTimer?.cancel();
+    _mainStageCaptureTimer = null;
+  }
+
+  /// Called from the ParticipantEvent listener so sharing starts/stops
+  /// (which publish/unpublish a track, firing that event) pause/resume
+  /// this without a direct cross-file call into room_screen_share.dart.
+  void _maybeSyncMainStageCapture() {
+    if (!widget.isTeacher || !Platform.isAndroid) return;
+    final sharing = widget.room.localParticipant?.isScreenShareEnabled() == true;
+    if (sharing) {
+      _stopMainStageCapture();
+    } else if (_mainStageCaptureTimer == null) {
+      _startMainStageCapture();
+    }
+  }
+
+  Future<void> _captureAndSendMainStage() async {
+    try {
+      final boundary = _mainStageCaptureKey.currentContext?.findRenderObject()
+      as RenderRepaintBoundary?;
+      if (boundary == null || boundary.debugNeedsPaint) return;
+      final image = await boundary.toImage(pixelRatio: 1.5);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      final png = byteData?.buffer.asUint8List();
+      if (png == null) return;
+      await const MethodChannel(
+        'com.example.flutter_education_app/native_recorder',
+      ).invokeMethod('setPlaceholderImage', {'png': png});
+    } catch (e) {
+      log('[REC] main-stage capture/send error: $e');
+    }
+  }
 
   /// Whoever currently has isSpeaking==true, preferring the loudest
   /// (highest audioLevel) if more than one. Falls back to the teacher
   /// (local participant) when nobody is actively speaking, since the
-  /// teacher is the default presenter.
+  /// teacher is the default presenter. Used by _PremiumWaitingPlaceholder's
+  /// live call site — its value flows into the recording "for free" since
+  /// the recording now screenshots that exact widget on every capture tick.
   String _activeSpeakerName() {
     final local = widget.room.localParticipant;
     final all = <Participant>[
@@ -896,27 +969,6 @@ class _RoomPageState extends State<RoomPage>
     final speaker = speaking.firstOrNull ?? local;
     final name = speaker?.name ?? '';
     return name.isNotEmpty ? name : (speaker?.identity ?? '');
-  }
-
-  void _maybeRefreshPlaceholderSpeaker() {
-    if (!widget.isTeacher || !Platform.isAndroid) return;
-    // Skip while actually screen-sharing — the placeholder (and its
-    // speaker badge) isn't what's being shown/recorded then.
-    if (widget.room.localParticipant?.isScreenShareEnabled() == true) return;
-    _speakerRefreshDebounce?.cancel();
-    _speakerRefreshDebounce = Timer(const Duration(milliseconds: 1200), () {
-      final name = _activeSpeakerName();
-      if (name == _lastCapturedSpeakerName) return; // no real change
-      _lastCapturedSpeakerName = name;
-      final local = widget.room.localParticipant;
-      unawaited(_sendPlaceholderImageToNative(
-        teacherName: local?.name.isNotEmpty == true
-            ? local!.name
-            : (local?.identity ?? ''),
-        sessionTitle: widget.sessionName ?? 'حصة مباشرة',
-        participantCount: widget.room.remoteParticipants.length + 1,
-      ));
-    });
   }
 
   // ── Listeners ──────────────────────────────────────────────────────────────
@@ -948,7 +1000,8 @@ class _RoomPageState extends State<RoomPage>
     })
     ..on<ParticipantEvent>((_) {
       _sortParticipants();
-      _maybeRefreshPlaceholderSpeaker();
+      _maybeSyncMainStageCapture();
+      _maybeRefreshWebPlaceholder();
     })
     ..on<RoomRecordingStatusChanged>((event) {
       if (mounted) setState(() => _serverRecording = event.activeRecording);
@@ -1003,169 +1056,61 @@ class _RoomPageState extends State<RoomPage>
     });
 
 
-  /// Captures [_PremiumWaitingPlaceholder] as a PNG without adding it to the
-  /// visible widget tree — inserted via a transient, invisible OverlayEntry
-  /// (opacity 0, IgnorePointer) so nothing in the existing build() layout
-  /// has to change. Removed again immediately after one frame is captured.
-  Future<Uint8List?> _capturePlaceholderPng({
-    required String teacherName,
-    required String sessionTitle,
-    required int participantCount,
-    required String speakerName,
-    required List<EnrolledStudent> participants,
-  }) async {
-    // Network avatar images must actually finish loading before
-    // RepaintBoundary.toImage() runs, or the card captures blank circles.
-    // precacheImage resolves once each image is decoded and in the cache.
-    await Future.wait([
-      for (final p in participants)
-        if (p.imageUrl != null && p.imageUrl!.isNotEmpty)
-          precacheImage(NetworkImage(p.imageUrl!), context)
-              .catchError((_) {}), // missing/broken avatar → initials fallback
-    ]);
-
-    final boundaryKey = GlobalKey();
-    final overlay = Overlay.of(context, rootOverlay: true);
-    late OverlayEntry entry;
-    final completer = Completer<Uint8List?>();
-
-    final local = widget.room.localParticipant;
-    entry = OverlayEntry(
-      builder: (_) => IgnorePointer(
-        // Opacity(opacity: 0) was used here before — WRONG: Flutter's
-        // Opacity widget deliberately skips painting entirely when opacity
-        // is exactly 0.0 (a documented performance optimization), so
-        // debugNeedsPaint could never clear and toImage() failed every
-        // single time, not just occasionally. Positioning far off-screen
-        // instead keeps the subtree fully opaque and normally painted —
-        // nothing appears on screen, but paint() actually runs.
-        child: Transform.translate(
-          offset: const Offset(-10000, -10000),
-          child: RepaintBoundary(
-            key: boundaryKey,
-            // Fixed 1280x720 canvas so the captured PNG's aspect ratio is
-            // predictable regardless of the device screen it's captured
-            // on — the native renderer letterboxes/pillarboxes to fit the
-            // actual recording resolution (see
-            // ScreenPlaceholderRenderer.drawPlaceholderBitmapAspectFit),
-            // so an exact size match isn't required, just a known one.
-            //
-            // This is the SAME widget as the live "waiting for students"
-            // view (_PremiumWaitingPlaceholder) — not a separate bespoke
-            // card — so the recording, the live in-app view, and what
-            // iOS's own screen recording naturally captures are all
-            // guaranteed to look identical.
-            child: SizedBox(
-              width: 1280,
-              height: 720,
-              child: _PremiumWaitingPlaceholder(
-                teacherName: teacherName,
-                isMicOn: local?.isMicrophoneEnabled() ?? false,
-                isCamOn: local?.isCameraEnabled() ?? false,
-                auroraAnim: _auroraAnim,
-                sessionTitle: sessionTitle,
-                speakerName: speakerName,
-                participants: participants,
-                showLogo: true,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    overlay.insert(entry);
-
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      try {
-        // A single endOfFrame wasn't reliable — toImage() could still hit
-        // '!debugNeedsPaint' on a widget inserted this same frame. Waiting
-        // for two full frame cycles, plus a small retry loop as a backstop,
-        // reliably clears the paint pipeline before capture.
-        await WidgetsBinding.instance.endOfFrame;
-        await WidgetsBinding.instance.endOfFrame;
-
-        final boundary = boundaryKey.currentContext?.findRenderObject()
-        as RenderRepaintBoundary?;
-        if (boundary == null) {
-          completer.complete(null);
-          return;
-        }
-
-        ui.Image? image;
-        for (var attempt = 0; attempt < 4; attempt++) {
-          try {
-            image = await boundary.toImage(pixelRatio: 2.0);
-            break;
-          } catch (e) {
-            if (attempt == 3) rethrow;
-            log('[REC] _capturePlaceholderPng toImage retry $attempt: $e');
-            await Future.delayed(const Duration(milliseconds: 50));
-            await WidgetsBinding.instance.endOfFrame;
-          }
-        }
-        if (image == null) {
-          completer.complete(null);
-          return;
-        }
-        final byteData =
-        await image.toByteData(format: ui.ImageByteFormat.png);
-        completer.complete(byteData?.buffer.asUint8List());
-      } catch (e) {
-        log('[REC] _capturePlaceholderPng error: $e');
-        completer.complete(null);
-      } finally {
-        entry.remove();
-      }
-    });
-
-    return completer.future;
+  /// Screenshots the ACTUAL on-screen main stage (_mainStageCaptureKey) —
+  /// not a rebuilt duplicate widget — so whatever's genuinely live is what
+  /// gets returned. Shared by Android's continuous capture
+  /// (_captureAndSendMainStage) and Web's single-shot send below.
+  Future<Uint8List?> _captureMainStagePng() async {
+    try {
+      final boundary = _mainStageCaptureKey.currentContext?.findRenderObject()
+      as RenderRepaintBoundary?;
+      if (boundary == null || boundary.debugNeedsPaint) return null;
+      final image = await boundary.toImage(pixelRatio: 1.5);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      return byteData?.buffer.asUint8List();
+    } catch (e) {
+      log('[REC] _captureMainStagePng error: $e');
+      return null;
+    }
   }
 
-  /// Captures the session-info placeholder and sends it to
-  /// ScreenPlaceholderRenderer (native side) so the recorded placeholder
-  /// (and, if re-shown, the post-share placeholder) shows real session
-  /// info — teacher, current speaker, session title, logo, and joined
-  /// participants (name + photo) — instead of a flat color. Failures are
-  /// logged and swallowed — this is cosmetic, never worth failing session
-  /// start over.
-  ///
-  /// [speakerName] and [participants] are optional so existing call sites
-  /// don't need to change: when omitted, the current active speaker (see
-  /// _activeSpeakerName) and the attended subset of _enrolledStudents are
-  /// used automatically.
-  Future<void> _sendPlaceholderImageToNative({
-    required String teacherName,
-    required String sessionTitle,
-    required int participantCount,
-    String? speakerName,
-    List<EnrolledStudent>? participants,
-  }) async {
-    try {
-      final png = await _capturePlaceholderPng(
-        teacherName: teacherName,
-        sessionTitle: sessionTitle,
-        participantCount: participantCount,
-        speakerName: speakerName ?? _activeSpeakerName(),
-        participants: participants ??
-            _enrolledStudents.where((s) => s.isAttended).toList(),
-      );
-      if (png == null) {
-        log('[REC] placeholder capture returned null — skipping');
-        return;
-      }
-      // setPlaceholderImage is handled on CH_RECORDER
-      // ('.../native_recorder') in MainActivity.kt, not CH_SCREEN_SHARE —
-      // calling it on screen_share hit result.notImplemented() there and
-      // threw MissingPluginException every session, so the placeholder
-      // bitmap never reached ScreenPlaceholderRenderer.
-      await const MethodChannel(
-        'com.example.flutter_education_app/native_recorder',
-      ).invokeMethod('setPlaceholderImage', {'png': png});
-      log('[REC] placeholder image sent to native (${png.length} bytes)');
-    } catch (e) {
-      log('[REC] _sendPlaceholderImageToNative error: $e');
-    }
+  /// Web: sends one screenshot of the real main stage to the JS compositor
+  /// — only meaningful (and only called) when the main stage is genuinely
+  /// showing the waiting card, not the camera: a live camera feed on web
+  /// is an HTML <video> platform view, invisible to Flutter's own capture,
+  /// and already reaches the recording correctly via the compositor's own
+  /// addStream(stream, 'camera') — pushing a screenshot over that would at
+  /// best do nothing and at worst fight with the compositor's own drawing
+  /// (recorder_compositor.js's actual precedence between a pushed
+  /// placeholder image and a live attached stream isn't visible from these
+  /// files, so this deliberately stays out of that camera-on case).
+  /// Requires recorder_compositor.js to implement 'setPlaceholderImage' —
+  /// see _compositorSetPlaceholderImage's doc comment in
+  /// recorder_web_impl.dart.
+  Future<void> _sendMainStagePlaceholderWeb() async {
+    if (!kIsWeb || !widget.isTeacher) return;
+    final local = widget.room.localParticipant;
+    if (local?.isScreenShareEnabled() == true) return;
+    if (local?.isCameraEnabled() == true) return;
+    final png = await _captureMainStagePng();
+    if (png == null) return;
+    _recorder?.setPlaceholderImage(png);
+    log('[REC] placeholder image sent to web compositor (${png.length} bytes)');
+  }
+
+  Timer? _webPlaceholderDebounce;
+
+  /// Debounced trigger for Web's single-shot send — hooked into the same
+  /// ParticipantEvent listener as _maybeSyncMainStageCapture, so speaker
+  /// changes, participants joining, and camera/share toggles all re-sync
+  /// it without re-capturing on every single event.
+  void _maybeRefreshWebPlaceholder() {
+    if (!kIsWeb || !widget.isTeacher) return;
+    _webPlaceholderDebounce?.cancel();
+    _webPlaceholderDebounce = Timer(
+      const Duration(milliseconds: 1200),
+          () => unawaited(_sendMainStagePlaceholderWeb()),
+    );
   }
 
   Future<void> _startRecorderOnce() async {
@@ -1197,15 +1142,24 @@ class _RoomPageState extends State<RoomPage>
 
     if (kIsWeb) {
       final local = widget.room.localParticipant;
+      final teacherName = local?.name.isNotEmpty == true
+          ? local!.name
+          : (local?.identity ?? '');
+      final sessionTitle = widget.sessionName ?? 'حصة مباشرة';
+      final participantCount = widget.room.remoteParticipants.length + 1;
       await _recorder!.startWebCompositor(
-        teacherName: local?.name.isNotEmpty == true
-            ? local!.name
-            : (local?.identity ?? ''),
-        sessionTitle: widget.sessionName ?? 'حصة مباشرة',
+        teacherName: teacherName,
+        sessionTitle: sessionTitle,
         // +1 to include the local participant (teacher) themselves —
         // remoteParticipants only counts everyone else in the room.
-        participantCount: widget.room.remoteParticipants.length + 1,
+        participantCount: participantCount,
       );
+      // Screenshots the real on-screen waiting card (if that's what's
+      // showing — see _sendMainStagePlaceholderWeb's doc comment for why
+      // camera-on is deliberately skipped here) and sends it to the web
+      // compositor, so the placeholder matches Android/iOS exactly instead
+      // of the compositor's own separately hand-drawn one.
+      unawaited(_sendMainStagePlaceholderWeb());
       return;
     }
 
@@ -1225,14 +1179,11 @@ class _RoomPageState extends State<RoomPage>
     // already uses — sent once here so the native placeholder shows the
     // real session info instead of a flat color.
     if (Platform.isAndroid) {
-      final local = widget.room.localParticipant;
-      unawaited(_sendPlaceholderImageToNative(
-        teacherName: local?.name.isNotEmpty == true
-            ? local!.name
-            : (local?.identity ?? ''),
-        sessionTitle: widget.sessionName ?? 'حصة مباشرة',
-        participantCount: widget.room.remoteParticipants.length + 1,
-      ));
+      // Starts the periodic real-screenshot capture (see
+      // _startMainStageCapture) — whatever's genuinely on screen (waiting
+      // card or camera view) is sent from the very first tick, no separate
+      // one-shot send needed here.
+      _startMainStageCapture();
       return;
     }
 
@@ -1469,7 +1420,17 @@ class _RoomPageState extends State<RoomPage>
                               borderRadius: const BorderRadius.all(
                                 Radius.circular(20),
                               ),
-                              child: _buildMainVideo(),
+                              // RepaintBoundary here (not around a
+                              // separately-built duplicate widget) is what
+                              // makes the Android recording placeholder an
+                              // actual screenshot of the live main stage —
+                              // camera view, waiting card, or whatever else
+                              // is genuinely on screen — instead of a
+                              // recreation. See _captureAndSendMainStage.
+                              child: RepaintBoundary(
+                                key: _mainStageCaptureKey,
+                                child: _buildMainVideo(),
+                              ),
                             ),
 
                             // Thumbnail strip
@@ -1698,6 +1659,13 @@ class _RoomPageState extends State<RoomPage>
         sessionTitle: widget.sessionName,
         speakerName: _activeSpeakerName(),
         participants: _enrolledStudents.where((s) => s.isAttended).toList(),
+        // Shown live too now (not just in the recording) — since the
+        // recording is a direct screenshot of this exact widget, true
+        // parity means whatever appears in the recording appears live,
+        // and vice versa. A small corner logo live is a reasonable,
+        // unobtrusive touch; revert to the default (false) if you'd
+        // rather keep it recording-only.
+        showLogo: true,
       );
     }
 
@@ -3638,7 +3606,7 @@ class _ScreenShareAuroraPainter extends CustomPainter {
 // message with animated aurora + pulse ring — all matching the room design.
 //
 // Also reused, unchanged, as the frozen recording placeholder on Android
-// (see _capturePlaceholderPng) — this is the single source of truth for
+// (see _captureAndSendMainStage / _sendMainStagePlaceholderWeb) — this is the single source of truth for
 // "what does the app show when there's nothing else to display", so the
 // recorded video and the live in-app view are guaranteed to look the same,
 // and both match what iOS's own screen recording captures naturally (iOS

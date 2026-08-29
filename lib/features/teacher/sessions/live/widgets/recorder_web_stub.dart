@@ -24,6 +24,7 @@ class WebRecorder {
   void resume() {}
   void addStream(Object? stream, String label) {}
   void removeStream(String label) {}
+  void setPlaceholderImage(Uint8List png) {}
   void requestData() {}
   bool get hadRealData => false;
   int get chunksUploaded => 0;
