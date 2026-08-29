@@ -573,6 +573,25 @@ class ScreenCaptureService : Service() {
                     placeholderRenderer!!.inputSurface, null, null,
             )
             Log.d(TAG, "VirtualDisplay created (live) ${screenWidth}x${screenHeight}@${screenDpi}dpi")
+
+            // Work around a well-known MediaProjection quirk: SurfaceFlinger
+            // only pushes a mirrored frame into the VirtualDisplay's target
+            // Surface when the real screen actually redraws. If nothing on
+            // screen changes right after the grant, ScreenPlaceholderRenderer's
+            // onFrameAvailable() never fires, haveLiveFrame stays false, and
+            // drawLiveFrame() keeps clearing to solid black indefinitely —
+            // which is exactly what both the recording and the live share
+            // end up showing. A tiny resize immediately after creation forces
+            // SurfaceFlinger to recompose and deliver an initial frame
+            // regardless of on-screen activity.
+            mainHandler.postDelayed({
+                try {
+                    virtualDisplay?.resize(screenWidth, screenHeight - 2, screenDpi)
+                    virtualDisplay?.resize(screenWidth, screenHeight, screenDpi)
+                } catch (e: Exception) {
+                    Log.w(TAG, "initial-frame resize kick failed: ${e.message}")
+                }
+            }, 150)
         } catch (e: Exception) {
             Log.e(TAG, "createVirtualDisplay failed: ${e.message}", e)
             mainHandler.post {

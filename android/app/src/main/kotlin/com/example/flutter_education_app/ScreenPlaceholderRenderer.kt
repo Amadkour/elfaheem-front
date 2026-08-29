@@ -413,6 +413,29 @@ class ScreenPlaceholderRenderer(
             drawPlaceholderBitmapAspectFit()
         }
 
+        // Forward the placeholder to the live capturer too (same sink
+        // drawLiveFrame() uses), not just the local recording encoder.
+        // Previously only drawLiveFrame() called onLiveFrameForCapturer, so
+        // the ElFaheem-backed LiveKit video track — if published before
+        // Share starts — never received ANY frame while in placeholder
+        // mode and remote viewers saw a black/empty tile from session
+        // start until the teacher actually shared their screen. Now the
+        // live track shows the real placeholder graphic the whole time,
+        // and switchToLive() transparently swaps it for real screen
+        // content once Share is granted, with no republish needed.
+        //
+        // CRITICAL ORDERING: glReadPixels MUST happen before
+        // eglSwapBuffers — see the identical note in drawLiveFrame().
+        onLiveFrameForCapturer?.let { sink ->
+            val buf = ByteBuffer.allocateDirect(outputWidth * outputHeight * 4)
+                    .order(ByteOrder.nativeOrder())
+            GLES20.glReadPixels(
+                    0, 0, outputWidth, outputHeight,
+                    GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buf)
+            buf.position(0)
+            sink(outputWidth, outputHeight, buf)
+        }
+
         EGL14.eglSwapBuffers(eglDisplay, outputSurface)
     }
 

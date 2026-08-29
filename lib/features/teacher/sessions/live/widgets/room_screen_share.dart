@@ -273,8 +273,13 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
       // the MediaProjection grant alive so re-tapping Share needs no new
       // dialog, just stops drawing live frames into the recording/capturer).
       try {
+        // revertToPlaceholder is handled on CH_RECORDER
+        // ('.../native_recorder') in MainActivity.kt, not CH_SCREEN_SHARE —
+        // this was silently throwing MissingPluginException every time
+        // Share was stopped, so the recording/live frames never actually
+        // switched back to the placeholder after a share ended.
         await const MethodChannel(
-          'com.example.flutter_education_app/screen_share',
+          'com.example.flutter_education_app/native_recorder',
         ).invokeMethod('revertToPlaceholder');
         log('[SS] Android: recording reverted to placeholder');
       } catch (e) {

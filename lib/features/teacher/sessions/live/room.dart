@@ -605,6 +605,7 @@ class _RoomPageState extends State<RoomPage>
     _quizPollTimer?.cancel();
     _quizTimer?.cancel();
     _recClockTimer?.cancel();
+    _speakerRefreshDebounce?.cancel();
     // Recorder: if user exits without pressing End Session (e.g. back-swipe),
     // stop the camera fast and drain remaining uploads in the background.
     if (_recorder != null) {
@@ -869,6 +870,55 @@ class _RoomPageState extends State<RoomPage>
     });
   }
 
+  // ── Placeholder card: live speaker tracking ─────────────────────────────
+  // The recording placeholder's "speaker" (see _SessionPlaceholderCard) is
+  // whoever is currently talking — it changes as different participants
+  // speak, unlike teacherName/sessionTitle which are static for the whole
+  // session. We can't re-capture on every isSpeaking flicker (expensive:
+  // widget capture + PNG encode + platform-channel round trip), so this is
+  // debounced and skipped entirely while a real screen share is live (the
+  // placeholder isn't shown then anyway).
+  Timer? _speakerRefreshDebounce;
+  String? _lastCapturedSpeakerName;
+
+  /// Whoever currently has isSpeaking==true, preferring the loudest
+  /// (highest audioLevel) if more than one. Falls back to the teacher
+  /// (local participant) when nobody is actively speaking, since the
+  /// teacher is the default presenter.
+  String _activeSpeakerName() {
+    final local = widget.room.localParticipant;
+    final all = <Participant>[
+      if (local != null) local,
+      ...widget.room.remoteParticipants.values,
+    ];
+    final speaking = all.where((p) => p.isSpeaking).toList()
+      ..sort((a, b) => b.audioLevel.compareTo(a.audioLevel));
+    final speaker = speaking.firstOrNull ?? local;
+    final name = speaker?.name ?? '';
+    return name.isNotEmpty ? name : (speaker?.identity ?? '');
+  }
+
+  void _maybeRefreshPlaceholderSpeaker() {
+    if (!widget.isTeacher || !Platform.isAndroid) return;
+    // Skip while actually screen-sharing — the placeholder (and its
+    // speaker badge) isn't what's being shown/recorded then.
+    if (widget.room.localParticipant?.isScreenShareEnabled() == true) return;
+    _speakerRefreshDebounce?.cancel();
+    _speakerRefreshDebounce = Timer(const Duration(milliseconds: 1200), () {
+      final name = _activeSpeakerName();
+      if (name == _lastCapturedSpeakerName) return; // no real change
+      _lastCapturedSpeakerName = name;
+      final local = widget.room.localParticipant;
+      unawaited(_sendPlaceholderImageToNative(
+        teacherName: local?.name.isNotEmpty == true
+            ? local!.name
+            : (local?.identity ?? ''),
+        sessionTitle: widget.sessionName ?? 'حصة مباشرة',
+        participantCount: widget.room.remoteParticipants.length + 1,
+      ));
+    });
+  }
+
   // ── Listeners ──────────────────────────────────────────────────────────────
   void _setUpListeners() => _listener
     ..on<RoomConnectedEvent>((_) async {
@@ -896,7 +946,10 @@ class _RoomPageState extends State<RoomPage>
         if (mounted) Navigator.pop(context);
       });
     })
-    ..on<ParticipantEvent>((_) => _sortParticipants())
+    ..on<ParticipantEvent>((_) {
+      _sortParticipants();
+      _maybeRefreshPlaceholderSpeaker();
+    })
     ..on<RoomRecordingStatusChanged>((event) {
       if (mounted) setState(() => _serverRecording = event.activeRecording);
       unawaited(
@@ -958,7 +1011,19 @@ class _RoomPageState extends State<RoomPage>
     required String teacherName,
     required String sessionTitle,
     required int participantCount,
+    required String speakerName,
+    required List<EnrolledStudent> participants,
   }) async {
+    // Network avatar images must actually finish loading before
+    // RepaintBoundary.toImage() runs, or the card captures blank circles.
+    // precacheImage resolves once each image is decoded and in the cache.
+    await Future.wait([
+      for (final p in participants)
+        if (p.imageUrl != null && p.imageUrl!.isNotEmpty)
+          precacheImage(NetworkImage(p.imageUrl!), context)
+              .catchError((_) {}), // missing/broken avatar → initials fallback
+    ]);
+
     final boundaryKey = GlobalKey();
     final overlay = Overlay.of(context, rootOverlay: true);
     late OverlayEntry entry;
@@ -981,6 +1046,8 @@ class _RoomPageState extends State<RoomPage>
               teacherName: teacherName,
               sessionTitle: sessionTitle,
               participantCount: participantCount,
+              speakerName: speakerName,
+              participants: participants,
             ),
           ),
         ),
@@ -1038,25 +1105,42 @@ class _RoomPageState extends State<RoomPage>
   /// Captures the session-info placeholder and sends it to
   /// ScreenPlaceholderRenderer (native side) so the recorded placeholder
   /// (and, if re-shown, the post-share placeholder) shows real session
-  /// info instead of a flat color. Failures are logged and swallowed —
-  /// this is cosmetic, never worth failing session start over.
+  /// info — teacher, current speaker, session title, logo, and joined
+  /// participants (name + photo) — instead of a flat color. Failures are
+  /// logged and swallowed — this is cosmetic, never worth failing session
+  /// start over.
+  ///
+  /// [speakerName] and [participants] are optional so existing call sites
+  /// don't need to change: when omitted, the current active speaker (see
+  /// _activeSpeakerName) and the attended subset of _enrolledStudents are
+  /// used automatically.
   Future<void> _sendPlaceholderImageToNative({
     required String teacherName,
     required String sessionTitle,
     required int participantCount,
+    String? speakerName,
+    List<EnrolledStudent>? participants,
   }) async {
     try {
       final png = await _capturePlaceholderPng(
         teacherName: teacherName,
         sessionTitle: sessionTitle,
         participantCount: participantCount,
+        speakerName: speakerName ?? _activeSpeakerName(),
+        participants: participants ??
+            _enrolledStudents.where((s) => s.isAttended).toList(),
       );
       if (png == null) {
         log('[REC] placeholder capture returned null — skipping');
         return;
       }
+      // setPlaceholderImage is handled on CH_RECORDER
+      // ('.../native_recorder') in MainActivity.kt, not CH_SCREEN_SHARE —
+      // calling it on screen_share hit result.notImplemented() there and
+      // threw MissingPluginException every session, so the placeholder
+      // bitmap never reached ScreenPlaceholderRenderer.
       await const MethodChannel(
-        'com.example.flutter_education_app/screen_share',
+        'com.example.flutter_education_app/native_recorder',
       ).invokeMethod('setPlaceholderImage', {'png': png});
       log('[REC] placeholder image sent to native (${png.length} bytes)');
     } catch (e) {
@@ -3790,11 +3874,11 @@ class _PremiumWaitingPlaceholderState
 // ─────────────────────────────────────────────────────────────────────────────
 // _SessionPlaceholderCard — recording placeholder (Android, pre-Share)
 //
-// Captured once (or whenever session info changes) as a static PNG and sent
-// to ScreenPlaceholderRenderer.kt, which displays it in the recorded video
-// (and live-share, if reverted to placeholder) before real screen content
-// is available. Deliberately static — no animation, since only a single
-// frame is ever captured — reusing the same avatar/name/color treatment as
+// Captured once at session start, and again (debounced) whenever the active
+// speaker changes — see _maybeRefreshPlaceholderSpeaker — as a static PNG
+// sent to ScreenPlaceholderRenderer.kt, which displays it in the recorded
+// video (and live-share, if reverted to placeholder) before real screen
+// content is available. Reuses the same avatar/name/color treatment as
 // _PremiumWaitingPlaceholder above for visual consistency with the rest of
 // the app, minus the pulsing ring / aurora background that only make sense
 // live.
@@ -3809,105 +3893,274 @@ class _SessionPlaceholderCard extends StatelessWidget {
     required this.teacherName,
     required this.sessionTitle,
     required this.participantCount,
+    required this.speakerName,
+    required this.participants,
   });
 
   final String teacherName;
   final String sessionTitle;
   final int participantCount;
+  // Whoever is currently talking (changes live — see _activeSpeakerName).
+  // Shown as its own badge only when it differs from the teacher; when the
+  // teacher is the one speaking, the teacher block itself carries the "on
+  // air" indicator instead of a redundant second name.
+  final String speakerName;
+  // Currently-attended participants (name + optional photo) — capped to a
+  // handful of avatars plus a "+N" overflow chip so the card stays legible
+  // regardless of class size.
+  final List<EnrolledStudent> participants;
 
-  @override
-  Widget build(BuildContext context) {
-    final initials = teacherName.trim().isNotEmpty
-        ? teacherName
-        .trim()
+  static String _initialsOf(String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return '؟';
+    return trimmed
         .split(RegExp(r'\s+'))
         .take(2)
         .map((w) => w[0].toUpperCase())
-        .join()
-        : '؟';
+        .join();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isTeacherSpeaking =
+        speakerName.trim().isEmpty || speakerName.trim() == teacherName.trim();
+    const maxAvatars = 6;
+    final shown = participants.take(maxAvatars).toList();
+    final overflow = participants.length - shown.length;
 
     return SizedBox(
       width: 1280,
       height: 720,
       child: Container(
         color: _bg,
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 140,
-                height: 140,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [_cyan, _indigo],
+        padding: const EdgeInsets.all(48),
+        child: Stack(
+          children: [
+            // App logo, top-left. Update this path if your project's
+            // pubspec.yaml declares the logo under a different asset key.
+            Positioned(
+              top: 0,
+              left: 0,
+              child: Image.asset(
+                'assets/images/app_logo.png',
+                height: 56,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
+            ),
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 140,
+                        height: 140,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [_cyan, _indigo],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _cyan.withValues(alpha: 0.35),
+                              blurRadius: 40,
+                              spreadRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            _initialsOf(teacherName),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 48,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ),
+                      ),
+                      // "On air" ring shown on the teacher's own avatar
+                      // when they're the one currently talking.
+                      if (isTeacherSpeaking)
+                        Positioned(
+                          bottom: -2,
+                          right: -2,
+                          child: Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _emerald,
+                              border: Border.all(color: _bg, width: 4),
+                            ),
+                            child: const Icon(Icons.mic,
+                                size: 16, color: Colors.black87),
+                          ),
+                        ),
+                    ],
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _cyan.withValues(alpha: 0.35),
-                      blurRadius: 40,
-                      spreadRadius: 4,
+                  const SizedBox(height: 28),
+                  Text(
+                    teacherName,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontFamily: 'tajawal',
+                      color: _textHigh,
+                      fontSize: 32,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'المعلم',
+                    style: const TextStyle(
+                      fontFamily: 'tajawal',
+                      color: _textLow,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  // Distinct "currently speaking" badge — only rendered
+                  // when someone other than the teacher is talking, so the
+                  // card doesn't show two redundant "teacher" labels.
+                  if (!isTeacherSpeaking) ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: _emerald.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(999),
+                        border:
+                        Border.all(color: _emerald.withValues(alpha: 0.5)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.graphic_eq,
+                              size: 16, color: _emerald),
+                          const SizedBox(width: 8),
+                          Text(
+                            'يتحدث الآن: $speakerName',
+                            style: const TextStyle(
+                              fontFamily: 'tajawal',
+                              color: _emerald,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
-                ),
-                child: Center(
-                  child: Text(
-                    initials,
+                  const SizedBox(height: 18),
+                  Text(
+                    sessionTitle,
+                    textAlign: TextAlign.center,
                     style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 48,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1,
+                      fontFamily: 'tajawal',
+                      color: _textMid,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 28),
-              Text(
-                teacherName,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontFamily: 'tajawal',
-                  color: _textHigh,
-                  fontSize: 32,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.2,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                sessionTitle,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontFamily: 'tajawal',
-                  color: _textMid,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 18),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-                decoration: BoxDecoration(
-                  color: _surfaceHi,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: _cyan.withValues(alpha: 0.4)),
-                ),
-                child: Text(
-                  '$participantCount مشارك',
-                  style: const TextStyle(
-                    fontFamily: 'tajawal',
-                    color: _cyan,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
+                  const SizedBox(height: 22),
+                  // Participants: real avatars + names instead of a bare
+                  // count, capped with a "+N" overflow chip.
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final p in shown)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircleAvatar(
+                                radius: 26,
+                                backgroundColor: _surfaceHi,
+                                backgroundImage: (p.imageUrl != null &&
+                                    p.imageUrl!.isNotEmpty)
+                                    ? NetworkImage(p.imageUrl!)
+                                    : null,
+                                child: (p.imageUrl == null ||
+                                    p.imageUrl!.isEmpty)
+                                    ? Text(
+                                  _initialsOf(p.name),
+                                  style: const TextStyle(
+                                    color: _cyan,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                )
+                                    : null,
+                              ),
+                              const SizedBox(height: 6),
+                              SizedBox(
+                                width: 68,
+                                child: Text(
+                                  p.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontFamily: 'tajawal',
+                                    color: _textMid,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (overflow > 0)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          child: CircleAvatar(
+                            radius: 26,
+                            backgroundColor: _surfaceHi,
+                            child: Text(
+                              '+$overflow',
+                              style: const TextStyle(
+                                color: _textMid,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                ),
+                  const SizedBox(height: 14),
+                  Container(
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _surfaceHi,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: _cyan.withValues(alpha: 0.4)),
+                    ),
+                    child: Text(
+                      '$participantCount مشارك',
+                      style: const TextStyle(
+                        fontFamily: 'tajawal',
+                        color: _cyan,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
