@@ -58,8 +58,10 @@ enum ProviderState { idle, loading, success, error }
 
   // ── Core runner ────────────────────────────────────────────────────────────
 
-  Future<T?> run<T>(Future<T> Function() fn) async {
-    _setProviderState(ProviderState.loading);
+  Future<T?> run<T>(Future<T> Function() fn,{bool makLoading=true}) async {
+    if(makLoading) {
+      _setProviderState(ProviderState.loading);
+    }
 
     int attempt = 0;
 

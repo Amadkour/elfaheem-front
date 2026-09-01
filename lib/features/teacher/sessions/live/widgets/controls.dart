@@ -65,6 +65,7 @@ class ControlsWidget extends StatefulWidget {
 class _ControlsWidgetState extends State<ControlsWidget>
     with SingleTickerProviderStateMixin {
   CameraPosition position = CameraPosition.front;
+  bool _camActionBusy = false; // true while the camera on/off/flip cycle is in flight
 
   List<MediaDevice>? _audioInputs;
   List<MediaDevice>? _audioOutputs;
@@ -127,17 +128,109 @@ class _ControlsWidgetState extends State<ControlsWidget>
     setState(() {});
   }
 
-  void _flipCamera() async {
-    final track = participant.videoTrackPublications
-        .where((p) => !p.isScreenShare && p.track != null)
-        .firstOrNull
-        ?.track;
-    if (track == null) return;
+  // ── Camera: two independent controls ────────────────────────────────────
+  // Button 1 — on/off: enabled whenever at least one camera (front or
+  // back) is available. Button 2 — front/back flip: only shown at all when
+  // a back camera actually exists (see _hasBackCamera). "back" always
+  // auto-selects the best available rear lens (see _bestBackCameraDevice)
+  // rather than whatever the OS/SDK's own default facing-mode pick is,
+  // which on multi-camera phones isn't guaranteed to be the main sensor.
+  bool get _hasAnyCamera => _videoInputs == null || _videoInputs!.isNotEmpty;
+  bool get _hasBackCamera => _bestBackCameraDevice() != null;
+
+  void _toggleCameraOnOff() async {
+    if (_camActionBusy) return;
+    if (mounted) setState(() => _camActionBusy = true);
     try {
-      final next = position.switched();
-      await track.setCameraPosition(next);
-      if (mounted) setState(() => position = next);
-    } catch (e) { log('flip camera: $e'); }
+      final isCamOn = participant.isCameraEnabled();
+      if (!isCamOn) {
+        // Always resume on front by default.
+        position = CameraPosition.front;
+        await participant.setCameraEnabled(true);
+        // setCameraEnabled(true) uses whichever default the SDK/OS
+        // resolves to, which isn't guaranteed to be "front" on every
+        // platform — pin it explicitly once the track exists.
+        final track = _localCameraTrack();
+        if (track != null) {
+          await track.setCameraPosition(CameraPosition.front);
+        }
+      } else {
+        await participant.setCameraEnabled(false);
+      }
+    } catch (e) {
+      log('toggle camera on/off: $e');
+    } finally {
+      if (mounted) setState(() => _camActionBusy = false);
+    }
+  }
+
+  void _toggleFrontBack() async {
+    if (_camActionBusy) return;
+    if (mounted) setState(() => _camActionBusy = true);
+    try {
+      if (position == CameraPosition.back) {
+        final track = _localCameraTrack();
+        await track?.setCameraPosition(CameraPosition.front);
+        if (mounted) setState(() => position = CameraPosition.front);
+      } else {
+        await _switchToBestBackCamera();
+      }
+    } catch (e) {
+      log('toggle front/back: $e');
+    } finally {
+      if (mounted) setState(() => _camActionBusy = false);
+    }
+  }
+
+  LocalVideoTrack? _localCameraTrack() => participant.videoTrackPublications
+      .where((p) => !p.isScreenShare && p.track != null)
+      .firstOrNull
+      ?.track;
+
+  /// Best-effort: finds the primary (non-ultra-wide/telephoto/macro) rear
+  /// camera from enumerated devices. Camera labels aren't standardized
+  /// across devices/OSes/browsers, so this is a heuristic — it prefers a
+  /// device explicitly excluded from known secondary-lens keywords, and
+  /// otherwise falls back to enumeration order, since Android's camera ID
+  /// 0 (almost always enumerated first) is conventionally the main rear
+  /// sensor, with ultra-wide/telephoto/macro lenses assigned higher IDs.
+  /// Also doubles as the "does a back camera exist at all" check for
+  /// _hasBackCamera, gating whether the flip button shows up.
+  MediaDevice? _bestBackCameraDevice() {
+    final inputs = _videoInputs;
+    if (inputs == null || inputs.isEmpty) return null;
+    final backs = inputs.where((d) {
+      final l = d.label.toLowerCase();
+      return l.contains('back') || !l.contains('front');
+    }).toList();
+    if (backs.isEmpty) return null;
+    const secondaryLensHints = [
+      'ultra', 'wide-angle', 'wide angle', 'macro', 'tele', 'zoom', 'depth',
+    ];
+    final primary = backs.where((d) {
+      final l = d.label.toLowerCase();
+      return !secondaryLensHints.any(l.contains);
+    }).toList();
+    return (primary.isNotEmpty ? primary : backs).first;
+  }
+
+  Future<void> _switchToBestBackCamera() async {
+    final device = _bestBackCameraDevice();
+    try {
+      if (device != null) {
+        await widget.room.setVideoInputDevice(device);
+      } else {
+        // No usable label info to pick from — fall back to plain
+        // facing-mode selection, which is at least correct on
+        // single/dual rear-camera devices even if it can't guarantee the
+        // main sensor on more complex multi-lens setups.
+        final track = _localCameraTrack();
+        await track?.setCameraPosition(CameraPosition.back);
+      }
+      if (mounted) setState(() => position = CameraPosition.back);
+    } catch (e) {
+      log('switch to back camera: $e');
+    }
   }
 
   // ── Screen share ───────────────────────────────────────────────────────────
@@ -257,15 +350,8 @@ class _ControlsWidgetState extends State<ControlsWidget>
         // ── Camera ────────────────────────────────────────────────────────
         _buildCamButton(isCamOn),
 
-        // ── Flip camera ───────────────────────────────────────────────────
-        if (isCamOn) _CtrlButton(
-          icon: position == CameraPosition.back
-              ? Icons.video_camera_back_rounded
-              : Icons.video_camera_front_rounded,
-          label: 'Flip',
-          color: _textLow,
-          onTap: _flipCamera,
-        ),
+        // ── Front/Back flip — only shown if a back camera actually exists ──
+        if (isCamOn && _hasBackCamera) _buildFlipButton(),
 
         // ── Speakerphone (mobile) ─────────────────────────────────────────
         if (!kIsWeb && lkPlatformIsMobile())
@@ -282,18 +368,19 @@ class _ControlsWidgetState extends State<ControlsWidget>
         if (!lkPlatformIsMobile())
           _buildAudioOutputButton(),
 
-        // ── Screen share ──────────────────────────────────────────────────
-        _CtrlButton(
-          icon: _screenShareBusy
-              ? null
-              : isSharing
-              ? Icons.desktop_access_disabled_outlined
-              : Icons.monitor_outlined,
-          label: isSharing ? 'Stop Share' : 'Share',
-          color: isSharing ? _rose : _textLow,
-          loading: _screenShareBusy,
-          onTap: _screenShareBusy ? null : _onScreenShareToggle,
-        ),
+        // ── Screen share (teacher only) ─────────────────────────────────────
+        if (widget.isTeacher)
+          _CtrlButton(
+            icon: _screenShareBusy
+                ? null
+                : isSharing
+                ? Icons.desktop_access_disabled_outlined
+                : Icons.monitor_outlined,
+            label: isSharing ? 'Stop Share' : 'Share',
+            color: isSharing ? _rose : _textLow,
+            loading: _screenShareBusy,
+            onTap: _screenShareBusy ? null : _onScreenShareToggle,
+          ),
 
         // ── NEW: Pause / Resume recording (teacher only) ──────────────────
         if (widget.isTeacher) _buildRecordingToggleButton(),
@@ -392,30 +479,46 @@ class _ControlsWidgetState extends State<ControlsWidget>
     );
   }
 
-  // ── Camera button (with popup for device selection) ───────────────────────
+  // ── Camera on/off button ─────────────────────────────────────────────────
+  // Enabled whenever at least one camera (front or back) is available;
+  // shown but disabled (greyed, no-op) otherwise, matching how other
+  // controls in this bar handle unavailability rather than disappearing
+  // outright.
   Widget _buildCamButton(bool isCamOn) {
-    return _PopupCtrlButton(
-      icon: isCamOn ? Icons.videocam_rounded : Icons.videocam_off_rounded,
+    final busy = _camActionBusy;
+    return _CtrlButton(
+      icon: busy
+          ? null
+          : isCamOn
+          ? Icons.videocam_rounded
+          : Icons.videocam_off_rounded,
       label: isCamOn ? 'Camera' : 'Cam Off',
-      color: isCamOn ? _cyan : _rose,
-      items: [
-        _PopupItem(
-          icon: isCamOn ? Icons.videocam_off_rounded : Icons.videocam_rounded,
-          label: isCamOn ? 'Disable camera' : 'Enable camera',
-          onTap: isCamOn ? _disableVideo : _enableVideo,
-        ),
-        if (_videoInputs != null)
-          ..._videoInputs!.map((d) => _PopupItem(
-            icon: d.deviceId == widget.room.selectedVideoInputDeviceId
-                ? Icons.radio_button_checked_rounded
-                : Icons.radio_button_off_rounded,
-            iconColor: d.deviceId == widget.room.selectedVideoInputDeviceId
-                ? _cyan
-                : _textLow,
-            label: d.label.isNotEmpty ? d.label : 'Camera',
-            onTap: () => _selectVideoInput(d),
-          )),
-      ],
+      color: !_hasAnyCamera
+          ? _textLow
+          : isCamOn
+          ? _cyan
+          : _rose,
+      loading: busy,
+      onTap: (busy || !_hasAnyCamera) ? null : _toggleCameraOnOff,
+    );
+  }
+
+  // ── Front/Back flip button ───────────────────────────────────────────────
+  // Only ever built when isCamOn && _hasBackCamera (see the call site in
+  // build()) — a device with just one camera never shows this at all.
+  Widget _buildFlipButton() {
+    final busy = _camActionBusy;
+    final isBack = position == CameraPosition.back;
+    return _CtrlButton(
+      icon: busy
+          ? null
+          : isBack
+          ? Icons.camera_front_rounded
+          : Icons.camera_rear_rounded,
+      label: isBack ? 'Front' : 'Back',
+      color: _textLow,
+      loading: busy,
+      onTap: busy ? null : _toggleFrontBack,
     );
   }
 
@@ -537,8 +640,8 @@ class _CtrlButton extends StatelessWidget {
           ),
           child: loading
               ? Padding(
-            padding: const EdgeInsets.all(14),
-            child: AppLoadingIndicator())
+              padding: const EdgeInsets.all(14),
+              child: AppLoadingIndicator())
               : Icon(icon, color: effectiveColor, size: 22),
         ),
         const SizedBox(height: 5),

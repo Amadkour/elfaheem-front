@@ -391,6 +391,26 @@ class _RoomPageState extends State<RoomPage>
   int _recElapsedSeconds = 0;
   DateTime? _recClockStart; // wall-clock when the current run started
 
+  // ── Total session clock ────────────────────────────────────────────────
+  // Separate from the recording clock above: starts once when the room
+  // connects and runs continuously for the whole session — never paused,
+  // never reset, regardless of recording pause/resume/stop. Visible to
+  // every participant (not gated by isTeacher like the recording badge),
+  // since "how long has this session been going" is meaningful to
+  // everyone, not just whoever's recording.
+  Timer? _sessionClockTimer;
+  int _sessionElapsedSeconds = 0;
+
+  void _startSessionClock() {
+    if (_sessionClockTimer != null) return; // already ticking — RoomConnectedEvent shouldn't fire twice, but be safe
+    _sessionClockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) { _sessionClockTimer?.cancel(); _sessionClockTimer = null; return; }
+      setState(() => _sessionElapsedSeconds++);
+    });
+  }
+
+  String get _sessionElapsedLabel => _formatElapsed(_sessionElapsedSeconds);
+
   // Participant panel
   bool _showParticipants = false;
   List<EnrolledStudent> _enrolledStudents = [];
@@ -582,15 +602,17 @@ class _RoomPageState extends State<RoomPage>
     // When paused we keep _recElapsedSeconds so it resumes from where it left off.
   }
 
-  String get _recElapsedLabel {
-    final h = _recElapsedSeconds ~/ 3600;
-    final m = (_recElapsedSeconds % 3600) ~/ 60;
-    final s = _recElapsedSeconds % 60;
+  String _formatElapsed(int totalSeconds) {
+    final h = totalSeconds ~/ 3600;
+    final m = (totalSeconds % 3600) ~/ 60;
+    final s = totalSeconds % 60;
     if (h > 0) {
       return '${h.toString().padLeft(2,'0')}:${m.toString().padLeft(2,'0')}:${s.toString().padLeft(2,'0')}';
     }
     return '${m.toString().padLeft(2,'0')}:${s.toString().padLeft(2,'0')}';
   }
+
+  String get _recElapsedLabel => _formatElapsed(_recElapsedSeconds);
 
   @override
   void dispose() {
@@ -605,7 +627,8 @@ class _RoomPageState extends State<RoomPage>
     _quizPollTimer?.cancel();
     _quizTimer?.cancel();
     _recClockTimer?.cancel();
-    _mainStageCaptureTimer?.cancel();
+    _sessionClockTimer?.cancel();
+    _liveScreenCaptureTimer?.cancel();
     _webPlaceholderDebounce?.cancel();
     // Recorder: if user exits without pressing End Session (e.g. back-swipe),
     // stop the camera fast and drain remaining uploads in the background.
@@ -871,7 +894,7 @@ class _RoomPageState extends State<RoomPage>
     });
   }
 
-  // ── Recording placeholder: mirror the real live main stage ──────────────
+  // ── Recording placeholder: mirror the real live screen ──────────────
   // iOS records the real on-screen UI directly — whatever's genuinely
   // rendered (camera, waiting card, anything else) is what its recording
   // shows automatically, no extra code needed. Web's compositor already
@@ -880,20 +903,20 @@ class _RoomPageState extends State<RoomPage>
   // screenshot that HTML <video> platform view via RepaintBoundary even if
   // we wanted to, so the compositor's own drawing is the only way real
   // video gets into a web recording. Web only needs the placeholder-image
-  // swap (_sendMainStagePlaceholderWeb below) for the "nothing to show"
+  // swap (_sendLiveScreenPlaceholderWeb below) for the "nothing to show"
   // case.
   //
   // Android has no such path: its pre-Share recording is entirely
   // synthetic (a bitmap drawn by ScreenPlaceholderRenderer), so it needs
   // an explicit push of whatever should appear. Rather than recreating
   // camera-view/waiting-card/speaker-badge logic separately (as an earlier
-  // version of this did), this just periodically screenshots the ACTUAL
-  // on-screen main stage — see _mainStageCaptureKey's RepaintBoundary
-  // around _buildMainVideo() in build() — and sends that. Whatever's truly
-  // live (camera feed, the enriched waiting card with its speaker
-  // badge/participants, anything else _buildMainVideo() ever renders) is
-  // what gets sent, automatically, with no per-state branching to keep in
-  // sync by hand.
+  // version of this did), this periodically screenshots the ENTIRE live
+  // screen — see _liveScreenCaptureKey's RepaintBoundary wrapping the
+  // whole Scaffold body in build(): aurora background, recording
+  // indicator, thumbnail strip, PiP, the main video/waiting card, AND the
+  // controls bar footer — and sends that. Whatever's truly on screen is
+  // what gets sent, automatically, with no per-component or per-state
+  // branching to keep in sync by hand.
   //
   // KNOWN RISK: if _buildMainVideo() is currently showing
   // VideoTrackRenderer(renderMode: VideoRenderMode.texture) (camera view),
@@ -904,51 +927,71 @@ class _RoomPageState extends State<RoomPage>
   // come back black, that's this platform limitation, not a bug here, and
   // would need a native camera-frame-bridging patch instead (mirroring
   // how screen-share frames already reach ElFaheemBridge).
-  final GlobalKey _mainStageCaptureKey = GlobalKey();
-  Timer? _mainStageCaptureTimer;
+  final GlobalKey _liveScreenCaptureKey = GlobalKey();
+  Timer? _liveScreenCaptureTimer;
+  // Guards against overlapping captures: Timer.periodic does NOT wait for
+  // a tick's callback to finish before firing the next one. A full-screen
+  // RepaintBoundary.toImage() + PNG encode + platform-channel round trip
+  // is expensive enough (especially with a camera texture on screen) that
+  // it can occasionally take longer than the tick interval — without this
+  // guard, ticks pile up and never finish draining, which is exactly what
+  // freezes the main isolate. This was the actual bug behind camera+share
+  // freezing the app.
+  bool _liveScreenCaptureInFlight = false;
 
-  void _startMainStageCapture() {
+  void _startLiveScreenCapture() {
     if (!widget.isTeacher || !Platform.isAndroid) return;
-    _mainStageCaptureTimer?.cancel();
-    _mainStageCaptureTimer = Timer.periodic(
+    _liveScreenCaptureTimer?.cancel();
+    _liveScreenCaptureTimer = Timer.periodic(
       const Duration(milliseconds: 500), // ~2fps — see cost note above
-          (_) => unawaited(_captureAndSendMainStage()),
+          (_) => unawaited(_captureAndSendLiveScreen()),
     );
-    unawaited(_captureAndSendMainStage()); // don't wait for the first tick
+    unawaited(_captureAndSendLiveScreen()); // don't wait for the first tick
   }
 
-  void _stopMainStageCapture() {
-    _mainStageCaptureTimer?.cancel();
-    _mainStageCaptureTimer = null;
+  void _stopLiveScreenCapture() {
+    _liveScreenCaptureTimer?.cancel();
+    _liveScreenCaptureTimer = null;
   }
 
   /// Called from the ParticipantEvent listener so sharing starts/stops
   /// (which publish/unpublish a track, firing that event) pause/resume
   /// this without a direct cross-file call into room_screen_share.dart.
-  void _maybeSyncMainStageCapture() {
+  void _maybeSyncLiveScreenCapture() {
     if (!widget.isTeacher || !Platform.isAndroid) return;
     final sharing = widget.room.localParticipant?.isScreenShareEnabled() == true;
     if (sharing) {
-      _stopMainStageCapture();
-    } else if (_mainStageCaptureTimer == null) {
-      _startMainStageCapture();
+      _stopLiveScreenCapture();
+    } else if (_liveScreenCaptureTimer == null) {
+      _startLiveScreenCapture();
     }
   }
 
-  Future<void> _captureAndSendMainStage() async {
+  Future<void> _captureAndSendLiveScreen() async {
+    // Overlap guard — see _liveScreenCaptureInFlight's doc comment above.
+    if (_liveScreenCaptureInFlight) return;
+    // Re-check right before doing the expensive work, not just when the
+    // timer was scheduled: closes the gap between "sharing just started"
+    // and the ParticipantEvent handler actually cancelling this timer —
+    // without this, a tick already in flight (or one more queued tick)
+    // could still run its full capture/encode/IPC cost concurrently with
+    // the native screen-share pipeline right as it's starting up, which
+    // is exactly the moment device resources are tightest.
+    if (widget.room.localParticipant?.isScreenShareEnabled() == true) {
+      _stopLiveScreenCapture();
+      return;
+    }
+    _liveScreenCaptureInFlight = true;
     try {
-      final boundary = _mainStageCaptureKey.currentContext?.findRenderObject()
-      as RenderRepaintBoundary?;
-      if (boundary == null || boundary.debugNeedsPaint) return;
-      final image = await boundary.toImage(pixelRatio: 1.5);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      final png = byteData?.buffer.asUint8List();
+      final png = await _captureLiveScreenPng();
       if (png == null) return;
       await const MethodChannel(
         'com.example.flutter_education_app/native_recorder',
       ).invokeMethod('setPlaceholderImage', {'png': png});
     } catch (e) {
-      log('[REC] main-stage capture/send error: $e');
+      log('[REC] live screen capture/send error: $e');
+    } finally {
+      _liveScreenCaptureInFlight = false;
     }
   }
 
@@ -979,6 +1022,7 @@ class _RoomPageState extends State<RoomPage>
       // so the MediaProjection dialog appears AFTER the camera/mic are
       // already running (no race with LiveKit track setup).
       log("----------------------111");
+      _startSessionClock(); // everyone — total session time, not gated on isTeacher
       if (widget.isTeacher) await _startRecorderOnce();
     })
     ..on<RoomDisconnectedEvent>((event) async {
@@ -1000,7 +1044,7 @@ class _RoomPageState extends State<RoomPage>
     })
     ..on<ParticipantEvent>((_) {
       _sortParticipants();
-      _maybeSyncMainStageCapture();
+      _maybeSyncLiveScreenCapture();
       _maybeRefreshWebPlaceholder();
     })
     ..on<RoomRecordingStatusChanged>((event) {
@@ -1056,26 +1100,30 @@ class _RoomPageState extends State<RoomPage>
     });
 
 
-  /// Screenshots the ACTUAL on-screen main stage (_mainStageCaptureKey) —
+  /// Screenshots the ACTUAL on-screen live screen (_liveScreenCaptureKey) — header, footer/controls, and main content all included —
   /// not a rebuilt duplicate widget — so whatever's genuinely live is what
   /// gets returned. Shared by Android's continuous capture
-  /// (_captureAndSendMainStage) and Web's single-shot send below.
-  Future<Uint8List?> _captureMainStagePng() async {
+  /// (_captureAndSendLiveScreen) and Web's single-shot send below.
+  Future<Uint8List?> _captureLiveScreenPng() async {
     try {
-      final boundary = _mainStageCaptureKey.currentContext?.findRenderObject()
+      final boundary = _liveScreenCaptureKey.currentContext?.findRenderObject()
       as RenderRepaintBoundary?;
       if (boundary == null || boundary.debugNeedsPaint) return null;
-      final image = await boundary.toImage(pixelRatio: 1.5);
+      // pixelRatio lowered from an earlier video-tile-only version's 1.5 —
+      // this now captures the whole screen, and the native renderer
+      // letterboxes to fit anyway, so full device pixel ratio isn't worth
+      // the extra encode time/memory on every ~2fps tick.
+      final image = await boundary.toImage(pixelRatio: 1.0);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       return byteData?.buffer.asUint8List();
     } catch (e) {
-      log('[REC] _captureMainStagePng error: $e');
+      log('[REC] _captureLiveScreenPng error: $e');
       return null;
     }
   }
 
-  /// Web: sends one screenshot of the real main stage to the JS compositor
-  /// — only meaningful (and only called) when the main stage is genuinely
+  /// Web: sends one screenshot of the real live screen to the JS compositor
+  /// — only meaningful (and only called) when the screen is genuinely
   /// showing the waiting card, not the camera: a live camera feed on web
   /// is an HTML <video> platform view, invisible to Flutter's own capture,
   /// and already reaches the recording correctly via the compositor's own
@@ -1087,12 +1135,12 @@ class _RoomPageState extends State<RoomPage>
   /// Requires recorder_compositor.js to implement 'setPlaceholderImage' —
   /// see _compositorSetPlaceholderImage's doc comment in
   /// recorder_web_impl.dart.
-  Future<void> _sendMainStagePlaceholderWeb() async {
+  Future<void> _sendLiveScreenPlaceholderWeb() async {
     if (!kIsWeb || !widget.isTeacher) return;
     final local = widget.room.localParticipant;
     if (local?.isScreenShareEnabled() == true) return;
     if (local?.isCameraEnabled() == true) return;
-    final png = await _captureMainStagePng();
+    final png = await _captureLiveScreenPng();
     if (png == null) return;
     _recorder?.setPlaceholderImage(png);
     log('[REC] placeholder image sent to web compositor (${png.length} bytes)');
@@ -1101,7 +1149,7 @@ class _RoomPageState extends State<RoomPage>
   Timer? _webPlaceholderDebounce;
 
   /// Debounced trigger for Web's single-shot send — hooked into the same
-  /// ParticipantEvent listener as _maybeSyncMainStageCapture, so speaker
+  /// ParticipantEvent listener as _maybeSyncLiveScreenCapture, so speaker
   /// changes, participants joining, and camera/share toggles all re-sync
   /// it without re-capturing on every single event.
   void _maybeRefreshWebPlaceholder() {
@@ -1109,7 +1157,7 @@ class _RoomPageState extends State<RoomPage>
     _webPlaceholderDebounce?.cancel();
     _webPlaceholderDebounce = Timer(
       const Duration(milliseconds: 1200),
-          () => unawaited(_sendMainStagePlaceholderWeb()),
+          () => unawaited(_sendLiveScreenPlaceholderWeb()),
     );
   }
 
@@ -1155,11 +1203,11 @@ class _RoomPageState extends State<RoomPage>
         participantCount: participantCount,
       );
       // Screenshots the real on-screen waiting card (if that's what's
-      // showing — see _sendMainStagePlaceholderWeb's doc comment for why
+      // showing — see _sendLiveScreenPlaceholderWeb's doc comment for why
       // camera-on is deliberately skipped here) and sends it to the web
       // compositor, so the placeholder matches Android/iOS exactly instead
       // of the compositor's own separately hand-drawn one.
-      unawaited(_sendMainStagePlaceholderWeb());
+      unawaited(_sendLiveScreenPlaceholderWeb());
       return;
     }
 
@@ -1180,10 +1228,10 @@ class _RoomPageState extends State<RoomPage>
     // real session info instead of a flat color.
     if (Platform.isAndroid) {
       // Starts the periodic real-screenshot capture (see
-      // _startMainStageCapture) — whatever's genuinely on screen (waiting
+      // _startLiveScreenCapture) — whatever's genuinely on screen (waiting
       // card or camera view) is sent from the very first tick, no separate
       // one-shot send needed here.
-      _startMainStageCapture();
+      _startLiveScreenCapture();
       return;
     }
 
@@ -1393,192 +1441,191 @@ class _RoomPageState extends State<RoomPage>
       data: ThemeData.dark(),
       child: Scaffold(
         backgroundColor: _bg,
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Aurora background
-            AnimatedBuilder(
-              animation: _auroraAnim,
-              builder: (_, _) => CustomPaint(
-                painter: _AuroraPainter(_auroraAnim.value),
-                child: const SizedBox.expand(),
+        // RepaintBoundary around the WHOLE body (not just the video area)
+        // is what makes the Android recording placeholder an actual
+        // screenshot of the entire live screen — aurora background,
+        // recording indicator, thumbnail strip, PiP, the main video/
+        // waiting card, AND the controls bar — instead of just the video
+        // stage. See _captureAndSendLiveScreen.
+        body: RepaintBoundary(
+          key: _liveScreenCaptureKey,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Aurora background
+              AnimatedBuilder(
+                animation: _auroraAnim,
+                builder: (_, _) => CustomPaint(
+                  painter: _AuroraPainter(_auroraAnim.value),
+                  child: const SizedBox.expand(),
+                ),
               ),
-            ),
 
-            // Main content
-            SafeArea(
-              child: FadeTransition(
-                opacity: _entryFade,
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: LayoutBuilder(
-                        builder: (ctx, constraints) => Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            ClipRRect(
-                              borderRadius: const BorderRadius.all(
-                                Radius.circular(20),
-                              ),
-                              // RepaintBoundary here (not around a
-                              // separately-built duplicate widget) is what
-                              // makes the Android recording placeholder an
-                              // actual screenshot of the live main stage —
-                              // camera view, waiting card, or whatever else
-                              // is genuinely on screen — instead of a
-                              // recreation. See _captureAndSendMainStage.
-                              child: RepaintBoundary(
-                                key: _mainStageCaptureKey,
+              // Main content
+              SafeArea(
+                child: FadeTransition(
+                  opacity: _entryFade,
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: LayoutBuilder(
+                          builder: (ctx, constraints) => Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              ClipRRect(
+                                borderRadius: const BorderRadius.all(
+                                  Radius.circular(20),
+                                ),
                                 child: _buildMainVideo(),
                               ),
-                            ),
 
-                            // Thumbnail strip
-                            if (participantTracks.length > 1 &&
-                                !_isScreenShareMain)
-                              FadeTransition(
-                                opacity: _thumbBarFade,
-                                child: Positioned(
-                                  top: 12,
-                                  left: 0,
-                                  right: 0,
-                                  child: SizedBox(
-                                    height: 108,
-                                    child: ListView.builder(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                      ),
-                                      scrollDirection: Axis.horizontal,
-                                      itemCount: participantTracks.length - 1,
-                                      itemBuilder: (_, i) => _ThumbnailCard(
-                                        track: participantTracks[i + 1],
-                                        resolveScreenTrack: _resolveScreenTrack,
+                              // Thumbnail strip
+                              if (participantTracks.length > 1 &&
+                                  !_isScreenShareMain)
+                                FadeTransition(
+                                  opacity: _thumbBarFade,
+                                  child: Positioned(
+                                    top: 12,
+                                    left: 0,
+                                    right: 0,
+                                    child: SizedBox(
+                                      height: 108,
+                                      child: ListView.builder(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                        ),
+                                        scrollDirection: Axis.horizontal,
+                                        itemCount: participantTracks.length - 1,
+                                        itemBuilder: (_, i) => _ThumbnailCard(
+                                          track: participantTracks[i + 1],
+                                          resolveScreenTrack: _resolveScreenTrack,
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
 
-                            // PiP
-                            _buildDraggablePip(constraints),
+                              // PiP
+                              _buildDraggablePip(constraints),
 
-                            // Recording indicators
-                            _buildRecordingIndicator(),
+                              // Recording indicators
+                              _buildRecordingIndicator(),
 
-                            // iOS broadcast share banner + stop button
-                            if (widget.isTeacher)
-                              _buildIOSShareBanner(),
+                              // iOS broadcast share banner + stop button
+                              if (widget.isTeacher)
+                                _buildIOSShareBanner(),
 
-                            // Participant count badge
-                            Positioned(
-                              bottom: 14,
-                              right: _isScreenShareMain
-                                  ? _pipRight + _pipW + 8
-                                  : 14,
-                              child: GestureDetector(
-                                onTap: _toggleParticipantPanel,
-                                child: _GlassBadge(
-                                  icon: Icons.people_rounded,
-                                  label:
-                                  '${widget.room.remoteParticipants.length + 1}',
-                                  color: _showParticipants ? _cyan : null,
+                              // Participant count badge
+                              Positioned(
+                                bottom: 14,
+                                right: _isScreenShareMain
+                                    ? _pipRight + _pipW + 8
+                                    : 14,
+                                child: GestureDetector(
+                                  onTap: _toggleParticipantPanel,
+                                  child: _GlassBadge(
+                                    icon: Icons.people_rounded,
+                                    label:
+                                    '${widget.room.remoteParticipants.length + 1}',
+                                    color: _showParticipants ? _cyan : null,
+                                  ),
                                 ),
                               ),
-                            ),
 
-                            // Quiz overlay
-                            if (_quizVisible && _activeQuiz != null)
-                              _buildQuizOverlay(),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // Controls bar
-                    if(widget.room.localParticipant!=null)
-                      SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(0, 1),
-                          end: Offset.zero,
-                        ).animate(_entrySlide),
-                        child: _buildControlsBar(),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Participant panel
-            if (_showParticipants) _buildParticipantPanel(),
-
-            // ── Ending-session overlay ───────────────────────────────────────
-            // Shown while we wait for the final recording chunk to upload
-            // before calling onEnd(). Prevents teacher from navigating away
-            // prematurely and blocks UI interaction during the wait.
-            if (_endingSession)
-              Container(
-                color: Colors.black.withValues(alpha: 0.72),
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 28,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1A1A2E),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: _cyan.withValues(alpha: 0.35),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _cyan.withValues(alpha: 0.12),
-                          blurRadius: 32,
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const CircularProgressIndicator(
-                          color: _cyan,
-                          strokeWidth: 2.5,
-                        ),
-                        const SizedBox(height: 20),
-                        const Text(
-                          'جارٍ حفظ التسجيل…',
-                          style: TextStyle(
-                            fontFamily: 'tajawal',
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                              // Quiz overlay
+                              if (_quizVisible && _activeQuiz != null)
+                                _buildQuizOverlay(),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        ListenableBuilder(
-                          listenable: _recorder ?? ChangeNotifier(),
-                          builder: (_, _) {
-                            final r = _recorder;
-                            if (r == null) return const SizedBox.shrink();
-                            final mb = (r.totalBytes / (1024 * 1024))
-                                .toStringAsFixed(1);
-                            return Text(
-                              'الجزء ${r.uploadedChunks} · $mb MB',
-                              style: TextStyle(
-                                fontFamily: 'tajawal',
-                                color: Colors.white.withValues(alpha: 0.55),
-                                fontSize: 13,
-                              ),
-                            );
-                          },
+                      ),
+
+                      // Controls bar
+                      if(widget.room.localParticipant!=null)
+                        SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0, 1),
+                            end: Offset.zero,
+                          ).animate(_entrySlide),
+                          child: _buildControlsBar(),
                         ),
-                      ],
-                    ),
+                    ],
                   ),
                 ),
               ),
-          ],
+
+              // Participant panel
+              if (_showParticipants) _buildParticipantPanel(),
+
+              // ── Ending-session overlay ───────────────────────────────────────
+              // Shown while we wait for the final recording chunk to upload
+              // before calling onEnd(). Prevents teacher from navigating away
+              // prematurely and blocks UI interaction during the wait.
+              if (_endingSession)
+                Container(
+                  color: Colors.black.withValues(alpha: 0.72),
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 28,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1A1A2E),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: _cyan.withValues(alpha: 0.35),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _cyan.withValues(alpha: 0.12),
+                            blurRadius: 32,
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const CircularProgressIndicator(
+                            color: _cyan,
+                            strokeWidth: 2.5,
+                          ),
+                          const SizedBox(height: 20),
+                          const Text(
+                            'جارٍ حفظ التسجيل…',
+                            style: TextStyle(
+                              fontFamily: 'tajawal',
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          ListenableBuilder(
+                            listenable: _recorder ?? ChangeNotifier(),
+                            builder: (_, _) {
+                              final r = _recorder;
+                              if (r == null) return const SizedBox.shrink();
+                              final mb = (r.totalBytes / (1024 * 1024))
+                                  .toStringAsFixed(1);
+                              return Text(
+                                'الجزء ${r.uploadedChunks} · $mb MB',
+                                style: TextStyle(
+                                  fontFamily: 'tajawal',
+                                  color: Colors.white.withValues(alpha: 0.55),
+                                  fontSize: 13,
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -1719,7 +1766,18 @@ class _RoomPageState extends State<RoomPage>
     // _buildMainVideo) — showing that same feed again in the small PiP
     // corner would just be a redundant duplicate, so the PiP hides itself
     // in exactly that state instead.
-    if (!_pipSwapped && mainTracks.isEmpty && cameraTrack != null) {
+    //
+    // BUG FIX: mainTracks deliberately excludes the local participant's
+    // own non-screen-share track, but it never counted the local
+    // participant's own screen-share track either (participantTracks
+    // doesn't surface "your own share" as a tile to yourself) — so while
+    // actively sharing with no other participants' video around,
+    // mainTracks came back empty and this fired even though the main view
+    // was NOT showing the camera at all (it shows a "sharing" placeholder
+    // instead), hiding the only place the camera was visible. isSharing
+    // must be part of this check, not just whether other tracks exist.
+    final isSharing = local?.isScreenShareEnabled() == true;
+    if (!_pipSwapped && !isSharing && mainTracks.isEmpty && cameraTrack != null) {
       return const SizedBox.shrink();
     }
 
@@ -1939,6 +1997,30 @@ class _RoomPageState extends State<RoomPage>
   //   2. Client REC badge  — teacher only, shows live elapsed time + state
   Widget _buildRecordingIndicator() {
     final badges = <Widget>[];
+
+    // ── Total session time — everyone, always (not just teacher/recording) ──
+    if (_sessionClockTimer != null) {
+      badges.add(
+        _RecBadge(
+          dotColor: _textMid,
+          dotOpacity: 1.0,
+          pulsing: false,
+          icon: Icons.schedule_rounded,
+          children: [
+            Text(
+              _sessionElapsedLabel,
+              style: const TextStyle(
+                fontFamily: 'tajawal',
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: _textMid,
+                letterSpacing: 0.6,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     // ── Server egress badge ───────────────────────────────────────────────────
     if (_serverRecording) {
@@ -2756,12 +2838,16 @@ class _RecBadge extends StatelessWidget {
     required this.dotOpacity,
     required this.pulsing,
     required this.children,
+    this.icon,
   });
 
   final Color        dotColor;
   final double       dotOpacity;   // 0..1, driven by _recDotOpacity animation
   final bool         pulsing;
   final List<Widget> children;
+  // When set, shown instead of the dot — for badges that aren't a
+  // recording/live status indicator (e.g. the total session-time badge).
+  final IconData?    icon;
 
   @override
   Widget build(BuildContext context) {
@@ -2786,17 +2872,20 @@ class _RecBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (icon != null)
+            Icon(icon, size: 11, color: dotColor.withValues(alpha: 0.9))
+          else
           // Pulsing / static dot
-          Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: dotColor.withValues(
-                alpha: pulsing ? (0.38 + 0.62 * dotOpacity) : 0.9,
+            Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: dotColor.withValues(
+                  alpha: pulsing ? (0.38 + 0.62 * dotOpacity) : 0.9,
+                ),
               ),
             ),
-          ),
           const SizedBox(width: 6),
           ...children,
         ],
@@ -3606,7 +3695,7 @@ class _ScreenShareAuroraPainter extends CustomPainter {
 // message with animated aurora + pulse ring — all matching the room design.
 //
 // Also reused, unchanged, as the frozen recording placeholder on Android
-// (see _captureAndSendMainStage / _sendMainStagePlaceholderWeb) — this is the single source of truth for
+// (see _captureAndSendLiveScreen / _sendLiveScreenPlaceholderWeb) — this is the single source of truth for
 // "what does the app show when there's nothing else to display", so the
 // recorded video and the live in-app view are guaranteed to look the same,
 // and both match what iOS's own screen recording captures naturally (iOS

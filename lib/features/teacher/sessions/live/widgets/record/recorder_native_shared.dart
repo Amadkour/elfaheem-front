@@ -121,8 +121,26 @@ abstract class NativeRecorderBackend {
       if (ok == true) {
         // Overridable — see AndroidNativeRecorderBackend for why Android
         // skips this wait entirely rather than always eating a 10s timeout.
+        //
+        // IMPORTANT: _startCompleter is deliberately NOT nulled out here.
+        // On Android, awaitPhase1Confirmation() returns immediately (a
+        // no-op) — well before the real 'screenLoopStarted' event, which
+        // only fires once ScreenCaptureService's foreground recordLoop()
+        // thread actually starts, moments later. Nulling _startCompleter
+        // here raced ahead of that event every single time: by the time
+        // 'screenLoopStarted' arrived, _startCompleter was already null,
+        // so _onNativeEvent's handler fell through to "extra event
+        // ignored" and RecState never reached .recording until Phase 2
+        // (Share) created a fresh completer of its own — i.e. the
+        // recording clock only ever started ticking once Share began,
+        // not at session start. _onNativeEvent now clears
+        // _startCompleter itself, right when the real event completes it,
+        // instead of it being torn down speculatively here. This also
+        // incidentally fixes an equivalent edge case on iOS: previously,
+        // if 'screenLoopStarted' arrived after awaitPhase1Confirmation()'s
+        // 10s timeout already fired, this same early-null meant that late
+        // event would have been discarded too.
         await awaitPhase1Confirmation();
-        _startCompleter = null;
         log('[REC] Phase-1 complete — params stored, ready for startScreenCaptureService');
         return true;
       } else {
@@ -298,6 +316,7 @@ abstract class NativeRecorderBackend {
         log('[REC] screenLoopStarted received');
         if (_startCompleter != null && !_startCompleter!.isCompleted) {
           _startCompleter!.complete();
+          _startCompleter = null;
           onStateChange(RecState.recording);
           return;
         }

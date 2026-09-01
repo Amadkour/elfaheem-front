@@ -5,6 +5,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 import '../../../../../config/app_config.dart';
 import '../../../../../config/theme/app_theme.dart';
@@ -182,6 +183,7 @@ class SessionActionBtn extends StatelessWidget {
   final VoidCallback onTap;
   final bool filled;
   final bool outlined;
+  final bool loading;
 
   const SessionActionBtn({
     super.key,
@@ -191,6 +193,7 @@ class SessionActionBtn extends StatelessWidget {
     required this.onTap,
     this.filled = false,
     this.outlined = false,
+    this.loading = false,
   });
 
   @override
@@ -204,7 +207,7 @@ class SessionActionBtn extends StatelessWidget {
     final textColor = filled ? Colors.white : color;
 
     return GestureDetector(
-      onTap: onTap,
+      onTap:loading? null:onTap,
       child: Container(
         height: 30,
         padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -222,7 +225,7 @@ class SessionActionBtn extends StatelessWidget {
                 ]
               : null,
         ),
-        child: Row(
+        child:loading?AppLoadingIndicator(ringColor: textColor,showLogo: false,size: 25,): Row(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [

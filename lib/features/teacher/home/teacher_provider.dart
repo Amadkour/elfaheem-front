@@ -4,7 +4,22 @@
 // Owns ONLY the teacher dashboard / course-list state.
 // All form state (create / update) lives in CourseFormProvider (scoped to
 // the form route and auto-disposed on pop).
-// ─────────────────────────────────────────────────────────────────────────────
+//
+// PERFORMANCE REFACTOR
+// ─────────────────────────────────────────────────────────────────────────
+// `queue_work_items.dart`'s per-second schedule ticker calls back into this
+// provider once a scheduled session crosses its start time, to pull fresh
+// dashboard data. It previously called `init()`, which routes through
+// `run()` with `makLoading: true` (the default) — flipping `state` to
+// `ProviderState.loading` and notifying every listener. Any screen watching
+// this provider (the whole teacher home dashboard) would flash a full-screen
+// loading state at a random moment purely because a background timer ticked
+// past a boundary, with no user action involved.
+//
+// Added `refreshSilently()`, which does the exact same dashboard fetch but
+// skips the loading state entirely, so a background refresh updates data in
+// place without interrupting whatever the teacher is currently looking at.
+// ─────────────────────────────────────────────────────────────────────────
 
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
@@ -32,12 +47,12 @@ class TeacherProvider extends BaseProvider {
   List<ScheduleSession> get schedule => List.unmodifiable(_schedule);
 
   List<TeacherCourse> get filteredCourses => switch (_activeFilter) {
-        TeacherCourseStatus.all => _allCourses,
-        TeacherCourseStatus.published =>
-          _allCourses.where((c) => c.isPublished).toList(),
-        TeacherCourseStatus.draft =>
-          _allCourses.where((c) => !c.isPublished).toList(),
-      };
+    TeacherCourseStatus.all => _allCourses,
+    TeacherCourseStatus.published =>
+        _allCourses.where((c) => c.isPublished).toList(),
+    TeacherCourseStatus.draft =>
+        _allCourses.where((c) => !c.isPublished).toList(),
+  };
 
   TeacherCourse? courseById(int id) =>
       _allCourses.where((c) => c.id == id).firstOrNull;
@@ -48,8 +63,18 @@ class TeacherProvider extends BaseProvider {
 
   Future<void> init() => _fetchDashboard();
 
-  Future<void> _fetchDashboard() async {
-    final result = await run(() => _api.get('/api/v1/teacher/dashboard'));
+  /// Same fetch as [init], but never puts the provider into
+  /// [ProviderState.loading]. Use this for background/automatic refreshes
+  /// (e.g. a scheduled session crossing its start time) where flashing a
+  /// full-screen loading state would be jarring and isn't tied to any user
+  /// action.
+  Future<void> refreshSilently() => _fetchDashboard(silent: true);
+
+  Future<void> _fetchDashboard({bool silent = false}) async {
+    final result = await run(
+          () => _api.get('/api/v1/teacher/dashboard'),
+      makLoading: !silent,
+    );
     if (result is Map<String, dynamic>) {
       final data = TeacherDashboardData.fromJson(result);
       _stats = data.stats;
@@ -60,9 +85,9 @@ class TeacherProvider extends BaseProvider {
   }
   Future<void> fetchMyCourses({int skip = 0, int limit = 50}) async {
     final result = await run(() => _api.get(
-          '/api/v1/my-courses',
-          queryParams: {'skip': skip, 'limit': limit},
-        ));
+      '/api/v1/my-courses',
+      queryParams: {'skip': skip, 'limit': limit},
+    ));
     if (result is List) {
 
       _allCourses = result
@@ -75,8 +100,8 @@ class TeacherProvider extends BaseProvider {
 
   Future<TeacherCourse?> fetchCourseById(int courseId) async {
     final result = await run(() => _api.get(
-          '/api/v1/courses/$courseId',
-        ));
+      '/api/v1/courses/$courseId',
+    ));
     if (result is Map<String, dynamic>) {
       return TeacherCourse.fromJson(result);
     }
@@ -117,7 +142,7 @@ class TeacherProvider extends BaseProvider {
 
   Future<bool> publishCourse(int courseId) async {
     final result =
-        await run(() => _api.post('/api/v1/courses/$courseId/publish'));
+    await run(() => _api.post('/api/v1/courses/$courseId/publish'));
     if (result != null) {
       _updateLocalPublish(courseId, isPublished: true);
       return true;
@@ -127,7 +152,7 @@ class TeacherProvider extends BaseProvider {
 
   Future<bool> unpublishCourse(int courseId) async {
     final result =
-        await run(() => _api.post('/api/v1/courses/$courseId/unpublish'));
+    await run(() => _api.post('/api/v1/courses/$courseId/unpublish'));
     if (result != null) {
       _updateLocalPublish(courseId, isPublished: false);
       return true;
@@ -157,32 +182,32 @@ class TeacherProvider extends BaseProvider {
     String? description,
   }) async {
     final result = await run(() => _api.post(
-          '/api/v1/sessions',
-          body: {
-            'course_id': courseId,
-            'name': name,
-            'type': 'live',
-            'duration_minutes': durationMinutes,
-            if (description != null && description.isNotEmpty)
-              'description': description,
-          },
-        ));
+      '/api/v1/sessions',
+      body: {
+        'course_id': courseId,
+        'name': name,
+        'type': 'live',
+        'duration_minutes': durationMinutes,
+        if (description != null && description.isNotEmpty)
+          'description': description,
+      },
+    ));
     return result['id'] as int;
   }
 
   Future<String?> startLiveSession(
-    int sessionId, {
-    bool enableRecording = true,
-    int durationHours = 24,
-  }) async {
+      int sessionId, {
+        bool enableRecording = true,
+        int durationHours = 24,
+      }) async {
     final result = await run(() => _api.post(
-          '/api/v1/live-sessions/start',
-          queryParams: {
-            'session_id': sessionId,
-            'enable_recording': enableRecording,
-            'duration_hours': durationHours,
-          },
-        ));
+      '/api/v1/live-sessions/start',
+      queryParams: {
+        'session_id': sessionId,
+        'enable_recording': enableRecording,
+        'duration_hours': durationHours,
+      },
+    ));
     if (result is Map<String, dynamic>) {
       return result['meeting_url'] as String? ??
           result['room_url'] as String? ??
@@ -194,9 +219,9 @@ class TeacherProvider extends BaseProvider {
   Future<bool> endLiveSession(int sessionId,
       {bool saveRecording = true}) async {
     final result = await run(() => _api.post(
-          '/api/v1/live-sessions/$sessionId/end',
-          queryParams: {'save_recording': saveRecording},
-        ));
+      '/api/v1/live-sessions/$sessionId/end',
+      queryParams: {'save_recording': saveRecording},
+    ));
     return result != null;
   }
 

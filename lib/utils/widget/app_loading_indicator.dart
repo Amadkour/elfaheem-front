@@ -19,11 +19,12 @@ class AppLoadingIndicator extends StatefulWidget {
 
   /// Color of the rotating accent arc. Defaults to the brand accent blue.
   final Color? ringColor;
-
+  final bool showLogo;
   const AppLoadingIndicator({
     super.key,
     this.size = 96,
     this.ringColor,
+    this.showLogo=true,
   });
 
   @override
@@ -79,7 +80,7 @@ class _AppLoadingIndicatorState extends State<AppLoadingIndicator>
                 ),
               ),
               // Pulsing logo
-              Transform.scale(
+              if(widget.showLogo) Transform.scale(
                 scale: pulseScale,
                 child: SizedBox(
                   width: widget.size * 0.58,

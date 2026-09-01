@@ -214,6 +214,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
         if (isLiveType && widget.isTeacher)
           SessionActionBtn(
             icon: CupertinoIcons.video_camera_solid,
+            loading:context.read<TeacherCourseScreenProvider>().startLoadingButton ,
             label: _session.isLiveActive
                 ? 'end_session'.tr
                 : 'meet_now'.tr,
@@ -224,6 +225,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
           ),
         if (_session.isLiveActive)
           SessionActionBtn(
+            loading:context.read<TeacherCourseScreenProvider>().joinLoadingButton ,
             icon: CupertinoIcons.video_camera_solid,
             label: 'join_live_session'.tr,
             color: context.colors.success,
