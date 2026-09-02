@@ -37,27 +37,32 @@ late StorageService _storage;
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
+  // Created once and shared between _initCore and _runApp, so the token
+  // registration check below and the app's providers are talking about the
+  // exact same client (and therefore the same auth state).
+  final api = ApiClient();
+
   if (!kIsWeb) {
     runZonedGuarded(() async {
       WidgetsFlutterBinding.ensureInitialized();
 
-      await _initCore();
+      await _initCore(api);
       await _initCrashlytics();
 
-      _runApp();
+      _runApp(api);
     }, _onZoneError);
   } else {
     WidgetsFlutterBinding.ensureInitialized();
 
-    await _initCore();
+    await _initCore(api);
 
-    _runApp();
+    _runApp(api);
   }
 }
 
 // ── Shared initialisation (all platforms) ───────────────────────────────────
 
-Future<void> _initCore() async {
+Future<void> _initCore(ApiClient api) async {
   _storage = await StorageService.getInstance();
 
   await readLanguage();
@@ -68,6 +73,18 @@ Future<void> _initCore() async {
 
   await RemoteConfigService.instance.init();
   await NotificationService.instance.init();
+
+  // NotificationService.registerWithBackend() is otherwise only triggered
+  // by AuthProvider.login(). A returning user with a persisted session
+  // (the normal case after their very first login) never re-sends a token
+  // on later cold starts — so a reinstall, a cleared app data, or a token
+  // rotation that happened while the app was closed leaves the backend
+  // holding a stale/invalid token forever, with no way to recover short of
+  // an explicit logout + login. Registering again here on every cold start
+  // for an already-authenticated user closes that gap.
+  if (_storage.isAuthenticated()) {
+    await NotificationService.instance.registerWithBackend(api);
+  }
 }
 
 // ── Crashlytics (mobile only) ────────────────────────────────────────────────
@@ -89,9 +106,7 @@ void _onZoneError(Object error, StackTrace stack) {
 
 // ── App entry point ──────────────────────────────────────────────────────────
 
-void _runApp() {
-  final api = ApiClient();
-
+void _runApp(ApiClient api) {
   runApp(
     MultiProvider(
       providers: appProviders(storage: _storage, api: api),
