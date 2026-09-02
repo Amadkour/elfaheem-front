@@ -830,6 +830,33 @@ class ClientRecorder extends ChangeNotifier {
     _webRecorder?.setPlaceholderImage(png);
   }
 
+  /// Web only: mixes a remote participant's audio into the recording.
+  /// Nothing previously called this for ANY remote participant — the local
+  /// teacher's own mic (via addStream(..., 'camera')) and, when sharing,
+  /// screen audio were the only audio ever reaching the web recording, so
+  /// students speaking never appeared in it at all, regardless of whether
+  /// their audio was audible in the live call. Each participant needs a
+  /// distinct label (their sid) — addStream() replaces whatever was
+  /// previously registered under a given label, so reusing one label for
+  /// every student would silently drop all but the last one added.
+  /// [nativeStream] must already be bridged to a native web.MediaStream —
+  /// see recorder_web_impl.dart's nativeAudioStreamFromTrack(). No-op on
+  /// mobile/desktop (Android/iOS capture ambient/room audio through the
+  /// physical mic already, which is a fundamentally different, analog
+  /// mechanism unaffected by this gap).
+  void addRemoteAudioStream(String participantSid, Object? nativeStream) {
+    if (!kIsWeb || nativeStream == null) return;
+    _webRecorder?.addStream(nativeStream, 'remote_$participantSid');
+  }
+
+  /// Web only: stops mixing a remote participant's audio — call when they
+  /// leave or their audio track unsubscribes, or their audio node would
+  /// keep playing into the recording indefinitely.
+  void removeRemoteAudioStream(String participantSid) {
+    if (!kIsWeb) return;
+    _webRecorder?.removeStream('remote_$participantSid');
+  }
+
   /// Phase 2 confirmation: called from room.dart AFTER startScreenCaptureService
   /// has returned (meaning RPScreenRecorder / MediaProjection is running).
   /// No-op on web.

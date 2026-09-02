@@ -213,10 +213,7 @@ class Helpers {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       useSafeArea: true,
-      builder: (_) => ChangeNotifierProvider.value(
-        value: context.read<TeacherCourseScreenProvider>(),
-        child: SessionFormSheet(existing: existing, courseId: course.id,openLive:openLive),
-      ),
+      builder: (_) =>  SessionFormSheet(existing: existing, courseId: course.id,openLive:openLive),
     );
   }
 

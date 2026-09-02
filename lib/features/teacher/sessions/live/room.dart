@@ -19,6 +19,8 @@ import 'widgets/participant_info.dart';
 import 'widgets/room_recorder.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'widgets/room_screen_share.dart';
+import 'widgets/recorder_web_stub.dart'
+if (dart.library.html) 'widgets/recorder_web_impl.dart' as web_rec;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Design System
@@ -1067,9 +1069,31 @@ class _RoomPageState extends State<RoomPage>
       if (widget.isTeacher) _startLiveKitAudioTap();
     })
     ..on<LocalTrackUnpublishedEvent>((_) => _sortParticipants())
-    ..on<TrackSubscribedEvent>((_) => _sortParticipants())
+    ..on<TrackSubscribedEvent>((event) {
+      _sortParticipants();
+      // Mixes each remote participant's audio into the web recording —
+      // previously NOTHING did this for any remote participant (only the
+      // local teacher's own mic and, when sharing, screen audio ever
+      // reached the recording), so students speaking never appeared in
+      // it, regardless of whether they were audible live. Each
+      // participant gets its own label (sid) in the compositor so they
+      // don't overwrite each other. See nativeAudioStreamFromTrack's doc
+      // comment in recorder_web_impl.dart for the one unverified part of
+      // this bridge. Android/iOS need no equivalent: their local
+      // recording captures ambient/room audio through the physical mic,
+      // a fundamentally different mechanism unaffected by this gap.
+      if (kIsWeb && widget.isTeacher && event.track is RemoteAudioTrack) {
+        final nativeStream = web_rec.nativeAudioStreamFromTrack(
+          (event.track as RemoteAudioTrack).mediaStreamTrack,
+        );
+        _recorder?.addRemoteAudioStream(event.participant.sid, nativeStream);
+      }
+    })
     ..on<TrackUnsubscribedEvent>((event) {
       _sortParticipants();
+      if (kIsWeb && widget.isTeacher && event.track is RemoteAudioTrack) {
+        _recorder?.removeRemoteAudioStream(event.participant.sid);
+      }
       if (!widget.isTeacher &&
           event.participant.sid == widget.room.localParticipant?.sid) {
         log('Local track unsubscribed — auto-ending session');
@@ -3798,7 +3822,11 @@ class _PremiumWaitingPlaceholderState
               top: 24,
               left: 24,
               child: Image.asset(
-                'assets/images/app_logo.png',
+                // Confirmed against pubspec.yaml: this is the actual
+                // pre-composited logo (used for the launcher icon), and
+                // assets/images/ is registered as a full asset folder —
+                // no more guessing at a filename here.
+                'assets/images/app_icon.png',
                 height: 40,
                 errorBuilder: (_, __, ___) => const SizedBox.shrink(),
               ),

@@ -110,6 +110,25 @@ class TeacherCourseScreenProvider extends BaseProvider {
     return null;
   }
 
+  Future<TeacherSessionItem?> quickSession({
+    required int courseId,
+
+  }) async {
+    final result = await run(
+          () =>
+          _api.post(
+              '/api/v1/quick_session',
+              body: {'course_id': _course.id}),
+    );
+    if (result is Map<String, dynamic>) {
+      final s = TeacherSessionItem.fromJson(result);
+      _sessions =
+      [s, ..._sessions]..sort((a, b) => a.order.compareTo(b.order));
+      notifyListeners();
+      return s;
+    }
+    return null;
+  }
   Future<TeacherSessionItem?> updateSession(
     int sessionId, {
     String? name,

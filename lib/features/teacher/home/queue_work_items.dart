@@ -58,7 +58,7 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 ({DateTime start, DateTime end}) _sessionDateTimes(ScheduleSession session) {
   final parts = session.startTime.split(':');
   final eParts = session.endTime.split(':');
-  final base = session.scheduledDate??DateTime.now();
+  final base = session.scheduledDate ?? DateTime.now();
 
   final start = DateTime.utc(
     base.year,
@@ -172,7 +172,7 @@ class _ScheduleQueueListState extends State<ScheduleQueueList> {
       children: [
         _QueueHeader(count: widget.sessions.length),
         ...groups.entries.map(
-              (e) => _DayGroup(
+          (e) => _DayGroup(
             dayLabel: e.key,
             sessions: e.value,
             nowListenable: _now,
@@ -266,7 +266,7 @@ class _DayGroup extends StatelessWidget {
           // Stable key: lets Flutter reuse elements (and their internal
           // _LiveDot animation controllers) across resorts instead of
           // rebuilding by list position.
-              (s) => ScheduleSessionCard(
+          (s) => ScheduleSessionCard(
             key: ValueKey(s.scheduleId),
             session: s,
             nowListenable: nowListenable,
@@ -283,6 +283,7 @@ class ScheduleSessionCard extends StatelessWidget {
   final ScheduleSession session;
   final ValueListenable<DateTime> nowListenable;
   final Color? background;
+
   const ScheduleSessionCard({
     super.key,
     required this.session,
@@ -371,7 +372,7 @@ class ScheduleSessionCard extends StatelessWidget {
                                   child: _CourseInfo(
                                     session: session,
                                     accent: accent,
-                                    isOngoing: isOngoing,
+                                    isOngoing: isOngoing??false,
                                   ),
                                 ),
                               ],
@@ -586,55 +587,50 @@ class _InlineStartButton extends StatelessWidget {
   }
 
   void _handleTap(BuildContext context) {
-    if (session.canJoinNow) {
+    // if (session.canJoinNow) {
       _openPreJoin(context);
-    } else {
-      Helpers.showAddSessionSheet(
-        context,
-        TeacherCourse.dummy(session.courseId),
-        openLive: true,
-      );
+    // } else {
+      // Helpers.showAddSessionSheet(
+      //   context,
+      //   TeacherCourse.dummy(session.courseId),
+      //   openLive: true,
+      // );
       // _openCreationSheet(context);
-    }
+    // }
   }
 
   void _openPreJoin(BuildContext context) {
     final teacher = context.read<TeacherProvider>();
+    print(session.sessionId);
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ChangeNotifierProvider(
-          create:(_)=>context.read<TeacherCourseScreenProvider>(),
-          builder: (context,_) {
-            return PreJoinPage(
-              args: JoinArgs(
-                sessionId: session.sessionId!,
-                courseId: session.courseId,
-                maxStudents: session.maxStudents,
-                isTeacher: true,
-                userName:
+        builder: (context) => PreJoinPage(
+          args: JoinArgs(
+            sessionId: session.sessionId,
+            courseId: session.courseId,
+            maxStudents: session.maxStudents,
+            isTeacher: true,
+            userName:
                 context.read<AuthProvider>().currentUser?.name ?? 'Teacher',
-                userId: context.read<AuthProvider>().currentUser?.id ?? 0,
-                onStart: () async {
-                  log(
-                    '[PRE-JOIN] session=${session.sessionId} url=${session.joinUrl}',
-                  );
-                  return LiveResponseModel(
-                    sessionId: session.sessionId!,
-                    url: session.joinUrl!,
-                    token: session.token!,
-                  );
-                },
-                onEnd: () => teacher.endLiveSession(session.sessionId!),
-                apiClient: ApiClient(),
-              ),
-            );
-          }
+            userId: context.read<AuthProvider>().currentUser?.id ?? 0,
+            onStart: () async {
+              log(
+                '[PRE-JOIN] session=${session.sessionId} url=${session.joinUrl}',
+              );
+              return LiveResponseModel(
+                sessionId: session.sessionId!,
+                url: session.joinUrl!,
+                token: session.token!,
+              );
+            },
+            onEnd: () => teacher.endLiveSession(session.sessionId!),
+            apiClient: ApiClient(),
+          ),
         ),
       ),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -670,14 +666,14 @@ class _TimeBlock extends StatelessWidget {
   final ScheduleSession session;
   final Color accent;
 
-  const _TimeBlock({required this.session, required this.accent});
+  const _TimeBlock({required this.session,  this.accent=Colors.red});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
       decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.09),
+        // color: accent.withValues(alpha: 0.09),
         borderRadius: BorderRadius.circular(11),
         border: Border.all(color: accent.withValues(alpha: 0.22)),
       ),
@@ -719,12 +715,12 @@ class _TimeBlock extends StatelessWidget {
 class _CourseInfo extends StatelessWidget {
   final ScheduleSession session;
   final Color accent;
-  final bool isOngoing;
+  final bool? isOngoing;
 
   const _CourseInfo({
     required this.session,
     required this.accent,
-    required this.isOngoing,
+     this.isOngoing=false,
   });
 
   @override
@@ -750,7 +746,7 @@ class _CourseInfo extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            if (isOngoing) ...[const SizedBox(width: 5), _LiveDot()],
+            if (isOngoing??false) ...[const SizedBox(width: 5), _LiveDot()],
           ],
         ),
         const SizedBox(height: 8),
@@ -764,8 +760,8 @@ class _CourseInfo extends StatelessWidget {
             _MetaChip(Icons.group_rounded, students),
           ],
         ),
-        Divider(color:Color(0xFF1D9E75)),
-        _StatusBadge(session: session, accent: accent, isOngoing: isOngoing),
+        Divider(color: Color(0xFF1D9E75)),
+        _StatusBadge(session: session, accent: accent, isOngoing: isOngoing??false),
       ],
     );
   }

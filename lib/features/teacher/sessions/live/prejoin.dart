@@ -4,9 +4,14 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
+import '../../../../config/app_config.dart';
+import '../../../../utils/helpers.dart';
+import '../../../student/models.dart';
 import '../components/exts.dart';
 import '../model/live_response_model.dart';
 import '../../../../core/api_client.dart';
+import '../sessions_provider.dart';
 import 'local_debug_save.dart';
 import 'room.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
@@ -35,7 +40,7 @@ class JoinArgs {
     required this.apiClient,
   });
 
-  final int sessionId;
+  late final int? sessionId;
   final int courseId;
   final int? maxStudents;
   final bool e2ee;
@@ -311,7 +316,15 @@ class _PreJoinPageState extends State<PreJoinPage>
         maxBitrate: 4 * 1000 * 1000,
         maxFramerate: 30,
       );
-
+      late int localSessionId;
+      if (args.sessionId==null){
+        final TeacherSessionItem? r = await context.read<TeacherCourseScreenProvider>().quickSession(courseId: args.courseId);
+        if(r ==null){
+          Helpers.showMessage('failed to create session'.tr, isError: true);
+        }else {
+          localSessionId = r.id;
+        }
+      }
       final room = Room(
         roomOptions: RoomOptions(
           adaptiveStream: args.adaptiveStream,
@@ -375,7 +388,7 @@ class _PreJoinPageState extends State<PreJoinPage>
             },
             isTeacher: args.isTeacher,
             courseId: args.courseId,
-            sessionId: args.sessionId,
+            sessionId: args.sessionId??localSessionId,
             // ── Passes the authenticated ApiClient so _ClientRecorder can
             //    upload chunks with the correct Bearer token ─────────────────
             apiClient: args.apiClient,
@@ -429,90 +442,87 @@ class _PreJoinPageState extends State<PreJoinPage>
   // ─────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    return Theme(
-      data: ThemeData.dark(),
-      child: Scaffold(
-        backgroundColor: _DS.bg,
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Animated aurora mesh
-            AnimatedBuilder(
-              animation: _auroraAnim,
-              builder: (_, _) => CustomPaint(
-                painter: _AuroraPainter(_auroraAnim.value),
-                child: const SizedBox.expand(),
-              ),
+    return Scaffold(
+      backgroundColor: _DS.bg,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Animated aurora mesh
+          AnimatedBuilder(
+            animation: _auroraAnim,
+            builder: (_, _) => CustomPaint(
+              painter: _AuroraPainter(_auroraAnim.value),
+              child: const SizedBox.expand(),
             ),
+          ),
 
-            // Full-screen camera preview
-            FadeTransition(opacity: _fadeIn, child: _buildCameraPreview()),
+          // Full-screen camera preview
+          FadeTransition(opacity: _fadeIn, child: _buildCameraPreview()),
 
-            // Bottom scrim
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: MediaQuery.of(context).size.height * 0.50,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      _DS.bg.withValues(alpha: 0.72),
-                      _DS.bg.withValues(alpha: 0.96),
-                      _DS.bg,
-                    ],
-                    stops: const [0.0, 0.28, 0.6, 1.0],
-                  ),
+          // Bottom scrim
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: MediaQuery.of(context).size.height * 0.50,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    _DS.bg.withValues(alpha: 0.72),
+                    _DS.bg.withValues(alpha: 0.96),
+                    _DS.bg,
+                  ],
+                  stops: const [0.0, 0.28, 0.6, 1.0],
                 ),
               ),
             ),
+          ),
 
-            // Top scrim
-            Positioned(
-              left: 0,
-              right: 0,
-              top: 0,
-              height: 130,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      _DS.bg.withValues(alpha: 0.85),
-                      Colors.transparent,
-                    ],
-                  ),
+          // Top scrim
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            height: 130,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    _DS.bg.withValues(alpha: 0.85),
+                    Colors.transparent,
+                  ],
                 ),
               ),
             ),
+          ),
 
-            // UI content
-            SafeArea(
-              child: Column(
-                children: [
-                  FadeTransition(opacity: _fadeIn, child: _buildTopBar()),
-                  const SizedBox(height: 10),
-                  const Spacer(),
-                  SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0, 0.25),
-                      end: Offset.zero,
-                    ).animate(_slideUp),
-                    child: FadeTransition(
-                      opacity: _fadeIn,
-                      child: _buildBottomSection(),
-                    ),
+          // UI content
+          SafeArea(
+            child: Column(
+              children: [
+                FadeTransition(opacity: _fadeIn, child: _buildTopBar()),
+                const SizedBox(height: 10),
+                const Spacer(),
+                SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 0.25),
+                    end: Offset.zero,
+                  ).animate(_slideUp),
+                  child: FadeTransition(
+                    opacity: _fadeIn,
+                    child: _buildBottomSection(),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

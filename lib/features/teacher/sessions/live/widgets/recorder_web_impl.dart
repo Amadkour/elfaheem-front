@@ -245,6 +245,37 @@ web.MediaStream? streamFromLivekitTrack(Object? lkStream) {
   return null;
 }
 
+/// Same bridge, for a single track instead of a whole stream — needed for
+/// remote participants' audio: LiveKit exposes those as individual
+/// RemoteAudioTrack objects (one per participant), not as a combined
+/// MediaStream. Wraps the bridged native track into a fresh single-track
+/// web.MediaStream, since that's what addStream()/_connectAudio() expect.
+///
+/// UNCONFIRMED for the same reason as streamFromLivekitTrack above — tries
+/// the mainstream flutter_webrtc MediaStreamTrack's `.jsTrack` accessor.
+/// Fails safe: returns null (that participant's audio just won't reach the
+/// recording, everything else keeps working) rather than throwing.
+web.MediaStream? nativeAudioStreamFromTrack(Object? lkTrack) {
+  if (lkTrack == null) return null;
+  try {
+    if (lkTrack is web.MediaStreamTrack) {
+      return web.MediaStream([lkTrack].toJS);
+    }
+    final dynamic maybeWrapped = lkTrack;
+    final jsTrack = maybeWrapped.jsTrack;
+    if (jsTrack is web.MediaStreamTrack) {
+      return web.MediaStream([jsTrack].toJS);
+    }
+    _log('nativeAudioStreamFromTrack: .jsTrack was not a '
+        'web.MediaStreamTrack (got ${jsTrack.runtimeType}) — see this '
+        'function\'s doc comment');
+  } catch (e) {
+    _log('nativeAudioStreamFromTrack: no .jsTrack accessor found on '
+        '${lkTrack.runtimeType} — see this function\'s doc comment. ($e)');
+  }
+  return null;
+}
+
 void _log(String msg) {
   // ignore: avoid_print
   print('[web_rec] $msg');

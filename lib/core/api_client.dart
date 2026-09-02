@@ -34,11 +34,15 @@ class ApiException implements Exception {
 // ── Token Storage ─────────────────────────────────────────────────────────────
 
 class TokenStorage {
-  static const _accessKey  = 'access_token';
+  static const _accessKey = 'access_token';
   static const _refreshKey = 'refresh_token';
 
-  Future<void> save({required String access, required String refresh}) async {
+  Future<void> save({
+    required String access,
+    required String refresh,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
+
     await prefs.setString(_accessKey, access);
     await prefs.setString(_refreshKey, refresh);
   }
@@ -51,6 +55,7 @@ class TokenStorage {
 
   Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();
+
     await prefs.remove(_accessKey);
     await prefs.remove(_refreshKey);
   }
@@ -59,26 +64,25 @@ class TokenStorage {
 // ── ApiClient ─────────────────────────────────────────────────────────────────
 //
 // Unified: every method (GET, POST, PUT, DELETE, multipart) goes through Dio.
-// No more split between package:http and Dio — one interceptor chain,
-// one timeout configuration, one token-refresh flow.
 //
-// Timeout strategy:
-//   connectTimeout  30s  — time to open the TCP connection
-//   sendTimeout      0   — unlimited send time (large file uploads)
-//   receiveTimeout   0   — unlimited receive time (large file downloads)
+// Flutter Web CORS:
+// - GET requests don't unnecessarily set Content-Type: application/json.
+// - POST/PUT/DELETE JSON requests keep application/json.
+// - Authenticated requests can still trigger OPTIONS preflight because
+//   Authorization is not a CORS-safelisted request header.
+// - FastAPI CORSMiddleware should handle those OPTIONS requests.
 //
-// For normal JSON calls we override receiveTimeout to 30s at the call site.
-// Chunk uploads use the unlimited defaults so Dio never interrupts a slow upload.
 
 class ApiClient {
   ApiClient._();
 
   static final ApiClient instance = ApiClient._();
+
   factory ApiClient() => instance;
 
   static const String _base = AppConfig.baseUrl;
 
-  // Public so room.dart can read the base URL for the JS compositor
+  // Public so room.dart can read the base URL for the JS compositor.
   String get baseUrl => _base;
 
   final _storage = TokenStorage();
@@ -87,94 +91,161 @@ class ApiClient {
 
   late final Dio _dio = _buildDio();
 
-  /// Kept for external code that accessed `apiClient.dio` directly.
+  // Kept for external code that accessed `apiClient.dio` directly.
   Dio get dio => _dio;
 
   Dio _buildDio() {
-    final d = Dio(BaseOptions(
-      baseUrl:        _base,
-      connectTimeout: const Duration(seconds: 30),
-      // sendTimeout and receiveTimeout default to null (unlimited).
-      // Normal calls override receiveTimeout to 30s via _jsonOpts().
-      // File upload/download calls leave them unlimited.
-      sendTimeout:    null,
-      receiveTimeout: null,
-      receiveDataWhenStatusError: true,
-      headers: {
-        HttpHeaders.acceptHeader:          'application/json',
-        HttpHeaders.acceptLanguageHeader:  AppConfig.lang,
-      },
-    ));
+    final d = Dio(
+      BaseOptions(
+        baseUrl: _base,
 
-    d.interceptors.add(InterceptorsWrapper(
-      // ── Inject Bearer token ────────────────────────────────────────────
-      onRequest: (options, handler) async {
-        final token = await _storage.accessToken;
-        if (token != null && options.extra['auth'] != false) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        handler.next(options);
-      },
+        connectTimeout: const Duration(seconds: 30),
 
-      // ── 401 → refresh once → retry ────────────────────────────────────
-      onError: (error, handler) async {
-        if (error.response?.statusCode == 401 &&
-            error.requestOptions.extra['auth'] != false &&
-            error.requestOptions.extra['_retried'] != true) {
-          if (await _tryRefresh()) {
-            try {
-              final opts = error.requestOptions
-                ..headers['Authorization'] =
-                    'Bearer ${await _storage.accessToken}'
-                ..extra['_retried'] = true;
-              final retried = await _dio.fetch(opts);
-              return handler.resolve(retried);
-            } catch (_) {}
+        // Unlimited upload/download timeouts.
+        sendTimeout: null,
+        receiveTimeout: null,
+
+        receiveDataWhenStatusError: true,
+
+        headers: {
+          HttpHeaders.acceptHeader: 'application/json',
+          HttpHeaders.acceptLanguageHeader: AppConfig.lang,
+        },
+      ),
+    );
+
+    d.interceptors.add(
+      InterceptorsWrapper(
+        // ── Inject Bearer token ──────────────────────────────────────────────
+        onRequest: (options, handler) async {
+          final token = await _storage.accessToken;
+
+          if (token != null && options.extra['auth'] != false) {
+            options.headers['Authorization'] = 'Bearer $token';
           }
-          await _redirectToLogin();
-        }
-        handler.next(error);
-      },
 
-      // ── Log responses ─────────────────────────────────────────────────
-      onResponse: (response, handler) {
-        if(AppConfig.showLogs) {
-          log('[${response.requestOptions.path}] ${response.statusCode} '
-              '${response.data.runtimeType}');
-          log(response.data.toString());
+          handler.next(options);
+        },
 
-        }
-        handler.next(response);
-      },
-    ));
+        // ── 401 → refresh once → retry ──────────────────────────────────────
+        onError: (error, handler) async {
+          if (error.response?.statusCode == 401 &&
+              error.requestOptions.extra['auth'] != false &&
+              error.requestOptions.extra['_retried'] != true) {
+            if (await _tryRefresh()) {
+              try {
+                final opts = error.requestOptions
+                  ..headers['Authorization'] =
+                      'Bearer ${await _storage.accessToken}'
+                  ..extra['_retried'] = true;
+
+                final retried = await _dio.fetch(opts);
+
+                return handler.resolve(retried);
+              } catch (_) {}
+            }
+
+            await _redirectToLogin();
+          }
+
+          handler.next(error);
+        },
+
+        // ── Log responses ───────────────────────────────────────────────────
+        onResponse: (response, handler) {
+          if (AppConfig.showLogs) {
+            log(
+              '[${response.requestOptions.path}] '
+                  '${response.statusCode} '
+                  '${response.data.runtimeType}',
+            );
+
+            log(response.data.toString());
+          }
+
+          handler.next(response);
+        },
+      ),
+    );
 
     return d;
   }
 
   // ── Options helpers ───────────────────────────────────────────────────────
 
-  /// Options for normal JSON calls — 30s receive timeout, JSON content-type.
-  Options _jsonOpts({bool auth = true, String method = 'GET'}) => Options(
-    method:         method,
-    contentType:    Headers.jsonContentType,
-    receiveTimeout: const Duration(seconds: 30),
-    extra:          {'auth': auth},
-  );
+  /// Options for normal JSON calls.
+  ///
+  /// POST/PUT/DELETE requests use application/json as expected by the API.
+  ///
+  /// On Flutter Web, application/json is not CORS-safelisted, so the browser
+  /// may send an OPTIONS preflight before the actual request.
+  ///
+  /// This is normal and should be handled by FastAPI's CORSMiddleware.
+  Options _jsonOpts({
+    bool auth = true,
+    required String method,
+  }) =>
+      Options(
+        method: method,
+        contentType: Headers.jsonContentType,
+        receiveTimeout: const Duration(seconds: 30),
+        extra: {
+          'auth': auth,
+        },
+      );
 
-  /// Options for file uploads/downloads — no receive timeout.
-  Options _fileOpts({bool auth = true, String method = 'POST'}) => Options(
-    method:  method,
-    extra:   {'auth': auth},
-    // sendTimeout / receiveTimeout intentionally left null = unlimited
-  );
+  /// Options for GET requests.
+  ///
+  /// GET requests normally don't contain a request body, so we don't
+  /// unnecessarily send:
+  ///
+  ///     Content-Type: application/json
+  ///
+  /// This can avoid an unnecessary CORS preflight for public GET requests.
+  ///
+  /// IMPORTANT:
+  /// Authenticated GET requests can still trigger preflight because:
+  ///
+  ///     Authorization: Bearer <token>
+  ///
+  /// is not a CORS-safelisted request header.
+  Options _getOpts({
+    bool auth = true,
+  }) =>
+      Options(
+        method: 'GET',
+        receiveTimeout: const Duration(seconds: 30),
+        extra: {
+          'auth': auth,
+        },
+      );
+
+  /// Options for file uploads/downloads.
+  ///
+  /// No receive timeout.
+  Options _fileOpts({
+    bool auth = true,
+    String method = 'POST',
+  }) =>
+      Options(
+        method: method,
+        extra: {
+          'auth': auth,
+        },
+
+        // sendTimeout / receiveTimeout intentionally left null
+        // = unlimited.
+      );
 
   // ── Response handler ──────────────────────────────────────────────────────
 
   Future<dynamic> _handle(Response res) async {
     final status = res.statusCode ?? 0;
-    final path   = res.requestOptions.path;
+    final path = res.requestOptions.path;
 
-    if (status == 204) return true;
+    if (status == 204) {
+      return true;
+    }
 
     if (status == 401) {
       await _redirectToLogin();
@@ -192,50 +263,82 @@ class ApiClient {
 
     // Error response
     String message = 'Request failed';
+
     final body = res.data;
+
     if (body is Map && body['detail'] != null) {
       final detail = body['detail'];
+
       message = detail is String
           ? detail
           : (detail as List).map((e) => e['msg']).join(', ');
     }
-    throw ApiException(statusCode: status, message: message, body: body);
+
+    throw ApiException(
+      statusCode: status,
+      message: message,
+      body: body,
+    );
   }
 
   // ── Token refresh ─────────────────────────────────────────────────────────
 
   Future<bool> _tryRefresh() async {
     final refresh = await _storage.refreshToken;
-    if (refresh == null) return false;
+
+    if (refresh == null) {
+      return false;
+    }
+
     try {
       final res = await _dio.post(
         '/api/v1/auth/refresh',
-        queryParameters: {'refresh_token': refresh},
-        options: Options(extra: {'auth': false, '_retried': true}),
+        queryParameters: {
+          'refresh_token': refresh,
+        },
+        options: Options(
+          extra: {
+            'auth': false,
+            '_retried': true,
+          },
+        ),
       );
+
       if (res.statusCode == 200) {
         final data = res.data as Map<String, dynamic>;
+
         await _storage.save(
-          access:  data['access_token']  as String,
+          access: data['access_token'] as String,
           refresh: data['refresh_token'] as String? ?? refresh,
         );
+
         return true;
       }
     } catch (_) {}
+
     return false;
   }
 
   Future<void> _redirectToLogin() async {
     await _storage.clear();
-    if(AppConfig.showLogs) {
-      log('redirect to login ──────────────────────────────>');
+
+    if (AppConfig.showLogs) {
+      log(
+        'redirect to login '
+            '──────────────────────────────>',
+      );
     }
-    navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (_) => false);
+
+    navigatorKey.currentState?.pushNamedAndRemoveUntil(
+      '/login',
+          (_) => false,
+    );
   }
 
   // ── Version check ─────────────────────────────────────────────────────────
 
   /// GET /app/version-check?version=x.y.z&platform=android|ios|web
+  ///
   /// Returns the raw JSON map from the server.
   Future<Map<String, dynamic>> checkVersion({
     required String version,
@@ -243,13 +346,20 @@ class ApiClient {
   }) async {
     final res = await _dio.get(
       '/app/version-check',
-      queryParameters: {'version': version, 'platform': platform},
+      queryParameters: {
+        'version': version,
+        'platform': platform,
+      },
       options: Options(
         receiveTimeout: const Duration(seconds: 15),
-        extra: {'auth': false},   // public endpoint — no token needed
+        extra: {
+          'auth': false,
+        },
       ),
     );
+
     final data = await _handle(res);
+
     return (data as Map<String, dynamic>?) ?? {};
   }
 
@@ -263,8 +373,11 @@ class ApiClient {
     final res = await _dio.get(
       path,
       queryParameters: queryParams,
-      options: _jsonOpts(auth: auth),
+      options: _getOpts(
+        auth: auth,
+      ),
     );
+
     return _handle(res);
   }
 
@@ -278,10 +391,14 @@ class ApiClient {
       }) async {
     final res = await _dio.post(
       path,
-      data:            body,
+      data: body,
       queryParameters: queryParams,
-      options:         _jsonOpts(auth: auth, method: 'POST'),
+      options: _jsonOpts(
+        auth: auth,
+        method: 'POST',
+      ),
     );
+
     return _handle(res);
   }
 
@@ -295,10 +412,14 @@ class ApiClient {
       }) async {
     final res = await _dio.put(
       path,
-      data:            body,
+      data: body,
       queryParameters: queryParams,
-      options:         _jsonOpts(auth: auth, method: 'PUT'),
+      options: _jsonOpts(
+        auth: auth,
+        method: 'PUT',
+      ),
     );
+
     return _handle(res);
   }
 
@@ -312,8 +433,12 @@ class ApiClient {
     final res = await _dio.delete(
       path,
       queryParameters: queryParams,
-      options:         _jsonOpts(auth: auth, method: 'DELETE'),
+      options: _jsonOpts(
+        auth: auth,
+        method: 'DELETE',
+      ),
     );
+
     return _handle(res);
   }
 
@@ -324,11 +449,17 @@ class ApiClient {
         required XFile file,
         String fieldName = 'file',
       }) async {
-    final ext  = p.extension(file.path).replaceFirst('.', '').toLowerCase();
+    final ext = p
+        .extension(file.path)
+        .replaceFirst('.', '')
+        .toLowerCase();
+
     final mime = _imageMime(ext);
+
     final name = p.basename(file.path).isNotEmpty
         ? p.basename(file.path)
         : 'upload.${ext.isEmpty ? 'jpg' : ext}';
+
     final bytes = await file.readAsBytes();
 
     final res = await _dio.post(
@@ -336,36 +467,39 @@ class ApiClient {
       data: FormData.fromMap({
         fieldName: MultipartFile.fromBytes(
           bytes,
-          filename:    name,
+          filename: name,
           contentType: MediaType.parse(mime),
         ),
       }),
       options: _fileOpts(),
     );
+
     return _handle(res);
   }
 
   // ── POST multipart ────────────────────────────────────────────────────────
   //
   // Supports both in-memory bytes and on-disk file streaming.
+  //
   // For chunk uploads always prefer [filePath] — it streams from disk and
   // never triggers a receive timeout because sendTimeout is unlimited.
   //
   // Parameters:
-  //   filePath      — path to a file on disk (preferred: streams, low memory use)
-  //   fileBytes     — fallback when no file is on disk (e.g. web blob)
-  //   onSendProgress— (sent, total) callback, useful for showing upload
-  //                   progress on larger chunks (e.g. camera+share-screen
-  //                   chunks, which can be several MB instead of a few
-  //                   hundred KB — see beginChunkWriter's bitrate comment
-  //                   on the native side for why those got bigger).
-  //   maxRetries    — automatic retry count for transient failures
-  //                   (timeouts, connection errors, 5xx). Each retry waits
-  //                   `retryDelay * (attempt)` — simple linear backoff.
-  //                   Does NOT retry on 4xx (client errors won't fix
-  //                   themselves by retrying) — only on network-level
-  //                   failures or 5xx server errors.
-  //   retryDelay    — base delay between retries (default 2s).
+  //
+  // filePath
+  //   Path to a file on disk.
+  //
+  // fileBytes
+  //   Fallback when no file is on disk, e.g. web blob.
+  //
+  // onSendProgress
+  //   Callback useful for showing upload progress.
+  //
+  // maxRetries
+  //   Automatic retry count for transient failures.
+  //
+  // retryDelay
+  //   Base delay between retries.
   //
   // Both [fileField] + ([filePath] or [fileBytes]) are required.
 
@@ -374,50 +508,62 @@ class ApiClient {
         required Map<String, String> fields,
         required String fileField,
         required String fileName,
-        String?    filePath,    // preferred: stream from disk, no receive timeout
-        Uint8List? fileBytes,  // fallback: in-memory bytes
+        String? filePath,
+        Uint8List? fileBytes,
         bool auth = true,
         void Function(int sent, int total)? onSendProgress,
         int maxRetries = 0,
         Duration retryDelay = const Duration(seconds: 2),
       }) async {
-    assert(filePath != null || fileBytes != null,
-    'postMultipart: provide filePath or fileBytes');
+    assert(
+    filePath != null || fileBytes != null,
+    'postMultipart: provide filePath or fileBytes',
+    );
 
-    final ext  = p.extension(fileName).replaceFirst('.', '').toLowerCase();
+    final ext = p
+        .extension(fileName)
+        .replaceFirst('.', '')
+        .toLowerCase();
+
     final mime = _fileMime(ext);
 
-    // Building the MultipartFile is repeated per attempt because
-    // MultipartFile streams are single-use — a retried request needs a
-    // fresh one built from the same source (file on disk, or bytes).
+    // MultipartFile streams are single-use.
+    // A fresh MultipartFile is therefore required for every retry.
     Future<MultipartFile> buildMultipartFile() async {
-      if (!kIsWeb && filePath != null && File(filePath).existsSync()) {
-        // Stream from disk — memory-efficient and no timeout issues.
-        // dart:io's File is unavailable on web (throws "Unsupported
-        // operation: _Namespace"), so web always falls through to bytes below.
+      if (!kIsWeb &&
+          filePath != null &&
+          File(filePath).existsSync()) {
+        // Stream from disk — memory efficient.
+        //
+        // dart:io File is unavailable on web, so web falls through
+        // to the bytes implementation below.
         return MultipartFile.fromFile(
           filePath,
-          filename:    fileName,
+          filename: fileName,
           contentType: MediaType.parse(mime),
         );
       }
-      // Fallback: bytes (web, or when file was already deleted)
+
+      // Fallback: bytes.
       if (fileBytes == null) {
         throw Exception(
           'postMultipart: no fileBytes provided and filePath is unusable '
               '(web platform, or file missing on disk).',
         );
       }
+
       return MultipartFile.fromBytes(
         fileBytes,
-        filename:    fileName,
+        filename: fileName,
         contentType: MediaType.parse(mime),
       );
     }
 
     int attempt = 0;
+
     while (true) {
       attempt++;
+
       try {
         final form = FormData.fromMap({
           ...fields,
@@ -426,25 +572,39 @@ class ApiClient {
 
         final res = await _dio.post(
           path,
-          data:    form,
-          options: _fileOpts(auth: auth),   // unlimited send + receive timeout
+          data: form,
+          options: _fileOpts(
+            auth: auth,
+          ),
           onSendProgress: onSendProgress,
         );
+
         return _handle(res);
       } on DioException catch (e) {
         final status = e.response?.statusCode;
-        // Only retry transient failures: network-level errors (timeout,
-        // connection dropped, etc.) or a 5xx from the server. A 4xx means
-        // the server rejected the request itself — retrying identical bytes
-        // won't change that outcome.
+
+        // Retry only:
+        // - network-level failures
+        // - 5xx server errors
+        //
+        // Do not retry 4xx errors.
         final isTransient = status == null || status >= 500;
-        if (!isTransient || attempt > maxRetries) rethrow;
-        if (AppConfig.showLogs) {
-          log('[postMultipart] $path attempt $attempt failed '
-              '(${e.type}, status=$status) — retrying in '
-              '${retryDelay.inSeconds * attempt}s');
+
+        if (!isTransient || attempt > maxRetries) {
+          rethrow;
         }
-        await Future.delayed(retryDelay * attempt);
+
+        if (AppConfig.showLogs) {
+          log(
+            '[postMultipart] $path attempt $attempt failed '
+                '(${e.type}, status=$status) — retrying in '
+                '${retryDelay.inSeconds * attempt}s',
+          );
+        }
+
+        await Future.delayed(
+          retryDelay * attempt,
+        );
       }
     }
   }
@@ -454,41 +614,45 @@ class ApiClient {
   Future<void> saveTokens({
     required String access,
     required String refresh,
-  }) => _storage.save(access: access, refresh: refresh);
+  }) =>
+      _storage.save(
+        access: access,
+        refresh: refresh,
+      );
 
   Future<void> clearTokens() => _storage.clear();
 
   Future<String?> get accessToken => _storage.accessToken;
 
-  // ── MIME helpers ──────────────────────────────────────────────────────────
+  // ── MIME helpers ───────────────────────────────────────────────────────────
 
   static String _imageMime(String ext) => switch (ext) {
-    'png'  => 'image/png',
+    'png' => 'image/png',
     'webp' => 'image/webp',
-    'gif'  => 'image/gif',
-    _      => 'image/jpeg',
+    'gif' => 'image/gif',
+    _ => 'image/jpeg',
   };
 
   static String _fileMime(String ext) => switch (ext) {
-    'png'          => 'image/png',
-    'webp'         => 'image/webp',
-    'gif'          => 'image/gif',
-    'jpg' || 'jpeg'=> 'image/jpeg',
-    'pdf'          => 'application/pdf',
-    'doc'          => 'application/msword',
-    'docx'         => 'application/vnd.openxmlformats-officedocument'
-        '.wordprocessingml.document',
-    'xls'          => 'application/vnd.ms-excel',
-    'xlsx'         => 'application/vnd.openxmlformats-officedocument'
-        '.spreadsheetml.sheet',
-    'ppt'          => 'application/vnd.ms-powerpoint',
-    'pptx'         => 'application/vnd.openxmlformats-officedocument'
-        '.presentationml.presentation',
-    'txt'          => 'text/plain',
-    'mp4'          => 'video/mp4',
-    'm4a'          => 'audio/mp4',
-    'webm'         => 'video/webm',
-    'ogg'          => 'audio/ogg',
-    _              => 'application/octet-stream',
+    'png' => 'image/png',
+    'webp' => 'image/webp',
+    'gif' => 'image/gif',
+    'jpg' || 'jpeg' => 'image/jpeg',
+    'pdf' => 'application/pdf',
+    'doc' => 'application/msword',
+    'docx' =>
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'xls' => 'application/vnd.ms-excel',
+    'xlsx' =>
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'ppt' => 'application/vnd.ms-powerpoint',
+    'pptx' =>
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'txt' => 'text/plain',
+    'mp4' => 'video/mp4',
+    'm4a' => 'audio/mp4',
+    'webm' => 'video/webm',
+    'ogg' => 'audio/ogg',
+    _ => 'application/octet-stream',
   };
 }
