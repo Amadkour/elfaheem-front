@@ -1437,6 +1437,12 @@ class _RoomPageState extends State<RoomPage>
   // ─────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    // Defensive: also ensured here, not just from the RoomConnectedEvent
+    // handler — idempotent (no-ops once already running), and safe to call
+    // during build since it only schedules a Timer, it doesn't call
+    // setState() synchronously. Guards against any edge case where that
+    // event fires before this State object's listeners are fully wired up.
+    _startSessionClock();
     return Theme(
       data: ThemeData.dark(),
       child: Scaffold(

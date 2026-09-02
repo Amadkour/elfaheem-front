@@ -156,6 +156,54 @@ class ScreenPlaceholderRenderer(
         latch.await()
     }
 
+    /**
+     * Call right before releasing the current chunk's MediaRecorder when
+     * PAUSING (not stopping) — see ScreenCaptureService.kt's recordLoop(),
+     * which deliberately skips calling attachEncoderSurface() again during
+     * a pause (there's no new chunk to write into yet). Left unhandled,
+     * that meant outputSurface stayed pointed at a Surface whose
+     * MediaRecorder had just been released: eglMakeCurrent against it then
+     * fails, makeCurrentOutput() returns false, and drawLiveFrame() silently
+     * no-ops for the ENTIRE pause window — meaning onLiveFrameForCapturer
+     * never fires and the live share students see freezes for as long as
+     * recording stays paused, even though pausing the local recording was
+     * never supposed to affect the live share at all.
+     *
+     * This re-points outputSurface at a persistent pbuffer sized to match
+     * the current output resolution instead: eglMakeCurrent keeps
+     * succeeding, the shared draw tick keeps running, and live frames keep
+     * reaching onLiveFrameForCapturer uninterrupted — only the
+     * MediaRecorder-side chunk file writing is what's actually paused.
+     * attachEncoderSurface() on resume destroys this pbuffer and re-points
+     * outputSurface at the fresh real chunk's surface, same as any other
+     * chunk boundary.
+     */
+    fun detachEncoderSurfaceForPause() {
+        val latch = java.util.concurrent.CountDownLatch(1)
+        glHandler.post {
+            try {
+                if (outputSurface != EGL14.EGL_NO_SURFACE) {
+                    EGL14.eglDestroySurface(eglDisplay, outputSurface)
+                }
+                val attribs = intArrayOf(
+                        EGL14.EGL_WIDTH, outputWidth, EGL14.EGL_HEIGHT, outputHeight,
+                        EGL14.EGL_NONE)
+                outputSurface = EGL14.eglCreatePbufferSurface(eglDisplay, eglConfig, attribs, 0)
+                // outputWidth/outputHeight deliberately left unchanged —
+                // dimensions must stay consistent for onLiveFrameForCapturer
+                // (a resolution change mid-stream could disrupt the live
+                // WebRTC track on viewers' side); only the destination
+                // surface changes.
+                scheduleNextTick()
+            } catch (e: Exception) {
+                Log.e(TAG, "detachEncoderSurfaceForPause failed: ${e.message}", e)
+            } finally {
+                latch.countDown()
+            }
+        }
+        latch.await()
+    }
+
     /** Call on EVERY chunk boundary (first chunk + every ping-pong swap). Blocks until applied. */
     fun attachEncoderSurface(surface: Surface, width: Int, height: Int) {
         val latch = java.util.concurrent.CountDownLatch(1)
@@ -398,7 +446,20 @@ class ScreenPlaceholderRenderer(
         glHandler.postDelayed({
             if (!running || outputSurface == EGL14.EGL_NO_SURFACE) return@postDelayed
             if (myGeneration != drawGeneration) return@postDelayed // a newer chain took over
-            if (liveMode) drawLiveFrame() else drawPlaceholderFrame()
+            // try/catch is load-bearing, not defensive decoration: this
+            // runnable reschedules itself on the line AFTER the draw call,
+            // so an uncaught exception from drawLiveFrame()/
+            // drawPlaceholderFrame() (e.g. eglSwapBuffers against a surface
+            // whose underlying MediaRecorder was just released) previously
+            // killed the entire recurring chain permanently — no more
+            // ticks, ever, for BOTH the local recording AND the live share
+            // (onLiveFrameForCapturer runs on this same chain). One bad
+            // frame must never be able to do that.
+            try {
+                if (liveMode) drawLiveFrame() else drawPlaceholderFrame()
+            } catch (e: Exception) {
+                Log.e(TAG, "draw tick failed, continuing: ${e.message}", e)
+            }
             scheduleNextTickInner(myGeneration)
         }, 1000L / FPS_PLACEHOLDER)
     }
@@ -411,29 +472,6 @@ class ScreenPlaceholderRenderer(
 
         if (hasPlaceholderImage && placeholderTextureId != 0) {
             drawPlaceholderBitmapAspectFit()
-        }
-
-        // Forward the placeholder to the live capturer too (same sink
-        // drawLiveFrame() uses), not just the local recording encoder.
-        // Previously only drawLiveFrame() called onLiveFrameForCapturer, so
-        // the ElFaheem-backed LiveKit video track — if published before
-        // Share starts — never received ANY frame while in placeholder
-        // mode and remote viewers saw a black/empty tile from session
-        // start until the teacher actually shared their screen. Now the
-        // live track shows the real placeholder graphic the whole time,
-        // and switchToLive() transparently swaps it for real screen
-        // content once Share is granted, with no republish needed.
-        //
-        // CRITICAL ORDERING: glReadPixels MUST happen before
-        // eglSwapBuffers — see the identical note in drawLiveFrame().
-        onLiveFrameForCapturer?.let { sink ->
-            val buf = ByteBuffer.allocateDirect(outputWidth * outputHeight * 4)
-                    .order(ByteOrder.nativeOrder())
-            GLES20.glReadPixels(
-                    0, 0, outputWidth, outputHeight,
-                    GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buf)
-            buf.position(0)
-            sink(outputWidth, outputHeight, buf)
         }
 
         EGL14.eglSwapBuffers(eglDisplay, outputSurface)

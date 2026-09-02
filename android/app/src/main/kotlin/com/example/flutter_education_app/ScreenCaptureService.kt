@@ -457,6 +457,19 @@ class ScreenCaptureService : Service() {
                 }
                 pausing -> {
                     // Soft pause — park this thread until RESUME or STOP.
+                    //
+                    // Re-point the renderer's output at a safe, persistent
+                    // pbuffer BEFORE parking: currentRecorder.release() just
+                    // above already invalidated the Surface
+                    // placeholderRenderer was drawing into (attachEncoderSurface
+                    // for the next chunk is deliberately skipped while
+                    // pausing — there's no next chunk yet). Left unhandled,
+                    // eglMakeCurrent against that dead surface fails on every
+                    // tick for the whole pause duration, silently no-opping
+                    // drawLiveFrame() — which is also what feeds the live
+                    // share via onLiveFrameForCapturer. Pausing the local
+                    // recording must never freeze what viewers see.
+                    placeholderRenderer?.detachEncoderSurfaceForPause()
                     isPaused = true
                     mainHandler.post { emitRecordingPaused() }
                     Log.d(TAG, "recording PAUSED at chunk #$chunkIndex")
@@ -573,25 +586,6 @@ class ScreenCaptureService : Service() {
                     placeholderRenderer!!.inputSurface, null, null,
             )
             Log.d(TAG, "VirtualDisplay created (live) ${screenWidth}x${screenHeight}@${screenDpi}dpi")
-
-            // Work around a well-known MediaProjection quirk: SurfaceFlinger
-            // only pushes a mirrored frame into the VirtualDisplay's target
-            // Surface when the real screen actually redraws. If nothing on
-            // screen changes right after the grant, ScreenPlaceholderRenderer's
-            // onFrameAvailable() never fires, haveLiveFrame stays false, and
-            // drawLiveFrame() keeps clearing to solid black indefinitely —
-            // which is exactly what both the recording and the live share
-            // end up showing. A tiny resize immediately after creation forces
-            // SurfaceFlinger to recompose and deliver an initial frame
-            // regardless of on-screen activity.
-            mainHandler.postDelayed({
-                try {
-                    virtualDisplay?.resize(screenWidth, screenHeight - 2, screenDpi)
-                    virtualDisplay?.resize(screenWidth, screenHeight, screenDpi)
-                } catch (e: Exception) {
-                    Log.w(TAG, "initial-frame resize kick failed: ${e.message}")
-                }
-            }, 150)
         } catch (e: Exception) {
             Log.e(TAG, "createVirtualDisplay failed: ${e.message}", e)
             mainHandler.post {

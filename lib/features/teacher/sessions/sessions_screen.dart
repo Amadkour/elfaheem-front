@@ -41,6 +41,9 @@
 //     leak into the hero or details card next to it.
 // ─────────────────────────────────────────────────────────────────────────
 
+import 'dart:developer';
+import 'dart:math';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/sessions/sessions_provider.dart';
@@ -152,12 +155,15 @@ class _TeacherSessionsView extends StatelessWidget {
               SliverToBoxAdapter(
                 child: Selector<TeacherCourseScreenProvider, TeacherCourse>(
                   selector: (_, p) => p.course,
-                  builder: (context, course, _) => CourseHero(
+                  builder: (context, course, _) {
+
+                    return CourseHero(
                     course: course,
                     onBack: () => Navigator.maybePop(context),
                     onEditCourse: () => _openEditCourse(context),
                     onRefresh: () => provider.refresh(),
-                  ),
+                  );
+                  },
                 ),
               ),
 
@@ -170,47 +176,44 @@ class _TeacherSessionsView extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8.0),
                   child:
-                  Selector<
-                      TeacherCourseScreenProvider,
-                      (TeacherCourse course, int sessionCount, bool expanded)
-                  >(
-                    selector: (_, p) =>
-                    (p.course, p.sessionCount, p.openCourseDetails),
-                    builder: (context, data, _) {
-                      final (course, sessionCount, expanded) = data;
-                      return DetailCard(
-                        // Stable key — DetailCard keeps its own
-                        // expand/collapse animation state across
-                        // rebuilds instead of being destroyed and
-                        // recreated every time (previously a fresh
-                        // Random() key every build).
-                        key: const ValueKey('course_details_card'),
-                        expanded: expanded,
-                        icon: CupertinoIcons.list_bullet_below_rectangle,
-                        title: 'course_details'.tr,
-                        color: const Color(0xFF4DA6FF),
-                        children: [
-                          // ── Rating ──────────────────────────────
-                          RatingWidget(
-                            type: RateType.course,
-                            sourceId: course.id.toString(),
-                            canEdit: false,
-                            compact: false,
-                          ),
-                          ProgressBanner(
-                            progress: course.progress,
-                            total: course.expectedHours.toInt(),
-                            complete: course.totalHours.toInt(),
-                          ),
-                          CourseStatsRow(
-                            course: course,
-                            sessionCount: sessionCount,
-                          ),
-                          CourseDetailsSection(course: course),
-                        ],
-                      );
-                    },
-                  ),
+                      Selector<TeacherCourseScreenProvider,
+                        (TeacherCourse course, int sessionCount, bool expanded)>(
+                        selector: (_, p) =>(p.course, p.sessionCount, p.openCourseDetails),
+                        builder: (context, data, _) {
+                          final (course, sessionCount, expanded) = data;
+                          return  DetailCard(
+                            // Stable key — DetailCard keeps its own
+                            // expand/collapse animation state across
+                            // rebuilds instead of being destroyed and
+                            // recreated every time (previously a fresh
+                            // Random() key every build).
+                            key:  ValueKey({Random().nextDouble()}),
+                            expanded: expanded,
+                            icon: CupertinoIcons.list_bullet_below_rectangle,
+                            title: 'course_details'.tr,
+                            color: const Color(0xFF4DA6FF),
+                            children: [
+                              // ── Rating ──────────────────────────────
+                              RatingWidget(
+                                type: RateType.course,
+                                sourceId: course.id.toString(),
+                                canEdit: false,
+                                compact: false,
+                              ),
+                              ProgressBanner(
+                                progress: course.progress,
+                                total: course.expectedHours.toInt(),
+                                complete: course.totalHours.toInt(),
+                              ),
+                              CourseStatsRow(
+                                course: course,
+                                sessionCount: sessionCount,
+                              ),
+                              CourseDetailsSection(course: course),
+                            ],
+                          );
+                        },
+                      ),
                 ),
               ),
 

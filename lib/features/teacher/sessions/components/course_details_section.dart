@@ -1,3 +1,8 @@
+// components/course_details_section.dart
+//
+// Expandable detail cards: schedule · prerequisites · tools · certificates.
+// Purely presentational — receives a [TeacherCourse] and renders itself.
+// ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/schedules/schedules_screen.dart';
@@ -27,22 +32,19 @@ class _AddButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
               boxShadow: context.colors.primaryShadow,
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.add_rounded, color: Colors.white, size: 18),
-                const SizedBox(width: 6),
-                Text(
-                  'add_schedule'.tr,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'tajawal',
-                    fontSize: 12,
-                  ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.add_rounded, color: Colors.white, size: 18),
+              const SizedBox(width: 6),
+              Text(
+                'add_schedule'.tr,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'tajawal',
+                  fontSize: 12,
                 ),
-              ],
-            ),
+              ),
+            ]),
           ),
         ),
       ],
@@ -95,21 +97,9 @@ class CourseDetailsSection extends StatelessWidget {
           icon: Icons.calendar_month_rounded,
           title: 'weekly_schedule'.tr,
           color: const Color(0xFF4DA6FF),
-          children: course.schedules.isEmpty
-              ? <Widget>[
-                  _AddButton(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              TeacherSchedulesScreen(course: course),
-                        ),
-                      );
-                    },
-                  ),
-                ]
-              : course.schedules.map((s) => _ScheduleRow(schedule: s)).toList(),
+          children:course.schedules.isEmpty? <Widget>[_AddButton(onTap: ()  {Navigator.push(context, MaterialPageRoute(builder: (_)=>TeacherSchedulesScreen(course: course,))); })]: course.schedules
+              .map((s) => _ScheduleRow(schedule: s))
+              .toList(),
         ),
 
         if (course.prerequisites.isNotEmpty) ...[
@@ -168,8 +158,7 @@ class DetailCard extends StatefulWidget {
   final List<Widget> children;
   final bool expanded;
 
-  const DetailCard({
-    super.key,
+  const DetailCard({super.key,
     required this.icon,
     required this.title,
     required this.color,
@@ -320,10 +309,10 @@ class _DetailCardState extends State<DetailCard>
                     children: widget.children
                         .map(
                           (child) => Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: child,
-                          ),
-                        )
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: child,
+                      ),
+                    )
                         .toList(),
                   ),
                 ),

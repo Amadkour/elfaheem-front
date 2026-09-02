@@ -200,7 +200,50 @@ web.MediaStream? toWebMediaStream(Object? obj) {
   catch (e) { _log('toWebMediaStream cast failed: $e'); return null; }
 }
 
-Object? streamFromLivekitTrack(Object? lkTrack) => null;
+/// Bridges a screen-share stream already captured on the Dart/flutter_webrtc
+/// side (via `rtc.navigator.mediaDevices.getDisplayMedia()` in
+/// room_screen_share.dart) into the native `web.MediaStream` this file's
+/// compositor calls need — so getDisplayMedia() is called exactly ONCE per
+/// share (previously this file's own standalone getDisplayMedia() was
+/// called a second, independent time just to feed the compositor, which is
+/// why starting a share showed two separate browser permission dialogs).
+///
+/// UNCONFIRMED: flutter_webrtc's web-platform `MediaStream`/
+/// `MediaStreamTrack` classes wrap a real js MediaStream/MediaStreamTrack
+/// internally, but the exact accessor name for it depends on the specific
+/// flutter_webrtc version/fork in use (this project overrides to a custom
+/// fork per pubspec.yaml). This tries the field names used by the
+/// mainstream flutter_webrtc web implementation as of the ^1.6.0 branch
+/// (`jsStream` / a direct JSObject cast) — if your fork renamed or
+/// restructured this, this is the one spot to adjust; everything else in
+/// this fix (single capture, direct LocalVideoTrack publish) doesn't depend
+/// on this working, and calls into this are already null-safe: if it can't
+/// resolve the native stream, screen sharing still works, only the
+/// recording is what misses the screen (see the null-check at the call
+/// site in room_screen_share.dart).
+web.MediaStream? streamFromLivekitTrack(Object? lkStream) {
+  if (lkStream == null) return null;
+  try {
+    // Most direct case: already a native web.MediaStream (e.g. if a
+    // future flutter_webrtc version exposes it as such, or if called with
+    // one directly rather than flutter_webrtc's own wrapper type).
+    if (lkStream is web.MediaStream) return lkStream;
+    // Mainstream flutter_webrtc web plugin's MediaStream wraps the real
+    // js MediaStream and exposes it via a `jsStream` getter — accessed
+    // dynamically here since this file doesn't import the flutter_webrtc
+    // package (keeping the web/native split clean), so the static type
+    // isn't available to reference directly.
+    final dynamic maybeWrapped = lkStream;
+    final jsStream = maybeWrapped.jsStream;
+    if (jsStream is web.MediaStream) return jsStream;
+    _log('streamFromLivekitTrack: .jsStream was not a web.MediaStream '
+        '(got ${jsStream.runtimeType}) — see this function\'s doc comment');
+  } catch (e) {
+    _log('streamFromLivekitTrack: no .jsStream accessor found on '
+        '${lkStream.runtimeType} — see this function\'s doc comment. ($e)');
+  }
+  return null;
+}
 
 void _log(String msg) {
   // ignore: avoid_print

@@ -84,6 +84,10 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
   LocalVideoTrack? _elFaheemScreenTrack;
   LocalTrackPublication<LocalVideoTrack>? _elFaheemScreenPublication;
 
+  // Same pattern, web platform — see _toggleScreenShareWeb.
+  LocalVideoTrack? _webScreenShareTrack;
+  LocalTrackPublication<LocalVideoTrack>? _webScreenSharePublication;
+
   Room get room;
   ClientRecorder? get recorder;
   bool get isTeacher;
@@ -304,43 +308,89 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
       ) async {
     if (!isSharing) {
       try {
-        final screenStream = await web_rec.getDisplayMedia();
-        if (screenStream == null) {
-          showSnack('Screen share cancelled.');
-          return;
-        }
+        // ── Single capture, shared by both consumers ──────────────────────
+        // Previously this called TWO independent getDisplayMedia()s: one
+        // here (web_rec.getDisplayMedia(), feeding only the recorder) and
+        // a second one implicitly inside setScreenShareEnabled(true) below
+        // (LiveKit captures its own stream internally when you don't hand
+        // it one) — two separate browser "Choose what to share" dialogs,
+        // and if the user picked a different window/tab in each, the
+        // recording and the live share could end up showing different
+        // content entirely.
+        //
+        // Fixed the same way the Android single-projection path already
+        // proves works in this codebase (see publishElFaheemTrack above):
+        // capture ONE stream via flutter_webrtc's own getDisplayMedia
+        // (not the recorder's standalone helper — this one returns a
+        // `rtc.MediaStream` that LocalVideoTrack can publish directly),
+        // then reuse that exact stream for both LiveKit and the recorder,
+        // instead of letting either side capture independently.
+        final rtc.MediaStream screenStream =
+        await rtc.navigator.mediaDevices.getDisplayMedia({
+          'video': {
+            'width': 1280, 'height': 720, 'frameRate': 30,
+          },
+          'audio': true,
+        });
+        final videoTrack = screenStream.getVideoTracks().first;
+        _webScreenShareTrack = LocalVideoTrack(
+          TrackSource.screenShareVideo,
+          screenStream,
+          videoTrack,
+          const ScreenShareCaptureOptions(),
+        );
+        await _safeNegotiate(() async {
+          _webScreenSharePublication =
+          await local.publishVideoTrack(_webScreenShareTrack!);
+        });
+
         if (recorder == null) {
           log('[SS] Web: recorder is null — screen stream will NOT reach '
               'the compositor (nothing will be recorded for this share)');
         }
-        await recorder?.attachScreenToRecorder(screenStream);
-        try {
-          await _safeNegotiate(() => local.setScreenShareEnabled(
-            true,
-            captureScreenAudio: true,
-          ));
-        } catch (e) {
-          log('[SS] Web: setScreenShareEnabled non-fatal: $e');
+        // Feeds the compositor from the SAME stream just published above —
+        // see streamFromLivekitTrack's doc comment in recorder_web_impl.dart
+        // for the one piece of this that still needs confirming against
+        // the actual flutter_webrtc fork in use.
+        final nativeStream = web_rec.streamFromLivekitTrack(screenStream);
+        if (nativeStream != null) {
+          await recorder?.attachScreenToRecorder(nativeStream);
+        } else {
+          log('[SS] Web: could not bridge the LiveKit screen stream to the '
+              'recorder — see streamFromLivekitTrack TODO. Live share will '
+              'work; the recording will miss the screen for this share.');
         }
-        await Future.delayed(const Duration(milliseconds: 300));
-        for (final pub in local.audioTrackPublications) {
-          if (pub.source == TrackSource.screenShareAudio &&
-              pub.track is LocalAudioTrack) {
-            await local.publishAudioTrack(
-              pub.track as LocalAudioTrack,
-              publishOptions: _hdAudioPublishOptions,
-            );
-            break;
-          }
-        }
-        log('[SS] Web: screen share active');
+
+        // Screen/tab audio (previously included via
+        // setScreenShareEnabled(..., captureScreenAudio: true)) is NOT
+        // republished here. LocalVideoTrack's constructor above is
+        // confirmed correct — it's already used the same way for
+        // Android's ElFaheem track — but I don't have a confirmed
+        // LocalAudioTrack constructor signature anywhere in this codebase
+        // to build on, and guessing at one risks a straight compile error
+        // rather than just a runtime issue. If `screenStream` has an audio
+        // track (screenStream.getAudioTracks()) and you want it published,
+        // check LocalAudioTrack's actual constructor for your livekit_client
+        // version and publish it the same way the video track is above —
+        // happy to wire it in once confirmed.
+        log('[SS] Web: screen share active (single capture)');
       } catch (e) {
         log('[SS] Web start error: $e');
         showSnack('Screen share failed: $e');
       }
     } else {
       try {
-        await _safeNegotiate(() => local.setScreenShareEnabled(false));
+        if (_webScreenSharePublication != null) {
+          await _safeNegotiate(
+                () => local.removePublishedTrack(_webScreenSharePublication!.sid),
+          );
+          await _webScreenShareTrack?.stop();
+          _webScreenShareTrack = null;
+          _webScreenSharePublication = null;
+        } else {
+          // Fallback for any path that still went through setScreenShareEnabled.
+          await _safeNegotiate(() => local.setScreenShareEnabled(false));
+        }
         await recorder?.detachScreenFromRecorder();
         log('[SS] Web: screen share stopped');
       } catch (e) {
