@@ -18,7 +18,6 @@ import '../components/exts.dart';
 import 'widgets/controls.dart';
 import 'widgets/participant.dart';
 import 'widgets/participant_info.dart';
-import 'widgets/recorder_web_impl.dart';
 import 'widgets/room_recorder.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'widgets/room_screen_share.dart';
@@ -3723,9 +3722,11 @@ class _ScreenShareAuroraPainter extends CustomPainter {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _PremiumWaitingPlaceholder  — Teams-style no-content placeholder
-// Shows teacher avatar, name, A/V status chips, and a "Waiting for students"
-// message with animated aurora + pulse ring — all matching the room design.
+// _PremiumWaitingPlaceholder  — Teams-style tile grid (no-content placeholder)
+// Shows a Microsoft Teams-style grid: the teacher's tile first, then real
+// attended participants, each a colored initials circle (or photo) with a
+// name+mic pill anchored bottom-left — matching the reference screenshots
+// (colored circle avatars, dark tiles, bottom-left name+mic chip).
 //
 // Also reused, unchanged, as the frozen recording placeholder on Android
 // (see _captureAndSendLiveScreen / _sendLiveScreenPlaceholderWeb) — this is the single source of truth for
@@ -3735,7 +3736,7 @@ class _ScreenShareAuroraPainter extends CustomPainter {
 // just screen-records whatever's actually on screen, which is this same
 // widget in the equivalent state).
 // ─────────────────────────────────────────────────────────────────────────────
-class _PremiumWaitingPlaceholder extends StatefulWidget {
+class _PremiumWaitingPlaceholder extends StatelessWidget {
   const _PremiumWaitingPlaceholder({
     required this.teacherName,
     required this.isMicOn,
@@ -3750,397 +3751,287 @@ class _PremiumWaitingPlaceholder extends StatefulWidget {
   final String teacherName;
   final bool isMicOn;
   final bool isCamOn;
+  // No longer used by this widget's own visuals (the old aurora
+  // background + pulsing ring were replaced by a flat Teams-style grid —
+  // Teams' own waiting/grid views don't use glow effects), but kept as a
+  // required param so both call sites (the live "waiting" view and the
+  // recording capture) don't need to change just to stop passing it.
   final AnimationController auroraAnim;
-  // Everything below is optional — omitted (as at the live in-app call
-  // site) they simply don't render, so the original "waiting for
-  // students" look is unchanged there unless callers opt in.
   final String? sessionTitle;
   final String? speakerName;
   final List<EnrolledStudent> participants;
-  // Live in-app use doesn't need the corner logo (it's already in the
-  // app chrome around this tile); the recording capture sets this true
-  // since the recorded frame has no surrounding chrome at all.
   final bool showLogo;
 
-  @override
-  State<_PremiumWaitingPlaceholder> createState() =>
-      _PremiumWaitingPlaceholderState();
-}
-
-class _PremiumWaitingPlaceholderState
-    extends State<_PremiumWaitingPlaceholder>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ringAnim;
-  late Animation<double> _ringScale;
-  late Animation<double> _ringOpacity;
-
-  @override
-  void initState() {
-    super.initState();
-    _ringAnim = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2000),
-    )..repeat();
-    _ringScale = Tween<double>(begin: 1.0, end: 1.55).animate(
-      CurvedAnimation(parent: _ringAnim, curve: Curves.easeOut),
-    );
-    _ringOpacity = Tween<double>(begin: 0.45, end: 0.0).animate(
-      CurvedAnimation(parent: _ringAnim, curve: Curves.easeOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _ringAnim.dispose();
-    super.dispose();
-  }
+  static const int _maxTiles = 8;
 
   @override
   Widget build(BuildContext context) {
-    final initials = widget.teacherName.isNotEmpty
-        ? widget.teacherName
-        .trim()
-        .split(RegExp(r'\s+'))
-        .take(2)
-        .map((w) => w[0].toUpperCase())
-        .join()
-        : '?';
+    // Teacher tile always first, then real attended participants — mirrors
+    // the Teams reference screenshots: a grid of tiles, each a colored
+    // initials circle (or photo) with a name+mic pill anchored bottom-left,
+    // no separate "waiting" message once anyone's actually in the tile
+    // grid (the grid itself — even with just the teacher alone — reads as
+    // the meeting view, same as Teams shows just yourself before others
+    // join).
+    final tiles = <_TeamsTileData>[
+      _TeamsTileData(
+        name: teacherName,
+        isHost: true,
+        isMicOn: isMicOn,
+        isSpeaking: speakerName == null ||
+            speakerName!.trim().isEmpty ||
+            speakerName!.trim() == teacherName.trim(),
+      ),
+      for (final p in participants)
+        _TeamsTileData(
+          name: p.name,
+          isHost: false,
+          // Per-student live mic state isn't available from EnrolledStudent
+          // — defaults to "on" (no mic-off icon) rather than guessing muted.
+          isMicOn: true,
+          isSpeaking: speakerName != null && speakerName!.trim() == p.name.trim(),
+          imageUrl: p.imageUrl,
+        ),
+    ];
+    final shown = tiles.take(_maxTiles).toList();
+    final overflow = tiles.length - shown.length;
 
     return Container(
       color: _bg,
-      child: Stack(
-        fit: StackFit.expand,
+      child: Column(
         children: [
-          // Aurora background
-          AnimatedBuilder(
-            animation: widget.auroraAnim,
-            builder: (_, _) => CustomPaint(
-              painter: _AuroraPainter(widget.auroraAnim.value),
-              child: const SizedBox.expand(),
-            ),
-          ),
-
-          if (widget.showLogo)
-            Positioned(
-              top: 24,
-              left: 24,
-              child: Image.asset(
-                // Confirmed against pubspec.yaml: this is the actual
-                // pre-composited logo (used for the launcher icon), and
-                // assets/images/ is registered as a full asset folder —
-                // no more guessing at a filename here.
-                'assets/images/app_icon.png',
-                height: 40,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-              ),
-            ),
-
-          // Center content
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+          // Top bar — session title + participant count, kept minimal to
+          // match Teams' own understated in-meeting header.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+            child: Row(
               children: [
-                // Avatar with pulsing ring
-                SizedBox(
-                  width: 120,
-                  height: 120,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Pulse ring
-                      AnimatedBuilder(
-                        animation: _ringAnim,
-                        builder: (_, _) => Transform.scale(
-                          scale: _ringScale.value,
-                          child: Opacity(
-                            opacity: _ringOpacity.value,
-                            child: Container(
-                              width: 96,
-                              height: 96,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: _cyan,
-                                  width: 2.5,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      // Avatar
-                      Container(
-                        width: 88,
-                        height: 88,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [Color(0xFF00D4FF), Color(0xFF6B6EF9)],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: _cyan.withValues(alpha: 0.35),
-                              blurRadius: 28,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Text(
-                            initials,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 32,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                if (showLogo) ...[
+                  Image.asset(
+                    'assets/images/app_icon.png',
+                    height: 28,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                   ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // Name
-                Text(
-                  widget.teacherName,
-                  style: const TextStyle(
-                    fontFamily: 'tajawal',
-                    color: _textHigh,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.2,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-
-                const SizedBox(height: 6),
-
-                // Role chip
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _cyan.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: _cyan.withValues(alpha: 0.35), width: 1),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.school_rounded,
-                          color: _cyan, size: 12),
-                      SizedBox(width: 5),
-                      Text(
-                        'Teacher',
-                        style: TextStyle(
-                          fontFamily: 'tajawal',
-                          color: _cyan,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 22),
-
-                if (widget.sessionTitle != null &&
-                    widget.sessionTitle!.trim().isNotEmpty) ...[
-                  Text(
-                    widget.sessionTitle!,
-                    textAlign: TextAlign.center,
+                  const SizedBox(width: 10),
+                ],
+                Expanded(
+                  child: Text(
+                    (sessionTitle?.trim().isNotEmpty ?? false)
+                        ? sessionTitle!.trim()
+                        : 'حصة مباشرة',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontFamily: 'tajawal',
                       color: _textMid,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 18),
-                ],
-
-                // A/V status row
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _AVChip(
-                      icon: widget.isMicOn
-                          ? Icons.mic_rounded
-                          : Icons.mic_off_rounded,
-                      label: widget.isMicOn ? 'Mic On' : 'Mic Off',
-                      active: widget.isMicOn,
-                      activeColor: const Color(0xFF00E5A0),
-                      inactiveColor: _rose,
-                    ),
-                    const SizedBox(width: 10),
-                    _AVChip(
-                      icon: widget.isCamOn
-                          ? Icons.videocam_rounded
-                          : Icons.videocam_off_rounded,
-                      label: widget.isCamOn ? 'Cam On' : 'Cam Off',
-                      active: widget.isCamOn,
-                      activeColor: const Color(0xFF00E5A0),
-                      inactiveColor: _textLow,
-                    ),
-                  ],
                 ),
-
-                const SizedBox(height: 22),
-
-                // Currently-speaking badge — only shown when someone other
-                // than the person this tile represents is talking, so it
-                // never duplicates the "Teacher" role chip above.
-                if (widget.speakerName != null &&
-                    widget.speakerName!.trim().isNotEmpty &&
-                    widget.speakerName!.trim() != widget.teacherName.trim()) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: _emerald.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(999),
-                      border:
-                      Border.all(color: _emerald.withValues(alpha: 0.5)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.graphic_eq,
-                            size: 16, color: _emerald),
-                        const SizedBox(width: 8),
-                        Text(
-                          'يتحدث الآن: ${widget.speakerName}',
-                          style: const TextStyle(
-                            fontFamily: 'tajawal',
-                            color: _emerald,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
+                const SizedBox(width: 8),
+                const Icon(Icons.people_alt_rounded, size: 14, color: _textLow),
+                const SizedBox(width: 4),
+                Text(
+                  '${tiles.length}',
+                  style: const TextStyle(
+                    fontFamily: 'tajawal',
+                    color: _textLow,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
                   ),
-                  const SizedBox(height: 18),
-                ],
-
-                // Waiting message OR real participants — once anyone has
-                // actually joined there's no reason to keep saying "waiting
-                // for students", so real names/avatars replace it.
-                if (widget.participants.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: _glass10,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: _glassBdr, width: 1),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 1.8,
-                            color: _cyan.withValues(alpha: 0.7),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        const Text(
-                          'Waiting for students to join…',
-                          style: TextStyle(
-                            fontFamily: 'tajawal',
-                            color: _textMid,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                else ...[
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      for (final p in widget.participants.take(6))
-                        Padding(
-                          padding:
-                          const EdgeInsets.symmetric(horizontal: 5),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              CircleAvatar(
-                                radius: 20,
-                                backgroundColor: _surfaceHi,
-                                backgroundImage: (p.imageUrl != null &&
-                                    p.imageUrl!.isNotEmpty)
-                                    ? NetworkImage(p.imageUrl!)
-                                    : null,
-                                child: (p.imageUrl == null ||
-                                    p.imageUrl!.isEmpty)
-                                    ? Text(
-                                  p.name.trim().isNotEmpty
-                                      ? p.name.trim()[0].toUpperCase()
-                                      : '؟',
-                                  style: const TextStyle(
-                                    color: _cyan,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                )
-                                    : null,
-                              ),
-                              const SizedBox(height: 4),
-                              SizedBox(
-                                width: 56,
-                                child: Text(
-                                  p.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontFamily: 'tajawal',
-                                    color: _textMid,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      if (widget.participants.length > 6)
-                        Padding(
-                          padding:
-                          const EdgeInsets.symmetric(horizontal: 5),
-                          child: CircleAvatar(
-                            radius: 20,
-                            backgroundColor: _surfaceHi,
-                            child: Text(
-                              '+${widget.participants.length - 6}',
-                              style: const TextStyle(
-                                color: _textMid,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
+                ),
               ],
             ),
           ),
+
+          // Tile grid
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 2, 14, 16),
+              child: GridView.builder(
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: shown.length + (overflow > 0 ? 1 : 0),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: tiles.length <= 1 ? 1 : 2,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 16 / 10,
+                ),
+                itemBuilder: (context, i) {
+                  if (i >= shown.length) {
+                    return _TeamsOverflowTile(count: overflow);
+                  }
+                  return _TeamsGridTile(data: shown[i]);
+                },
+              ),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+// Teams-style pastel avatar palette — deterministic per name (simple sum
+// of code units, not cryptographic — just needs to be stable and roughly
+// evenly spread) so the same person always lands on the same color across
+// rebuilds and across the different tiles they might appear in.
+const List<Color> _avatarPalette = [
+  Color(0xFFFFD9B3), // peach
+  Color(0xFFB3E5FC), // sky blue
+  Color(0xFFC8E6C9), // mint
+  Color(0xFFF8BBD0), // pink
+  Color(0xFFFFF59D), // pale yellow
+  Color(0xFFD1C4E9), // lavender
+  Color(0xFFB2DFDB), // teal
+];
+
+Color _avatarColorFor(String name) {
+  if (name.trim().isEmpty) return _avatarPalette[0];
+  final hash = name.trim().codeUnits.fold<int>(0, (a, c) => a + c);
+  return _avatarPalette[hash % _avatarPalette.length];
+}
+
+class _TeamsTileData {
+  const _TeamsTileData({
+    required this.name,
+    required this.isHost,
+    required this.isMicOn,
+    required this.isSpeaking,
+    this.imageUrl,
+  });
+
+  final String name;
+  final bool isHost;
+  final bool isMicOn;
+  final bool isSpeaking;
+  final String? imageUrl;
+}
+
+class _TeamsGridTile extends StatelessWidget {
+  const _TeamsGridTile({required this.data});
+  final _TeamsTileData data;
+
+  @override
+  Widget build(BuildContext context) {
+    final trimmed = data.name.trim();
+    final initials = trimmed.isNotEmpty
+        ? trimmed.split(RegExp(r'\s+')).take(2).map((w) => w[0].toUpperCase()).join()
+        : '؟';
+    final hasPhoto = data.imageUrl != null && data.imageUrl!.isNotEmpty;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: _surfaceHi,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: data.isSpeaking ? _emerald : Colors.transparent,
+          width: 2,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          Center(
+            child: Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _avatarColorFor(data.name),
+                image: hasPhoto
+                    ? DecorationImage(
+                  image: NetworkImage(data.imageUrl!),
+                  fit: BoxFit.cover,
+                )
+                    : null,
+              ),
+              child: hasPhoto
+                  ? null
+                  : Center(
+                child: Text(
+                  initials,
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          if (data.isHost)
+            const Positioned(
+              top: 6,
+              right: 6,
+              child: Icon(Icons.workspace_premium_rounded,
+                  size: 16, color: _cyan),
+            ),
+          Positioned(
+            left: 6,
+            bottom: 6,
+            child: Container(
+              padding:
+              const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 90),
+                    child: Text(
+                      trimmed.isNotEmpty ? trimmed : '؟',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'tajawal',
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    data.isMicOn ? Icons.mic_rounded : Icons.mic_off_rounded,
+                    size: 12,
+                    color: data.isMicOn ? Colors.white70 : _rose,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TeamsOverflowTile extends StatelessWidget {
+  const _TeamsOverflowTile({required this.count});
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: _surfaceHi,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Center(
+        child: Text(
+          '+$count',
+          style: const TextStyle(
+            fontFamily: 'tajawal',
+            color: _textMid,
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ),
     );
   }

@@ -8,8 +8,8 @@ import 'package:timezone/data/latest.dart' as tz;
 
 import '../../../core/api_client.dart';
 import '../../../main.dart';
-import 'web_notification_stub.dart'
-if (dart.library.html) 'web_notification_web.dart';
+// import 'web_notification_stub.dart'
+// if (dart.library.js_interop) 'web_notification_web.dart';
 
 // ── Background handler — MUST be top-level function ──────────────────────────
 // Only registered on mobile (see init()), but must stay top-level.
@@ -214,7 +214,7 @@ class NotificationService {
       // and the browser does NOT auto-display foreground pushes (only
       // background ones, via the service worker) — so we must trigger the
       // browser's native Notification popup ourselves here.
-      showWebNotification(notification.title, notification.body);
+      // showWebNotification(notification.title, notification.body);
 
       // Keep the in-app toast too, as a fallback for browsers where the
       // user hasn't granted Notification permission.
@@ -246,7 +246,7 @@ class NotificationService {
     required String body,
   }) async {
     if (kIsWeb) {
-      showWebNotification(title, body);
+      // showWebNotification(title, body);
       return;
     }
     await _plugin.show(id:id, title:title, body:body,notificationDetails:  _notifDetails);
