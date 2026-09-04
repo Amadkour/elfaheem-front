@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/features/shared/session/material/session_material_model.dart';
+import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -16,6 +17,8 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import '../../../config/app_config.dart';
 import '../../../utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+
+import '../../student/courses/details/course_detail_provider.dart';
 // ════════════════════════════════════════════════════════════════════════════
 // VideoPlayerScreen
 // ════════════════════════════════════════════════════════════════════════════
@@ -199,6 +202,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
   @override
   void dispose() {
+    _checkWatchThreshold();
     _hideTimer?.cancel();
     _fadeCtrl.dispose();
     _pulseCtrl.dispose();
@@ -264,9 +268,35 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       }
     }
   }
-
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _progressProvider ??= context.read<CourseDetailProvider>();
+  }
   void _onVcUpdate() {
     if (mounted) setState(() {});
+    _checkWatchThreshold();
+  }
+  CourseDetailProvider? _progressProvider;
+  bool _completionSent = false;
+  /// Marks the material complete once the student has watched ~75% of it.
+  /// Fires at most once per screen instance — safe to call repeatedly.
+  void _checkWatchThreshold() {
+    if (_completionSent) return;
+    final vc = _vc;
+    if (vc == null || !vc.value.isInitialized) return;
+
+    final dur = vc.value.duration;
+    if (dur <= Duration.zero) return;
+
+    final watched = vc.value.position.inMilliseconds / dur.inMilliseconds;
+    if (watched >= 0.75) {
+      _completionSent = true;
+      final provider = _progressProvider;
+      if (provider != null) {
+        unawaited(provider.markMaterialComplete(_mat.sessionId, _mat.id));
+      }
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────

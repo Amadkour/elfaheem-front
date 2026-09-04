@@ -328,6 +328,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
                   totalMaterial: _session.totalMaterial,
                   completeMaterial: _session.completeMaterial,
                   isTeacher: widget.isTeacher,
+                  isFull:false
                 ),
 
                 const SizedBox(height: 10),

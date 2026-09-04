@@ -12,6 +12,9 @@
 
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:loading_animation_widget/loading_animation_widget.dart';
+
+import '../../config/theme/theme_config_provider.dart';
 
 class AppLoadingIndicator extends StatefulWidget {
   /// Overall width/height of the widget (logo + ring).
@@ -20,11 +23,12 @@ class AppLoadingIndicator extends StatefulWidget {
   /// Color of the rotating accent arc. Defaults to the brand accent blue.
   final Color? ringColor;
   final bool showLogo;
+
   const AppLoadingIndicator({
     super.key,
     this.size = 96,
     this.ringColor,
-    this.showLogo=true,
+    this.showLogo = true,
   });
 
   @override
@@ -64,42 +68,51 @@ class _AppLoadingIndicatorState extends State<AppLoadingIndicator>
     return SizedBox(
       width: widget.size,
       height: widget.size,
-      child: AnimatedBuilder(
-        animation: Listenable.merge([_rotateController, _pulseController]),
-        builder: (context, _) {
-          final pulseScale = 1.0 + (_pulseController.value * 0.08);
-          return Stack(
-            alignment: Alignment.center,
-            children: [
-              // Rotating accent ring
-              Transform.rotate(
-                angle: _rotateController.value * 2 * math.pi,
-                child: CustomPaint(
-                  size: Size(widget.size, widget.size),
-                  painter: _RingPainter(color: ringColor),
-                ),
-              ),
-              // Pulsing logo
-              if(widget.showLogo) Transform.scale(
-                scale: pulseScale,
-                child: SizedBox(
-                  width: widget.size * 0.58,
-                  height: widget.size * 0.58,
-                  child: Image.asset(
-                    'assets/images/logo.png',
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => Icon(
-                      Icons.school_rounded,
-                      size: widget.size * 0.5,
-                      color: ringColor,
+      child: !widget.showLogo
+          ? LoadingAnimationWidget.newtonCradle(
+              color: widget.ringColor ?? context.colors.background,
+              size: widget.size,
+            )
+          : AnimatedBuilder(
+              animation: Listenable.merge([
+                _rotateController,
+                _pulseController,
+              ]),
+              builder: (context, _) {
+                final pulseScale = 1.0 + (_pulseController.value * 0.08);
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Rotating accent ring
+                    Transform.rotate(
+                      angle: _rotateController.value * 2 * math.pi,
+                      child: CustomPaint(
+                        size: Size(widget.size, widget.size),
+                        painter: _RingPainter(color: ringColor),
+                      ),
                     ),
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
+                    // Pulsing logo
+                    if (widget.showLogo)
+                      Transform.scale(
+                        scale: pulseScale,
+                        child: SizedBox(
+                          width: widget.size * 0.58,
+                          height: widget.size * 0.58,
+                          child: Image.asset(
+                            'assets/images/logo.png',
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => Icon(
+                              Icons.school_rounded,
+                              size: widget.size * 0.5,
+                              color: ringColor,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
     );
   }
 }

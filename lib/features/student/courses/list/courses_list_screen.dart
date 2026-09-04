@@ -16,11 +16,12 @@ import '../../models.dart';
 import '../details/course_detail_screen.dart';
 
 class CoursesListScreen extends StatefulWidget {
-  const CoursesListScreen(
-      {super.key,
-      this.openSearch = false,
-      required this.homeCourses,
-      required this.forMyCourses});
+  const CoursesListScreen({
+    super.key,
+    this.openSearch = false,
+    required this.homeCourses,
+    required this.forMyCourses,
+  });
 
   final List<CourseModel> homeCourses;
   final bool forMyCourses;
@@ -38,8 +39,9 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
   void initState() {
     super.initState();
     if (widget.openSearch) {
-      WidgetsBinding.instance
-          .addPostFrameCallback((_) => _focusNode.requestFocus());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _focusNode.requestFocus(),
+      );
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<MyCoursesProvider>().init(widget.homeCourses);
@@ -59,7 +61,8 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
     return BasePage(
       useWebCard: true,
       appBar: ScreenAppBar(
-          title: widget.forMyCourses ? 'my_courses'.tr : 'explorer_courses'.tr),
+        title: widget.forMyCourses ? 'my_courses'.tr : 'explorer_courses'.tr,
+      ),
       child: SafeArea(
         child: Column(
           children: [
@@ -69,17 +72,18 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
               onChanged: provider.setQuery,
             ),
             Expanded(
-                child: HomeCourseList(
-              hasMore: false,
-              courses: provider.filteredCourses,
-              onTap: (CourseModel c) {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => CourseDetailScreen(course: c)));
-              },
-              isTeacher: false, pageName: widget.forMyCourses? 'my-courses-profile':'other-courses-profile',
-            ))
+              child: HomeCourseList(
+                hasMore: false,
+                courses: provider.filteredCourses,
+                onTap: (CourseModel c) {
+                  Navigator.pushNamed(context, '/course-detail', arguments: c);
+                },
+                isTeacher: false,
+                pageName: widget.forMyCourses
+                    ? 'my-courses-profile'
+                    : 'other-courses-profile',
+              ),
+            ),
           ],
         ),
       ),
@@ -95,23 +99,24 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: context.colors.primaryLight.withValues(alpha: 0.3),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, size: 38, color: context.colors.primary),
-            ),
-            const SizedBox(height: 16),
-            Text(message,
-                style:
-                    context.colors.body.copyWith(fontWeight: FontWeight.w600)),
-          ],
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            color: context.colors.primaryLight.withValues(alpha: 0.3),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 38, color: context.colors.primary),
         ),
-      );
+        const SizedBox(height: 16),
+        Text(
+          message,
+          style: context.colors.body.copyWith(fontWeight: FontWeight.w600),
+        ),
+      ],
+    ),
+  );
 }

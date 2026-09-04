@@ -8,6 +8,13 @@ Future<Object?> getDisplayMedia() async => null;
 Object? toWebMediaStream(Object? obj) => null;
 Object? streamFromLivekitTrack(Object? track) => null;
 
+// Mirrors recorder_web_impl.dart's nativeAudioStreamFromTrack. Never actually
+// called on mobile/desktop — every call site is gated behind `if (kIsWeb)` —
+// but it must exist here so room.dart's conditional import (see
+// room.dart's `import 'widgets/recorder_web_stub.dart' if (...) '...impl.dart'`)
+// resolves this name on every platform, not just web.
+Object? nativeAudioStreamFromTrack(Object? lkTrack) => null;
+
 class WebRecorder {
   WebRecorder({required void Function(int) onBlob});
   Future<bool> start(Object? stream, String mimeType) async => false;

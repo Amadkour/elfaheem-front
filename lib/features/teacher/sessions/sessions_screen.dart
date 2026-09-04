@@ -53,7 +53,7 @@ import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/rating_widget.dart';
-import '../../shared/session/progress_banner.dart';
+import '../../shared/session/material/components/session_progress_section.dart';
 import '../../teacher/courses/course_form_screen.dart';
 import '../../teacher/sessions/components/session_form_sheet.dart';
 import '../home/teacher_models.dart';
@@ -156,13 +156,12 @@ class _TeacherSessionsView extends StatelessWidget {
                 child: Selector<TeacherCourseScreenProvider, TeacherCourse>(
                   selector: (_, p) => p.course,
                   builder: (context, course, _) {
-
                     return CourseHero(
-                    course: course,
-                    onBack: () => Navigator.maybePop(context),
-                    onEditCourse: () => _openEditCourse(context),
-                    onRefresh: () => provider.refresh(),
-                  );
+                      course: course,
+                      onBack: () => Navigator.maybePop(context),
+                      onEditCourse: () => _openEditCourse(context),
+                      onRefresh: () => provider.refresh(),
+                    );
                   },
                 ),
               ),
@@ -176,18 +175,21 @@ class _TeacherSessionsView extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8.0),
                   child:
-                      Selector<TeacherCourseScreenProvider,
-                        (TeacherCourse course, int sessionCount, bool expanded)>(
-                        selector: (_, p) =>(p.course, p.sessionCount, p.openCourseDetails),
+                      Selector<
+                        TeacherCourseScreenProvider,
+                        (TeacherCourse course, int sessionCount, bool expanded)
+                      >(
+                        selector: (_, p) =>
+                            (p.course, p.sessionCount, p.openCourseDetails),
                         builder: (context, data, _) {
                           final (course, sessionCount, expanded) = data;
-                          return  DetailCard(
+                          return DetailCard(
                             // Stable key — DetailCard keeps its own
                             // expand/collapse animation state across
                             // rebuilds instead of being destroyed and
                             // recreated every time (previously a fresh
                             // Random() key every build).
-                            key:  ValueKey({Random().nextDouble()}),
+                            key: ValueKey({Random().nextDouble()}),
                             expanded: expanded,
                             icon: CupertinoIcons.list_bullet_below_rectangle,
                             title: 'course_details'.tr,
@@ -200,10 +202,12 @@ class _TeacherSessionsView extends StatelessWidget {
                                 canEdit: false,
                                 compact: false,
                               ),
-                              ProgressBanner(
-                                progress: course.progress,
-                                total: course.expectedHours.toInt(),
-                                complete: course.totalHours.toInt(),
+                              // Student progress section
+                              SessionProgressSection(
+                                totalMaterial: course.expectedHours.toInt(),
+                                completeMaterial: course.totalHours.toInt(),
+                                isTeacher: false,
+                                isFull: true,
                               ),
                               CourseStatsRow(
                                 course: course,

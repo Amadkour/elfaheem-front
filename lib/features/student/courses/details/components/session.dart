@@ -1,24 +1,28 @@
 import 'package:flutter/material.dart';
 import '../../../../../config/theme/app_theme.dart';
 import '../../../../../config/theme/theme_config_provider.dart';
+import '../../../../shared/session/material/components/session_progress_section.dart';
 import '../../../../shared/session/material/session_material_widget.dart';
-import '../../../../shared/session/progress_banner.dart';
 import '../../../models.dart';
 import '../course_detail_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 class SessionsTab extends StatelessWidget {
-  const SessionsTab({super.key, required this.presented, required this.provider});
+  const SessionsTab({
+    super.key,
+    required this.presented,
+    required this.provider,
+  });
+
   final List<SessionModel> presented;
   final CourseDetailProvider provider;
+
   @override
   Widget build(BuildContext context) {
     if (provider.isLoading) {
       return Padding(
         padding: EdgeInsets.all(48),
-        child: Center(
-          child: AppLoadingIndicator(),
-        ),
+        child: Center(child: AppLoadingIndicator()),
       );
     }
     if (presented.isEmpty) {
@@ -35,8 +39,11 @@ class SessionsTab extends StatelessWidget {
                   color: context.colors.primaryLight.withValues(alpha: 0.3),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.video_library_outlined,
-                    size: 36, color: context.colors.primary),
+                child: Icon(
+                  Icons.video_library_outlined,
+                  size: 36,
+                  color: context.colors.primary,
+                ),
               ),
               const SizedBox(height: 14),
               Text('لا توجد دروس بعد', style: context.colors.body),
@@ -51,10 +58,11 @@ class SessionsTab extends StatelessWidget {
         // Progress summary banner
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
-          child: ProgressBanner(
-            progress: provider.course.progress,
-            total: provider.course.materialsTotal,
-            complete: provider.course.materialsCompleted,
+          child: SessionProgressSection(
+            totalMaterial: provider.course.materialsTotal,
+            completeMaterial: provider.course.materialsCompleted,
+            isTeacher: false,
+            isFull: true,
           ),
         ),
         ListView.builder(
@@ -63,13 +71,13 @@ class SessionsTab extends StatelessWidget {
           shrinkWrap: true,
           itemCount: presented.length,
           itemBuilder: (_, i) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: SessionMaterialCard(
-                session: presented[i].toTeacher,
-                course: provider.course.toTeacherModel,
-                isTeacher: false,
-              )
-              ),
+            padding: const EdgeInsets.only(bottom: 10),
+            child: SessionMaterialCard(
+              session: presented[i].toTeacher,
+              course: provider.course.toTeacherModel,
+              isTeacher: false,
+            ),
+          ),
         ),
       ],
     );

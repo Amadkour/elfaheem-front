@@ -8,6 +8,12 @@ import 'package:timezone/data/latest.dart' as tz;
 
 import '../../../core/api_client.dart';
 import '../../../main.dart';
+import '../../../utils/top_route_observer.dart';
+import 'package:provider/provider.dart';
+
+// TODO: adjust this path if CourseDetailProvider actually lives elsewhere.
+import 'package:flutter_education_app/features/student/courses/details/course_detail_provider.dart';
+
 // import 'web_notification_stub.dart'
 // if (dart.library.js_interop) 'web_notification_web.dart';
 
@@ -23,18 +29,21 @@ import '../../../main.dart';
 // be throttled).
 @pragma('vm:entry-point')
 Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
-  print('[FCM][background] id=${message.messageId} '
-      'title=${message.notification?.title} '
-      'body=${message.notification?.body} '
-      'data=${message.data}');
+  print(
+    '[FCM][background] id=${message.messageId} '
+    'title=${message.notification?.title} '
+    'body=${message.notification?.body} '
+    'data=${message.data}',
+  );
 }
 
 class NotificationService {
   NotificationService._();
+
   static final NotificationService instance = NotificationService._();
 
   final FlutterLocalNotificationsPlugin _plugin =
-  FlutterLocalNotificationsPlugin();
+      FlutterLocalNotificationsPlugin();
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
 
   ApiClient? _api;
@@ -92,21 +101,26 @@ class NotificationService {
 
     // Local notifications plugin does NOT support web — skip it entirely
     if (!kIsWeb) {
-      const androidSettings =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
+      const androidSettings = AndroidInitializationSettings(
+        '@mipmap/ic_launcher',
+      );
       const iosSettings = DarwinInitializationSettings(
         requestAlertPermission: true,
         requestBadgePermission: true,
         requestSoundPermission: true,
       );
       await _plugin.initialize(
-        settings:const InitializationSettings(
-            android: androidSettings, iOS: iosSettings),
+        settings: const InitializationSettings(
+          android: androidSettings,
+          iOS: iosSettings,
+        ),
         onDidReceiveNotificationResponse: _onTap,
       );
 
-      final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>();
+      final androidPlugin = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       await androidPlugin?.requestNotificationsPermission();
       await androidPlugin?.createNotificationChannel(_channel);
     }
@@ -142,7 +156,7 @@ class NotificationService {
       if (kIsWeb) {
         token = await _fcm.getToken(
           vapidKey:
-          'BLpXoCZIPMtfWfU9Ftnl8NzJgx4wHo-ZY16GCZ01ZD5fvs12c8KcMpAYPQ30-0kWdTrZku8dVxc3Gxl0smubJJ0',
+              'BLpXoCZIPMtfWfU9Ftnl8NzJgx4wHo-ZY16GCZ01ZD5fvs12c8KcMpAYPQ30-0kWdTrZku8dVxc3Gxl0smubJJ0',
         );
       } else {
         token = await _fcm.getToken();
@@ -165,10 +179,7 @@ class NotificationService {
     try {
       await api.dio.delete(
         '/api/v1/notifications/token',
-        data: {
-          'token': token,
-          'device_type': _deviceType(),
-        },
+        data: {'token': token, 'device_type': _deviceType()},
       );
       print('[FCM] Token unregistered from backend.');
     } catch (e) {
@@ -183,10 +194,7 @@ class NotificationService {
     try {
       await api.post(
         '/api/v1/notifications/token',
-        body: {
-          'token': token,
-          'device_type': _deviceType(),
-        },
+        body: {'token': token, 'device_type': _deviceType()},
       );
       print('[FCM] Token registered with backend ✓');
     } catch (e) {
@@ -201,10 +209,18 @@ class NotificationService {
     // Always log first, on every platform, regardless of whether a
     // "notification" payload is present — this makes data-only messages
     // visible too.
-    print('[FCM][foreground] id=${message.messageId} '
-        'title=${message.notification?.title} '
-        'body=${message.notification?.body} '
-        'data=${message.data}');
+    print(
+      '[FCM][foreground] id=${message.messageId} '
+      'title=${message.notification?.title} '
+      'body=${message.notification?.body} '
+      'data=${message.data}',
+    );
+
+    final data = message.data;
+    print(data);
+    if (data['type'] == 'session_started' || data['type'] == 'session_ended') {
+      _refreshCourseDetailIfActive(data['course_id'] as String?);
+    }
 
     final notification = message.notification;
     if (notification == null) return;
@@ -221,13 +237,45 @@ class NotificationService {
       Helpers.showMessage(notification.body ?? '');
       return;
     }
-
     await _plugin.show(
       id: message.hashCode,
       title: notification.title,
       body: notification.body,
       notificationDetails: _notifDetails,
     );
+  }
+
+  // ── Live session push → refresh CourseDetailScreen if it's on screen ───────
+  // A start_session/end_session push should update the session list live
+  // instead of requiring the user to leave and re-enter CourseDetailScreen.
+  // Only refreshes if that screen is actually the one currently on top of
+  // the nav stack (via topRouteObserver, since navigatorKey.currentContext
+  // alone can't tell us the active route — see top_route_observer.dart),
+  // and if the push includes a course_id, only for that specific course.
+  void _refreshCourseDetailIfActive(String? courseId) {
+    if (!topRouteObserver.isCourseDetailActive) return;
+
+    final activeCourseId = topRouteObserver.activeCourseId;
+    if (courseId != null && activeCourseId != courseId) return;
+
+    final context = navigatorKey.currentContext;
+    if (context == null || activeCourseId == null) return;
+
+    // NOTE: this assumes CourseDetailProvider is registered high enough to
+    // be visible from navigatorKey's context (e.g. in the app-wide
+    // MultiProvider in core/providers.dart). If it's instead created
+    // locally inside CourseDetailScreen's own build method, this call will
+    // throw a ProviderNotFoundException — in that case CourseDetailScreen
+    // needs to expose its provider some other way (e.g. a static reference
+    // set in initState/cleared in dispose).
+    try {
+      Provider.of<CourseDetailProvider>(
+        context,
+        listen: false,
+      ).fetchSessions(activeCourseId);
+    } on Exception catch (e) {
+      context.read<CourseDetailProvider>().fetchSessions(activeCourseId);
+    }
   }
 
   // ── Tap handlers ──────────────────────────────────────────────────────────
@@ -249,7 +297,12 @@ class NotificationService {
       // showWebNotification(title, body);
       return;
     }
-    await _plugin.show(id:id, title:title, body:body,notificationDetails:  _notifDetails);
+    await _plugin.show(
+      id: id,
+      title: title,
+      body: body,
+      notificationDetails: _notifDetails,
+    );
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
@@ -258,7 +311,7 @@ class NotificationService {
 
   Future<void> cancel(int id) async {
     if (kIsWeb) return;
-    await _plugin.cancel(id:id);
+    await _plugin.cancel(id: id);
   }
 
   Future<void> cancelAll() async {

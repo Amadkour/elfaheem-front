@@ -29,10 +29,8 @@ class AuthSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: context.width/3 >400?400:context.width/3 ,
-      decoration:  BoxDecoration(
-        gradient:context.colors.sliderGradient,
-      ),
+      width: context.width / 3 > 400 ? 400 : context.width / 3,
+      decoration: BoxDecoration(gradient: context.colors.sliderGradient),
       child: Stack(
         children: [
           // Decorative circles
@@ -55,7 +53,7 @@ class AuthSidebar extends StatelessWidget {
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 48),
-              child:Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Logo
@@ -67,10 +65,15 @@ class AuthSidebar extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.2),
+                          ),
                         ),
-                        child: const Icon(Icons.layers_rounded,
-                            color: Colors.white, size: 22),
+                        child: const Icon(
+                          Icons.layers_rounded,
+                          color: Colors.white,
+                          size: 22,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Column(
@@ -170,13 +173,13 @@ class Circle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withValues(alpha:opacity),
-        ),
-      );
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: Colors.white.withValues(alpha: opacity),
+    ),
+  );
 }
 
 class _SidebarFeature extends StatelessWidget {
@@ -187,29 +190,29 @@ class _SidebarFeature extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha:0.12),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, size: 16, color: const Color(0xFF93C5FD)),
+    children: [
+      Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 16, color: const Color(0xFF93C5FD)),
+      ),
+      const SizedBox(width: 12),
+      Expanded(
+        child: Text(
+          text,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.8),
+            fontSize: 13,
+            fontFamily: 'tajawal',
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha:0.8),
-                fontSize: 13,
-                fontFamily:  'tajawal',
-              ),
-            ),
-          ),
-        ],
-      );
+        ),
+      ),
+    ],
+  );
 }
 
 class _TrustBadge extends StatelessWidget {
@@ -219,35 +222,35 @@ class _TrustBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha:0.1),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withValues(alpha:0.15)),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 6,
+          height: 6,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Color(0xFF4ADE80),
+          ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 6,
-              height: 6,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Color(0xFF4ADE80),
-              ),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha:0.7),
-                fontSize: 11,
-                fontFamily:  'tajawal',
-              ),
-            ),
-          ],
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.7),
+            fontSize: 11,
+            fontFamily: 'tajawal',
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 // ── 2. Screen icon header ─────────────────────────────────────────────────────
@@ -258,14 +261,14 @@ class ScreenIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: 52,
-        height: 52,
-        decoration: BoxDecoration(
-          color: _kBrandLight,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Icon(icon, color: context.colors.accent, size: 26),
-      );
+    width: 52,
+    height: 52,
+    decoration: BoxDecoration(
+      color: _kBrandLight,
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: Icon(icon, color: context.colors.accent, size: 26),
+  );
 }
 
 // ── 3. Styled text field with leading icon ────────────────────────────────────
@@ -275,7 +278,8 @@ class IconTextField extends StatelessWidget {
   final IconData icon;
   final TextInputType keyboard;
 
-  const IconTextField({super.key, 
+  const IconTextField({
+    super.key,
     required this.controller,
     required this.label,
     required this.icon,
@@ -292,25 +296,25 @@ class IconTextField extends StatelessWidget {
         TextFormField(
           controller: controller,
           keyboardType: keyboard,
-          style:  TextStyle(
+          style: TextStyle(
             fontFamily: 'tajawal',
             fontSize: 14,
             color: context.colors.textDark,
-
           ),
           decoration: InputDecoration(
             prefixIcon: Icon(icon, size: 18, color: const Color(0xFF9CA3AF)),
             hintText: label,
-            hintStyle:  TextStyle(
+            hintStyle: TextStyle(
               fontFamily: 'tajawal',
               fontSize: 14,
               color: context.colors.textDark,
-
             ),
             filled: true,
             fillColor: context.colors.inputBg,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: const BorderSide(color: _kBorder, width: 1.5),
@@ -321,7 +325,10 @@ class IconTextField extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide:  BorderSide(color: context.colors.textAction.withAlpha(150), width: 1.5),
+              borderSide: BorderSide(
+                color: context.colors.textAction.withAlpha(150),
+                width: 1.5,
+              ),
             ),
           ),
           validator: (v) =>
@@ -339,7 +346,8 @@ class IconPasswordField extends StatefulWidget {
   final bool? obscure;
   final VoidCallback? onToggle;
 
-  const IconPasswordField({super.key, 
+  const IconPasswordField({
+    super.key,
     required this.controller,
     required this.label,
     this.obscure,
@@ -369,7 +377,7 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
         TextFormField(
           controller: widget.controller,
           obscureText: _obscure,
-          style:  TextStyle(
+          style: TextStyle(
             fontFamily: 'tajawal',
             fontSize: 14,
             color: context.colors.textDark,
@@ -382,7 +390,7 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
             ),
             suffixIcon: GestureDetector(
               onTap: () {
-                if(mounted) if(mounted) setState(() => _obscure = !_obscure);
+                if (mounted) if (mounted) setState(() => _obscure = !_obscure);
                 widget.onToggle?.call();
               },
               child: Icon(
@@ -394,16 +402,17 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
               ),
             ),
             hintText: '••••••••',
-            hintStyle:  TextStyle(
+            hintStyle: TextStyle(
               fontFamily: 'tajawal',
               fontSize: 14,
               color: context.colors.textDark,
-
             ),
             filled: true,
             fillColor: context.colors.inputBg,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: const BorderSide(color: _kBorder, width: 1.5),
@@ -414,7 +423,10 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide:  BorderSide(color: context.colors.textAction.withAlpha(150), width: 1.5),
+              borderSide: BorderSide(
+                color: context.colors.textAction.withAlpha(150),
+                width: 1.5,
+              ),
             ),
           ),
           validator: (v) =>
@@ -433,12 +445,13 @@ class PrimaryButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onPressed;
 
-  const PrimaryButton({super.key, 
+  const PrimaryButton({
+    super.key,
     required this.isLoading,
     required this.label,
     required this.icon,
-     this.onPressed,
-     this.enable=true,
+    this.onPressed,
+    this.enable = true,
   });
 
   @override
@@ -446,38 +459,37 @@ class PrimaryButton extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       height: 52,
-      child: ElevatedButton(
-        onPressed: isLoading || !enable ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: enable? context.colors.accent2.withValues(alpha:0.7):context.colors.textDark,
-          disabledBackgroundColor: context.colors.accent.withValues(alpha:0.6),
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+      child: GestureDetector(
+        onTap: isLoading || !enable ? null : onPressed,
+        child: Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            gradient: context.colors.accentGradient,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: context.colors.primaryShadow,
           ),
-        ),
-        child: isLoading
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: AppLoadingIndicator(),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      fontFamily: 'tajawal',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
+          child: isLoading
+              ? AppLoadingIndicator(showLogo: false, size: 50)
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        fontFamily: 'tajawal',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color:Colors.white,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(icon, size: 18),
-                ],
-              ),
+                    const SizedBox(width: 6),
+
+                    Icon(icon, color: Colors.white, size: 18),
+                  ],
+                ),
+        ),
       ),
     );
   }
@@ -491,15 +503,15 @@ class SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(
-        label.toUpperCase(),
-        style: const TextStyle(
-          fontFamily: 'tajawal',
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: _kMuted,
-          letterSpacing: 0.8,
-        ),
-      );
+    label.toUpperCase(),
+    style: const TextStyle(
+      fontFamily: 'tajawal',
+      fontSize: 11,
+      fontWeight: FontWeight.w600,
+      color: _kMuted,
+      letterSpacing: 0.8,
+    ),
+  );
 }
 
 // ── 7. Link row ───────────────────────────────────────────────────────────────
@@ -508,7 +520,8 @@ class LinkRow extends StatelessWidget {
   final String linkText;
   final VoidCallback onTap;
 
-  const LinkRow({super.key, 
+  const LinkRow({
+    super.key,
     required this.message,
     required this.linkText,
     required this.onTap,
@@ -516,31 +529,31 @@ class LinkRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            message,
-            style: const TextStyle(
-              fontFamily: 'tajawal',
-              fontSize: 14,
-              color: _kMuted,
-            ),
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      Text(
+        message,
+        style: const TextStyle(
+          fontFamily: 'tajawal',
+          fontSize: 14,
+          color: _kMuted,
+        ),
+      ),
+      const SizedBox(width: 4),
+      GestureDetector(
+        onTap: onTap,
+        child: Text(
+          linkText,
+          style: TextStyle(
+            fontFamily: 'tajawal',
+            fontSize: 14,
+            color: context.colors.primaryDark,
+            fontWeight: FontWeight.w500,
           ),
-          const SizedBox(width: 4),
-          GestureDetector(
-            onTap: onTap,
-            child: Text(
-              linkText,
-              style:  TextStyle(
-                fontFamily: 'tajawal',
-                fontSize: 14,
-                color: context.colors.primaryDark,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      );
+        ),
+      ),
+    ],
+  );
 }
 
 // ── 8. Progress bar (step indicator) ─────────────────────────────────────────
@@ -548,24 +561,28 @@ class ProgressBar extends StatelessWidget {
   final int currentStep;
   final int totalSteps;
 
-  const ProgressBar({super.key, required this.currentStep, required this.totalSteps});
+  const ProgressBar({
+    super.key,
+    required this.currentStep,
+    required this.totalSteps,
+  });
 
   @override
   Widget build(BuildContext context) => Row(
-        children: List.generate(totalSteps, (i) {
-          final done = i <= currentStep;
-          return Expanded(
-            child: Container(
-              margin: EdgeInsets.only(right: i < totalSteps - 1 ? 6 : 0),
-              height: 4,
-              decoration: BoxDecoration(
-                color: done ? context.colors.accent : _kBorder,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          );
-        }),
+    children: List.generate(totalSteps, (i) {
+      final done = i <= currentStep;
+      return Expanded(
+        child: Container(
+          margin: EdgeInsets.only(right: i < totalSteps - 1 ? 6 : 0),
+          height: 4,
+          decoration: BoxDecoration(
+            color: done ? context.colors.accent : _kBorder,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
       );
+    }),
+  );
 }
 
 // ── 9. Role picker card ───────────────────────────────────────────────────────
@@ -573,7 +590,8 @@ class RolePicker extends StatelessWidget {
   final AuthProvider provider;
   final ExpansibleController rolController;
 
-  const RolePicker({super.key, 
+  const RolePicker({
+    super.key,
     required this.provider,
     required this.rolController,
   });
@@ -586,7 +604,9 @@ class RolePicker extends StatelessWidget {
         return Expanded(
           child: GestureDetector(
             onTap: () => provider.onChangeRole(
-                provider.roles.indexOf(role), rolController),
+              provider.roles.indexOf(role),
+              rolController,
+            ),
             child: Padding(
               padding: const EdgeInsets.all(8.0),
               child: AnimatedContainer(
@@ -594,9 +614,12 @@ class RolePicker extends StatelessWidget {
                 margin: EdgeInsets.only(
                   right: role == provider.roles.last ? 0 : 10,
                 ),
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 16,
+                  horizontal: 12,
+                ),
                 decoration: BoxDecoration(
-                  color:  context.colors.inputBg,
+                  color: context.colors.inputBg,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: isSelected ? context.colors.primaryDark : _kBorder,
@@ -610,15 +633,17 @@ class RolePicker extends StatelessWidget {
                       height: 40,
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? context.colors.primaryDark.withValues(alpha:0.15)
-                            : const Color(0xFF9CA3AF).withValues(alpha:0.1),
+                            ? context.colors.primaryDark.withValues(alpha: 0.15)
+                            : const Color(0xFF9CA3AF).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
                         role['text'] == 'teacher'
                             ? Icons.cast_for_education_outlined
                             : Icons.school_outlined,
-                        color: isSelected ? context.colors.primaryDark : _kMuted,
+                        color: isSelected
+                            ? context.colors.primaryDark
+                            : _kMuted,
                         size: 20,
                       ),
                     ),
@@ -629,7 +654,9 @@ class RolePicker extends StatelessWidget {
                         fontFamily: 'tajawal',
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: isSelected ? context.colors.primary : context.colors.textDark,
+                        color: isSelected
+                            ? context.colors.primary
+                            : context.colors.textDark,
                       ),
                     ),
                   ],
@@ -652,7 +679,8 @@ class StyledDropdown extends StatelessWidget {
   final List<Map<String, dynamic>> options;
   final Function(dynamic) onChange;
 
-  const StyledDropdown({super.key, 
+  const StyledDropdown({
+    super.key,
     required this.icon,
     required this.label,
     required this.controller,
@@ -673,12 +701,12 @@ class StyledDropdown extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(0,20,10,0),
+            padding: const EdgeInsets.fromLTRB(0, 20, 10, 0),
             child: Icon(icon, size: 18, color: const Color(0xFF9CA3AF)),
           ),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(10,0,10,5),
+              padding: const EdgeInsets.fromLTRB(10, 0, 10, 5),
               child: MyPrimaryMenu(
                 label: label,
                 controller: controller,
@@ -701,7 +729,7 @@ class LangRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    LangProvider provider=context.watch<LangProvider>();
+    LangProvider provider = context.watch<LangProvider>();
     return Row(
       children: provider.languages.map<Widget>((l) {
         final isActive = AppConfig.lang == l;
@@ -759,11 +787,14 @@ class LangDropdown extends StatelessWidget {
       onTap: () async {
         final RenderBox button = context.findRenderObject() as RenderBox;
         final RenderBox overlay =
-        Overlay.of(context).context.findRenderObject() as RenderBox;
+            Overlay.of(context).context.findRenderObject() as RenderBox;
 
         const double dropdownSpacing = 20; // 👈 تحكمي في المسافة
 
-        final Offset topLeft = button.localToGlobal(Offset.zero, ancestor: overlay);
+        final Offset topLeft = button.localToGlobal(
+          Offset.zero,
+          ancestor: overlay,
+        );
         final Offset bottomRight = button.localToGlobal(
           button.size.bottomRight(Offset.zero),
           ancestor: overlay,
@@ -783,10 +814,7 @@ class LangDropdown extends StatelessWidget {
           context: context,
           position: position, // ✅ هنا الصح
           items: provider.languages.map((l) {
-            return PopupMenuItem(
-              value: l,
-              child: Text(l.tr),
-            );
+            return PopupMenuItem(value: l, child: Text(l.tr));
           }).toList(),
         );
 
@@ -799,14 +827,11 @@ class LangDropdown extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-           Icon(Icons.language, size: 20,color: context.colors.primaryDark,),
+          Icon(Icons.language, size: 20, color: context.colors.primaryDark),
 
           const SizedBox(width: 5), // 👈 تحكمي فيها (0 لو عايزة تلزقيهم)
 
-          Text(
-            AppConfig.lang.tr,
-            style: const TextStyle(fontSize: 13),
-          ),
+          Text(AppConfig.lang.tr, style: const TextStyle(fontSize: 13)),
 
           const SizedBox(width: 2), // 👈 المسافة بين النص والسهم
 
@@ -816,4 +841,3 @@ class LangDropdown extends StatelessWidget {
     );
   }
 }
-

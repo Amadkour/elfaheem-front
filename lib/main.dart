@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/version_check_service.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
@@ -13,6 +14,7 @@ import 'package:flutter_education_app/features/student/dashboard/dashboard_scree
 import 'package:flutter_education_app/features/student/home/home_screen.dart';
 import 'package:flutter_education_app/features/student/models.dart';
 import 'package:flutter_education_app/utils/remote_config_service.dart';
+import 'package:flutter_education_app/utils/top_route_observer.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:provider/provider.dart';
 import 'package:responsive_framework/responsive_framework.dart';
@@ -37,32 +39,27 @@ late StorageService _storage;
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
-  // Created once and shared between _initCore and _runApp, so the token
-  // registration check below and the app's providers are talking about the
-  // exact same client (and therefore the same auth state).
-  final api = ApiClient();
-
   if (!kIsWeb) {
     runZonedGuarded(() async {
       WidgetsFlutterBinding.ensureInitialized();
 
-      await _initCore(api);
+      await _initCore();
       await _initCrashlytics();
 
-      _runApp(api);
+      _runApp();
     }, _onZoneError);
   } else {
     WidgetsFlutterBinding.ensureInitialized();
 
-    await _initCore(api);
+    await _initCore();
 
-    _runApp(api);
+    _runApp();
   }
 }
 
 // ── Shared initialisation (all platforms) ───────────────────────────────────
 
-Future<void> _initCore(ApiClient api) async {
+Future<void> _initCore() async {
   _storage = await StorageService.getInstance();
 
   await readLanguage();
@@ -73,18 +70,6 @@ Future<void> _initCore(ApiClient api) async {
 
   await RemoteConfigService.instance.init();
   await NotificationService.instance.init();
-
-  // NotificationService.registerWithBackend() is otherwise only triggered
-  // by AuthProvider.login(). A returning user with a persisted session
-  // (the normal case after their very first login) never re-sends a token
-  // on later cold starts — so a reinstall, a cleared app data, or a token
-  // rotation that happened while the app was closed leaves the backend
-  // holding a stale/invalid token forever, with no way to recover short of
-  // an explicit logout + login. Registering again here on every cold start
-  // for an already-authenticated user closes that gap.
-  if (_storage.isAuthenticated()) {
-    await NotificationService.instance.registerWithBackend(api);
-  }
 }
 
 // ── Crashlytics (mobile only) ────────────────────────────────────────────────
@@ -106,7 +91,9 @@ void _onZoneError(Object error, StackTrace stack) {
 
 // ── App entry point ──────────────────────────────────────────────────────────
 
-void _runApp(ApiClient api) {
+void _runApp() {
+  final api = ApiClient();
+
   runApp(
     MultiProvider(
       providers: appProviders(storage: _storage, api: api),
@@ -167,38 +154,50 @@ class _ElFaheemAppState extends State<ElFaheemApp> {
     final isDark = context.watch<ProfileProvider>().darkMode;
     final appName = RemoteConfigService.instance.appName;
 
-    return ThemeConfigScope(
-      // ← wrap here
-      provider: tc,
-      child: MaterialApp(
-        navigatorKey: navigatorKey,
-        title: appName,
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.themeData,
-        darkTheme: AppTheme.darkThemeData,
-        themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
-        initialRoute: initialRoute,
-        onGenerateRoute: _router,
-        localizationsDelegates: const [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        builder: (_, child) => ResponsiveBreakpoints.builder(
-          breakpoints: [
-            const Breakpoint(start: 0, end: 450, name: MOBILE),
-            const Breakpoint(start: 451, end: 800, name: TABLET),
-            const Breakpoint(start: 801, end: 1920, name: DESKTOP),
-            const Breakpoint(start: 1921, end: double.infinity, name: '4K'),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      // Light icons (time/battery/signal) in the status bar, on every
+      // screen — set once here instead of per-screen, since individual
+      // AppBars/Scaffolds would otherwise need to remember to set this
+      // themselves and could drift back to dark icons over time.
+      value: const SystemUiOverlayStyle(
+        statusBarIconBrightness: Brightness.light, // Android
+        statusBarBrightness: Brightness.dark, // iOS (inverted meaning)
+        statusBarColor: Colors.transparent,
+      ),
+      child: ThemeConfigScope(
+        // ← wrap here
+        provider: tc,
+        child: MaterialApp(
+          navigatorKey: navigatorKey,
+          navigatorObservers: [topRouteObserver],
+          title: appName,
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.themeData,
+          darkTheme: AppTheme.darkThemeData,
+          themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
+          initialRoute: initialRoute,
+          onGenerateRoute: _router,
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
           ],
-          useShortestSide: true,
-          child: child!,
+          builder: (_, child) => ResponsiveBreakpoints.builder(
+            breakpoints: [
+              const Breakpoint(start: 0, end: 450, name: MOBILE),
+              const Breakpoint(start: 451, end: 800, name: TABLET),
+              const Breakpoint(start: 801, end: 1920, name: DESKTOP),
+              const Breakpoint(start: 1921, end: double.infinity, name: '4K'),
+            ],
+            useShortestSide: true,
+            child: child!,
+          ),
+          supportedLocales: context
+              .read<LangProvider>()
+              .languages
+              .map((_) => const Locale('en', ''))
+              .toList(),
         ),
-        supportedLocales: context
-            .read<LangProvider>()
-            .languages
-            .map((_) => const Locale('en', ''))
-            .toList(),
       ),
     );
   }
@@ -206,9 +205,9 @@ class _ElFaheemAppState extends State<ElFaheemApp> {
   Route<dynamic>? _router(RouteSettings settings) {
     switch (settings.name) {
       case '/login':
-        return _fade(const LoginScreen());
+        return _fade(const LoginScreen(), settings);
       case '/register':
-        return _fade(const RegisterScreen());
+        return _fade(const RegisterScreen(), settings);
       case '/otp':
         final args = settings.arguments as List;
         return _fade(
@@ -216,33 +215,37 @@ class _ElFaheemAppState extends State<ElFaheemApp> {
             email: args[0] as String,
             role: args[1] as String,
           ),
+          settings,
         );
       case '/forgot-password':
-        return _fade(const ForgetScreen());
+        return _fade(const ForgetScreen(), settings);
       case '/home':
-        return _fade(const _Guard(child: HomeScreen()));
+        return _fade(const _Guard(child: HomeScreen()), settings);
       case '/dashboard':
-        return _fade(const _Guard(child: DashboardScreen()));
+        return _fade(const _Guard(child: DashboardScreen()), settings);
       case '/teacher_dashboard':
-        return _fade(const _Guard(child: TeacherDashboardScreen()));
+        return _fade(const _Guard(child: TeacherDashboardScreen()), settings);
       case '/course-detail':
         final course = settings.arguments as CourseModel;
-        return _fade(_Guard(child: CourseDetailScreen(course: course)));
+        return _fade(
+          _Guard(child: CourseDetailScreen(course: course)),
+          settings,
+        );
       case '/notifications':
-        return _fade(const _Guard(child: NotificationsScreen()));
+        return _fade(const _Guard(child: NotificationsScreen()), settings);
       default:
-        return _fade(const _NotFoundScreen());
+        return _fade(const _NotFoundScreen(), settings);
     }
   }
-
-  PageRoute _fade(Widget page) => PageRouteBuilder(
-    pageBuilder: (_, _, _) => page,
-    transitionsBuilder: (_, anim, _, child) =>
-        FadeTransition(opacity: anim, child: child),
-    transitionDuration: const Duration(milliseconds: 300),
-  );
 }
 
+PageRoute _fade(Widget page, RouteSettings settings) => PageRouteBuilder(
+  settings: settings, // ← this is the missing piece
+  pageBuilder: (_, _, _) => page,
+  transitionsBuilder: (_, anim, _, child) =>
+      FadeTransition(opacity: anim, child: child),
+  transitionDuration: const Duration(milliseconds: 300),
+);
 // ─────────────────────────────────────────────────────────────────────────────
 // Premium splash screen — shown while the live theme is being fetched
 // ─────────────────────────────────────────────────────────────────────────────
@@ -270,9 +273,7 @@ class _PremiumLoadingScreen extends StatelessWidget {
         // built-in fallback if the asset fails to load), so it replaces the
         // separate Image.asset + CircularProgressIndicator that used to sit
         // here — one branded widget doing both jobs.
-        body: const Center(
-          child: AppLoadingIndicator(size: 140),
-        ),
+        body: const Center(child: AppLoadingIndicator(size: 140)),
       ),
     );
   }

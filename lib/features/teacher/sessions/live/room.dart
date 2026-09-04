@@ -11,8 +11,6 @@ import 'package:flutter/material.dart' hide ConnectionState;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/recorder_web_impl.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/recorder_web_impl.dart' as web_rec show nativeAudioStreamFromTrack;
 import 'package:livekit_client/livekit_client.dart';
 import '../components/exts.dart';
 import 'widgets/controls.dart';
@@ -22,7 +20,8 @@ import 'widgets/room_recorder.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'widgets/room_screen_share.dart';
 import 'widgets/recorder_web_stub.dart'
-if (dart.library.html) 'widgets/recorder_web_impl.dart' as web_rec;
+    if (dart.library.html) 'widgets/recorder_web_impl.dart'
+    as web_rec;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Design System
@@ -63,11 +62,11 @@ class EnrolledStudent {
   });
 
   factory EnrolledStudent.fromJson(
-      Map<String, dynamic> j,
-      List<int> studentsId,
-      List<String> studentsJoinDate,
-      List<String> studentsLeaveDate,
-      ) {
+    Map<String, dynamic> j,
+    List<int> studentsId,
+    List<String> studentsJoinDate,
+    List<String> studentsLeaveDate,
+  ) {
     bool isPresent = false;
     String? presentDate;
     String? leaveDate;
@@ -209,12 +208,14 @@ class RoomPage extends StatefulWidget {
   final EventsListener<RoomEvent> listener;
   final bool fastConnection;
   final Future<dynamic> Function() onEnd;
+  final Future<dynamic> Function()? onComplete;
   final bool isTeacher;
   final int courseId;
   final int sessionId;
   final ApiClient apiClient;
   final bool enableAudio;
   final bool enableVideo;
+
   // Optional: shown on the recording's placeholder frame (and nowhere else
   // yet) whenever there's no screen share/camera to draw. Pass the actual
   // session/lecture title from wherever the caller already has it (e.g. the
@@ -222,19 +223,19 @@ class RoomPage extends StatefulWidget {
   final String? sessionName;
 
   const RoomPage(
-      this.room,
-      this.listener, {
-        this.fastConnection = false,
-        super.key,
-        required this.onEnd,
-        required this.isTeacher,
-        required this.courseId,
-        required this.sessionId,
-        required this.apiClient,
-        this.enableAudio = true,
-        this.enableVideo = true,
-        this.sessionName,
-      });
+    this.room,
+    this.listener, {
+    this.fastConnection = false,
+    super.key,
+    required this.onEnd,
+    required this.isTeacher,
+    required this.courseId,
+    required this.sessionId,
+    required this.apiClient,
+    this.enableAudio = true,
+    this.enableVideo = true,
+    this.sessionName, this.onComplete,
+  });
 
   @override
   State<StatefulWidget> createState() => _RoomPageState();
@@ -242,12 +243,18 @@ class RoomPage extends StatefulWidget {
 
 class _RoomPageState extends State<RoomPage>
     with TickerProviderStateMixin, RoomScreenShareMixin {
-
   // ── RoomScreenShareMixin requirements ───────────────────────────────────
-  @override Room get room => widget.room;
-  @override ClientRecorder? get recorder => _recorder;
-  @override bool get isTeacher => widget.isTeacher;
-  @override void showSnack(String msg) => _showSnack(msg);
+  @override
+  Room get room => widget.room;
+
+  @override
+  ClientRecorder? get recorder => _recorder;
+
+  @override
+  bool get isTeacher => widget.isTeacher;
+
+  @override
+  void showSnack(String msg) => _showSnack(msg);
 
   // Called by RoomScreenShareMixin when iOS broadcast starts/stops.
   @override
@@ -276,7 +283,9 @@ class _RoomPageState extends State<RoomPage>
           backgroundColor: _cyan,
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 4),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
         ),
       );
@@ -302,9 +311,10 @@ class _RoomPageState extends State<RoomPage>
   // ── Client-side recorder (teacher only) ──────────────────────────────────
   ClientRecorder? _recorder;
   bool _recorderStarted = false; // guard: prevents multiple start() calls
-  bool _endingSession = false;     // true while awaiting final chunk before onEnd()
+  bool _endingSession = false; // true while awaiting final chunk before onEnd()
   bool _isPausingRecording = false; // true while pauseRecording() is in flight
-  bool _isResumingRecording = false; // true while resumeRecording() is in flight
+  bool _isResumingRecording =
+      false; // true while resumeRecording() is in flight
 
   // ── LiveKit mic PCM tap → native recorder ─────────────────────────────────
   // RPScreenRecorder's own .audioMic/.audioApp capture never delivers a
@@ -318,9 +328,11 @@ class _RoomPageState extends State<RoomPage>
   // startMicRecording/stopRecording — see AppDelegate.swift's "sendAudioFrame"
   // case. iOS-only for now: Android's native recorder backend doesn't have
   // the corresponding handler yet.
-  static const MethodChannel _audioFrameChannel =
-  MethodChannel('com.example.flutter_education_app/native_recorder');
+  static const MethodChannel _audioFrameChannel = MethodChannel(
+    'com.example.flutter_education_app/native_recorder',
+  );
   CancelListenFunc? _audioTapCancel;
+
   // The exact LocalAudioTrack instance _audioTapCancel is currently bound
   // to. WebRTC renegotiation (e.g. adding a screen-share track) can cause
   // LiveKit to unpublish and republish the mic as a NEW LocalAudioTrack
@@ -406,9 +418,14 @@ class _RoomPageState extends State<RoomPage>
   int _sessionElapsedSeconds = 0;
 
   void _startSessionClock() {
-    if (_sessionClockTimer != null) return; // already ticking — RoomConnectedEvent shouldn't fire twice, but be safe
+    if (_sessionClockTimer != null)
+      return; // already ticking — RoomConnectedEvent shouldn't fire twice, but be safe
     _sessionClockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) { _sessionClockTimer?.cancel(); _sessionClockTimer = null; return; }
+      if (!mounted) {
+        _sessionClockTimer?.cancel();
+        _sessionClockTimer = null;
+        return;
+      }
       setState(() => _sessionElapsedSeconds++);
     });
   }
@@ -435,6 +452,7 @@ class _RoomPageState extends State<RoomPage>
   double _pipBottom = 100;
   static const double _pipW = 120;
   static const double _pipH = 90;
+
   // When true, camera is the main view and the main participant is in the PiP.
   bool _pipSwapped = false;
 
@@ -465,10 +483,14 @@ class _RoomPageState extends State<RoomPage>
         ].request();
 
         if (statuses[Permission.camera] != PermissionStatus.granted) {
-          log('[PERM] Camera permission denied — recording will have no camera PiP');
+          log(
+            '[PERM] Camera permission denied — recording will have no camera PiP',
+          );
         }
         if (statuses[Permission.microphone] != PermissionStatus.granted) {
-          log('[PERM] Microphone permission denied — recording will have no audio');
+          log(
+            '[PERM] Microphone permission denied — recording will have no audio',
+          );
         }
       } else {
         // iOS: request microphone permission before RPScreenRecorder starts.
@@ -483,9 +505,9 @@ class _RoomPageState extends State<RoomPage>
     }
   }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// 2.  initState()
-// ═══════════════════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 2.  initState()
+  // ═══════════════════════════════════════════════════════════════════════════
   @override
   void initState() {
     super.initState();
@@ -505,9 +527,10 @@ class _RoomPageState extends State<RoomPage>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
-    _recDotOpacity = Tween<double>(begin: 1.0, end: 0.25).animate(
-      CurvedAnimation(parent: _recDotAnim, curve: Curves.easeInOut),
-    );
+    _recDotOpacity = Tween<double>(
+      begin: 1.0,
+      end: 0.25,
+    ).animate(CurvedAnimation(parent: _recDotAnim, curve: Curves.easeInOut));
 
     _auroraAnim = AnimationController(
       vsync: this,
@@ -538,10 +561,7 @@ class _RoomPageState extends State<RoomPage>
       vsync: this,
       duration: const Duration(milliseconds: 350),
     );
-    _quizSlide = CurvedAnimation(
-      parent: _quizAnim,
-      curve: Curves.easeOutBack,
-    );
+    _quizSlide = CurvedAnimation(parent: _quizAnim, curve: Curves.easeOutBack);
 
     _serverRecording = widget.room.isRecording;
     widget.room.addListener(_onRoomDidUpdate);
@@ -575,6 +595,7 @@ class _RoomPageState extends State<RoomPage>
       }
     });
   }
+
   void _onRecorderUpdate() {
     if (!mounted) return;
     final state = _recorder?.state;
@@ -590,7 +611,11 @@ class _RoomPageState extends State<RoomPage>
     if (_recClockTimer != null) return; // already ticking
     _recClockStart = DateTime.now();
     _recClockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) { _recClockTimer?.cancel(); _recClockTimer = null; return; }
+      if (!mounted) {
+        _recClockTimer?.cancel();
+        _recClockTimer = null;
+        return;
+      }
       setState(() => _recElapsedSeconds++);
     });
   }
@@ -611,9 +636,9 @@ class _RoomPageState extends State<RoomPage>
     final m = (totalSeconds % 3600) ~/ 60;
     final s = totalSeconds % 60;
     if (h > 0) {
-      return '${h.toString().padLeft(2,'0')}:${m.toString().padLeft(2,'0')}:${s.toString().padLeft(2,'0')}';
+      return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
     }
-    return '${m.toString().padLeft(2,'0')}:${s.toString().padLeft(2,'0')}';
+    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
   String get _recElapsedLabel => _formatElapsed(_recElapsedSeconds);
@@ -654,20 +679,24 @@ class _RoomPageState extends State<RoomPage>
   //
   // Mobile: stopRecordingOnly() → ACTION_STOP (fast, < 200ms) → pop immediately.
   //   The native FGS drains remaining uploads independently and calls stopSelf()
-  //   only after all pendingUploads reach zero (up to 120s).
+  //   only after all pendingUploads reach zero (up to 120s) — this happens
+  //   at the OS level regardless of Dart-side sequencing below, so the
+  //   onEnd-before-drain ordering mainly matters for web (see next note).
   //   _drainAndDispose runs unawaited and waits for RecState.done via polling.
   //
   // Web: stopRecordingOnly() now only stops the LOCAL recorder/compositor —
   //   it no longer waits for chunk uploads to finish (see WebRecorder.stop()
   //   in recorder_web_impl.dart), so this resolves in well under a second.
-  //   Any chunks still queued/uploading, AND the widget.onEnd() call itself
-  //   (which hits the server's /live-sessions/{id}/end endpoint — an
-  //   endpoint that can itself wait up to ~150s server-side for the
-  //   recording to finish processing), both run in the background below
-  //   instead of blocking this function. The server tolerates the client
-  //   moving on before the final chunk lands (see local_recorder.py's
-  //   assembly pipeline), so there's nothing left that genuinely needs the
-  //   teacher's screen to stay frozen while waiting on either of them.
+  //   The end-session API call (widget.onEnd(), hitting the server's
+  //   /live-sessions/{id}/end endpoint) is explicitly sequenced to complete
+  //   BEFORE the remaining chunk drain/upload starts — see the unawaited
+  //   block below. Both still run entirely in the background, not blocking
+  //   this function or the teacher's screen: onEnd() alone can take up to
+  //   ~150s server-side, and the server tolerates the client moving on
+  //   before the final chunk lands (see local_recorder.py's assembly
+  //   pipeline) — there's nothing that needs the screen to stay frozen for
+  //   either call, only that they run in this specific order relative to
+  //   each other.
   Future<dynamic> _endSessionWithRecording() async {
     if (_endingSession) return null;
     if (mounted) setState(() => _endingSession = true);
@@ -682,8 +711,10 @@ class _RoomPageState extends State<RoomPage>
       try {
         _stopLiveKitAudioTap();
         await rec.stopRecordingOnly();
-        log('[REC] stopRecordingOnly complete — recorder stopped locally; '
-            'any remaining chunks upload in the background');
+        log(
+          '[REC] stopRecordingOnly complete — recorder stopped locally; '
+          'any remaining chunks upload in the background',
+        );
       } catch (e) {
         log('[REC] stopRecordingOnly error: $e');
       }
@@ -694,26 +725,44 @@ class _RoomPageState extends State<RoomPage>
       if (kIsWeb && !rec.webHadRealData && mounted) {
         _showSnack(
           'لم يتم حفظ أي تسجيل لهذه الجلسة بسبب مشكلة تقنية في التسجيل، '
-              'حتى لو تمت مشاركة الشاشة أو الكاميرا. يرجى إبلاغ الدعم الفني.',
+          'حتى لو تمت مشاركة الشاشة أو الكاميرا. يرجى إبلاغ الدعم الفني.',
         );
       }
-
-      // Drains any remaining chunk uploads / native state and disposes the
-      // recorder, entirely in the background — the teacher's screen has
-      // already moved on by the time this finishes.
-      unawaited(_drainAndDispose(rec));
     }
 
-    // Fire the end-session call but do NOT let the UI wait on it — see the
-    // comment above the function for why awaiting it here would freeze the
-    // screen. Errors are only logged; there's no UI left waiting to react
-    // to them since the teacher has already left this screen.
-    unawaited(
-      widget.onEnd().catchError((e) {
+    // Sequenced in the background: the end-session API call now completes
+    // FIRST, and only THEN do any remaining recorded chunks get
+    // drained/uploaded — per explicit requirement. Previously these two
+    // ran as separate unawaited() calls with no ordering between them, so
+    // depending on timing the chunk upload could finish before, during, or
+    // after the end-session call landed server-side.
+    //
+    // Still entirely non-blocking for the UI — the screen pops immediately
+    // below, unchanged from before. This only changes the ORDER these two
+    // background operations run in relative to EACH OTHER, not whether the
+    // teacher's screen waits on either of them (see the comment above this
+    // function for why blocking navigation on either call, especially
+    // onEnd()'s up-to-150s server-side wait, would be a bad regression).
+    unawaited(() async {
+      try {
+        await widget.onEnd();
+      } catch (e) {
         log('[REC] onEnd error: $e');
-      }),
-    );
-
+      }
+      if (rec != null) {
+        await _drainAndDispose(rec);
+      }
+    }());
+    unawaited(() async {
+      try {
+        await widget.onComplete?.call();
+      } catch (e) {
+        log('[REC] onEnd error: $e');
+      }
+      if (rec != null) {
+        await _drainAndDispose(rec);
+      }
+    }());
     if (mounted) Navigator.pop(context);
     if (mounted) Navigator.pop(context);
     return null;
@@ -780,10 +829,10 @@ class _RoomPageState extends State<RoomPage>
         '/api/v1/courses/${widget.courseId}/students',
       );
       final participants =
-      await widget.apiClient.get(
-        '/api/v1/live-sessions/${widget.sessionId}/participants',
-      )
-      as List<dynamic>;
+          await widget.apiClient.get(
+                '/api/v1/live-sessions/${widget.sessionId}/participants',
+              )
+              as List<dynamic>;
       final ids = participants.map<int>((p) => p['student_id'] as int).toList();
       final joins = participants
           .map<String>((p) => p['join_date'] as String)
@@ -797,12 +846,12 @@ class _RoomPageState extends State<RoomPage>
             _enrolledStudents = (resp['students'] as List)
                 .map(
                   (e) => EnrolledStudent.fromJson(
-                e as Map<String, dynamic>,
-                ids,
-                joins,
-                leaves,
-              ),
-            )
+                    e as Map<String, dynamic>,
+                    ids,
+                    joins,
+                    leaves,
+                  ),
+                )
                 .toList()
                 .cast<EnrolledStudent>();
           });
@@ -819,7 +868,7 @@ class _RoomPageState extends State<RoomPage>
   void _startQuizPolling() {
     _quizPollTimer = Timer.periodic(
       const Duration(seconds: 30),
-          (_) => _pollActiveQuiz(),
+      (_) => _pollActiveQuiz(),
     );
     _pollActiveQuiz();
   }
@@ -933,6 +982,7 @@ class _RoomPageState extends State<RoomPage>
   // how screen-share frames already reach ElFaheemBridge).
   final GlobalKey _liveScreenCaptureKey = GlobalKey();
   Timer? _liveScreenCaptureTimer;
+
   // Guards against overlapping captures: Timer.periodic does NOT wait for
   // a tick's callback to finish before firing the next one. A full-screen
   // RepaintBoundary.toImage() + PNG encode + platform-channel round trip
@@ -948,7 +998,7 @@ class _RoomPageState extends State<RoomPage>
     _liveScreenCaptureTimer?.cancel();
     _liveScreenCaptureTimer = Timer.periodic(
       const Duration(milliseconds: 500), // ~2fps — see cost note above
-          (_) => unawaited(_captureAndSendLiveScreen()),
+      (_) => unawaited(_captureAndSendLiveScreen()),
     );
     unawaited(_captureAndSendLiveScreen()); // don't wait for the first tick
   }
@@ -963,7 +1013,8 @@ class _RoomPageState extends State<RoomPage>
   /// this without a direct cross-file call into room_screen_share.dart.
   void _maybeSyncLiveScreenCapture() {
     if (!widget.isTeacher || !Platform.isAndroid) return;
-    final sharing = widget.room.localParticipant?.isScreenShareEnabled() == true;
+    final sharing =
+        widget.room.localParticipant?.isScreenShareEnabled() == true;
     if (sharing) {
       _stopLiveScreenCapture();
     } else if (_liveScreenCaptureTimer == null) {
@@ -1033,7 +1084,7 @@ class _RoomPageState extends State<RoomPage>
       log('Room disconnected: reason => ${event.reason}');
       final isTeacherEnd =
           event.reason == DisconnectReason.roomDeleted ||
-              event.reason == DisconnectReason.serverShutdown;
+          event.reason == DisconnectReason.serverShutdown;
       WidgetsBindingCompatible.instance?.addPostFrameCallback((_) async {
         if (isTeacherEnd && !widget.isTeacher && mounted) {
           await showDialog(
@@ -1058,7 +1109,7 @@ class _RoomPageState extends State<RoomPage>
       );
     })
     ..on<RoomAttemptReconnectEvent>(
-          (e) => log('Reconnect ${e.attempt}/${e.maxAttemptsRetry}'),
+      (e) => log('Reconnect ${e.attempt}/${e.maxAttemptsRetry}'),
     )
     ..on<LocalTrackPublishedEvent>((_) {
       _sortParticipants();
@@ -1125,15 +1176,15 @@ class _RoomPageState extends State<RoomPage>
       }
     });
 
-
   /// Screenshots the ACTUAL on-screen live screen (_liveScreenCaptureKey) — header, footer/controls, and main content all included —
   /// not a rebuilt duplicate widget — so whatever's genuinely live is what
   /// gets returned. Shared by Android's continuous capture
   /// (_captureAndSendLiveScreen) and Web's single-shot send below.
   Future<Uint8List?> _captureLiveScreenPng() async {
     try {
-      final boundary = _liveScreenCaptureKey.currentContext?.findRenderObject()
-      as RenderRepaintBoundary?;
+      final boundary =
+          _liveScreenCaptureKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary?;
       if (boundary == null || boundary.debugNeedsPaint) return null;
       // pixelRatio lowered from an earlier video-tile-only version's 1.5 —
       // this now captures the whole screen, and the native renderer
@@ -1183,7 +1234,7 @@ class _RoomPageState extends State<RoomPage>
     _webPlaceholderDebounce?.cancel();
     _webPlaceholderDebounce = Timer(
       const Duration(milliseconds: 1200),
-          () => unawaited(_sendLiveScreenPlaceholderWeb()),
+      () => unawaited(_sendLiveScreenPlaceholderWeb()),
     );
   }
 
@@ -1200,7 +1251,7 @@ class _RoomPageState extends State<RoomPage>
       if (!mounted) return;
       _showSnack(
         'تعذر الوصول إلى الكاميرا أو الميكروفون — سيتم تسجيل مشاركة الشاشة '
-            'فقط عند بدئها. تأكد من عدم استخدام الكاميرا/الميكروفون في تطبيق آخر.',
+        'فقط عند بدئها. تأكد من عدم استخدام الكاميرا/الميكروفون في تطبيق آخر.',
       );
     };
 
@@ -1284,10 +1335,14 @@ class _RoomPageState extends State<RoomPage>
         log('[REC] Phase-2 confirmed — video+audio chunks active');
         if (mounted) setState(() {});
       } else {
-        log('[REC] startScreenCaptureService: returned false — recording skipped');
+        log(
+          '[REC] startScreenCaptureService: returned false — recording skipped',
+        );
       }
     } on PlatformException catch (e) {
-      log('[REC] startScreenCaptureService PlatformException: ${e.code} ${e.message}');
+      log(
+        '[REC] startScreenCaptureService PlatformException: ${e.code} ${e.message}',
+      );
     } catch (e) {
       log('[REC] startScreenCaptureService error: $e');
     }
@@ -1369,22 +1424,22 @@ class _RoomPageState extends State<RoomPage>
 
     final allScreen = [...screenTracks, ...localScreen];
     final ordered = allScreen.isNotEmpty
-    ? [...allScreen, ?localCamera, ...userMedia]
+        ? [...allScreen, ?localCamera, ...userMedia]
         : [?localCamera, ...userMedia];
 
     if (mounted) setState(() => participantTracks = ordered);
     if (ordered.length > 1) {
-    _thumbBarAnim.forward();
+      _thumbBarAnim.forward();
     } else {
-    _thumbBarAnim.reverse();
+      _thumbBarAnim.reverse();
     }
 
     // Keep the (web) recording placeholder's participant count in sync —
     // this runs on every join/leave/track event, same as the on-screen UI.
     if (kIsWeb) {
-    _recorder?.updateParticipantCount(
-    widget.room.remoteParticipants.length + 1,
-    );
+      _recorder?.updateParticipantCount(
+        widget.room.remoteParticipants.length + 1,
+      );
     }
   }
 
@@ -1410,7 +1465,7 @@ class _RoomPageState extends State<RoomPage>
 
   bool get _isScreenShareMain =>
       participantTracks.isNotEmpty &&
-          participantTracks.first.type == ParticipantTrackType.kScreenShare;
+      participantTracks.first.type == ParticipantTrackType.kScreenShare;
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   void _showSnack(String msg) {
@@ -1530,7 +1585,8 @@ class _RoomPageState extends State<RoomPage>
                                         itemCount: participantTracks.length - 1,
                                         itemBuilder: (_, i) => _ThumbnailCard(
                                           track: participantTracks[i + 1],
-                                          resolveScreenTrack: _resolveScreenTrack,
+                                          resolveScreenTrack:
+                                              _resolveScreenTrack,
                                         ),
                                       ),
                                     ),
@@ -1544,8 +1600,7 @@ class _RoomPageState extends State<RoomPage>
                               _buildRecordingIndicator(),
 
                               // iOS broadcast share banner + stop button
-                              if (widget.isTeacher)
-                                _buildIOSShareBanner(),
+                              if (widget.isTeacher) _buildIOSShareBanner(),
 
                               // Participant count badge
                               Positioned(
@@ -1558,7 +1613,7 @@ class _RoomPageState extends State<RoomPage>
                                   child: _GlassBadge(
                                     icon: Icons.people_rounded,
                                     label:
-                                    '${widget.room.remoteParticipants.length + 1}',
+                                        '${widget.room.remoteParticipants.length + 1}',
                                     color: _showParticipants ? _cyan : null,
                                   ),
                                 ),
@@ -1573,7 +1628,7 @@ class _RoomPageState extends State<RoomPage>
                       ),
 
                       // Controls bar
-                      if(widget.room.localParticipant!=null)
+                      if (widget.room.localParticipant != null)
                         SlideTransition(
                           position: Tween<Offset>(
                             begin: const Offset(0, 1),
@@ -1679,9 +1734,11 @@ class _RoomPageState extends State<RoomPage>
     if (_pipSwapped && widget.isTeacher) {
       // Swapped: show teacher's own camera in the main area.
       final localEntry = participantTracks
-          .where((t) =>
-      t.participant == local &&
-          t.type != ParticipantTrackType.kScreenShare)
+          .where(
+            (t) =>
+                t.participant == local &&
+                t.type != ParticipantTrackType.kScreenShare,
+          )
           .firstOrNull;
       if (localEntry != null) {
         final cameraTrack = _resolveCameraTrack(localEntry.participant);
@@ -1698,9 +1755,13 @@ class _RoomPageState extends State<RoomPage>
     // For teacher: filter out local camera from the main track list so the
     // main area always shows remote participants or a placeholder.
     final mainTracks = widget.isTeacher
-        ? participantTracks.where((t) =>
-    !(t.participant == local &&
-        t.type != ParticipantTrackType.kScreenShare)).toList()
+        ? participantTracks
+              .where(
+                (t) =>
+                    !(t.participant == local &&
+                        t.type != ParticipantTrackType.kScreenShare),
+              )
+              .toList()
         : participantTracks;
 
     if (mainTracks.isEmpty) {
@@ -1770,9 +1831,11 @@ class _RoomPageState extends State<RoomPage>
     // For teacher: always show local camera in PiP.
     // For student: only show PiP if local camera track is available.
     final localEntry = participantTracks
-        .where((t) =>
-    t.participant == local &&
-        t.type != ParticipantTrackType.kScreenShare)
+        .where(
+          (t) =>
+              t.participant == local &&
+              t.type != ParticipantTrackType.kScreenShare,
+        )
         .firstOrNull;
 
     final cameraTrack = localEntry != null
@@ -1781,16 +1844,21 @@ class _RoomPageState extends State<RoomPage>
 
     // For teacher, show PiP even when camera track is null (shows off icon).
     // For student, hide PiP if no camera track.
-    if (cameraTrack == null && !widget.isTeacher) return const SizedBox.shrink();
+    if (cameraTrack == null && !widget.isTeacher)
+      return const SizedBox.shrink();
     // Hide entirely if teacher has no camera and not swapped.
     if (cameraTrack == null && !_pipSwapped) return const SizedBox.shrink();
 
     // In swapped mode: PiP shows the remote/main content;
     // In normal mode: PiP shows the local camera.
     final mainTracks = widget.isTeacher
-        ? participantTracks.where((t) =>
-    !(t.participant == local &&
-        t.type != ParticipantTrackType.kScreenShare)).toList()
+        ? participantTracks
+              .where(
+                (t) =>
+                    !(t.participant == local &&
+                        t.type != ParticipantTrackType.kScreenShare),
+              )
+              .toList()
         : participantTracks;
 
     // When there's no screen share/remote content, an enabled camera is
@@ -1809,11 +1877,16 @@ class _RoomPageState extends State<RoomPage>
     // instead), hiding the only place the camera was visible. isSharing
     // must be part of this check, not just whether other tracks exist.
     final isSharing = local?.isScreenShareEnabled() == true;
-    if (!_pipSwapped && !isSharing && mainTracks.isEmpty && cameraTrack != null) {
+    if (!_pipSwapped &&
+        !isSharing &&
+        mainTracks.isEmpty &&
+        cameraTrack != null) {
       return const SizedBox.shrink();
     }
 
-    final pipTrack = _pipSwapped && mainTracks.isNotEmpty ? mainTracks.first : null;
+    final pipTrack = _pipSwapped && mainTracks.isNotEmpty
+        ? mainTracks.first
+        : null;
 
     return Positioned(
       right: _pipRight,
@@ -1934,15 +2007,9 @@ class _RoomPageState extends State<RoomPage>
           decoration: BoxDecoration(
             color: const Color(0xFF0E1120),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: _cyan.withValues(alpha: 0.5),
-              width: 1.2,
-            ),
+            border: Border.all(color: _cyan.withValues(alpha: 0.5), width: 1.2),
             boxShadow: [
-              BoxShadow(
-                color: _cyan.withValues(alpha: 0.18),
-                blurRadius: 20,
-              ),
+              BoxShadow(color: _cyan.withValues(alpha: 0.18), blurRadius: 20),
             ],
           ),
           child: Row(
@@ -1951,11 +2018,14 @@ class _RoomPageState extends State<RoomPage>
               TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0.3, end: 1.0),
                 duration: const Duration(milliseconds: 800),
-                onEnd: () { if (mounted) setState(() {}); },
+                onEnd: () {
+                  if (mounted) setState(() {});
+                },
                 builder: (_, v, _) => Opacity(
                   opacity: v,
                   child: Container(
-                    width: 8, height: 8,
+                    width: 8,
+                    height: 8,
                     decoration: const BoxDecoration(
                       color: _cyan,
                       shape: BoxShape.circle,
@@ -1996,13 +2066,14 @@ class _RoomPageState extends State<RoomPage>
               GestureDetector(
                 onTap: _stopIOSBroadcast,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: _rose.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: _rose.withValues(alpha: 0.5),
-                    ),
+                    border: Border.all(color: _rose.withValues(alpha: 0.5)),
                   ),
                   child: const Text(
                     'إيقاف المشاركة',
@@ -2082,46 +2153,46 @@ class _RoomPageState extends State<RoomPage>
 
     // ── Client recorder badge (teacher only) ──────────────────────────────────
     if (widget.isTeacher && _recorder != null) {
-      final rec   = _recorder!;
+      final rec = _recorder!;
       final state = rec.state;
 
       if (state != RecState.idle) {
-        final Color  dotColor;
-        final bool   pulsing;
+        final Color dotColor;
+        final bool pulsing;
         final String stateLabel;
-        final String timeLabel  = _recElapsedLabel;
+        final String timeLabel = _recElapsedLabel;
         final String chunkLabel = '${rec.uploadedChunks}↑';
-        final String mbLabel    =
+        final String mbLabel =
             '${(rec.totalBytes / 1024 / 1024).toStringAsFixed(1)}MB';
 
         switch (state) {
           case RecState.starting:
-            dotColor   = _textLow;
-            pulsing    = false;
+            dotColor = _textLow;
+            pulsing = false;
             stateLabel = 'جارٍ البدء…';
           case RecState.recording:
-            dotColor   = _emerald;
-            pulsing    = true;
+            dotColor = _emerald;
+            pulsing = true;
             stateLabel = 'تسجيل';
           case RecState.paused:
-            dotColor   = const Color(0xFFFFB800);
-            pulsing    = false;
+            dotColor = const Color(0xFFFFB800);
+            pulsing = false;
             stateLabel = '⏸ متوقف';
           case RecState.uploading:
-            dotColor   = const Color(0xFFFFB800);
-            pulsing    = false;
+            dotColor = const Color(0xFFFFB800);
+            pulsing = false;
             stateLabel = 'رفع…';
           case RecState.done:
-            dotColor   = _emerald;
-            pulsing    = false;
+            dotColor = _emerald;
+            pulsing = false;
             stateLabel = '✓ محفوظ';
           case RecState.error:
-            dotColor   = _rose;
-            pulsing    = false;
+            dotColor = _rose;
+            pulsing = false;
             stateLabel = 'خطأ';
           default:
-            dotColor   = _textLow;
-            pulsing    = false;
+            dotColor = _textLow;
+            pulsing = false;
             stateLabel = '';
         }
 
@@ -2129,9 +2200,9 @@ class _RoomPageState extends State<RoomPage>
           AnimatedBuilder(
             animation: _recDotAnim,
             builder: (_, _) => _RecBadge(
-              dotColor:   dotColor,
+              dotColor: dotColor,
               dotOpacity: pulsing ? _recDotOpacity.value : 1.0,
-              pulsing:    pulsing,
+              pulsing: pulsing,
               children: [
                 // State label
                 Text(
@@ -2145,7 +2216,8 @@ class _RoomPageState extends State<RoomPage>
                   ),
                 ),
                 // Elapsed time — shown while recording or paused
-                if (state == RecState.recording || state == RecState.paused) ...[
+                if (state == RecState.recording ||
+                    state == RecState.paused) ...[
                   Container(
                     width: 1,
                     height: 10,
@@ -2198,7 +2270,10 @@ class _RoomPageState extends State<RoomPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: badges
-            .map((w) => Padding(padding: const EdgeInsets.only(bottom: 6), child: w))
+            .map(
+              (w) =>
+                  Padding(padding: const EdgeInsets.only(bottom: 6), child: w),
+            )
             .toList(),
       ),
     );
@@ -2222,8 +2297,7 @@ class _RoomPageState extends State<RoomPage>
           BoxShadow(color: _cyan.withValues(alpha: 0.05), blurRadius: 20),
         ],
       ),
-      child:
-      ControlsWidget(
+      child: ControlsWidget(
         widget.room,
         widget.room.localParticipant!,
         // End session goes through our recorder-aware wrapper
@@ -2234,16 +2308,18 @@ class _RoomPageState extends State<RoomPage>
         // Null when the action is not available (wrong state, or
         // a transition is already in flight) — ControlsWidget
         // disables the button automatically when the callback is null.
-        onPauseRecording: (widget.isTeacher &&
-            _recorder?.state == RecState.recording &&
-            !_isPausingRecording &&
-            !_endingSession)
+        onPauseRecording:
+            (widget.isTeacher &&
+                _recorder?.state == RecState.recording &&
+                !_isPausingRecording &&
+                !_endingSession)
             ? _pauseRecording
             : null,
-        onResumeRecording: (widget.isTeacher &&
-            _recorder?.state == RecState.paused &&
-            !_isResumingRecording &&
-            !_endingSession)
+        onResumeRecording:
+            (widget.isTeacher &&
+                _recorder?.state == RecState.paused &&
+                !_isResumingRecording &&
+                !_endingSession)
             ? _resumeRecording
             : null,
         recorderState: widget.isTeacher ? _recorder?.state : null,
@@ -2338,10 +2414,10 @@ class _RoomPageState extends State<RoomPage>
                   isTeacher: true,
                   isAttended: true,
                   micOn:
-                  widget.room.localParticipant?.isMicrophoneEnabled() ??
+                      widget.room.localParticipant?.isMicrophoneEnabled() ??
                       false,
                   camOn:
-                  widget.room.localParticipant?.isCameraEnabled() ?? false,
+                      widget.room.localParticipant?.isCameraEnabled() ?? false,
                   joinDate: widget.room.localParticipant?.joinedAt,
                 ),
 
@@ -2392,52 +2468,52 @@ class _RoomPageState extends State<RoomPage>
                 Expanded(
                   child: _enrolledStudents.isEmpty
                       ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.school_outlined,
-                          color: _textLow,
-                          size: 32,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'No students enrolled',
-                          style: TextStyle(
-                            fontFamily: 'tajawal',
-                            color: _textLow,
-                            fontSize: 13,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.school_outlined,
+                                color: _textLow,
+                                size: 32,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'No students enrolled',
+                                style: TextStyle(
+                                  fontFamily: 'tajawal',
+                                  color: _textLow,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
-                  )
+                        )
                       : ListView.builder(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    itemCount: _enrolledStudents.length,
-                    itemBuilder: (ctx, i) {
-                      final s = _enrolledStudents[i];
-                      final online =
-                          liveIdentities.contains(s.id.toString()) ||
-                              liveIdentities.contains(s.name);
-                      final rp = widget.room.remoteParticipants.values
-                          .firstWhereOrNull(
-                            (p) =>
-                        p.identity == s.id.toString() ||
-                            p.name == s.name,
-                      );
-                      return _ParticipantRow(
-                        name: s.name,
-                        isOnline: online,
-                        isTeacher: false,
-                        isAttended: s.isAttended,
-                        joinDate: s.joinDate,
-                        leaveDate: s.leaveDate,
-                        micOn: rp?.isMicrophoneEnabled() ?? false,
-                        camOn: rp?.isCameraEnabled() ?? false,
-                      );
-                    },
-                  ),
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          itemCount: _enrolledStudents.length,
+                          itemBuilder: (ctx, i) {
+                            final s = _enrolledStudents[i];
+                            final online =
+                                liveIdentities.contains(s.id.toString()) ||
+                                liveIdentities.contains(s.name);
+                            final rp = widget.room.remoteParticipants.values
+                                .firstWhereOrNull(
+                                  (p) =>
+                                      p.identity == s.id.toString() ||
+                                      p.name == s.name,
+                                );
+                            return _ParticipantRow(
+                              name: s.name,
+                              isOnline: online,
+                              isTeacher: false,
+                              isAttended: s.isAttended,
+                              joinDate: s.joinDate,
+                              leaveDate: s.leaveDate,
+                              micOn: rp?.isMicrophoneEnabled() ?? false,
+                              camOn: rp?.isCameraEnabled() ?? false,
+                            );
+                          },
+                        ),
                 ),
               ],
             ),
@@ -2651,11 +2727,11 @@ class _RoomPageState extends State<RoomPage>
                 ),
                 boxShadow: selected
                     ? [
-                  BoxShadow(
-                    color: _cyan.withValues(alpha: 0.15),
-                    blurRadius: 12,
-                  ),
-                ]
+                        BoxShadow(
+                          color: _cyan.withValues(alpha: 0.15),
+                          blurRadius: 12,
+                        ),
+                      ]
                     : [],
               ),
               child: Row(
@@ -2740,8 +2816,8 @@ class _RoomPageState extends State<RoomPage>
                   onTap: isLast
                       ? () => _submitQuiz()
                       : () {
-                    if (mounted) setState(() => _currentQuestionIndex++);
-                  },
+                          if (mounted) setState(() => _currentQuestionIndex++);
+                        },
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 13),
                     decoration: BoxDecoration(
@@ -2873,13 +2949,14 @@ class _RecBadge extends StatelessWidget {
     this.icon,
   });
 
-  final Color        dotColor;
-  final double       dotOpacity;   // 0..1, driven by _recDotOpacity animation
-  final bool         pulsing;
+  final Color dotColor;
+  final double dotOpacity; // 0..1, driven by _recDotOpacity animation
+  final bool pulsing;
   final List<Widget> children;
+
   // When set, shown instead of the dot — for badges that aren't a
   // recording/live status indicator (e.g. the total session-time badge).
-  final IconData?    icon;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -2896,7 +2973,9 @@ class _RecBadge extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: dotColor.withValues(alpha: pulsing ? 0.12 * dotOpacity : 0.08),
+            color: dotColor.withValues(
+              alpha: pulsing ? 0.12 * dotOpacity : 0.08,
+            ),
             blurRadius: 10,
           ),
         ],
@@ -2907,7 +2986,7 @@ class _RecBadge extends StatelessWidget {
           if (icon != null)
             Icon(icon, size: 11, color: dotColor.withValues(alpha: 0.9))
           else
-          // Pulsing / static dot
+            // Pulsing / static dot
             Container(
               width: 7,
               height: 7,
@@ -2989,9 +3068,9 @@ class _ParticipantRow extends StatelessWidget {
                   gradient: LinearGradient(
                     colors: isTeacher
                         ? [
-                      _cyan.withValues(alpha: 0.8),
-                      _indigo.withValues(alpha: 0.8),
-                    ]
+                            _cyan.withValues(alpha: 0.8),
+                            _indigo.withValues(alpha: 0.8),
+                          ]
                         : [_glass15, _glass10],
                   ),
                   border: Border.all(
@@ -3356,13 +3435,13 @@ class _PremiumScreenShareViewState extends State<_PremiumScreenShareView>
                 borderRadius: BorderRadius.circular(19),
                 child: screenTrack != null
                     ? VideoTrackRenderer(
-                  screenTrack,
-                  renderMode: VideoRenderMode.auto,
-                  fit: VideoViewFit.contain,
-                )
+                        screenTrack,
+                        renderMode: VideoRenderMode.auto,
+                        fit: VideoViewFit.contain,
+                      )
                     : _ScreenShareLoadingPlaceholder(
-                  presenterName: presenterName,
-                ),
+                        presenterName: presenterName,
+                      ),
               ),
             ),
           ),
@@ -3751,6 +3830,7 @@ class _PremiumWaitingPlaceholder extends StatelessWidget {
   final String teacherName;
   final bool isMicOn;
   final bool isCamOn;
+
   // No longer used by this widget's own visuals (the old aurora
   // background + pulsing ring were replaced by a flat Teams-style grid —
   // Teams' own waiting/grid views don't use glow effects), but kept as a
@@ -3762,7 +3842,10 @@ class _PremiumWaitingPlaceholder extends StatelessWidget {
   final List<EnrolledStudent> participants;
   final bool showLogo;
 
-  static const int _maxTiles = 8;
+  // Per requirement: show every participant while there are 10 or fewer;
+  // beyond that, show 9 real tiles + one "+N" overflow tile (10 cells
+  // total) rather than letting the grid grow unbounded.
+  static const int _maxTotalCells = 10;
 
   @override
   Widget build(BuildContext context) {
@@ -3778,7 +3861,8 @@ class _PremiumWaitingPlaceholder extends StatelessWidget {
         name: teacherName,
         isHost: true,
         isMicOn: isMicOn,
-        isSpeaking: speakerName == null ||
+        isSpeaking:
+            speakerName == null ||
             speakerName!.trim().isEmpty ||
             speakerName!.trim() == teacherName.trim(),
       ),
@@ -3789,11 +3873,17 @@ class _PremiumWaitingPlaceholder extends StatelessWidget {
           // Per-student live mic state isn't available from EnrolledStudent
           // — defaults to "on" (no mic-off icon) rather than guessing muted.
           isMicOn: true,
-          isSpeaking: speakerName != null && speakerName!.trim() == p.name.trim(),
+          isSpeaking:
+              speakerName != null && speakerName!.trim() == p.name.trim(),
           imageUrl: p.imageUrl,
+          isAttended: p.isAttended,
+          joinDate: p.joinDate,
+          leaveDate: p.leaveDate,
         ),
     ];
-    final shown = tiles.take(_maxTiles).toList();
+
+    final overLimit = tiles.length > _maxTotalCells;
+    final shown = overLimit ? tiles.take(_maxTotalCells - 1).toList() : tiles;
     final overflow = tiles.length - shown.length;
 
     return Container(
@@ -3860,7 +3950,7 @@ class _PremiumWaitingPlaceholder extends StatelessWidget {
                 ),
                 itemBuilder: (context, i) {
                   if (i >= shown.length) {
-                    return _TeamsOverflowTile(count: overflow);
+                    return _TeamsOverflowTile(count: overflow, allTiles: tiles);
                   }
                   return _TeamsGridTile(data: shown[i]);
                 },
@@ -3900,6 +3990,9 @@ class _TeamsTileData {
     required this.isMicOn,
     required this.isSpeaking,
     this.imageUrl,
+    this.isAttended = false,
+    this.joinDate,
+    this.leaveDate,
   });
 
   final String name;
@@ -3907,131 +4000,504 @@ class _TeamsTileData {
   final bool isMicOn;
   final bool isSpeaking;
   final String? imageUrl;
+  final bool isAttended;
+  final DateTime? joinDate;
+  final DateTime? leaveDate;
 }
 
 class _TeamsGridTile extends StatelessWidget {
   const _TeamsGridTile({required this.data});
+
   final _TeamsTileData data;
 
   @override
   Widget build(BuildContext context) {
     final trimmed = data.name.trim();
     final initials = trimmed.isNotEmpty
-        ? trimmed.split(RegExp(r'\s+')).take(2).map((w) => w[0].toUpperCase()).join()
+        ? trimmed
+              .split(RegExp(r'\s+'))
+              .take(2)
+              .map((w) => w[0].toUpperCase())
+              .join()
         : '؟';
     final hasPhoto = data.imageUrl != null && data.imageUrl!.isNotEmpty;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: _surfaceHi,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: data.isSpeaking ? _emerald : Colors.transparent,
-          width: 2,
-        ),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          Center(
-            child: Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _avatarColorFor(data.name),
-                image: hasPhoto
-                    ? DecorationImage(
-                  image: NetworkImage(data.imageUrl!),
-                  fit: BoxFit.cover,
-                )
-                    : null,
+        onTap: () => _showParticipantProfileDialog(context, data),
+        child: Container(
+          decoration: BoxDecoration(
+            color: _surfaceHi,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: data.isSpeaking ? _emerald : Colors.transparent,
+              width: 2,
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            children: [
+              Center(
+                child: Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _avatarColorFor(data.name),
+                    image: hasPhoto
+                        ? DecorationImage(
+                            image: NetworkImage(data.imageUrl!),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
+                  ),
+                  child: hasPhoto
+                      ? null
+                      : Center(
+                          child: Text(
+                            initials,
+                            style: const TextStyle(
+                              color: Colors.black87,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                ),
               ),
-              child: hasPhoto
-                  ? null
-                  : Center(
-                child: Text(
-                  initials,
-                  style: const TextStyle(
-                    color: Colors.black87,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
+              if (data.isHost)
+                const Positioned(
+                  top: 6,
+                  right: 6,
+                  child: Icon(
+                    Icons.workspace_premium_rounded,
+                    size: 16,
+                    color: _cyan,
+                  ),
+                ),
+              Positioned(
+                left: 6,
+                bottom: 6,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 90),
+                        child: Text(
+                          trimmed.isNotEmpty ? trimmed : '؟',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: 'tajawal',
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        data.isMicOn
+                            ? Icons.mic_rounded
+                            : Icons.mic_off_rounded,
+                        size: 12,
+                        color: data.isMicOn ? Colors.white70 : _rose,
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ),
+            ],
           ),
-          if (data.isHost)
-            const Positioned(
-              top: 6,
-              right: 6,
-              child: Icon(Icons.workspace_premium_rounded,
-                  size: 16, color: _cyan),
-            ),
-          Positioned(
-            left: 6,
-            bottom: 6,
-            child: Container(
-              padding:
-              const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.55),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 90),
-                    child: Text(
-                      trimmed.isNotEmpty ? trimmed : '؟',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontFamily: 'tajawal',
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Icon(
-                    data.isMicOn ? Icons.mic_rounded : Icons.mic_off_rounded,
-                    size: 12,
-                    color: data.isMicOn ? Colors.white70 : _rose,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
 class _TeamsOverflowTile extends StatelessWidget {
-  const _TeamsOverflowTile({required this.count});
+  const _TeamsOverflowTile({required this.count, required this.allTiles});
+
   final int count;
+  final List<_TeamsTileData> allTiles;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: _surfaceHi,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
         borderRadius: BorderRadius.circular(12),
-      ),
-      child: Center(
-        child: Text(
-          '+$count',
-          style: const TextStyle(
-            fontFamily: 'tajawal',
-            color: _textMid,
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
+        onTap: () => _showAllParticipantsDialog(context, allTiles),
+        child: Container(
+          decoration: BoxDecoration(
+            color: _surfaceHi,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Center(
+            child: Text(
+              '+$count',
+              style: const TextStyle(
+                fontFamily: 'tajawal',
+                color: _textMid,
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Full participant list — opened by tapping the "+N" overflow tile.
+/// Every participant, tappable to drill into their profile.
+void _showAllParticipantsDialog(
+  BuildContext context,
+  List<_TeamsTileData> tiles,
+) {
+  showDialog(
+    context: context,
+    builder: (dialogContext) => Dialog(
+      backgroundColor: _surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420, maxHeight: 560),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 12, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'المشاركون (${tiles.length})',
+                      style: const TextStyle(
+                        fontFamily: 'tajawal',
+                        color: _textHigh,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, color: _textLow),
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1, color: _glassBdr),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                itemCount: tiles.length,
+                itemBuilder: (context, i) {
+                  final t = tiles[i];
+                  final hasPhoto = t.imageUrl != null && t.imageUrl!.isNotEmpty;
+                  final initials = t.name.trim().isNotEmpty
+                      ? t.name.trim()[0].toUpperCase()
+                      : '؟';
+                  return ListTile(
+                    onTap: () {
+                      Navigator.of(dialogContext).pop();
+                      _showParticipantProfileDialog(context, t);
+                    },
+                    leading: CircleAvatar(
+                      backgroundColor: _avatarColorFor(t.name),
+                      backgroundImage: hasPhoto
+                          ? NetworkImage(t.imageUrl!)
+                          : null,
+                      child: hasPhoto
+                          ? null
+                          : Text(
+                              initials,
+                              style: const TextStyle(
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                    ),
+                    title: Text(
+                      t.name,
+                      style: const TextStyle(
+                        fontFamily: 'tajawal',
+                        color: _textHigh,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    subtitle: Text(
+                      t.isHost ? 'المعلم' : 'طالب',
+                      style: const TextStyle(
+                        fontFamily: 'tajawal',
+                        color: _textLow,
+                        fontSize: 12,
+                      ),
+                    ),
+                    trailing: Icon(
+                      t.isMicOn ? Icons.mic_rounded : Icons.mic_off_rounded,
+                      size: 18,
+                      color: t.isMicOn ? _textLow : _rose,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// "Premium" participant profile — opened by tapping any tile (grid or
+/// full-list). Shows everything available: role, live mic/speaking state,
+/// and — for students — attendance/join/leave times from EnrolledStudent.
+void _showParticipantProfileDialog(BuildContext context, _TeamsTileData data) {
+  final hasPhoto = data.imageUrl != null && data.imageUrl!.isNotEmpty;
+  final initials = data.name.trim().isNotEmpty
+      ? data.name
+            .trim()
+            .split(RegExp(r'\s+'))
+            .take(2)
+            .map((w) => w[0].toUpperCase())
+            .join()
+      : '؟';
+  String fmt(DateTime? d) {
+    if (d == null) return '—';
+    final h = d.hour.toString().padLeft(2, '0');
+    final m = d.minute.toString().padLeft(2, '0');
+    return '${d.year}/${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')} — $h:$m';
+  }
+
+  showDialog(
+    context: context,
+    builder: (dialogContext) => Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: 340,
+        padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+        decoration: BoxDecoration(
+          color: _surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: _glassBdr),
+          boxShadow: [
+            BoxShadow(
+              color: _avatarColorFor(data.name).withValues(alpha: 0.25),
+              blurRadius: 40,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 96,
+                  height: 96,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _avatarColorFor(data.name),
+                    image: hasPhoto
+                        ? DecorationImage(
+                            image: NetworkImage(data.imageUrl!),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
+                    boxShadow: [
+                      BoxShadow(
+                        color: _avatarColorFor(
+                          data.name,
+                        ).withValues(alpha: 0.4),
+                        blurRadius: 24,
+                      ),
+                    ],
+                  ),
+                  child: hasPhoto
+                      ? null
+                      : Center(
+                          child: Text(
+                            initials,
+                            style: const TextStyle(
+                              color: Colors.black87,
+                              fontSize: 32,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                ),
+                if (data.isHost)
+                  Positioned(
+                    bottom: -2,
+                    right: -2,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _cyan,
+                        border: Border.all(color: _surface, width: 3),
+                      ),
+                      child: const Icon(
+                        Icons.workspace_premium_rounded,
+                        size: 14,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Text(
+              data.name,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'tajawal',
+                color: _textHigh,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+              decoration: BoxDecoration(
+                color: (data.isHost ? _cyan : _emerald).withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: (data.isHost ? _cyan : _emerald).withValues(
+                    alpha: 0.5,
+                  ),
+                ),
+              ),
+              child: Text(
+                data.isHost ? 'المعلم' : 'طالب',
+                style: TextStyle(
+                  fontFamily: 'tajawal',
+                  color: data.isHost ? _cyan : _emerald,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            _ProfileInfoRow(
+              icon: data.isMicOn ? Icons.mic_rounded : Icons.mic_off_rounded,
+              iconColor: data.isMicOn ? _emerald : _rose,
+              label: 'الميكروفون',
+              value: data.isMicOn ? 'يعمل' : 'مغلق',
+            ),
+            _ProfileInfoRow(
+              icon: Icons.graphic_eq_rounded,
+              iconColor: data.isSpeaking ? _emerald : _textLow,
+              label: 'الحالة',
+              value: data.isSpeaking ? 'يتحدث الآن' : 'غير نشط',
+            ),
+            if (!data.isHost) ...[
+              _ProfileInfoRow(
+                icon: Icons.how_to_reg_rounded,
+                iconColor: data.isAttended ? _emerald : _textLow,
+                label: 'الحضور',
+                value: data.isAttended ? 'حاضر' : 'غير مسجل',
+              ),
+              _ProfileInfoRow(
+                icon: Icons.login_rounded,
+                iconColor: _textLow,
+                label: 'وقت الانضمام',
+                value: fmt(data.joinDate),
+              ),
+              if (data.leaveDate != null)
+                _ProfileInfoRow(
+                  icon: Icons.logout_rounded,
+                  iconColor: _textLow,
+                  label: 'وقت المغادرة',
+                  value: fmt(data.leaveDate),
+                ),
+            ],
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                style: TextButton.styleFrom(
+                  backgroundColor: _glass10,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'إغلاق',
+                  style: TextStyle(
+                    fontFamily: 'tajawal',
+                    color: _textMid,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _ProfileInfoRow extends StatelessWidget {
+  const _ProfileInfoRow({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: iconColor),
+          const SizedBox(width: 10),
+          Text(
+            label,
+            style: const TextStyle(
+              fontFamily: 'tajawal',
+              color: _textLow,
+              fontSize: 13,
+            ),
+          ),
+          const Spacer(),
+          Text(
+            value,
+            style: const TextStyle(
+              fontFamily: 'tajawal',
+              color: _textHigh,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -4056,13 +4522,11 @@ class _AVChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = active ? activeColor : inactiveColor;
     return Container(
-      padding:
-      const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
-        border:
-        Border.all(color: color.withValues(alpha: 0.4), width: 1),
+        border: Border.all(color: color.withValues(alpha: 0.4), width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

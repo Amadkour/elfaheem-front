@@ -267,6 +267,14 @@ class ThemeConfigProvider extends ChangeNotifier {
     end: Alignment.bottomRight,
     colors: _model?.gradientAccent ?? AppTheme.accentGradient.colors,
   );
+  LinearGradient get lightAccentGradient => LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      primary.withValues(alpha:0.3),
+      accent.withValues(alpha:0.3)
+    ],
+  );
 
   LinearGradient get sliderGradient => _sliderGradient;
 

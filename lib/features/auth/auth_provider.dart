@@ -349,9 +349,8 @@ class AuthProvider extends BaseProvider {
       final userJson = result['user'] as Map<String, dynamic>;
       _currentUser = UserModel.fromJson(userJson);
       await _storage.saveUser(userJson); // ← persisted to SharedPreferences
-
-      isLoadingLogin = false;
       await NotificationService.instance.registerWithBackend(_api);
+      isLoadingLogin = false;
       notifyListeners();
       return true;
     }

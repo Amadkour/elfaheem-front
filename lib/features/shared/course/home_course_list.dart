@@ -7,13 +7,14 @@ import '../../student/home/component/course_row.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 class HomeCourseList extends StatelessWidget {
-  const HomeCourseList(
-      {super.key,
-      required this.hasMore,
-      required this.courses,
-      required this.onTap,
-      required this.isTeacher,
-      required this.pageName});
+  const HomeCourseList({
+    super.key,
+    required this.hasMore,
+    required this.courses,
+    required this.onTap,
+    required this.isTeacher,
+    required this.pageName,
+  });
 
   final String pageName;
 
@@ -29,37 +30,34 @@ class HomeCourseList extends StatelessWidget {
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: Breakpoints.contentMax),
-          child: GridView.builder(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
-            physics: const BouncingScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: cols,
-              crossAxisSpacing: 14,
-              mainAxisSpacing: 14,
-              childAspectRatio: 0.7,
-            ),
-            itemCount: courses.length + (hasMore ? 1 : 0),
-            itemBuilder: (_, i) {
-              if (i >= courses.length) {
-                return Center(
-                  child: AppLoadingIndicator()
-                );
-              }
-              return CourseCard(
-                course: courses[i],
-                pageName: pageName,
-                isTeacher: isTeacher,
-                fullScreen: true,
-                onTap: (CourseModel c) {
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => CourseDetailScreen(course: c)));
-                },
-              );
-            },
-          )),
+        constraints: BoxConstraints(maxWidth: Breakpoints.contentMax),
+        child: GridView.builder(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+          physics: const BouncingScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: cols,
+            crossAxisSpacing: 14,
+            mainAxisSpacing: 14,
+            childAspectRatio: 0.7,
+          ),
+          itemCount: courses.length + (hasMore ? 1 : 0),
+          itemBuilder: (_, i) {
+            if (i >= courses.length) {
+              return Center(child: AppLoadingIndicator());
+            }
+            return CourseCard(
+              course: courses[i],
+              pageName: pageName,
+              isTeacher: isTeacher,
+              fullScreen: true,
+              onTap: (CourseModel c) {
+                Navigator.pushNamed(context, '/course-detail', arguments: c);
+
+              },
+            );
+          },
+        ),
+      ),
     );
   }
 }
