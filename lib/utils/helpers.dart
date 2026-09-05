@@ -155,6 +155,7 @@ class Helpers {
     void Function()? onCancel
   }) => showDialog<bool>(
     context: context,
+    barrierDismissible:false,
     builder: (_) => Directionality(
       textDirection: Helpers.pageDirection,
       child: AlertDialog(

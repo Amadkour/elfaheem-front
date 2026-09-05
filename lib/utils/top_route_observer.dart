@@ -1,48 +1,66 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_education_app/features/student/models.dart';
 
-/// Tracks whichever route is currently on top of the navigation stack.
-///
-/// `navigatorKey.currentContext` alone can't tell you this — it's the
-/// Navigator widget's own context, which sits *above* all pushed routes,
-/// so `ModalRoute.of(navigatorKey.currentContext)` always returns null.
-/// Register this as a `navigatorObservers` entry on your `MaterialApp`
-/// (alongside `navigatorKey: navigatorKey`) to get a reliable answer.
 class TopRouteObserver extends NavigatorObserver {
   Route<dynamic>? currentRoute;
+  Route<dynamic>? previousRoute;
 
   @override
-  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+  void didPush(
+      Route<dynamic> route,
+      Route<dynamic>? previousRoute,
+      ) {
+    this.previousRoute = previousRoute;
     currentRoute = route;
   }
 
   @override
-  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+  void didPop(
+      Route<dynamic> route,
+      Route<dynamic>? previousRoute,
+      ) {
+    this.previousRoute = route;
     currentRoute = previousRoute;
   }
 
   @override
-  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
+  void didRemove(
+      Route<dynamic> route,
+      Route<dynamic>? previousRoute,
+      ) {
+    this.previousRoute = previousRoute;
     currentRoute = previousRoute;
   }
 
   @override
-  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+  void didReplace({
+    Route<dynamic>? newRoute,
+    Route<dynamic>? oldRoute,
+  }) {
+    this.previousRoute = oldRoute;
     currentRoute = newRoute;
   }
 
-  bool get isCourseDetailActive =>currentRoute?.settings.name == '/course-detail';
+  bool get isCourseDetailActive =>
+      currentRoute?.settings.name == '/course-detail';
 
-
-  /// The course currently shown by CourseDetailScreen, if that's the active
-  /// route. Matches how main.dart's _router passes it: `settings.arguments
-  /// as CourseModel`.
   String? get activeCourseId {
-    CourseModel? args = currentRoute?.settings.arguments as CourseModel? ;
-    return args is CourseModel ? args.id : null;
+    final args = currentRoute?.settings.arguments;
+
+    if (args is CourseModel) {
+      return args.id;
+    }
+
+    return null;
   }
+
+  // Previous route name
+  String? get previousRouteName =>
+      previousRoute?.settings.name;
+
+  // Current route name
+  String? get currentRouteName =>
+      currentRoute?.settings.name;
 }
 
-/// Shared instance — reference this both in MaterialApp's
-/// `navigatorObservers` and from notification_service.dart.
 final topRouteObserver = TopRouteObserver();

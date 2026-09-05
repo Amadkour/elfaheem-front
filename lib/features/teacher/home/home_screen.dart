@@ -7,6 +7,7 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
+import '../../../utils/top_route_observer.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../auth/auth_provider.dart';
 import '../../shared/notification/notifications_provider.dart';
@@ -35,8 +36,12 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      print("=============================");
+      print(topRouteObserver.previousRouteName);
+      print("=============================");
 
-      if (context.read<TeacherProvider>().allCourses.isEmpty && ) {
+      if (context.read<TeacherProvider>().allCourses.isEmpty ||
+          topRouteObserver.previousRouteName == '/login') {
         context.read<TeacherProvider>().init();
       }
     });
@@ -269,7 +274,12 @@ class Shimmer extends StatefulWidget {
   final double width, height;
   final double radius;
 
-  const Shimmer({super.key, required this.width, required this.height, this.radius = 0});
+  const Shimmer({
+    super.key,
+    required this.width,
+    required this.height,
+    this.radius = 0,
+  });
 
   @override
   State<Shimmer> createState() => _ShimmerState();
