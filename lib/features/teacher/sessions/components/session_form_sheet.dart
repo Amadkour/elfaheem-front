@@ -6,6 +6,7 @@ import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/helpers.dart';
 import '../../../../utils/widget/primary_button.dart';
 import '../../../../utils/widget/text_field.dart';
+import '../../../auth/auth_widgets.dart';
 import '../../../student/models.dart';
 import '../sessions_provider.dart';
 
@@ -82,7 +83,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
     if (time == null || !mounted) return;
     if (mounted) {
       setState(
-        () => _scheduled = DateTime(
+            () => _scheduled = DateTime(
           date.year,
           date.month,
           date.day,
@@ -125,19 +126,16 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
       ok = r != null;
     }
 
-
     Helpers.showMessage(
       ok
-          ? (_isEdit
-          ? 'session_edited_success'.tr
-          : 'session_added_success'.tr)
+          ? (_isEdit ? 'session_edited_success'.tr : 'session_added_success'.tr)
           : 'generic_error'.tr,
       isError: !ok,
     );
     if ((widget.openLive ?? false) && ok) {
       await p.startLive(r!.id);
       if (mounted) {
-       await p.joinLive(context, r.id, r.courseId, 200, false);
+        await p.joinLive(context, r.id, r.courseId, 200, false);
       }
     }
     if (mounted) {
@@ -147,7 +145,18 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = context.watch<TeacherCourseScreenProvider>().isLoading;
+    // Scoped to exactly what this sheet renders: a dedicated submit-loading
+    // flag (NOT BaseProvider.isLoading, which every API call in this
+    // provider shares) and the details-expand flag. Dart records have
+    // structural equality, so this only rebuilds the sheet when one of
+    // these two actually changes — never for unrelated provider activity
+    // (material uploads, live-session state, a background refresh) firing
+    // elsewhere on the same screen while this sheet is open.
+    final (submitLoading, openMoreDetails) = context.select<
+        TeacherCourseScreenProvider, (bool, bool)>(
+          (p) => (p.submitLoading, p.openMoreDetailsForAddSession),
+    );
+
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Container(
@@ -217,101 +226,126 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                   controller: _nameCtrl,
                   label: 'session_name_label'.tr,
                   validator: (v) =>
-                      (v?.isEmpty ?? true) ? 'session_name_validator'.tr : null,
+                  (v?.isEmpty ?? true) ? 'session_name_validator'.tr : null,
                 ),
-                const SizedBox(height: 14),
-                MyTextField(
-                  controller: _descCtrl,
-                  label: 'session_description_label'.tr,
-                  maxLine: 2,
+                const SizedBox(height: 7),
+
+                InkWell(
+                  onTap: () =>
+                      context.read<TeacherCourseScreenProvider>().onToggleOpenDetails(),
+                  child: Row(
+                    children: [
+                      Text(
+                        'session_details'.tr,
+                        style: context.colors.label.copyWith(
+                          color: Colors.blue,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Icon( openMoreDetails?
+                      Icons.chevron_left_rounded:
+                      Icons.chevron_right_rounded,
+                        color:Colors.blue,
+                      )
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 14),
-
-                // Type selector
-                _TypeSelector(
-                  selected: _type,
-                  onChanged: (t) {
-                    if (mounted) setState(() => _type = t);
-                  },
-                ),
-
-                const SizedBox(height: 14),
-
-                // Date picker (live only)
-                if (_type == 'live') ...[
+                if (openMoreDetails) ...[
                   const SizedBox(height: 14),
-                  GestureDetector(
-                    onTap: _pickDateTime,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _scheduled != null
-                            ? context.colors.primaryLight
-                            : context.colors.background,
-                        borderRadius: BorderRadius.circular(
-                          context.colors.radiusMedium,
+                  MyTextField(
+                    controller: _descCtrl,
+                    label: 'session_description_label'.tr,
+                    maxLine: 2,
+                  ),
+                  const SizedBox(height: 14),
+                  // Type selector
+                  _TypeSelector(
+                    selected: _type,
+                    onChanged: (t) {
+                      if (mounted) setState(() => _type = t);
+                    },
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  // Date picker (live only)
+                  if (_type == 'live') ...[
+                    const SizedBox(height: 14),
+                    GestureDetector(
+                      onTap: _pickDateTime,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
                         ),
-                        border: Border.all(
+                        decoration: BoxDecoration(
                           color: _scheduled != null
-                              ? context.colors.primary.withValues(alpha: 0.35)
-                              : context.colors.divider,
-                          width: _scheduled != null ? 1.5 : 1,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: context.colors.primary.withValues(
-                                alpha: 0.1,
-                              ),
-                              borderRadius: BorderRadius.circular(9),
-                            ),
-                            child: Icon(
-                              Icons.event_rounded,
-                              color: context.colors.primary,
-                              size: 17,
-                            ),
+                              ? context.colors.primaryLight
+                              : context.colors.background,
+                          borderRadius: BorderRadius.circular(
+                            context.colors.radiusMedium,
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              _scheduled != null
-                                  ? '${_scheduled!.day}/${_scheduled!.month}/${_scheduled!.year}  ${_scheduled!.hour.toString().padLeft(2, '0')}:${_scheduled!.minute.toString().padLeft(2, '0')}'
-                                  : 'pick_live_datetime'.tr,
-                              style: context.colors.label.copyWith(
-                                color: _scheduled != null
-                                    ? context.colors.primary
-                                    : context.colors.textLight,
-                              ),
-                            ),
-                          ),
-                          Icon(
-                            _scheduled != null
-                                ? Icons.check_circle_rounded
-                                : Icons.chevron_right_rounded,
+                          border: Border.all(
                             color: _scheduled != null
-                                ? context.colors.success
-                                : context.colors.textLight,
-                            size: 18,
+                                ? context.colors.primary.withValues(alpha: 0.35)
+                                : context.colors.divider,
+                            width: _scheduled != null ? 1.5 : 1,
                           ),
-                        ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: context.colors.primary.withValues(
+                                  alpha: 0.1,
+                                ),
+                                borderRadius: BorderRadius.circular(9),
+                              ),
+                              child: Icon(
+                                Icons.event_rounded,
+                                color: context.colors.primary,
+                                size: 17,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _scheduled != null
+                                    ? '${_scheduled!.day}/${_scheduled!.month}/${_scheduled!.year}  ${_scheduled!.hour.toString().padLeft(2, '0')}:${_scheduled!.minute.toString().padLeft(2, '0')}'
+                                    : 'pick_live_datetime'.tr,
+                                style: context.colors.label.copyWith(
+                                  color: _scheduled != null
+                                      ? context.colors.primary
+                                      : context.colors.textLight,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              _scheduled != null
+                                  ? Icons.check_circle_rounded
+                                  : Icons.chevron_right_rounded,
+                              color: _scheduled != null
+                                  ? context.colors.success
+                                  : context.colors.textLight,
+                              size: 18,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
 
                 const SizedBox(height: 24),
-                MyPrimaryButton(
+                PrimaryButton(
                   label: _isEdit ? 'save_changes'.tr : 'add_session'.tr,
-                  isLoading: isLoading,
+                  isLoading: submitLoading,
+                  iconBefore:true,
                   onPressed: _submit,
+                  icon: Icons.add_rounded,
                 ),
               ],
             ),
@@ -332,7 +366,6 @@ class _TypeSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final types = [
-
       ('live', 'live_type'.tr, Icons.live_tv_rounded),
       (
       'pre-recorded',
@@ -372,8 +405,8 @@ class _TypeSelector extends StatelessWidget {
                     decoration: BoxDecoration(
                       gradient: isSelected
                           ? (v == 'live'
-                                ? context.colors.dangerGradient
-                                : context.colors.primaryGradient)
+                          ? context.colors.dangerGradient
+                          : context.colors.primaryGradient)
                           : null,
                       color: isSelected ? null : context.colors.background,
                       borderRadius: BorderRadius.circular(
@@ -384,16 +417,16 @@ class _TypeSelector extends StatelessWidget {
                           : Border.all(color: context.colors.divider, width: 1),
                       boxShadow: isSelected
                           ? [
-                              BoxShadow(
-                                color:
-                                    (v == 'live'
-                                            ? context.colors.danger
-                                            : context.colors.primary)
-                                        .withValues(alpha: 0.28),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ]
+                        BoxShadow(
+                          color:
+                          (v == 'live'
+                              ? context.colors.danger
+                              : context.colors.primary)
+                              .withValues(alpha: 0.28),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
                           : [],
                     ),
                     child: Row(

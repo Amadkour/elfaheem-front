@@ -441,6 +441,7 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
 class PrimaryButton extends StatelessWidget {
   final bool isLoading;
   final bool enable;
+  final bool iconBefore;
   final String label;
   final IconData icon;
   final VoidCallback? onPressed;
@@ -452,6 +453,7 @@ class PrimaryButton extends StatelessWidget {
     required this.icon,
     this.onPressed,
     this.enable = true,
+    this.iconBefore = false,
   });
 
   @override
@@ -474,6 +476,7 @@ class PrimaryButton extends StatelessWidget {
               : Row(
                   mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
+                  textDirection:iconBefore? TextDirection.ltr:TextDirection.rtl,
                   children: [
                     Text(
                       label,
@@ -481,7 +484,7 @@ class PrimaryButton extends StatelessWidget {
                         fontFamily: 'tajawal',
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color:Colors.white,
+                        color: Colors.white,
                       ),
                     ),
                     const SizedBox(width: 6),

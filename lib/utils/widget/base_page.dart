@@ -73,7 +73,7 @@ class BasePage extends StatelessWidget {
             Positioned.fill(
               child: CustomPaint(
                 painter: ElearningPatternPainter(
-                  color: context.colors.background,
+                  color: context.colors.primaryLight.withValues(alpha:0.2),
                   width: Helpers.calculateRemainingWidth(context),
                 ),
               ),

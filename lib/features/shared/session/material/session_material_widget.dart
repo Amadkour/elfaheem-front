@@ -63,7 +63,9 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
       duration: const Duration(milliseconds: 280),
     );
     _expandAnim = CurvedAnimation(
-        parent: _animController, curve: Curves.easeInOutCubic);
+      parent: _animController,
+      curve: Curves.easeInOutCubic,
+    );
   }
 
   @override
@@ -127,7 +129,12 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
 
   Future<void> _joinLive() async {
     context.read<TeacherCourseScreenProvider>().joinLive(
-        context, _session.id, _session.courseId, 100, _session.isLiveActive);
+      context,
+      _session.id,
+      _session.courseId,
+      100,
+      _session.isLiveActive,
+    );
   }
 
   // ── Teacher session dialogs ────────────────────────────────────────────────
@@ -140,21 +147,24 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
       context: context,
       builder: (_) => RtlDialog(
         title: 'edit_session'.tr,
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          SessionField(ctrl: nameCtrl, label: 'name_label'.tr),
-          const SizedBox(height: 12),
-          SessionField(ctrl: descCtrl, label: 'description'.tr),
-        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SessionField(ctrl: nameCtrl, label: 'name_label'.tr),
+            const SizedBox(height: 12),
+            SessionField(ctrl: descCtrl, label: 'description'.tr),
+          ],
+        ),
         onCancel: () => Navigator.pop(context),
         onConfirm: () async {
           Navigator.pop(context);
           await context.read<TeacherCourseScreenProvider>().updateSession(
-                _session.id,
-                name: nameCtrl.text.trim(),
-                description: descCtrl.text.trim().isEmpty
-                    ? null
-                    : descCtrl.text.trim(),
-              );
+            _session.id,
+            name: nameCtrl.text.trim(),
+            description: descCtrl.text.trim().isEmpty
+                ? null
+                : descCtrl.text.trim(),
+          );
         },
         confirmLabel: 'save'.tr,
         confirmColor: context.colors.primary,
@@ -167,16 +177,23 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
       context: context,
       builder: (_) => RtlDialog(
         title: 'delete_session'.tr,
-        content:
-            Text('delete_confirm_message'.tr.replaceAll('{name}',_session.name), style: context.colors.body),
+        content: Text(
+          'delete_confirm_message'.tr.replaceAll('{name}', _session.name),
+          style: context.colors.body,
+        ),
         onCancel: () => Navigator.pop(context),
         onConfirm: () async {
           Navigator.pop(context);
-        bool result=  await context
+          bool result = await context
               .read<TeacherCourseScreenProvider>()
               .deleteSession(_session.id);
-          if(result){
-            Helpers.showMessage(result? 'delete_session_successfully'.tr:'exam_delete_failed_snack'.tr,isError: !result);
+          if (result) {
+            Helpers.showMessage(
+              result
+                  ? 'delete_session_successfully'.tr
+                  : 'exam_delete_failed_snack'.tr,
+              isError: !result,
+            );
           }
         },
         confirmLabel: 'delete'.tr,
@@ -187,9 +204,8 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
 
   // ── Actions row ────────────────────────────────────────────────────────────
 
-  Widget _buildActionsRow() {
+  Widget _buildActionsRow(TeacherCourseScreenProvider prov) {
     final isLiveType = _session.type == 'live';
-
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -214,22 +230,20 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
         if (isLiveType && widget.isTeacher)
           SessionActionBtn(
             icon: CupertinoIcons.video_camera_solid,
-            loading:context.read<TeacherCourseScreenProvider>().startLoadingButton ,
-            label: _session.isLiveActive
-                ? 'end_session'.tr
-                : 'meet_now'.tr,
+            loading: prov.startSessionId == _session.id,
+            label: _session.isLiveActive ? 'end_session'.tr : 'meet_now'.tr,
             color: _session.isLiveActive
                 ? context.colors.danger
                 : context.colors.success,
-            onTap: _toggleLive,
+            onTap: prov.startSessionId != -1 ? null : _toggleLive,
           ),
         if (_session.isLiveActive)
           SessionActionBtn(
-            loading:context.read<TeacherCourseScreenProvider>().joinLoadingButton ,
+            loading: prov.joinSessionId == _session.id,
             icon: CupertinoIcons.video_camera_solid,
             label: 'join_live_session'.tr,
             color: context.colors.success,
-            onTap: _joinLive,
+            onTap: prov.joinSessionId != -1 ? null : _joinLive,
           ),
         if (_session.totalMaterial > 0)
           _MaterialsToggleButton(
@@ -276,23 +290,25 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Name + age
-                Row(children: [
-                  Flexible(
-                    child: Text(
-                      _session.name,
-                      style: context.colors.h3,
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        _session.name,
+                        style: context.colors.h3,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _session.createdAt.age,
+                      style: context.colors.navLabelUnselected,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    _session.createdAt.age,
-                    style: context.colors.navLabelUnselected,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ]),
+                  ],
+                ),
 
                 // Description
                 if (_session.description != null) ...[
@@ -308,17 +324,22 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
                 const SizedBox(height: 6),
 
                 // Type pill + duration
-                Row(children: [
-                  SessionTypePill(isLive: isLiveNow),
-                  const SizedBox(width: 8),
-                  Icon(Icons.access_time_rounded,
-                      size: 12, color: context.colors.textLight),
-                  const SizedBox(width: 3),
-                  Text(
-                    '${_session.durationMinutes} ${'m'.tr}',
-                    style: context.colors.caption,
-                  ),
-                ]),
+                Row(
+                  children: [
+                    SessionTypePill(isLive: isLiveNow),
+                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.access_time_rounded,
+                      size: 12,
+                      color: context.colors.textLight,
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      '${_session.durationMinutes} ${'m'.tr}',
+                      style: context.colors.caption,
+                    ),
+                  ],
+                ),
 
                 const SizedBox(height: 10),
                 const Divider(height: 1),
@@ -328,11 +349,11 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
                   totalMaterial: _session.totalMaterial,
                   completeMaterial: _session.completeMaterial,
                   isTeacher: widget.isTeacher,
-                  isFull:false
+                  isFull: false,
                 ),
 
                 const SizedBox(height: 10),
-                _buildActionsRow(),
+                _buildActionsRow(prov),
                 const Divider(height: 20),
 
                 // Rating + teacher edit/delete icons
@@ -346,20 +367,22 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
                       rateSummary: _session.rateSummary,
                     ),
                     if (widget.isTeacher)
-                      Row(children: [
-                        _iconAction(
-                          icon: CupertinoIcons.settings_solid,
-                          color: context.colors.textMedium,
-                          tooltip: 'edit_session'.tr,
-                          onTap: _showEditSessionDialog,
-                        ),
-                        _iconAction(
-                          icon: Icons.delete,
-                          color: context.colors.danger,
-                          tooltip: 'delete_session'.tr,
-                          onTap: _showDeleteSessionDialog,
-                        ),
-                      ]),
+                      Row(
+                        children: [
+                          _iconAction(
+                            icon: CupertinoIcons.settings_solid,
+                            color: context.colors.textMedium,
+                            tooltip: 'edit_session'.tr,
+                            onTap: _showEditSessionDialog,
+                          ),
+                          _iconAction(
+                            icon: Icons.delete,
+                            color: context.colors.danger,
+                            tooltip: 'delete_session'.tr,
+                            onTap: _showDeleteSessionDialog,
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               ],
@@ -372,8 +395,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
               child: LinearProgressIndicator(
                 color: context.colors.primary,
-                backgroundColor:
-                    context.colors.primary.withValues(alpha: 0.1),
+                backgroundColor: context.colors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -397,17 +419,16 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
     required Color color,
     required String tooltip,
     required VoidCallback onTap,
-  }) =>
-      Tooltip(
-        message: tooltip,
-        child: GestureDetector(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-            child: Icon(icon, size: 28, color: color),
-          ),
-        ),
-      );
+  }) => Tooltip(
+    message: tooltip,
+    child: GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        child: Icon(icon, size: 28, color: color),
+      ),
+    ),
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -440,7 +461,8 @@ class _MaterialsPanel extends StatelessWidget {
         ),
         border: Border(
           top: BorderSide(
-              color: context.colors.textLight.withValues(alpha: 0.1)),
+            color: context.colors.textLight.withValues(alpha: 0.1),
+          ),
         ),
       ),
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
@@ -448,19 +470,25 @@ class _MaterialsPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Panel header
-          Row(children: [
-            Icon(Icons.attach_file_rounded,
-                size: 14, color: context.colors.primary),
-            const SizedBox(width: 6),
-            Text(
-              'attachments'.tr,
-              style: context.colors.caption.copyWith(
+          Row(
+            children: [
+              Icon(
+                Icons.attach_file_rounded,
+                size: 14,
+                color: context.colors.primary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'attachments'.tr,
+                style: context.colors.caption.copyWith(
                   color: context.colors.primary,
-                  fontWeight: FontWeight.w700),
-            ),
-            const Spacer(),
-            if (isTeacher) AddMaterialButton(sessionId: session.id),
-          ]),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              if (isTeacher) AddMaterialButton(sessionId: session.id),
+            ],
+          ),
           const SizedBox(height: 10),
           // Grid / list of material tiles
           SessionMaterialGrid(
@@ -515,8 +543,10 @@ class _MaterialsToggleButton extends StatelessWidget {
             AnimatedRotation(
               turns: expanded ? 0.5 : 0,
               duration: const Duration(milliseconds: 280),
-              child: Icon(Icons.keyboard_arrow_down_rounded,
-                  color: context.colors.purple),
+              child: Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: context.colors.purple,
+              ),
             ),
           ],
         ),

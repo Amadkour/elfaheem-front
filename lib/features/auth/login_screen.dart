@@ -52,7 +52,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
     if (!mounted) return;
     if (success) {
-      log("============== role is : ${authProvider.currentUser?.role}");
       bool isTeacher = authProvider.currentUser?.role == 'teacher';
 
       if (authProvider.currentUser?.role == 'super-admin') {
@@ -66,7 +65,6 @@ class _LoginScreenState extends State<LoginScreen> {
             Navigator.pop(context);
           },
           onCancel: () async {
-            print("0n cancel buttons----------------------->");
             isTeacher = false;
             Navigator.pop(context);
           },

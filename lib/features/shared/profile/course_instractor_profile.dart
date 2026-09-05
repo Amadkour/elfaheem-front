@@ -584,14 +584,22 @@ class InstructorAvatar extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  teacher.name,
-                  style: context.colors.navLabelSelected.copyWith(
-                    height: 1,
-                    fontSize: size / 3,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                  textDirection: TextDirection.ltr,
+                Row(
+                  crossAxisAlignment:CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        teacher.name,
+                        style: context.colors.navLabelSelected.copyWith(
+                          height: 1,
+                          fontSize: size / 3,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        textDirection: TextDirection.ltr,
+                      ),
+                    ),
+                    if(canOpen) Icon(Icons.open_in_new,size:12,color:context.colors.primary)
+                  ],
                 ),
                 if (teacher.teacherProfile != null)
                   Text(

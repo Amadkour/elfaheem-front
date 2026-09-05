@@ -180,7 +180,7 @@ class SessionActionBtn extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final bool filled;
   final bool outlined;
   final bool loading;
@@ -190,7 +190,7 @@ class SessionActionBtn extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.color,
-    required this.onTap,
+     this.onTap,
     this.filled = false,
     this.outlined = false,
     this.loading = false,

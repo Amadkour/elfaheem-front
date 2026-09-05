@@ -35,7 +35,8 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (context.read<TeacherProvider>().allCourses.isEmpty) {
+
+      if (context.read<TeacherProvider>().allCourses.isEmpty && ) {
         context.read<TeacherProvider>().init();
       }
     });

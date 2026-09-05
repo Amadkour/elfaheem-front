@@ -114,10 +114,11 @@ class _TeacherSessionsView extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       useSafeArea: true,
-      builder: (_) => ChangeNotifierProvider.value(
-        value: provider,
-        child: SessionFormSheet(courseId: provider.course.id),
-      ),
+      builder: (_) =>
+          ChangeNotifierProvider.value(
+            value: provider,
+            child: SessionFormSheet(courseId: provider.course.id),
+          ),
     );
   }
 
@@ -139,7 +140,6 @@ class _TeacherSessionsView extends StatelessWidget {
     // state directly (onRefresh just delegates), so it should never rebuild
     // when the provider notifies.
     final provider = context.read<TeacherCourseScreenProvider>();
-
     return BasePage(
       useWebCard: true,
       child: SafeArea(
@@ -175,49 +175,51 @@ class _TeacherSessionsView extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8.0),
                   child:
-                      Selector<
-                        TeacherCourseScreenProvider,
-                        (TeacherCourse course, int sessionCount, bool expanded)
-                      >(
-                        selector: (_, p) =>
-                            (p.course, p.sessionCount, p.openCourseDetails),
-                        builder: (context, data, _) {
-                          final (course, sessionCount, expanded) = data;
-                          return DetailCard(
-                            // Stable key — DetailCard keeps its own
-                            // expand/collapse animation state across
-                            // rebuilds instead of being destroyed and
-                            // recreated every time (previously a fresh
-                            // Random() key every build).
-                            key: ValueKey({Random().nextDouble()}),
-                            expanded: expanded,
-                            icon: CupertinoIcons.list_bullet_below_rectangle,
-                            title: 'course_details'.tr,
-                            color: const Color(0xFF4DA6FF),
-                            children: [
-                              // ── Rating ──────────────────────────────
-                              RatingWidget(
-                                type: RateType.course,
-                                sourceId: course.id.toString(),
-                                canEdit: false,
-                                compact: false,
-                              ),
-                              // Student progress section
-                              SessionProgressSection(
-                                totalMaterial: course.expectedHours.toInt(),
-                                completeMaterial: course.totalHours.toInt(),
-                                isTeacher: false,
-                                isFull: true,
-                              ),
-                              CourseStatsRow(
-                                course: course,
-                                sessionCount: sessionCount,
-                              ),
-                              CourseDetailsSection(course: course),
-                            ],
-                          );
-                        },
-                      ),
+                  Selector<
+                      TeacherCourseScreenProvider,
+                      (TeacherCourse course, int sessionCount, bool expanded)
+                  >(
+                    selector: (_, p) =>
+                    (p.course, p.sessionCount, p.openCourseDetails),
+                    builder: (context, data, _) {
+                      final (course, sessionCount, expanded) = data;
+                      return DetailCard(
+                        // Stable key — DetailCard keeps its own
+                        // expand/collapse animation state across
+                        // rebuilds instead of being destroyed and
+                        // recreated every time (previously a fresh
+                        // Random() key every build).
+                        key: ValueKey({Random().nextDouble()}),
+                        expanded: expanded,
+                        icon: CupertinoIcons.list_bullet_below_rectangle,
+                        title: 'course_details'.tr,
+                        color: const Color(0xFF4DA6FF),
+                        children: [
+                          // ── Rating ──────────────────────────────
+                          RatingWidget(
+                            type: RateType.course,
+                            sourceId: course.id.toString(),
+                            canEdit: false,
+                            compact: false,
+                          ),
+                          // Student progress section
+                          SessionProgressSection(
+                            totalMaterial: course.expectedHours.toInt() > 0
+                                ? course.expectedHours.toInt()
+                                : course.totalHours.toInt(),
+                            completeMaterial: course.totalHours.toInt(),
+                            isTeacher: false,
+                            isFull: true,
+                          ),
+                          CourseStatsRow(
+                            course: course,
+                            sessionCount: sessionCount,
+                          ),
+                          CourseDetailsSection(course: course),
+                        ],
+                      );
+                    },
+                  ),
                 ),
               ),
 

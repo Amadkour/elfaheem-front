@@ -547,7 +547,7 @@ class _ProgressBar extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: (progress / 100).clamp(0.0, 1.0),
                 minHeight: 5,
-                backgroundColor: context.colors.primaryLight,
+                backgroundColor: context.colors.primaryLight.withValues(alpha:0.3),
                 valueColor: AlwaysStoppedAnimation(primary),
               ),
             ),

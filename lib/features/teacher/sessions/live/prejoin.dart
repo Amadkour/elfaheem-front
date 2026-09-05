@@ -386,7 +386,6 @@ class _PreJoinPageState extends State<PreJoinPage>
               LocalDebugSave.stop();
               args.onEnd.call();
             },
-            onComplete:args.onComplete,
             isTeacher: args.isTeacher,
             courseId: args.courseId,
             sessionId: args.sessionId??localSessionId,
