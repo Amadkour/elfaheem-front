@@ -454,7 +454,9 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
       child: Stack(
         children: [
           AbsorbPointer(child: Opacity(opacity: 0.5, child: card)),
-          Positioned.fill(
+          Positioned(
+            left: 10,
+            top: 10,
             child: Center(
               child: Container(
                 padding:
@@ -463,22 +465,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
                   color: Colors.black.withValues(alpha: 0.7),
                   borderRadius: BorderRadius.circular(30),
                 ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.lock_rounded, color: Colors.white, size: 16),
-                    SizedBox(width: 6),
-                    Text(
-                      'مقفلة',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontFamily: 'bahji',
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
+                child:  Icon(Icons.lock_rounded, color: Colors.white, size: 16),
               ),
             ),
           ),

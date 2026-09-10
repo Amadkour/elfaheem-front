@@ -41,26 +41,36 @@ class CourseDetailProvider extends BaseProvider {
   // ── Course data ───────────────────────────────────────────────────────────
 
   Future<void> fetchFull(String courseId) async {
-    final r =
-    await run(() => _api.get('/api/v1/courses/$courseId', auth: true));
+    final r = await run(
+      () => _api.get('/api/v1/courses/$courseId', auth: true),
+    );
     if (r is Map<String, dynamic>) {
       course = CourseModel.fromJson(r);
     }
     await fetchSessions(courseId);
   }
-  List<SessionModel> sessions=[];
-  List<SessionModel> get liveSessions=>sessions.where((e)=>e.isLiveActive).toList();
-  Future<void> fetchSessions(String courseId) async {
-    final result =
-    await run(() => _api.get('/api/v1/courses/$courseId/sessions'));
-    if (result is List) {
-      sessions = result
-          .map((e) => SessionModel.fromJson(e as Map<String, dynamic>))
-          .toList()
-        ..sort((a, b) => a.order.compareTo(b.order));
-    }
-    notifyListeners();
 
+  List<SessionModel> sessions = [];
+
+  List<SessionModel> get liveSessions =>
+      sessions.where((e) => e.isLiveActive).toList();
+
+  Future<void> fetchSessions(String courseId) async {
+    final result = await run(
+      () => _api.get('/api/v1/courses/$courseId/sessions'),
+    );
+    if (result is List) {
+      sessions =
+          result
+              .map((e) => SessionModel.fromJson(e as Map<String, dynamic>))
+              .toList()
+            ..sort((a, b) => a.order.compareTo(b.order));
+    }
+    completedSessionIds.clear();
+    completedSessionIds.addAll(
+      sessions.where((e) => e.isCompleted).map((e) => e.id),
+    );
+    notifyListeners();
   }
 
   Future<void> refresh() => fetchFull(course.id);
@@ -133,16 +143,18 @@ class CourseDetailProvider extends BaseProvider {
     completedMaterialIds.add(materialId);
     notifyListeners();
 
-    final r = await run(() => _api.post(
-      '/api/v1/sessions/$sessionId/materials/$materialId/complete',
-      auth: true,
-    ));
+    final r = await run(
+      () => _api.post(
+        '/api/v1/sessions/$sessionId/materials/$materialId/complete',
+        auth: true,
+      ),
+    );
 
     // If the server rejected it, roll back the optimistic update
     if (r == null && hasError) {
       completedMaterialIds.remove(materialId);
-      course.materialsCompleted+=1;
-      course.progress+=(course.materialsCompleted)/course.materialsTotal;
+      course.materialsCompleted += 1;
+      course.progress += (course.materialsCompleted) / course.materialsTotal;
       notifyListeners();
     }
   }
@@ -156,16 +168,15 @@ class CourseDetailProvider extends BaseProvider {
     completedSessionIds.add(sessionId);
     notifyListeners();
 
-    final r = await run(() => _api.post(
-      '/api/v1/sessions/$sessionId/complete',
-      auth: true,
-    ));
+    final r = await run(
+      () => _api.post('/api/v1/sessions/$sessionId/complete', auth: true),
+    );
 
     if (r == null && hasError) {
       completedSessionIds.remove(sessionId);
 
-      course.materialsCompleted+=1;
-      course.progress+=(course.materialsCompleted)/course.materialsTotal;
+      course.materialsCompleted += 1;
+      course.progress += (course.materialsCompleted) / course.materialsTotal;
       notifyListeners();
     }
   }
@@ -178,27 +189,28 @@ class CourseDetailProvider extends BaseProvider {
   /// Returns a [LiveJoinResponse] (url + token) or null on error.
   Future<Map<String, dynamic>?> fetchStudentJoinToken(int sessionId) async {
     final r = await run(
-            () => _api.get('/api/v1/live-sessions/$sessionId/join', auth: true));
+      () => _api.get('/api/v1/live-sessions/$sessionId/join', auth: true),
+    );
     if (r is Map<String, dynamic>) return r;
     return null;
   }
 
-// ── Private helpers ───────────────────────────────────────────────────────
+  // ── Private helpers ───────────────────────────────────────────────────────
 
-/// Recomputes a local estimate of overall progress without waiting for
-/// a full server round-trip (used for optimistic updates).
-// void _recalcProgress() {
-//   int sessionsTotal = course.sessions.length ?? 0;
-//   int materialsTotal = course.sessions
-//       .fold<int>(0, (sum, s) => sum + (s.materials?.length ?? 0)) ??
-//       0;
-//   int total = sessionsTotal + materialsTotal;
-//   if (total == 0) {
-//     progressPercentage = 0.0;
-//     return;
-//   }
-//   int done = completedSessionIds.length + completedMaterialIds.length;
-//   progressPercentage = double.parse(
-//       ((done / total) * 100).toStringAsFixed(1));
-// }
+  /// Recomputes a local estimate of overall progress without waiting for
+  /// a full server round-trip (used for optimistic updates).
+  // void _recalcProgress() {
+  //   int sessionsTotal = course.sessions.length ?? 0;
+  //   int materialsTotal = course.sessions
+  //       .fold<int>(0, (sum, s) => sum + (s.materials?.length ?? 0)) ??
+  //       0;
+  //   int total = sessionsTotal + materialsTotal;
+  //   if (total == 0) {
+  //     progressPercentage = 0.0;
+  //     return;
+  //   }
+  //   int done = completedSessionIds.length + completedMaterialIds.length;
+  //   progressPercentage = double.parse(
+  //       ((done / total) * 100).toStringAsFixed(1));
+  // }
 }

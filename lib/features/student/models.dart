@@ -88,6 +88,7 @@ class SessionModel {
         totalMaterial: j['total_materials'] as int? ?? 0,
         completeMaterial: j['complete_materials'] as int? ?? 0,
         progress: j['progress'] as double? ?? 0.0,
+        isCompleted: j['completeness'] as bool
       );
 
   TeacherSessionItem get toTeacher => TeacherSessionItem(
