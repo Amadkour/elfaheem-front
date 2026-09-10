@@ -36,11 +36,17 @@ class SessionMaterialCard extends StatefulWidget {
   final TeacherCourse course;
   final bool isTeacher;
 
+  /// True when this session should be shown as locked to the current
+  /// student — i.e. it's beyond what an unpaid preview or the student's
+  /// current progress allows them to open. Ignored for teachers.
+  final bool locked;
+
   const SessionMaterialCard({
     super.key,
     required this.session,
     required this.course,
     required this.isTeacher,
+    this.locked = false,
   });
 
   @override
@@ -54,6 +60,23 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
   late final Animation<double> _expandAnim;
 
   TeacherSessionItem get _session => widget.session;
+
+  /// Locking only ever applies to students — teachers always keep full
+  /// access to manage their own sessions.
+  bool get _isLocked => widget.locked && !widget.isTeacher;
+
+  void _showLockedMessage() {
+    // NOTE: hardcoded Arabic string (mirrors the pattern already used
+    // elsewhere in this file, e.g. delete_confirm_message fallback text).
+    // Move this to your translations file under a proper key if you'd
+    // rather keep all student-facing strings in one place. Kept generic
+    // (rather than branching on enrollment) since TeacherCourse doesn't
+    // necessarily expose an isEnrolled flag.
+    Helpers.showMessage(
+      'هذه الجلسة مقفلة — أكمل الجلسة الحالية أو اشترك في الكورس لفتحها',
+      isError: true,
+    );
+  }
 
   @override
   void initState() {
@@ -77,6 +100,10 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
   // ── Expand / collapse ──────────────────────────────────────────────────────
 
   Future<void> _toggleExpanded() async {
+    if (_isLocked) {
+      _showLockedMessage();
+      return;
+    }
     setState(() => _expanded = !_expanded);
     _expanded ? _animController.forward() : _animController.reverse();
     // Lazy-load materials on first expand
@@ -128,6 +155,10 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
   }
 
   Future<void> _joinLive() async {
+    if (_isLocked) {
+      _showLockedMessage();
+      return;
+    }
     context.read<TeacherCourseScreenProvider>().joinLive(
       context,
       _session.id,
@@ -266,7 +297,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
     final uploading = prov.isUploadingMaterial(_session.id);
     final isLiveNow = _session.isLiveActive;
 
-    return Container(
+    final card = Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: context.colors.cardBg,
@@ -407,6 +438,48 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
               session: _session,
               materials: materials,
               isTeacher: widget.isTeacher,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (!_isLocked) return card;
+
+    // Locked: keep the card visible (students can still see what's coming
+    // next) but dim it, block every interaction inside it, and show a lock
+    // badge. Tapping anywhere on the card surfaces why it's locked.
+    return GestureDetector(
+      onTap: _showLockedMessage,
+      child: Stack(
+        children: [
+          AbsorbPointer(child: Opacity(opacity: 0.5, child: card)),
+          Positioned.fill(
+            child: Center(
+              child: Container(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.lock_rounded, color: Colors.white, size: 16),
+                    SizedBox(width: 6),
+                    Text(
+                      'مقفلة',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontFamily: 'bahji',
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],

@@ -76,6 +76,7 @@ class SessionsTab extends StatelessWidget {
               session: presented[i].toTeacher,
               course: provider.course.toTeacherModel,
               isTeacher: false,
+              locked: !provider.isSessionUnlockedById(presented[i].id),
             ),
           ),
         ),

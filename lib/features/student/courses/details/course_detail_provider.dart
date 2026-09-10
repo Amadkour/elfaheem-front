@@ -33,7 +33,7 @@ class CourseDetailProvider extends BaseProvider {
     // Run sessions + optional progress fetch in parallel for speed
     await Future.wait([
       fetchSessions(c.id),
-     // fetchProgress(c.id),
+      // fetchProgress(c.id),
     ]);
     stopLoading();
   }
@@ -64,6 +64,33 @@ class CourseDetailProvider extends BaseProvider {
   }
 
   Future<void> refresh() => fetchFull(course.id);
+
+  // ── Premium / sequential unlock logic ────────────────────────────────────
+
+  /// Whether the session at [index] (position within the sorted [sessions]
+  /// list) is open for the current student.
+  ///
+  /// Rules:
+  /// • Session 1 (index 0) is always open — it's the free preview.
+  /// • Unpaid / unenrolled students never get past session 1.
+  /// • Enrolled (paid) students unlock session N only once session N-1 has
+  ///   been completed (tracked in [completedSessionIds]), so the "current"
+  ///   session is always the first one that isn't completed yet.
+  bool isSessionUnlocked(int index) {
+    if (index < 0 || index >= sessions.length) return false;
+    if (index == 0) return true;
+    if (!course.isEnrolled) return false;
+    final previousSession = sessions[index - 1];
+    return completedSessionIds.contains(previousSession.id);
+  }
+
+  /// Same rule as [isSessionUnlocked] but looked up by session id — useful
+  /// for widgets (e.g. the "live" tab) that only render a filtered subset
+  /// of [sessions] and can't rely on their position in that subset.
+  bool isSessionUnlockedById(int sessionId) {
+    final idx = sessions.indexWhere((s) => s.id == sessionId);
+    return isSessionUnlocked(idx);
+  }
 
   void setTab(CourseDetailTab tab) {
     if (_activeTab == tab) return;
@@ -156,22 +183,22 @@ class CourseDetailProvider extends BaseProvider {
     return null;
   }
 
-  // ── Private helpers ───────────────────────────────────────────────────────
+// ── Private helpers ───────────────────────────────────────────────────────
 
-  /// Recomputes a local estimate of overall progress without waiting for
-  /// a full server round-trip (used for optimistic updates).
-  // void _recalcProgress() {
-  //   int sessionsTotal = course.sessions.length ?? 0;
-  //   int materialsTotal = course.sessions
-  //       .fold<int>(0, (sum, s) => sum + (s.materials?.length ?? 0)) ??
-  //       0;
-  //   int total = sessionsTotal + materialsTotal;
-  //   if (total == 0) {
-  //     progressPercentage = 0.0;
-  //     return;
-  //   }
-  //   int done = completedSessionIds.length + completedMaterialIds.length;
-  //   progressPercentage = double.parse(
-  //       ((done / total) * 100).toStringAsFixed(1));
-  // }
+/// Recomputes a local estimate of overall progress without waiting for
+/// a full server round-trip (used for optimistic updates).
+// void _recalcProgress() {
+//   int sessionsTotal = course.sessions.length ?? 0;
+//   int materialsTotal = course.sessions
+//       .fold<int>(0, (sum, s) => sum + (s.materials?.length ?? 0)) ??
+//       0;
+//   int total = sessionsTotal + materialsTotal;
+//   if (total == 0) {
+//     progressPercentage = 0.0;
+//     return;
+//   }
+//   int done = completedSessionIds.length + completedMaterialIds.length;
+//   progressPercentage = double.parse(
+//       ((done / total) * 100).toStringAsFixed(1));
+// }
 }

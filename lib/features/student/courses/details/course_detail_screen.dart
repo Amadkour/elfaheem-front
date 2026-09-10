@@ -52,12 +52,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       maxWith: 1000,
       child: provider.isLoading
           ? Center(
-              child: SizedBox(
-                width: context.width / 5,
-                height: context.width / 5,
-                child: AppLoadingIndicator(),
-              ),
-            )
+        child: SizedBox(
+          width: context.width / 5,
+          height: context.width / 5,
+          child: AppLoadingIndicator(),
+        ),
+      )
           : isWide
           ? _WebDetail(provider)
           : _MobileDetail(provider),
@@ -102,22 +102,25 @@ class _MobileDetail extends StatelessWidget {
                       ),
                     ),
                     SliverToBoxAdapter(child: _CourseMeta()),
-                    if (provider.course.isEnrolled) ...[
-                      SliverToBoxAdapter(child: _TabBarWidget()),
-                      const SliverToBoxAdapter(child: SizedBox(height: 4)),
-                      SliverToBoxAdapter(
-                        child: ChangeNotifierProvider(
-                          create: (BuildContext context) =>
-                              TeacherCourseScreenProvider(
-                                initialCourse: provider.course.toTeacherModel,
-                              ),
-                          child: TabContent(
-                            activeTab: provider.activeTab,
-                            courseId: provider.course.id,
-                          ),
+                    // Tabs/content render regardless of enrollment — unpaid
+                    // students get a locked preview (session 1 open, the
+                    // rest shown but locked) rather than nothing at all.
+                    // This mirrors the web layout below, which never gated
+                    // on isEnrolled to begin with.
+                    SliverToBoxAdapter(child: _TabBarWidget()),
+                    const SliverToBoxAdapter(child: SizedBox(height: 4)),
+                    SliverToBoxAdapter(
+                      child: ChangeNotifierProvider(
+                        create: (BuildContext context) =>
+                            TeacherCourseScreenProvider(
+                              initialCourse: provider.course.toTeacherModel,
+                            ),
+                        child: TabContent(
+                          activeTab: provider.activeTab,
+                          courseId: provider.course.id,
                         ),
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ),
@@ -178,7 +181,7 @@ class _WebDetail extends StatelessWidget {
                                   // Stars row
                                   Row(
                                     mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+                                    MainAxisAlignment.spaceBetween,
                                     children: [
                                       Spacer(),
 
@@ -186,7 +189,7 @@ class _WebDetail extends StatelessWidget {
                                         margin: EdgeInsets.all(10),
                                         decoration: BoxDecoration(
                                           gradient:
-                                              context.colors.accentGradient,
+                                          context.colors.accentGradient,
                                           borderRadius: BorderRadius.circular(
                                             10,
                                           ),
@@ -204,7 +207,7 @@ class _WebDetail extends StatelessWidget {
                                                             .course
                                                             .title,
                                                         courseId:
-                                                            provider.course.id,
+                                                        provider.course.id,
                                                       ),
                                                     ),
                                               ),
@@ -222,7 +225,7 @@ class _WebDetail extends StatelessWidget {
 
                                   Row(
                                     mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+                                    MainAxisAlignment.spaceBetween,
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       RatingWidget(
@@ -237,9 +240,9 @@ class _WebDetail extends StatelessWidget {
                                           AppConfig.lang == 'ar'
                                               ? provider.course.category!.nameAr
                                               : provider
-                                                    .course
-                                                    .category!
-                                                    .nameEn,
+                                              .course
+                                              .category!
+                                              .nameEn,
                                         ),
                                         //const SizedBox(height: 8),
                                       ],
@@ -694,13 +697,13 @@ class _EnrollButton extends StatelessWidget {
         onTap: p.course.isEnrolled
             ? null
             : () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => ChangeNotifierProvider(
-                    create: (_) => EnrollmentProvider(p.course),
-                    child: EnrollmentScreen(course: p.course),
-                  ),
-                ),
-              ),
+          MaterialPageRoute(
+            builder: (_) => ChangeNotifierProvider(
+              create: (_) => EnrollmentProvider(p.course),
+              child: EnrollmentScreen(course: p.course),
+            ),
+          ),
+        ),
         child: Container(
           height: 52,
           decoration: BoxDecoration(
@@ -717,19 +720,19 @@ class _EnrollButton extends StatelessWidget {
           child: Center(
             child: p.course.isEnrolled
                 ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: AppLoadingIndicator(),
-                  )
+              width: 24,
+              height: 24,
+              child: AppLoadingIndicator(),
+            )
                 : Text(
-                    label,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
-                      fontFamily: 'bahji',
-                    ),
-                  ),
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 15,
+                fontFamily: 'bahji',
+              ),
+            ),
           ),
         ),
       ),
@@ -747,7 +750,7 @@ class _EnrollWrap extends StatelessWidget {
   Widget build(BuildContext context) => isWide
       ? child
       : Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-          child: SafeArea(top: false, child: child),
-        );
+    padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+    child: SafeArea(top: false, child: child),
+  );
 }

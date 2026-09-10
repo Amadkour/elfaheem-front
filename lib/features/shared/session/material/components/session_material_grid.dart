@@ -364,6 +364,17 @@ class SessionMaterialGrid extends StatelessWidget {
       SessionMaterialModel m,
       bool isCompleted,
       ) async {
+    // Belt-and-braces: the card that hosts this grid already blocks
+    // expansion for a locked session, but guard the actual open action too
+    // in case this grid is ever reached another way.
+    if (!isTeacher &&
+        !context.read<CourseDetailProvider>().isSessionUnlockedById(session.id)) {
+      Helpers.showMessage(
+        'هذه الجلسة مقفلة — أكمل الجلسة الحالية أو اشترك في الكورس لفتحها',
+        isError: true,
+      );
+      return;
+    }
     if (m.urlLow == null) {
       Helpers.showMessage('video_not_available'.tr);
       return;
