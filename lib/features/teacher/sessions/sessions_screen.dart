@@ -53,14 +53,43 @@ import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/rating_widget.dart';
+import '../../shared/course/course_recommendations_section.dart';
 import '../../shared/session/material/components/session_progress_section.dart';
 import '../../teacher/courses/course_form_screen.dart';
 import '../../teacher/sessions/components/session_form_sheet.dart';
 import '../home/teacher_models.dart';
+import '../../student/models.dart' show CourseSummary;
 import 'components/course_details_section.dart';
 import 'components/course_hero.dart';
 import 'components/course_stats_row.dart';
 import 'components/sessions_section.dart';
+
+/// Opens one of the teacher's OWN courses (next course / manually
+/// recommended — both are guaranteed by the backend to belong to this
+/// teacher) in the normal course-management screen. Deliberately does NOT
+/// reuse the student-facing CourseDetailScreen, which shows an "Enroll"
+/// CTA that makes no sense for a teacher looking at their own course.
+void _openOwnCoursePreview(BuildContext context, CourseSummary summary) {
+  final stub = TeacherCourse(
+    id: summary.id,
+    title: summary.name,
+    imageUrl: summary.imageUrl,
+    totalHours: 0,
+    type: 'recorded',
+    price: summary.price,
+    currency: summary.currency,
+    expectedHours: 0,
+    progress: 0,
+  );
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => ChangeNotifierProvider(
+        create: (_) => TeacherCourseScreenProvider(initialCourse: stub),
+        child: const TeacherSessionsScreen(),
+      ),
+    ),
+  );
+}
 
 class TeacherSessionsScreen extends StatefulWidget {
   const TeacherSessionsScreen({super.key, this.expandDetails});
@@ -227,6 +256,27 @@ class _TeacherSessionsView extends StatelessWidget {
               // Isolated so its (legitimately broad) rebuilds never touch
               // the hero or details card above.
               _SessionsSlivers(onAdd: () => _openAddSheet(context)),
+
+              // ── Recommendations — last component on the page, matching
+              // e-commerce "you might also like" placement. Teacher-side
+              // only ever shows the teacher's own courses (next course +
+              // manually recommended) — never the auto-suggested
+              // `similarCourses` from other teachers, since tapping those
+              // would otherwise dead-end on a student enroll flow.
+              SliverToBoxAdapter(
+                child: Selector<TeacherCourseScreenProvider, TeacherCourse>(
+                  selector: (_, p) => p.course,
+                  builder: (context, course, _) => Padding(
+                    padding: const EdgeInsets.only(top: 8, bottom: 24),
+                    child: CourseRecommendationsSection(
+                      nextCourse: course.nextCourseSummary,
+                      recommendedCourses: course.recommendedCourseSummaries,
+                      similarCourses: const [],
+                      onTapCourse: (s) => _openOwnCoursePreview(context, s),
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),

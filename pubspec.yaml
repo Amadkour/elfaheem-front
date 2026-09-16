@@ -52,6 +52,7 @@ dependencies:
   # Modern replacement for dart:html / dart:js_util (both removed on recent
   # Dart SDKs). Used only inside web_notification_web.dart.
   web: ^1.1.0
+  flutter_paymob_egypt: ^1.0.0
 dependency_overrides:
   flutter_webrtc:
     git:

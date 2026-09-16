@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
+import '../../../student/models.dart' show AppCurrencyX;
 import '../../home/teacher_models.dart';
 import '../students/course_student_screen.dart';
 
@@ -45,7 +46,7 @@ class CourseStatsRow extends StatelessWidget {
       _StatItem(
         icon: Icons.sell_rounded,
         label: 'cost'.tr,
-        value: course.price == 0 ? 'free'.tr : '${course.price} ج',
+        value: course.currency.format(course.price),
         color: const Color(0xFF1DB954),
       ),
       _StatItem(

@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/student/models.dart'
-    show CourseModel;
+    show CourseModel, AppCurrencyX;
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/app_theme.dart';
 import '../../../../config/theme/theme_config_provider.dart';
@@ -359,9 +359,7 @@ class _Thumbnail extends StatelessWidget {
               ],
             ),
             child: Text(
-              course.price == 0
-                  ? 'مجاني'
-                  : '\$ ${course.price.toStringAsFixed(0)}',
+              course.currency.format(course.price),
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w800,
@@ -471,7 +469,7 @@ class _MetaRow extends StatelessWidget {
           ),
           const SizedBox(width: 3),
           Text(
-            '${course.hoursCount} ساعة',
+            '${course.hoursCount} ${'hours'.tr}',
             style: context.colors.caption.copyWith(fontSize: 10),
           ),
         ],

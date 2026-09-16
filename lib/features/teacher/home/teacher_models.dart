@@ -36,7 +36,7 @@ class CourseSchedule {
         'saturday': 'السبت',
         'sunday': 'الأحد',
       }[day] ??
-      day;
+          day;
 
   /// Lightweight constructor for pending (not-yet-saved) entries.
   factory CourseSchedule.pending({
@@ -65,12 +65,14 @@ class CourseCertificate {
   final int id, courseId;
   final String title;
   final String? description;
-
+  final String? templateUrl;
   const CourseCertificate({
     required this.id,
     required this.courseId,
     required this.title,
     this.description,
+    this.templateUrl,
+
   });
 
   factory CourseCertificate.fromJson(Map<String, dynamic> j) =>
@@ -79,6 +81,8 @@ class CourseCertificate {
         courseId: j['course_id'] as int? ?? 0,
         title: j['title'] as String? ?? '',
         description: j['description'] as String?,
+        templateUrl: j['template_url'] as String?,
+
       );
 }
 
@@ -300,7 +304,16 @@ class TeacherCourse {
   final List<CourseTool> tools;
   final List<CoursePrerequisite> prerequisites;
   final RatingSummary? rateSummary;
-
+  final AppCurrency currency;
+  final CourseStatus status;
+  // ── Next course / recommended courses ─────────────────────────────────────
+  final int? nextCourseId;
+  final String? nextCourseTitle;
+  final List<int> recommendedCourseIds;
+  // ── Rich recommendation cards (for the course-profile page) ────────────────
+  final CourseSummary? nextCourseSummary;
+  final List<CourseSummary> recommendedCourseSummaries;
+  final List<CourseSummary> similarCourses;
   const TeacherCourse({
     required this.id,
     required this.title,
@@ -320,6 +333,15 @@ class TeacherCourse {
     required this.progress,
     required this.expectedHours,
     this.rateSummary,
+
+    this.currency = AppCurrency.egp,
+    this.status = CourseStatus.inProgress,
+    this.nextCourseId,
+    this.nextCourseTitle,
+    this.recommendedCourseIds = const [],
+    this.nextCourseSummary,
+    this.recommendedCourseSummaries = const [],
+    this.similarCourses = const [],
   });
 
   factory TeacherCourse.dummy(int courseId) => TeacherCourse(
@@ -344,6 +366,8 @@ class TeacherCourse {
     totalHours: (j['total_hours'] as num?)?.toDouble() ?? 0,
     price: (j['fees'] as num?)?.toDouble() ?? 0,
     progress: (j['progress'] as num?)?.toDouble() ?? 0.0,
+    currency: AppCurrencyX.fromCode(j['currency'] as String?),
+    status: CourseStatusX.fromApiValue(j['status'] as String?),
     category: j['category'] != null
         ? CategoryModel.fromJson(j['category'] as Map<String, dynamic>)
         : null,
@@ -366,6 +390,20 @@ class TeacherCourse {
     rateSummary: j.containsKey('rate') && j['rate'] != null
         ? RatingSummary.fromJson(j['rate'] as Map<String, dynamic>)
         : null,
+    nextCourseId: j['next_course_id'] as int?,
+    nextCourseTitle: j['next_course_title'] as String?,
+    recommendedCourseIds: (j['recommended_course_ids'] as List? ?? [])
+        .map((e) => e as int)
+        .toList(),
+    nextCourseSummary: j['next_course'] != null
+        ? CourseSummary.fromJson(j['next_course'] as Map<String, dynamic>)
+        : null,
+    recommendedCourseSummaries: (j['recommended_courses'] as List? ?? [])
+        .map((e) => CourseSummary.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    similarCourses: (j['similar_courses'] as List? ?? [])
+        .map((e) => CourseSummary.fromJson(e as Map<String, dynamic>))
+        .toList(),
   );
 
   CourseModel get toCourseModel => CourseModel(
@@ -397,7 +435,15 @@ class TeacherCourse {
     List<CourseCertificate>? certificates,
     List<CourseTool>? tools,
     List<CoursePrerequisite>? prerequisites,
+    AppCurrency? currency,
+    CourseStatus? status,
+    int? nextCourseId,
+    String? nextCourseTitle,
+    List<int>? recommendedCourseIds,
+    bool clearNextCourse = false,
   }) => TeacherCourse(
+    currency: currency ?? this.currency,
+    status: status ?? this.status,
     id: id,
     title: title,
     progress: progress,
@@ -415,6 +461,9 @@ class TeacherCourse {
     certificates: certificates ?? this.certificates,
     tools: tools ?? this.tools,
     prerequisites: prerequisites ?? this.prerequisites,
+    nextCourseId: clearNextCourse ? null : (nextCourseId ?? this.nextCourseId),
+    nextCourseTitle: clearNextCourse ? null : (nextCourseTitle ?? this.nextCourseTitle),
+    recommendedCourseIds: recommendedCourseIds ?? this.recommendedCourseIds,
   );
 }
 
@@ -437,9 +486,9 @@ class TeacherDashboardData {
           .map((e) => TeacherCourse.fromJson(e as Map<String, dynamic>))
           .toList(),
       schedule:
-          (j['schedule'] as List? ?? j['upcoming_sessions'] as List? ?? [])
-              .map((e) => ScheduleSession.fromJson(e as Map<String, dynamic>))
-              .toList(),
+      (j['schedule'] as List? ?? j['upcoming_sessions'] as List? ?? [])
+          .map((e) => ScheduleSession.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 }

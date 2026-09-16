@@ -13,12 +13,16 @@ import '../../../utils/widget/primary_menue.dart';
 import '../../../utils/widget/text_field.dart';
 import '../home/teacher_models.dart';
 import '../home/teacher_provider.dart';
+import '../../student/models.dart' show CourseStatus;
 import '../schedules/schedules_provider.dart'
     show kDayOrder, kDayLabels, slotDayLabel;
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'component/add_item_dialog.dart';
 import 'component/gradient_button.dart';
 import 'component/section_card.dart';
+import 'component/currency_selector.dart';
+import 'component/course_progress_status_card.dart';
+import 'component/recommended_courses_field.dart';
 import 'course_form_provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -61,9 +65,16 @@ class _CourseFormInnerState extends State<_CourseFormInner>
   late final TextEditingController _hoursCtrl;
   final ExpansibleController _categoryCtrl = ExpansibleController();
   final ExpansibleController _typeCtrl = ExpansibleController();
+  final ExpansibleController _nextCourseCtrl = ExpansibleController();
 
   XFile? _logoFile;
   Uint8List? _logoBytes;
+
+  // Optional certificate template — create mode only. A title with no file
+  // is ignored (see CourseFormProvider.submitCreate).
+  XFile? _certTemplateFile;
+  Uint8List? _certTemplateBytes;
+  late final TextEditingController _certTitleCtrl;
 
   late final AnimationController _fadeCtrl;
   late final Animation<double> _fadeAnim;
@@ -73,6 +84,11 @@ class _CourseFormInnerState extends State<_CourseFormInner>
   // changes).
   late bool _isPublished;
   bool _statusLoading = false;
+
+  // Course *content* status (in_progress / completed) — separate from
+  // publish/draft above. Edit mode only.
+  late CourseStatus _progressStatus;
+  bool _progressStatusLoading = false;
 
   bool get _isEdit => widget.course != null;
 
@@ -87,9 +103,13 @@ class _CourseFormInnerState extends State<_CourseFormInner>
       text: c != null ? c.price.toString() : '',
     );
     _hoursCtrl = TextEditingController(
-      text: c != null ? c.totalHours.toString() : '',
+      text: c != null ? c.expectedHours.toString() : '',
     );
     _isPublished = c?.isPublished ?? false;
+    _progressStatus = c?.status ?? CourseStatus.inProgress;
+    _certTitleCtrl = TextEditingController(
+      text: 'default_certificate_title'.tr,
+    );
 
     for (final ctrl in [_titleCtrl, _descCtrl, _priceCtrl, _hoursCtrl]) {
       ctrl.addListener(_rebuild);
@@ -120,6 +140,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
       ctrl.removeListener(_rebuild);
       ctrl.dispose();
     }
+    _certTitleCtrl.dispose();
     _fadeCtrl.dispose();
     super.dispose();
   }
@@ -132,11 +153,11 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     }
     final c = widget.course!;
     final newPrice = double.tryParse(_priceCtrl.text) ?? c.price;
-    final newHours = double.tryParse(_hoursCtrl.text) ?? c.totalHours;
+    final newHours = double.tryParse(_hoursCtrl.text) ?? c.expectedHours;
     return _titleCtrl.text.trim() != c.title ||
         _descCtrl.text.trim() != (c.description ?? '') ||
         newPrice != c.price ||
-        newHours != c.totalHours ||
+        newHours != c.expectedHours ||
         _logoFile != null;
   }
 
@@ -176,6 +197,9 @@ class _CourseFormInnerState extends State<_CourseFormInner>
         fees: double.tryParse(_priceCtrl.text) ?? 0,
         totalHours: double.tryParse(_hoursCtrl.text),
         logoFile: _logoFile,
+        certificateTemplateTitle:
+        _certTemplateFile != null ? _certTitleCtrl.text.trim() : null,
+        certificateTemplateFile: _certTemplateFile,
         publish: publish,
       );
     }
@@ -192,8 +216,8 @@ class _CourseFormInnerState extends State<_CourseFormInner>
         _isEdit
             ? 'course_updated_success'.tr
             : (publish
-                  ? 'course_created_success'.tr
-                  : 'course_draft_saved_success'.tr),
+            ? 'course_created_success'.tr
+            : 'course_draft_saved_success'.tr),
         context.colors.success,
       );
       Navigator.pop(context, result);
@@ -230,6 +254,30 @@ class _CourseFormInnerState extends State<_CourseFormInner>
       );
     } else {
       _showSnack('error_please_retry'.tr, context.colors.danger);
+    }
+  }
+
+  // ── Edit-mode content status toggle (in_progress / completed) ─────────────
+
+  Future<void> _changeProgressStatus(CourseStatus status) async {
+    if (_progressStatusLoading || widget.course == null || status == _progressStatus) return;
+    setState(() => _progressStatusLoading = true);
+
+    final formProvider = context.read<CourseFormProvider>();
+    final result = await formProvider.updateStatus(widget.course!.id, status);
+
+    if (!mounted) return;
+    setState(() => _progressStatusLoading = false);
+
+    if (result != null) {
+      setState(() => _progressStatus = status);
+      context.read<TeacherProvider>().onCourseUpdated(result);
+      _showSnack('course_status_updated_success'.tr, context.colors.success);
+    } else {
+      _showSnack(
+        formProvider.errorMessage ?? 'error_please_retry'.tr,
+        context.colors.danger,
+      );
     }
   }
 
@@ -276,7 +324,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     final provider = context.watch<CourseFormProvider>();
     final canSave =
         (_hasChanges || provider.listsChanged) &&
-        _titleCtrl.text.trim().isNotEmpty;
+            _titleCtrl.text.trim().isNotEmpty;
 
     return BasePage(
       useWebCard: true,
@@ -343,6 +391,12 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                           onToggle: _toggleStatus,
                         ),
                         const SizedBox(height: 16),
+                        CourseProgressStatusCard(
+                          status: _progressStatus,
+                          isLoading: _progressStatusLoading,
+                          onChanged: _changeProgressStatus,
+                        ),
+                        const SizedBox(height: 16),
                       ],
 
                       // Pricing & hours card
@@ -359,9 +413,9 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                     controller: _priceCtrl,
                                     label: 'price_label'.tr,
                                     keyboard:
-                                        const TextInputType.numberWithOptions(
-                                          decimal: true,
-                                        ),
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -377,6 +431,12 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                 ),
                               ),
                             ],
+                          ),
+                          const SizedBox(height: 14),
+                          CurrencySelector(
+                            label: 'currency_label'.tr,
+                            selected: provider.selectedCurrency,
+                            onChanged: provider.onChangeCurrency,
                           ),
                         ],
                       ),
@@ -421,6 +481,105 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                       ),
                       const SizedBox(height: 16),
 
+                      // Course relations card — optional "what's next" +
+                      // recommended courses, both scoped to this teacher's
+                      // other courses.
+                      _FormCard(
+                        icon: Icons.route_rounded,
+                        title: 'course_relations_title'.tr,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'next_course_label'.tr,
+                                  style: TextStyle(
+                                    fontFamily: 'bahji',
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black.withValues(alpha: 0.55),
+                                  ),
+                                ),
+                              ),
+                              if (provider.selectedNextCourse != null)
+                                GestureDetector(
+                                  onTap: provider.clearNextCourse,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.close_rounded,
+                                          size: 14,
+                                          color: context.colors.danger),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        'clear_btn'.tr,
+                                        style: TextStyle(
+                                          fontFamily: 'tajawal',
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          color: context.colors.danger,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          MyPrimaryMenu(
+                            controller: _nextCourseCtrl,
+                            initValue: provider.selectedNextCourse,
+                            options: provider.otherCourses,
+                            haveLogo: false,
+                            onChange: (i) =>
+                                provider.onChangeNextCourse(i, _nextCourseCtrl),
+                            label: provider.otherCourses.isEmpty
+                                ? 'no_other_courses_yet'.tr
+                                : 'choose_next_course'.tr,
+                          ),
+                          const SizedBox(height: 18),
+                          Text(
+                            'recommended_courses_label'.tr,
+                            style: TextStyle(
+                              fontFamily: 'bahji',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black.withValues(alpha: 0.55),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          RecommendedCoursesField(
+                            options: provider.otherCourses,
+                            selectedIds: provider.selectedRecommendedCourseIds,
+                            onToggle: provider.toggleRecommendedCourse,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Certificate template: the create-mode "optional
+                      // setup" card, or — when editing — a card that lets
+                      // the teacher view/replace the template on their
+                      // existing certificate (or set one up for the first
+                      // time) directly, uploading immediately since the
+                      // course already exists.
+                      if (_isEdit)
+                        _EditCertificateTemplateCard(course: widget.course!)
+                      else
+                        _CertificateTemplateCard(
+                          titleController: _certTitleCtrl,
+                          previewBytes: _certTemplateBytes,
+                          onPick: (file, bytes) => setState(() {
+                            _certTemplateFile = file;
+                            _certTemplateBytes = bytes;
+                          }),
+                          onRemove: () => setState(() {
+                            _certTemplateFile = null;
+                            _certTemplateBytes = null;
+                          }),
+                        ),
+                      const SizedBox(height: 16),
+
                       // Extras cards
 
                       // Appointments (both modes). Existing, already-saved
@@ -433,12 +592,12 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                         title: 'weekly_schedule'.tr,
                         items: [
                           ...provider.form.schedules.map(
-                            (s) =>
-                                '${slotDayLabel(s.day)} • ${s.startTime} – ${s.endTime}',
+                                (s) =>
+                            '${slotDayLabel(s.day)} • ${s.startTime} – ${s.endTime}',
                           ),
                           ...provider.pendingSchedules.map(
-                            (s) =>
-                                '${slotDayLabel(s.day)} • ${s.startTime} – ${s.endTime}',
+                                (s) =>
+                            '${slotDayLabel(s.day)} • ${s.startTime} – ${s.endTime}',
                           ),
                         ],
                         onAdd: _showAddAppointmentSheet,
@@ -743,6 +902,328 @@ class _FormCard extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Optional certificate template — course-creation flow only
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CertificateTemplateCard extends StatelessWidget {
+  final TextEditingController titleController;
+  final Uint8List? previewBytes;
+  final void Function(XFile file, Uint8List bytes) onPick;
+  final VoidCallback onRemove;
+
+  const _CertificateTemplateCard({
+    required this.titleController,
+    required this.previewBytes,
+    required this.onPick,
+    required this.onRemove,
+  });
+
+  Future<void> _pick() async {
+    final file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 90,
+    );
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
+    onPick(file, bytes);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _FormCard(
+      icon: Icons.workspace_premium_rounded,
+      title: 'certificate_template_card_title'.tr,
+      children: [
+        Text(
+          'certificate_template_card_hint'.tr,
+          style: TextStyle(
+            fontFamily: 'tajawal',
+            fontSize: 12,
+            color: context.colors.textMedium,
+          ),
+        ),
+        const SizedBox(height: 14),
+        _LabeledField(
+          label: 'certificate_title_label'.tr,
+          child: MyTextField(
+            controller: titleController,
+            label: 'certificate_title_label'.tr,
+          ),
+        ),
+        const SizedBox(height: 14),
+        GestureDetector(
+          onTap: _pick,
+          child: AspectRatio(
+            aspectRatio: 1.6,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: context.colors.divider, width: 1.2),
+                color: context.colors.background,
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: previewBytes != null
+                  ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.memory(previewBytes!, fit: BoxFit.cover),
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: GestureDetector(
+                      onTap: onRemove,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: Colors.black54,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close_rounded,
+                            size: 16, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+                  : Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.add_photo_alternate_rounded,
+                        size: 28, color: context.colors.textLight),
+                    const SizedBox(height: 8),
+                    Text(
+                      'upload_template_btn'.tr,
+                      style: TextStyle(
+                        fontFamily: 'tajawal',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: context.colors.textMedium,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Certificate template — EDIT mode: uploads immediately (the course already
+// exists), shows the existing template if there is one.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _EditCertificateTemplateCard extends StatefulWidget {
+  final TeacherCourse course;
+
+  const _EditCertificateTemplateCard({required this.course});
+
+  @override
+  State<_EditCertificateTemplateCard> createState() =>
+      _EditCertificateTemplateCardState();
+}
+
+class _EditCertificateTemplateCardState
+    extends State<_EditCertificateTemplateCard> {
+  late final TextEditingController _titleCtrl;
+  String? _templateUrl;
+  Uint8List? _pickedBytes;
+  bool _uploading = false;
+
+  CourseCertificate? get _existingCert =>
+      widget.course.certificates.isNotEmpty
+          ? widget.course.certificates.first
+          : null;
+
+  @override
+  void initState() {
+    super.initState();
+    _templateUrl = _existingCert?.templateUrl;
+    _titleCtrl = TextEditingController(
+      text: _existingCert?.title ?? 'default_certificate_title'.tr,
+    );
+  }
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pick() async {
+    final file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 90,
+    );
+    if (file == null) return;
+
+    final bytes = await file.readAsBytes();
+    setState(() {
+      _pickedBytes = bytes;
+      _uploading = true;
+    });
+
+    final provider = context.read<CourseFormProvider>();
+    final url = await provider.updateCertificateTemplate(
+      courseId: widget.course.id,
+      existingCertificateId: _existingCert?.id,
+      title: _titleCtrl.text.trim().isEmpty
+          ? 'default_certificate_title'.tr
+          : _titleCtrl.text.trim(),
+      file: file,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _uploading = false;
+      if (url != null) {
+        _templateUrl = url;
+      } else {
+        _pickedBytes = null;
+      }
+    });
+
+    if (url == null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'certificate_template_upload_failed'.tr,
+            style: const TextStyle(fontFamily: 'bahji', color: Colors.white),
+          ),
+          backgroundColor: context.colors.danger,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasExisting = _existingCert != null;
+
+    return _FormCard(
+      icon: Icons.workspace_premium_rounded,
+      title: 'certificate_template_card_title'.tr,
+      children: [
+        Text(
+          hasExisting
+              ? 'certificate_template_card_hint_edit'.tr
+              : 'certificate_template_card_hint'.tr,
+          style: TextStyle(
+            fontFamily: 'tajawal',
+            fontSize: 12,
+            color: context.colors.textMedium,
+          ),
+        ),
+        const SizedBox(height: 14),
+        if (hasExisting)
+          _LabeledField(
+            label: 'certificate_title_label'.tr,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              decoration: BoxDecoration(
+                color: context.colors.background,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: context.colors.divider, width: 1.2),
+              ),
+              child: Text(
+                _existingCert!.title,
+                style: TextStyle(
+                  fontFamily: 'tajawal',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: context.colors.textDark,
+                ),
+              ),
+            ),
+          )
+        else
+          _LabeledField(
+            label: 'certificate_title_label'.tr,
+            child: MyTextField(
+              controller: _titleCtrl,
+              label: 'certificate_title_label'.tr,
+            ),
+          ),
+        const SizedBox(height: 14),
+        GestureDetector(
+          onTap: _uploading ? null : _pick,
+          child: AspectRatio(
+            aspectRatio: 1.6,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: context.colors.divider, width: 1.2),
+                color: context.colors.background,
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: _uploading
+                  ? const Center(child: AppLoadingIndicator())
+                  : _pickedBytes != null
+                  ? Image.memory(_pickedBytes!, fit: BoxFit.cover)
+                  : _templateUrl != null
+                  ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.network(_templateUrl!, fit: BoxFit.cover),
+                  Positioned(
+                    bottom: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'change_template_btn'.tr,
+                        style: const TextStyle(
+                          fontFamily: 'tajawal',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+                  : Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.add_photo_alternate_rounded,
+                        size: 28, color: context.colors.textLight),
+                    const SizedBox(height: 8),
+                    Text(
+                      'upload_template_btn'.tr,
+                      style: TextStyle(
+                        fontFamily: 'tajawal',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: context.colors.textMedium,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Labeled field
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -865,35 +1346,35 @@ class _StickyFooter extends StatelessWidget {
                   gradient: canSave
                       ? context.colors.primaryGradient
                       : const LinearGradient(
-                          colors: [Color(0xFFCDD5E0), Color(0xFFCDD5E0)],
-                        ),
+                    colors: [Color(0xFFCDD5E0), Color(0xFFCDD5E0)],
+                  ),
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: canSave ? context.colors.primaryShadow : null,
                 ),
                 child: Center(
                   child: isLoading
                       ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: AppLoadingIndicator(),
-                        )
+                    width: 20,
+                    height: 20,
+                    child: AppLoadingIndicator(),
+                  )
                       : Text(
-                          canSave
-                              ? (isEdit
-                                    ? 'btn_save_edits'.tr
-                                    : (showDraftBtn
-                                          ? 'publish_course_btn'.tr
-                                          : 'create_course_btn'.tr))
-                              : (isEdit
-                                    ? 'no_changes_to_save'.tr
-                                    : 'enter_course_title_first'.tr),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 14,
-                            fontFamily: 'bahji',
-                          ),
-                        ),
+                    canSave
+                        ? (isEdit
+                        ? 'btn_save_edits'.tr
+                        : (showDraftBtn
+                        ? 'publish_course_btn'.tr
+                        : 'create_course_btn'.tr))
+                        : (isEdit
+                        ? 'no_changes_to_save'.tr
+                        : 'enter_course_title_first'.tr),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      fontFamily: 'bahji',
+                    ),
+                  ),
                 ),
               ),
             ),

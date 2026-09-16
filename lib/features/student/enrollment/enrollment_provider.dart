@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'dart:developer';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:flutter_paymob_egypt/flutter_paymob_egypt.dart';
 import 'package:moyasar/moyasar.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api_client.dart';
@@ -59,12 +63,98 @@ class EnrollmentProvider extends BaseProvider {
   String? _stcOtpError;
   String? _stcTransactionUrl;
 
+  // ── Active payment provider (from GET /api/v1/config) ──────────────────────
+  // Backend is the single source of truth for which gateway is live and
+  // whether it has a native mobile SDK — this widget never hardcodes that.
+  String? _paymentProvider; // "moyasar" | "paymob" | null while loading
+  bool _hasNativeMobileSdk = false; // safe default matches today's behaviour
+
+  // ── Paymob mobile SDK credentials (paymob_flutter package) ─────────────────
+  // Loaded from GET /api/v1/config's `paymob_sdk` block (see
+  // PaymentService.payment_config() / PaymobProvider.sdk_config) — never
+  // hardcoded here. Null until config loads, or if the backend has no SDK
+  // env vars configured; either way _startPaymobSdkPayment() falls back to
+  // hosted checkout when these are missing rather than calling the SDK
+  // with a null key.
+  String? _paymobApiKey;
+  int? _paymobIntegrationId;
+  int? _paymobIframeId;
+  bool _paymobSandbox = true;
+
   EnrollStep get step => _step;
+
   Map<String, dynamic>? get bankInfo => _bankInfo;
+
   bool get paidViaBankTransfer => _paidViaBankTransfer;
+
   bool get isFree => course.price == 0;
+
   String? get failureReason => _failureReason;
+
   String? get stcOtpError => _stcOtpError;
+
+  /// STC Pay is a Moyasar/Saudi-specific payment method — hide it in the
+  /// method picker unless Moyasar is the active provider.
+  bool get supportsStcPay => _paymentProvider == 'moyasar';
+
+  String? get activeProvider => _paymentProvider;
+
+  /// Currency symbol for whichever gateway is actually active. Moyasar
+  /// charges in SAR, Paymob (Egypt) charges in EGP — this must follow the
+  /// backend-reported provider rather than being hardcoded, or an Egyptian
+  /// user paying through Paymob sees a Saudi Riyal symbol on an EGP charge.
+  /// Defaults to SAR while `_paymentProvider` is still loading, matching
+  /// this app's original (Moyasar-only) behaviour.
+  String get currencySymbol => _paymentProvider == 'paymob' ? 'ج.م' : 'ر.س';
+
+  /// Call once when the enrollment screen mounts (e.g. from its initState),
+  /// before the method picker renders, so supportsStcPay is correct on
+  /// first paint. Safe to call more than once.
+  Future<void> loadPaymentConfig() async {
+    final r = await run(() => _api.get('/api/v1/config'), makLoading: true);
+    // BUG FIX: was `r is Map<String, dynamic>`. If ApiClient's decoded
+    // response is a Map<dynamic, dynamic> at runtime (e.g. it got
+    // re-wrapped anywhere without preserving key type — very easy to do
+    // by accident, and Dart's `is` check on generics is exact, not
+    // structural), this check silently fails and the ENTIRE block below
+    // is skipped with no error at all: _paymentProvider stays null even
+    // though the server genuinely returned {"provider": "paymob", ...}.
+    // `is Map` still lets us index with String keys safely below.
+    if (r is Map) {
+      if (r['provider'] == null) {
+        debugPrint('[config] WARNING: /api/v1/config returned no "provider" '
+            'key. Raw response: $r');
+      }
+      _paymentProvider = r['provider'] as String?;
+      _hasNativeMobileSdk = r['has_native_mobile_sdk'] as bool? ?? true;
+
+      // BUG FIX: was `r['paymob_sdk'] as Map<String, dynamic>?`. Unlike an
+      // `is` check, a mismatched `as` cast THROWS rather than silently
+      // skipping — if the decoded value were a Map<dynamic, dynamic> at
+      // runtime, this would abort the method right here, before
+      // notifyListeners() below ever ran, leaving the UI showing stale
+      // state even though _paymentProvider was already set two lines up.
+      final rawPaymobSdk = r['paymob_sdk'];
+      final paymobSdk = rawPaymobSdk is Map
+          ? Map<String, dynamic>.from(rawPaymobSdk)
+          : null;
+      if (paymobSdk != null) {
+        _paymobApiKey = paymobSdk['api_key'] as String?;
+        _paymobIntegrationId = (paymobSdk['integration_id'] as num?)?.toInt();
+        _paymobIframeId = (paymobSdk['iframe_id'] as num?)?.toInt();
+        _paymobSandbox = paymobSdk['is_sandbox'] as bool? ?? true;
+      } else {
+        _paymobApiKey = null;
+        _paymobIntegrationId = null;
+        _paymobIframeId = null;
+      }
+
+      if (_paymentProvider != 'moyasar' && _selection == _Selection.stcPay) {
+        _selection = _Selection.newCard;
+      }
+      notifyListeners();
+    }
+  }
 
   // ── Selection ─────────────────────────────────────────────────────────────
 
@@ -81,6 +171,7 @@ class EnrollmentProvider extends BaseProvider {
   }
 
   void selectStcPay() {
+    if (!supportsStcPay) return; // guard even if the UI somehow still shows it
     _selection = _Selection.stcPay;
     _selectedCard = null;
     notifyListeners();
@@ -102,14 +193,15 @@ class EnrollmentProvider extends BaseProvider {
 
   // ── Confirm ───────────────────────────────────────────────────────────────
 
-  Future<void> confirm(SavedMethodsProvider savedP, BuildContext context) async {
+  Future<void> confirm(SavedMethodsProvider savedP,
+      BuildContext context) async {
     if (isFree) {
       await _enrollFree();
       return;
     }
     switch (_selection) {
       case _Selection.newCard:
-        await _openMoyasarCardScreen(context);
+        await _startCardPayment(context);
       case _Selection.savedCard:
         if (_selectedCard != null) await _chargeWithSavedCard(_selectedCard!);
       case _Selection.bankTransfer:
@@ -131,13 +223,37 @@ class EnrollmentProvider extends BaseProvider {
   }
 
   // ── New card entry point ──────────────────────────────────────────────────
-
-  Future<void> _openMoyasarCardScreen(BuildContext context) async {
-    if (kIsWeb) {
+  //
+  // Both Moyasar and Paymob now have native mobile SDKs (card form + 3DS
+  // on-device), so this just routes to whichever one is active. Any
+  // provider without a native SDK — or either provider on web — falls back
+  // to hosted checkout in _openWebCheckout.
+  Future<void> _startCardPayment(BuildContext context) async {
+    if (kIsWeb || !_hasNativeMobileSdk) {
       await _openWebCheckout(context);
       return;
     }
-    // Mobile: Moyasar SDK handles card form + 3DS internally.
+    switch (_paymentProvider) {
+      case 'moyasar':
+        await _startMoyasarSdkPayment(context);
+      case 'paymob':
+        await _openWebCheckout(context);
+        // await _startPaymobSdkPayment2(context);
+      default:
+        await _openWebCheckout(context);
+      // has_native_mobile_sdk was true but we don't recognise which
+      // provider that's for (e.g. config hasn't loaded yet) — fail
+      // safely and visibly instead of silently doing nothing, which is
+      // what happened before this was a real switch statement.
+        _failureReason = 'طريقة الدفع هذه غير مدعومة حالياً';
+        _step = EnrollStep.failed;
+        notifyListeners();
+    }
+  }
+
+  /// Moyasar SDK: handles card form + 3DS internally, then verifies with
+  /// the backend via _recordSdkPayment.
+  Future<void> _startMoyasarSdkPayment(BuildContext context) async {
     final fees = FeeBreakdown.calculate(
       coursePrice: course.price,
       brand: CardBrand.mada,
@@ -152,30 +268,216 @@ class EnrollmentProvider extends BaseProvider {
     if (!context.mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => MoyasarCardPaymentScreen(
-          config: config,
-          onPaymentResult: (result) {
-            Navigator.of(context).pop();
-            _handleSdkResult(result, context);
-          },
-        ),
+        builder: (_) =>
+            MoyasarCardPaymentScreen(
+              config: config,
+              onPaymentResult: (result) {
+                Navigator.of(context).pop();
+                _handleSdkResult(result, context);
+              },
+            ),
       ),
     );
   }
 
-  // ── Web checkout (Flutter Web) ────────────────────────────────────────────
 
+
+
+  /// Paymob SDK (paymob_flutter, Direct API card entry — no WebView).
+  /// Mirrors the Moyasar flow above: charge via the SDK, then verify +
+  /// activate the enrollment through the SAME backend endpoint
+  /// (_recordSdkPayment), which is provider-agnostic already.
+  Future<void> _startPaymobSdkPayment2(BuildContext context) async {
+    FlutterPaymobPayment(
+        cardInfo: CardInfo(
+            apiKey: 'ZXlKaGJHY2lPaUpJVXpVeE1pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SmpiR0Z6Y3lJNklrMWxjbU5vWVc1MElpd2ljSEp2Wm1sc1pWOXdheUk2TVRJeU56QTBPQ3dpYm1GdFpTSTZJbWx1YVhScFlXd2lmUS5XTThHTnRrbzZmd0pEMVdXX1RCQ3dfb19JRnFsS2IwUGs0UzhGa1UyLUVEZkloUGlJUTAwZXE3Y2RLVjBRdHFvTnAzYmcwNUFtRFRmQmRSa3VRajBpdw==',
+            integrationID: "5904081",
+            iframesID: "1077017",
+            ),
+        totalPrice: 100, // 100 EGP --required pay with Egypt currency
+        successResult: (data) {
+          print("--------------[ data ]--------------");
+          print(data);
+        },
+        errorResult: (error) {
+          // Handle payment error
+        });
+    // final result = await Paymob.pay(
+    //   context: context,
+    //   config: PaymobConfig(
+    //     apiKey: 'ZXlKaGJHY2lPaUpJVXpVeE1pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SmpiR0Z6Y3lJNklrMWxjbU5vWVc1MElpd2ljSEp2Wm1sc1pWOXdheUk2TVRJeU56QTBPQ3dpYm1GdFpTSTZJbWx1YVhScFlXd2lmUS5XTThHTnRrbzZmd0pEMVdXX1RCQ3dfb19JRnFsS2IwUGs0UzhGa1UyLUVEZkloUGlJUTAwZXE3Y2RLVjBRdHFvTnAzYmcwNUFtRFRmQmRSa3VRajBpdw==',
+    //     integrationId: 5904081,
+    //     iframeId: 1077017,
+    //     isSandbox: false,
+    //   ),
+    //   order: PaymobOrder(
+    //     amount: 100.0,
+    //     currency: 'EGP',
+    //     items: [
+    //       OrderItem(name: 'Product', amount: 100.0, quantity: 1),
+    //     ],
+    //   ),
+    //   billing: BillingData(
+    //     firstName: 'John',
+    //     lastName: 'Doe',
+    //     email: 'john@example.com',
+    //     phone: '+201234567890',
+    //   ),
+    // );
+    // print("===================[result2]===============");
+    // print(result.status);
+    // print(result.isSuccess);
+    // print(result.transactionId);
+    // if (result.isSuccess) {
+    //   print('Payment ID: ${result.transactionId}');
+    // } else if (result.isPending) {
+    //   print('Pending: ${result.transactionId}');
+    // } else if (result.isCancelled) {
+    //   print('Cancelled by user');
+    // } else {
+    //   print('Failed: ${result.errorMessage}');
+    // }
+  }
+  Future<void> _startPaymobSdkPayment(BuildContext context) async {
+    Map data = {
+      "api_key": "ZXlKaGJHY2lPaUpJVXpVeE1pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SmpiR0Z6Y3lJNklrMWxjbU5vWVc1MElpd2ljSEp2Wm1sc1pWOXdheUk2TVRJeU56QTBPQ3dpYm1GdFpTSTZJbWx1YVhScFlXd2lmUS5XTThHTnRrbzZmd0pEMVdXX1RCQ3dfb19JRnFsS2IwUGs0UzhGa1UyLUVEZkloUGlJUTAwZXE3Y2RLVjBRdHFvTnAzYmcwNUFtRFRmQmRSa3VRajBpdw==",
+      "integration_id": 5904081,
+      "iframe_id": 1077017,
+      "is_sandbox": true
+    };
+    _paymobApiKey = data['api_key'];
+    _paymobIntegrationId = data['integration_id'];
+    _paymobIframeId = data['iframe_id'];
+    _paymobSandbox = data['is_sandbox'];
+    if (_paymobApiKey == null ||
+        _paymobIntegrationId == null ||
+        _paymobIframeId == null) {
+      // Config hasn't loaded, or the backend has no SDK credentials set
+      // (PAYMOB_*_API_KEY / IFRAME_ID / SDK_INTEGRATION_ID missing in
+      // .env) — fall back to hosted checkout instead of calling the SDK
+      // with a null key.
+      await _openWebCheckout(context);
+      return;
+    }
+
+    // BUG FIX: the amount charged here must equal what
+    // PaymentService.record_sdk_payment() expects
+    // (FeeService.calculate(course.fees, "mada").total — see that
+    // method's comment on why "mada" is used for Paymob's SDK path too).
+    // The original code charged raw course.price with no fee added at
+    // all, so the backend's amount check would reject every real payment
+    // as "مبلغ الدفع غير متطابق".
+    // final fees = FeeBreakdown.calculate(
+    //   coursePrice: course.price,
+    //   brand: CardBrand.mada,
+    // );
+    //
+    // makeLoading();
+    // notifyListeners();
+    // try {
+      UserModel? user=context.read<AuthProvider>().currentUser;
+      List<String> names=(user?.name??'student').split(' ');
+      String first=names.first;
+      String last=names.last;
+      //
+      // final result = await Paymob.pay(
+      //   context: context,
+      //   config: PaymobConfig(
+      //     apiKey: _paymobApiKey!,
+      //     integrationId: _paymobIntegrationId!,
+      //     iframeId: _paymobIframeId!,
+      //     isSandbox: _paymobSandbox,
+      //   ),
+      //   order: PaymobOrder(
+      //     amount: fees.total,
+      //     currency: 'EGP',
+      //     items: [
+      //       OrderItem(
+      //           name: 'كورس: ${course.name}', amount: fees.total, quantity: 1),
+      //     ],
+      //   ),
+      //   billing: BillingData(
+      //     firstName: first,
+      //     lastName: last,
+      //     email: user?.gmail??'app@gmail.com',
+      //     phone:  user?.phone??'+201000000000',
+      //   ),
+      // );
+    //   final result = await Paymob.pay(
+    //     context: context,
+    //     config: PaymobConfig(
+    //       apiKey: 'ZXlKaGJHY2lPaUpJVXpVeE1pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SmpiR0Z6Y3lJNklrMWxjbU5vWVc1MElpd2ljSEp2Wm1sc1pWOXdheUk2TVRJeU56QTBPQ3dpYm1GdFpTSTZJbWx1YVhScFlXd2lmUS5XTThHTnRrbzZmd0pEMVdXX1RCQ3dfb19JRnFsS2IwUGs0UzhGa1UyLUVEZkloUGlJUTAwZXE3Y2RLVjBRdHFvTnAzYmcwNUFtRFRmQmRSa3VRajBpdw==',
+    //       integrationId: 5904081,
+    //       iframeId: 1077017,
+    //       isSandbox: true,
+    //     ),
+    //     order: PaymobOrder(
+    //       amount: course.price,
+    //       currency: 'EGP',
+    //       items: [
+    //         OrderItem(name: 'Product', amount: course.price, quantity: 1),
+    //       ],
+    //     ),
+    //     billing: BillingData(
+    //       firstName: 'John',
+    //       lastName: 'Doe',
+    //       email: 'john@example.com',
+    //       phone: '+201234567890',
+    //     ),
+    //   );
+    //   print("===================[result]===============");
+    //   print(result.status);
+    //   print(result.isSuccess);
+    //   print(result.transactionId);
+    //   if (result.isSuccess && result.transactionId != null) {
+    //     // BUG FIX: this used to just print() the transaction id and stop —
+    //     // nothing was ever sent to the backend, so the payment was never
+    //     // verified and the course was never activated even though Paymob
+    //     // had genuinely charged the card. Route through the same
+    //     // verify-and-activate call the Moyasar SDK path already uses.
+    //     await _recordSdkPayment(result.transactionId!);
+    //   } else if (result.isPending && result.transactionId != null) {
+    //     // record_sdk_payment() already handles a not-yet-paid transaction
+    //     // gracefully (soft "قيد المعالجة" message, not a hard error) — see
+    //     // its `else` branch below — so this doesn't need special-casing.
+    //     await _recordSdkPayment(result.transactionId!);
+    //   } else if (result.isCancelled) {
+    //     // User backed out of the sheet — stay on the method step, no
+    //     // error banner.
+    //   } else {
+    //     _failureReason =
+    //         result.errorMessage ?? 'فشلت عملية الدفع. حاول مرة أخرى.';
+    //     _step = EnrollStep.failed;
+    //   }
+    // } catch (e) {
+    //   _failureReason = 'تعذّر إتمام الدفع: $e';
+    //   _step = EnrollStep.failed;
+    // } finally {
+    //   stopLoading();
+    //   notifyListeners();
+    // }
+  }
+
+  // ── Hosted checkout (web + non-SDK mobile) ────────────────────────────────
+  //
+  // Works for Moyasar's own checkout page AND Paymob's Unified Checkout —
+  // the backend already returns the right checkout_url for whichever
+  // provider is active; this widget doesn't need to know which one.
   Future<void> _openWebCheckout(BuildContext context) async {
     makeLoading();
     notifyListeners();
 
     try {
-      final session = await run(() => _api.post(
-        '/api/v1/payments/create-web-session',
-        body: {'course_id': course.id},
-      ));
+      final session = await run(() =>
+          _api.post(
+            '/api/v1/create-web-session',
+            body: {'course_id': course.id},
+          ));
 
-      if (session is! Map<String, dynamic>) {
+      // BUG FIX: was `session is! Map<String, dynamic>` — see the note in
+      // loadPaymentConfig() on why an exact-generic `is` check can
+      // silently misfire on a genuinely successful response.
+      if (session is! Map) {
         _failureReason = 'فشل إنشاء جلسة الدفع. حاول مرة أخرى.';
         _step = EnrollStep.failed;
         notifyListeners();
@@ -187,6 +489,8 @@ class EnrollmentProvider extends BaseProvider {
         notifyListeners();
         return;
       }
+
+      _paymentProvider = session['provider'] as String? ?? _paymentProvider;
 
       final checkoutUrl = session['checkout_url'] as String?;
       final token = session['session_token'] as String?;
@@ -209,11 +513,15 @@ class EnrollmentProvider extends BaseProvider {
 
       if (!context.mounted) return;
 
-      // Push the platform-appropriate checkout page.
-      // On web  → _IFrameCheckoutPage (from checkout_web_impl.dart)
-      // On mobile → _MobileCheckoutPage (defined below in this file)
+      // Push the platform-appropriate checkout page. This is provider-
+      // agnostic on purpose — it renders whatever checkout_url the backend
+      // gave us, whether that's Moyasar's payment_form.html or Paymob's
+      // accept.paymob.com/unifiedcheckout/ page.
+      //   Web    → IFrameCheckoutPage (checkout_web_impl.dart)
+      //   Mobile → MobileCheckoutPage (defined below in this file)
+
       final Widget checkoutPage = kIsWeb
-          ? IFrameCheckoutPage(url: resolvedUrl) // web impl via conditional import
+          ? IFrameCheckoutPage(url: resolvedUrl)
           : MobileCheckoutPage(url: resolvedUrl);
 
       final result = await Navigator.of(context).push<String>(
@@ -274,17 +582,26 @@ class EnrollmentProvider extends BaseProvider {
     }
   }
 
-  Future<void> _recordSdkPayment(String moyasarPaymentId) async {
+  /// Verifies + completes a payment taken via a native mobile SDK
+  /// (Moyasar's own SDK, or Paymob's via paymob_flutter) by asking the
+  /// backend to fetch and check it against the provider's own API.
+  /// Provider-agnostic despite the body field name below
+  /// ('moyasar_payment_id') — PaymentService.record_sdk_payment()
+  /// dispatches through whichever provider is active, it isn't
+  /// Moyasar-specific; the field predates Paymob's SDK support and was
+  /// left as-is server-side to avoid an unnecessary breaking rename.
+  Future<void> _recordSdkPayment(String providerPaymentId) async {
     _step = EnrollStep.verifying;
     notifyListeners();
 
-    final r = await run(() => _api.post(
-      '/api/v1/payments/record-sdk-payment',
-      body: {
-        'course_id': course.id,
-        'moyasar_payment_id': moyasarPaymentId,
-      },
-    ));
+    final r = await run(() =>
+        _api.post(
+          '/api/v1/payments/record-sdk-payment',
+          body: {
+            'course_id': course.id,
+            'moyasar_payment_id': providerPaymentId,
+          },
+        ));
 
     final status = (r is Map ? r['status'] as String? : null) ?? '';
     if (status == 'completed' || status == 'paid') {
@@ -296,15 +613,17 @@ class EnrollmentProvider extends BaseProvider {
     notifyListeners();
   }
 
-  // ── Saved card ────────────────────────────────────────────────────────────
+  // ── Saved card (Moyasar only — hidden in enrollment_screen.dart's picker
+  // when !supportsSavedCards, see enrollment_screen_patch.md) ───────────────
 
   Future<void> _chargeWithSavedCard(SavedPaymentMethod card) async {
-    final r = await run(() => _api.post('/api/v1/payments', queryParams: {
-      'course_id': course.id,
-      'payment_method': card.cardBrand?.apiKey ?? 'mada',
-      'saved_method_id': card.id,
-    }));
-    if (r is! Map<String, dynamic>) return;
+    final r = await run(() =>
+        _api.post('/api/v1/payments', queryParams: {
+          'course_id': course.id,
+          'payment_method': card.cardBrand?.apiKey ?? 'mada',
+          'saved_method_id': card.id,
+        }));
+    if (r is! Map) return;
 
     _pendingPaymentId = (r['payment_id'] as num?)?.toInt();
     _pendingTransactionId = r['transaction_id'] as String?;
@@ -326,9 +645,15 @@ class EnrollmentProvider extends BaseProvider {
     await _verifyAfterReturn();
   }
 
-  // ── STC Pay ───────────────────────────────────────────────────────────────
+  // ── STC Pay (Moyasar only) ─────────────────────────────────────────────────
 
   Future<void> initStcPay(String mobile, BuildContext context) async {
+    if (!supportsStcPay) {
+      _failureReason = 'STC Pay غير متاح مع مزود الدفع الحالي';
+      _step = EnrollStep.failed;
+      notifyListeners();
+      return;
+    }
     final fees = FeeBreakdown.calculate(
       coursePrice: course.price,
       brand: CardBrand.stcPay,
@@ -343,7 +668,8 @@ class EnrollmentProvider extends BaseProvider {
     try {
       final result = await Moyasar.pay(
         apiKey: _publishableKey,
-        paymentRequest: PaymentRequest(config, StcRequestSource(mobile: mobile)),
+        paymentRequest: PaymentRequest(
+            config, StcRequestSource(mobile: mobile)),
       );
 
       if (result is PaymentResponse) {
@@ -403,12 +729,13 @@ class EnrollmentProvider extends BaseProvider {
   // ── Bank transfer ─────────────────────────────────────────────────────────
 
   Future<void> _initBankTransfer() async {
-    final r = await run(() => _api.post(
-      '/api/v1/payments/bank-transfer',
-      queryParams: {'course_id': course.id},
-    ));
-    if (r is Map<String, dynamic>) {
-      _bankInfo = r;
+    final r = await run(() =>
+        _api.post(
+          '/api/v1/payments/bank-transfer',
+          queryParams: {'course_id': course.id},
+        ));
+    if (r is Map) {
+      _bankInfo = Map<String, dynamic>.from(r);
       _step = EnrollStep.bankDetails;
       notifyListeners();
     }
@@ -438,12 +765,13 @@ class EnrollmentProvider extends BaseProvider {
     _step = EnrollStep.verifying;
     notifyListeners();
 
-    final r = await run(() => _api.post(
-      '/api/v1/payments/$_pendingPaymentId/verify',
-      queryParams: _pendingTransactionId != null
-          ? {'transaction_id': _pendingTransactionId}
-          : {},
-    ));
+    final r = await run(() =>
+        _api.post(
+          '/api/v1/payments/$_pendingPaymentId/verify',
+          queryParams: _pendingTransactionId != null
+              ? {'transaction_id': _pendingTransactionId}
+              : {},
+        ));
 
     final status = (r is Map ? r['status'] as String? : null) ?? '';
     if (status == 'completed' || status == 'paid') {
@@ -476,10 +804,13 @@ class EnrollmentProvider extends BaseProvider {
 //
 // Uses webview_flutter's WebViewController which fully supports
 // setJavaScriptMode and onNavigationRequest on native platforms.
+// Provider-agnostic: renders whatever hosted checkout URL it's given,
+// whether that's Moyasar's own page or Paymob's Unified Checkout.
 // ═════════════════════════════════════════════════════════════════════════════
 
 class MobileCheckoutPage extends StatefulWidget {
   final String url;
+
   const MobileCheckoutPage({super.key, required this.url});
 
   @override
@@ -500,27 +831,50 @@ class _MobileCheckoutPageState extends State<MobileCheckoutPage> {
       ..setJavaScriptMode(JavaScriptMode.unrestricted) // fine on iOS/Android
       ..setNavigationDelegate(NavigationDelegate(
         onPageFinished: (_) {
-          if (mounted) if(mounted) setState(() => _loading = false);
+          if (mounted) if (mounted) setState(() => _loading = false);
         },
         onNavigationRequest: (req) {
+          debugPrint('CHECKOUT NAV -> ${req.url}');
           if (req.url.contains(_callbackMarker)) {
             final uri = Uri.parse(req.url);
             // Handle hash-style URL:  /#/payment/callback?status=paid
             final fragment = uri.fragment; // "payment/callback?status=paid"
             String status = 'failed';
             if (fragment.contains('status=')) {
-              final q = Uri.parse('?${fragment.split('?').last}');
+              final q = Uri.parse('?${fragment
+                  .split('?')
+                  .last}');
               status = q.queryParameters['status'] ?? 'failed';
             } else {
               status = uri.queryParameters['status'] ?? 'failed';
             }
+            debugPrint('CHECKOUT STATUS -> $status');
             Navigator.of(context).pop(status);
             return NavigationDecision.prevent;
           }
           return NavigationDecision.navigate;
         },
-        onWebResourceError: (e) =>
-            debugPrint('WebView resource error: ${e.description}'),
+        onWebResourceError: (e) {
+          // BUG FIX: this class is COMPILED (never instantiated — see
+          // checkout_stub_impl.dart / kIsWeb guard) on Flutter Web builds
+          // too. On web, the conditional import swaps in
+          // webview_stub.dart's minimal WebResourceError stand-in, which
+          // only guarantees `.description` — referencing `.url`,
+          // `.errorCode`, or `.isForMainFrame` (real webview_flutter API,
+          // not on the stub) fails web compilation even though this
+          // branch never runs there. Stick to `.description` only.
+          debugPrint('WebView resource error: ${e.description}');
+          // Previously this only logged and left the user stuck on a dead
+          // page until they manually closed it (which then falls through
+          // to the generic "فشلت عملية الدفع" message with no real
+          // diagnostic). Fail fast and visibly instead. This does mean
+          // any resource error (not just a main-frame load failure) will
+          // close the checkout — if that proves too aggressive in
+          // practice (e.g. a missing icon/font on the gateway's own page
+          // triggering a false failure), share webview_stub.dart and I'll
+          // add `isForMainFrame` there too so this can filter properly.
+          if (mounted) Navigator.of(context).pop('failed');
+        },
       ))
       ..loadRequest(Uri.parse(widget.url));
   }

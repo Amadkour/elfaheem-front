@@ -5,12 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/teacher/sessions/sessions_provider.dart';
 import 'package:provider/provider.dart';
-import '../../../../config/theme/app_theme.dart';
 import '../../../../config/theme/theme_config_provider.dart';
-import '../../../../utils/widget/app_bar.dart';
-import '../../../../utils/widget/app_network_image.dart';
 import '../../../../utils/widget/base_page.dart';
 import '../../../../utils/widget/rating_widget.dart';
+import '../../../shared/course/course_roadmap_section.dart';
 import '../../../shared/profile/compalints/complaint_provider.dart';
 import '../../../shared/profile/compalints/new_complaint_screen.dart';
 import '../../../teacher/sessions/components/course_hero.dart';
@@ -22,6 +20,14 @@ import 'components/app_responsive.dart';
 import 'components/content.dart';
 import 'components/stat_chip.dart';
 import 'course_detail_provider.dart';
+
+void _openRecommendedCourse(BuildContext context, CourseSummary summary) {
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => CourseDetailScreen(course: CourseModel.fromSummary(summary)),
+    ),
+  );
+}
 
 class CourseDetailScreen extends StatefulWidget {
   const CourseDetailScreen({super.key, required this.course});
@@ -121,6 +127,17 @@ class _MobileDetail extends StatelessWidget {
                         ),
                       ),
                     ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                    SliverToBoxAdapter(
+                      child: CourseRoadmapSection(
+                        currentCourseName: provider.course.name,
+                        nextCourse: provider.course.nextCourse,
+                        recommendedCourses: provider.course.recommendedCourses,
+                        similarCourses: provider.course.similarCourses,
+                        onTapCourse: (s) => _openRecommendedCourse(context, s),
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
                   ],
                 ),
               ),
@@ -278,6 +295,16 @@ class _WebDetail extends StatelessWidget {
                           ),
                         ),
                       ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                      SliverToBoxAdapter(
+                        child: CourseRoadmapSection(
+                          currentCourseName: provider.course.name,
+                          nextCourse: provider.course.nextCourse,
+                          recommendedCourses: provider.course.recommendedCourses,
+                          similarCourses: provider.course.similarCourses,
+                          onTapCourse: (s) => _openRecommendedCourse(context, s),
+                        ),
+                      ),
                       const SliverToBoxAdapter(child: SizedBox(height: 32)),
                     ],
                   ),
@@ -324,9 +351,7 @@ class _WebSidebar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  c.price == 0
-                      ? 'مجاني تماماً'
-                      : '\$ ${c.price.toStringAsFixed(2)}',
+                  c.currency.format(c.price),
                   style: TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.w900,
@@ -689,7 +714,7 @@ class _EnrollButton extends StatelessWidget {
 
     final label = p.course.price == 0
         ? 'سجّل مجاناً الآن'
-        : 'انضم الآن — \$ ${p.course.price.toStringAsFixed(2)}';
+        : 'انضم الآن — ${p.course.currency.format(p.course.price)}';
 
     return _EnrollWrap(
       isWide: isWide,

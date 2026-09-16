@@ -3196,5 +3196,265 @@
   "complaints_empty_hint": {
     "en": "You haven't submitted any complaints yet",
     "ar": "لم تقم بتقديم أي شكوى حتى الآن"
+  },
+  "currency_sar": {
+    "en": "Saudi Riyal",
+    "ar": "ريال سعودي"
+  },
+  "currency_egp": {
+    "en": "Egyptian Pound",
+    "ar": "جنيه مصري"
+  },
+  "currency_usd": {
+    "en": "US Dollar",
+    "ar": "دولار أمريكي"
+  },
+  "currency_label": {
+    "en": "Currency",
+    "ar": "العملة"
+  },
+  "course_status_in_progress": {
+    "en": "In progress",
+    "ar": "قيد التقدم"
+  },
+  "course_status_completed": {
+    "en": "Completed",
+    "ar": "مكتمل"
+  },
+  "course_progress_status_title": {
+    "en": "Course status",
+    "ar": "حالة الكورس"
+  },
+  "course_status_updated_success": {
+    "en": "Course status updated",
+    "ar": "تم تحديث حالة الكورس"
+  },
+  "certificate_manager_title": {
+    "en": "Certificate manager",
+    "ar": "إدارة الشهادات"
+  },
+  "certificate_template_label": {
+    "en": "Certificate template",
+    "ar": "قالب الشهادة"
+  },
+  "certificate_premium_template_hint": {
+    "en": "A premium template will be generated automatically",
+    "ar": "سيتم استخدام قالب مميز تلقائيًا"
+  },
+  "upload_template_btn": {
+    "en": "Upload template",
+    "ar": "رفع قالب"
+  },
+  "change_template_btn": {
+    "en": "Change template",
+    "ar": "تغيير القالب"
+  },
+  "remove_template_btn": {
+    "en": "Remove template",
+    "ar": "إزالة القالب"
+  },
+  "send_to_all_students_btn": {
+    "en": "Send to all students",
+    "ar": "إرسال لجميع الطلاب"
+  },
+  "manage_certificate_btn": {
+    "en": "Manage / send",
+    "ar": "إدارة / إرسال"
+  },
+  "certificates_sent_count": {
+    "en": "Certificates sent:",
+    "ar": "تم إرسال"
+  },
+  "no_enrolled_students_yet": {
+    "en": "No enrolled students yet",
+    "ar": "لا يوجد طلاب مسجلون بعد"
+  },
+  "send_btn": {
+    "en": "Send",
+    "ar": "إرسال"
+  },
+  "certificate_sent_label": {
+    "en": "Sent",
+    "ar": "تم الإرسال"
+  },
+  "complete_label": {
+    "en": "complete",
+    "ar": "مكتمل"
+  },
+  "enrolled_students_title": {
+    "en": "Enrolled Students",
+    "ar": "الطلاب المسجلون"
+  },
+  "no_students": {
+    "en": "No students yet",
+    "ar": "لا يوجد طلاب بعد"
+  },
+  "no_students_hint": {
+    "en": "Students who enroll in this course will show up here",
+    "ar": "سيظهر هنا الطلاب الذين يسجلون في هذا الكورس"
+  },
+  "stat_total": {
+    "en": "Total",
+    "ar": "الإجمالي"
+  },
+  "stat_avg_progress": {
+    "en": "Avg. Progress",
+    "ar": "متوسط التقدم"
+  },
+  "stat_completed": {
+    "en": "Completed",
+    "ar": "مكتمل"
+  },
+  "search_student_by_name_email": {
+    "en": "Search by name or email",
+    "ar": "ابحث بالاسم أو البريد الإلكتروني"
+  },
+  "send_certificate_btn": {
+    "en": "Send certificate",
+    "ar": "إرسال الشهادة"
+  },
+  "certificate_sent_success": {
+    "en": "Certificate sent successfully",
+    "ar": "تم إرسال الشهادة بنجاح"
+  },
+  "certificate_send_failed": {
+    "en": "Failed to send certificate. Please try again",
+    "ar": "فشل إرسال الشهادة. حاول مرة أخرى"
+  },
+  "choose_certificate_title": {
+    "en": "Choose a certificate to send",
+    "ar": "اختر شهادة للإرسال"
+  },
+  "course_draft_saved_success": {
+    "en": "Course saved as draft",
+    "ar": "تم حفظ الكورس كمسودة"
+  },
+  "course_published_success": {
+    "en": "Course published successfully",
+    "ar": "تم نشر الكورس بنجاح"
+  },
+  "course_status_draft_hint": {
+    "en": "This course is a draft and only visible to you",
+    "ar": "هذا الكورس مسودة ومرئي لك فقط"
+  },
+  "course_status_published_hint": {
+    "en": "This course is published and visible to students",
+    "ar": "هذا الكورس منشور ومرئي للطلاب"
+  },
+  "course_status_title": {
+    "en": "Publish Status",
+    "ar": "حالة النشر"
+  },
+  "course_unpublished_success": {
+    "en": "Course unpublished",
+    "ar": "تم إلغاء نشر الكورس"
+  },
+  "draft": {
+    "en": "Draft",
+    "ar": "مسودة"
+  },
+  "session_details": {
+    "en": "Session Details",
+    "ar": "تفاصيل الحصة"
+  },
+  "Specialization": {
+    "en": "Specialization",
+    "ar": "التخصص"
+  },
+  "course_relations_title": {
+    "en": "Course Relations",
+    "ar": "علاقات الكورس"
+  },
+  "next_course_label": {
+    "en": "Next course",
+    "ar": "الكورس التالي"
+  },
+  "choose_next_course": {
+    "en": "Choose the next course",
+    "ar": "اختر الكورس التالي"
+  },
+  "no_other_courses_yet": {
+    "en": "You don't have any other courses yet",
+    "ar": "لا يوجد لديك كورسات أخرى بعد"
+  },
+  "clear_btn": {
+    "en": "Clear",
+    "ar": "إزالة"
+  },
+  "recommended_courses_label": {
+    "en": "Recommended courses",
+    "ar": "الكورسات الموصى بها"
+  },
+  "choose_recommended_courses": {
+    "en": "Choose recommended courses",
+    "ar": "اختر الكورسات الموصى بها"
+  },
+  "courses_selected_count": {
+    "en": "courses selected",
+    "ar": "كورسات مختارة"
+  },
+  "done_btn": {
+    "en": "Done",
+    "ar": "تم"
+  },
+  "certificate_template_card_title": {
+    "en": "Certificate Template (Optional)",
+    "ar": "قالب الشهادة (اختياري)"
+  },
+  "certificate_template_card_hint": {
+    "en": "Add a certificate now, or skip and set one up later from the certificate manager.",
+    "ar": "أضف شهادة الآن، أو تخطَّ هذه الخطوة وأضفها لاحقًا من مدير الشهادات."
+  },
+  "certificate_title_label": {
+    "en": "Certificate title",
+    "ar": "عنوان الشهادة"
+  },
+  "default_certificate_title": {
+    "en": "Course Completion Certificate",
+    "ar": "شهادة إتمام الدورة"
+  },
+  "next_course_section_title": {
+    "en": "Next Course",
+    "ar": "الكورس التالي"
+  },
+  "continue_with_label": {
+    "en": "Continue with",
+    "ar": "تابع مع"
+  },
+  "recommended_courses_section_title": {
+    "en": "You Might Also Like",
+    "ar": "قد يعجبك أيضًا"
+  },
+  "hour": {
+    "en": "hour",
+    "ar": "ساعة"
+  },
+  "certificate_template_card_hint_edit": {
+    "en": "This is the certificate students receive on completion. Tap the image to replace it.",
+    "ar": "هذه هي الشهادة التي يحصل عليها الطلاب عند الإتمام. اضغط على الصورة لاستبدالها."
+  },
+  "certificate_template_upload_failed": {
+    "en": "Couldn't upload the template. Please try again.",
+    "ar": "تعذر رفع القالب. حاول مرة أخرى."
+  },
+  "learning_roadmap_title": {
+    "en": "Your Learning Roadmap",
+    "ar": "خارطة رحلتك التعليمية"
+  },
+  "roadmap_you_are_here": {
+    "en": "YOU ARE HERE",
+    "ar": "أنت هنا"
+  },
+  "roadmap_next_up": {
+    "en": "NEXT UP",
+    "ar": "التالي"
+  },
+  "roadmap_more_coming_soon": {
+    "en": "More coming soon",
+    "ar": "المزيد قريبًا"
+  },
+  "roadmap_explore_more_title": {
+    "en": "Explore More",
+    "ar": "اكتشف المزيد"
   }
 }

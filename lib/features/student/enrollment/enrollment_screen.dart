@@ -33,15 +33,29 @@ const _kNewCardColor = Color(0xFF0F4C81);
 
 // ── Entry ─────────────────────────────────────────────────────────────────────
 
-class EnrollmentScreen extends StatelessWidget {
+class EnrollmentScreen extends StatefulWidget {
   final CourseModel course;
   const EnrollmentScreen({super.key, required this.course});
 
   @override
+  State<EnrollmentScreen> createState() => _EnrollmentScreenState();
+}
+
+class _EnrollmentScreenState extends State<EnrollmentScreen> {
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<EnrollmentProvider>().loadPaymentConfig();
+    });
+  }
+  @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => EnrollmentProvider(course)),
+        ChangeNotifierProvider(create: (_) => EnrollmentProvider(widget.course)),
         ChangeNotifierProvider(create: (_) => SavedMethodsProvider()..fetch()),
       ],
       child: const _EnrollView(),
@@ -145,7 +159,13 @@ class _MethodStep extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _CourseSummaryCard(course: enroll.course),
+                // BUG FIX: pass the active gateway's currency symbol down
+                // instead of letting the card assume Saudi Riyal — see
+                // _PriceBadge below.
+                _CourseSummaryCard(
+                  course: enroll.course,
+                  currencySymbol: enroll.currencySymbol,
+                ),
                 const SizedBox(height: 24),
                 if (enroll.isFree)
                   const _FreeCourseBanner()
@@ -178,7 +198,8 @@ class _MethodStep extends StatelessWidget {
 
 class _CourseSummaryCard extends StatelessWidget {
   final CourseModel course;
-  const _CourseSummaryCard({required this.course});
+  final String currencySymbol;
+  const _CourseSummaryCard({required this.course, required this.currencySymbol});
 
   @override
   Widget build(BuildContext context) {
@@ -220,7 +241,7 @@ class _CourseSummaryCard extends StatelessWidget {
                   InstructorAvatar(teacher: course.teacher!, size: 50, canOpen: true,),
                 const SizedBox(height: 10),
                 Row(children: [
-                  _PriceBadge(price: course.price),
+                  _PriceBadge(price: course.price, currencySymbol: currencySymbol),
                   const SizedBox(width: 8),
                   _TypeTag(type: course.type),
                 ]),
@@ -235,7 +256,8 @@ class _CourseSummaryCard extends StatelessWidget {
 
 class _PriceBadge extends StatelessWidget {
   final double price;
-  const _PriceBadge({required this.price});
+  final String currencySymbol;
+  const _PriceBadge({required this.price, required this.currencySymbol});
 
   @override
   Widget build(BuildContext context) {
@@ -255,7 +277,12 @@ class _PriceBadge extends StatelessWidget {
         ),
       ),
       child: Text(
-        isFree ? 'مجاني' : '${price.toStringAsFixed(2)} ر.س',
+        // BUG FIX: was hardcoded '${price.toStringAsFixed(2)} ر.س' regardless
+        // of the active gateway. Paymob charges in EGP, not SAR — showing
+        // "ر.س" (Saudi Riyal) on an Egyptian-pound charge is just wrong, not
+        // a cosmetic nit. currencySymbol now comes from
+        // EnrollmentProvider.currencySymbol (backend-reported provider).
+        isFree ? 'مجاني' : '${price.toStringAsFixed(2)} $currencySymbol',
         style: c.label.copyWith(
           color: isFree ? c.success : c.primary,
           fontWeight: FontWeight.w800,
@@ -390,17 +417,16 @@ class _SavedMethodPickerState extends State<_SavedMethodPicker> {
           onTap: () { if(mounted) setState(() => _sel = e.key); enrollP.selectSavedCard(e.value); },
         )),
 
-        // STC Pay
-        _MethodTile(
-          selected: _sel == -3,
-          icon: Icons.sim_card_rounded,
-          iconColor: _kStcColor,
-          title: 'STC Pay',
-          subtitle: '2.5% + 1 ر.س رسوم',
-          onTap: () { if(mounted) setState(() => _sel = -3); enrollP.selectStcPay(); },
-          customBadge: _StcBadge(),
-        ),
-
+        if (enrollP.supportsStcPay)
+          _MethodTile(
+            selected: _sel == -3,
+            icon: Icons.sim_card_rounded,
+            iconColor: _kStcColor,
+            title: 'STC Pay',
+            subtitle: '2.5% + 1 ر.س رسوم',
+            onTap: () { if(mounted) setState(() => _sel = -3); enrollP.selectStcPay(); },
+            customBadge: _StcBadge(),
+          ),
         // Bank transfer
         _MethodTile(
           selected: _sel == -1,
@@ -957,7 +983,11 @@ class _BankStep extends StatelessWidget {
             if (info != null) ...[
               _BankTile(
                 label: 'المبلغ',
-                value: '${(info['fees']?['total'] as num?)?.toStringAsFixed(2) ?? '—'} ر.س',
+                // BUG FIX: was hardcoded '... ر.س' regardless of the active
+                // gateway. Bank transfer is Moyasar/Saudi-specific today,
+                // but this now follows the same source of truth as the
+                // rest of the screen instead of a second hardcoded literal.
+                value: '${(info['fees']?['total'] as num?)?.toStringAsFixed(2) ?? '—'} ${enroll.currencySymbol}',
                 highlight: true,
               ),
               const SizedBox(height: 10),

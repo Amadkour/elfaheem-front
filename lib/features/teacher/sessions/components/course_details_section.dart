@@ -6,10 +6,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/schedules/schedules_screen.dart';
-
-import '../../../../config/theme/app_theme.dart';
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
+import '../../../shared/course/course_recommendations_section.dart';
+import '../../../student/models.dart' show CourseSummary;
+import '../../courses/component/certificate_manager_sheet.dart';
 import '../../home/teacher_models.dart';
 
 class _AddButton extends StatelessWidget {
@@ -54,8 +55,13 @@ class _AddButton extends StatelessWidget {
 
 class CourseDetailsSection extends StatelessWidget {
   final TeacherCourse course;
+  final ValueChanged<CourseSummary>? onTapRecommendedCourse;
 
-  const CourseDetailsSection({super.key, required this.course});
+  const CourseDetailsSection({
+    super.key,
+    required this.course,
+    this.onTapRecommendedCourse,
+  });
 
   bool get _hasAny => true;
 
@@ -136,8 +142,20 @@ class CourseDetailsSection extends StatelessWidget {
             title: 'certificates'.tr,
             color: const Color(0xFFFFD700),
             children: course.certificates
-                .map((c) => _CertificateRow(cert: c))
+                .map((c) => _CertificateRow(cert: c, courseId: course.id))
                 .toList(),
+          ),
+        ],
+
+        if (course.nextCourseSummary != null ||
+            course.recommendedCourseSummaries.isNotEmpty ||
+            course.similarCourses.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          CourseRecommendationsSection(
+            nextCourse: course.nextCourseSummary,
+            recommendedCourses: course.recommendedCourseSummaries,
+            similarCourses: course.similarCourses,
+            onTapCourse: onTapRecommendedCourse ?? (_) {},
           ),
         ],
 
@@ -408,8 +426,9 @@ class _BulletRow extends StatelessWidget {
 
 class _CertificateRow extends StatelessWidget {
   final CourseCertificate cert;
+  final int courseId;
 
-  const _CertificateRow({required this.cert});
+  const _CertificateRow({required this.cert, required this.courseId});
 
   @override
   Widget build(BuildContext context) {
@@ -444,6 +463,41 @@ class _CertificateRow extends StatelessWidget {
                 ),
               ],
             ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: () => showCertificateManagerSheet(
+            context,
+            courseId: courseId,
+            certificateId: cert.id,
+            certificateTitle: cert.title,
+            // requires the `templateUrl` field added to CourseCertificate
+            // in teacher_models.dart — see the patch notes.
+            templateUrl: cert.templateUrl,
+          ),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFD700).withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.send_rounded, size: 12, color: Color(0xFFB8860B)),
+                const SizedBox(width: 4),
+                Text(
+                  'manage_certificate_btn'.tr,
+                  style: const TextStyle(
+                    fontFamily: 'tajawal',
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFB8860B),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],

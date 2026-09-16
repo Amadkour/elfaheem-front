@@ -17,6 +17,7 @@ import '../../../config/app_config.dart';
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
 import '../../category/categories_provider.dart';
+import '../../student/models.dart' show AppCurrency, AppCurrencyX, CourseStatus, CourseStatusX;
 import '../home/teacher_models.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -69,9 +70,9 @@ class CourseFormState {
 
   bool get isEmpty =>
       schedules.isEmpty &&
-      certificates.isEmpty &&
-      tools.isEmpty &&
-      prerequisites.isEmpty;
+          certificates.isEmpty &&
+          tools.isEmpty &&
+          prerequisites.isEmpty;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -94,6 +95,72 @@ class CourseFormProvider extends BaseProvider {
     {'text': 'both'},
   ];
   Map<String, dynamic>? selectedTeachingType;
+
+  // ── Currency state ───────────────────────────────────────────────────────
+  // Defaults to EGP; restored from the course's own currency in UPDATE mode.
+  AppCurrency selectedCurrency = AppCurrency.egp;
+
+  void onChangeCurrency(AppCurrency currency) {
+    selectedCurrency = currency;
+    _listsChanged = true;
+    notifyListeners();
+  }
+
+  // ── Next course / recommended courses ───────────────────────────────────
+  // Populated from the teacher's own other courses (GET /my-courses), since
+  // both fields may only reference courses this teacher owns.
+
+  List<Map<String, dynamic>> otherCourses = [];
+  Map<String, dynamic>? selectedNextCourse;
+  Set<int> selectedRecommendedCourseIds = {};
+
+  void onChangeNextCourse(int i, ExpansibleController ctrl) {
+    ctrl.collapse();
+    selectedNextCourse = otherCourses[i];
+    _listsChanged = true;
+    notifyListeners();
+  }
+
+  void clearNextCourse() {
+    selectedNextCourse = null;
+    _listsChanged = true;
+    notifyListeners();
+  }
+
+  void toggleRecommendedCourse(int courseId) {
+    if (!selectedRecommendedCourseIds.remove(courseId)) {
+      selectedRecommendedCourseIds.add(courseId);
+    }
+    _listsChanged = true;
+    notifyListeners();
+  }
+
+  Future<void> _loadOtherCourses({int? excludeCourseId}) async {
+    final result = await run(() => _api.get('/api/v1/my-courses'));
+    if (result is List) {
+      otherCourses = result
+          .whereType<Map<String, dynamic>>()
+          .where((c) => c['id'] != excludeCourseId)
+          .map((c) => {'id': c['id'], 'text': (c['name'] ?? c['title'] ?? '').toString()})
+          .toList();
+    } else {
+      otherCourses = [];
+    }
+    notifyListeners();
+  }
+
+  void _restoreNextCourse(TeacherCourse course) {
+    if (course.nextCourseId == null) {
+      selectedNextCourse = null;
+      return;
+    }
+    try {
+      selectedNextCourse =
+          otherCourses.firstWhere((c) => c['id'] == course.nextCourseId);
+    } catch (_) {
+      selectedNextCourse = null;
+    }
+  }
 
   // ── Form list state ──────────────────────────────────────────────────────
 
@@ -124,10 +191,16 @@ class CourseFormProvider extends BaseProvider {
     _form = const CourseFormState();
     selectedSpecialization = null;
     selectedTeachingType = null;
+    selectedCurrency = AppCurrency.egp;
+    selectedNextCourse = null;
+    selectedRecommendedCourseIds = {};
     _listsChanged = false;
     _pendingSchedules = [];
     notifyListeners();
-    await _loadCategories(context);
+    await Future.wait([
+      _loadCategories(context),
+      _loadOtherCourses(),
+    ]);
   }
 
   /// Call once from initState when opening in UPDATE mode.
@@ -140,12 +213,19 @@ class CourseFormProvider extends BaseProvider {
     );
     selectedSpecialization = null;
     selectedTeachingType = null;
+    selectedCurrency = course.currency;
+    selectedRecommendedCourseIds = course.recommendedCourseIds.toSet();
     _listsChanged = false;
     _pendingSchedules = [];
     notifyListeners();
 
-    await _loadCategories(context);
+    await Future.wait([
+      _loadCategories(context),
+      _loadOtherCourses(excludeCourseId: course.id),
+    ]);
     _restoreSpecialization(course);
+    _restoreNextCourse(course);
+    notifyListeners();
   }
 
   Future<void> _loadCategories(BuildContext context) async {
@@ -158,12 +238,12 @@ class CourseFormProvider extends BaseProvider {
   void _restoreSpecialization(TeacherCourse course) {
     try {
       selectedSpecialization = specializations.firstWhere(
-        (s) =>
-            s['text'] ==
+            (s) =>
+        s['text'] ==
             (
-              AppConfig.lang == 'ar'
-                  ? course.category!.nameAr
-                  : course.category!.nameEn,
+            AppConfig.lang == 'ar'
+                ? course.category!.nameAr
+                : course.category!.nameEn,
             ),
       );
     } catch (_) {
@@ -266,23 +346,31 @@ class CourseFormProvider extends BaseProvider {
     double? totalHours,
     XFile? logoFile,
 
+    /// Optional certificate template set up at course-creation time. Both
+    /// must be provided together — a template with no title is ignored.
+    String? certificateTemplateTitle,
+    XFile? certificateTemplateFile,
+
     /// When true, the course is published immediately after creation.
     /// When false, it's left as a draft (the server-side default).
     bool publish = false,
   }) async {
     // Step 1: create course record (JSON, no file)
     final result = await run(
-      () => _api.post(
+          () => _api.post(
         '/api/v1/courses',
         body: {
-          'name': title,
-          'type': type,
-          'fees': fees,
-          'description': ?description,
-          if (selectedSpecialization?['id'] != null)
-            'category_id': selectedSpecialization!['id'],
-          'total_hours': ?totalHours,
-        },
+      'name': title,
+      'type': type,
+      'fees': fees,
+      'currency': selectedCurrency.code,
+      'description': ?description,
+      if (selectedSpecialization?['id'] != null)
+      'category_id': selectedSpecialization!['id'],
+      'total_hours': ?totalHours,
+      'next_course_id': selectedNextCourse?['id'],
+      'recommended_course_ids': selectedRecommendedCourseIds.toList(),
+      },
       ),
     );
 
@@ -298,7 +386,7 @@ class CourseFormProvider extends BaseProvider {
     // Step 3: publish immediately if requested (otherwise stays a draft)
     if (publish) {
       final pubResult = await run(
-        () => _api.post('/api/v1/courses/${created.id}/publish'),
+            () => _api.post('/api/v1/courses/${created.id}/publish'),
       );
       if (pubResult != null) created = created.copyWith(isPublished: true);
     }
@@ -318,6 +406,14 @@ class CourseFormProvider extends BaseProvider {
         _addPrerequisite(created.id, title: pr),
     ]);
 
+    // Step 4.5: optional certificate template set up during creation
+    if (certificateTemplateFile != null &&
+        (certificateTemplateTitle?.trim().isNotEmpty ?? false)) {
+      await _createCertificateWithTemplate(
+        created.id, certificateTemplateTitle!.trim(), certificateTemplateFile,
+      );
+    }
+
     // Step 5: re-fetch to get full populated course
     final refreshed = await _fetchCourseDetail(created.id) ?? created;
     _pendingSchedules = [];
@@ -329,25 +425,28 @@ class CourseFormProvider extends BaseProvider {
   // ─────────────────────────────────────────────────────────────────────────
 
   Future<TeacherCourse?> submitUpdate(
-    TeacherCourse original, {
-    required String name,
-    String? description,
-    double? fees,
-    double? totalHours,
-    XFile? logoFile,
-  }) async {
+      TeacherCourse original, {
+        required String name,
+        String? description,
+        double? fees,
+        double? totalHours,
+        XFile? logoFile,
+      }) async {
     // Step 1: patch scalar fields
     final patchResult = await run(
-      () => _api.put(
+          () => _api.put(
         '/api/v1/courses/${original.id}',
         body: {
-          'name': name,
-          'description': ?description,
-          'fees': ?fees,
-          if (selectedSpecialization?['id'] != null)
-            'category_id': selectedSpecialization!['id'],
-          'total_hours': ?totalHours,
-        },
+      'name': name,
+      'description': ?description,
+      'fees': ?fees,
+      'currency': selectedCurrency.code,
+      if (selectedSpecialization?['id'] != null)
+      'category_id': selectedSpecialization!['id'],
+      'total_hours': ?totalHours,
+      'next_course_id': selectedNextCourse?['id'],
+      'recommended_course_ids': selectedRecommendedCourseIds.toList(),
+      },
       ),
     );
 
@@ -404,9 +503,25 @@ class CourseFormProvider extends BaseProvider {
 
     final refreshed =
         await _fetchCourseDetail(original.id) ??
-        TeacherCourse.fromJson(patchResult);
+            TeacherCourse.fromJson(patchResult);
     _pendingSchedules = [];
     return refreshed;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Course progress status (in_progress / completed) — separate from
+  // publish/draft, which TeacherProvider already handles.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Future<TeacherCourse?> updateStatus(int courseId, CourseStatus status) async {
+    final result = await run(
+          () => _api.put(
+        '/api/v1/courses/$courseId/status',
+        body: {'status': status.apiValue},
+      ),
+    );
+    if (result is Map<String, dynamic>) return TeacherCourse.fromJson(result);
+    return null;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -420,9 +535,9 @@ class CourseFormProvider extends BaseProvider {
   }
 
   Future<TeacherCourse?> _uploadImage(
-    XFile logoFile, {
-    required int courseId,
-  }) async {
+      XFile logoFile, {
+        required int courseId,
+      }) async {
     try {
       final ext = p
           .extension(logoFile.path)
@@ -461,13 +576,98 @@ class CourseFormProvider extends BaseProvider {
     }
   }
 
+  /// Creates a certificate on the freshly-created course and immediately
+  /// uploads its template image — used for the optional "certificate
+  /// template" widget in the course-creation form. Failures are logged but
+  /// never block course creation from succeeding (the teacher can always
+  /// add/fix the certificate afterward from the certificate manager).
+  Future<void> _createCertificateWithTemplate(
+      int courseId,
+      String title,
+      XFile file,
+      ) async {
+    final certResult = await run(
+          () => _api.post(
+        '/api/v1/courses/$courseId/certificates',
+        body: {'title': title},
+      ),
+    );
+    if (certResult is! Map<String, dynamic>) return;
+    final certId = certResult['id'] as int?;
+    if (certId == null) return;
+    await _uploadCertificateTemplateBytes(certId, file);
+  }
+
+  /// Used by the EDIT-mode certificate template card. If the course
+  /// already has a certificate ([existingCertificateId] non-null), the
+  /// template is uploaded straight to it; otherwise a certificate is
+  /// created first (using [title]) and the template attached to that.
+  /// Returns the new template URL on success, or null on failure.
+  Future<String?> updateCertificateTemplate({
+    required int courseId,
+    int? existingCertificateId,
+    required String title,
+    required XFile file,
+  }) async {
+    int? certId = existingCertificateId;
+    if (certId == null) {
+      final certResult = await run(
+            () => _api.post(
+          '/api/v1/courses/$courseId/certificates',
+          body: {'title': title},
+        ),
+      );
+      if (certResult is! Map<String, dynamic>) return null;
+      certId = certResult['id'] as int?;
+      if (certId == null) return null;
+    }
+    return _uploadCertificateTemplateBytes(certId, file);
+  }
+
+  Future<String?> _uploadCertificateTemplateBytes(int certId, XFile file) async {
+    try {
+      final ext = p.extension(file.path).replaceFirst('.', '').toLowerCase();
+      final mimeType = switch (ext) {
+        'png' => 'image/png',
+        'webp' => 'image/webp',
+        'gif' => 'image/gif',
+        _ => 'image/jpeg',
+      };
+      final bytes = await file.readAsBytes();
+      final filename = p.basename(file.path).isNotEmpty
+          ? p.basename(file.path)
+          : 'template.${ext.isEmpty ? 'jpg' : ext}';
+
+      final formData = FormData.fromMap({
+        'file': MultipartFile.fromBytes(
+          bytes,
+          filename: filename,
+          contentType: MediaType.parse(mimeType),
+        ),
+      });
+      final response = await _api.dio.post(
+        '/api/v1/certificates/$certId/template',
+        data: formData,
+      );
+      if (response.statusCode != 200) return null;
+      final data = response.data as Map<String, dynamic>;
+      return data['template_url'] as String?;
+    } on DioException catch (e) {
+      log('uploadCertificateTemplate ❌ ${e.response?.statusCode}: ${e.response?.data}');
+      return null;
+    } catch (e) {
+      log('uploadCertificateTemplate ❌ unexpected: $e');
+      return null;
+    }
+  }
+
   Future<void> _addSchedule(
-    int courseId, {
-    required String day,
-    required String startTime,
-    required String endTime,
-  }) => run(
-    () => _api.post(
+      int courseId, {
+        required String day,
+        required String startTime,
+        required String endTime,
+      }) => run(
+        () => _api.post(
       '/api/v1/courses/$courseId/schedules',
       body: {'day': day, 'start_time': startTime, 'end_time': endTime},
     ),
@@ -477,7 +677,7 @@ class CourseFormProvider extends BaseProvider {
       run(() => _api.delete('/api/v1/schedules/$scheduleId'));
 
   Future<void> _addCertificate(int courseId, {required String title}) => run(
-    () => _api.post(
+        () => _api.post(
       '/api/v1/courses/$courseId/certificates',
       body: {'title': title},
     ),
@@ -487,14 +687,14 @@ class CourseFormProvider extends BaseProvider {
       run(() => _api.delete('/api/v1/certificates/$certId'));
 
   Future<void> _addTool(int courseId, {required String name}) => run(
-    () => _api.post('/api/v1/courses/$courseId/tools', body: {'title': name}),
+        () => _api.post('/api/v1/courses/$courseId/tools', body: {'title': name}),
   );
 
   Future<void> _removeTool(int toolId) =>
       run(() => _api.delete('/api/v1/tools/$toolId'));
 
   Future<void> _addPrerequisite(int courseId, {required String title}) => run(
-    () => _api.post(
+        () => _api.post(
       '/api/v1/courses/$courseId/prerequisites',
       body: {'title': title},
     ),

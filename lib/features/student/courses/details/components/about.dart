@@ -2,12 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../config/app_config.dart';
-import '../../../../../config/theme/app_theme.dart';
 import '../../../../shared/profile/course_instractor_profile.dart';
 import '../../../../teacher/home/teacher_models.dart';
 import '../course_detail_provider.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-
 class AboutTab extends StatelessWidget {
   const AboutTab({super.key});
 

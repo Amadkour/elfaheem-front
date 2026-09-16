@@ -300,7 +300,7 @@ class UserChipButton extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.07),
+            color: Colors.white.withValues(alpha: 0.17),
             borderRadius: BorderRadius.circular(14),
           ),
           child: Row(children: [
@@ -308,7 +308,7 @@ class UserChipButton extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                gradient: context.colors.primaryGradient,
+                gradient: context.colors.accentGradient,
                 shape: BoxShape.circle,
               ),
               alignment: Alignment.center,
@@ -343,15 +343,15 @@ class UserChipButton extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(name,
-                        style: const TextStyle(
-                            color: Colors.white,
+                        style:  TextStyle(
+                            color: context.colors.primaryLight,
                             fontSize: 12,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w100,
                             fontFamily: 'bahji'),
                         overflow: TextOverflow.ellipsis),
                     Text(isTeacher ? 'teacher'.tr : 'student'.tr,
                         style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.45),
+                            color:context.colors.accent2,
                             fontSize: 10,
                             fontFamily: 'bahji')),
                   ],
@@ -563,16 +563,15 @@ class RailShell extends StatelessWidget {
     return BasePage(
       child: Row(
         children: [
-          DecoratedBox(
-            decoration:
-                BoxDecoration(gradient: context.colors.sliderGradient),
+          ColoredBox(
+            color: context.colors.primary,
             child: Column(
               children: [
                 Expanded(
                   child: NavigationRail(
                     backgroundColor: context.colors.isDark
                         ? context.colors.cardBg
-                        : context.colors.primaryDark,
+                        : context.colors.primary,
                     selectedIndex: currentIndex,
                     onDestinationSelected: onTap,
                     minWidth: 66,
@@ -586,7 +585,7 @@ class RailShell extends StatelessWidget {
                     leading: Padding(
                       padding: const EdgeInsets.only(top: 24, bottom: 12),
                       child: Icon(Icons.school_rounded,
-                          color: Colors.white.withValues(alpha: 0.75),
+                          color: context.colors.accent,
                           size: 26),
                     ),
                     destinations: [
@@ -709,12 +708,12 @@ class _BottomNav extends StatelessWidget {
                           height: 30,
                           decoration: BoxDecoration(
                             gradient:
-                                active ? context.colors.primaryGradient : null,
+                                active ? context.colors.accentGradient : null,
                             borderRadius: BorderRadius.circular(10),
                             boxShadow: active
                                 ? [
                                     BoxShadow(
-                                        color: context.colors.primaryDark
+                                        color: context.colors.primary
                                             .withValues(alpha: 0.3),
                                         blurRadius: 8,
                                         offset: const Offset(0, 2))
@@ -737,7 +736,7 @@ class _BottomNav extends StatelessWidget {
                             fontWeight:
                                 active ? FontWeight.w700 : FontWeight.w500,
                             color: active
-                                ? context.colors.primaryDark
+                                ? context.colors.primary
                                 : context.colors.textLight,
                             fontFamily: 'bahji',
                           ),

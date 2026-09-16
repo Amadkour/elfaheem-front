@@ -32,7 +32,7 @@ class CourseDetailProvider extends BaseProvider {
     makeLoading();
     // Run sessions + optional progress fetch in parallel for speed
     await Future.wait([
-      fetchSessions(c.id),
+      fetchFull(c.id),
       // fetchProgress(c.id),
     ]);
     stopLoading();
