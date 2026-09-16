@@ -451,9 +451,10 @@ class CourseModel {
   final List<CoursePrerequisite> prerequisites;
   final TeacherProfileData? teacher;
   final RatingSummary? rateSummary;
-  final CourseSummary? nextCourse;
+  final List<CourseSummary> nextCourses;
   final List<CourseSummary> recommendedCourses;
   final List<CourseSummary> similarCourses;
+  final List<CourseSummary> recentCompletedCourses;
 
   CourseModel(
       {required this.id,
@@ -482,9 +483,10 @@ class CourseModel {
         required this.isPublished,
         required this.expectedHours,
         this.rateSummary,
-        this.nextCourse,
+        this.nextCourses = const [],
         this.recommendedCourses = const [],
-        this.similarCourses = const []});
+        this.similarCourses = const [],
+        this.recentCompletedCourses = const []});
 
   String get title => name;
 
@@ -550,13 +552,16 @@ class CourseModel {
     rateSummary: j.containsKey('rate') && j['rate'] != null
         ? RatingSummary.fromJson(j['rate'] as Map<String, dynamic>)
         : null,
-    nextCourse: j['next_course'] != null
-        ? CourseSummary.fromJson(j['next_course'] as Map<String, dynamic>)
-        : null,
+    nextCourses: (j['next_courses'] as List? ?? [])
+        .map((e) => CourseSummary.fromJson(e as Map<String, dynamic>))
+        .toList(),
     recommendedCourses: (j['recommended_courses'] as List? ?? [])
         .map((e) => CourseSummary.fromJson(e as Map<String, dynamic>))
         .toList(),
     similarCourses: (j['similar_courses'] as List? ?? [])
+        .map((e) => CourseSummary.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    recentCompletedCourses: (j['recent_completed_courses'] as List? ?? [])
         .map((e) => CourseSummary.fromJson(e as Map<String, dynamic>))
         .toList(),
   );
@@ -597,7 +602,7 @@ class CourseModel {
       currency: currency,
       status: status,
       type: type,
-      nextCourseId: nextCourse?.id,
+      nextCourses: nextCourses,
       recommendedCourseIds: recommendedCourses.map((e)=>e.id).toList(),
       similarCourses: similarCourses,
       expectedHours: expectedHours);
@@ -635,9 +640,10 @@ class CourseModel {
           prerequisites: prerequisites,
           isEnrolled: isEnrolled,
           isPublished: isPublished,
-          nextCourse: nextCourse,
+          nextCourses: nextCourses,
           recommendedCourses: recommendedCourses,
           similarCourses: similarCourses,
+          recentCompletedCourses: recentCompletedCourses,
           expectedHours: expectedHours);
 }
 

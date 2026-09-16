@@ -131,7 +131,8 @@ class _MobileDetail extends StatelessWidget {
                     SliverToBoxAdapter(
                       child: CourseRoadmapSection(
                         currentCourseName: provider.course.name,
-                        nextCourse: provider.course.nextCourse,
+                        recentCompletedCourses: provider.course.recentCompletedCourses,
+                        nextCourses: provider.course.nextCourses,
                         recommendedCourses: provider.course.recommendedCourses,
                         similarCourses: provider.course.similarCourses,
                         onTapCourse: (s) => _openRecommendedCourse(context, s),
@@ -299,7 +300,8 @@ class _WebDetail extends StatelessWidget {
                       SliverToBoxAdapter(
                         child: CourseRoadmapSection(
                           currentCourseName: provider.course.name,
-                          nextCourse: provider.course.nextCourse,
+                          recentCompletedCourses: provider.course.recentCompletedCourses,
+                          nextCourses: provider.course.nextCourses,
                           recommendedCourses: provider.course.recommendedCourses,
                           similarCourses: provider.course.similarCourses,
                           onTapCourse: (s) => _openRecommendedCourse(context, s),

@@ -306,12 +306,11 @@ class TeacherCourse {
   final RatingSummary? rateSummary;
   final AppCurrency currency;
   final CourseStatus status;
-  // ── Next course / recommended courses ─────────────────────────────────────
-  final int? nextCourseId;
-  final String? nextCourseTitle;
+  // ── Next courses (ORDERED roadmap) / recommended courses ────────────────
+  final List<int> nextCourseIds;
   final List<int> recommendedCourseIds;
   // ── Rich recommendation cards (for the course-profile page) ────────────────
-  final CourseSummary? nextCourseSummary;
+  final List<CourseSummary> nextCourses;
   final List<CourseSummary> recommendedCourseSummaries;
   final List<CourseSummary> similarCourses;
   const TeacherCourse({
@@ -336,10 +335,9 @@ class TeacherCourse {
 
     this.currency = AppCurrency.egp,
     this.status = CourseStatus.inProgress,
-    this.nextCourseId,
-    this.nextCourseTitle,
+    this.nextCourseIds = const [],
     this.recommendedCourseIds = const [],
-    this.nextCourseSummary,
+    this.nextCourses = const [],
     this.recommendedCourseSummaries = const [],
     this.similarCourses = const [],
   });
@@ -390,14 +388,15 @@ class TeacherCourse {
     rateSummary: j.containsKey('rate') && j['rate'] != null
         ? RatingSummary.fromJson(j['rate'] as Map<String, dynamic>)
         : null,
-    nextCourseId: j['next_course_id'] as int?,
-    nextCourseTitle: j['next_course_title'] as String?,
+    nextCourseIds: (j['next_course_ids'] as List? ?? [])
+        .map((e) => e as int)
+        .toList(),
     recommendedCourseIds: (j['recommended_course_ids'] as List? ?? [])
         .map((e) => e as int)
         .toList(),
-    nextCourseSummary: j['next_course'] != null
-        ? CourseSummary.fromJson(j['next_course'] as Map<String, dynamic>)
-        : null,
+    nextCourses: (j['next_courses'] as List? ?? [])
+        .map((e) => CourseSummary.fromJson(e as Map<String, dynamic>))
+        .toList(),
     recommendedCourseSummaries: (j['recommended_courses'] as List? ?? [])
         .map((e) => CourseSummary.fromJson(e as Map<String, dynamic>))
         .toList(),
@@ -437,10 +436,8 @@ class TeacherCourse {
     List<CoursePrerequisite>? prerequisites,
     AppCurrency? currency,
     CourseStatus? status,
-    int? nextCourseId,
-    String? nextCourseTitle,
+    List<int>? nextCourseIds,
     List<int>? recommendedCourseIds,
-    bool clearNextCourse = false,
   }) => TeacherCourse(
     currency: currency ?? this.currency,
     status: status ?? this.status,
@@ -461,8 +458,7 @@ class TeacherCourse {
     certificates: certificates ?? this.certificates,
     tools: tools ?? this.tools,
     prerequisites: prerequisites ?? this.prerequisites,
-    nextCourseId: clearNextCourse ? null : (nextCourseId ?? this.nextCourseId),
-    nextCourseTitle: clearNextCourse ? null : (nextCourseTitle ?? this.nextCourseTitle),
+    nextCourseIds: nextCourseIds ?? this.nextCourseIds,
     recommendedCourseIds: recommendedCourseIds ?? this.recommendedCourseIds,
   );
 }

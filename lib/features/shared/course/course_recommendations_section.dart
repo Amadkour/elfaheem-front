@@ -1,213 +1,380 @@
 // features/shared/widgets/course_recommendations_section.dart
 //
-// Shown on the course-profile page for both students and teachers:
-//   • "Next Course" — the teacher's manually-set single follow-up course
-//     (a wide banner-style card), if any.
-//   • "You Might Also Like" — up to 5 cards combining the teacher's manual
-//     recommendations first, then backfilled with the top-rated courses in
-//     the same category (deduped, and never repeating the next course).
+// Teacher's course-profile FOOTER — one clearly-structured card with three
+// visually distinct categories, so it's obvious at a glance what's what:
+//   • Next Steps      — the teacher's own ORDERED roadmap (numbered mini
+//                        timeline), gradient/primary accent.
+//   • Your Picks      — courses the teacher manually recommended, gold
+//                        "PICK" badge (human-curated, high trust).
+//   • Suggested       — auto-picked by the system (same category, top
+//                        rated), teal "AUTO" badge (machine-curated, so it
+//                        reads as a lighter-weight suggestion than a pick).
+// Meant to sit as the last component on the page (a footer), so it's
+// wrapped in its own card rather than blending into whatever's above it.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../student/models.dart';
+import 'course_roadmap_section.dart';
+
+const _kPickGold = Color(0xFFC9971F);
+const _kPickGoldBg = Color(0xFFFFF6DF);
 
 class CourseRecommendationsSection extends StatelessWidget {
-  final CourseSummary? nextCourse;
+  final List<CourseSummary> nextCourses;
   final List<CourseSummary> recommendedCourses;
   final List<CourseSummary> similarCourses;
-  final ValueChanged<CourseSummary> onTapCourse;
 
-  const CourseRecommendationsSection({
+  /// next/recommended are guaranteed by the backend to be courses this
+  /// teacher owns — safe to open in the course-management screen.
+  final ValueChanged<CourseSummary> onTapOwnCourse;
+
+  /// similar/"suggested" courses come from OTHER teachers (same category,
+  /// top-rated) — must open a read-only preview, never the management screen.
+  final ValueChanged<CourseSummary> onTapSuggestedCourse;
+
+  CourseRecommendationsSection({
     super.key,
-    required this.nextCourse,
+    required this.nextCourses,
     required this.recommendedCourses,
     required this.similarCourses,
-    required this.onTapCourse,
+    required this.onTapOwnCourse,
+    required this.onTapSuggestedCourse,
   });
 
-  List<CourseSummary> get _combined {
-    final seen = <int>{if (nextCourse != null) nextCourse!.id};
-    final result = <CourseSummary>[];
-    for (final c in [...recommendedCourses, ...similarCourses]) {
-      if (seen.contains(c.id)) continue;
-      seen.add(c.id);
-      result.add(c);
-      if (result.length >= 5) break;
-    }
-    return result;
-  }
+  final ScrollController controller = ScrollController();
+  final ScrollController controller2 = ScrollController();
 
   @override
   Widget build(BuildContext context) {
-    final combined = _combined;
-    if (nextCourse == null && combined.isEmpty) return const SizedBox.shrink();
+    if (nextCourses.isEmpty &&
+        recommendedCourses.isEmpty &&
+        similarCourses.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (nextCourse != null) ...[
-          _SectionLabel(text: 'next_course_section_title'.tr),
-          const SizedBox(height: 10),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: _NextCourseBanner(
-              course: nextCourse!,
-              onTap: () => onTapCourse(nextCourse!),
-            ),
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 6),
+      decoration: BoxDecoration(
+        color: context.colors.cardBg,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: context.colors.divider, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
-          const SizedBox(height: 22),
         ],
-        if (combined.isNotEmpty) ...[
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: _SectionLabel(text: 'recommended_courses_section_title'.tr),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  gradient: context.colors.primaryGradient,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.route_rounded,
+                  size: 17,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'roadmap_recommendations_title'.tr,
+                style: context.colors.h3.copyWith(fontSize: 15),
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 190,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: combined.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (_, i) => _RecommendedCard(
-                course: combined[i],
-                onTap: () => onTapCourse(combined[i]),
+          const SizedBox(height: 18),
+          if (nextCourses.isNotEmpty) ...[
+            _CategoryLabel(
+              icon: Icons.timeline_rounded,
+              color: context.colors.primary,
+              text: 'next_steps_title'.tr,
+              caption: '${nextCourses.length}',
+            ),
+            const SizedBox(height: 14),
+            _NextStepsTimeline(courses: nextCourses, onTap: onTapOwnCourse),
+            const SizedBox(height: 20),
+            _SoftDivider(),
+            const SizedBox(height: 16),
+          ],
+          if (recommendedCourses.isNotEmpty) ...[
+            _CategoryLabel(
+              icon: Icons.star_rounded,
+              color: _kPickGold,
+              text: 'teacher_picks_section_title'.tr,
+              caption: 'teacher_picks_hint'.tr,
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 196,
+              child: Scrollbar(
+                controller: controller,
+                thumbVisibility: true,
+                // This keeps the 'cursor' visible
+                trackVisibility: true,
+                // Optional: shows the path of the scrollbar
+                child: ListView.separated(
+                  controller: controller,
+                  scrollDirection: Axis.horizontal,
+                  itemCount: recommendedCourses.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (_, i) => RecommendCourseCard(
+                    course: recommendedCourses[i],
+                    onTap: () => onTapOwnCourse(recommendedCourses[i]),
+                    badgeText: 'teacher_pick_badge'.tr,
+                    badgeColor: _kPickGold,
+                    badgeBg: _kPickGoldBg,
+                    badgeIcon: Icons.star_rounded,
+                    isDark: false,
+                  ),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 8),
+            const SizedBox(height: 20),
+            _SoftDivider(),
+            const SizedBox(height: 16),
+          ],
+          if (similarCourses.isNotEmpty) ...[
+            _CategoryLabel(
+              icon: Icons.auto_awesome_rounded,
+              color: context.colors.primary,
+              text: 'similar_courses_section_title'.tr,
+              caption: 'suggested_hint'.tr,
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 196,
+              child: Scrollbar(
+                controller: controller2,
+                thumbVisibility: true,
+                // This keeps the 'cursor' visible
+                trackVisibility: true,
+                // Optional: shows the path of the scrollbar
+                child: ListView.separated(
+                  controller: controller2,
+                  scrollDirection: Axis.horizontal,
+                  itemCount: similarCourses.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (_, i) => RecommendCourseCard(
+                    course: similarCourses[i],
+                    onTap: () => onTapSuggestedCourse(similarCourses[i]),
+                    badgeText: 'suggested_badge'.tr,
+                    badgeColor: context.colors.primary,
+                    badgeBg: context.colors.cardBg,
+                    badgeIcon: Icons.auto_awesome_rounded,
+                    isDark: false,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _SoftDivider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Divider(
+    height: 1,
+    thickness: 1,
+    color: context.colors.divider.withValues(alpha: 0.6),
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Category label — icon + title + a small caption that explains "why this
+// list exists" (count for the roadmap, a one-word trust hint for the rest)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CategoryLabel extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String text;
+  final String caption;
+
+  const _CategoryLabel({
+    required this.icon,
+    required this.color,
+    required this.text,
+    required this.caption,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 7),
+        Text(
+          text,
+          style: TextStyle(
+            fontFamily: 'tajawal',
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            color: context.colors.textDark,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            caption,
+            style: TextStyle(
+              fontFamily: 'tajawal',
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ),
       ],
     );
   }
 }
 
-class _SectionLabel extends StatelessWidget {
-  final String text;
-
-  const _SectionLabel({required this.text});
-
-  @override
-  Widget build(BuildContext context) => Row(
-        children: [
-          Container(
-            width: 4,
-            height: 18,
-            decoration: BoxDecoration(
-              gradient: context.colors.primaryGradient,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Text(text, style: context.colors.h3.copyWith(fontSize: 14)),
-        ],
-      );
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
-// Next course — wide banner card
+// Next steps — numbered mini timeline (this is the teacher's OWN ordered
+// roadmap, so it reads as a sequence, not a shelf of interchangeable cards)
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _NextCourseBanner extends StatelessWidget {
-  final CourseSummary course;
-  final VoidCallback onTap;
+class _NextStepsTimeline extends StatelessWidget {
+  final List<CourseSummary> courses;
+  final ValueChanged<CourseSummary> onTap;
 
-  const _NextCourseBanner({required this.course, required this.onTap});
+  const _NextStepsTimeline({required this.courses, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          gradient: context.colors.primaryGradient,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: context.colors.primaryShadow,
-        ),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: SizedBox(
-                width: 56,
-                height: 56,
-                child: course.imageUrl.isNotEmpty
-                    ? Image.network(
-                        course.imageUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const _ImageFallback(),
-                      )
-                    : const _ImageFallback(),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      clipBehavior: Clip.none,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (int i = 0; i < courses.length; i++) ...[
+            if (i > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 17),
+                child: SizedBox(
+                  width: 60,
+                  child: Divider(
+                    height: 2,
+                    thickness: 2,
+                    color: context.colors.primary.withValues(alpha: 0.35),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
+            GestureDetector(
+              onTap: () => onTap(courses[i]),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    'continue_with_label'.tr,
-                    style: TextStyle(
-                      fontFamily: 'tajawal',
-                      fontSize: 11,
-                      color: Colors.white.withValues(alpha: 0.8),
-                      fontWeight: FontWeight.w600,
+                  Container(
+                    width: 40,
+                    height: 34,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      gradient: context.colors.primaryGradient,
+                      shape: BoxShape.circle,
+                      boxShadow: context.colors.primaryShadow,
+                    ),
+                    child: Text(
+                      '${i + 1}',
+                      style: const TextStyle(
+                        fontFamily: 'tajawal',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    course.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontFamily: 'tajawal',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: 40,
+                    child: Text(
+                      courses[i].name,
+                      maxLines: 2,
+                      overflow: TextOverflow.visible,
+                      style: TextStyle(
+                        fontFamily: 'tajawal',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: context.colors.textDark,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.white),
           ],
-        ),
+        ],
       ),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Recommended / similar — compact vertical card in a horizontal strip
+// Course card — shared by "Your Picks" and "Suggested", distinguished only
+// by the badge (color/icon/label), so the two categories are still visually
+// legible as belonging to the same "recommendation" family.
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _RecommendedCard extends StatelessWidget {
+class RecommendCourseCard extends StatelessWidget {
   final CourseSummary course;
   final VoidCallback onTap;
+  final String badgeText;
+  final Color badgeColor;
+  final bool isDark;
+  final Color badgeBg;
+  final IconData badgeIcon;
 
-  const _RecommendedCard({required this.course, required this.onTap});
+  const RecommendCourseCard({
+    super.key,
+    required this.course,
+    required this.onTap,
+    required this.badgeText,
+    required this.badgeColor,
+    required this.badgeBg,
+    required this.badgeIcon,
+    required this.isDark,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 150,
+        width: 152,
         decoration: BoxDecoration(
           color: context.colors.cardBg,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(color: context.colors.divider, width: 0.8),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -215,16 +382,45 @@ class _RecommendedCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              height: 90,
-              width: double.infinity,
-              child: course.imageUrl.isNotEmpty
-                  ? Image.network(
-                      course.imageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const _ImageFallback(),
-                    )
-                  : const _ImageFallback(),
+            Stack(
+              children: [
+                SizedBox(
+                  height: 92,
+                  width: double.infinity,
+                  child: AppNetworkImage(url: course.imageUrl, isDark: isDark),
+                ),
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: badgeBg,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(badgeIcon, size: 11, color: badgeColor),
+                        const SizedBox(width: 3),
+                        Text(
+                          badgeText,
+                          style: TextStyle(
+                            fontFamily: 'tajawal',
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: badgeColor,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
             Padding(
               padding: const EdgeInsets.all(10),
@@ -246,7 +442,11 @@ class _RecommendedCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.star_rounded, size: 13, color: const Color(0xFFFFD700)),
+                      const Icon(
+                        Icons.star_rounded,
+                        size: 13,
+                        color: Color(0xFFFFD700),
+                      ),
                       const SizedBox(width: 2),
                       Text(
                         course.averageRating.toStringAsFixed(1),
@@ -277,16 +477,4 @@ class _RecommendedCard extends StatelessWidget {
       ),
     );
   }
-}
-
-class _ImageFallback extends StatelessWidget {
-  const _ImageFallback();
-
-  @override
-  Widget build(BuildContext context) => Container(
-        decoration: BoxDecoration(gradient: context.colors.accentGradient),
-        child: const Center(
-          child: Icon(Icons.school_rounded, size: 22, color: Colors.white70),
-        ),
-      );
 }

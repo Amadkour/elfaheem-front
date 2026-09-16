@@ -23,6 +23,7 @@ import 'component/section_card.dart';
 import 'component/currency_selector.dart';
 import 'component/course_progress_status_card.dart';
 import 'component/recommended_courses_field.dart';
+import 'component/next_courses_field.dart';
 import 'course_form_provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -65,7 +66,6 @@ class _CourseFormInnerState extends State<_CourseFormInner>
   late final TextEditingController _hoursCtrl;
   final ExpansibleController _categoryCtrl = ExpansibleController();
   final ExpansibleController _typeCtrl = ExpansibleController();
-  final ExpansibleController _nextCourseCtrl = ExpansibleController();
 
   XFile? _logoFile;
   Uint8List? _logoBytes;
@@ -488,54 +488,31 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                         icon: Icons.route_rounded,
                         title: 'course_relations_title'.tr,
                         children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  'next_course_label'.tr,
-                                  style: TextStyle(
-                                    fontFamily: 'bahji',
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.black.withValues(alpha: 0.55),
-                                  ),
-                                ),
-                              ),
-                              if (provider.selectedNextCourse != null)
-                                GestureDetector(
-                                  onTap: provider.clearNextCourse,
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.close_rounded,
-                                          size: 14,
-                                          color: context.colors.danger),
-                                      const SizedBox(width: 3),
-                                      Text(
-                                        'clear_btn'.tr,
-                                        style: TextStyle(
-                                          fontFamily: 'tajawal',
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w700,
-                                          color: context.colors.danger,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                            ],
+                          Text(
+                            'next_course_label'.tr,
+                            style: TextStyle(
+                              fontFamily: 'bahji',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black.withValues(alpha: 0.55),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'next_course_hint'.tr,
+                            style: TextStyle(
+                              fontFamily: 'tajawal',
+                              fontSize: 11,
+                              color: context.colors.textLight,
+                            ),
                           ),
                           const SizedBox(height: 8),
-                          MyPrimaryMenu(
-                            controller: _nextCourseCtrl,
-                            initValue: provider.selectedNextCourse,
-                            options: provider.otherCourses,
-                            haveLogo: false,
-                            onChange: (i) =>
-                                provider.onChangeNextCourse(i, _nextCourseCtrl),
-                            label: provider.otherCourses.isEmpty
-                                ? 'no_other_courses_yet'.tr
-                                : 'choose_next_course'.tr,
+                          NextCoursesField(
+                            selected: provider.selectedNextCourses,
+                            availableOptions: provider.availableNextCourseOptions,
+                            onAdd: provider.addNextCourse,
+                            onRemoveAt: provider.removeNextCourseAt,
+                            onReorder: provider.moveNextCourse,
                           ),
                           const SizedBox(height: 18),
                           Text(

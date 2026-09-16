@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // AppNetworkImage
 // Drop-in replacement — same constructor, adds optional [enableFullscreen].
@@ -14,6 +15,7 @@ class AppNetworkImage extends StatelessWidget {
   final BorderRadius? borderRadius;
   final Color? color;
   final EdgeInsets padding;
+  final bool isDark;
 
   /// When true, tapping the image opens a full-screen zoom viewer.
   final bool enableFullscreen;
@@ -33,40 +35,35 @@ class AppNetworkImage extends StatelessWidget {
     this.padding = EdgeInsets.zero,
     this.enableFullscreen = true,
     this.heroTag,
+     this.isDark=false,
   });
 
   @override
   Widget build(BuildContext context) {
     final tag = heroTag ?? url;
 
-    Widget img = Image.network(
+    Widget img =url.isNotEmpty?Image.network(
       url,
       width: width,
       height: height,
       fit: fit,
-      errorBuilder: (_, _, _) => Container(
-        width: width,
-        height: height,
-        color:color ?? context.colors.cardBg,
-        child: Center(
-          child: Image.asset(
-            'assets/images/logo.png',
-            fit: fit,
-          ),
-        ),
-      ),
+      errorBuilder: (_, _, _) =>SizedBox(
+          width: width,
+          height: height,
+          child: ImageFallback(dark: isDark,)),
       loadingBuilder: (_, child, progress) {
         if (progress == null) return child;
         return Container(
           width: width,
           height: height,
           color: color ?? context.colors.cardBg,
-          child: Center(
-            child: AppLoadingIndicator(),
-          ),
+          child: Center(child: AppLoadingIndicator()),
         );
       },
-    );
+    ):SizedBox(
+        width: width,
+        height: height,
+        child: ImageFallback(dark: isDark,));
 
     // Wrap in Hero for smooth shared-element transition
     if (enableFullscreen) {
@@ -96,10 +93,8 @@ class AppNetworkImage extends StatelessWidget {
       PageRouteBuilder(
         opaque: false,
         barrierColor: Colors.transparent,
-        pageBuilder: (_, _, _) => _FullscreenImageViewer(
-          url: url,
-          heroTag: heroTag,
-        ),
+        pageBuilder: (_, _, _) =>
+            _FullscreenImageViewer(url: url, heroTag: heroTag),
         transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(
             opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
@@ -116,10 +111,7 @@ class AppNetworkImage extends StatelessWidget {
 // Full-screen viewer with pinch-to-zoom, double-tap, and pan
 // ─────────────────────────────────────────────────────────────────────────────
 class _FullscreenImageViewer extends StatefulWidget {
-  const _FullscreenImageViewer({
-    required this.url,
-    required this.heroTag,
-  });
+  const _FullscreenImageViewer({required this.url, required this.heroTag});
 
   final String url;
   final Object heroTag;
@@ -132,7 +124,7 @@ class _FullscreenImageViewerState extends State<_FullscreenImageViewer>
     with TickerProviderStateMixin {
   // ── Transform state ───────────────────────────────────────────────
   final TransformationController _transformController =
-  TransformationController();
+      TransformationController();
 
   // ── Animations ────────────────────────────────────────────────────
   late AnimationController _doubleTapAnimController;
@@ -165,7 +157,7 @@ class _FullscreenImageViewerState extends State<_FullscreenImageViewer>
     // Keep track of scale for drag-to-dismiss guard
     _transformController.addListener(() {
       final scale = _transformController.value.getMaxScaleOnAxis();
-      if (mounted) if(mounted) setState(() => _currentScale = scale);
+      if (mounted) if (mounted) setState(() => _currentScale = scale);
     });
 
     // Hide status bar for immersive view
@@ -189,15 +181,13 @@ class _FullscreenImageViewerState extends State<_FullscreenImageViewer>
         ? Matrix4.identity()
         : _zoomedMatrix(details.localPosition);
 
-    _doubleTapAnimation = Matrix4Tween(
-      begin: _transformController.value,
-      end: end,
-    ).animate(
-      CurvedAnimation(
-        parent: _doubleTapAnimController,
-        curve: Curves.easeInOutCubic,
-      ),
-    );
+    _doubleTapAnimation =
+        Matrix4Tween(begin: _transformController.value, end: end).animate(
+          CurvedAnimation(
+            parent: _doubleTapAnimController,
+            curve: Curves.easeInOutCubic,
+          ),
+        );
 
     _doubleTapAnimController.forward(from: 0);
     _doubleTapAnimation!.addListener(() {
@@ -223,8 +213,7 @@ class _FullscreenImageViewerState extends State<_FullscreenImageViewer>
       _isDragging = true;
       _dragOffset += d.delta.dy;
       // Dim background proportionally
-      final progress =
-      (_dragOffset.abs() / _dismissThreshold).clamp(0.0, 1.0);
+      final progress = (_dragOffset.abs() / _dismissThreshold).clamp(0.0, 1.0);
       _bgAnimController.value = 1.0 - progress * 0.7;
     });
   }
@@ -250,15 +239,16 @@ class _FullscreenImageViewerState extends State<_FullscreenImageViewer>
   // ── Reset zoom on tap (when zoomed in, single tap resets) ─────────
   void _onSingleTap() {
     if (_currentScale > 1.02) {
-      _doubleTapAnimation = Matrix4Tween(
-        begin: _transformController.value,
-        end: Matrix4.identity(),
-      ).animate(
-        CurvedAnimation(
-          parent: _doubleTapAnimController,
-          curve: Curves.easeInOutCubic,
-        ),
-      );
+      _doubleTapAnimation =
+          Matrix4Tween(
+            begin: _transformController.value,
+            end: Matrix4.identity(),
+          ).animate(
+            CurvedAnimation(
+              parent: _doubleTapAnimController,
+              curve: Curves.easeInOutCubic,
+            ),
+          );
       _doubleTapAnimController.forward(from: 0);
       _doubleTapAnimation!.addListener(() {
         _transformController.value = _doubleTapAnimation!.value;
@@ -275,7 +265,7 @@ class _FullscreenImageViewerState extends State<_FullscreenImageViewer>
     return AnimatedBuilder(
       animation: _bgAnimController,
       builder: (_, child) => Scaffold(
-        backgroundColor: Colors.black.withValues(alpha:opacity),
+        backgroundColor: Colors.black.withValues(alpha: opacity),
         body: Stack(
           children: [
             // ── Background tap to dismiss ────────────────────────
@@ -289,20 +279,20 @@ class _FullscreenImageViewerState extends State<_FullscreenImageViewer>
 
             // ── Image with pan + zoom + drag-to-dismiss ──────────
             GestureDetector(
-              onVerticalDragUpdate:
-              isAtBaseScale ? _onVerticalDragUpdate : null,
-              onVerticalDragEnd:
-              isAtBaseScale ? _onVerticalDragEnd : null,
+              onVerticalDragUpdate: isAtBaseScale
+                  ? _onVerticalDragUpdate
+                  : null,
+              onVerticalDragEnd: isAtBaseScale ? _onVerticalDragEnd : null,
               onDoubleTapDown: _onDoubleTapDown,
-              onDoubleTap: () {}, // required to trigger onDoubleTapDown
+              onDoubleTap: () {},
+              // required to trigger onDoubleTapDown
               onTap: _onSingleTap,
               child: AnimatedContainer(
                 duration: _isDragging
                     ? Duration.zero
                     : const Duration(milliseconds: 300),
                 curve: Curves.easeOutCubic,
-                transform: Matrix4.translationValues(
-                    0, verticalShift, 0),
+                transform: Matrix4.translationValues(0, verticalShift, 0),
                 child: SizedBox.expand(
                   child: InteractiveViewer(
                     transformationController: _transformController,
@@ -324,7 +314,7 @@ class _FullscreenImageViewerState extends State<_FullscreenImageViewer>
                             if (progress == null) return child;
                             final value = progress.expectedTotalBytes != null
                                 ? progress.cumulativeBytesLoaded /
-                                progress.expectedTotalBytes!
+                                      progress.expectedTotalBytes!
                                 : null;
                             return Center(
                               child: Column(
@@ -344,7 +334,7 @@ class _FullscreenImageViewerState extends State<_FullscreenImageViewer>
                                         fontSize: 12,
                                       ),
                                     ),
-                                  ]
+                                  ],
                                 ],
                               ),
                             );
@@ -378,8 +368,7 @@ class _FullscreenImageViewerState extends State<_FullscreenImageViewer>
                       ),
                     ),
                     // Zoom level pill
-                    if (_currentScale > 1.05)
-                      _ZoomPill(scale: _currentScale),
+                    if (_currentScale > 1.05) _ZoomPill(scale: _currentScale),
                   ],
                 ),
               ),
@@ -418,6 +407,7 @@ class _FullscreenImageViewerState extends State<_FullscreenImageViewer>
 // ─────────────────────────────────────────────────────────────────────────────
 class _GlassButton extends StatelessWidget {
   const _GlassButton({required this.onTap, required this.child});
+
   final VoidCallback onTap;
   final Widget child;
 
@@ -430,8 +420,8 @@ class _GlassButton extends StatelessWidget {
         height: 40,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors.black.withValues(alpha:0.45),
-          border: Border.all(color: Colors.white.withValues(alpha:0.15)),
+          color: Colors.black.withValues(alpha: 0.45),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
         ),
         child: Center(child: child),
       ),
@@ -441,6 +431,7 @@ class _GlassButton extends StatelessWidget {
 
 class _ZoomPill extends StatelessWidget {
   const _ZoomPill({required this.scale});
+
   final double scale;
 
   @override
@@ -448,9 +439,9 @@ class _ZoomPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha:0.5),
+        color: Colors.black.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha:0.15)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
       ),
       child: Text(
         '${scale.toStringAsFixed(1)}×',
@@ -463,4 +454,35 @@ class _ZoomPill extends StatelessWidget {
       ),
     );
   }
+}
+
+class ImageFallback extends StatelessWidget {
+  final bool dark;
+
+  const ImageFallback({super.key, this.dark = false});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    decoration: BoxDecoration(
+      gradient: dark
+          ? LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: darkImageBackground(context),
+            )
+          : context.colors.accentGradient,
+    ),
+    child: const Center(
+      child: Icon(Icons.school_rounded, size: 22, color: Colors.white70),
+    ),
+  );
+}
+
+List<Color> darkImageBackground(BuildContext context) {
+  final primary = context.colors.primary;
+  return [
+    Color.lerp(primary, Colors.black, 0.80)!,
+    Color.lerp(primary, Color(0xFFFFD700), 0.28)!,
+    Color.lerp(primary, Colors.black, 0.32)!,
+  ];
 }

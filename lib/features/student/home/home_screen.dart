@@ -184,7 +184,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                 pageName: 'home-my-courses',
                                 isTeacher: false,
                                 onTap: (CourseModel c) {
-                                  print("---------------------mmmm");
                                   Navigator.pushNamed(
                                     context,
                                     '/course-detail',

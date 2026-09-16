@@ -58,7 +58,8 @@ import '../../shared/session/material/components/session_progress_section.dart';
 import '../../teacher/courses/course_form_screen.dart';
 import '../../teacher/sessions/components/session_form_sheet.dart';
 import '../home/teacher_models.dart';
-import '../../student/models.dart' show CourseSummary;
+import '../../student/models.dart' show CourseModel, CourseSummary;
+import '../../student/courses/details/course_detail_screen.dart';
 import 'components/course_details_section.dart';
 import 'components/course_hero.dart';
 import 'components/course_stats_row.dart';
@@ -87,6 +88,18 @@ void _openOwnCoursePreview(BuildContext context, CourseSummary summary) {
         create: (_) => TeacherCourseScreenProvider(initialCourse: stub),
         child: const TeacherSessionsScreen(),
       ),
+    ),
+  );
+}
+
+/// Opens a SYSTEM-SUGGESTED "similar course" (same category, top-rated —
+/// belongs to another teacher, never this one) as a read-only preview.
+/// Deliberately does NOT reuse the course-management screen, which would
+/// show edit/session controls this teacher has no permission to use.
+void _openForeignCoursePreview(BuildContext context, CourseSummary summary) {
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => CourseDetailScreen(course: CourseModel.fromSummary(summary)),
     ),
   );
 }
@@ -223,6 +236,7 @@ class _TeacherSessionsView extends StatelessWidget {
                         icon: CupertinoIcons.list_bullet_below_rectangle,
                         title: 'course_details'.tr,
                         color: const Color(0xFF4DA6FF),
+                        course: course,
                         children: [
                           // ── Rating ──────────────────────────────
                           RatingWidget(
@@ -269,10 +283,11 @@ class _TeacherSessionsView extends StatelessWidget {
                   builder: (context, course, _) => Padding(
                     padding: const EdgeInsets.only(top: 8, bottom: 24),
                     child: CourseRecommendationsSection(
-                      nextCourse: course.nextCourseSummary,
+                      nextCourses: course.nextCourses,
                       recommendedCourses: course.recommendedCourseSummaries,
-                      similarCourses: const [],
-                      onTapCourse: (s) => _openOwnCoursePreview(context, s),
+                      similarCourses: course.similarCourses,
+                      onTapOwnCourse: (s) => _openOwnCoursePreview(context, s),
+                      onTapSuggestedCourse: (s) => _openForeignCoursePreview(context, s),
                     ),
                   ),
                 ),

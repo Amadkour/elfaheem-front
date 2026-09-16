@@ -2,37 +2,66 @@
 //
 // Student-facing course-profile "footer" — deliberately a different,
 // bolder visual language than the plain teacher-facing
-// CourseRecommendationsSection: a dark indigo/gold "journey" card showing
-// where the student is (this course) and where they can go next, followed
-// by a Netflix-style premium card strip for recommended + similar courses.
+// CourseRecommendationsSection: a premium "journey" card (background tinted
+// from the app's own primary color, so it stays on-brand rather than an
+// arbitrary color) showing the student's path — recent completed courses →
+// this course → the teacher's ordered "next steps" roadmap — followed by a
+// Netflix-style premium card strip for recommended + similar courses.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 
 import '../../../config/app_config.dart';
+import '../../../config/theme/theme_config_provider.dart';
+import '../../student/home/component/course_row.dart';
 import '../../student/models.dart';
+import 'course_recommendations_section.dart';
 
 const _kRoadmapGold = Color(0xFFFFD700);
 const _kRoadmapGoldSoft = Color(0xFFE8C878);
 
+/// Background derives from the app's own primary color (not an arbitrary
+/// hue) so the roadmap reads as part of the course-profile page's identity
+/// rather than a bolted-on component — just darkened/deepened for the
+/// contrast a "premium journey" card needs against white roadmap text.
+List<Color> darkRoadmapGradientColors(BuildContext context) {
+  final primary = context.colors.primary;
+  return [
+    Color.lerp(primary, Colors.black, 0.80)!,
+    Color.lerp(primary, Colors.black, 0.58)!,
+    Color.lerp(primary, Colors.black, 0.32)!,
+  ];
+}
+
+enum _NodeState { completed, current, next, muted }
+
 class CourseRoadmapSection extends StatelessWidget {
   final String currentCourseName;
-  final CourseSummary? nextCourse;
+  final ScrollController controller = ScrollController();
+
+  /// Most-recent-first, as returned by the backend. Displayed oldest→newest
+  /// (reversed) so the path reads left-to-right chronologically.
+  final List<CourseSummary> recentCompletedCourses;
+
+  /// The teacher's ORDERED forward roadmap — step 1, step 2, …
+  final List<CourseSummary> nextCourses;
   final List<CourseSummary> recommendedCourses;
   final List<CourseSummary> similarCourses;
   final ValueChanged<CourseSummary> onTapCourse;
 
-  const CourseRoadmapSection({
+   CourseRoadmapSection({
     super.key,
     required this.currentCourseName,
-    required this.nextCourse,
+    this.recentCompletedCourses = const [],
+    required this.nextCourses,
     required this.recommendedCourses,
     required this.similarCourses,
     required this.onTapCourse,
   });
 
   List<CourseSummary> get _combined {
-    final seen = <int>{if (nextCourse != null) nextCourse!.id};
+    final seen = <int>{for (final c in nextCourses) c.id};
     final result = <CourseSummary>[];
     for (final c in [...recommendedCourses, ...similarCourses]) {
       if (seen.contains(c.id)) continue;
@@ -46,21 +75,27 @@ class CourseRoadmapSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final combined = _combined;
-    if (nextCourse == null && combined.isEmpty) return const SizedBox.shrink();
+    if (nextCourses.isEmpty &&
+        combined.isEmpty &&
+        recentCompletedCourses.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final gradientColors = darkRoadmapGradientColors(context);
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.fromLTRB(0, 8, 0, 8),
+      padding: const EdgeInsets.symmetric(vertical: 20,horizontal: 10),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF1E1B4B), Color(0xFF3B2E7A), Color(0xFF4C1D95)],
+          colors: gradientColors,
         ),
         borderRadius: BorderRadius.circular(26),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF4C1D95).withValues(alpha: 0.35),
+            color: context.colors.primary.withValues(alpha: 0.35),
             blurRadius: 28,
             offset: const Offset(0, 14),
           ),
@@ -78,7 +113,11 @@ class CourseRoadmapSection extends StatelessWidget {
                   color: _kRoadmapGold.withValues(alpha: 0.16),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.map_rounded, size: 18, color: _kRoadmapGold),
+                child: const Icon(
+                  Icons.map_rounded,
+                  size: 18,
+                  color: _kRoadmapGold,
+                ),
               ),
               const SizedBox(width: 10),
               Text(
@@ -94,9 +133,10 @@ class CourseRoadmapSection extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           _RoadmapPath(
+            completedCourses: recentCompletedCourses,
             currentCourseName: currentCourseName,
-            nextCourse: nextCourse,
-            onTapNext: nextCourse == null ? null : () => onTapCourse(nextCourse!),
+            nextCourses: nextCourses,
+            onTapCourse: onTapCourse,
           ),
           if (combined.isNotEmpty) ...[
             const SizedBox(height: 24),
@@ -116,16 +156,29 @@ class CourseRoadmapSection extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 14),
-            SizedBox(
-              height: 220,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                clipBehavior: Clip.none,
-                itemCount: combined.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 14),
-                itemBuilder: (_, i) => _PremiumCourseCard(
-                  course: combined[i],
-                  onTap: () => onTapCourse(combined[i]),
+            Scrollbar(
+              controller: controller,
+              thumbVisibility: true,
+              trackVisibility: true,
+              child: SizedBox(
+                height: 220,
+                child: ListView.separated(
+                  controller: controller,
+                  scrollDirection: Axis.horizontal,
+                  clipBehavior: Clip.none,
+                  itemCount: combined.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 7),
+                  itemBuilder: (_, i) =>
+                      RecommendCourseCard(
+                        course:  combined[i],
+                        onTap: () => onTapCourse(combined[i]),
+                        badgeText: 'suggested_badge'.tr,
+                        badgeColor: context.colors.primary,
+                        badgeBg: context.colors.cardBg,
+                        badgeIcon: Icons.auto_awesome_rounded,
+                        isDark: true,
+                      ),
+
                 ),
               ),
             ),
@@ -137,74 +190,110 @@ class CourseRoadmapSection extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// The path: "you are here" → next course
+// The path: completed course(s) → you are here → ordered next-step roadmap
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _RoadmapPath extends StatelessWidget {
+  final List<CourseSummary> completedCourses; // most-recent-first
   final String currentCourseName;
-  final CourseSummary? nextCourse;
-  final VoidCallback? onTapNext;
+  final List<CourseSummary> nextCourses; // ordered
+  final ValueChanged<CourseSummary> onTapCourse;
 
   const _RoadmapPath({
+    required this.completedCourses,
     required this.currentCourseName,
-    required this.nextCourse,
-    required this.onTapNext,
+    required this.nextCourses,
+    required this.onTapCourse,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    final completedOldestFirst = completedCourses.reversed.toList();
+
+    final children = <Widget>[];
+
+    for (final c in completedOldestFirst) {
+      children.add(
         _RoadmapNode(
-          label: currentCourseName,
-          caption: 'roadmap_you_are_here'.tr,
+          label: c.name,
+          caption: 'roadmap_completed_label'.tr,
           icon: Icons.check_circle_rounded,
-          active: true,
+          state: _NodeState.completed,
         ),
-        Padding(
-          padding: const EdgeInsets.only(top: 22),
-          child: _RoadmapConnector(dim: nextCourse == null),
-        ),
-        nextCourse != null
-            ? GestureDetector(
-          onTap: onTapNext,
-          child: _RoadmapNode(
-            label: nextCourse!.name,
-            caption: 'roadmap_next_up'.tr,
-            icon: Icons.arrow_forward_rounded,
-            active: false,
-          ),
-        )
-            : _RoadmapNode(
+      );
+      children.add(const _RoadmapConnector(state: _NodeState.completed));
+    }
+
+    children.add(
+      _RoadmapNode(
+        label: currentCourseName,
+        caption: 'roadmap_you_are_here'.tr,
+        icon: Icons.play_circle_fill_rounded,
+        state: _NodeState.current,
+      ),
+    );
+
+    if (nextCourses.isEmpty) {
+      children.add(const _RoadmapConnector(state: _NodeState.muted));
+      children.add(
+        _RoadmapNode(
           label: 'roadmap_more_coming_soon'.tr,
           caption: '',
           icon: Icons.hourglass_top_rounded,
-          active: false,
-          muted: true,
+          state: _NodeState.muted,
         ),
-      ],
+      );
+    } else {
+      for (final c in nextCourses) {
+        children.add(const _RoadmapConnector(state: _NodeState.next));
+        children.add(
+          GestureDetector(
+            onTap: () => onTapCourse(c),
+            child: _RoadmapNode(
+              label: c.name,
+              caption: 'roadmap_next_up'.tr,
+              icon: Icons.arrow_forward_rounded,
+              state: _NodeState.next,
+            ),
+          ),
+        );
+      }
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      clipBehavior: Clip.none,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
+      ),
     );
   }
 }
 
 class _RoadmapConnector extends StatelessWidget {
-  final bool dim;
+  final _NodeState state;
 
-  const _RoadmapConnector({required this.dim});
+  const _RoadmapConnector({required this.state});
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-        width: context.width/4,
+  Widget build(BuildContext context) {
+    final color = switch (state) {
+      _NodeState.completed => _kRoadmapGold.withValues(alpha: 0.7),
+      _NodeState.next => _kRoadmapGold.withValues(alpha: 0.55),
+      _ => Colors.white.withValues(alpha: 0.15),
+    };
+    return Padding(
+      padding: const EdgeInsets.only(top: 20),
+      child: SizedBox(
+        width: 50,
         child: CustomPaint(
-          size:  Size(context.width/4, 2),
-          painter: _DashedLinePainter(
-            color: dim
-                ? Colors.white.withValues(alpha: 0.15)
-                : _kRoadmapGold.withValues(alpha: 0.7),
-          ),
+          size: const Size(50, 2),
+          painter: _DashedLinePainter(color: color),
         ),
-      );
+      ),
+    );
+  }
 }
 
 class _DashedLinePainter extends CustomPainter {
@@ -236,182 +325,77 @@ class _RoadmapNode extends StatelessWidget {
   final String label;
   final String caption;
   final IconData icon;
-  final bool active;
-  final bool muted;
+  final _NodeState state;
 
   const _RoadmapNode({
     required this.label,
     required this.caption,
     required this.icon,
-    required this.active,
-    this.muted = false,
+    required this.state,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? _kRoadmapGold : (muted ? Colors.white38 : Colors.white);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: active
-                ? _kRoadmapGold.withValues(alpha: 0.18)
-                : Colors.white.withValues(alpha: 0.08),
-            border: Border.all(
-              color: active ? _kRoadmapGold : Colors.white24,
-              width: 1.4,
+    final isCurrent = state == _NodeState.current;
+    final isCompleted = state == _NodeState.completed;
+    final isMuted = state == _NodeState.muted;
+
+    final accent = isMuted ? Colors.white38 : _kRoadmapGold;
+    final iconColor = isMuted
+        ? Colors.white38
+        : (isCurrent ? Colors.white : accent);
+
+    return SizedBox(
+      width: 40,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isCurrent
+                  ? _kRoadmapGold
+                  : (isCompleted
+                        ? _kRoadmapGold.withValues(alpha: 0.18)
+                        : Colors.white.withValues(alpha: 0.08)),
+              border: Border.all(
+                color: isMuted ? Colors.white24 : _kRoadmapGold,
+                width: 1.4,
+              ),
+            ),
+            child: Icon(
+              icon,
+              size: 18,
+              color: isCurrent ? const Color(0xFF1E1B4B) : iconColor,
             ),
           ),
-          child: Icon(icon, size: 18, color: color),
-        ),
-        const SizedBox(height: 8),
-        if (caption.isNotEmpty)
+          const SizedBox(height: 8),
+          if (caption.isNotEmpty)
+            Text(
+              caption,
+              style: TextStyle(
+                fontFamily: 'tajawal',
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: isMuted ? Colors.white38 : _kRoadmapGoldSoft,
+                letterSpacing: 0.4,
+              ),
+            ),
+          const SizedBox(height: 2),
           Text(
-            caption,
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.visible,
             style: TextStyle(
               fontFamily: 'tajawal',
-              fontSize: 10,
+              fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: active ? _kRoadmapGoldSoft : Colors.white54,
-              letterSpacing: 0.4,
+              color: isMuted ? Colors.white38 : Colors.white,
             ),
           ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontFamily: 'tajawal',
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: muted ? Colors.white38 : Colors.white,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Premium (Netflix-style) course card: full-bleed image, gradient overlay,
-// text/rating/price floated over the bottom.
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _PremiumCourseCard extends StatelessWidget {
-  final CourseSummary course;
-  final VoidCallback onTap;
-
-  const _PremiumCourseCard({required this.course, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 152,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.35),
-              blurRadius: 14,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            course.imageUrl.isNotEmpty
-                ? Image.network(
-                    course.imageUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(color: const Color(0xFF2D2A5C)),
-                  )
-                : Container(color: const Color(0xFF2D2A5C)),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.55),
-                    Colors.black.withValues(alpha: 0.92),
-                  ],
-                  stops: const [0.35, 0.7, 1.0],
-                ),
-              ),
-            ),
-            Positioned(
-              top: 8,
-              right: 8,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.55),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.star_rounded, size: 12, color: _kRoadmapGold),
-                    const SizedBox(width: 2),
-                    Text(
-                      course.averageRating.toStringAsFixed(1),
-                      style: const TextStyle(
-                        fontFamily: 'tajawal',
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Positioned(
-              left: 10,
-              right: 10,
-              bottom: 12,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    course.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontFamily: 'tajawal',
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      height: 1.25,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    course.currency.format(course.price),
-                    style: const TextStyle(
-                      fontFamily: 'tajawal',
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: _kRoadmapGold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }

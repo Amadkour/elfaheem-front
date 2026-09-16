@@ -195,7 +195,7 @@ class _RecommendedCoursesPickerState extends State<_RecommendedCoursesPicker> {
                   final id = o['id'] as int;
                   final checked = _local.contains(id);
                   return Material(
-                    color: Colors.transparent,
+                    // color: Colors.transparent,
                     child: CheckboxListTile(
                       value: checked,
                       title: Text(

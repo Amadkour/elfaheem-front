@@ -4,12 +4,14 @@
 // Purely presentational — receives a [TeacherCourse] and renders itself.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/student/models.dart' show CourseSummary;
 import 'package:flutter_education_app/features/teacher/schedules/schedules_screen.dart';
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../shared/course/course_recommendations_section.dart';
-import '../../../student/models.dart' show CourseSummary;
+import '../../../student/models.dart' show CourseSummary, CourseModel;
 import '../../courses/component/certificate_manager_sheet.dart';
 import '../../home/teacher_models.dart';
 
@@ -33,19 +35,22 @@ class _AddButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
               boxShadow: context.colors.primaryShadow,
             ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              const Icon(Icons.add_rounded, color: Colors.white, size: 18),
-              const SizedBox(width: 6),
-              Text(
-                'add_schedule'.tr,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'tajawal',
-                  fontSize: 12,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.add_rounded, color: Colors.white, size: 18),
+                const SizedBox(width: 6),
+                Text(
+                  'add_schedule'.tr,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'tajawal',
+                    fontSize: 12,
+                  ),
                 ),
-              ),
-            ]),
+              ],
+            ),
           ),
         ),
       ],
@@ -100,12 +105,32 @@ class CourseDetailsSection extends StatelessWidget {
         // if (course.schedules.isNotEmpty)
         DetailCard(
           expanded: false,
+          course: course,
+          onSetting:course.schedules.isEmpty?null:(){   Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) =>
+                  TeacherSchedulesScreen(course: course),
+            ),
+          );},
           icon: Icons.calendar_month_rounded,
           title: 'weekly_schedule'.tr,
           color: const Color(0xFF4DA6FF),
-          children:course.schedules.isEmpty? <Widget>[_AddButton(onTap: ()  {Navigator.push(context, MaterialPageRoute(builder: (_)=>TeacherSchedulesScreen(course: course,))); })]: course.schedules
-              .map((s) => _ScheduleRow(schedule: s))
-              .toList(),
+          children: course.schedules.isEmpty
+              ? <Widget>[
+                  _AddButton(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              TeacherSchedulesScreen(course: course),
+                        ),
+                      );
+                    },
+                  ),
+                ]
+              : course.schedules.map((s) => _ScheduleRow(schedule: s)).toList(),
         ),
 
         if (course.prerequisites.isNotEmpty) ...[
@@ -114,6 +139,7 @@ class CourseDetailsSection extends StatelessWidget {
             expanded: false,
             icon: Icons.checklist_rounded,
             title: 'prerequisites'.tr,
+            course: course,
             color: const Color(0xFFFF9F43),
             children: course.prerequisites
                 .map((p) => _BulletRow(text: p.title))
@@ -127,6 +153,7 @@ class CourseDetailsSection extends StatelessWidget {
             expanded: false,
             icon: Icons.build_rounded,
             title: 'required_tools'.tr,
+            course: course,
             color: const Color(0xFF1DB954),
             children: course.tools
                 .map((t) => _BulletRow(text: t.name))
@@ -141,24 +168,24 @@ class CourseDetailsSection extends StatelessWidget {
             icon: Icons.workspace_premium_rounded,
             title: 'certificates'.tr,
             color: const Color(0xFFFFD700),
+             course: course,
             children: course.certificates
                 .map((c) => _CertificateRow(cert: c, courseId: course.id))
                 .toList(),
           ),
         ],
 
-        if (course.nextCourseSummary != null ||
-            course.recommendedCourseSummaries.isNotEmpty ||
-            course.similarCourses.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          CourseRecommendationsSection(
-            nextCourse: course.nextCourseSummary,
-            recommendedCourses: course.recommendedCourseSummaries,
-            similarCourses: course.similarCourses,
-            onTapCourse: onTapRecommendedCourse ?? (_) {},
-          ),
-        ],
-
+        // if (course.nextCourseIds.isNotEmpty ||
+        //     course.recommendedCourseSummaries.isNotEmpty ||
+        //     course.similarCourses.isNotEmpty) ...[
+        //   const SizedBox(height: 16),
+        //   CourseRecommendationsSection(
+        //     nextCourses: course.nextCourses,
+        //     recommendedCourses: course.recommendedCourseSummaries,
+        //     similarCourses: course.similarCourses,
+        //     onTapCourse: onTapRecommendedCourse ?? (_) {},
+        //   ),
+        // ],
         const SizedBox(height: 4),
       ],
     );
@@ -175,13 +202,17 @@ class DetailCard extends StatefulWidget {
   final Color color;
   final List<Widget> children;
   final bool expanded;
-
-  const DetailCard({super.key,
+  final TeacherCourse course;
+final Function()? onSetting;
+  const DetailCard({
+    super.key,
     required this.icon,
     required this.title,
     required this.color,
     required this.children,
     required this.expanded,
+    this.onSetting,
+    required this.course,
   });
 
   @override
@@ -276,6 +307,22 @@ class _DetailCardState extends State<DetailCard>
                     ),
                   ),
                   // Count badge
+                  if(widget.onSetting!=null)
+                  GestureDetector(
+                    onTap: () =>    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            TeacherSchedulesScreen(course: widget.course),
+                      ),
+                    ),
+                    child: Icon(
+                     CupertinoIcons.settings,
+                     size: 25,
+                     color: widget.color,
+                                              ),
+                  ),
+                  SizedBox(width: 15,),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
@@ -327,10 +374,10 @@ class _DetailCardState extends State<DetailCard>
                     children: widget.children
                         .map(
                           (child) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: child,
-                      ),
-                    )
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: child,
+                          ),
+                        )
                         .toList(),
                   ),
                 ),
@@ -485,8 +532,6 @@ class _CertificateRow extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.send_rounded, size: 12, color: Color(0xFFB8860B)),
-                const SizedBox(width: 4),
                 Text(
                   'manage_certificate_btn'.tr,
                   style: const TextStyle(
@@ -495,6 +540,12 @@ class _CertificateRow extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     color: Color(0xFFB8860B),
                   ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.send_rounded,
+                  size: 12,
+                  color: Color(0xFFB8860B),
                 ),
               ],
             ),

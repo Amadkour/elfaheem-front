@@ -36,10 +36,6 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      print("=============================");
-      print(topRouteObserver.previousRouteName);
-      print("=============================");
-
       if (context.read<TeacherProvider>().allCourses.isEmpty ||
           topRouteObserver.previousRouteName == '/login') {
         context.read<TeacherProvider>().init();
@@ -122,7 +118,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                           child: loading
                               ? const CoursesShimmer()
                               : CoursesRow(
-                                  courses: provider.allCourses
+                                  courses: provider.allCourses.take(5)
                                       .map((e) => e.toCourseModel)
                                       .toList(),
                                   isTeacher: context

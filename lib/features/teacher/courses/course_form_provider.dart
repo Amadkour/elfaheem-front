@@ -106,23 +106,41 @@ class CourseFormProvider extends BaseProvider {
     notifyListeners();
   }
 
-  // ── Next course / recommended courses ───────────────────────────────────
+  // ── Next courses (ORDERED roadmap) / recommended courses ─────────────────
   // Populated from the teacher's own other courses (GET /my-courses), since
   // both fields may only reference courses this teacher owns.
 
   List<Map<String, dynamic>> otherCourses = [];
-  Map<String, dynamic>? selectedNextCourse;
+
+  /// Ordered — index 0 is step 1 of the roadmap, index 1 is step 2, etc.
+  List<Map<String, dynamic>> selectedNextCourses = [];
   Set<int> selectedRecommendedCourseIds = {};
 
-  void onChangeNextCourse(int i, ExpansibleController ctrl) {
-    ctrl.collapse();
-    selectedNextCourse = otherCourses[i];
+  /// Options not already chosen as a next-course step (so the picker
+  /// doesn't offer the same course twice).
+  List<Map<String, dynamic>> get availableNextCourseOptions {
+    final chosen = selectedNextCourses.map((c) => c['id']).toSet();
+    return otherCourses.where((c) => !chosen.contains(c['id'])).toList();
+  }
+
+  void addNextCourse(Map<String, dynamic> course) {
+    selectedNextCourses = [...selectedNextCourses, course];
     _listsChanged = true;
     notifyListeners();
   }
 
-  void clearNextCourse() {
-    selectedNextCourse = null;
+  void removeNextCourseAt(int index) {
+    selectedNextCourses = [...selectedNextCourses]..removeAt(index);
+    _listsChanged = true;
+    notifyListeners();
+  }
+
+  void moveNextCourse(int from, int to) {
+    if (to < 0 || to >= selectedNextCourses.length) return;
+    final updated = [...selectedNextCourses];
+    final item = updated.removeAt(from);
+    updated.insert(to, item);
+    selectedNextCourses = updated;
     _listsChanged = true;
     notifyListeners();
   }
@@ -149,17 +167,12 @@ class CourseFormProvider extends BaseProvider {
     notifyListeners();
   }
 
-  void _restoreNextCourse(TeacherCourse course) {
-    if (course.nextCourseId == null) {
-      selectedNextCourse = null;
-      return;
-    }
-    try {
-      selectedNextCourse =
-          otherCourses.firstWhere((c) => c['id'] == course.nextCourseId);
-    } catch (_) {
-      selectedNextCourse = null;
-    }
+  void _restoreNextCourses(TeacherCourse course) {
+    final byId = {for (final c in otherCourses) c['id']: c};
+    selectedNextCourses = course.nextCourseIds
+        .where(byId.containsKey)
+        .map((id) => byId[id]!)
+        .toList();
   }
 
   // ── Form list state ──────────────────────────────────────────────────────
@@ -192,7 +205,7 @@ class CourseFormProvider extends BaseProvider {
     selectedSpecialization = null;
     selectedTeachingType = null;
     selectedCurrency = AppCurrency.egp;
-    selectedNextCourse = null;
+    selectedNextCourses = [];
     selectedRecommendedCourseIds = {};
     _listsChanged = false;
     _pendingSchedules = [];
@@ -224,7 +237,7 @@ class CourseFormProvider extends BaseProvider {
       _loadOtherCourses(excludeCourseId: course.id),
     ]);
     _restoreSpecialization(course);
-    _restoreNextCourse(course);
+    _restoreNextCourses(course);
     notifyListeners();
   }
 
@@ -368,7 +381,7 @@ class CourseFormProvider extends BaseProvider {
       if (selectedSpecialization?['id'] != null)
       'category_id': selectedSpecialization!['id'],
       'total_hours': ?totalHours,
-      'next_course_id': selectedNextCourse?['id'],
+      'next_course_ids': selectedNextCourses.map((c) => c['id']).toList(),
       'recommended_course_ids': selectedRecommendedCourseIds.toList(),
       },
       ),
@@ -444,7 +457,7 @@ class CourseFormProvider extends BaseProvider {
       if (selectedSpecialization?['id'] != null)
       'category_id': selectedSpecialization!['id'],
       'total_hours': ?totalHours,
-      'next_course_id': selectedNextCourse?['id'],
+      'next_course_ids': selectedNextCourses.map((c) => c['id']).toList(),
       'recommended_course_ids': selectedRecommendedCourseIds.toList(),
       },
       ),

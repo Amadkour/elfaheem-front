@@ -3456,5 +3456,53 @@
   "roadmap_explore_more_title": {
     "en": "Explore More",
     "ar": "اكتشف المزيد"
+  },
+  "next_course_hint": {
+    "en": "Build a step-by-step path — add courses in the order students should take them next.",
+    "ar": "اصنع مسارًا تدريجيًا — أضف الكورسات بالترتيب الذي يجب أن يأخذها الطلاب به بعد هذا الكورس."
+  },
+  "add_roadmap_step_btn": {
+    "en": "Add a next course",
+    "ar": "أضف كورسًا تاليًا"
+  },
+  "add_another_roadmap_step_btn": {
+    "en": "Add another step",
+    "ar": "أضف خطوة أخرى"
+  },
+  "roadmap_completed_label": {
+    "en": "COMPLETED",
+    "ar": "مكتمل"
+  },
+  "roadmap_recommendations_title": {
+    "en": "Roadmap & Recommendations",
+    "ar": "خارطة الطريق والتوصيات"
+  },
+  "next_steps_title": {
+    "en": "Next Steps",
+    "ar": "الخطوات التالية"
+  },
+  "teacher_picks_section_title": {
+    "en": "Your Picks",
+    "ar": "اختياراتك"
+  },
+  "teacher_picks_hint": {
+    "en": "curated by you",
+    "ar": "من اختيارك"
+  },
+  "teacher_pick_badge": {
+    "en": "PICK",
+    "ar": "مُختار"
+  },
+  "similar_courses_section_title": {
+    "en": "Suggested For This Course",
+    "ar": "مقترحات لهذا الكورس"
+  },
+  "suggested_hint": {
+    "en": "auto-suggested",
+    "ar": "اقتراح تلقائي"
+  },
+  "suggested_badge": {
+    "en": "SUGGESTED",
+    "ar": "مقترح"
   }
 }
