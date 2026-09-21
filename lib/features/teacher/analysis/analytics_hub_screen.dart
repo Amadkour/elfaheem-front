@@ -1,15 +1,11 @@
-// features/teacher/dashboard/analytics/analytics_hub_screen.dart
-// Replaces the old analytics_hub_screen.dart — Tab 3 in TeacherDashboardScreen
 library;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
-import '../../../config/theme/app_theme.dart';
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
+import '../courses/teacher_courses_provider.dart';
 import '../home/teacher_models.dart';
-import '../home/teacher_provider.dart';
 import 'attendance/teacher_attendance_screen.dart';
 import 'exam/teacher_exam_hub_screen.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
@@ -38,7 +34,7 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final prov = context.watch<TeacherProvider>();
+    final prov = context.watch<TeacherCoursesProvider>();
     final filtered = _search.isEmpty
         ? prov.allCourses
         : prov.allCourses

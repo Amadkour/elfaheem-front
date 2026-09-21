@@ -5,13 +5,14 @@ import '../../../../config/theme/theme_config_provider.dart';
 class SectionHeader extends StatelessWidget {
   final String title;
   final String? actionLabel;
+  final Widget? icon;
   final VoidCallback? onAction;
 
   const SectionHeader({
     super.key,
     required this.title,
     this.actionLabel,
-    this.onAction,
+    this.onAction, this.icon,
   });
 
   @override
@@ -37,7 +38,7 @@ class SectionHeader extends StatelessWidget {
                 padding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
 
-                child: Text(
+                child: icon??  Text(
                   actionLabel!,
                   style: context.colors.label.copyWith(
                     color: context.colors.primaryDark,

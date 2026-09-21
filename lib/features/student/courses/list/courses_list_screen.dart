@@ -40,7 +40,7 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
     super.initState();
     if (widget.openSearch) {
       WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _focusNode.requestFocus(),
+            (_) => _focusNode.requestFocus(),
       );
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -72,16 +72,35 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
               onChanged: provider.setQuery,
             ),
             Expanded(
-              child: HomeCourseList(
-                hasMore: false,
-                courses: provider.filteredCourses,
-                onTap: (CourseModel c) {
-                  Navigator.pushNamed(context, '/course-detail', arguments: c);
+              child: NotificationListener<ScrollNotification>(
+                onNotification: (n) {
+                  if (n.metrics.pixels >= n.metrics.maxScrollExtent - 300) {
+                    context.read<MyCoursesProvider>().loadMore();
+                  }
+                  return false;
                 },
-                isTeacher: false,
-                pageName: widget.forMyCourses
-                    ? 'my-courses-profile'
-                    : 'other-courses-profile',
+                child: Stack(
+                  children: [
+                    HomeCourseList(
+                      hasMore: provider.hasMore,
+                      courses: provider.filteredCourses,
+                      onTap: (CourseModel c) {
+                        Navigator.pushNamed(context, '/course-detail', arguments: c);
+                      },
+                      isTeacher: false,
+                      pageName: widget.forMyCourses
+                          ? 'my-courses-profile'
+                          : 'other-courses-profile',
+                    ),
+                    if (provider.isLoadingMore)
+                      const Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 12,
+                        child: Center(child: _LoadMorePill()),
+                      ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -115,6 +134,56 @@ class _EmptyState extends StatelessWidget {
         Text(
           message,
           style: context.colors.body.copyWith(fontWeight: FontWeight.w600),
+        ),
+      ],
+    ),
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Small floating pill shown while the next page of a list is loading.
+// Overlaid at the bottom of the scrollable rather than appended after it, so
+// it works regardless of the internal layout of whatever list widget it sits
+// on top of (HomeCourseList here).
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _LoadMorePill extends StatelessWidget {
+  const _LoadMorePill();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    decoration: BoxDecoration(
+      color: context.colors.cardBg,
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.12),
+          blurRadius: 12,
+          offset: const Offset(0, 4),
+        ),
+      ],
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 14,
+          height: 14,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation(context.colors.primary),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          'loading_more'.tr,
+          style: TextStyle(
+            fontFamily: 'tajawal',
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: context.colors.textMedium,
+          ),
         ),
       ],
     ),

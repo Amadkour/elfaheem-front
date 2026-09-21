@@ -9,7 +9,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/profile/components/setting_group.dart';
 import 'package:flutter_education_app/features/shared/profile/student_favorite_screen.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_provider.dart';
+import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
@@ -135,12 +135,12 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                                 onTap: () => _push(
                                   InstructorProfileScreen(
                                     teacher: context
-                                        .read<TeacherProvider>()
+                                        .read<TeacherHomeProvider>()
                                         .stats
                                         .teacher!,
                                     studentView: false,
                                     stats: context
-                                        .read<TeacherProvider>()
+                                        .read<TeacherHomeProvider>()
                                         .stats,
                                   ),
                                 ),

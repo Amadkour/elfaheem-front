@@ -1,50 +1,63 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// teacher_provider.dart
+// teacher_courses_provider.dart
 //
-// Owns ONLY the teacher dashboard / course-list state.
-// All form state (create / update) lives in CourseFormProvider (scoped to
-// the form route and auto-disposed on pop).
+// Owns the full teacher course list: fetching, filtering, and course CRUD
+// (create/update sync from the form, publish/unpublish, delete).
 //
-// PERFORMANCE REFACTOR
+// PROVIDER SPLIT
 // ─────────────────────────────────────────────────────────────────────────
-// `queue_work_items.dart`'s per-second schedule ticker calls back into this
-// provider once a scheduled session crosses its start time, to pull fresh
-// dashboard data. It previously called `init()`, which routes through
-// `run()` with `makLoading: true` (the default) — flipping `state` to
-// `ProviderState.loading` and notifying every listener. Any screen watching
-// this provider (the whole teacher home dashboard) would flash a full-screen
-// loading state at a random moment purely because a background timer ticked
-// past a boundary, with no user action involved.
+// Split out of the old `TeacherProvider`, which also carried the home
+// dashboard's stats, home-grid course preview, and schedule. Those now live
+// in `teacher_home_provider.dart`'s `TeacherHomeProvider`. Browsing,
+// filtering, publishing, or deleting a course here no longer notifies (or
+// risks rebuilding) the home dashboard.
 //
-// Added `refreshSilently()`, which does the exact same dashboard fetch but
-// skips the loading state entirely, so a background refresh updates data in
-// place without interrupting whatever the teacher is currently looking at.
+// [onCoursesChanged] is an optional hook the owning screen can wire up so a
+// mutation here (create/update/publish/unpublish/delete) can tell the
+// teacher home dashboard its stats/preview are stale — without this
+// provider holding a hard reference to `TeacherHomeProvider`. See
+// `TeacherCoursesScreen.initState` for how it's wired.
 // ─────────────────────────────────────────────────────────────────────────
 
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
-import '../courses/component/teacher_stats.dart';
-import 'teacher_models.dart';
+import '../home/teacher_models.dart';
 
-class TeacherProvider extends BaseProvider {
+class TeacherCoursesProvider extends BaseProvider {
   final ApiClient _api;
 
-  TeacherProvider({ApiClient? api}) : _api = api ?? ApiClient();
+  /// Fired after any mutation (create/update/publish/unpublish/delete) so
+  /// an owning screen can refresh other providers (e.g. the teacher home
+  /// dashboard) without a hard dependency between the two providers.
+  void Function()? onCoursesChanged;
 
-  // ── Dashboard state ──────────────────────────────────────────────────────
+  TeacherCoursesProvider({ApiClient? api, this.onCoursesChanged})
+      : _api = api ?? ApiClient();
 
-  TeacherStats _stats = const TeacherStats();
+  // ── Course list state ────────────────────────────────────────────────────
+
   List<TeacherCourse> _allCourses = [];
-  List<ScheduleSession> _schedule = [];
   TeacherCourseStatus _activeFilter = TeacherCourseStatus.all;
 
-  TeacherStats get stats => _stats;
+  /// Page size used by [goToNextPage]/[goToPreviousPage]/[fetchPage]. The
+  /// screen's footer paginates in units of this.
+  static const int pageSize = 10;
+
+  int _currentPage = 0;
+  bool _hasMore = true;
+
+  int get currentPage => _currentPage;
+
+  /// Whether a page after the current one is known to exist — inferred
+  /// from the last fetch returning a full page (the endpoint has no
+  /// total-count field to read this from directly).
+  bool get hasMore => _hasMore;
+
+  bool get hasPreviousPage => _currentPage > 0;
 
   TeacherCourseStatus get activeFilter => _activeFilter;
 
   List<TeacherCourse> get allCourses => List.unmodifiable(_allCourses);
-
-  List<ScheduleSession> get schedule => List.unmodifiable(_schedule);
 
   List<TeacherCourse> get filteredCourses => switch (_activeFilter) {
     TeacherCourseStatus.all => _allCourses,
@@ -58,50 +71,45 @@ class TeacherProvider extends BaseProvider {
       _allCourses.where((c) => c.id == id).firstOrNull;
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Bootstrap
+  // Fetch
   // ─────────────────────────────────────────────────────────────────────────
 
-  Future<void> init() => _fetchDashboard();
-
-  /// Same fetch as [init], but never puts the provider into
-  /// [ProviderState.loading]. Use this for background/automatic refreshes
-  /// (e.g. a scheduled session crossing its start time) where flashing a
-  /// full-screen loading state would be jarring and isn't tied to any user
-  /// action.
-  Future<void> refreshSilently() => _fetchDashboard(silent: true);
-
-  Future<void> _fetchDashboard({bool silent = false}) async {
-    final result = await run(
-          () => _api.get('/api/v1/teacher/dashboard'),
-      makLoading: !silent,
-    );
-    if (result is Map<String, dynamic>) {
-      final data = TeacherDashboardData.fromJson(result);
-      _stats = data.stats;
-      _allCourses = data.courses;
-      _schedule = data.schedule;
-      notifyListeners();
-    }
-  }
-  Future<void> fetchMyCourses({int skip = 0, int limit = 50}) async {
+  Future<void> fetchMyCourses({int skip = 0, int limit = pageSize}) async {
     final result = await run(() => _api.get(
       '/api/v1/my-courses',
       queryParams: {'skip': skip, 'limit': limit},
     ));
     if (result is List) {
-
       _allCourses = result
           .map((e) => TeacherCourse.fromJson(e as Map<String, dynamic>))
           .toList();
-      _updateStats();
+      // A full page came back, so there's likely at least one more.
+      // Anything short of that is the last page.
+      _hasMore = result.length == limit;
       notifyListeners();
     }
   }
 
+  /// Fetches a specific page (0-based) using [pageSize], and updates
+  /// [currentPage] so the footer reflects where we are.
+  Future<void> fetchPage(int page) async {
+    if (page < 0 || isLoading) return;
+    _currentPage = page;
+    await fetchMyCourses(skip: page * pageSize, limit: pageSize);
+  }
+
+  Future<void> goToNextPage() async {
+    if (!_hasMore || isLoading) return;
+    await fetchPage(_currentPage + 1);
+  }
+
+  Future<void> goToPreviousPage() async {
+    if (!hasPreviousPage || isLoading) return;
+    await fetchPage(_currentPage - 1);
+  }
+
   Future<TeacherCourse?> fetchCourseById(int courseId) async {
-    final result = await run(() => _api.get(
-      '/api/v1/courses/$courseId',
-    ));
+    final result = await run(() => _api.get('/api/v1/courses/$courseId'));
     if (result is Map<String, dynamic>) {
       return TeacherCourse.fromJson(result);
     }
@@ -115,8 +123,8 @@ class TeacherProvider extends BaseProvider {
   /// Prepend a newly created course to the list.
   void onCourseCreated(TeacherCourse course) {
     _allCourses = [course, ..._allCourses];
-    _updateStats();
     notifyListeners();
+    onCoursesChanged?.call();
   }
 
   /// Replace an updated course in the list.
@@ -124,6 +132,7 @@ class TeacherProvider extends BaseProvider {
     _allCourses =
         _allCourses.map((c) => c.id == course.id ? course : c).toList();
     notifyListeners();
+    onCoursesChanged?.call();
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -145,6 +154,7 @@ class TeacherProvider extends BaseProvider {
     await run(() => _api.post('/api/v1/courses/$courseId/publish'));
     if (result != null) {
       _updateLocalPublish(courseId, isPublished: true);
+      onCoursesChanged?.call();
       return true;
     }
     return false;
@@ -155,74 +165,24 @@ class TeacherProvider extends BaseProvider {
     await run(() => _api.post('/api/v1/courses/$courseId/unpublish'));
     if (result != null) {
       _updateLocalPublish(courseId, isPublished: false);
+      onCoursesChanged?.call();
       return true;
     }
     return false;
   }
 
   Future<bool> deleteCourse(int courseId) async {
-    await run(() => _api.delete('/api/v1/courses/$courseId',queryParams: {'force':true}));
+    await run(() => _api.delete(
+      '/api/v1/courses/$courseId',
+      queryParams: {'force': true},
+    ));
     if (state == ProviderState.success) {
       _allCourses = _allCourses.where((c) => c.id != courseId).toList();
-      _updateStats();
       notifyListeners();
+      onCoursesChanged?.call();
       return true;
     }
     return false;
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Live-session helpers  (home-screen "start session" button)
-  // ─────────────────────────────────────────────────────────────────────────
-
-  Future<int> createSession({
-    required int courseId,
-    required String name,
-    required int durationMinutes,
-    String? description,
-  }) async {
-    final result = await run(() => _api.post(
-      '/api/v1/sessions',
-      body: {
-        'course_id': courseId,
-        'name': name,
-        'type': 'live',
-        'duration_minutes': durationMinutes,
-        if (description != null && description.isNotEmpty)
-          'description': description,
-      },
-    ));
-    return result['id'] as int;
-  }
-
-  Future<String?> startLiveSession(
-      int sessionId, {
-        bool enableRecording = true,
-        int durationHours = 24,
-      }) async {
-    final result = await run(() => _api.post(
-      '/api/v1/live-sessions/start',
-      queryParams: {
-        'session_id': sessionId,
-        'enable_recording': enableRecording,
-        'duration_hours': durationHours,
-      },
-    ));
-    if (result is Map<String, dynamic>) {
-      return result['meeting_url'] as String? ??
-          result['room_url'] as String? ??
-          result['url'] as String?;
-    }
-    return null;
-  }
-
-  Future<bool> endLiveSession(int sessionId,
-      {bool saveRecording = true}) async {
-    final result = await run(() => _api.post(
-      '/api/v1/live-sessions/$sessionId/end',
-      queryParams: {'save_recording': saveRecording},
-    ));
-    return result != null;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -231,16 +191,9 @@ class TeacherProvider extends BaseProvider {
 
   void _updateLocalPublish(int courseId, {required bool isPublished}) {
     _allCourses = _allCourses
-        .map((c) => c.id == courseId ? c.copyWith(isPublished: isPublished) : c)
+        .map((c) =>
+    c.id == courseId ? c.copyWith(isPublished: isPublished) : c)
         .toList();
     notifyListeners();
   }
-
-  void _updateStats() {
-    _stats = _stats.copyWith(
-      totalStudents: _allCourses.fold(0, (s, c) => (s!) + c.studentsCount),
-      totalCourses: _allCourses.length,
-    );
-  }
-
 }

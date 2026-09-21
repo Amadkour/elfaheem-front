@@ -3,6 +3,7 @@ library;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/teacher/courses/teacher_courses_provider.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart'
     show TeacherCourseStatus, TeacherCourse;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -13,12 +14,13 @@ import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_network_image.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../student/courses/details/components/app_responsive.dart';
-import '../home/teacher_provider.dart';
+import '../home/teacher_home_provider.dart';
 import '../schedules/schedules_screen.dart';
 import '../sessions/sessions_provider.dart';
 import '../sessions/sessions_screen.dart';
 import 'course_form_screen.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+
 class TeacherCoursesScreen extends StatefulWidget {
   const TeacherCoursesScreen({super.key});
 
@@ -28,28 +30,45 @@ class TeacherCoursesScreen extends StatefulWidget {
 
 class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
   @override
+  void initState() {
+    super.initState();
+    final courses = context.read<TeacherCoursesProvider>();
+    // Any mutation made from this screen (create/update/publish/delete)
+    // marks the home dashboard's stats + course preview stale, so it
+    // refetches next time it's shown — without a hard dependency between
+    // the two providers.
+    courses.onCoursesChanged =
+        () => context.read<TeacherHomeProvider>().refreshSilently();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (courses.allCourses.isEmpty) courses.fetchPage(0);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final p = context.watch<TeacherProvider>();
+    final p = context.watch<TeacherCoursesProvider>();
 
     return BasePage(
       useWebCard: true,
-      appBar: ScreenAppBar(title: 'my_courses'.tr, showBack: !kIsWeb),
+      appBar: ScreenAppBar(
+        title: '${'my_courses'.tr} ${p.filteredCourses.length}',
+        showBack: !kIsWeb,
+      ),
       floatingActionButton: context.showSidebar ? null : _FloatingAddBtn(),
       child: SafeArea(
         bottom: false,
-        child: p.isLoading
-            ? Center(
-                child:AppLoadingIndicator(),
-              )
+        child: p.isLoading && p.allCourses.isEmpty
+            ? Center(child: AppLoadingIndicator())
             : Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 4),
-                  _FilterTabs(p: p),
-                  const SizedBox(height: 10),
-                  Expanded(child: _CourseList(p: p)),
-                ],
-              ),
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 4),
+            _FilterTabs(p: p),
+            const SizedBox(height: 10),
+            Expanded(child: _CourseList(p: p)),
+            _PaginationFooter(p: p),
+          ],
+        ),
       ),
     );
   }
@@ -167,7 +186,7 @@ class _AddCourseButton extends StatelessWidget {
 class _FilterTabs extends StatelessWidget {
   const _FilterTabs({required this.p});
 
-  final TeacherProvider p;
+  final TeacherCoursesProvider p;
   static const _tabs = [
     (TeacherCourseStatus.all, 'filter_all', Icons.apps_rounded),
     (TeacherCourseStatus.published, 'filter_published', Icons.public_rounded),
@@ -198,18 +217,18 @@ class _FilterTabs extends StatelessWidget {
             final active = p.activeFilter == status;
             return Expanded(
               child: GestureDetector(
-                onTap: () => context.read<TeacherProvider>().setFilter(status),
+                onTap: () => context.read<TeacherCoursesProvider>().setFilter(status),
                 child: Container(
                   //  duration: const Duration(milliseconds: 220),
                   decoration: BoxDecoration(
                     // gradient: active ? context.colors.primaryGradient : null,
                     border: active
                         ? Border(
-                            bottom: BorderSide(
-                              color: context.colors.primaryDark,
-                              width: 1,
-                            ),
-                          )
+                      bottom: BorderSide(
+                        color: context.colors.primaryDark,
+                        width: 1,
+                      ),
+                    )
                         : null,
                   ),
                   child: Padding(
@@ -259,16 +278,14 @@ class _FilterTabs extends StatelessWidget {
 class _CourseList extends StatelessWidget {
   const _CourseList({required this.p});
 
-  final TeacherProvider p;
+  final TeacherCoursesProvider p;
 
   @override
   Widget build(BuildContext context) {
     final isWide = context.showSidebar;
 
     if (p.isLoading && p.filteredCourses.isEmpty) {
-      return Center(
-        child: AppLoadingIndicator(),
-      );
+      return Center(child: AppLoadingIndicator());
     }
 
     final courses = p.filteredCourses;
@@ -276,7 +293,7 @@ class _CourseList extends StatelessWidget {
 
     return RefreshIndicator(
       color: context.colors.primary,
-      onRefresh: () => p.fetchMyCourses(),
+      onRefresh: () => p.fetchPage(p.currentPage),
       child: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
@@ -284,12 +301,12 @@ class _CourseList extends StatelessWidget {
           child: isWide
               ? _TwoColumnMasonry(courses: courses)
               : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
-                  physics: const BouncingScrollPhysics(),
-                  itemCount: courses.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 14),
-                  itemBuilder: (_, i) => _CourseCard(course: courses[i]),
-                ),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+            physics: const BouncingScrollPhysics(),
+            itemCount: courses.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 14),
+            itemBuilder: (_, i) => _CourseCard(course: courses[i]),
+          ),
         ),
       ),
     );
@@ -322,10 +339,10 @@ class _TwoColumnMasonry extends StatelessWidget {
               children: left
                   .map(
                     (c) => Padding(
-                      padding: const EdgeInsets.only(bottom: 14),
-                      child: _CourseCard(course: c),
-                    ),
-                  )
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: _CourseCard(course: c),
+                ),
+              )
                   .toList(),
             ),
           ),
@@ -335,10 +352,10 @@ class _TwoColumnMasonry extends StatelessWidget {
               children: right
                   .map(
                     (c) => Padding(
-                      padding: const EdgeInsets.only(bottom: 14),
-                      child: _CourseCard(course: c),
-                    ),
-                  )
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: _CourseCard(course: c),
+                ),
+              )
                   .toList(),
             ),
           ),
@@ -498,7 +515,7 @@ class _CourseCardState extends State<_CourseCard> {
       ),
     );
     if (ok == true && mounted) {
-      final deleted = await context.read<TeacherProvider>().deleteCourse(
+      final deleted = await context.read<TeacherCoursesProvider>().deleteCourse(
         widget.course.id,
       );
       if (mounted && deleted) {
@@ -520,7 +537,7 @@ class _CourseCardState extends State<_CourseCard> {
   }
 
   Future<void> _togglePublish() async {
-    final p = context.read<TeacherProvider>();
+    final p = context.read<TeacherCoursesProvider>();
     await (widget.course.isPublished
         ? p.unpublishCourse(widget.course.id)
         : p.publishCourse(widget.course.id));
@@ -530,17 +547,24 @@ class _CourseCardState extends State<_CourseCard> {
   Widget build(BuildContext context) {
     final c = widget.course;
     final isDraft = !c.isPublished;
+    final statusColor =
+    isDraft ? const Color(0xFFf59e0b) : context.colors.accent2;
 
     return Container(
       decoration: BoxDecoration(
         color: context.colors.cardBg,
-        borderRadius: BorderRadius.circular(20),
-        //  border: Border.all(color: context.colors.primaryDark),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: statusColor.withValues(alpha: 0.32), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: context.colors.primary.withValues(alpha: 0.7),
-            blurRadius: 1.5,
-            offset: const Offset(0, 0.4),
+            color: statusColor.withValues(alpha: 0.16),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -549,7 +573,8 @@ class _CourseCardState extends State<_CourseCard> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── Full-width 16:9 thumbnail with overlaid actions ──────────
+          // ── Full-width 16:9 thumbnail with a bottom gradient scrim and
+          //    floating status / type / rating chips ────────────────────
           Stack(
             children: [
               AspectRatio(
@@ -561,6 +586,52 @@ class _CourseCardState extends State<_CourseCard> {
                   heroTag: "courses-screen-${c.id}",
                 ),
               ),
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: const [0.55, 1.0],
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.45),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 10,
+                left: 10,
+                child: _GlassChip(
+                  icon: c.type == 'live'
+                      ? Icons.podcasts_rounded
+                      : Icons.play_circle_fill_rounded,
+                  label: c.type == 'live' ? 'live'.tr : 'recorded'.tr,
+                  dark: true,
+                ),
+              ),
+              Positioned(
+                top: 10,
+                right: 10,
+                child: _GlassChip(
+                  icon: isDraft ? Icons.drafts_rounded : Icons.public_rounded,
+                  label: isDraft ? 'status_draft'.tr : 'status_published'.tr,
+                  color: statusColor,
+                ),
+              ),
+              if (c.rateSummary != null)
+                Positioned(
+                  bottom: 10,
+                  left: 10,
+                  child: _GlassChip(
+                    icon: Icons.star_rounded,
+                    label: c.rateSummary!.average.toStringAsFixed(1),
+                    color: context.colors.accent,
+                    dark: true,
+                  ),
+                ),
             ],
           ),
 
@@ -576,7 +647,7 @@ class _CourseCardState extends State<_CourseCard> {
               ),
             ),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -584,7 +655,7 @@ class _CourseCardState extends State<_CourseCard> {
                   Text(
                     c.title,
                     style: context.colors.h3.copyWith(
-                      fontSize: 14,
+                      fontSize: 15,
                       fontWeight: FontWeight.w800,
                     ),
                     maxLines: 2,
@@ -635,60 +706,60 @@ class _CourseCardState extends State<_CourseCard> {
             curve: Curves.easeInOut,
             child: _expanded
                 ? Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Divider(
-                        height: 1,
-                        color: Colors.black.withValues(alpha: 0.07),
-                      ),
-                      _ExtrasPanel(course: c),
-                    ],
-                  )
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Divider(
+                  height: 1,
+                  color: Colors.black.withValues(alpha: 0.07),
+                ),
+                _ExtrasPanel(course: c),
+              ],
+            )
                 : const SizedBox.shrink(),
           ),
 
-          // ── Publish / unpublish ──────────────────────────────────────
+          Divider(height: 1, color: Colors.black.withValues(alpha: 0.06)),
+
+          // ── Premium management toolbar ────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
             child: Row(
               children: [
                 Expanded(
-                  flex: 3,
-                  child: _StatusBadge(isDraft: isDraft),
-                  // _PublishButton(isDraft: isDraft, onTap: _togglePublish),
-                ),
-                SizedBox(width: 5),
-                Container(
-                  height: 40,
-                  width: 40,
-                  margin: EdgeInsets.symmetric(vertical: 10, horizontal: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.all(Radius.circular(7)),
-                    border: Border.all(color: Colors.red),
-                  ),
-                  child: IconButton(
-                    onPressed: _confirmDelete,
-                    icon: Icon(Icons.delete, color: Colors.red, size: 20),
-                  ),
-                ),
-                SizedBox(width: 5),
-                _OverlayBtn(
-                  icon: Icons.edit_rounded,
-                  color: context.colors.primaryDark,
-                  onTap: () {
-                    Navigator.of(context).push(
+                  child: _ToolbarAction(
+                    icon: Icons.edit_rounded,
+                    label: 'edit'.tr,
+                    color: context.colors.primaryDark,
+                    onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => CourseFormScreen(course: c),
                       ),
-                    );
-                  },
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: _ToolbarAction(
+                    icon: isDraft
+                        ? Icons.upload_rounded
+                        : Icons.visibility_off_rounded,
+                    label: isDraft ? 'publish_course'.tr : 'unpublish_course'.tr,
+                    color: statusColor,
+                    filled: true,
+                    onTap: _togglePublish,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _ToolbarAction(
+                  icon: Icons.delete_rounded,
+                  color: Colors.red,
+                  onTap: _confirmDelete,
+                  iconOnly: true,
                 ),
               ],
             ),
           ),
-
-          _PublishButton(isDraft: isDraft, onTap: _togglePublish),
         ],
       ),
     );
@@ -710,26 +781,26 @@ class _StatsGrid extends StatelessWidget {
     final rows = [
       [
         (
-          Icons.people_alt_rounded,
-          '${c.studentsCount} ${'student'.tr}',
-          context.colors.primary,
+        Icons.people_alt_rounded,
+        '${c.studentsCount} ${'student'.tr}',
+        context.colors.primary,
         ),
         (
-          Icons.video_library_rounded,
-          '${c.sessionsCount} ${'session'.tr}',
-          const Color(0xFF185FA5),
+        Icons.video_library_rounded,
+        '${c.sessionsCount} ${'session'.tr}',
+        const Color(0xFF185FA5),
         ),
       ],
       [
         (
-          Icons.access_time_rounded,
-          '${c.totalHours.toStringAsFixed(0)}${'h'.tr}',
-          const Color(0xFFBA7517),
+        Icons.access_time_rounded,
+        '${c.totalHours.toStringAsFixed(0)}${'h'.tr}',
+        const Color(0xFFBA7517),
         ),
         (
-          Icons.star_rounded,
-          c.rateSummary?.average.toStringAsFixed(1),
-          context.colors.accent,
+        Icons.star_rounded,
+        c.rateSummary?.average.toStringAsFixed(1),
+        context.colors.accent,
         ),
       ],
     ];
@@ -793,114 +864,112 @@ class _StatCell extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  Status badge
+//  Glass chip — floats on top of the thumbnail (status / type / rating)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-class _StatusBadge extends StatelessWidget {
-  final bool isDraft;
-
-  const _StatusBadge({required this.isDraft});
-
-  @override
-  Widget build(BuildContext context) => Container(
-    height: 40,
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(8),
-      border: Border.all(
-        color: isDraft ? const Color(0xFFf59e0b) : context.colors.accent2,
-      ),
-    ),
-    child: Text(
-      isDraft ? 'status_draft'.tr : 'status_published'.tr,
-      textAlign: TextAlign.center,
-      style: TextStyle(
-        color: isDraft ? const Color(0xFFf59e0b) : context.colors.accent2,
-        fontSize: 16,
-        fontWeight: FontWeight.w800,
-        fontFamily: 'bahji',
-      ),
-    ),
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-//  Overlay button (sits on top of the thumbnail image)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-class _OverlayBtn extends StatelessWidget {
+class _GlassChip extends StatelessWidget {
   final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
+  final String label;
+  final Color? color;
+  final bool dark;
 
-  const _OverlayBtn({
+  const _GlassChip({
     required this.icon,
-    required this.color,
-    required this.onTap,
+    required this.label,
+    this.color,
+    this.dark = false,
   });
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      width: 40,
-      height: 40,
+  Widget build(BuildContext context) {
+    final c = color ?? context.colors.primaryDark;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: context.colors.primaryDark),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+        color: dark ? Colors.black.withValues(alpha: 0.45) : Colors.white.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: c.withValues(alpha: dark ? 0.55 : 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: dark ? Colors.white : c),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'bahji',
+              fontSize: 10.5,
+              fontWeight: FontWeight.w800,
+              color: dark ? Colors.white : c,
+            ),
           ),
         ],
       ),
-      child: Icon(icon, color: color, size: 15),
-    ),
-  );
+    );
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  Publish button
+//  Toolbar action — one button in the card's bottom management bar
 // ═══════════════════════════════════════════════════════════════════════════════
 
-class _PublishButton extends StatelessWidget {
-  final bool isDraft;
+class _ToolbarAction extends StatelessWidget {
+  final IconData icon;
+  final String? label;
+  final Color color;
   final VoidCallback onTap;
+  final bool filled;
+  final bool iconOnly;
 
-  const _PublishButton({required this.isDraft, required this.onTap});
+  const _ToolbarAction({
+    required this.icon,
+    this.label,
+    required this.color,
+    required this.onTap,
+    this.filled = false,
+    this.iconOnly = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    Color primaryColor = isDraft ? context.colors.primaryDark : Colors.red;
+    final content = Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 17, color: filled ? Colors.white : color),
+        if (!iconOnly && label != null) ...[
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'bahji',
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: filled ? Colors.white : color,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 40,
-        decoration: BoxDecoration(color: primaryColor),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isDraft ? Icons.upload_rounded : Icons.visibility_off_rounded,
-              color: Colors.white,
-              size: 16,
-            ),
-            const SizedBox(width: 7),
-            Text(
-              isDraft ? 'publish_course'.tr : 'unpublish_course'.tr,
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-                fontFamily: 'bahji',
-              ),
-            ),
-          ],
+        height: 42,
+        width: iconOnly ? 42 : null,
+        padding: iconOnly ? null : const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: filled ? color : color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: filled ? null : Border.all(color: color.withValues(alpha: 0.35)),
         ),
+        alignment: Alignment.center,
+        child: content,
       ),
     );
   }
@@ -919,9 +988,9 @@ class _ExtrasPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasContent =
         course.schedules.isNotEmpty ||
-        course.certificates.isNotEmpty ||
-        course.tools.isNotEmpty ||
-        course.prerequisites.isNotEmpty;
+            course.certificates.isNotEmpty ||
+            course.tools.isNotEmpty ||
+            course.prerequisites.isNotEmpty;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -1032,27 +1101,27 @@ class _ExtRow extends StatelessWidget {
             .take(3)
             .map(
               (item) => Padding(
-                padding: const EdgeInsets.only(right: 29, bottom: 3),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 5),
-                      child: Container(
-                        width: 5,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: context.colors.textLight,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
+            padding: const EdgeInsets.only(right: 29, bottom: 3),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 5),
+                  child: Container(
+                    width: 5,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: context.colors.textLight,
+                      shape: BoxShape.circle,
                     ),
-                    const SizedBox(width: 7),
-                    Expanded(child: Text(item, style: context.colors.caption)),
-                  ],
+                  ),
                 ),
-              ),
+                const SizedBox(width: 7),
+                Expanded(child: Text(item, style: context.colors.caption)),
+              ],
             ),
+          ),
+        ),
         if (items.length > 3)
           Padding(
             padding: const EdgeInsets.only(right: 29, top: 2),
@@ -1065,6 +1134,163 @@ class _ExtRow extends StatelessWidget {
             ),
           ),
       ],
+    ),
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Pagination footer — page arrows + indicator, shared by web and mobile
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// The `/api/v1/my-courses` endpoint takes skip/limit but returns a plain
+// list with no total-count field, so "is there a next page" is inferred
+// from whether the last fetch returned a full page (see
+// TeacherCoursesProvider.hasMore). That's enough to drive simple
+// prev/next arrows without over-claiming a page count we don't have.
+
+class _PaginationFooter extends StatelessWidget {
+  const _PaginationFooter({required this.p});
+
+  final TeacherCoursesProvider p;
+
+  @override
+  Widget build(BuildContext context) {
+    // Nothing to paginate yet (empty first page, still on page 0, no more
+    // to come) — skip the footer entirely rather than showing dead arrows.
+    if (p.currentPage == 0 && !p.hasMore && p.allCourses.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final busy = p.isLoading;
+    final isFirst = p.currentPage == 0;
+    final isLast = !p.hasMore;
+
+    return SafeArea(
+      top: false,
+      child: Align(
+        alignment: Alignment.center,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: Breakpoints.contentMax),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 6, 20, 12),
+            child: Container(
+              height: 58,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              decoration: BoxDecoration(
+                color: context.colors.cardBg,
+                borderRadius: BorderRadius.circular(29),
+                border: Border.all(
+                  color: context.colors.primary.withValues(alpha: 0.14),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: context.colors.primary.withValues(alpha: 0.14),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  _PageArrow(
+                    icon: Icons.chevron_left_rounded,
+                    enabled: !isFirst && !busy,
+                    onTap: () => p.goToPreviousPage(),
+                  ),
+                  Expanded(
+                    child: Center(
+                      child: busy
+                          ? SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                          color: context.colors.primary,
+                        ),
+                      )
+                          : _PagePill(page: p.currentPage),
+                    ),
+                  ),
+                  _PageArrow(
+                    icon: Icons.chevron_right_rounded,
+                    enabled: !isLast && !busy,
+                    onTap: () => p.goToNextPage(),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PagePill extends StatelessWidget {
+  const _PagePill({required this.page});
+
+  final int page;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    decoration: BoxDecoration(
+      gradient: context.colors.primaryGradient,
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: context.colors.primary.withValues(alpha: 0.30),
+          blurRadius: 10,
+          offset: const Offset(0, 3),
+        ),
+      ],
+    ),
+    child: Text(
+      'صفحة ${page + 1}',
+      style: const TextStyle(
+        color: Colors.white,
+        fontFamily: 'bahji',
+        fontSize: 13,
+        fontWeight: FontWeight.w800,
+      ),
+    ),
+  );
+}
+
+class _PageArrow extends StatelessWidget {
+  const _PageArrow({
+    required this.icon,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: enabled ? onTap : null,
+    child: AnimatedOpacity(
+      duration: const Duration(milliseconds: 180),
+      opacity: enabled ? 1 : 0.35,
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: context.colors.primary.withValues(alpha: 0.08),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: context.colors.primary.withValues(alpha: 0.25),
+          ),
+        ),
+        child: Icon(icon, size: 22, color: context.colors.primary),
+      ),
     ),
   );
 }

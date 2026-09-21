@@ -3504,5 +3504,37 @@
   "suggested_badge": {
     "en": "SUGGESTED",
     "ar": "مقترح"
+  },
+  "resend_certificate_btn": {
+    "en": "Resend",
+    "ar": "إعادة الإرسال"
+  },
+  "no_certificate_for_course": {
+    "en": "This course has no certificate yet. Add one from the certificate manager first.",
+    "ar": "لا توجد شهادة لهذا الكورس بعد. أضف شهادة من مدير الشهادات أولاً."
+  },
+  "send_to_all_title": {
+    "en": "Send to all students",
+    "ar": "إرسال لجميع الطلاب"
+  },
+  "send_to_all_confirm": {
+    "en": "The certificate will be generated and emailed to every enrolled student. Continue?",
+    "ar": "سيتم إنشاء الشهادة وإرسالها بالبريد لكل الطلاب المسجلين. هل تريد المتابعة؟"
+  },
+  "send_to_all_success": {
+    "en": "Certificates sent to students",
+    "ar": "تم إرسال الشهادات للطلاب"
+  },
+  "students": {
+    "en": "students",
+    "ar": "طالب"
+  },
+  "status": {
+    "en": "Status",
+    "ar": "الحالة"
+  },
+  "end_of_list": {
+    "en": "You've reached the end",
+    "ar": "وصلت إلى نهاية القائمة"
   }
 }

@@ -28,7 +28,7 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
     _search.dispose();
     super.dispose();
   }
-@override
+  @override
   void initState() {
     WidgetsBinding.instance.addPostFrameCallback((_){
       context.read<MyCoursesProvider>().init(widget.courses);
@@ -48,7 +48,7 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
                 alignment: Alignment.topCenter,
                 child: ConstrainedBox(
                   constraints:
-                      const BoxConstraints(maxWidth: Breakpoints.contentMax),
+                  const BoxConstraints(maxWidth: Breakpoints.contentMax),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -57,8 +57,8 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
                       const SizedBox(height: 14),
                       Expanded(
                           child: _CourseList(
-                        controller: _search,
-                      )),
+                            controller: _search,
+                          )),
                     ],
                   ),
                 ),
@@ -129,50 +129,50 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Expanded(
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
-          decoration: BoxDecoration(
-            gradient: gradient,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                color: shadowColor.withValues(alpha: 0.32),
-                blurRadius: 16,
-                offset: const Offset(0, 5),
-              ),
-            ],
+    child: Container(
+      padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: shadowColor.withValues(alpha: 0.32),
+            blurRadius: 16,
+            offset: const Offset(0, 5),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Icon(icon, color: Colors.white, size: 18),
-              const SizedBox(height: 10),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  '$count',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    fontFamily: 'bahji',
-                    height: 1,
-                  ),
-                ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(icon, color: Colors.white, size: 18),
+          const SizedBox(height: 10),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '$count',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                fontFamily: 'bahji',
+                height: 1,
               ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontFamily: 'bahji',
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      );
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontFamily: 'bahji',
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 // ── Filter tabs ───────────────────────────────────────────────────────────────
@@ -184,9 +184,9 @@ class _FilterTabs extends StatelessWidget {
     (CourseStatus.all, 'filter_all'.tr, Icons.apps_rounded),
     (CourseStatus.inProgress, 'ongoing'.tr, Icons.play_arrow_rounded),
     (
-      CourseStatus.completed,
-      'completed_courses'.tr,
-      Icons.check_circle_rounded
+    CourseStatus.completed,
+    'completed_courses'.tr,
+    Icons.check_circle_rounded
     ),
   ];
 
@@ -247,7 +247,7 @@ class _FilterTabs extends StatelessWidget {
                             ? context.colors.primary
                             : context.colors.textLight,
                         fontWeight:
-                            active ? FontWeight.w700 : FontWeight.w500,
+                        active ? FontWeight.w700 : FontWeight.w500,
                         fontSize: 12,
                       ),
                     ),
@@ -273,48 +273,117 @@ class _CourseList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<MyCoursesProvider>(
         builder:(context, provider, child) {
-    if (provider.isLoading && provider.allCourses.isEmpty) {
-      return Center(
-        child: AppLoadingIndicator(),
-      );
-    }
+          if (provider.isLoading && provider.allCourses.isEmpty) {
+            return Center(
+              child: AppLoadingIndicator(),
+            );
+          }
 
-    final courses = provider.filteredCourses;
+          final courses = provider.filteredCourses;
 
-    return Column(children: [
-      MySearchBar(
-        controller: controller,
-        hint: 'search_course_by_name_description',
-        onChanged: provider.setQuery,
-      ),
-       _FilterTabs(p:provider),
-      SizedBox(height: 10,),
-      Expanded(
-          child:courses.isEmpty?Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: context.colors.primaryLight.withValues(alpha: 0.3),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.menu_book_rounded,
-                    size: 38, color: context.colors.primary),
-              ),
-              const SizedBox(height: 14),
-              Text('no_courses_in_section'.tr, style: context.colors.body),
-            ],
-          ): HomeCourseList(
-        hasMore: false,
-        courses: courses,
-        onTap: (CourseModel c) {
-          Navigator.push(context,
-              MaterialPageRoute(builder: (_) => CourseDetailScreen(course: c)));
-        },
-        isTeacher: false, pageName: 'My-courses-profile-filtered',
-      ))
-    ]);});
+          return Column(children: [
+            MySearchBar(
+              controller: controller,
+              hint: 'search_course_by_name_description',
+              onChanged: provider.setQuery,
+            ),
+            _FilterTabs(p:provider),
+            SizedBox(height: 10,),
+            Expanded(
+                child:courses.isEmpty?Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: context.colors.primaryLight.withValues(alpha: 0.3),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.menu_book_rounded,
+                          size: 38, color: context.colors.primary),
+                    ),
+                    const SizedBox(height: 14),
+                    Text('no_courses_in_section'.tr, style: context.colors.body),
+                  ],
+                ): NotificationListener<ScrollNotification>(
+                  onNotification: (n) {
+                    if (n.metrics.pixels >= n.metrics.maxScrollExtent - 300) {
+                      provider.loadMore();
+                    }
+                    return false;
+                  },
+                  child: Stack(
+                    children: [
+                      HomeCourseList(
+                        hasMore: provider.hasMore,
+                        courses: courses,
+                        onTap: (CourseModel c) {
+                          Navigator.push(context,
+                              MaterialPageRoute(builder: (_) => CourseDetailScreen(course: c)));
+                        },
+                        isTeacher: false, pageName: 'My-courses-profile-filtered',
+                      ),
+                      if (provider.isLoadingMore)
+                        const Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 12,
+                          child: Center(child: _LoadMorePill()),
+                        ),
+                    ],
+                  ),
+                ))
+          ]);});
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Small floating pill shown while the next page of a list is loading.
+// Overlaid at the bottom of the scrollable rather than appended after it, so
+// it works regardless of the internal layout of whatever list widget it sits
+// on top of (HomeCourseList here).
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _LoadMorePill extends StatelessWidget {
+  const _LoadMorePill();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    decoration: BoxDecoration(
+      color: context.colors.cardBg,
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.12),
+          blurRadius: 12,
+          offset: const Offset(0, 4),
+        ),
+      ],
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 14,
+          height: 14,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation(context.colors.primary),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          'loading_more'.tr,
+          style: TextStyle(
+            fontFamily: 'tajawal',
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: context.colors.textMedium,
+          ),
+        ),
+      ],
+    ),
+  );
 }

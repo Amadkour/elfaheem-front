@@ -3,7 +3,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/student/analysis/student_analytics_provider.dart';
 import 'package:flutter_education_app/features/student/attendance/attendance_provider.dart';
 import 'package:flutter_education_app/features/student/courses/details/course_detail_provider.dart';
-import 'package:flutter_education_app/features/teacher/sessions/sessions_provider.dart';
+import 'package:flutter_education_app/features/teacher/courses/teacher_courses_provider.dart';
 import 'package:provider/provider.dart';
 import '../config/storage_service.dart' show StorageService;
 import '../config/theme/theme_config_provider.dart';
@@ -20,7 +20,7 @@ import '../features/student/home/home_provider.dart';
 import 'package:nested/nested.dart';
 import '../features/student/reward/rewards_provider.dart';
 import '../features/student/sessions/sessions_provider.dart';
-import '../features/teacher/home/teacher_provider.dart';
+import '../features/teacher/home/teacher_home_provider.dart';
 import '../features/teacher/schedules/schedules_provider.dart';
 import '../features/teacher/sessions/students/course_student_provider.dart';
 
@@ -84,7 +84,11 @@ List<SingleChildWidget> appProviders({
   ChangeNotifierProvider<StudentSchedulesProvider>(
     create: (_) => StudentSchedulesProvider(),
   ),
-  ChangeNotifierProvider<TeacherProvider>(create: (_) => TeacherProvider()),
+  ChangeNotifierProvider<TeacherCoursesProvider>(create: (_) => TeacherCoursesProvider()),
+  ChangeNotifierProvider<ProfileProvider>(
+    create: (_) => ProfileProvider(storage: storage, api: api),
+  ),
+  ChangeNotifierProvider<TeacherHomeProvider>(create: (_) => TeacherHomeProvider()),
   ChangeNotifierProvider<ProfileProvider>(
     create: (_) => ProfileProvider(storage: storage, api: api),
   ),

@@ -16,12 +16,14 @@ class CoursesRow extends StatelessWidget {
   final String pageName;
   final void Function(CourseModel course) onTap;
 
-  const CoursesRow(
-      {super.key,
-      required this.courses,
-      required this.isTeacher,
-      required this.onTap,
-      this.isFullScreen = false, required this.pageName});
+  const CoursesRow({
+    super.key,
+    required this.courses,
+    required this.isTeacher,
+    required this.onTap,
+    this.isFullScreen = false,
+    required this.pageName,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -31,33 +33,64 @@ class CoursesRow extends StatelessWidget {
       return SizedBox(
         height: 100,
         child: Center(
-            child: Text('no_courses_yet'.tr, style: context.colors.body)),
+          child: Text('no_courses_yet'.tr, style: context.colors.body),
+        ),
       );
     }
+    Widget list;
     // ── Mobile: horizontal scroll ───────────────────────────────────────────
-    Widget list = SizedBox(
-      height: context.height / 2 > 300 ? 300 : context.height / 4,
-      child: ListView.separated(
-        controller: controller,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        scrollDirection: isFullScreen ? Axis.vertical : Axis.horizontal,
-        itemCount: courses.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 14),
-        itemBuilder: (_, i) => CourseCard(
+    if (courses.length < 5) {
+       list = SizedBox(
+        height: context.height / 2 > 300 ? 300 : context.height / 3,
+        child: ListView.separated(
+          controller: controller,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          scrollDirection: isFullScreen ? Axis.vertical : Axis.horizontal,
+          itemCount: courses.length,
+          separatorBuilder: (_, _) => const SizedBox(width: 14),
+          itemBuilder: (_, i) => CourseCard(
             course: courses[i],
             fixedWidth: 188,
             isTeacher: isTeacher,
             onTap: onTap,
-        pageName: pageName,
+            pageName: pageName,
+          ),
         ),
-      ),
-    );
+      );
+    }else {
+       list = SizedBox(
+        height: context.height / 2 > 600 ? 600 : context.height / 3,
+        child: GridView.builder(
+          controller: controller,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          scrollDirection: Axis.horizontal,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2, // 2 items vertically
+            crossAxisSpacing: 14,
+            mainAxisSpacing: 14,
+            childAspectRatio: 3 / 2,
+          ),
+          itemCount: courses.length,
+          itemBuilder: (_, i) =>
+              CourseCard(
+                course: courses[i],
+                fixedWidth: 188,
+                isTeacher: isTeacher,
+                onTap: onTap,
+                pageName: pageName,
+              ),
+        ),
+      );
+    }
     if (!kIsWeb) return list;
     return Scrollbar(
       controller: controller,
       thumbVisibility: true, // This keeps the 'cursor' visible
       trackVisibility: true, // Optional: shows the path of the scrollbar
-      child: list,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(15,0,15,12),
+        child: list,
+      ),
     );
   }
 }
@@ -73,13 +106,15 @@ class CourseCard extends StatelessWidget {
   final String pageName;
   final void Function(CourseModel course) onTap;
 
-  const CourseCard(
-      {super.key,
-      required this.course,
-      this.fixedWidth,
-      required this.isTeacher,
-      required this.onTap,
-      this.fullScreen = false, required this.pageName});
+  const CourseCard({
+    super.key,
+    required this.course,
+    this.fixedWidth,
+    required this.isTeacher,
+    required this.onTap,
+    this.fullScreen = false,
+    required this.pageName,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -110,140 +145,147 @@ class CourseCard extends StatelessWidget {
             _Thumbnail(
               course: course,
               isTeacher: isTeacher,
-              fullScreen: fullScreen, pageName: pageName,
+              fullScreen: fullScreen,
+              pageName: pageName,
             ),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 11),
                 child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              course.title,
-                              style: context.colors.h3.copyWith(
-                                fontSize: 13,
-                                overflow: TextOverflow.ellipsis,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.2,
-                              ),
-                              maxLines: 1,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            course.title,
+                            style: context.colors.h3.copyWith(
+                              fontSize: 13,
                               overflow: TextOverflow.ellipsis,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.2,
                             ),
-                          ),
-                          if (course.rateSummary?.average != null) _StatsRow(course: course),
-                        ],
-                      ),
-                      if (course.description != null &&
-                          course.description!.isNotEmpty)
-                        Text(
-                          course.description!,
-                          style: context.colors.caption.copyWith(
-                            color: context.colors.textLight,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 9,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-
-                      const _CardDivider(),
-
-                      // Teacher
-                      Spacer(flex: 1),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          if (!isTeacher && course.teacher != null)
-                            Expanded(
-                              flex: 1,
-                              child: InstructorAvatar(
-                                teacher: course.teacher!,
-                                size: 30,
-                                canOpen: true,
-                                showTitle: true,
-                                showImage: false,
-                              ),
-                            ),
-                          if (course.category != null)
-                            Flexible(
-                              flex: 1,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 4, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: context.colors.primary,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                 AppConfig.lang=='ar'? course.category!.nameAr:course.category!.nameEn,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w700,
-                                    fontFamily: 'bahji',
-                                  ),
-                                ),
-                              ),
-                            ),
-                          if (isTeacher)
-                            Flexible(
-                              flex: 1,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 9, vertical: 3),
-                                decoration: BoxDecoration(
-                                    color: course.isPublished
-                                        ? context.colors.success
-                                        : context.colors.warning,
-                                    borderRadius: BorderRadius.circular(8)),
-                                child: Text(
-                                  course.isPublished
-                                      ? 'published'.tr
-                                      : 'draft'.tr,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                    fontFamily: 'bahji',
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      Spacer(flex: 1),
-                      if (hasStudents || hasCertificate)
-                        _StudentRow(
-                            course: course,
-                            hasStudents: hasStudents,
-                            hasCertificate: hasCertificate),
-                      Spacer(),
-
-                      // Lectures + hours
-                      if (hasHours || hasLectures)
-                        _MetaRow(
-                          course: course,
-                          hasHours: hasHours,
-                          hasLectures: hasLectures,
+                        if (course.rateSummary?.average != null)
+                          _StatsRow(course: course),
+                      ],
+                    ),
+                    if (course.description != null &&
+                        course.description!.isNotEmpty)
+                      Text(
+                        course.description!,
+                        style: context.colors.caption.copyWith(
+                          color: context.colors.textLight,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 9,
                         ),
-                      Spacer(
-                        flex: 2,
                       ),
 
-                      // Text(course.progress.toString()),
-                      // Progress bar — only when enrolled
-                      if ((course.isEnrolled || isTeacher) &&
-                          course.progress > 0) ...[
-                        _ProgressBar(progress: course.progress),
-                        Spacer(
-                          flex: 2,
-                        ),
-                      ]
-                    ]),
+                    const _CardDivider(),
+
+                    // Teacher
+                    Spacer(flex: 1),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        if (!isTeacher && course.teacher != null)
+                          Expanded(
+                            flex: 1,
+                            child: InstructorAvatar(
+                              teacher: course.teacher!,
+                              size: 30,
+                              canOpen: true,
+                              showTitle: true,
+                              showImage: false,
+                            ),
+                          ),
+                        if (course.category != null)
+                          Flexible(
+                            flex: 1,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: context.colors.primary,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                AppConfig.lang == 'ar'
+                                    ? course.category!.nameAr
+                                    : course.category!.nameEn,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  fontFamily: 'bahji',
+                                ),
+                              ),
+                            ),
+                          ),
+                        if (isTeacher)
+                          Flexible(
+                            flex: 1,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 9,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: course.isPublished
+                                    ? context.colors.success
+                                    : context.colors.warning,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                course.isPublished
+                                    ? 'published'.tr
+                                    : 'draft'.tr,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  fontFamily: 'bahji',
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    Spacer(flex: 1),
+                    if (hasStudents || hasCertificate)
+                      _StudentRow(
+                        course: course,
+                        hasStudents: hasStudents,
+                        hasCertificate: hasCertificate,
+                      ),
+                    Spacer(),
+
+                    // Lectures + hours
+                    if (hasHours || hasLectures)
+                      _MetaRow(
+                        course: course,
+                        hasHours: hasHours,
+                        hasLectures: hasLectures,
+                      ),
+                    Spacer(flex: 2),
+
+                    // Text(course.progress.toString()),
+                    // Progress bar — only when enrolled
+                    if ((course.isEnrolled || isTeacher) &&
+                        course.progress > 0) ...[
+                      _ProgressBar(progress: course.progress),
+                      Spacer(flex: 2),
+                    ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -259,10 +301,13 @@ class _Thumbnail extends StatelessWidget {
   final bool isTeacher;
   final bool fullScreen;
   final String pageName;
-  const _Thumbnail(
-      {required this.course,
-      required this.isTeacher,
-      required this.fullScreen, required this.pageName});
+
+  const _Thumbnail({
+    required this.course,
+    required this.isTeacher,
+    required this.fullScreen,
+    required this.pageName,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -281,7 +326,7 @@ class _Thumbnail extends StatelessWidget {
               gradient: LinearGradient(
                 colors: [
                   Colors.transparent,
-                  Colors.black.withValues(alpha: 0.36)
+                  Colors.black.withValues(alpha: 0.36),
                 ],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
@@ -297,9 +342,10 @@ class _Thumbnail extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
             decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.45),
-                borderRadius: BorderRadius.circular(8),
-                border: BoxBorder.all(color: Colors.white, width: 0.75)),
+              color: Colors.black.withValues(alpha: 0.45),
+              borderRadius: BorderRadius.circular(8),
+              border: BoxBorder.all(color: Colors.white, width: 0.75),
+            ),
             child: Text(
               course.type.tr,
               style: const TextStyle(
@@ -349,10 +395,11 @@ class _Thumbnail extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
               boxShadow: [
                 BoxShadow(
-                  color: (course.price == 0
-                          ? const Color(0xFF0F6E56)
-                          : context.colors.primary)
-                      .withValues(alpha: 0.35),
+                  color:
+                      (course.price == 0
+                              ? const Color(0xFF0F6E56)
+                              : context.colors.primary)
+                          .withValues(alpha: 0.35),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -441,10 +488,11 @@ class _MetaRow extends StatelessWidget {
   final CourseModel course;
   final bool hasLectures, hasHours;
 
-  const _MetaRow(
-      {required this.course,
-      required this.hasLectures,
-      required this.hasHours});
+  const _MetaRow({
+    required this.course,
+    required this.hasLectures,
+    required this.hasHours,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -484,10 +532,11 @@ class _StudentRow extends StatelessWidget {
   final CourseModel course;
   final bool hasStudents, hasCertificate;
 
-  const _StudentRow(
-      {required this.course,
-      required this.hasStudents,
-      required this.hasCertificate});
+  const _StudentRow({
+    required this.course,
+    required this.hasStudents,
+    required this.hasCertificate,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -495,8 +544,9 @@ class _StudentRow extends StatelessWidget {
       children: [
         if (hasCertificate) ...[
           IconColored(
-              color: context.colors.success,
-              icon: Icons.workspace_premium_rounded),
+            color: context.colors.success,
+            icon: Icons.workspace_premium_rounded,
+          ),
           const SizedBox(width: 3),
           Text(
             course.certificates.first.title,
@@ -506,7 +556,9 @@ class _StudentRow extends StatelessWidget {
         if (hasStudents && hasCertificate) Spacer(),
         if (hasStudents) ...[
           IconColored(
-              color: context.colors.accent2, icon: CupertinoIcons.group),
+            color: context.colors.accent2,
+            icon: CupertinoIcons.group,
+          ),
           const SizedBox(width: 3),
           Text(
             '${course.studentsCount} ${'student'.tr}',
@@ -530,13 +582,15 @@ class _ProgressBar extends StatelessWidget {
     Color primary = progress > 90
         ? context.colors.success
         : progress > 30
-            ? context.colors.primary
-            : context.colors.danger;
+        ? context.colors.primary
+        : context.colors.danger;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text('you_progress'.tr,
-            style: context.colors.caption.copyWith(fontSize: 10)),
+        Text(
+          'you_progress'.tr,
+          style: context.colors.caption.copyWith(fontSize: 10),
+        ),
         Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 3.0),
@@ -545,7 +599,9 @@ class _ProgressBar extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: (progress / 100).clamp(0.0, 1.0),
                 minHeight: 5,
-                backgroundColor: context.colors.primaryLight.withValues(alpha:0.3),
+                backgroundColor: context.colors.primaryLight.withValues(
+                  alpha: 0.3,
+                ),
                 valueColor: AlwaysStoppedAnimation(primary),
               ),
             ),

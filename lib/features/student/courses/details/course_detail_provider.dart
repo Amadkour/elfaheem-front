@@ -42,7 +42,7 @@ class CourseDetailProvider extends BaseProvider {
 
   Future<void> fetchFull(String courseId) async {
     final r = await run(
-      () => _api.get('/api/v1/courses/$courseId', auth: true),
+          () => _api.get('/api/v1/courses/$courseId', auth: true),
     );
     if (r is Map<String, dynamic>) {
       course = CourseModel.fromJson(r);
@@ -52,25 +52,55 @@ class CourseDetailProvider extends BaseProvider {
 
   List<SessionModel> sessions = [];
 
+  // ── Pagination ────────────────────────────────────────────────────────────
+  int _sessionsSkip = 0;
+  bool _hasMoreSessions = true;
+  static const _sessionsPageSize = 20;
+
+  bool get hasMoreSessions => _hasMoreSessions;
+
+  /// True only while fetching another page onto an already-populated list —
+  /// distinct from the initial-load spinner, so the UI can show a small
+  /// footer loader instead of blanking the whole list.
+  bool get isLoadingMoreSessions => isLoading && sessions.isNotEmpty;
+
   List<SessionModel> get liveSessions =>
       sessions.where((e) => e.isLiveActive).toList();
 
-  Future<void> fetchSessions(String courseId) async {
+  /// Fetches page 1 fresh (used on pull-to-refresh / first open).
+  /// Pass [reset]=false to append the next page instead (see
+  /// [loadMoreSessions]).
+  Future<void> fetchSessions(String courseId, {bool reset = true}) async {
+    if (reset) {
+      _sessionsSkip = 0;
+      _hasMoreSessions = true;
+      sessions = [];
+    }
     final result = await run(
-      () => _api.get('/api/v1/courses/$courseId/sessions'),
+          () => _api.get('/api/v1/courses/$courseId/sessions',
+          queryParams: {'skip': _sessionsSkip, 'limit': _sessionsPageSize}),
     );
-    if (result is List) {
-      sessions =
-          result
-              .map((e) => SessionModel.fromJson(e as Map<String, dynamic>))
-              .toList()
-            ..sort((a, b) => a.order.compareTo(b.order));
+    if (result is Map && result['items'] is List) {
+      final page = (result['items'] as List)
+          .map((e) => SessionModel.fromJson(e as Map<String, dynamic>))
+          .toList()
+        ..sort((a, b) => a.order.compareTo(b.order));
+      sessions = [...sessions, ...page];
+      _sessionsSkip += page.length;
+      _hasMoreSessions = page.length == _sessionsPageSize;
     }
     completedSessionIds.clear();
     completedSessionIds.addAll(
       sessions.where((e) => e.isCompleted).map((e) => e.id),
     );
     notifyListeners();
+  }
+
+  /// Fetches the next page and appends it. No-ops while a fetch is already
+  /// in flight or once the server has told us there's nothing more.
+  Future<void> loadMoreSessions() async {
+    if (!_hasMoreSessions || isLoading) return;
+    await fetchSessions(course.id, reset: false);
   }
 
   Future<void> refresh() => fetchFull(course.id);
@@ -144,7 +174,7 @@ class CourseDetailProvider extends BaseProvider {
     notifyListeners();
 
     final r = await run(
-      () => _api.post(
+          () => _api.post(
         '/api/v1/sessions/$sessionId/materials/$materialId/complete',
         auth: true,
       ),
@@ -169,7 +199,7 @@ class CourseDetailProvider extends BaseProvider {
     notifyListeners();
 
     final r = await run(
-      () => _api.post('/api/v1/sessions/$sessionId/complete', auth: true),
+          () => _api.post('/api/v1/sessions/$sessionId/complete', auth: true),
     );
 
     if (r == null && hasError) {
@@ -189,28 +219,28 @@ class CourseDetailProvider extends BaseProvider {
   /// Returns a [LiveJoinResponse] (url + token) or null on error.
   Future<Map<String, dynamic>?> fetchStudentJoinToken(int sessionId) async {
     final r = await run(
-      () => _api.get('/api/v1/live-sessions/$sessionId/join', auth: true),
+          () => _api.get('/api/v1/live-sessions/$sessionId/join', auth: true),
     );
     if (r is Map<String, dynamic>) return r;
     return null;
   }
 
-  // ── Private helpers ───────────────────────────────────────────────────────
+// ── Private helpers ───────────────────────────────────────────────────────
 
-  /// Recomputes a local estimate of overall progress without waiting for
-  /// a full server round-trip (used for optimistic updates).
-  // void _recalcProgress() {
-  //   int sessionsTotal = course.sessions.length ?? 0;
-  //   int materialsTotal = course.sessions
-  //       .fold<int>(0, (sum, s) => sum + (s.materials?.length ?? 0)) ??
-  //       0;
-  //   int total = sessionsTotal + materialsTotal;
-  //   if (total == 0) {
-  //     progressPercentage = 0.0;
-  //     return;
-  //   }
-  //   int done = completedSessionIds.length + completedMaterialIds.length;
-  //   progressPercentage = double.parse(
-  //       ((done / total) * 100).toStringAsFixed(1));
-  // }
+/// Recomputes a local estimate of overall progress without waiting for
+/// a full server round-trip (used for optimistic updates).
+// void _recalcProgress() {
+//   int sessionsTotal = course.sessions.length ?? 0;
+//   int materialsTotal = course.sessions
+//       .fold<int>(0, (sum, s) => sum + (s.materials?.length ?? 0)) ??
+//       0;
+//   int total = sessionsTotal + materialsTotal;
+//   if (total == 0) {
+//     progressPercentage = 0.0;
+//     return;
+//   }
+//   int done = completedSessionIds.length + completedMaterialIds.length;
+//   progressPercentage = double.parse(
+//       ((done / total) * 100).toStringAsFixed(1));
+// }
 }

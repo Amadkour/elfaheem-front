@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
+import 'package:flutter_education_app/features/teacher/courses/teacher_courses_provider.dart';
 import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboard_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
@@ -14,7 +15,7 @@ import '../../student/dashboard/dashboard_screen.dart';
 import '../courses/courses_screen.dart';
 import '../home/home_screen.dart';
 import '../../shared/profile/profile_screen.dart';
-import '../home/teacher_provider.dart';
+import '../home/teacher_home_provider.dart';
 import '../schedules/schedules_provider.dart';
 import '../schedules/schedules_screen.dart';
 
@@ -34,7 +35,7 @@ class _State extends State<TeacherDashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await context.read<NotificationsProvider>().fetchNotifications();
     });
-    TeacherProvider provider = context.read<TeacherProvider>();
+    TeacherHomeProvider provider = context.read<TeacherHomeProvider>();
     dashboardItems.clear();
     dashboardItems.addAll([
       DashboardItem(
@@ -48,7 +49,7 @@ class _State extends State<TeacherDashboardScreen> {
         CupertinoIcons.book,
         CupertinoIcons.book_fill,
         'my_courses',
-        context.read<TeacherProvider>().fetchMyCourses,
+        context.read<TeacherCoursesProvider>().fetchMyCourses,
         const TeacherCoursesScreen(),
       ),
       DashboardItem(

@@ -10,7 +10,7 @@ import 'package:flutter_education_app/features/student/models.dart' show CourseS
 import 'package:flutter_education_app/features/teacher/schedules/schedules_screen.dart';
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
-import '../../../shared/course/course_recommendations_section.dart';
+import '../../../shared/course/teacher_course_roadmap_section.dart';
 import '../../../student/models.dart' show CourseSummary, CourseModel;
 import '../../courses/component/certificate_manager_sheet.dart';
 import '../../home/teacher_models.dart';

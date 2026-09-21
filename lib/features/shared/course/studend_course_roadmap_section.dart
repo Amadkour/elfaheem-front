@@ -1,4 +1,4 @@
-// features/shared/widgets/course_roadmap_section.dart
+// features/shared/widgets/studend_course_roadmap_section.dart
 //
 // Student-facing course-profile "footer" — deliberately a different,
 // bolder visual language than the plain teacher-facing
@@ -16,7 +16,7 @@ import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../student/home/component/course_row.dart';
 import '../../student/models.dart';
-import 'course_recommendations_section.dart';
+import 'teacher_course_roadmap_section.dart';
 
 const _kRoadmapGold = Color(0xFFFFD700);
 const _kRoadmapGoldSoft = Color(0xFFE8C878);
@@ -169,14 +169,17 @@ class CourseRoadmapSection extends StatelessWidget {
                   itemCount: combined.length,
                   separatorBuilder: (_, _) => const SizedBox(width: 7),
                   itemBuilder: (_, i) =>
-                      RecommendCourseCard(
-                        course:  combined[i],
-                        onTap: () => onTapCourse(combined[i]),
-                        badgeText: 'suggested_badge'.tr,
-                        badgeColor: context.colors.primary,
-                        badgeBg: context.colors.cardBg,
-                        badgeIcon: Icons.auto_awesome_rounded,
-                        isDark: true,
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16.0),
+                        child: RecommendCourseCard(
+                          course:  combined[i],
+                          onTap: () => onTapCourse(combined[i]),
+                          badgeText: 'suggested_badge'.tr,
+                          badgeColor: context.colors.primary,
+                          badgeBg: context.colors.cardBg,
+                          badgeIcon: Icons.auto_awesome_rounded,
+                          isDark: true,
+                        ),
                       ),
 
                 ),

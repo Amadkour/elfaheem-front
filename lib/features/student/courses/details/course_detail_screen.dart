@@ -8,7 +8,7 @@ import 'package:provider/provider.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/widget/base_page.dart';
 import '../../../../utils/widget/rating_widget.dart';
-import '../../../shared/course/course_roadmap_section.dart';
+import '../../../shared/course/studend_course_roadmap_section.dart';
 import '../../../shared/profile/compalints/complaint_provider.dart';
 import '../../../shared/profile/compalints/new_complaint_screen.dart';
 import '../../../teacher/sessions/components/course_hero.dart';
@@ -71,6 +71,20 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   }
 }
 
+// Fires CourseDetailProvider.loadMoreSessions() a little before the
+// scrollable's true end, while the lessons tab is the active one — shared by
+// both the mobile and web layouts below, since the sessions list is embedded
+// as a non-scrolling SliverToBoxAdapter and never generates its own scroll
+// notifications; the outer CustomScrollView is what actually scrolls.
+bool _onCourseDetailScroll(BuildContext context, ScrollNotification n) {
+  final provider = context.read<CourseDetailProvider>();
+  if (provider.activeTab == CourseDetailTab.lessons &&
+      n.metrics.pixels >= n.metrics.maxScrollExtent - 400) {
+    provider.loadMoreSessions();
+  }
+  return false;
+}
+
 // ── Mobile layout ─────────────────────────────────────────────────────────────
 
 class _MobileDetail extends StatelessWidget {
@@ -91,55 +105,58 @@ class _MobileDetail extends StatelessWidget {
               child: RefreshIndicator(
                 color: context.colors.primary,
                 onRefresh: () => provider.refresh(),
-                child: CustomScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          border: BoxBorder.all(color: Colors.black),
-                        ),
-                        child: CourseHero(
-                          course: provider.course.toTeacherModel,
-                          onBack: () => Navigator.maybePop(context),
-                          onRefresh: () => provider.refresh(),
-                        ),
-                      ),
-                    ),
-                    SliverToBoxAdapter(child: _CourseMeta()),
-                    // Tabs/content render regardless of enrollment — unpaid
-                    // students get a locked preview (session 1 open, the
-                    // rest shown but locked) rather than nothing at all.
-                    // This mirrors the web layout below, which never gated
-                    // on isEnrolled to begin with.
-                    SliverToBoxAdapter(child: _TabBarWidget()),
-                    const SliverToBoxAdapter(child: SizedBox(height: 4)),
-                    SliverToBoxAdapter(
-                      child: ChangeNotifierProvider(
-                        create: (BuildContext context) =>
-                            TeacherCourseScreenProvider(
-                              initialCourse: provider.course.toTeacherModel,
-                            ),
-                        child: TabContent(
-                          activeTab: provider.activeTab,
-                          courseId: provider.course.id,
+                child: NotificationListener<ScrollNotification>(
+                  onNotification: (n) => _onCourseDetailScroll(context, n),
+                  child: CustomScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            border: BoxBorder.all(color: Colors.black),
+                          ),
+                          child: CourseHero(
+                            course: provider.course.toTeacherModel,
+                            onBack: () => Navigator.maybePop(context),
+                            onRefresh: () => provider.refresh(),
+                          ),
                         ),
                       ),
-                    ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 20)),
-                    SliverToBoxAdapter(
-                      child: CourseRoadmapSection(
-                        currentCourseName: provider.course.name,
-                        recentCompletedCourses: provider.course.recentCompletedCourses,
-                        nextCourses: provider.course.nextCourses,
-                        recommendedCourses: provider.course.recommendedCourses,
-                        similarCourses: provider.course.similarCourses,
-                        onTapCourse: (s) => _openRecommendedCourse(context, s),
+                      SliverToBoxAdapter(child: _CourseMeta()),
+                      // Tabs/content render regardless of enrollment — unpaid
+                      // students get a locked preview (session 1 open, the
+                      // rest shown but locked) rather than nothing at all.
+                      // This mirrors the web layout below, which never gated
+                      // on isEnrolled to begin with.
+                      SliverToBoxAdapter(child: _TabBarWidget()),
+                      const SliverToBoxAdapter(child: SizedBox(height: 4)),
+                      SliverToBoxAdapter(
+                        child: ChangeNotifierProvider(
+                          create: (BuildContext context) =>
+                              TeacherCourseScreenProvider(
+                                initialCourse: provider.course.toTeacherModel,
+                              ),
+                          child: TabContent(
+                            activeTab: provider.activeTab,
+                            courseId: provider.course.id,
+                          ),
+                        ),
                       ),
-                    ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                  ],
+                      const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                      SliverToBoxAdapter(
+                        child: CourseRoadmapSection(
+                          currentCourseName: provider.course.name,
+                          recentCompletedCourses: provider.course.recentCompletedCourses,
+                          nextCourses: provider.course.nextCourses,
+                          recommendedCourses: provider.course.recommendedCourses,
+                          similarCourses: provider.course.similarCourses,
+                          onTapCourse: (s) => _openRecommendedCourse(context, s),
+                        ),
+                      ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -174,141 +191,144 @@ class _WebDetail extends StatelessWidget {
                   color: context.colors.primary,
                   onRefresh: () =>
                       context.read<CourseDetailProvider>().refresh(),
-                  child: CustomScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    slivers: [
-                      SliverToBoxAdapter(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                children: [
-                                  DecoratedBox(
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(20),
+                  child: NotificationListener<ScrollNotification>(
+                    onNotification: (n) => _onCourseDetailScroll(context, n),
+                    child: CustomScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      slivers: [
+                        SliverToBoxAdapter(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  children: [
+                                    DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: CourseHero(
+                                        course: provider.course.toTeacherModel,
+                                        onBack: () => Navigator.maybePop(context),
+                                        onRefresh: () => provider.refresh(),
+                                        onLike: provider.toggleFavorite,
+                                        isLike: provider.course.isFavorite,
+                                      ),
                                     ),
-                                    child: CourseHero(
-                                      course: provider.course.toTeacherModel,
-                                      onBack: () => Navigator.maybePop(context),
-                                      onRefresh: () => provider.refresh(),
-                                      onLike: provider.toggleFavorite,
-                                      isLike: provider.course.isFavorite,
-                                    ),
-                                  ),
-                                  // Stars row
-                                  Row(
-                                    mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Spacer(),
+                                    // Stars row
+                                    Row(
+                                      mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Spacer(),
 
-                                      Container(
-                                        margin: EdgeInsets.all(10),
-                                        decoration: BoxDecoration(
-                                          gradient:
-                                          context.colors.accentGradient,
-                                          borderRadius: BorderRadius.circular(
-                                            10,
+                                        Container(
+                                          margin: EdgeInsets.all(10),
+                                          decoration: BoxDecoration(
+                                            gradient:
+                                            context.colors.accentGradient,
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
                                           ),
-                                        ),
-                                        child: IconButton(
-                                          onPressed: () {
-                                            Navigator.of(context).push(
-                                              MaterialPageRoute(
-                                                builder: (_) =>
-                                                    ChangeNotifierProvider(
-                                                      create: (_) =>
-                                                          ComplaintProvider(),
-                                                      child: NewComplaintScreen(
-                                                        courseTitle: provider
-                                                            .course
-                                                            .title,
-                                                        courseId:
-                                                        provider.course.id,
+                                          child: IconButton(
+                                            onPressed: () {
+                                              Navigator.of(context).push(
+                                                MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      ChangeNotifierProvider(
+                                                        create: (_) =>
+                                                            ComplaintProvider(),
+                                                        child: NewComplaintScreen(
+                                                          courseTitle: provider
+                                                              .course
+                                                              .title,
+                                                          courseId:
+                                                          provider.course.id,
+                                                        ),
                                                       ),
-                                                    ),
-                                              ),
-                                            );
-                                          },
-                                          icon: Icon(
-                                            Icons.headset_mic_rounded,
-                                            color: Colors.white,
+                                                ),
+                                              );
+                                            },
+                                            icon: Icon(
+                                              Icons.headset_mic_rounded,
+                                              color: Colors.white,
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                      SizedBox(height: 8),
-                                    ],
-                                  ),
-
-                                  Row(
-                                    mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      RatingWidget(
-                                        type: RateType.course,
-                                        sourceId: provider.course.id,
-                                        canEdit: provider.course.isEnrolled,
-                                      ),
-                                      Spacer(),
-
-                                      if (provider.course.category != null) ...[
-                                        _HeroBadge(
-                                          AppConfig.lang == 'ar'
-                                              ? provider.course.category!.nameAr
-                                              : provider
-                                              .course
-                                              .category!
-                                              .nameEn,
-                                        ),
-                                        //const SizedBox(height: 8),
+                                        SizedBox(height: 8),
                                       ],
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
+                                    ),
 
-                            // Right: sticky sidebar
-                            SizedBox(width: 20),
-                            SizedBox(
-                              width: 260,
-                              child: SingleChildScrollView(
-                                child: _WebSidebar(provider: provider),
+                                    Row(
+                                      mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        RatingWidget(
+                                          type: RateType.course,
+                                          sourceId: provider.course.id,
+                                          canEdit: provider.course.isEnrolled,
+                                        ),
+                                        Spacer(),
+
+                                        if (provider.course.category != null) ...[
+                                          _HeroBadge(
+                                            AppConfig.lang == 'ar'
+                                                ? provider.course.category!.nameAr
+                                                : provider
+                                                .course
+                                                .category!
+                                                .nameEn,
+                                          ),
+                                          //const SizedBox(height: 8),
+                                        ],
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SliverToBoxAdapter(child: _CourseMeta()),
-                      SliverToBoxAdapter(child: _TabBarWidget()),
-                      const SliverToBoxAdapter(child: SizedBox(height: 4)),
-                      SliverToBoxAdapter(
-                        child: ChangeNotifierProvider(
-                          create: (BuildContext context) =>
-                              TeacherCourseScreenProvider(
-                                initialCourse: provider.course.toTeacherModel,
+
+                              // Right: sticky sidebar
+                              SizedBox(width: 20),
+                              SizedBox(
+                                width: 260,
+                                child: SingleChildScrollView(
+                                  child: _WebSidebar(provider: provider),
+                                ),
                               ),
-                          child: TabContent(
-                            activeTab: provider.activeTab,
-                            courseId: provider.course.id,
+                            ],
                           ),
                         ),
-                      ),
-                      const SliverToBoxAdapter(child: SizedBox(height: 20)),
-                      SliverToBoxAdapter(
-                        child: CourseRoadmapSection(
-                          currentCourseName: provider.course.name,
-                          recentCompletedCourses: provider.course.recentCompletedCourses,
-                          nextCourses: provider.course.nextCourses,
-                          recommendedCourses: provider.course.recommendedCourses,
-                          similarCourses: provider.course.similarCourses,
-                          onTapCourse: (s) => _openRecommendedCourse(context, s),
+                        SliverToBoxAdapter(child: _CourseMeta()),
+                        SliverToBoxAdapter(child: _TabBarWidget()),
+                        const SliverToBoxAdapter(child: SizedBox(height: 4)),
+                        SliverToBoxAdapter(
+                          child: ChangeNotifierProvider(
+                            create: (BuildContext context) =>
+                                TeacherCourseScreenProvider(
+                                  initialCourse: provider.course.toTeacherModel,
+                                ),
+                            child: TabContent(
+                              activeTab: provider.activeTab,
+                              courseId: provider.course.id,
+                            ),
+                          ),
                         ),
-                      ),
-                      const SliverToBoxAdapter(child: SizedBox(height: 32)),
-                    ],
+                        const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                        SliverToBoxAdapter(
+                          child: CourseRoadmapSection(
+                            currentCourseName: provider.course.name,
+                            recentCompletedCourses: provider.course.recentCompletedCourses,
+                            nextCourses: provider.course.nextCourses,
+                            recommendedCourses: provider.course.recommendedCourses,
+                            similarCourses: provider.course.similarCourses,
+                            onTapCourse: (s) => _openRecommendedCourse(context, s),
+                          ),
+                        ),
+                        const SliverToBoxAdapter(child: SizedBox(height: 32)),
+                      ],
+                    ),
                   ),
                 ),
               ),

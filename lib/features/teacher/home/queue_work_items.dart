@@ -6,7 +6,7 @@
 // on the widget that owns the *entire* queue — every day group, every
 // session card, every countdown. That meant a full rebuild of the whole
 // schedule list once a second regardless of how many sessions were live or
-// even visible, and it also called `TeacherProvider.init()` (a
+// even visible, and it also called `TeacherHomeProvider.init()` (a
 // loading-state-flipping fetch) directly from that timer.
 //
 // Every `ScheduleSessionCard` was also unconditionally wrapped in its own
@@ -24,7 +24,7 @@
 //   • Removed the unused per-card `ChangeNotifierProvider` wrap (and the
 //     dead `_CreateSessionSheet` class it was feeding).
 //   • The background refresh triggered when a session starts now calls
-//     `TeacherProvider.refreshSilently()` instead of `init()`, so it can't
+//     `TeacherHomeProvider.refreshSilently()` instead of `init()`, so it can't
 //     flash a full-screen loading state on the dashboard.
 //   • Cards get a stable `ValueKey(scheduleId)` so Flutter can correctly
 //     diff/reuse them (and their internal `_LiveDot` animation controllers)
@@ -40,7 +40,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_provider.dart';
+import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';
 import 'package:flutter_education_app/features/teacher/sessions/model/live_response_model.dart';
 import 'package:provider/provider.dart';
 
@@ -142,7 +142,7 @@ class _ScheduleQueueListState extends State<ScheduleQueueList> {
         );
         // Silent: a background timer crossing a boundary shouldn't flash a
         // full-screen loading state on the dashboard.
-        context.read<TeacherProvider>().refreshSilently();
+        context.read<TeacherHomeProvider>().refreshSilently();
       }
     }
 
@@ -172,7 +172,7 @@ class _ScheduleQueueListState extends State<ScheduleQueueList> {
       children: [
         _QueueHeader(count: widget.sessions.length),
         ...groups.entries.map(
-          (e) => _DayGroup(
+              (e) => _DayGroup(
             dayLabel: e.key,
             sessions: e.value,
             nowListenable: _now,
@@ -266,7 +266,7 @@ class _DayGroup extends StatelessWidget {
           // Stable key: lets Flutter reuse elements (and their internal
           // _LiveDot animation controllers) across resorts instead of
           // rebuilding by list position.
-          (s) => ScheduleSessionCard(
+              (s) => ScheduleSessionCard(
             key: ValueKey(s.scheduleId),
             session: s,
             nowListenable: nowListenable,
@@ -588,20 +588,18 @@ class _InlineStartButton extends StatelessWidget {
 
   void _handleTap(BuildContext context) {
     // if (session.canJoinNow) {
-      _openPreJoin(context);
+    _openPreJoin(context);
     // } else {
-      // Helpers.showAddSessionSheet(
-      //   context,
-      //   TeacherCourse.dummy(session.courseId),
-      //   openLive: true,
-      // );
-      // _openCreationSheet(context);
+    // Helpers.showAddSessionSheet(
+    //   context,
+    //   TeacherCourse.dummy(session.courseId),
+    //   openLive: true,
+    // );
+    // _openCreationSheet(context);
     // }
   }
 
   void _openPreJoin(BuildContext context) {
-    final teacher = context.read<TeacherProvider>();
-    print(session.sessionId);
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -612,7 +610,7 @@ class _InlineStartButton extends StatelessWidget {
             maxStudents: session.maxStudents,
             isTeacher: true,
             userName:
-                context.read<AuthProvider>().currentUser?.name ?? 'Teacher',
+            context.read<AuthProvider>().currentUser?.name ?? 'Teacher',
             userId: context.read<AuthProvider>().currentUser?.id ?? 0,
             onStart: () async {
               log(
@@ -624,7 +622,7 @@ class _InlineStartButton extends StatelessWidget {
                 token: session.token!,
               );
             },
-            onEnd: () => teacher.endLiveSession(session.sessionId!),
+            onEnd: () => context.read<TeacherCourseScreenProvider>().endLive(session.sessionId!),
             apiClient: ApiClient(),
           ),
         ),
@@ -720,7 +718,7 @@ class _CourseInfo extends StatelessWidget {
   const _CourseInfo({
     required this.session,
     required this.accent,
-     this.isOngoing=false,
+    this.isOngoing=false,
   });
 
   @override

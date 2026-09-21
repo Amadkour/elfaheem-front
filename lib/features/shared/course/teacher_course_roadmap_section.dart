@@ -1,4 +1,4 @@
-// features/shared/widgets/course_recommendations_section.dart
+// features/shared/widgets/teacher_course_roadmap_section.dart
 //
 // Teacher's course-profile FOOTER — one clearly-structured card with three
 // visually distinct categories, so it's obvious at a glance what's what:
@@ -19,7 +19,7 @@ import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../student/models.dart';
-import 'course_roadmap_section.dart';
+import 'studend_course_roadmap_section.dart';
 
 const _kPickGold = Color(0xFFC9971F);
 const _kPickGoldBg = Color(0xFFFFF6DF);

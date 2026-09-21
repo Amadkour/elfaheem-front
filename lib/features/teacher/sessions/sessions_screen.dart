@@ -53,7 +53,7 @@ import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/rating_widget.dart';
-import '../../shared/course/course_recommendations_section.dart';
+import '../../shared/course/teacher_course_roadmap_section.dart';
 import '../../shared/session/material/components/session_progress_section.dart';
 import '../../teacher/courses/course_form_screen.dart';
 import '../../teacher/sessions/components/session_form_sheet.dart';

@@ -1,13 +1,16 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/courses/course_form_screen.dart';
+import 'package:flutter_education_app/features/teacher/courses/courses_screen.dart';
 import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboard_provider.dart';
 import 'package:flutter_education_app/features/teacher/home/queue_work_items.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_provider.dart';
+import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/top_route_observer.dart';
+import '../../../utils/widget/app_network_image.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../auth/auth_provider.dart';
 import '../../shared/notification/notifications_provider.dart';
@@ -17,6 +20,7 @@ import '../../student/home/component/course_row.dart';
 import '../../student/home/component/home_section_header.dart';
 import '../../student/models.dart';
 import '../courses/component/teacher_stats.dart';
+import '../home/teacher_models.dart';
 import '../sessions/sessions_provider.dart';
 import '../sessions/sessions_screen.dart';
 
@@ -36,17 +40,22 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (context.read<TeacherProvider>().allCourses.isEmpty ||
+      if (context.read<TeacherHomeProvider>().homeCourses.isEmpty ||
           topRouteObserver.previousRouteName == '/login') {
-        context.read<TeacherProvider>().init();
+        context.read<TeacherHomeProvider>().init();
       }
     });
+  }
+
+  void _openAllCourses() {
+    context.read<TeacherDashboardProvider>().onChangeTab(1);
+    // Navigator.of(context).push(_zoomOutRoute(const TeacherCoursesScreen()));
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final provider = context.watch<TeacherProvider>();
+    final provider = context.watch<TeacherHomeProvider>();
     final loading = provider.isLoading;
     final isWide = context.showSidebar;
 
@@ -55,7 +64,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
       child: SafeArea(
         child: RefreshIndicator(
           color: context.colors.primary,
-          onRefresh: () => context.read<TeacherProvider>().init(),
+          onRefresh: () => context.read<TeacherHomeProvider>().init(),
           child: CustomScrollView(
             physics: const BouncingScrollPhysics(
               parent: AlwaysScrollableScrollPhysics(),
@@ -99,26 +108,26 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                       // ── Courses ──────────────────────────────────────────
                       ParentComponent(
                         child: ContentBox(
-                          key: ValueKey('teacher_home_courses'),
+                          key: ValueKey('teacher_home_courses_header'),
 
                           child: SectionHeader(
                             title: 'courses'.tr,
                             actionLabel: 'show_all'.tr,
-                            onAction: () => context
-                                .read<TeacherDashboardProvider>()
-                                .onChangeTab(1),
+                            icon: Icon(Icons.fullscreen_rounded,color: context.colors.primary,),
+                            onAction: _openAllCourses,
                           ),
                         ),
                       ),
                       SizedBox(height: 14),
                       ParentComponent(
                         child: ContentBox(
-                          key: ValueKey('teacher_home_courses'),
+                          key: ValueKey('teacher_home_courses_row'),
 
                           child: loading
-                              ? const CoursesShimmer()
+                              ? const CoursesShimmer(count: 4)
                               : CoursesRow(
-                                  courses: provider.allCourses.take(5)
+                                  courses: provider.homeCourses
+                                      .take(8)
                                       .map((e) => e.toCourseModel)
                                       .toList(),
                                   isTeacher: context
@@ -182,6 +191,30 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
     );
   }
 }
+
+// ── Zoom-out page transition ───────────────────────────────────────────────
+//
+// Used when opening the full teacher courses screen from the home grid: the
+// destination starts slightly enlarged and settles down to its natural size
+// while it fades in — a "zoom out" reveal, as opposed to the app's default
+// plain fade (`_fade` in main.dart).
+
+PageRouteBuilder _zoomOutRoute(Widget page) => PageRouteBuilder(
+  transitionDuration: const Duration(milliseconds: 380),
+  reverseTransitionDuration: const Duration(milliseconds: 260),
+  pageBuilder: (_, __, ___) => page,
+  transitionsBuilder: (_, animation, __, child) {
+    final curved = CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeOutCubic,
+    );
+    final scale = Tween<double>(begin: 1.12, end: 1.0).animate(curved);
+    return FadeTransition(
+      opacity: curved,
+      child: ScaleTransition(scale: scale, child: child),
+    );
+  },
+);
 
 // ── Web top bar ───────────────────────────────────────────────────────────────
 
@@ -336,6 +369,8 @@ class _StatsShimmer extends StatelessWidget {
   );
 }
 
+// `CoursesShimmer` (horizontal-row shimmer, above) is what the home screen
+// uses while loading — matching the horizontally-scrolling course row below.
 class CoursesShimmer extends StatelessWidget {
   const CoursesShimmer({super.key, this.width, this.height, this.count});
 
@@ -355,6 +390,223 @@ class CoursesShimmer extends StatelessWidget {
           Shimmer(width: width ?? 170, height: height ?? 200),
     ),
   );
+}
+
+// ── Home course row — horizontal, up to 8 items ─────────────────────────────
+
+class _TeacherHomeCoursesRow extends StatelessWidget {
+  final List<TeacherCourse> courses;
+
+  const _TeacherHomeCoursesRow({required this.courses});
+
+  @override
+  Widget build(BuildContext context) {
+    if (courses.isEmpty) return const _NoCoursesHint();
+
+    return SizedBox(
+      height: 200,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        itemCount: courses.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 14),
+        itemBuilder: (_, i) => SizedBox(
+          width: 170,
+          child: _TeacherHomeCourseTile(course: courses[i]),
+        ),
+      ),
+    );
+  }
+}
+
+class _NoCoursesHint extends StatelessWidget {
+  const _NoCoursesHint();
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+    child: Text(
+      'no_courses_section'.tr,
+      style: context.colors.caption.copyWith(color: context.colors.textLight),
+      textAlign: TextAlign.center,
+    ),
+  );
+}
+
+/// A single tile in the home course row.
+///
+/// Tapping opens the course's sessions screen. `_opening` guards against a
+/// fast double-tap pushing the same destination twice — it's set the moment
+/// the tap is handled and only cleared once the pushed route is popped, so
+/// the tile shows its own small loading state for as long as navigation (and
+/// the pushed screen) is in front of it.
+class _TeacherHomeCourseTile extends StatefulWidget {
+  final TeacherCourse course;
+
+  const _TeacherHomeCourseTile({required this.course});
+
+  @override
+  State<_TeacherHomeCourseTile> createState() => _TeacherHomeCourseTileState();
+}
+
+class _TeacherHomeCourseTileState extends State<_TeacherHomeCourseTile> {
+  bool _opening = false;
+
+  Future<void> _open() async {
+    if (_opening) return;
+    setState(() => _opening = true);
+
+    final c = widget.course;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider(
+          create: (_) => TeacherCourseScreenProvider(initialCourse: c),
+          child: TeacherSessionsScreen(),
+        ),
+      ),
+    );
+
+    if (mounted) setState(() => _opening = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.course;
+    final isDraft = !c.isPublished;
+
+    return GestureDetector(
+      onTap: _open,
+      child: Container(
+        decoration: BoxDecoration(
+          color: context.colors.cardBg,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AspectRatio(
+                  aspectRatio: 16 / 10,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      AppNetworkImage(
+                        url: c.imageUrl,
+                        width: double.infinity,
+                        borderRadius: BorderRadius.zero,
+                        heroTag: 'teacher-home-${c.id}',
+                      ),
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isDraft
+                                ? const Color(0xFFf59e0b)
+                                : context.colors.accent2,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            isDraft ? 'status_draft'.tr : 'status_published'.tr,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontFamily: 'bahji',
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        c.title,
+                        style: context.colors.h3.copyWith(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.people_alt_rounded,
+                            size: 12,
+                            color: context.colors.primary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${c.studentsCount}',
+                            style: context.colors.caption.copyWith(
+                              fontSize: 11,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Icon(
+                            Icons.video_library_rounded,
+                            size: 12,
+                            color: context.colors.textMedium,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${c.sessionsCount}',
+                            style: context.colors.caption.copyWith(
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            // ── Tap-loading overlay — blocks a second tap while the
+            //    sessions screen is opening/showing ────────────────────────
+            if (_opening)
+              Container(
+                color: Colors.black.withValues(alpha: 0.28),
+                alignment: Alignment.center,
+                child: const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.4,
+                    valueColor: AlwaysStoppedAnimation(Colors.white),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _ScheduleShimmer extends StatelessWidget {

@@ -18,6 +18,11 @@ class CoursesProvider extends BaseProvider {
 
   bool get hasMore => _hasMore;
 
+  /// True only while fetching another page onto an already-populated list —
+  /// distinct from the initial-load spinner, so the UI can show a small
+  /// footer loader instead of blanking the whole list.
+  bool get isLoadingMore => isLoading && _courses.isNotEmpty;
+
   Future<void> fetchCourses(
       {String? categoryId, int? teacherId, String? search,int? pageSize}) async {
     _skip = 0;
@@ -39,11 +44,11 @@ class CoursesProvider extends BaseProvider {
       {String? categoryId, int? teacherId, String? search,int? pageSize}) async {
     final r = await run(() => _api.get('/api/v1/courses',
         queryParams: {
-          'skip': _skip,
-          'limit':pageSize?? _pageSize,
-          'category_id': ?categoryId,
-          'teacher_id': ?teacherId,
-          'search': ?search
+        'skip': _skip,
+        'limit':pageSize?? _pageSize,
+        'category_id': ?categoryId,
+        'teacher_id': ?teacherId,
+        'search': ?search
         },
         auth: true));
     if (r is Map && r['items'] is List) {

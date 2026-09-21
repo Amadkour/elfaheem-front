@@ -80,6 +80,17 @@ class SessionsTab extends StatelessWidget {
             ),
           ),
         ),
+        // Footer for the next page of sessions. The actual scroll-position
+        // trigger lives one level up (this list never scrolls itself — see
+        // the NotificationListener around the outer CustomScrollView in
+        // course_detail_screen.dart); this widget only reflects the state.
+        if (provider.isLoadingMoreSessions)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+              child: SizedBox(width: 22, height: 22, child: AppLoadingIndicator()),
+            ),
+          ),
       ],
     );
   }

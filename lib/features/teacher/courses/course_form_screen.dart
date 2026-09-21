@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/features/teacher/courses/teacher_courses_provider.dart';
 import 'package:flutter_education_app/utils/widget/editable_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -12,11 +13,9 @@ import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/primary_menue.dart';
 import '../../../utils/widget/text_field.dart';
 import '../home/teacher_models.dart';
-import '../home/teacher_provider.dart';
 import '../../student/models.dart' show CourseStatus;
 import '../schedules/schedules_provider.dart'
     show kDayOrder, kDayLabels, slotDayLabel;
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'component/add_item_dialog.dart';
 import 'component/gradient_button.dart';
 import 'component/section_card.dart';
@@ -166,11 +165,12 @@ class _CourseFormInnerState extends State<_CourseFormInner>
   /// [publish] only matters in CREATE mode: true = publish immediately,
   /// false = save as draft. Ignored in EDIT mode (status is changed via the
   /// dedicated status toggle instead).
-  Future<void> _submit({bool publish = true}) async {
+  Future<void> _submit({
+    bool publish = true,
+    required TeacherCoursesProvider listProvider,
+    required CourseFormProvider formProvider,
+  }) async {
     if (!_formKey.currentState!.validate()) return;
-
-    final formProvider = context.read<CourseFormProvider>();
-    final listProvider = context.read<TeacherProvider>();
 
     TeacherCourse? result;
 
@@ -197,8 +197,9 @@ class _CourseFormInnerState extends State<_CourseFormInner>
         fees: double.tryParse(_priceCtrl.text) ?? 0,
         totalHours: double.tryParse(_hoursCtrl.text),
         logoFile: _logoFile,
-        certificateTemplateTitle:
-        _certTemplateFile != null ? _certTitleCtrl.text.trim() : null,
+        certificateTemplateTitle: _certTemplateFile != null
+            ? _certTitleCtrl.text.trim()
+            : null,
         certificateTemplateFile: _certTemplateFile,
         publish: publish,
       );
@@ -216,8 +217,8 @@ class _CourseFormInnerState extends State<_CourseFormInner>
         _isEdit
             ? 'course_updated_success'.tr
             : (publish
-            ? 'course_created_success'.tr
-            : 'course_draft_saved_success'.tr),
+                  ? 'course_created_success'.tr
+                  : 'course_draft_saved_success'.tr),
         context.colors.success,
       );
       Navigator.pop(context, result);
@@ -231,15 +232,16 @@ class _CourseFormInnerState extends State<_CourseFormInner>
 
   // ── Edit-mode status toggle (publish / unpublish) ──────────────────────────
 
-  Future<void> _toggleStatus() async {
+  Future<void> _toggleStatus({
+    required TeacherCoursesProvider listProvider,
+  }) async {
     if (_statusLoading || widget.course == null) return;
     final target = !_isPublished;
     setState(() => _statusLoading = true);
 
-    final teacherProvider = context.read<TeacherProvider>();
     final ok = await (target
-        ? teacherProvider.publishCourse(widget.course!.id)
-        : teacherProvider.unpublishCourse(widget.course!.id));
+        ? listProvider.publishCourse(widget.course!.id)
+        : listProvider.unpublishCourse(widget.course!.id));
 
     if (!mounted) return;
     setState(() => _statusLoading = false);
@@ -259,8 +261,14 @@ class _CourseFormInnerState extends State<_CourseFormInner>
 
   // ── Edit-mode content status toggle (in_progress / completed) ─────────────
 
-  Future<void> _changeProgressStatus(CourseStatus status) async {
-    if (_progressStatusLoading || widget.course == null || status == _progressStatus) return;
+  Future<void> _changeProgressStatus(
+    CourseStatus status,
+    TeacherCoursesProvider provider,
+  ) async {
+    if (_progressStatusLoading ||
+        widget.course == null ||
+        status == _progressStatus)
+      return;
     setState(() => _progressStatusLoading = true);
 
     final formProvider = context.read<CourseFormProvider>();
@@ -271,7 +279,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
 
     if (result != null) {
       setState(() => _progressStatus = status);
-      context.read<TeacherProvider>().onCourseUpdated(result);
+      provider.onCourseUpdated(result);
       _showSnack('course_status_updated_success'.tr, context.colors.success);
     } else {
       _showSnack(
@@ -321,10 +329,12 @@ class _CourseFormInnerState extends State<_CourseFormInner>
 
   @override
   Widget build(BuildContext context) {
+    final TeacherCoursesProvider listProvider = context
+        .read<TeacherCoursesProvider>();
     final provider = context.watch<CourseFormProvider>();
     final canSave =
         (_hasChanges || provider.listsChanged) &&
-            _titleCtrl.text.trim().isNotEmpty;
+        _titleCtrl.text.trim().isNotEmpty;
 
     return BasePage(
       useWebCard: true,
@@ -388,13 +398,15 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                         _StatusCard(
                           isPublished: _isPublished,
                           isLoading: _statusLoading,
-                          onToggle: _toggleStatus,
+                          onToggle: () =>
+                              _toggleStatus(listProvider: listProvider),
                         ),
                         const SizedBox(height: 16),
                         CourseProgressStatusCard(
                           status: _progressStatus,
                           isLoading: _progressStatusLoading,
-                          onChanged: _changeProgressStatus,
+                          onChanged: (s) =>
+                              _changeProgressStatus(s, listProvider),
                         ),
                         const SizedBox(height: 16),
                       ],
@@ -413,9 +425,9 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                     controller: _priceCtrl,
                                     label: 'price_label'.tr,
                                     keyboard:
-                                    const TextInputType.numberWithOptions(
-                                      decimal: true,
-                                    ),
+                                        const TextInputType.numberWithOptions(
+                                          decimal: true,
+                                        ),
                                   ),
                                 ),
                               ),
@@ -509,7 +521,8 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                           const SizedBox(height: 8),
                           NextCoursesField(
                             selected: provider.selectedNextCourses,
-                            availableOptions: provider.availableNextCourseOptions,
+                            availableOptions:
+                                provider.availableNextCourseOptions,
                             onAdd: provider.addNextCourse,
                             onRemoveAt: provider.removeNextCourseAt,
                             onReorder: provider.moveNextCourse,
@@ -569,12 +582,12 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                         title: 'weekly_schedule'.tr,
                         items: [
                           ...provider.form.schedules.map(
-                                (s) =>
-                            '${slotDayLabel(s.day)} • ${s.startTime} – ${s.endTime}',
+                            (s) =>
+                                '${slotDayLabel(s.day)} • ${s.startTime} – ${s.endTime}',
                           ),
                           ...provider.pendingSchedules.map(
-                                (s) =>
-                            '${slotDayLabel(s.day)} • ${s.startTime} – ${s.endTime}',
+                            (s) =>
+                                '${slotDayLabel(s.day)} • ${s.startTime} – ${s.endTime}',
                           ),
                         ],
                         onAdd: _showAddAppointmentSheet,
@@ -636,8 +649,18 @@ class _CourseFormInnerState extends State<_CourseFormInner>
               isEdit: _isEdit,
               canSave: canSave,
               isLoading: provider.isLoading,
-              onSave: () => _submit(publish: true),
-              onSaveDraft: _isEdit ? null : () => _submit(publish: false),
+              onSave: () => _submit(
+                publish: true,
+                listProvider: listProvider,
+                formProvider: provider,
+              ),
+              onSaveDraft: _isEdit
+                  ? null
+                  : () => _submit(
+                      publish: false,
+                      listProvider: listProvider,
+                      formProvider: provider,
+                    ),
               course: widget.course,
             ),
           ],
@@ -941,46 +964,52 @@ class _CertificateTemplateCard extends StatelessWidget {
               clipBehavior: Clip.antiAlias,
               child: previewBytes != null
                   ? Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.memory(previewBytes!, fit: BoxFit.cover),
-                  Positioned(
-                    top: 6,
-                    right: 6,
-                    child: GestureDetector(
-                      onTap: onRemove,
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: const BoxDecoration(
-                          color: Colors.black54,
-                          shape: BoxShape.circle,
+                      fit: StackFit.expand,
+                      children: [
+                        Image.memory(previewBytes!, fit: BoxFit.cover),
+                        Positioned(
+                          top: 6,
+                          right: 6,
+                          child: GestureDetector(
+                            onTap: onRemove,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: const BoxDecoration(
+                                color: Colors.black54,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.close_rounded,
+                                size: 16,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
                         ),
-                        child: const Icon(Icons.close_rounded,
-                            size: 16, color: Colors.white),
-                      ),
-                    ),
-                  ),
-                ],
-              )
+                      ],
+                    )
                   : Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.add_photo_alternate_rounded,
-                        size: 28, color: context.colors.textLight),
-                    const SizedBox(height: 8),
-                    Text(
-                      'upload_template_btn'.tr,
-                      style: TextStyle(
-                        fontFamily: 'tajawal',
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: context.colors.textMedium,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.add_photo_alternate_rounded,
+                            size: 28,
+                            color: context.colors.textLight,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'upload_template_btn'.tr,
+                            style: TextStyle(
+                              fontFamily: 'tajawal',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: context.colors.textMedium,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ),
             ),
           ),
         ),
@@ -1011,10 +1040,9 @@ class _EditCertificateTemplateCardState
   Uint8List? _pickedBytes;
   bool _uploading = false;
 
-  CourseCertificate? get _existingCert =>
-      widget.course.certificates.isNotEmpty
-          ? widget.course.certificates.first
-          : null;
+  CourseCertificate? get _existingCert => widget.course.certificates.isNotEmpty
+      ? widget.course.certificates.first
+      : null;
 
   @override
   void initState() {
@@ -1073,7 +1101,9 @@ class _EditCertificateTemplateCardState
           ),
           backgroundColor: context.colors.danger,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
         ),
       );
@@ -1147,51 +1177,56 @@ class _EditCertificateTemplateCardState
                   ? Image.memory(_pickedBytes!, fit: BoxFit.cover)
                   : _templateUrl != null
                   ? Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.network(_templateUrl!, fit: BoxFit.cover),
-                  Positioned(
-                    bottom: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        'change_template_btn'.tr,
-                        style: const TextStyle(
-                          fontFamily: 'tajawal',
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
+                      fit: StackFit.expand,
+                      children: [
+                        Image.network(_templateUrl!, fit: BoxFit.cover),
+                        Positioned(
+                          bottom: 8,
+                          right: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              'change_template_btn'.tr,
+                              style: const TextStyle(
+                                fontFamily: 'tajawal',
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
-                ],
-              )
+                      ],
+                    )
                   : Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.add_photo_alternate_rounded,
-                        size: 28, color: context.colors.textLight),
-                    const SizedBox(height: 8),
-                    Text(
-                      'upload_template_btn'.tr,
-                      style: TextStyle(
-                        fontFamily: 'tajawal',
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: context.colors.textMedium,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.add_photo_alternate_rounded,
+                            size: 28,
+                            color: context.colors.textLight,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'upload_template_btn'.tr,
+                            style: TextStyle(
+                              fontFamily: 'tajawal',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: context.colors.textMedium,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ),
             ),
           ),
         ),
@@ -1323,35 +1358,35 @@ class _StickyFooter extends StatelessWidget {
                   gradient: canSave
                       ? context.colors.primaryGradient
                       : const LinearGradient(
-                    colors: [Color(0xFFCDD5E0), Color(0xFFCDD5E0)],
-                  ),
+                          colors: [Color(0xFFCDD5E0), Color(0xFFCDD5E0)],
+                        ),
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: canSave ? context.colors.primaryShadow : null,
                 ),
                 child: Center(
                   child: isLoading
                       ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: AppLoadingIndicator(),
-                  )
+                          width: 20,
+                          height: 20,
+                          child: AppLoadingIndicator(),
+                        )
                       : Text(
-                    canSave
-                        ? (isEdit
-                        ? 'btn_save_edits'.tr
-                        : (showDraftBtn
-                        ? 'publish_course_btn'.tr
-                        : 'create_course_btn'.tr))
-                        : (isEdit
-                        ? 'no_changes_to_save'.tr
-                        : 'enter_course_title_first'.tr),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14,
-                      fontFamily: 'bahji',
-                    ),
-                  ),
+                          canSave
+                              ? (isEdit
+                                    ? 'btn_save_edits'.tr
+                                    : (showDraftBtn
+                                          ? 'publish_course_btn'.tr
+                                          : 'create_course_btn'.tr))
+                              : (isEdit
+                                    ? 'no_changes_to_save'.tr
+                                    : 'enter_course_title_first'.tr),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                            fontFamily: 'bahji',
+                          ),
+                        ),
                 ),
               ),
             ),

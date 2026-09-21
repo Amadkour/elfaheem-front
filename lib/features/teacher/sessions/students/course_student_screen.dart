@@ -61,6 +61,15 @@ class _EnrolledStudentsScreenState extends State<EnrolledStudentsScreen> {
     super.dispose();
   }
 
+  bool _onScrollNotification(ScrollNotification n) {
+    // Fire loadMore a little before the true end, so the next page is
+    // already in flight by the time the user reaches the bottom.
+    if (n.metrics.pixels >= n.metrics.maxScrollExtent - 300) {
+      context.read<EnrolledStudentsProvider>().loadMore();
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     return BasePage(
@@ -69,38 +78,47 @@ class _EnrolledStudentsScreenState extends State<EnrolledStudentsScreen> {
         child: RefreshIndicator(
           color: context.colors.primary,
           onRefresh: _load,
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(
-              parent: BouncingScrollPhysics(),
-            ),
-            slivers: [
-              SliverToBoxAdapter(
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    _HeroHeader(course: widget.course),
-                    Positioned(
-                      left: 20,
-                      right: 20,
-                      bottom: -30,
-                      child: const _FloatingStatsCard(),
-                    ),
-                  ],
-                ),
+          child: NotificationListener<ScrollNotification>(
+            onNotification: _onScrollNotification,
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
               ),
-              const SliverToBoxAdapter(child: SizedBox(height: 46)),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
-                  child: MySearchBar(
-                    controller: _search,
-                    hint: 'search_student_by_name_email',
-                    onChanged: context.read<EnrolledStudentsProvider>().setQuery,
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      _HeroHeader(course: widget.course),
+                      Positioned(
+                        left: 20,
+                        right: 20,
+                        bottom: -30,
+                        child: const _FloatingStatsCard(),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              _StudentsSliver(course: widget.course),
-            ],
+                const SliverToBoxAdapter(child: SizedBox(height: 46)),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+                    child: MySearchBar(
+                      controller: _search,
+                      hint: 'search_student_by_name_email',
+                      onChanged: context.read<EnrolledStudentsProvider>().setQuery,
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                    child: _SendToAllButton(course: widget.course),
+                  ),
+                ),
+                _StudentsSliver(course: widget.course),
+              ],
+            ),
           ),
         ),
       ),
@@ -377,7 +395,7 @@ class _StudentsSliver extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.watch<EnrolledStudentsProvider>();
 
-    if (p.isLoading && p.totalCount == 0) {
+    if (p.isLoading && p.students.isEmpty) {
       return const SliverFillRemaining(
         hasScrollBody: false,
         child: Center(child: AppLoadingIndicator()),
@@ -397,35 +415,86 @@ class _StudentsSliver extends StatelessWidget {
     if (columns == 1) {
       return SliverPadding(
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
-        sliver: SliverList.separated(
-          itemCount: p.students.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 10),
-          itemBuilder: (_, i) => _StaggeredEntrance(
-            index: i,
-            child: _StudentCard(student: p.students[i], course: course),
-          ),
+        sliver: SliverMainAxisGroup(
+          slivers: [
+            SliverList.separated(
+              itemCount: p.students.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (_, i) => _StaggeredEntrance(
+                index: i,
+                child: _StudentCard(student: p.students[i], course: course),
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 14)),
+            SliverToBoxAdapter(child: _LoadMoreFooter(provider: p)),
+          ],
         ),
       );
     }
 
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
-      sliver: SliverGrid(
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: columns,
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 14,
-          mainAxisExtent: 106,
-        ),
-        delegate: SliverChildBuilderDelegate(
-              (_, i) => _StaggeredEntrance(
-            index: i,
-            child: _StudentCard(student: p.students[i], course: course),
+      sliver: SliverMainAxisGroup(
+        slivers: [
+          SliverGrid(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: columns,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 14,
+              mainAxisExtent: 106,
+            ),
+            delegate: SliverChildBuilderDelegate(
+                  (_, i) => _StaggeredEntrance(
+                index: i,
+                child: _StudentCard(student: p.students[i], course: course),
+              ),
+              childCount: p.students.length,
+            ),
           ),
-          childCount: p.students.length,
-        ),
+          const SliverToBoxAdapter(child: SizedBox(height: 14)),
+          SliverToBoxAdapter(child: _LoadMoreFooter(provider: p)),
+        ],
       ),
     );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Small footer under the list — a spinner while the next page loads, or a
+// quiet "you've reached the end" once the server has nothing more to give.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _LoadMoreFooter extends StatelessWidget {
+  final EnrolledStudentsProvider provider;
+
+  const _LoadMoreFooter({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    if (provider.isLoadingMore) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Center(
+          child: SizedBox(width: 22, height: 22, child: AppLoadingIndicator()),
+        ),
+      );
+    }
+    if (!provider.hasMore && provider.students.isNotEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Center(
+          child: Text(
+            'end_of_list'.tr,
+            style: TextStyle(
+              fontFamily: 'tajawal',
+              fontSize: 11,
+              color: context.colors.textLight,
+            ),
+          ),
+        ),
+      );
+    }
+    return const SizedBox.shrink();
   }
 }
 
@@ -516,77 +585,82 @@ class _StudentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: context.colors.cardBg,
+    return Material(
+      color: context.colors.cardBg,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: context.colors.divider, width: 0.5),
-      ),
-      child: Row(
-        children: [
-          _RingAvatar(student: student, color: _progressColor),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
+        onTap: () => _showStudentDialog(context, student, course, _progressColor),
+        child: Ink(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: context.colors.divider, width: 0.5),
+          ),
+          child: Row(
+            children: [
+              _RingAvatar(student: student, color: _progressColor),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                      child: Text(
-                        student.name,
-                        style: TextStyle(
-                          fontFamily: 'tajawal',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: context.colors.textDark,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            student.name,
+                            style: TextStyle(
+                              fontFamily: 'tajawal',
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: context.colors.textDark,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${student.progressPercentage.toStringAsFixed(0)}%',
+                          style: TextStyle(
+                            fontFamily: 'tajawal',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: _progressColor,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(height: 2),
                     Text(
-                      '${student.progressPercentage.toStringAsFixed(0)}%',
+                      student.gmail,
                       style: TextStyle(
                         fontFamily: 'tajawal',
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: _progressColor,
+                        fontSize: 11,
+                        color: context.colors.textMedium,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${'joined'.tr} ${_formatDate(student.enrolledAt)}',
+                      style: TextStyle(
+                        fontFamily: 'tajawal',
+                        fontSize: 10,
+                        color: context.colors.textLight,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  student.gmail,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 11,
-                    color: context.colors.textMedium,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  '${'joined'.tr} ${_formatDate(student.enrolledAt)}',
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 10,
-                    color: context.colors.textLight,
-                  ),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              _CertificateAction(student: student, course: course),
+            ],
           ),
-          if (course.certificates.isNotEmpty) ...[
-            const SizedBox(width: 8),
-            _CertificateAction(student: student, course: course),
-          ],
-        ],
+        ),
       ),
     );
   }
@@ -691,35 +765,12 @@ class _CertificateAction extends StatelessWidget {
 
   Future<void> _handleTap(BuildContext context) async {
     final provider = context.read<EnrolledStudentsProvider>();
-    final certs = course.certificates;
-
-    CourseCertificate? target;
-    if (certs.length == 1) {
-      target = certs.first;
-    } else {
-      target = await showModalBottomSheet<CourseCertificate>(
-        context: context,
-        backgroundColor: Colors.transparent,
-        builder: (_) => _CertificatePickerSheet(certificates: certs),
-      );
-    }
+    final target = await _pickCertificate(context, course.certificates);
     if (target == null || !context.mounted) return;
 
     final success = await provider.sendCertificate(target.id, student.id);
     if (!context.mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          success ? 'certificate_sent_success'.tr : 'certificate_send_failed'.tr,
-          style: const TextStyle(fontFamily: 'bahji', color: Colors.white),
-        ),
-        backgroundColor: success ? context.colors.success : context.colors.danger,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      ),
-    );
+    _showResultSnack(context, success, 'certificate_sent_success'.tr);
   }
 
   @override
@@ -742,24 +793,33 @@ class _CertificateAction extends StatelessWidget {
       );
     }
 
-    return Tooltip(
-      message: isSent ? 'certificate_sent_label'.tr : 'send_certificate_btn'.tr,
-      child: GestureDetector(
-        onTap: isSent ? null : () => _handleTap(context),
-        child: Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: isSent
-                ? context.colors.success.withValues(alpha: 0.12)
-                : const Color(0xFFFFD700).withValues(alpha: 0.14),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            isSent ? Icons.check_circle_rounded : Icons.workspace_premium_rounded,
-            size: 16,
-            color: isSent ? context.colors.success : const Color(0xFFB8860B),
-          ),
+    // Always visible, labeled button. After a send it turns green and reads
+    // "Resend", but stays tappable so the certificate can go out again.
+    final color = isSent ? context.colors.success : const Color(0xFFB8860B);
+    return GestureDetector(
+      onTap: provider.isBulkSending ? null : () => _handleTap(context),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(isSent ? Icons.replay_rounded : Icons.send_rounded, size: 14, color: color),
+            const SizedBox(width: 4),
+            Text(
+              isSent ? 'resend_certificate_btn'.tr : 'send_btn'.tr,
+              style: TextStyle(
+                fontFamily: 'tajawal',
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -803,6 +863,364 @@ class _CertificatePickerSheet extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Returns the only certificate directly, or lets the teacher pick one.
+Future<CourseCertificate?> _pickCertificate(
+    BuildContext context, List<CourseCertificate> certs) async {
+  if (certs.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('no_certificate_for_course'.tr,
+            style: const TextStyle(fontFamily: 'bahji', color: Colors.white)),
+        backgroundColor: context.colors.danger,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      ),
+    );
+    return null;
+  }
+  if (certs.length == 1) return certs.first;
+  return showModalBottomSheet<CourseCertificate>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (_) => _CertificatePickerSheet(certificates: certs),
+  );
+}
+
+void _showResultSnack(BuildContext context, bool success, String okMessage) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        success ? okMessage : 'certificate_send_failed'.tr,
+        style: const TextStyle(fontFamily: 'bahji', color: Colors.white),
+      ),
+      backgroundColor: success ? context.colors.success : context.colors.danger,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+    ),
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// "Send certificate to all students" — one click, with a confirmation step.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SendToAllButton extends StatelessWidget {
+  final TeacherCourse course;
+
+  const _SendToAllButton({required this.course});
+
+  Future<void> _onTap(BuildContext context) async {
+    final provider = context.read<EnrolledStudentsProvider>();
+
+    final cert = await _pickCertificate(context, course.certificates);
+    if (cert == null || !context.mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('send_to_all_title'.tr,
+            style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
+        content: Text(
+          '${'send_to_all_confirm'.tr}\n\n${cert.title} · ${provider.totalCount} ${'students'.tr}',
+          style: const TextStyle(fontFamily: 'tajawal', fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('cancel'.tr)),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text('send_btn'.tr)),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final sent = await provider.sendCertificateToAll(cert.id);
+    if (!context.mounted) return;
+    _showResultSnack(context, sent >= 0, '${'send_to_all_success'.tr} ($sent)');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.watch<EnrolledStudentsProvider>();
+    final busy = p.isBulkSending;
+    const gold = Color(0xFFB8860B);
+
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: (busy || p.totalCount == 0) ? null : () => _onTap(context),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: gold,
+          side: BorderSide(color: gold.withValues(alpha: 0.5)),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+        icon: busy
+            ? const SizedBox(width: 18, height: 18, child: AppLoadingIndicator())
+            : const Icon(Icons.send_rounded, size: 18),
+        label: Text(
+          busy ? 'sending_label'.tr : 'send_to_all_students_btn'.tr,
+          style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Student details dialog — opens when a student card is tapped.
+// The dialog lives on the root navigator, so the provider is re-supplied.
+// ─────────────────────────────────────────────────────────────────────────────
+
+void _showStudentDialog(
+    BuildContext context, EnrolledStudent student, TeacherCourse course, Color color) {
+  final provider = context.read<EnrolledStudentsProvider>();
+  showDialog<void>(
+    context: context,
+    builder: (_) => ChangeNotifierProvider.value(
+      value: provider,
+      child: _StudentDetailsDialog(student: student, course: course, color: color),
+    ),
+  );
+}
+
+class _StudentDetailsDialog extends StatelessWidget {
+  final EnrolledStudent student;
+  final TeacherCourse course;
+  final Color color;
+
+  const _StudentDetailsDialog({
+    required this.student,
+    required this.course,
+    required this.color,
+  });
+
+  String _formatDate(String raw) {
+    try {
+      final dt = raw.toLocalSaTime;
+      return '${dt.day}/${dt.month}/${dt.year}';
+    } catch (_) {
+      return raw;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final provider = context.watch<EnrolledStudentsProvider>();
+    final pct = student.progressPercentage.clamp(0, 100).toDouble();
+
+    return Dialog(
+      backgroundColor: c.cardBg,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: InkWell(
+                  onTap: () => Navigator.pop(context),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Icon(Icons.close_rounded, size: 20, color: c.textMedium),
+                  ),
+                ),
+              ),
+              _RingAvatar(student: student, color: color),
+              const SizedBox(height: 12),
+              Text(
+                student.name,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'tajawal',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: c.textDark,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _InfoRow(icon: Icons.email_outlined, label: 'email'.tr, value: student.gmail),
+              _InfoRow(
+                icon: Icons.event_available_outlined,
+                label: 'joined'.tr,
+                value: _formatDate(student.enrolledAt),
+              ),
+              _InfoRow(
+                icon: Icons.flag_outlined,
+                label: 'status'.tr,
+                value: student.status,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Text('stat_avg_progress'.tr,
+                      style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textMedium)),
+                  const Spacer(),
+                  Text('${pct.toStringAsFixed(0)}%',
+                      style: TextStyle(
+                          fontFamily: 'tajawal',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: color)),
+                ],
+              ),
+              const SizedBox(height: 6),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: LinearProgressIndicator(
+                  value: pct / 100,
+                  minHeight: 8,
+                  backgroundColor: c.divider,
+                  valueColor: AlwaysStoppedAnimation(color),
+                ),
+              ),
+              ...[
+                const SizedBox(height: 20),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text('certificates'.tr,
+                      style: TextStyle(
+                          fontFamily: 'tajawal',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: c.textDark)),
+                ),
+                const SizedBox(height: 8),
+                if (course.certificates.isEmpty)
+                  Text('no_certificate_for_course'.tr,
+                      style: TextStyle(
+                          fontFamily: 'tajawal', fontSize: 12, color: c.textMedium))
+                else
+                  for (final cert in course.certificates)
+                    _CertificateRow(cert: cert, student: student, provider: provider),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _InfoRow({required this.icon, required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: c.textMedium),
+          const SizedBox(width: 10),
+          Text(label, style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textMedium)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'tajawal',
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: c.textDark,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One certificate inside the dialog: title, "sent N×" info, and a
+/// send / resend button (always enabled, so it can be sent again).
+class _CertificateRow extends StatelessWidget {
+  final CourseCertificate cert;
+  final EnrolledStudent student;
+  final EnrolledStudentsProvider provider;
+
+  const _CertificateRow({
+    required this.cert,
+    required this.student,
+    required this.provider,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final count = provider.issuedCount(cert.id, student.id);
+    final sending = provider.isSendingCertificate(cert.id, student.id);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          const Icon(Icons.workspace_premium_rounded, color: Color(0xFFFFD700)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(cert.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontFamily: 'tajawal',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: c.textDark)),
+                if (count > 0)
+                  Text('${'certificate_sent_label'.tr} · $count×',
+                      style: TextStyle(
+                          fontFamily: 'tajawal', fontSize: 11, color: c.success)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          sending
+              ? const SizedBox(width: 24, height: 24, child: AppLoadingIndicator())
+              : TextButton.icon(
+            onPressed: provider.isBulkSending
+                ? null
+                : () async {
+              final ok = await provider.sendCertificate(cert.id, student.id);
+              if (!context.mounted) return;
+              _showResultSnack(context, ok, 'certificate_sent_success'.tr);
+            },
+            icon: Icon(count > 0 ? Icons.replay_rounded : Icons.send_rounded, size: 16),
+            label: Text(
+              count > 0 ? 'resend_certificate_btn'.tr : 'send_certificate_btn'.tr,
+              style: const TextStyle(fontFamily: 'tajawal', fontSize: 12),
+            ),
+          ),
+        ],
       ),
     );
   }
