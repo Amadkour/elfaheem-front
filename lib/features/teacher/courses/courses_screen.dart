@@ -29,6 +29,8 @@ class TeacherCoursesScreen extends StatefulWidget {
 }
 
 class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
+  final _searchCtrl = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -45,13 +47,20 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
   }
 
   @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final p = context.watch<TeacherCoursesProvider>();
 
     return BasePage(
       useWebCard: true,
       appBar: ScreenAppBar(
-        title: '${'my_courses'.tr} ${p.filteredCourses.length}',
+        title: '${'my_courses'.tr} '
+            '${p.totalCount > 0 ? p.totalCount : p.filteredCourses.length}',
         showBack: !kIsWeb,
       ),
       floatingActionButton: context.showSidebar ? null : _FloatingAddBtn(),
@@ -63,6 +72,8 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 4),
+            _CourseSearchBar(controller: _searchCtrl, p: p),
+            const SizedBox(height: 10),
             _FilterTabs(p: p),
             const SizedBox(height: 10),
             Expanded(child: _CourseList(p: p)),
@@ -183,6 +194,101 @@ class _AddCourseButton extends StatelessWidget {
 //  Filter tabs
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Search bar — server-side search by course name/description, debounced in
+//  TeacherCoursesProvider.setQuery so it re-fetches page 1 shortly after the
+//  teacher stops typing rather than filtering the (partial) loaded page.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _CourseSearchBar extends StatefulWidget {
+  const _CourseSearchBar({required this.controller, required this.p});
+
+  final TextEditingController controller;
+  final TeacherCoursesProvider p;
+
+  @override
+  State<_CourseSearchBar> createState() => _CourseSearchBarState();
+}
+
+class _CourseSearchBarState extends State<_CourseSearchBar> {
+  @override
+  void initState() {
+    super.initState();
+    // Local listener (independent of provider rebuilds) so the clear "×"
+    // button appears/disappears immediately as the teacher types, rather
+    // than waiting for the search debounce to fire.
+    widget.controller.addListener(_onTextChanged);
+  }
+
+  void _onTextChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onTextChanged);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = widget.controller;
+    final p = widget.p;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(
+        height: 46,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: context.colors.cardBg,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.search_rounded, size: 19, color: context.colors.textLight),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextField(
+                controller: controller,
+                onChanged: (v) => p.setQuery(v),
+                textInputAction: TextInputAction.search,
+                style: context.colors.label.copyWith(color: context.colors.textDark),
+                decoration: InputDecoration(
+                  isDense: true,
+                  border: InputBorder.none,
+                  hintText: 'search_course_by_name_description'.tr,
+                  hintStyle: context.colors.label.copyWith(
+                    color: context.colors.textLight,
+                  ),
+                ),
+              ),
+            ),
+            if (controller.text.isNotEmpty)
+              GestureDetector(
+                onTap: () {
+                  controller.clear();
+                  p.setQuery('');
+                },
+                child: Icon(
+                  Icons.close_rounded,
+                  size: 18,
+                  color: context.colors.textLight,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _FilterTabs extends StatelessWidget {
   const _FilterTabs({required this.p});
 
@@ -293,7 +399,9 @@ class _CourseList extends StatelessWidget {
 
     return RefreshIndicator(
       color: context.colors.primary,
-      onRefresh: () => p.fetchPage(p.currentPage),
+      // force: true — pull-to-refresh means "get me the latest", not
+      // "show me what I last saw", so it must bypass the page cache.
+      onRefresh: () => p.fetchPage(p.currentPage, force: true),
       child: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
@@ -1157,7 +1265,12 @@ class _PaginationFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     // Nothing to paginate yet (empty first page, still on page 0, no more
     // to come) — skip the footer entirely rather than showing dead arrows.
-    if (p.currentPage == 0 && !p.hasMore && p.allCourses.isEmpty) {
+    // Once the server has reported a total (totalCount > 0) this is exact;
+    // otherwise it falls back to the previous "was the last page empty"
+    // heuristic, kept for a not-yet-updated server (see fetchMyCourses).
+    final noPages = p.totalCount > 0 ? p.totalPages <= 1 && p.allCourses.isEmpty
+        : (p.currentPage == 0 && !p.hasMore && p.allCourses.isEmpty);
+    if (noPages) {
       return const SizedBox.shrink();
     }
 
@@ -1213,7 +1326,10 @@ class _PaginationFooter extends StatelessWidget {
                           color: context.colors.primary,
                         ),
                       )
-                          : _PagePill(page: p.currentPage),
+                          : _PagePill(
+                        page: p.currentPage,
+                        totalPages: p.totalCount > 0 ? p.totalPages : null,
+                      ),
                     ),
                   ),
                   _PageArrow(
@@ -1232,34 +1348,45 @@ class _PaginationFooter extends StatelessWidget {
 }
 
 class _PagePill extends StatelessWidget {
-  const _PagePill({required this.page});
+  const _PagePill({required this.page, this.totalPages});
 
   final int page;
 
+  /// Total number of pages, from the server's total count. Null while that
+  /// isn't known yet (e.g. a not-yet-updated server) — shows just the
+  /// current page number in that case, same as before this change.
+  final int? totalPages;
+
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-    decoration: BoxDecoration(
-      gradient: context.colors.primaryGradient,
-      borderRadius: BorderRadius.circular(20),
-      boxShadow: [
-        BoxShadow(
-          color: context.colors.primary.withValues(alpha: 0.30),
-          blurRadius: 10,
-          offset: const Offset(0, 3),
-        ),
-      ],
-    ),
-    child: Text(
-      'صفحة ${page + 1}',
-      style: const TextStyle(
-        color: Colors.white,
-        fontFamily: 'bahji',
-        fontSize: 13,
-        fontWeight: FontWeight.w800,
+  Widget build(BuildContext context) {
+    final total = totalPages;
+    final label = total != null
+        ? '${'page_word'.tr} ${page + 1} ${'of_word'.tr} $total'
+        : '${'page_word'.tr} ${page + 1}';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        gradient: context.colors.primaryGradient,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: context.colors.primary.withValues(alpha: 0.30),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
-    ),
-  );
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontFamily: 'bahji',
+          fontSize: 13,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
 }
 
 class _PageArrow extends StatelessWidget {

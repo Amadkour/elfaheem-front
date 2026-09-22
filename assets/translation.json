@@ -3536,5 +3536,137 @@
   "end_of_list": {
     "en": "You've reached the end",
     "ar": "وصلت إلى نهاية القائمة"
+  },
+  "my_certificates_title": {
+    "en": "My Certificates",
+    "ar": "شهاداتي"
+  },
+  "certificate_issued_on": {
+    "en": "Issued on",
+    "ar": "صدرت بتاريخ"
+  },
+  "session_exam_title": {
+    "en": "Session exam",
+    "ar": "اختبار الدرس"
+  },
+  "session_exam_must_pass": {
+    "en": "Pass this exam to unlock the next sessions",
+    "ar": "اجتز هذا الاختبار لفتح الدروس التالية"
+  },
+  "session_exam_passed": {
+    "en": "You passed this exam",
+    "ar": "لقد اجتزت هذا الاختبار"
+  },
+  "session_exam_failed_retry": {
+    "en": "Not passed yet — try again",
+    "ar": "لم تجتز بعد — أعد المحاولة"
+  },
+  "session_exam_no_attempts": {
+    "en": "No attempts left — contact your teacher",
+    "ar": "استنفدت المحاولات — تواصل مع المدرس"
+  },
+  "session_exam_closed": {
+    "en": "The exam deadline has passed",
+    "ar": "انتهى موعد الاختبار"
+  },
+  "session_exam_required_score": {
+    "en": "Required",
+    "ar": "المطلوب"
+  },
+  "session_exam_best": {
+    "en": "Best score",
+    "ar": "أفضل نتيجة"
+  },
+  "session_exam_attempts_left": {
+    "en": "Attempts left",
+    "ar": "المحاولات المتبقية"
+  },
+  "session_exam_start": {
+    "en": "Start exam",
+    "ar": "ابدأ الاختبار"
+  },
+  "session_exam_retry": {
+    "en": "Retry",
+    "ar": "أعد المحاولة"
+  },
+  "field_exam_session_label": {
+    "en": "Attach to a session (optional)",
+    "ar": "ربط بدرس (اختياري)"
+  },
+  "exam_no_session": {
+    "en": "No session (general exam)",
+    "ar": "بدون درس (اختبار عام)"
+  },
+  "exam_pick_session_title": {
+    "en": "Attach exam to a session",
+    "ar": "ربط الاختبار بدرس"
+  },
+  "exam_session_gate_hint": {
+    "en": "Students must pass this exam to unlock the sessions after it.",
+    "ar": "يجب على الطلاب اجتياز هذا الاختبار لفتح الدروس التي تليه."
+  },
+  "exam_session_attached": {
+    "en": "Exam attached to the session",
+    "ar": "تم ربط الاختبار بالدرس"
+  },
+  "exam_session_detached": {
+    "en": "Exam detached from the session",
+    "ar": "تم فصل الاختبار عن الدرس"
+  },
+  "course_reel_badge": {
+    "en": "Preview",
+    "ar": "عرض أولي"
+  },
+  "course_reel_title": {
+    "en": "Course reel (optional)",
+    "ar": "عرض أولي للكورس (اختياري)"
+  },
+  "course_reel_hint": {
+    "en": "A short intro video shown to students instead of the course image. MP4/MOV/WEBM, up to 100 MB.",
+    "ar": "فيديو قصير يظهر للطلاب بدلاً من صورة الكورس. MP4 أو MOV أو WEBM حتى 100 ميجا."
+  },
+  "course_reel_pick": {
+    "en": "Choose a video",
+    "ar": "اختر فيديو"
+  },
+  "course_reel_replace": {
+    "en": "Replace",
+    "ar": "استبدال"
+  },
+  "course_reel_remove": {
+    "en": "Remove",
+    "ar": "حذف"
+  },
+  "course_reel_undo_remove": {
+    "en": "Undo",
+    "ar": "تراجع"
+  },
+  "course_reel_will_be_removed": {
+    "en": "The reel will be removed when you save",
+    "ar": "سيتم حذف العرض الأولي عند الحفظ"
+  },
+  "course_reel_pending_upload": {
+    "en": "will upload when you save",
+    "ar": "سيتم الرفع عند الحفظ"
+  },
+  "course_reel_uploading": {
+    "en": "Uploading the reel…",
+    "ar": "جارٍ رفع العرض الأولي…"
+  },
+  "course_reel_too_large": {
+    "en": "The video is larger than 100 MB",
+    "ar": "حجم الفيديو أكبر من 100 ميجا"
+  },
+  "course_reel_upload_failed": {
+    "en": "Couldn't upload the reel. The course was saved — try again from Edit.",
+    "ar": "تعذر رفع العرض الأولي. تم حفظ الكورس — حاول مجددًا من التعديل."
+  },
+  "page_word": {
+    "en": "Page",
+    "ar": "صفحة"
+  },
+  "of_word": {
+    "en": "of",
+    "ar": "من"
   }
 }

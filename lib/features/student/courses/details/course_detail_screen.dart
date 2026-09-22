@@ -118,6 +118,7 @@ class _MobileDetail extends StatelessWidget {
                           ),
                           child: CourseHero(
                             course: provider.course.toTeacherModel,
+                            reelUrl: provider.reelUrl,
                             onBack: () => Navigator.maybePop(context),
                             onRefresh: () => provider.refresh(),
                           ),
@@ -209,6 +210,7 @@ class _WebDetail extends StatelessWidget {
                                       ),
                                       child: CourseHero(
                                         course: provider.course.toTeacherModel,
+                                        reelUrl: provider.reelUrl,
                                         onBack: () => Navigator.maybePop(context),
                                         onRefresh: () => provider.refresh(),
                                         onLike: provider.toggleFavorite,

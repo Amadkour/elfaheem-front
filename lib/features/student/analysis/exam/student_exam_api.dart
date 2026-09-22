@@ -1,6 +1,7 @@
-
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/teacher/analysis/exam/exam_model.dart';
+
+import '../../../shared/models/exam_model.dart';
 
 // ── Student-specific response shapes ─────────────────────────────────────────
 
@@ -11,6 +12,8 @@ class StudentExamListItem {
   final String? description;
   final int courseId;
   final String? courseName;
+  /// Session this exam is attached to (null = course-level exam).
+  final int? sessionId;
   final DateTime? startDate;
   final int? duration;
   final double? totalMarks;
@@ -35,6 +38,7 @@ class StudentExamListItem {
     this.description,
     required this.courseId,
     this.courseName,
+    this.sessionId,
     this.startDate,
     this.duration,
     this.totalMarks,
@@ -53,32 +57,33 @@ class StudentExamListItem {
 
   factory StudentExamListItem.fromJson(Map<String, dynamic> j) {
     return StudentExamListItem(
-        id: j['id'] as int,
-        name: j['name'] as String,
-        description: j['description'] as String?,
-        courseId: j['course_id'] as int,
-        courseName: j['course_name'] as String?,
-        startDate: j['start_date'] != null
-            ? DateTime.tryParse(j['start_date'].toString())
-            : null,
-        duration: j['duration'] as int?,
-        totalMarks: (j['total_marks'] as num?)?.toDouble(),
-        passingScore: (j['passing_score'] as num?)?.toDouble(),
-        isSubmitted: j['is_submitted'] as bool? ?? false,
-        answeredCount: j['answered_count'] as int? ?? 0,
-        questionCount: j['question_count'] as int? ?? 0,
-        maxSubmissions: j['max_submissions'] as int?,
-        submissionCount: j['submission_count'] as int? ?? 0,
-        remainingSubmissions: j['remaining_submissions'] as int?,
-        endDate: j['end_date'] != null
-            ? DateTime.tryParse(j['end_date'].toString())
-            : null,
-        marksObtained: (j['marks_obtained'] as num?)?.toDouble(),
-        percentage: (j['percentage'] as num?)?.toDouble(),
-        passed: j['passed'] as bool?,
+      id: j['id'] as int,
+      name: j['name'] as String,
+      description: j['description'] as String?,
+      courseId: j['course_id'] as int,
+      courseName: j['course_name'] as String?,
+      sessionId: j['session_id'] as int?,
+      startDate: j['start_date'] != null
+          ? DateTime.tryParse(j['start_date'].toString())
+          : null,
+      duration: j['duration'] as int?,
+      totalMarks: (j['total_marks'] as num?)?.toDouble(),
+      passingScore: (j['passing_score'] as num?)?.toDouble(),
+      isSubmitted: j['is_submitted'] as bool? ?? false,
+      answeredCount: j['answered_count'] as int? ?? 0,
+      questionCount: j['question_count'] as int? ?? 0,
+      maxSubmissions: j['max_submissions'] as int?,
+      submissionCount: j['submission_count'] as int? ?? 0,
+      remainingSubmissions: j['remaining_submissions'] as int?,
+      endDate: j['end_date'] != null
+          ? DateTime.tryParse(j['end_date'].toString())
+          : null,
+      marksObtained: (j['marks_obtained'] as num?)?.toDouble(),
+      percentage: (j['percentage'] as num?)?.toDouble(),
+      passed: j['passed'] as bool?,
       enablePasscode: j['enable_passcode'] as bool? ?? false,
       passcode: j['passcode'] as String?,
-      );
+    );
   }
 
   ExamStatus get status {

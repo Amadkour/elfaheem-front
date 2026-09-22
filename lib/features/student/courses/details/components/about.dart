@@ -6,18 +6,31 @@ import '../../../../shared/profile/course_instractor_profile.dart';
 import '../../../../teacher/home/teacher_models.dart';
 import '../course_detail_provider.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+
+import 'issued_certificate.dart';
 class AboutTab extends StatelessWidget {
   const AboutTab({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final c = context.watch<CourseDetailProvider>().course;
+    final provider = context.watch<CourseDetailProvider>();
+    final c = provider.course;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 36),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (provider.myCertificates.isNotEmpty) ...[
+            _SectionTitle(
+              title: 'my_certificates_title'.tr,
+              icon: Icons.emoji_events_rounded,
+              color: context.colors.accent,
+            ),
+            const SizedBox(height: 12),
+            ...provider.myCertificates.map((x) => _IssuedCertificateCard(cert: x)),
+            const SizedBox(height: 22),
+          ],
           if (c.teacher != Null) ...[
             InkWell(
               onTap: () {
@@ -419,4 +432,227 @@ class SectionHdr extends StatelessWidget {
       ],
     );
   }
+}
+
+// ── Issued certificate (student's own) ───────────────────────────────────────
+
+String _fmtIssued(DateTime? d) =>
+    d == null ? '' : '${d.day}/${d.month}/${d.year}';
+
+class _IssuedCertificateCard extends StatelessWidget {
+  final IssuedCertificate cert;
+
+  const _IssuedCertificateCard({required this.cert});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final isAr = AppConfig.lang == 'ar';
+    final date = _fmtIssued(cert.issuedAt);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => showDialog<void>(
+          context: context,
+          builder: (_) => _CertificateViewer(cert: cert),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: c.cardBg,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: c.accent.withValues(alpha: 0.35)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AspectRatio(
+                aspectRatio: 1600 / 1131,
+                child: _CertificateImage(url: cert.urlFor(isAr)),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  children: [
+                    Icon(Icons.verified_rounded, color: c.accent, size: 22),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            cert.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: c.label.copyWith(
+                              color: c.textDark,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          if (date.isNotEmpty)
+                            Text(
+                              '${'certificate_issued_on'.tr} $date',
+                              style: c.caption,
+                            ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.zoom_out_map_rounded, color: c.textMedium, size: 20),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CertificateImage extends StatelessWidget {
+  final String url;
+  final BoxFit fit;
+
+  const _CertificateImage({super.key, required this.url, this.fit = BoxFit.cover});
+
+  @override
+  Widget build(BuildContext context) => Image.network(
+        url,
+        fit: fit,
+        loadingBuilder: (_, child, progress) => progress == null
+            ? child
+            : const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        errorBuilder: (_, _, _) => Container(
+          color: context.colors.primaryLight.withValues(alpha: 0.2),
+          alignment: Alignment.center,
+          child: Icon(
+            Icons.broken_image_outlined,
+            color: context.colors.textMedium,
+            size: 32,
+          ),
+        ),
+      );
+}
+
+/// Full-screen, pinch-to-zoom viewer with an Arabic / English switch.
+class _CertificateViewer extends StatefulWidget {
+  final IssuedCertificate cert;
+
+  const _CertificateViewer({required this.cert});
+
+  @override
+  State<_CertificateViewer> createState() => _CertificateViewerState();
+}
+
+class _CertificateViewerState extends State<_CertificateViewer> {
+  late bool _arabic = AppConfig.lang == 'ar' && widget.cert.hasArabic;
+
+  @override
+  Widget build(BuildContext context) {
+    final cert = widget.cert;
+    return Dialog(
+      backgroundColor: Colors.black,
+      insetPadding: const EdgeInsets.all(12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 6, 6),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    cert.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                if (cert.hasArabic) ...[
+                  _LangChip(
+                    label: 'العربية',
+                    selected: _arabic,
+                    onTap: () => setState(() => _arabic = true),
+                  ),
+                  const SizedBox(width: 6),
+                  _LangChip(
+                    label: 'English',
+                    selected: !_arabic,
+                    onTap: () => setState(() => _arabic = false),
+                  ),
+                ],
+                IconButton(
+                  icon: const Icon(Icons.close_rounded, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          ),
+          Flexible(
+            child: InteractiveViewer(
+              minScale: 1,
+              maxScale: 5,
+              child: AspectRatio(
+                aspectRatio: 1600 / 1131,
+                child: _CertificateImage(
+                  key: ValueKey(_arabic),
+                  url: cert.urlFor(_arabic),
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+}
+
+class _LangChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _LangChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFFC49A47) : Colors.white12,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.black : Colors.white70,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      );
 }

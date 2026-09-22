@@ -46,7 +46,7 @@ List<Widget> buildSessionsSlivers(BuildContext context,
         child: provider.isLoading
             ? const _LoadingState()
             : _EmptyState(
-                onAdd: () => Helpers.showAddSessionSheet(context, course),
+                onAdd: () => Helpers.showAddSessionSheet(context, provider),
               ),
       ),
     if (provider.sessions.isNotEmpty)

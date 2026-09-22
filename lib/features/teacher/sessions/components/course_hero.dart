@@ -10,6 +10,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import '../../../../../utils/widget/refresh_button.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../home/teacher_models.dart';
+import 'course_reel_player.dart';
 
 class CourseHero extends StatelessWidget {
   final TeacherCourse course;
@@ -19,6 +20,10 @@ class CourseHero extends StatelessWidget {
   final bool? isLike;
   final Future<void> Function() onRefresh;
 
+  /// Optional intro video (عرض أولي). When present it plays INSTEAD of the
+  /// course image (the image stays as its poster / fallback).
+  final String? reelUrl;
+
   const CourseHero({
     super.key,
     required this.course,
@@ -27,6 +32,7 @@ class CourseHero extends StatelessWidget {
     required this.onRefresh,
     this.onLike,
     this.isLike,
+    this.reelUrl,
   });
 
   @override
@@ -149,6 +155,14 @@ class CourseHero extends StatelessWidget {
 
   Widget _buildBackground(BuildContext context) {
     final imageUrl = course.imageUrl;
+    final reel = reelUrl;
+    if (reel != null && reel.isNotEmpty) {
+      return CourseReelPlayer(
+        key: ValueKey(reel),
+        url: reel,
+        posterUrl: imageUrl.isNotEmpty ? imageUrl : null,
+      );
+    }
     if (imageUrl.isNotEmpty) {
       return Container(
         decoration: BoxDecoration(gradient: context.colors.primaryGradient),

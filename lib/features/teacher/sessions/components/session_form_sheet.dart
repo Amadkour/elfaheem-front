@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/app_config.dart';
-import '../../../../config/theme/app_theme.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/helpers.dart';
-import '../../../../utils/widget/primary_button.dart';
 import '../../../../utils/widget/text_field.dart';
 import '../../../auth/auth_widgets.dart';
 import '../../../student/models.dart';
@@ -12,13 +10,13 @@ import '../sessions_provider.dart';
 
 class SessionFormSheet extends StatefulWidget {
   final TeacherSessionItem? existing;
-  final int courseId;
+  final TeacherCourseScreenProvider provider;
   final bool? openLive;
 
   const SessionFormSheet({
     super.key,
     this.existing,
-    required this.courseId,
+    required this.provider,
     this.openLive,
   });
 
@@ -96,11 +94,10 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    final p = context.read<TeacherCourseScreenProvider>();
     bool ok;
     TeacherSessionItem? r;
     if (_isEdit) {
-      r = await p.updateSession(
+      r = await widget.provider.updateSession(
         widget.existing!.id,
         name: _nameCtrl.text.trim(),
         description: _descCtrl.text.trim().isEmpty
@@ -113,7 +110,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
       );
       ok = r != null;
     } else {
-      r = await p.createSession(
+      r = await widget.provider.createSession(
         name: _nameCtrl.text.trim(),
         type: _type,
         description: _descCtrl.text.trim().isEmpty
@@ -133,9 +130,9 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
       isError: !ok,
     );
     if ((widget.openLive ?? false) && ok) {
-      await p.startLive(r!.id);
+      await widget.provider.startLive(r!.id);
       if (mounted) {
-        await p.joinLive(context, r.id, r.courseId, 200, false);
+        await widget.provider.joinLive(context, r.id, r.courseId, 200, false);
       }
     }
     if (mounted) {
@@ -145,17 +142,6 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
 
   @override
   Widget build(BuildContext context) {
-    // Scoped to exactly what this sheet renders: a dedicated submit-loading
-    // flag (NOT BaseProvider.isLoading, which every API call in this
-    // provider shares) and the details-expand flag. Dart records have
-    // structural equality, so this only rebuilds the sheet when one of
-    // these two actually changes — never for unrelated provider activity
-    // (material uploads, live-session state, a background refresh) firing
-    // elsewhere on the same screen while this sheet is open.
-    final (submitLoading, openMoreDetails) = context.select<
-        TeacherCourseScreenProvider, (bool, bool)>(
-          (p) => (p.submitLoading, p.openMoreDetailsForAddSession),
-    );
 
     return Directionality(
       textDirection: Helpers.pageDirection,
@@ -242,7 +228,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      Icon( openMoreDetails?
+                      Icon( widget.provider.openCourseDetails?
                       Icons.chevron_left_rounded:
                       Icons.chevron_right_rounded,
                         color:Colors.blue,
@@ -250,7 +236,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                     ],
                   ),
                 ),
-                if (openMoreDetails) ...[
+                if (widget.provider.openCourseDetails) ...[
                   const SizedBox(height: 14),
                   MyTextField(
                     controller: _descCtrl,
@@ -342,7 +328,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                 const SizedBox(height: 24),
                 PrimaryButton(
                   label: _isEdit ? 'save_changes'.tr : 'add_session'.tr,
-                  isLoading: submitLoading,
+                  isLoading: widget.provider.submitLoading,
                   iconBefore:true,
                   onPressed: _submit,
                   icon: Icons.add_rounded,

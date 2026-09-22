@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import '../../../../config/app_config.dart';
+import '../../../shared/models/exam_model.dart';
 import 'exam_model.dart';
 import 'teacher_exam_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
@@ -14,17 +15,30 @@ class TeacherExamHubScreen extends StatelessWidget {
   final int courseId;
   final String courseTitle;
 
+  /// When set, the "new exam" sheet pre-selects this session.
+  final int? initialSessionId;
+
+  /// When true, the "new exam" sheet opens automatically as soon as the hub
+  /// appears (used by the "Add exam" button on a session card).
+  final bool openCreateOnStart;
+
   const TeacherExamHubScreen({
     super.key,
     required this.courseId,
     required this.courseTitle,
+    this.initialSessionId,
+    this.openCreateOnStart = false,
   });
 
   @override
   Widget build(BuildContext context) => ChangeNotifierProvider(
-        create: (_) => TeacherExamProvider(courseId: courseId)..loadExams(),
-        child: _HubView(courseTitle: courseTitle),
-      );
+    create: (_) => TeacherExamProvider(courseId: courseId)..loadExams(),
+    child: _HubView(
+      courseTitle: courseTitle,
+      initialSessionId: initialSessionId,
+      openCreateOnStart: openCreateOnStart,
+    ),
+  );
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -33,8 +47,14 @@ class TeacherExamHubScreen extends StatelessWidget {
 
 class _HubView extends StatefulWidget {
   final String courseTitle;
+  final int? initialSessionId;
+  final bool openCreateOnStart;
 
-  const _HubView({required this.courseTitle});
+  const _HubView({
+    required this.courseTitle,
+    this.initialSessionId,
+    this.openCreateOnStart = false,
+  });
 
   @override
   State<_HubView> createState() => _HubViewState();
@@ -53,6 +73,11 @@ class _HubViewState extends State<_HubView>
         context.read<TeacherExamProvider>().setTab(_tab.index);
       }
     });
+    if (widget.openCreateOnStart) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showCreateSheet(context);
+      });
+    }
   }
 
   @override
@@ -70,19 +95,19 @@ class _HubViewState extends State<_HubView>
       useWebCard: true,
       floatingActionButton: prov.tab == 0
           ? FloatingActionButton.extended(
-              onPressed: () => _showCreateSheet(context),
-              backgroundColor: context.colors.primary,
-              icon: const Icon(Icons.add_rounded, color: Colors.white),
-              label: Text('new_exam'.tr,
-                  style: TextStyle(
-                      fontFamily: 'bahji',
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700)),
-            )
+        onPressed: () => _showCreateSheet(context),
+        backgroundColor: context.colors.primary,
+        icon: const Icon(Icons.add_rounded, color: Colors.white),
+        label: Text('new_exam'.tr,
+            style: TextStyle(
+                fontFamily: 'bahji',
+                color: Colors.white,
+                fontWeight: FontWeight.w700)),
+      )
           : null,
       child: NestedScrollView(
         headerSliverBuilder: (ctx, _) =>
-            [SliverToBoxAdapter(child: _buildAppBar(ctx))],
+        [SliverToBoxAdapter(child: _buildAppBar(ctx))],
         body: TabBarView(
           controller: _tab,
           children: [_buildExamsTab(prov), _buildResultsTab(prov)],
@@ -93,95 +118,95 @@ class _HubViewState extends State<_HubView>
 
   // ── App bar ─────────────────────────────────────────────────────────────────
   Widget _buildAppBar(BuildContext ctx) => Column(
-        children: [
-          Container(
-            height: 250,
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage('assets/images/test_background.png'),
-                fit: BoxFit.cover,
-              ),
-              borderRadius: BorderRadius.vertical(
-                bottom: Radius.circular(34),
-              ),
-            ),
-            child: Column(
+    children: [
+      Container(
+        height: 250,
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/test_background.png'),
+            fit: BoxFit.cover,
+          ),
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(34),
+          ),
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back_ios,
-                          color: Colors.white, size: 20),
-                      onPressed: () => Navigator.pop(ctx),
-                    ),
-                    const Spacer(),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    Text(
-                      'exam_hub_title'.tr,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 34,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    Text(
-                      'exam_hub_subtitle'.tr,
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ],
+                IconButton(
+                  icon: const Icon(Icons.arrow_back_ios,
+                      color: Colors.white, size: 20),
+                  onPressed: () => Navigator.pop(ctx),
                 ),
                 const Spacer(),
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: context.colors.background,
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(28),
-                      ),
-                    ),
-                    child: TabBar(
-                      controller: _tab,
-                      indicatorSize: TabBarIndicatorSize.label,
-                      indicatorWeight: 4,
-                      indicatorColor: Color(0xff2E67F8),
-                      labelColor: Color(0xff2E67F8),
-                      unselectedLabelColor: Color(0xff8B94B0),
-                      labelStyle: const TextStyle(
-                        fontSize: 19,
-                        fontWeight: FontWeight.w800,
-                      ),
-                      unselectedLabelStyle: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      tabs: [
-                        Tab(text: 'tab_exams'.tr),
-                        Tab(text: 'tab_student_results'.tr),
-                      ],
-                    ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Text(
+                  'exam_hub_title'.tr,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 34,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ],
             ),
-          ),
-        ],
-      );
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Text(
+                  'exam_hub_subtitle'.tr,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 15,
+                  ),
+                ),
+              ],
+            ),
+            const Spacer(),
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: context.colors.background,
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(28),
+                  ),
+                ),
+                child: TabBar(
+                  controller: _tab,
+                  indicatorSize: TabBarIndicatorSize.label,
+                  indicatorWeight: 4,
+                  indicatorColor: Color(0xff2E67F8),
+                  labelColor: Color(0xff2E67F8),
+                  unselectedLabelColor: Color(0xff8B94B0),
+                  labelStyle: const TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                  ),
+                  unselectedLabelStyle: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  tabs: [
+                    Tab(text: 'tab_exams'.tr),
+                    Tab(text: 'tab_student_results'.tr),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
 
   // ══════════════════════════════════════════════════════════════════════════
   // Tab 1 — Exams list
@@ -212,30 +237,32 @@ class _HubViewState extends State<_HubView>
     final isWide = MediaQuery.of(context).size.width > 720;
     return isWide
         ? GridView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 1.5,
-                crossAxisSpacing: 14,
-                mainAxisSpacing: 14),
-            itemCount: prov.exams.length,
-            itemBuilder: (_, i) => _examCard(prov, prov.exams[i]),
-          )
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 1.35, // a bit taller: the session chip may wrap a line
+          crossAxisSpacing: 14,
+          mainAxisSpacing: 14),
+      itemCount: prov.exams.length,
+      itemBuilder: (_, i) => _examCard(prov, prov.exams[i]),
+    )
         : ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-            itemCount: prov.exams.length,
-            itemBuilder: (_, i) => _examCard(prov, prov.exams[i]),
-          );
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+      itemCount: prov.exams.length,
+      itemBuilder: (_, i) => _examCard(prov, prov.exams[i]),
+    );
   }
 
   Widget _examCard(TeacherExamProvider prov, ExamModel exam) => _ExamCard(
-        key: ValueKey(exam.id),
-        exam: exam,
-        onToggle: () => _toggle(prov, exam),
-        onResults: () => prov.loadResults(exam),
-        onDelete: () => _confirmDelete(prov, exam.id),
-        onManageQuestions: () => _showQuestionsSheet(context, prov, exam),
-      );
+    key: ValueKey(exam.id),
+    exam: exam,
+    sessionName: prov.sessionNameFor(exam),
+    onPickSession: () => _showSessionPicker(prov, exam),
+    onToggle: () => _toggle(prov, exam),
+    onResults: () => prov.loadResults(exam),
+    onDelete: () => _confirmDelete(prov, exam.id),
+    onManageQuestions: () => _showQuestionsSheet(context, prov, exam),
+  );
 
   // ══════════════════════════════════════════════════════════════════════════
   // Tab 2 — Results
@@ -296,18 +323,18 @@ class _HubViewState extends State<_HubView>
       Expanded(
         child: prov.results.isEmpty
             ? Center(
-                child: Text('no_results_yet'.tr,
-                    style: const TextStyle(
-                        fontFamily: 'bahji', color: Colors.grey)))
+            child: Text('no_results_yet'.tr,
+                style: const TextStyle(
+                    fontFamily: 'bahji', color: Colors.grey)))
             : ListView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-                itemCount: prov.results.length,
-                itemBuilder: (_, i) => _ResultTile(
-                  result: prov.results[i],
-                  onViewAnswers: () =>
-                      _showAnswers(prov.results[i], prov.selectedExam!),
-                ),
-              ),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+          itemCount: prov.results.length,
+          itemBuilder: (_, i) => _ResultTile(
+            result: prov.results[i],
+            onViewAnswers: () =>
+                _showAnswers(prov.results[i], prov.selectedExam!),
+          ),
+        ),
       ),
     ]);
   }
@@ -337,7 +364,7 @@ class _HubViewState extends State<_HubView>
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
           title: Text('delete_exam_title'.tr,
               style: const TextStyle(
                   fontFamily: 'bahji', fontWeight: FontWeight.w700)),
@@ -372,12 +399,40 @@ class _HubViewState extends State<_HubView>
   }
 
   void _showCreateSheet(BuildContext ctx) => showModalBottomSheet(
-        context: ctx,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) =>
-            _CreateExamSheet(provider: ctx.read<TeacherExamProvider>()),
-      );
+    context: ctx,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => _CreateExamSheet(
+      provider: ctx.read<TeacherExamProvider>(),
+      initialSessionId: widget.initialSessionId,
+    ),
+  );
+
+  /// Attach the exam to a session (or detach it). Students must PASS a
+  /// published, attached exam before the sessions after it unlock.
+  Future<void> _showSessionPicker(TeacherExamProvider prov, ExamModel exam) async {
+    if (!prov.sessionsLoaded) await prov.loadSessions();
+    if (!mounted) return;
+    // -1 = "no session" (detach); null = dismissed
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _SessionPickerSheet(
+        sessions: prov.sessions,
+        selectedId: exam.sessionId,
+      ),
+    );
+    if (picked == null || !mounted) return;
+    final newId = picked == -1 ? null : picked;
+    if (newId == exam.sessionId) return;
+    final err = await prov.assignSession(exam, newId);
+    if (!mounted) return;
+    _snack(
+      err ?? (newId == null ? 'exam_session_detached'.tr : 'exam_session_attached'.tr),
+      err == null ? context.colors.success : Colors.redAccent,
+    );
+  }
 
   void _showQuestionsSheet(
       BuildContext ctx, TeacherExamProvider prov, ExamModel exam) {
@@ -415,13 +470,21 @@ class _HubViewState extends State<_HubView>
 // _ExamCard
 // ══════════════════════════════════════════════════════════════════════════════
 
+/// Keeps a long session name from overflowing its chip.
+String _shorten(String s, [int max = 22]) =>
+    s.length <= max ? s : '${s.substring(0, max - 1)}…';
+
 class _ExamCard extends StatelessWidget {
   final ExamModel exam;
+  final String? sessionName;
+  final VoidCallback onPickSession;
   final VoidCallback onToggle, onResults, onDelete, onManageQuestions;
 
   const _ExamCard({
     super.key,
     required this.exam,
+    required this.sessionName,
+    required this.onPickSession,
     required this.onToggle,
     required this.onResults,
     required this.onDelete,
@@ -430,243 +493,256 @@ class _ExamCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(
-          color: context.colors.cardBg,
-          borderRadius: BorderRadius.circular(22),
-          border: Border(),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withValues(alpha: 0.3),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
+    margin: const EdgeInsets.only(bottom: 16),
+    decoration: BoxDecoration(
+      color: context.colors.cardBg,
+      borderRadius: BorderRadius.circular(22),
+      border: Border(),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.grey.withValues(alpha: 0.3),
+          blurRadius: 20,
+          offset: const Offset(0, 8),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(
+      ],
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          /// HEADER
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              /// HEADER
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  /// Left Icon
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: context.colors.primary.withValues(alpha: .1),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Icon(
-                      Icons.quiz_rounded,
-                      color: context.colors.primary,
-                      size: 28,
-                    ),
-                  ),
+              /// Left Icon
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: context.colors.primary.withValues(alpha: .1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  Icons.quiz_rounded,
+                  color: context.colors.primary,
+                  size: 28,
+                ),
+              ),
 
-                  const SizedBox(width: 14),
+              const SizedBox(width: 14),
 
-                  /// Title + Desc
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              /// Title + Desc
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                exam.name,
-                                style: const TextStyle(
-                                  fontFamily: 'bahji',
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: exam.isPublished
-                                    ? Colors.green.withValues(alpha: .1)
-                                    : Colors.orange.withValues(alpha: .1),
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                              child: Text(
-                                exam.isPublished
-                                    ? 'exam_published_badge'.tr
-                                    : 'exam_unpublished_badge'.tr,
-                                style: TextStyle(
-                                  fontFamily: 'bahji',
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: exam.isPublished
-                                      ? Colors.green
-                                      : Colors.orange,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        if (exam.description != null)
-                          Text(
-                            exam.description!,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
+                        Expanded(
+                          child: Text(
+                            exam.name,
+                            style: const TextStyle(
                               fontFamily: 'bahji',
-                              fontSize: 13,
-                              height: 1.5,
-                              color: Colors.grey.shade600,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: exam.isPublished
+                                ? Colors.green.withValues(alpha: .1)
+                                : Colors.orange.withValues(alpha: .1),
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          child: Text(
+                            exam.isPublished
+                                ? 'exam_published_badge'.tr
+                                : 'exam_unpublished_badge'.tr,
+                            style: TextStyle(
+                              fontFamily: 'bahji',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: exam.isPublished
+                                  ? Colors.green
+                                  : Colors.orange,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-
-              const Spacer(),
-
-              /// INFO CHIPS
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  _InfoChip(
-                    icon: Icons.help_outline_rounded,
-                    label:
-                        '${exam.questionCount} ${'question_count_chip'.tr.split(' ').last}',
-                    color: Colors.blueGrey,
-                  ),
-                  _InfoChip(
-                    icon: Icons.timer_outlined,
-                    label:
-                        '${exam.duration ?? 0} ${'duration_chip'.tr.split(' ').last}',
-                    color: Colors.teal,
-                  ),
-                  if (exam.passcode != null)
-                    _InfoChip(
-                      icon: Icons.lock_outline_rounded,
-                      label: exam.passcode!,
-                      color: Colors.purple,
-                    ),
-                  if (exam.startDate != null)
-                    _InfoChip(
-                      icon: Icons.schedule_rounded,
-                      label: _fmtDate(exam.startDate!),
-                      color: Colors.orange,
-                    ),
-                ],
-              ),
-
-              Spacer(),
-              Divider(color: AppTheme.textLight.withAlpha(100)),
-
-              /// ACTION BUTTONS
-              Row(
-                children: [
-                  Expanded(
-                    child: _ModernActionBtn(
-                      title: exam.isPublished
-                          ? 'exam_toggle_hide'.tr
-                          : 'exam_toggle_publish'.tr,
-                      icon: exam.isPublished
-                          ? Icons.visibility_off_rounded
-                          : Icons.visibility_rounded,
-                      color: exam.isPublished
-                          ? Colors.grey
-                          : context.colors.success,
-                      onTap: onToggle,
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(5),
-                    child: Text(
-                      "|",
-                      style: TextStyle(
-                          fontSize: 18,
-                          color: AppTheme.textLight.withAlpha(100)),
-                    ),
-                  ),
-                  Expanded(
-                    child: _ModernActionBtn(
-                      title: 'btn_questions'.tr,
-                      icon: Icons.edit_note_rounded,
-                      color: Colors.deepOrange,
-                      onTap: onManageQuestions,
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(5),
-                    child: Text(
-                      "|",
-                      style: TextStyle(
-                          fontSize: 18,
-                          color: AppTheme.textLight.withAlpha(100)),
-                    ),
-                  ),
-                  Expanded(
-                    child: _ModernActionBtn(
-                      title: 'btn_results'.tr,
-                      icon: Icons.bar_chart_rounded,
-                      color: context.colors.primary,
-                      onTap: onResults,
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(5),
-                    child: Text(
-                      "|",
-                      style: TextStyle(
-                          fontSize: 18,
-                          color: AppTheme.textLight.withAlpha(100)),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.delete_outline,
-                      color: Colors.red,
-                      size: 22,
-                    ),
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          title: Text('delete_confirm_title'.tr),
-                          content: Text('delete_exam_inline_confirm'.tr),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: Text('cancel'.tr),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                Navigator.pop(context);
-                                onDelete();
-                              },
-                              child: Text(
-                                'btn_delete'.tr,
-                                style: const TextStyle(color: Colors.red),
-                              ),
-                            ),
-                          ],
+                    const SizedBox(height: 6),
+                    if (exam.description != null)
+                      Text(
+                        exam.description!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'bahji',
+                          fontSize: 13,
+                          height: 1.5,
+                          color: Colors.grey.shade600,
                         ),
-                      );
-                    },
-                  )
-                ],
+                      ),
+                  ],
+                ),
               ),
             ],
           ),
-        ),
-      );
+
+          const Spacer(),
+
+          /// INFO CHIPS
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _InfoChip(
+                icon: Icons.help_outline_rounded,
+                label:
+                '${exam.questionCount} ${'question_count_chip'.tr.split(' ').last}',
+                color: Colors.blueGrey,
+              ),
+              _InfoChip(
+                icon: Icons.timer_outlined,
+                label:
+                '${exam.duration ?? 0} ${'duration_chip'.tr.split(' ').last}',
+                color: Colors.teal,
+              ),
+              // Which session this exam gates (tap to change / detach).
+              GestureDetector(
+                onTap: onPickSession,
+                child: _InfoChip(
+                  icon: Icons.play_lesson_rounded,
+                  label: exam.sessionId == null
+                      ? 'exam_no_session'.tr
+                      : _shorten(sessionName ?? 'session'.tr),
+                  color: exam.sessionId == null
+                      ? Colors.grey
+                      : context.colors.primary,
+                ),
+              ),
+              if (exam.passcode != null)
+                _InfoChip(
+                  icon: Icons.lock_outline_rounded,
+                  label: exam.passcode!,
+                  color: Colors.purple,
+                ),
+              if (exam.startDate != null)
+                _InfoChip(
+                  icon: Icons.schedule_rounded,
+                  label: _fmtDate(exam.startDate!),
+                  color: Colors.orange,
+                ),
+            ],
+          ),
+
+          Spacer(),
+          Divider(color: AppTheme.textLight.withAlpha(100)),
+
+          /// ACTION BUTTONS
+          Row(
+            children: [
+              Expanded(
+                child: _ModernActionBtn(
+                  title: exam.isPublished
+                      ? 'exam_toggle_hide'.tr
+                      : 'exam_toggle_publish'.tr,
+                  icon: exam.isPublished
+                      ? Icons.visibility_off_rounded
+                      : Icons.visibility_rounded,
+                  color: exam.isPublished
+                      ? Colors.grey
+                      : context.colors.success,
+                  onTap: onToggle,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(5),
+                child: Text(
+                  "|",
+                  style: TextStyle(
+                      fontSize: 18,
+                      color: AppTheme.textLight.withAlpha(100)),
+                ),
+              ),
+              Expanded(
+                child: _ModernActionBtn(
+                  title: 'btn_questions'.tr,
+                  icon: Icons.edit_note_rounded,
+                  color: Colors.deepOrange,
+                  onTap: onManageQuestions,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(5),
+                child: Text(
+                  "|",
+                  style: TextStyle(
+                      fontSize: 18,
+                      color: AppTheme.textLight.withAlpha(100)),
+                ),
+              ),
+              Expanded(
+                child: _ModernActionBtn(
+                  title: 'btn_results'.tr,
+                  icon: Icons.bar_chart_rounded,
+                  color: context.colors.primary,
+                  onTap: onResults,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(5),
+                child: Text(
+                  "|",
+                  style: TextStyle(
+                      fontSize: 18,
+                      color: AppTheme.textLight.withAlpha(100)),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(
+                  Icons.delete_outline,
+                  color: Colors.red,
+                  size: 22,
+                ),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: Text('delete_confirm_title'.tr),
+                      content: Text('delete_exam_inline_confirm'.tr),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text('cancel'.tr),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            onDelete();
+                          },
+                          child: Text(
+                            'btn_delete'.tr,
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              )
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
 
   //////
 
@@ -752,62 +828,62 @@ class _ManageQuestionsSheet extends StatelessWidget {
             child: loading
                 ? const Center(child: AppLoadingIndicator())
                 : error != null
-                    ? Center(
-                        child:
-                            Column(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(Icons.wifi_off_rounded,
-                            size: 48, color: Colors.grey.shade300),
-                        const SizedBox(height: 8),
-                        Text(error,
-                            style: const TextStyle(
-                                fontFamily: 'bahji', color: Colors.grey)),
-                        const SizedBox(height: 12),
-                        ElevatedButton(
-                          onPressed: () => prov.loadQuestions(exam.id),
-                          style: ElevatedButton.styleFrom(
-                              backgroundColor: context.colors.primary),
-                          child: Text('retry'.tr,
-                              style: const TextStyle(fontFamily: 'bahji')),
-                        ),
-                      ]))
-                    : questions.isEmpty
-                        ? Center(
-                            child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                Icon(Icons.quiz_outlined,
-                                    size: 56, color: Colors.grey.shade300),
-                                const SizedBox(height: 10),
-                                Text('no_questions_yet'.tr,
-                                    style: const TextStyle(
-                                        fontFamily: 'bahji',
-                                        fontSize: 15,
-                                        color: Colors.grey)),
-                                const SizedBox(height: 6),
-                                Text('no_questions_hint'.tr,
-                                    style: const TextStyle(
-                                        fontFamily: 'bahji',
-                                        fontSize: 12,
-                                        color: Colors.grey)),
-                              ]))
-                        : ReorderableListView.builder(
-                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
-                            itemCount: questions.length,
-                            onReorder: (_, _) {},
-                            // drag-to-reorder hint (order save via API not implemented)
-                            itemBuilder: (_, i) {
-                              final q = questions[i];
-                              return _QuestionTile(
-                                key: ValueKey(q.id),
-                                question: q,
-                                index: i,
-                                onEdit: () => _showQuestionForm(context, prov,
-                                    examId: exam.id, existing: q),
-                                onDelete: () => _confirmDeleteQuestion(
-                                    context, prov, q, exam.id),
-                              );
-                            },
-                          ),
+                ? Center(
+                child:
+                Column(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.wifi_off_rounded,
+                      size: 48, color: Colors.grey.shade300),
+                  const SizedBox(height: 8),
+                  Text(error,
+                      style: const TextStyle(
+                          fontFamily: 'bahji', color: Colors.grey)),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: () => prov.loadQuestions(exam.id),
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: context.colors.primary),
+                    child: Text('retry'.tr,
+                        style: const TextStyle(fontFamily: 'bahji')),
+                  ),
+                ]))
+                : questions.isEmpty
+                ? Center(
+                child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.quiz_outlined,
+                          size: 56, color: Colors.grey.shade300),
+                      const SizedBox(height: 10),
+                      Text('no_questions_yet'.tr,
+                          style: const TextStyle(
+                              fontFamily: 'bahji',
+                              fontSize: 15,
+                              color: Colors.grey)),
+                      const SizedBox(height: 6),
+                      Text('no_questions_hint'.tr,
+                          style: const TextStyle(
+                              fontFamily: 'bahji',
+                              fontSize: 12,
+                              color: Colors.grey)),
+                    ]))
+                : ReorderableListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+              itemCount: questions.length,
+              onReorder: (_, _) {},
+              // drag-to-reorder hint (order save via API not implemented)
+              itemBuilder: (_, i) {
+                final q = questions[i];
+                return _QuestionTile(
+                  key: ValueKey(q.id),
+                  question: q,
+                  index: i,
+                  onEdit: () => _showQuestionForm(context, prov,
+                      examId: exam.id, existing: q),
+                  onDelete: () => _confirmDeleteQuestion(
+                      context, prov, q, exam.id),
+                );
+              },
+            ),
           ),
         ]),
       ),
@@ -815,11 +891,11 @@ class _ManageQuestionsSheet extends StatelessWidget {
   }
 
   void _showQuestionForm(
-    BuildContext ctx,
-    TeacherExamProvider prov, {
-    required int examId,
-    required Question? existing,
-  }) =>
+      BuildContext ctx,
+      TeacherExamProvider prov, {
+        required int examId,
+        required Question? existing,
+      }) =>
       showModalBottomSheet(
         context: ctx,
         isScrollControlled: true,
@@ -831,18 +907,18 @@ class _ManageQuestionsSheet extends StatelessWidget {
       );
 
   Future<void> _confirmDeleteQuestion(
-    BuildContext ctx,
-    TeacherExamProvider prov,
-    Question q,
-    int examId,
-  ) async {
+      BuildContext ctx,
+      TeacherExamProvider prov,
+      Question q,
+      int examId,
+      ) async {
     final ok = await showDialog<bool>(
       context: ctx,
       builder: (_) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text('delete_question_title'.tr,
               style: const TextStyle(
                   fontFamily: 'bahji', fontWeight: FontWeight.w700)),
@@ -888,141 +964,141 @@ class _QuestionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade200),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 6,
-                offset: const Offset(0, 2))
-          ],
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // Question header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 8, 8),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Container(
-                width: 26,
-                height: 26,
-                decoration: BoxDecoration(
-                  color: context.colors.primary.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
+    margin: const EdgeInsets.only(bottom: 10),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: Colors.grey.shade200),
+      boxShadow: [
+        BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2))
+      ],
+    ),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // Question header
+      Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 8, 8),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: context.colors.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text('${index + 1}',
+                  style: TextStyle(
+                      fontFamily: 'bahji',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: context.colors.primary)),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(question.title,
+                style: const TextStyle(
+                    fontFamily: 'bahji',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    height: 1.4)),
+          ),
+          // Edit / Delete actions
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded,
+                size: 18, color: Colors.grey),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
+            onSelected: (v) {
+              if (v == 'edit') onEdit();
+              if (v == 'delete') onDelete();
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'edit',
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(Icons.edit_rounded,
+                      color: context.colors.primary),
+                  title: Text('btn_edit'.tr,
+                      style: const TextStyle(fontFamily: 'bahji')),
                 ),
-                child: Center(
-                  child: Text('${index + 1}',
+              ),
+              PopupMenuItem(
+                value: 'delete',
+                child: ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.delete_outline,
+                      color: Colors.redAccent),
+                  title: Text('btn_delete'.tr,
+                      style: const TextStyle(
+                          fontFamily: 'bahji', color: Colors.redAccent)),
+                ),
+              ),
+            ],
+          ),
+        ]),
+      ),
+
+      // MCQ options (if any)
+      if (question.isMcq)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(50, 0, 14, 4),
+          child: Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: question.options.map((opt) {
+              final isCorrect = opt == question.correctAnswer;
+              return Container(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isCorrect
+                      ? context.colors.success.withValues(alpha: 0.1)
+                      : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: isCorrect
+                          ? context.colors.success.withValues(alpha: 0.4)
+                          : Colors.grey.shade300),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  if (isCorrect) ...[
+                    Icon(Icons.check_circle_rounded,
+                        size: 12, color: context.colors.success),
+                    const SizedBox(width: 4),
+                  ],
+                  Text(opt,
                       style: TextStyle(
                           fontFamily: 'bahji',
                           fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          color: context.colors.primary)),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(question.title,
-                    style: const TextStyle(
-                        fontFamily: 'bahji',
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        height: 1.4)),
-              ),
-              // Edit / Delete actions
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert_rounded,
-                    size: 18, color: Colors.grey),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                onSelected: (v) {
-                  if (v == 'edit') onEdit();
-                  if (v == 'delete') onDelete();
-                },
-                itemBuilder: (_) => [
-                  PopupMenuItem(
-                    value: 'edit',
-                    child: ListTile(
-                      dense: true,
-                      leading: Icon(Icons.edit_rounded,
-                          color: context.colors.primary),
-                      title: Text('btn_edit'.tr,
-                          style: const TextStyle(fontFamily: 'bahji')),
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: ListTile(
-                      dense: true,
-                      leading: const Icon(Icons.delete_outline,
-                          color: Colors.redAccent),
-                      title: Text('btn_delete'.tr,
-                          style: const TextStyle(
-                              fontFamily: 'bahji', color: Colors.redAccent)),
-                    ),
-                  ),
-                ],
-              ),
-            ]),
-          ),
-
-          // MCQ options (if any)
-          if (question.isMcq)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(50, 0, 14, 4),
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 4,
-                children: question.options.map((opt) {
-                  final isCorrect = opt == question.correctAnswer;
-                  return Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isCorrect
-                          ? context.colors.success.withValues(alpha: 0.1)
-                          : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
                           color: isCorrect
-                              ? context.colors.success.withValues(alpha: 0.4)
-                              : Colors.grey.shade300),
-                    ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      if (isCorrect) ...[
-                        Icon(Icons.check_circle_rounded,
-                            size: 12, color: context.colors.success),
-                        const SizedBox(width: 4),
-                      ],
-                      Text(opt,
-                          style: TextStyle(
-                              fontFamily: 'bahji',
-                              fontSize: 12,
-                              color: isCorrect
-                                  ? context.colors.success
-                                  : Colors.grey.shade700,
-                              fontWeight: isCorrect
-                                  ? FontWeight.w700
-                                  : FontWeight.w400)),
-                    ]),
-                  );
-                }).toList(),
-              ),
-            ),
-
-          // Marks row
-          Padding(
-            padding: const EdgeInsets.fromLTRB(50, 2, 14, 10),
-            child: Text(
-                '${question.marks.toStringAsFixed(question.marks % 1 == 0 ? 0 : 1)} ${'marks_label'.tr}',
-                style: TextStyle(
-                    fontFamily: 'bahji',
-                    fontSize: 11,
-                    color: Colors.grey.shade500)),
+                              ? context.colors.success
+                              : Colors.grey.shade700,
+                          fontWeight: isCorrect
+                              ? FontWeight.w700
+                              : FontWeight.w400)),
+                ]),
+              );
+            }).toList(),
           ),
-        ]),
-      );
+        ),
+
+      // Marks row
+      Padding(
+        padding: const EdgeInsets.fromLTRB(50, 2, 14, 10),
+        child: Text(
+            '${question.marks.toStringAsFixed(question.marks % 1 == 0 ? 0 : 1)} ${'marks_label'.tr}',
+            style: TextStyle(
+                fontFamily: 'bahji',
+                fontSize: 11,
+                color: Colors.grey.shade500)),
+      ),
+    ]),
+  );
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1103,9 +1179,9 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
     final marks = double.tryParse(_marksCtrl.text.trim()) ?? 1.0;
     final options = _isMcq
         ? _optionCtrls
-            .map((c) => c.text.trim())
-            .where((s) => s.isNotEmpty)
-            .toList()
+        .map((c) => c.text.trim())
+        .where((s) => s.isNotEmpty)
+        .toList()
         : <String>[];
     final correct = _isMcq && _correctCtrl.text.trim().isNotEmpty
         ? _correctCtrl.text.trim()
@@ -1169,7 +1245,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
         padding:
-            EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           // Handle
           Container(
@@ -1274,55 +1350,55 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                         // Option fields
                         ...List.generate(
                             _optionCtrls.length,
-                            (i) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  child: Row(children: [
-                                    Expanded(
-                                      child: TextFormField(
-                                        controller: _optionCtrls[i],
-                                        textDirection: TextDirection.rtl,
-                                        validator: (v) =>
-                                            v == null || v.trim().isEmpty
-                                                ? 'field_required'.tr
-                                                : null,
-                                        decoration: InputDecoration(
-                                          hintText: 'option_hint'
-                                              .tr
-                                              .replaceAll('{num}', '${i + 1}'),
-                                          hintStyle: const TextStyle(
-                                              fontFamily: 'bahji',
-                                              color: Colors.grey),
-                                          filled: true,
-                                          fillColor: Colors.grey.shade50,
-                                          border: OutlineInputBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                              borderSide: BorderSide(
-                                                  color: Colors.grey.shade200)),
-                                          enabledBorder: OutlineInputBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                              borderSide: BorderSide(
-                                                  color: Colors.grey.shade200)),
-                                          contentPadding:
-                                              const EdgeInsets.symmetric(
-                                                  horizontal: 12, vertical: 10),
-                                        ),
-                                      ),
+                                (i) => Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Row(children: [
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _optionCtrls[i],
+                                    textDirection: TextDirection.rtl,
+                                    validator: (v) =>
+                                    v == null || v.trim().isEmpty
+                                        ? 'field_required'.tr
+                                        : null,
+                                    decoration: InputDecoration(
+                                      hintText: 'option_hint'
+                                          .tr
+                                          .replaceAll('{num}', '${i + 1}'),
+                                      hintStyle: const TextStyle(
+                                          fontFamily: 'bahji',
+                                          color: Colors.grey),
+                                      filled: true,
+                                      fillColor: Colors.grey.shade50,
+                                      border: OutlineInputBorder(
+                                          borderRadius:
+                                          BorderRadius.circular(10),
+                                          borderSide: BorderSide(
+                                              color: Colors.grey.shade200)),
+                                      enabledBorder: OutlineInputBorder(
+                                          borderRadius:
+                                          BorderRadius.circular(10),
+                                          borderSide: BorderSide(
+                                              color: Colors.grey.shade200)),
+                                      contentPadding:
+                                      const EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 10),
                                     ),
-                                    if (_optionCtrls.length > 2) ...[
-                                      const SizedBox(width: 6),
-                                      IconButton(
-                                        onPressed: () => _removeOption(i),
-                                        icon: Icon(Icons.remove_circle_outline,
-                                            color: Colors.redAccent.shade200,
-                                            size: 20),
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(),
-                                      ),
-                                    ],
-                                  ]),
-                                )),
+                                  ),
+                                ),
+                                if (_optionCtrls.length > 2) ...[
+                                  const SizedBox(width: 6),
+                                  IconButton(
+                                    onPressed: () => _removeOption(i),
+                                    icon: Icon(Icons.remove_circle_outline,
+                                        color: Colors.redAccent.shade200,
+                                        size: 20),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                  ),
+                                ],
+                              ]),
+                            )),
 
                         // Add option button
                         TextButton.icon(
@@ -1359,13 +1435,13 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                           ),
                           child: prov.saving
                               ? AppLoadingIndicator(): Text(
-                                  isEditing
-                                      ? 'btn_save_edits'.tr
-                                      : 'btn_add_question'.tr,
-                                  style: const TextStyle(
-                                      fontFamily: 'bahji',
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w700)),
+                              isEditing
+                                  ? 'btn_save_edits'.tr
+                                  : 'btn_add_question'.tr,
+                              style: const TextStyle(
+                                  fontFamily: 'bahji',
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700)),
                         ),
                       ),
                     ]),
@@ -1384,8 +1460,9 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
 
 class _CreateExamSheet extends StatefulWidget {
   final TeacherExamProvider provider;
+  final int? initialSessionId;
 
-  const _CreateExamSheet({required this.provider});
+  const _CreateExamSheet({required this.provider, this.initialSessionId});
 
   @override
   State<_CreateExamSheet> createState() => _CreateExamSheetState();
@@ -1406,6 +1483,18 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
   bool _hasMaxSubmissions = false;
   DateTime? _scheduleDate;
   DateTime? _deadlineDate;
+  int? _sessionId; // optional: the session this exam belongs to
+
+  @override
+  void initState() {
+    super.initState();
+    _sessionId = widget.initialSessionId;
+    if (!widget.provider.sessionsLoaded) {
+      widget.provider.loadSessions().then((_) {
+        if (mounted) setState(() {});
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -1427,11 +1516,11 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
         lastDate: DateTime.now().add(const Duration(days: 365)));
     if (d == null || !context.mounted) return;
     final t =
-        await showTimePicker(context: context, initialTime: TimeOfDay.now());
+    await showTimePicker(context: context, initialTime: TimeOfDay.now());
     if (t == null) return;
     if (mounted) if (mounted) {
       setState(() =>
-          _scheduleDate = DateTime(d.year, d.month, d.day, t.hour, t.minute));
+      _scheduleDate = DateTime(d.year, d.month, d.day, t.hour, t.minute));
     }
   }
 
@@ -1447,7 +1536,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
     if (t == null) return;
     if (mounted) if (mounted) {
       setState(() =>
-          _deadlineDate = DateTime(d.year, d.month, d.day, t.hour, t.minute));
+      _deadlineDate = DateTime(d.year, d.month, d.day, t.hour, t.minute));
     }
   }
 
@@ -1466,6 +1555,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
     final ok = await widget.provider.createExam(
       name: _nameCtrl.text.trim(),
       description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+      sessionId: _sessionId,
       startDate: _hasSchedule ? _scheduleDate : null,
       endDate: _hasDeadline ? _deadlineDate : null,
       duration: int.tryParse(_durationCtrl.text),
@@ -1483,238 +1573,395 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
 
   @override
   Widget build(BuildContext context) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: Container(
-          decoration: BoxDecoration(
-              color: context.colors.background,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-          padding:
-              EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(
-                margin: const EdgeInsets.only(top: 12),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2))),
-            Padding(
-              padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Row(children: [
-                Icon(Icons.add_circle_outline_rounded,
-                    color: context.colors.primary),
-                SizedBox(width: 8),
-                Text('create_exam_sheet_title'.tr,
+    textDirection: TextDirection.rtl,
+    child: Container(
+      decoration: BoxDecoration(
+          color: context.colors.background,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      padding:
+      EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2))),
+        Padding(
+          padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
+          child: Row(children: [
+            Icon(Icons.add_circle_outline_rounded,
+                color: context.colors.primary),
+            SizedBox(width: 8),
+            Text('create_exam_sheet_title'.tr,
+                style: const TextStyle(
+                    fontFamily: 'bahji',
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700)),
+          ]),
+        ),
+        const Divider(height: 20),
+        Flexible(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Form(
+              key: _form,
+              child: Column(children: [
+                _Field(
+                    ctrl: _nameCtrl,
+                    label: 'field_exam_name_label'.tr,
+                    hint: 'field_exam_name_hint'.tr,
+                    validator: (v) =>
+                    v!.isEmpty ? 'field_required'.tr : null),
+                const SizedBox(height: 12),
+                _Field(
+                    ctrl: _descCtrl,
+                    label: 'field_desc_optional_label'.tr,
+                    hint: 'field_desc_hint_short'.tr,
+                    maxLines: 2),
+                const SizedBox(height: 12),
+                Row(children: [
+                  Expanded(
+                      child: _Field(
+                          ctrl: _totalMarksCtrl,
+                          label: 'field_total_marks_label'.tr,
+                          hint: '100',
+                          keyboardType: TextInputType.number)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                      child: _Field(
+                          ctrl: _passingCtrl,
+                          label: 'field_passing_label'.tr,
+                          hint: '60',
+                          keyboardType: TextInputType.number)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                      child: _Field(
+                          ctrl: _durationCtrl,
+                          label: 'field_duration_label'.tr,
+                          hint: '60',
+                          keyboardType: TextInputType.number)),
+                ]),
+                const SizedBox(height: 14),
+                // ── Attach to a session (optional) ─────────────────────
+                if (widget.provider.sessions.isNotEmpty) ...[
+                  DropdownButtonFormField<int?>(
+                    value: _sessionId,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: 'field_exam_session_label'.tr,
+                      labelStyle: const TextStyle(
+                          fontFamily: 'bahji', fontSize: 13, color: Colors.grey),
+                      prefixIcon: Icon(Icons.play_lesson_rounded,
+                          size: 20, color: context.colors.primary),
+                      filled: true,
+                      fillColor: context.colors.inputBg,
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade300)),
+                      enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey.shade200)),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                    ),
+                    items: [
+                      DropdownMenuItem<int?>(
+                        value: null,
+                        child: Text('exam_no_session'.tr,
+                            style: const TextStyle(fontFamily: 'bahji')),
+                      ),
+                      for (final s in widget.provider.sessions)
+                        DropdownMenuItem<int?>(
+                          value: s.id,
+                          child: Text(s.name,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontFamily: 'bahji')),
+                        ),
+                    ],
+                    onChanged: (v) {
+                      if (mounted) setState(() => _sessionId = v);
+                    },
+                  ),
+                  if (_sessionId != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6, right: 4, left: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.info_outline_rounded,
+                              size: 15, color: context.colors.primary),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'exam_session_gate_hint'.tr,
+                              style: TextStyle(
+                                  fontFamily: 'bahji',
+                                  fontSize: 12,
+                                  color: context.colors.primary),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 14),
+                ],
+                _Toggle(
+                  icon: Icons.lock_outline_rounded,
+                  label: 'toggle_passcode'.tr,
+                  value: _hasPasscode,
+                  onChanged: (v) {
+                    if (mounted) if (mounted) {
+                      setState(() => _hasPasscode = v);
+                    }
+                  },
+                  child: _hasPasscode
+                      ? _Field(
+                      ctrl: _passcodeCtrl,
+                      label: 'field_passcode_label'.tr,
+                      hint: '123456',
+                      maxLength: 6,
+                      keyboardType: TextInputType.number,
+                      validator: _hasPasscode
+                          ? (v) => v!.isEmpty
+                          ? 'field_required'.tr
+                          : !RegExp(r'^\d+$').hasMatch(v)
+                          ? 'passcode_digits_only'.tr
+                          : null
+                          : null)
+                      : null,
+                ),
+                const SizedBox(height: 10),
+                _Toggle(
+                  icon: Icons.schedule_rounded,
+                  label: 'toggle_schedule'.tr,
+                  value: _hasSchedule,
+                  onChanged: (v) {
+                    if (mounted) if (mounted) {
+                      setState(() => _hasSchedule = v);
+                    }
+                  },
+                  child: _hasSchedule
+                      ? GestureDetector(
+                    onTap: _pickDate,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                          border:
+                          Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(10)),
+                      child: Row(children: [
+                        const Icon(Icons.calendar_today_outlined,
+                            size: 18, color: Colors.grey),
+                        const SizedBox(width: 8),
+                        Text(
+                          _scheduleDate != null
+                              ? '${_scheduleDate!.day}/${_scheduleDate!.month}/${_scheduleDate!.year}  '
+                              '${_scheduleDate!.hour.toString().padLeft(2, '0')}:${_scheduleDate!.minute.toString().padLeft(2, '0')}'
+                              : 'pick_start_datetime'.tr,
+                          style: TextStyle(
+                              fontFamily: 'bahji',
+                              fontSize: 14,
+                              color: _scheduleDate != null
+                                  ? Colors.black87
+                                  : Colors.grey),
+                        ),
+                      ]),
+                    ),
+                  )
+                      : null,
+                ),
+                const SizedBox(height: 10),
+                // ── Deadline (end_date) ────────────────────────────────────
+                _Toggle(
+                  icon: Icons.hourglass_bottom_rounded,
+                  label: 'toggle_deadline'.tr,
+                  value: _hasDeadline,
+                  onChanged: (v) {
+                    if (mounted) if (mounted) {
+                      setState(() => _hasDeadline = v);
+                    }
+                  },
+                  child: _hasDeadline
+                      ? GestureDetector(
+                    onTap: _pickDeadline,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                          border: Border.all(
+                              color: Colors.orange.shade300),
+                          borderRadius: BorderRadius.circular(10)),
+                      child: Row(children: [
+                        Icon(Icons.event_busy_rounded,
+                            size: 18, color: Colors.orange.shade600),
+                        const SizedBox(width: 8),
+                        Text(
+                          _deadlineDate != null
+                              ? '${_deadlineDate!.day}/${_deadlineDate!.month}/${_deadlineDate!.year}  '
+                              '${_deadlineDate!.hour.toString().padLeft(2, '0')}:${_deadlineDate!.minute.toString().padLeft(2, '0')}'
+                              : 'pick_deadline'.tr,
+                          style: TextStyle(
+                              fontFamily: 'bahji',
+                              fontSize: 14,
+                              color: _deadlineDate != null
+                                  ? context.colors.textDark
+                                  : Colors.grey),
+                        ),
+                      ]),
+                    ),
+                  )
+                      : null,
+                ),
+                const SizedBox(height: 10),
+                // ── Max submissions ────────────────────────────────────────
+                _Toggle(
+                  icon: Icons.repeat_rounded,
+                  label: 'toggle_max_submissions'.tr,
+                  value: _hasMaxSubmissions,
+                  onChanged: (v) {
+                    if (mounted) if (mounted) {
+                      setState(() => _hasMaxSubmissions = v);
+                    }
+                  },
+                  child: _hasMaxSubmissions
+                      ? _Field(
+                    ctrl: _maxSubmissionsCtrl,
+                    label: 'field_max_submissions_label'.tr,
+                    hint: '1',
+                    keyboardType: TextInputType.number,
+                    validator: (v) {
+                      final n = int.tryParse(v ?? '');
+                      if (n == null || n < 1) {
+                        return 'field_max_submissions_error'.tr;
+                      }
+                      return null;
+                    },
+                  )
+                      : null,
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: widget.provider.saving ? null : _submit,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: context.colors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: widget.provider.saving
+                        ? const  AppLoadingIndicator(): Text('btn_create_exam'.tr,
+                        style: const TextStyle(
+                            fontFamily: 'bahji',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700)),
+                  ),
+                ),
+              ]),
+            ),
+          ),
+        ),
+      ]),
+    ),
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// _SessionPickerSheet — attach an exam to a session / detach it
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _SessionPickerSheet extends StatelessWidget {
+  final List<SessionOption> sessions;
+  final int? selectedId;
+
+  const _SessionPickerSheet({required this.sessions, required this.selectedId});
+
+  @override
+  Widget build(BuildContext context) => Directionality(
+    textDirection: TextDirection.rtl,
+    child: Container(
+      constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.75),
+      decoration: BoxDecoration(
+          color: context.colors.background,
+          borderRadius:
+          const BorderRadius.vertical(top: Radius.circular(24))),
+      child: SafeArea(
+        top: false,
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2))),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+            child: Row(children: [
+              Icon(Icons.play_lesson_rounded, color: context.colors.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('exam_pick_session_title'.tr,
                     style: const TextStyle(
                         fontFamily: 'bahji',
                         fontSize: 17,
                         fontWeight: FontWeight.w700)),
-              ]),
-            ),
-            const Divider(height: 20),
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                child: Form(
-                  key: _form,
-                  child: Column(children: [
-                    _Field(
-                        ctrl: _nameCtrl,
-                        label: 'field_exam_name_label'.tr,
-                        hint: 'field_exam_name_hint'.tr,
-                        validator: (v) =>
-                            v!.isEmpty ? 'field_required'.tr : null),
-                    const SizedBox(height: 12),
-                    _Field(
-                        ctrl: _descCtrl,
-                        label: 'field_desc_optional_label'.tr,
-                        hint: 'field_desc_hint_short'.tr,
-                        maxLines: 2),
-                    const SizedBox(height: 12),
-                    Row(children: [
-                      Expanded(
-                          child: _Field(
-                              ctrl: _totalMarksCtrl,
-                              label: 'field_total_marks_label'.tr,
-                              hint: '100',
-                              keyboardType: TextInputType.number)),
-                      const SizedBox(width: 12),
-                      Expanded(
-                          child: _Field(
-                              ctrl: _passingCtrl,
-                              label: 'field_passing_label'.tr,
-                              hint: '60',
-                              keyboardType: TextInputType.number)),
-                      const SizedBox(width: 12),
-                      Expanded(
-                          child: _Field(
-                              ctrl: _durationCtrl,
-                              label: 'field_duration_label'.tr,
-                              hint: '60',
-                              keyboardType: TextInputType.number)),
-                    ]),
-                    const SizedBox(height: 14),
-                    _Toggle(
-                      icon: Icons.lock_outline_rounded,
-                      label: 'toggle_passcode'.tr,
-                      value: _hasPasscode,
-                      onChanged: (v) {
-                        if (mounted) if (mounted) {
-                          setState(() => _hasPasscode = v);
-                        }
-                      },
-                      child: _hasPasscode
-                          ? _Field(
-                              ctrl: _passcodeCtrl,
-                              label: 'field_passcode_label'.tr,
-                              hint: '123456',
-                              maxLength: 6,
-                              keyboardType: TextInputType.number,
-                              validator: _hasPasscode
-                                  ? (v) => v!.isEmpty
-                                      ? 'field_required'.tr
-                                      : !RegExp(r'^\d+$').hasMatch(v)
-                                          ? 'passcode_digits_only'.tr
-                                          : null
-                                  : null)
-                          : null,
-                    ),
-                    const SizedBox(height: 10),
-                    _Toggle(
-                      icon: Icons.schedule_rounded,
-                      label: 'toggle_schedule'.tr,
-                      value: _hasSchedule,
-                      onChanged: (v) {
-                        if (mounted) if (mounted) {
-                          setState(() => _hasSchedule = v);
-                        }
-                      },
-                      child: _hasSchedule
-                          ? GestureDetector(
-                              onTap: _pickDate,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 12),
-                                decoration: BoxDecoration(
-                                    border:
-                                        Border.all(color: Colors.grey.shade300),
-                                    borderRadius: BorderRadius.circular(10)),
-                                child: Row(children: [
-                                  const Icon(Icons.calendar_today_outlined,
-                                      size: 18, color: Colors.grey),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    _scheduleDate != null
-                                        ? '${_scheduleDate!.day}/${_scheduleDate!.month}/${_scheduleDate!.year}  '
-                                            '${_scheduleDate!.hour.toString().padLeft(2, '0')}:${_scheduleDate!.minute.toString().padLeft(2, '0')}'
-                                        : 'pick_start_datetime'.tr,
-                                    style: TextStyle(
-                                        fontFamily: 'bahji',
-                                        fontSize: 14,
-                                        color: _scheduleDate != null
-                                            ? Colors.black87
-                                            : Colors.grey),
-                                  ),
-                                ]),
-                              ),
-                            )
-                          : null,
-                    ),
-                    const SizedBox(height: 10),
-                    // ── Deadline (end_date) ────────────────────────────────────
-                    _Toggle(
-                      icon: Icons.hourglass_bottom_rounded,
-                      label: 'toggle_deadline'.tr,
-                      value: _hasDeadline,
-                      onChanged: (v) {
-                        if (mounted) if (mounted) {
-                          setState(() => _hasDeadline = v);
-                        }
-                      },
-                      child: _hasDeadline
-                          ? GestureDetector(
-                              onTap: _pickDeadline,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 12),
-                                decoration: BoxDecoration(
-                                    border: Border.all(
-                                        color: Colors.orange.shade300),
-                                    borderRadius: BorderRadius.circular(10)),
-                                child: Row(children: [
-                                  Icon(Icons.event_busy_rounded,
-                                      size: 18, color: Colors.orange.shade600),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    _deadlineDate != null
-                                        ? '${_deadlineDate!.day}/${_deadlineDate!.month}/${_deadlineDate!.year}  '
-                                            '${_deadlineDate!.hour.toString().padLeft(2, '0')}:${_deadlineDate!.minute.toString().padLeft(2, '0')}'
-                                        : 'pick_deadline'.tr,
-                                    style: TextStyle(
-                                        fontFamily: 'bahji',
-                                        fontSize: 14,
-                                        color: _deadlineDate != null
-                                            ? context.colors.textDark
-                                            : Colors.grey),
-                                  ),
-                                ]),
-                              ),
-                            )
-                          : null,
-                    ),
-                    const SizedBox(height: 10),
-                    // ── Max submissions ────────────────────────────────────────
-                    _Toggle(
-                      icon: Icons.repeat_rounded,
-                      label: 'toggle_max_submissions'.tr,
-                      value: _hasMaxSubmissions,
-                      onChanged: (v) {
-                        if (mounted) if (mounted) {
-                          setState(() => _hasMaxSubmissions = v);
-                        }
-                      },
-                      child: _hasMaxSubmissions
-                          ? _Field(
-                              ctrl: _maxSubmissionsCtrl,
-                              label: 'field_max_submissions_label'.tr,
-                              hint: '1',
-                              keyboardType: TextInputType.number,
-                              validator: (v) {
-                                final n = int.tryParse(v ?? '');
-                                if (n == null || n < 1) {
-                                  return 'field_max_submissions_error'.tr;
-                                }
-                                return null;
-                              },
-                            )
-                          : null,
-                    ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: widget.provider.saving ? null : _submit,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: context.colors.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
-                        ),
-                        child: widget.provider.saving
-                            ? const  AppLoadingIndicator(): Text('btn_create_exam'.tr,
-                                style: const TextStyle(
-                                    fontFamily: 'bahji',
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700)),
-                      ),
-                    ),
-                  ]),
-                ),
               ),
+            ]),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            child: Text('exam_session_gate_hint'.tr,
+                style: const TextStyle(
+                    fontFamily: 'bahji', fontSize: 12, color: Colors.grey)),
+          ),
+          const Divider(height: 12),
+          Flexible(
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                _tile(context, -1, 'exam_no_session'.tr,
+                    Icons.link_off_rounded, selectedId == null),
+                for (final s in sessions)
+                  _tile(context, s.id, s.name, Icons.play_circle_outline_rounded,
+                      selectedId == s.id),
+                if (sessions.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Center(
+                      child: Text('no_sessions_yet'.tr,
+                          style: const TextStyle(
+                              fontFamily: 'bahji', color: Colors.grey)),
+                    ),
+                  ),
+              ],
             ),
-          ]),
-        ),
+          ),
+        ]),
+      ),
+    ),
+  );
+
+  Widget _tile(BuildContext context, int value, String label, IconData icon,
+      bool selected) =>
+      ListTile(
+        leading: Icon(icon,
+            color: selected ? context.colors.primary : Colors.grey),
+        title: Text(label,
+            style: TextStyle(
+                fontFamily: 'bahji',
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                color: selected ? context.colors.primary : null)),
+        trailing: selected
+            ? Icon(Icons.check_circle_rounded, color: context.colors.primary)
+            : null,
+        onTap: () => Navigator.pop(context, value),
       );
 }
 
@@ -1730,129 +1977,129 @@ class _AnswersSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: Container(
-          height: MediaQuery.of(context).size.height * 0.75,
-          decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-          child: Column(children: [
-            Container(
-                margin: const EdgeInsets.only(top: 12),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2))),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Row(children: [
-                CircleAvatar(
-                  backgroundColor:
-                      context.colors.primary.withValues(alpha: 0.1),
-                  backgroundImage: result.studentImage != null
-                      ? NetworkImage(result.studentImage!)
-                      : null,
-                  child: result.studentImage == null
-                      ? Text(result.studentName[0],
-                          style: TextStyle(
-                              color: context.colors.primary,
-                              fontWeight: FontWeight.w700,
-                              fontFamily: 'bahji'))
-                      : null,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(result.studentName,
-                            style: const TextStyle(
-                                fontFamily: 'bahji',
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700)),
-                        Text(
-                            '${result.marksObtained?.toStringAsFixed(0) ?? 0} / '
+    textDirection: TextDirection.rtl,
+    child: Container(
+      height: MediaQuery.of(context).size.height * 0.75,
+      decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      child: Column(children: [
+        Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2))),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          child: Row(children: [
+            CircleAvatar(
+              backgroundColor:
+              context.colors.primary.withValues(alpha: 0.1),
+              backgroundImage: result.studentImage != null
+                  ? NetworkImage(result.studentImage!)
+                  : null,
+              child: result.studentImage == null
+                  ? Text(result.studentName[0],
+                  style: TextStyle(
+                      color: context.colors.primary,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'bahji'))
+                  : null,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(result.studentName,
+                        style: const TextStyle(
+                            fontFamily: 'bahji',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700)),
+                    Text(
+                        '${result.marksObtained?.toStringAsFixed(0) ?? 0} / '
                             '${result.totalMarks?.toStringAsFixed(0) ?? 0} ${'marks_label'.tr}'
                             '  •  ${result.percentage?.toStringAsFixed(1) ?? 0}%',
-                            style: const TextStyle(
-                                fontFamily: 'bahji',
-                                fontSize: 13,
-                                color: Colors.grey)),
-                      ]),
-                ),
-                _StatusBadge(
-                    result.passed == true
-                        ? 'result_passed_badge'.tr
-                        : 'result_failed_badge'.tr,
-                    result.passed == true
-                        ? context.colors.success
-                        : Colors.redAccent),
-              ]),
+                        style: const TextStyle(
+                            fontFamily: 'bahji',
+                            fontSize: 13,
+                            color: Colors.grey)),
+                  ]),
             ),
-            const Divider(height: 20),
-            Expanded(
-              child: result.answers.isEmpty
-                  ? Center(
-                      child: Text('no_answers'.tr,
-                          style: const TextStyle(
-                              fontFamily: 'bahji', color: Colors.grey)))
-                  : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
-                      itemCount: result.answers.length,
-                      itemBuilder: (_, i) {
-                        final a = result.answers[i];
-                        final correct = a.isCorrect == true;
-                        final color =
-                            correct ? context.colors.success : Colors.redAccent;
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 10),
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.06),
-                            borderRadius: BorderRadius.circular(12),
-                            border:
-                                Border.all(color: color.withValues(alpha: 0.3)),
-                          ),
-                          child: Row(children: [
-                            Icon(
-                                correct
-                                    ? Icons.check_circle_rounded
-                                    : Icons.cancel_rounded,
-                                color: color,
-                                size: 22),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                        '${'question_prefix'.tr} ${a.questionId}',
-                                        style: const TextStyle(
-                                            fontFamily: 'bahji',
-                                            fontSize: 12,
-                                            color: Colors.grey)),
-                                    Text(a.answer ?? 'no_answer_given'.tr,
-                                        style: const TextStyle(
-                                            fontFamily: 'bahji',
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600)),
-                                  ]),
-                            ),
-                            Text(
-                                '${a.marksObtained?.toStringAsFixed(1) ?? 0} ${'marks_label'.tr}',
-                                style: TextStyle(
-                                    fontFamily: 'bahji',
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: color)),
-                          ]),
-                        );
-                      }),
-            ),
+            _StatusBadge(
+                result.passed == true
+                    ? 'result_passed_badge'.tr
+                    : 'result_failed_badge'.tr,
+                result.passed == true
+                    ? context.colors.success
+                    : Colors.redAccent),
           ]),
         ),
-      );
+        const Divider(height: 20),
+        Expanded(
+          child: result.answers.isEmpty
+              ? Center(
+              child: Text('no_answers'.tr,
+                  style: const TextStyle(
+                      fontFamily: 'bahji', color: Colors.grey)))
+              : ListView.builder(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+              itemCount: result.answers.length,
+              itemBuilder: (_, i) {
+                final a = result.answers[i];
+                final correct = a.isCorrect == true;
+                final color =
+                correct ? context.colors.success : Colors.redAccent;
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(12),
+                    border:
+                    Border.all(color: color.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(children: [
+                    Icon(
+                        correct
+                            ? Icons.check_circle_rounded
+                            : Icons.cancel_rounded,
+                        color: color,
+                        size: 22),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                                '${'question_prefix'.tr} ${a.questionId}',
+                                style: const TextStyle(
+                                    fontFamily: 'bahji',
+                                    fontSize: 12,
+                                    color: Colors.grey)),
+                            Text(a.answer ?? 'no_answer_given'.tr,
+                                style: const TextStyle(
+                                    fontFamily: 'bahji',
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600)),
+                          ]),
+                    ),
+                    Text(
+                        '${a.marksObtained?.toStringAsFixed(1) ?? 0} ${'marks_label'.tr}',
+                        style: TextStyle(
+                            fontFamily: 'bahji',
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: color)),
+                  ]),
+                );
+              }),
+        ),
+      ]),
+    ),
+  );
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1872,8 +2119,8 @@ class _ResultTile extends StatelessWidget {
     final color = passed == true
         ? context.colors.success
         : passed == false
-            ? Colors.redAccent
-            : Colors.grey;
+        ? Colors.redAccent
+        : Colors.grey;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1898,10 +2145,10 @@ class _ResultTile extends StatelessWidget {
                 : null,
             child: result.studentImage == null
                 ? Text(result.studentName[0],
-                    style: TextStyle(
-                        fontFamily: 'bahji',
-                        fontWeight: FontWeight.w700,
-                        color: color))
+                style: TextStyle(
+                    fontFamily: 'bahji',
+                    fontWeight: FontWeight.w700,
+                    color: color))
                 : null,
           ),
           if (result.isAttended)
@@ -1924,7 +2171,7 @@ class _ResultTile extends StatelessWidget {
                 fontSize: 14,
                 fontWeight: FontWeight.w600)),
         subtitle:
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const SizedBox(height: 4),
           Row(children: [
             _StatusBadge(
@@ -1953,7 +2200,7 @@ class _ResultTile extends StatelessWidget {
           ],
         ]),
         trailing:
-            Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           Text(pct != null ? '${pct.toStringAsFixed(0)}%' : '—',
               style: TextStyle(
                   fontFamily: 'bahji',
@@ -1988,17 +2235,17 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(20)),
-        child: Text(label,
-            style: TextStyle(
-                fontFamily: 'bahji',
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: color)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+    decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20)),
+    child: Text(label,
+        style: TextStyle(
+            fontFamily: 'bahji',
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: color)),
+  );
 }
 
 class _MiniStat extends StatelessWidget {
@@ -2009,18 +2256,18 @@ class _MiniStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Expanded(
-        child: Column(children: [
-          Text(value,
-              style: TextStyle(
-                  fontFamily: 'bahji',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: color)),
-          Text(label,
-              style: const TextStyle(
-                  fontFamily: 'bahji', fontSize: 10, color: Colors.grey)),
-        ]),
-      );
+    child: Column(children: [
+      Text(value,
+          style: TextStyle(
+              fontFamily: 'bahji',
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: color)),
+      Text(label,
+          style: const TextStyle(
+              fontFamily: 'bahji', fontSize: 10, color: Colors.grey)),
+    ]),
+  );
 }
 
 class _Field extends StatelessWidget {
@@ -2043,30 +2290,30 @@ class _Field extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => TextFormField(
-        controller: ctrl,
-        maxLines: maxLines,
-        maxLength: maxLength,
-        keyboardType: keyboardType,
-        textDirection: TextDirection.rtl,
-        validator: validator,
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          labelStyle: const TextStyle(
-              fontFamily: 'bahji', fontSize: 13, color: Colors.grey),
-          hintStyle: const TextStyle(fontFamily: 'bahji', color: Colors.grey),
-          filled: true,
-          fillColor: context.colors.inputBg,
-          border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.grey.shade300)),
-          enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.grey.shade200)),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        ),
-      );
+    controller: ctrl,
+    maxLines: maxLines,
+    maxLength: maxLength,
+    keyboardType: keyboardType,
+    textDirection: TextDirection.rtl,
+    validator: validator,
+    decoration: InputDecoration(
+      labelText: label,
+      hintText: hint,
+      labelStyle: const TextStyle(
+          fontFamily: 'bahji', fontSize: 13, color: Colors.grey),
+      hintStyle: const TextStyle(fontFamily: 'bahji', color: Colors.grey),
+      filled: true,
+      fillColor: context.colors.inputBg,
+      border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.grey.shade300)),
+      enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.grey.shade200)),
+      contentPadding:
+      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    ),
+  );
 }
 
 class _Toggle extends StatelessWidget {
@@ -2086,30 +2333,30 @@ class _Toggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade200),
-            borderRadius: BorderRadius.circular(12)),
-        child: Column(children: [
-          ListTile(
-            dense: true,
-            leading: Icon(icon, color: context.colors.primary, size: 20),
-            title: Text(label,
-                style: const TextStyle(
-                    fontFamily: 'bahji',
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600)),
-            trailing: Switch.adaptive(
-                value: value,
-                onChanged: onChanged,
-                activeColor: context.colors.primary),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-          ),
-          if (value && child != null)
-            Padding(
-                padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-                child: child!),
-        ]),
-      );
+    decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(12)),
+    child: Column(children: [
+      ListTile(
+        dense: true,
+        leading: Icon(icon, color: context.colors.primary, size: 20),
+        title: Text(label,
+            style: const TextStyle(
+                fontFamily: 'bahji',
+                fontSize: 13,
+                fontWeight: FontWeight.w600)),
+        trailing: Switch.adaptive(
+            value: value,
+            onChanged: onChanged,
+            activeColor: context.colors.primary),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+      ),
+      if (value && child != null)
+        Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+            child: child!),
+    ]),
+  );
 }
 
 class _ErrorView extends StatelessWidget {
@@ -2120,24 +2367,24 @@ class _ErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.wifi_off_rounded, size: 52, color: Colors.grey.shade300),
-          const SizedBox(height: 12),
-          Text(message ?? 'error_occurred'.tr,
+    child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Icon(Icons.wifi_off_rounded, size: 52, color: Colors.grey.shade300),
+      const SizedBox(height: 12),
+      Text(message ?? 'error_occurred'.tr,
+          style: const TextStyle(
+              fontFamily: 'bahji', fontSize: 14, color: Colors.grey)),
+      const SizedBox(height: 12),
+      ElevatedButton(
+          onPressed: onRetry,
+          style: ElevatedButton.styleFrom(
+              backgroundColor: context.colors.primary,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12))),
+          child: Text('retry'.tr,
               style: const TextStyle(
-                  fontFamily: 'bahji', fontSize: 14, color: Colors.grey)),
-          const SizedBox(height: 12),
-          ElevatedButton(
-              onPressed: onRetry,
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: context.colors.primary,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12))),
-              child: Text('retry'.tr,
-                  style: const TextStyle(
-                      fontFamily: 'bahji', color: Colors.white))),
-        ]),
-      );
+                  fontFamily: 'bahji', color: Colors.white))),
+    ]),
+  );
 }
 
 class _InfoChip extends StatelessWidget {

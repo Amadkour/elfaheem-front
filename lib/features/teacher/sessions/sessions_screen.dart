@@ -159,7 +159,7 @@ class _TeacherSessionsView extends StatelessWidget {
       builder: (_) =>
           ChangeNotifierProvider.value(
             value: provider,
-            child: SessionFormSheet(courseId: provider.course.id),
+            child: SessionFormSheet(provider: provider),
           ),
     );
   }
@@ -195,11 +195,14 @@ class _TeacherSessionsView extends StatelessWidget {
             slivers: [
               // ── Hero — rebuilds only when `course` changes ────────────
               SliverToBoxAdapter(
-                child: Selector<TeacherCourseScreenProvider, TeacherCourse>(
-                  selector: (_, p) => p.course,
-                  builder: (context, course, _) {
+                child: Selector<TeacherCourseScreenProvider,
+                    (TeacherCourse course, String? reelUrl)>(
+                  selector: (_, p) => (p.course, p.reelUrl),
+                  builder: (context, data, _) {
+                    final (course, reelUrl) = data;
                     return CourseHero(
                       course: course,
+                      reelUrl: reelUrl,
                       onBack: () => Navigator.maybePop(context),
                       onEditCourse: () => _openEditCourse(context),
                       onRefresh: () => provider.refresh(),

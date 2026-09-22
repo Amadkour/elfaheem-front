@@ -41,10 +41,24 @@ class TeacherCourseScreenProvider extends BaseProvider {
 
   TeacherCourse get course => _course;
 
+  /// Optional intro video (عرض أولي) from `reel_url` of GET /courses/{id}.
+  String? _reelUrl;
+
+  String? get reelUrl => _reelUrl;
+
+  /// Called by the course form right after a reel upload / removal so the
+  /// hero updates immediately (refresh() re-reads it from the server anyway).
+  void setReelUrl(String? url) {
+    _reelUrl = (url == null || url.isEmpty) ? null : url;
+    notifyListeners();
+  }
+
   Future<TeacherCourse?> refreshCourse() async {
     final result = await run(() => _api.get('/api/v1/courses/${_course.id}'));
     if (result is Map<String, dynamic>) {
       _course = TeacherCourse.fromJson(result);
+      final reel = (result['reel_url'] as String?)?.trim();
+      _reelUrl = (reel == null || reel.isEmpty) ? null : reel;
       notifyListeners();
       return _course;
     }
@@ -65,7 +79,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
     final result = await run(
           () => _api.get('/api/v1/courses/${_course.id}/sessions'),
     );
-    if (result is List) {
+    if (result['items'] is List) {
       _sessions =
       result
           .map(
@@ -75,6 +89,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
         ..sort((a, b) => a.order.compareTo(b.order));
       _materialLoaded.clear();
       _uploadingMaterial.clear();
+      print(sessions.length);
       notifyListeners();
     }
   }

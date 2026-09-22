@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../core/api_client.dart';
+import '../../../shared/models/exam_model.dart';
 import '../../../teacher/analysis/exam/exam_model.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 // ── Entry point: passcode gate ───────────────────────────────────────────────

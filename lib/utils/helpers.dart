@@ -29,7 +29,7 @@ const Duration _kAstOffset = Duration(hours: 3);
 extension SaudiDateTimeString on String {
   /// Parse this ISO-8601 string and convert to AST (UTC+3).
   /// Returns [DateTime.now()] in AST if parsing fails.
-  DateTime get toLocalSaTime{
+  DateTime get toLocalSaTime {
     try {
       final parsed = DateTime.parse(this);
       return parsed.toAst();
@@ -41,7 +41,8 @@ extension SaudiDateTimeString on String {
 
 /// Extension on [DateTime] for Saudi Arabia / Egypt time conversions.
 extension SaudiDateTime on DateTime {
-  static final _astTimeZone = DateTime.now().timeZoneOffset; // unused – kept for docs
+  static final _astTimeZone =
+      DateTime.now().timeZoneOffset; // unused – kept for docs
 
   /// Convert any [DateTime] (UTC or local) to AST (UTC+3).
   DateTime toAst() {
@@ -111,111 +112,150 @@ class Helpers {
   }
 
   /// Show snackbar message
-  static void showMessage( String message, {bool isError = false}) {
-    if(navigatorKey.currentContext==null) {
+  static void showMessage(String message, {bool isError = false}) {
+    if (navigatorKey.currentContext == null) {
       return;
     }
-    BuildContext context= navigatorKey.currentContext!;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Directionality(
-        textDirection: pageDirection,
-        child: Wrap(children: [
-            Icon(
-              !isError ? Icons.check_circle_rounded : Icons.error_rounded,
-              color: Colors.white,
-              size: 18,
-            ),
-            const SizedBox(width: 10),
-            Text(
-              message,
-              style: const TextStyle(
+    BuildContext context = navigatorKey.currentContext!;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Directionality(
+          textDirection: pageDirection,
+          child: Wrap(
+            children: [
+              Icon(
+                !isError ? Icons.check_circle_rounded : Icons.error_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                message,
+                style: const TextStyle(
                   fontFamily: 'tajawal',
                   color: Colors.white,
-                  fontWeight: FontWeight.w600),
-            ),
-          ]),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        backgroundColor: !isError
+            ? context.colors.success
+            : context.colors.danger,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
-      backgroundColor:
-      !isError ? context.colors.success : context.colors.danger,
-      behavior: SnackBarBehavior.floating,
-      margin: const EdgeInsets.all(16),
-      shape:
-      RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-    ));
+    );
   }
 
+  static TextDirection get pageDirection =>
+      AppConfig.lang == 'ar' ? TextDirection.rtl : TextDirection.ltr;
 
-  static TextDirection get pageDirection => AppConfig.lang=='ar'? TextDirection.rtl:TextDirection.ltr;
-
-  static Future<bool?> confirmDialog(BuildContext context,{
+  static Future<bool?> confirmDialog(
+    BuildContext context, {
     String? title,
     String? confirm,
     String? cancel,
     void Function()? onConfirm,
-    void Function()? onCancel
+    void Function()? onCancel,
   }) => showDialog<bool>(
     context: context,
-    barrierDismissible:false,
+    barrierDismissible: false,
     builder: (_) => Directionality(
       textDirection: Helpers.pageDirection,
       child: AlertDialog(
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(context.colors.radiusMedium)),
-        title:  Text(confirm?? 'logout'.tr,
-            style: const TextStyle(
-                fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
-        content:  Text(title??'هل أنت متأكد أنك تريد تسجيل الخروج؟',
-            style: TextStyle(fontFamily: 'bahji')),
+          borderRadius: BorderRadius.circular(context.colors.radiusMedium),
+        ),
+        title: Text(
+          confirm ?? 'logout'.tr,
+          style: const TextStyle(
+            fontFamily: 'tajawal',
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: Text(
+          title ?? 'هل أنت متأكد أنك تريد تسجيل الخروج؟',
+          style: TextStyle(fontFamily: 'bahji'),
+        ),
         actions: [
           TextButton(
             onPressed: () {
-              if(onCancel!=null){
+              if (onCancel != null) {
                 onCancel.call();
-              }else{
+              } else {
                 Navigator.pop(context, false);
-              }            },
-            child:  Text(cancel??'cancel'.tr,
-                style:  TextStyle(
-                    fontFamily: 'tajawal', color: context.colors.textMedium)),
+              }
+            },
+            child: Text(
+              cancel ?? 'cancel'.tr,
+              style: TextStyle(
+                fontFamily: 'tajawal',
+                color: context.colors.textMedium,
+              ),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: context.colors.danger,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             onPressed: () {
-              if(onConfirm!=null){
+              if (onConfirm != null) {
                 onConfirm.call();
-              }else{
+              } else {
                 Navigator.pop(context, true);
               }
             },
-            child:  Text(confirm??'exit'.tr,
-                style: const TextStyle(
-                    fontFamily: 'tajawal',
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700)),
+            child: Text(
+              confirm ?? 'exit'.tr,
+              style: const TextStyle(
+                fontFamily: 'tajawal',
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),
     ),
   );
 
-  static double  calculateRemainingWidth(BuildContext context,{double? maxWith}) {
-    return context.width >= 1100 ? (maxWith??900) : context.width >= 900 ? 650: context.width >=
-        900 ? 500 : context.width >= 600 ? context.width - 70 : context.width;
+  static double calculateRemainingWidth(
+    BuildContext context, {
+    double? maxWith,
+  }) {
+    return context.width >= 1100
+        ? (maxWith ?? 900)
+        : context.width >= 900
+        ? 650
+        : context.width >= 900
+        ? 500
+        : context.width >= 600
+        ? context.width - 70
+        : context.width;
   }
 
-  static void showAddSessionSheet(BuildContext context, TeacherCourse course,
-      {TeacherSessionItem? existing,bool? openLive}) {
+  static void showAddSessionSheet(
+    BuildContext context,
+    TeacherCourseScreenProvider provider, {
+    TeacherSessionItem? existing,
+    bool? openLive,
+  }) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       useSafeArea: true,
-      builder: (_) =>  SessionFormSheet(existing: existing, courseId: course.id,openLive:openLive),
+      builder: (_) => SessionFormSheet(
+        existing: existing,
+        provider: provider,
+        openLive: openLive,
+      ),
     );
   }
-
 }

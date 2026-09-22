@@ -4,6 +4,9 @@ library;
 import '../../../../core/api_client.dart';
 import '../../../../core/base_provider.dart';
 import '../../models.dart';
+import 'components/issued_certificate.dart';
+import 'session_exam_gate.dart';
+export 'session_exam_gate.dart';
 
 class CourseDetailProvider extends BaseProvider {
   final ApiClient _api;
@@ -22,6 +25,20 @@ class CourseDetailProvider extends BaseProvider {
 
   /// Set of sessionIds the student has already completed.
   final Set<int> completedSessionIds = {};
+
+  /// Certificates the teacher issued to THIS student for THIS course
+  /// (shown in the "About" tab → "My certificates").
+  List<IssuedCertificate> myCertificates = [];
+
+  /// sessionId → the exam(s) attached to that session. Only sessions that have
+  /// a published exam are present. A student must PASS these exams before the
+  /// sessions after them unlock (see [isSessionUnlocked]).
+  final Map<int, SessionExamGate> examGates = {};
+
+  /// Optional intro video (عرض أولي) — shown in the hero INSTEAD of the
+  /// course image when the teacher added one. Read straight from the
+  /// `reel_url` key of GET /courses/{id}.
+  String? reelUrl;
 
   CourseDetailTab get activeTab => _activeTab;
 
@@ -46,8 +63,33 @@ class CourseDetailProvider extends BaseProvider {
     );
     if (r is Map<String, dynamic>) {
       course = CourseModel.fromJson(r);
+      final reel = (r['reel_url'] as String?)?.trim();
+      reelUrl = (reel == null || reel.isEmpty) ? null : reel;
     }
-    await fetchSessions(courseId);
+    await Future.wait([
+      fetchSessions(courseId),
+      if (course.isEnrolled) fetchMyCertificates(courseId),
+    ]);
+  }
+
+  // ── My certificates ───────────────────────────────────────────────────────
+
+  /// GET /api/v1/courses/{id}/my-certificates — silent on failure: the
+  /// section simply doesn't show, it must never break the course screen.
+  Future<void> fetchMyCertificates(String courseId) async {
+    try {
+      final r = await _api.get(
+        '/api/v1/courses/$courseId/my-certificates',
+        auth: true,
+      );
+      if (r is List) {
+        myCertificates = r
+            .whereType<Map<String, dynamic>>()
+            .map(IssuedCertificate.fromJson)
+            .toList();
+        notifyListeners();
+      }
+    } catch (_) {}
   }
 
   List<SessionModel> sessions = [];
@@ -75,16 +117,19 @@ class CourseDetailProvider extends BaseProvider {
       _sessionsSkip = 0;
       _hasMoreSessions = true;
       sessions = [];
+      examGates.clear();
     }
     final result = await run(
           () => _api.get('/api/v1/courses/$courseId/sessions',
           queryParams: {'skip': _sessionsSkip, 'limit': _sessionsPageSize}),
     );
     if (result is Map && result['items'] is List) {
-      final page = (result['items'] as List)
+      final items = result['items'] as List;
+      final page = items
           .map((e) => SessionModel.fromJson(e as Map<String, dynamic>))
           .toList()
         ..sort((a, b) => a.order.compareTo(b.order));
+      _storeGates(items);
       sessions = [...sessions, ...page];
       _sessionsSkip += page.length;
       _hasMoreSessions = page.length == _sessionsPageSize;
@@ -105,6 +150,48 @@ class CourseDetailProvider extends BaseProvider {
 
   Future<void> refresh() => fetchFull(course.id);
 
+  /// Re-reads the sessions already on screen WITHOUT a loading flash or
+  /// losing the loaded pages. Used after the student comes back from the exam
+  /// tab, so a freshly passed exam unlocks the next sessions immediately.
+  Future<void> refreshSessionsSilently() async {
+    try {
+      final limit =
+      sessions.length > _sessionsPageSize ? sessions.length : _sessionsPageSize;
+      final result = await _api.get(
+        '/api/v1/courses/${course.id}/sessions',
+        queryParams: {'skip': 0, 'limit': limit},
+      );
+      if (result is Map && result['items'] is List) {
+        final items = result['items'] as List;
+        final fresh = items
+            .map((e) => SessionModel.fromJson(e as Map<String, dynamic>))
+            .toList()
+          ..sort((a, b) => a.order.compareTo(b.order));
+        examGates.clear();
+        _storeGates(items);
+        sessions = fresh;
+        _sessionsSkip = fresh.length;
+        _hasMoreSessions = fresh.length == limit;
+        completedSessionIds
+          ..clear()
+          ..addAll(fresh.where((e) => e.isCompleted).map((e) => e.id));
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  void _storeGates(List items) {
+    for (final raw in items.whereType<Map<String, dynamic>>()) {
+      final id = raw['id'] as int;
+      final gate = SessionExamGate.fromJson(raw['exams']);
+      if (gate.isEmpty) {
+        examGates.remove(id);
+      } else {
+        examGates[id] = gate;
+      }
+    }
+  }
+
   // ── Premium / sequential unlock logic ────────────────────────────────────
 
   /// Whether the session at [index] (position within the sorted [sessions]
@@ -120,8 +207,20 @@ class CourseDetailProvider extends BaseProvider {
     if (index < 0 || index >= sessions.length) return false;
     if (index == 0) return true;
     if (!course.isEnrolled) return false;
+    // A published exam attached to ANY earlier session must be passed first.
+    if (blockingExamFor(index) != null) return false;
     final previousSession = sessions[index - 1];
     return completedSessionIds.contains(previousSession.id);
+  }
+
+  /// The first not-yet-passed exam attached to a session BEFORE [index]
+  /// (null → no exam is blocking this session). Also drives the UI message.
+  SessionExamInfo? blockingExamFor(int index) {
+    for (var j = 0; j < index && j < sessions.length; j++) {
+      final pending = examGates[sessions[j].id]?.firstPending;
+      if (pending != null) return pending;
+    }
+    return null;
   }
 
   /// Same rule as [isSessionUnlocked] but looked up by session id — useful
@@ -134,8 +233,14 @@ class CourseDetailProvider extends BaseProvider {
 
   void setTab(CourseDetailTab tab) {
     if (_activeTab == tab) return;
+    final leavingExams =
+        _activeTab == CourseDetailTab.exam && tab != CourseDetailTab.exam;
     _activeTab = tab;
     notifyListeners();
+    // The student may just have passed a session exam → refresh the gates.
+    if (leavingExams && course.isEnrolled && examGates.isNotEmpty) {
+      refreshSessionsSilently();
+    }
   }
 
   Future<void> toggleFavorite() async {

@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/config/theme/app_theme.dart';
@@ -9,6 +8,110 @@ import 'passcode_screen.dart';
 import 'student_exam_api.dart';
 import 'student_exam_detail_screen.dart';
 import 'student_exam_provider.dart';
+
+/// Opens [exam] the same way the course exam list does: passcode sheet first
+/// when the exam is protected, otherwise straight to the detail screen.
+/// Shared by the exam list tiles and the per-session "Start exam" button.
+void openStudentExam(
+    BuildContext context,
+    StudentExamProvider prov,
+    StudentExamListItem exam,
+    ) {
+  if (exam.enablePasscode) {
+    ExamPasscodeSheet.show(
+      context: context,
+      exam: exam,
+      correctPasscode: exam.passcode!,
+    );
+  } else {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider.value(
+          value: prov,
+          child: StudentExamDetailScreen(exam: exam),
+        ),
+      ),
+    );
+  }
+}
+
+/// "Start exam" button for a session card. Renders nothing unless an exam is
+/// attached to [sessionId]. Needs a [StudentExamProvider] above it in the tree
+/// (the same one the course exam list uses).
+class SessionExamButton extends StatefulWidget {
+  final int courseId;
+  final int sessionId;
+
+  /// Renders the button so the host card keeps its own button style.
+  final Widget Function(
+      BuildContext context, {
+      required IconData icon,
+      required String label,
+      required Color color,
+      required VoidCallback? onTap,
+      }) builder;
+
+  const SessionExamButton({
+    super.key,
+    required this.courseId,
+    required this.sessionId,
+    required this.builder,
+  });
+
+  @override
+  State<SessionExamButton> createState() => _SessionExamButtonState();
+}
+
+class _SessionExamButtonState extends State<SessionExamButton> {
+  String get _cid => widget.courseId.toString();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final prov = context.read<StudentExamProvider>();
+      // Several session cards mount together; only the first one fetches.
+      if (!prov.courseExamsLoadedFor(_cid) && !prov.loadingCourseExamsFor(_cid)) {
+        prov.loadCourseExams(_cid);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final prov = context.watch<StudentExamProvider>();
+    final exam = prov.examForSession(_cid, widget.sessionId);
+    if (exam == null) return const SizedBox.shrink();
+
+    final done = exam.isSubmitted;
+    final closed = exam.isFrozen;
+
+    final String label;
+    final Color color;
+    if (done) {
+      label = exam.percentage != null
+          ? 'اختبار الجلسة · ${exam.percentage!.toStringAsFixed(0)}%'
+          : 'اختبار الجلسة';
+      color = exam.passed == true ? AppTheme.success : Colors.redAccent;
+    } else if (closed) {
+      label = 'الاختبار مغلق';
+      color = Colors.grey;
+    } else {
+      label = 'بدء الاختبار';
+      color = context.colors.primary;
+    }
+
+    return widget.builder(
+      context,
+      icon: done ? Icons.check_circle_rounded : Icons.quiz_rounded,
+      label: label,
+      color: color,
+      onTap: closed ? null : () => openStudentExam(context, prov, exam),
+    );
+  }
+}
 
 class StudentCourseExamsWidget extends StatefulWidget {
   final String courseId;
@@ -101,30 +204,11 @@ class _StudentCourseExamsWidgetState extends State<StudentCourseExamsWidget> {
 
         // ── Exam tiles ────────────────────────────────────────────────────
         ...exams.map((exam) => _CourseExamTile(
-              exam: exam,
-              onTap: exam.isFrozen
-                  ? null
-                  : () {
-                      if (exam.enablePasscode) {
-                        ExamPasscodeSheet.show(
-                          context: context,
-                          exam: exam,
-                          correctPasscode:
-                              exam.passcode!, // or hard-coded string
-                        );
-                      } else {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ChangeNotifierProvider.value(
-                              value: prov,
-                              child: StudentExamDetailScreen(exam: exam),
-                            ),
-                          ),
-                        );
-                      }
-                    },
-            )),
+          exam: exam,
+          onTap: exam.isFrozen
+              ? null
+              : () => openStudentExam(context, prov, exam),
+        )),
 
         const SizedBox(height: 8),
       ],
@@ -167,7 +251,7 @@ class _CourseExamTile extends StatelessWidget {
               color: Colors.white,
               borderRadius: BorderRadius.circular(14),
               border:
-                  Border.all(color: accent.withValues(alpha: 0.2), width: 1.2),
+              Border.all(color: accent.withValues(alpha: 0.2), width: 1.2),
               boxShadow: [
                 BoxShadow(
                     color: Colors.black.withValues(alpha: 0.04),
@@ -188,8 +272,8 @@ class _CourseExamTile extends StatelessWidget {
                   isFrozen && !isDone
                       ? Icons.lock_clock_rounded
                       : isDone
-                          ? Icons.check_circle_rounded
-                          : Icons.quiz_rounded,
+                      ? Icons.check_circle_rounded
+                      : Icons.quiz_rounded,
                   color: accent,
                   size: 20,
                 ),

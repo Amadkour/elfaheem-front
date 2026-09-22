@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../../config/app_config.dart';
 import '../../../../../config/theme/app_theme.dart';
 import '../../../../../config/theme/theme_config_provider.dart';
 import '../../../../shared/session/material/components/session_progress_section.dart';
@@ -70,15 +71,31 @@ class SessionsTab extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           shrinkWrap: true,
           itemCount: presented.length,
-          itemBuilder: (_, i) => Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: SessionMaterialCard(
-              session: presented[i].toTeacher,
-              course: provider.course.toTeacherModel,
-              isTeacher: false,
-              locked: !provider.isSessionUnlockedById(presented[i].id),
-            ),
-          ),
+          itemBuilder: (_, i) {
+            final session = presented[i];
+            final gate = provider.examGates[session.id];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Column(
+                children: [
+                  SessionMaterialCard(
+                    session: session.toTeacher,
+                    course: provider.course.toTeacherModel,
+                    isTeacher: false,
+                    locked: !provider.isSessionUnlockedById(session.id),
+                  ),
+                  // The exam the teacher attached to this session: passing it
+                  // is what unlocks the sessions that come after it.
+                  if (gate != null && !gate.isEmpty)
+                    _SessionExamBanner(
+                      gate: gate,
+                      enrolled: provider.course.isEnrolled,
+                      onOpenExams: () => provider.setTab(CourseDetailTab.exam),
+                    ),
+                ],
+              ),
+            );
+          },
         ),
         // Footer for the next page of sessions. The actual scroll-position
         // trigger lives one level up (this list never scrolls itself — see
@@ -92,6 +109,134 @@ class SessionsTab extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Session exam banner — sits right under the session that owns the exam.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SessionExamBanner extends StatelessWidget {
+  final SessionExamGate gate;
+  final bool enrolled;
+  final VoidCallback onOpenExams;
+
+  const _SessionExamBanner({
+    required this.gate,
+    required this.enrolled,
+    required this.onOpenExams,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Show the exam still to pass; when everything is passed, the first one.
+    final exam = gate.firstPending ?? gate.exams.first;
+    final c = context.colors;
+
+    final Color color;
+    final IconData icon;
+    final String status;
+    if (exam.passed) {
+      color = c.success;
+      icon = Icons.verified_rounded;
+      status = 'session_exam_passed'.tr;
+    } else if (exam.attemptsExhausted) {
+      color = c.danger;
+      icon = Icons.block_rounded;
+      status = 'session_exam_no_attempts'.tr;
+    } else if (exam.isClosed) {
+      color = c.danger;
+      icon = Icons.event_busy_rounded;
+      status = 'session_exam_closed'.tr;
+    } else if (exam.attempted) {
+      color = Colors.orange;
+      icon = Icons.refresh_rounded;
+      status = 'session_exam_failed_retry'.tr;
+    } else {
+      color = c.primary;
+      icon = Icons.lock_clock_rounded;
+      status = 'session_exam_must_pass'.tr;
+    }
+
+    final details = <String>[
+      if (exam.passingScore > 0)
+        '${'session_exam_required_score'.tr}: ${exam.passingScore.toStringAsFixed(0)}%',
+      if (exam.bestPercentage != null)
+        '${'session_exam_best'.tr}: ${exam.bestPercentage!.toStringAsFixed(0)}%',
+      if (exam.remainingSubmissions != null && !exam.passed)
+        '${'session_exam_attempts_left'.tr}: ${exam.remainingSubmissions}',
+    ];
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.14),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 19),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${'session_exam_title'.tr}: ${exam.name}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: c.label.copyWith(
+                    color: c.textDark,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  status,
+                  style: c.caption.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (details.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(details.join('  •  '), style: c.caption),
+                ],
+              ],
+            ),
+          ),
+          if (enrolled && exam.canStart) ...[
+            const SizedBox(width: 8),
+            FilledButton(
+              onPressed: onOpenExams,
+              style: FilledButton.styleFrom(
+                backgroundColor: color,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                minimumSize: const Size(0, 36),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: Text(
+                exam.attempted ? 'session_exam_retry'.tr : 'session_exam_start'.tr,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

@@ -1,5 +1,5 @@
 import 'package:flutter_education_app/core/api_client.dart';
-import 'exam_model.dart';
+import '../../../shared/models/exam_model.dart';
 
 class TeacherExamApi {
   final ApiClient _api;
@@ -20,6 +20,7 @@ class TeacherExamApi {
     required String name,
     String? description,
     required int courseId,
+    int? sessionId,
     DateTime? startDate,
     DateTime? endDate,
     int? duration,
@@ -31,6 +32,7 @@ class TeacherExamApi {
     final data = await _api.post('/api/v1/exams', body: {
       'name': name,
       'course_id': courseId,
+      'session_id': ?sessionId,
       'description': ?description,
       if (startDate != null) 'start_date': startDate.toUtc().toIso8601String(),
       if (endDate != null) 'end_date': endDate.toUtc().toIso8601String(),
@@ -41,6 +43,38 @@ class TeacherExamApi {
       'passcode': ?passcode,
     });
     return ExamModel.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// PUT /api/v1/exams/{id}/session — attach the exam to a session
+  /// ([sessionId] = null detaches it). Students must pass an attached,
+  /// published exam before the sessions after it unlock.
+  Future<void> assignExamToSession(int examId, int? sessionId) async {
+    await _api.put('/api/v1/exams/$examId/session',
+        body: {'session_id': sessionId});
+  }
+
+  /// GET /api/v1/courses/{courseId}/sessions — every session (all pages),
+  /// sorted by order, for the "attach to session" picker.
+  Future<List<SessionOption>> fetchCourseSessions(int courseId) async {
+    const pageSize = 100;
+    final all = <SessionOption>[];
+    var skip = 0;
+    while (true) {
+      final data = await _api.get(
+        '/api/v1/courses/$courseId/sessions',
+        queryParams: {'skip': skip, 'limit': pageSize},
+      );
+      if (data is! Map || data['items'] is! List) break;
+      final page = (data['items'] as List)
+          .whereType<Map<String, dynamic>>()
+          .map(SessionOption.fromJson)
+          .toList();
+      all.addAll(page);
+      if (page.length < pageSize) break;
+      skip += page.length;
+    }
+    all.sort((a, b) => a.order.compareTo(b.order));
+    return all;
   }
 
   /// POST /api/v1/exams/{id}/publish

@@ -25,6 +25,8 @@ import '../../../teacher/analysis/attendance/teacher_attendance_screen.dart';
 import '../../../teacher/analysis/exam/teacher_exam_hub_screen.dart';
 import '../../../teacher/home/teacher_models.dart';
 import '../../../teacher/sessions/sessions_provider.dart';
+import 'package:flutter_education_app/features/student/analysis/exam/student_course_exams_widget.dart'
+    show SessionExamButton;
 import 'session_material_model.dart';
 import 'components/add_material_sheet.dart';
 import 'components/session_material_grid.dart';
@@ -135,6 +137,22 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
         builder: (_) => TeacherExamHubScreen(
           courseId: _session.courseId,
           courseTitle: widget.course.title,
+        ),
+      ),
+    );
+  }
+
+  /// Opens the exam hub with the "new exam" sheet already open and this
+  /// session pre-selected, so the new exam is attached to it on creation.
+  void _openAddExam() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TeacherExamHubScreen(
+          courseId: _session.courseId,
+          courseTitle: widget.course.title,
+          initialSessionId: _session.id,
+          openCreateOnStart: true,
         ),
       ),
     );
@@ -257,7 +275,26 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
             onTap: _openExams,
             outlined: true,
           ),
+          SessionActionBtn(
+            icon: Icons.add_task_rounded,
+            label: 'new_exam'.tr,
+            color: const Color(0xFF7C4DFF),
+            onTap: _openAddExam,
+            outlined: true,
+          ),
         ],
+        if (!widget.isTeacher && !_isLocked)
+          SessionExamButton(
+            courseId: _session.courseId,
+            sessionId: _session.id,
+            builder: (ctx, {required icon, required label, required color, required onTap}) =>
+                SessionActionBtn(
+                  icon: icon,
+                  label: label,
+                  color: color,
+                  onTap: onTap,
+                ),
+          ),
         if (isLiveType && widget.isTeacher)
           SessionActionBtn(
             icon: CupertinoIcons.video_camera_solid,

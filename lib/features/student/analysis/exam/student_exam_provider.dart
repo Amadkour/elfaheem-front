@@ -1,9 +1,9 @@
-
 library;
 
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import '../../../shared/models/exam_model.dart';
 import '../../../teacher/analysis/exam/exam_model.dart';
 import 'student_exam_api.dart';
 
@@ -47,7 +47,7 @@ class QuizSession {
   /// Whether the current result matches the best-ever
   bool get isCurrentBest =>
       result != null &&
-      (bestPercentage == null || result!.percentage >= bestPercentage!);
+          (bestPercentage == null || result!.percentage >= bestPercentage!);
 }
 
 // ── Provider ──────────────────────────────────────────────────────────────────
@@ -91,6 +91,19 @@ class StudentExamProvider extends ChangeNotifier {
       _loadingCourseExams[courseId] ?? false;
 
   String? courseExamsErrorFor(String courseId) => _courseExamsError[courseId];
+
+  /// True once a load for [courseId] has finished successfully (even if the
+  /// course has no exams) — lets many session cards share one request.
+  bool courseExamsLoadedFor(String courseId) =>
+      _courseExams.containsKey(courseId);
+
+  /// The exam attached to [sessionId], or null if that session has none.
+  StudentExamListItem? examForSession(String courseId, int sessionId) {
+    for (final e in courseExamsFor(courseId)) {
+      if (e.sessionId == sessionId) return e;
+    }
+    return null;
+  }
 
   // ── Timer ──────────────────────────────────────────────────────────────────
   int _secondsLeft = 0;
@@ -324,6 +337,7 @@ class StudentExamProvider extends ChangeNotifier {
       description: old.description,
       courseId: old.courseId,
       courseName: old.courseName,
+      sessionId: old.sessionId,
       startDate: old.startDate,
       endDate: old.endDate,
       duration: old.duration,
@@ -341,6 +355,7 @@ class StudentExamProvider extends ChangeNotifier {
       percentage: result?.percentage,
       passed: result?.passed,
       enablePasscode: old.enablePasscode,
+      passcode: old.passcode,
     );
     notifyListeners();
   }

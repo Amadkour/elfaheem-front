@@ -4,7 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_education_app/features/teacher/analysis/exam/teacher_exam_api.dart';
 
 import '../../../../core/api_client.dart';
-import 'exam_model.dart';
+import '../../../shared/models/exam_model.dart';
 
 class TeacherExamProvider extends ChangeNotifier {
   final TeacherExamApi _api;
@@ -22,6 +22,33 @@ class TeacherExamProvider extends ChangeNotifier {
 
   String? _examsError;
   String? get examsError => _examsError;
+
+  // ── Sessions of the course (for "attach exam to a session") ────────────────
+  List<SessionOption> _sessions = [];
+  List<SessionOption> get sessions => _sessions;
+  bool _sessionsLoaded = false;
+  bool get sessionsLoaded => _sessionsLoaded;
+
+  String? sessionNameFor(ExamModel e) {
+    if (e.sessionName != null) return e.sessionName;
+    final id = e.sessionId;
+    if (id == null) return null;
+    for (final s in _sessions) {
+      if (s.id == id) return s.name;
+    }
+    return null;
+  }
+
+  Future<void> loadSessions() async {
+    try {
+      _sessions = await _api.fetchCourseSessions(courseId);
+    } catch (_) {
+      // Not fatal: exams still work, the picker just has no sessions to offer.
+    } finally {
+      _sessionsLoaded = true;
+      notifyListeners();
+    }
+  }
 
   // ── Results ────────────────────────────────────────────────────────────────
   bool _loadingResults = false;
@@ -77,6 +104,7 @@ class TeacherExamProvider extends ChangeNotifier {
   // ══════════════════════════════════════════════════════════════════════════
 
   Future<void> loadExams() async {
+    loadSessions(); // in parallel; fills the "session" chip on each exam
     _loadingExams = true;
     _examsError = null;
     notifyListeners();
@@ -99,6 +127,7 @@ class TeacherExamProvider extends ChangeNotifier {
   Future<bool> createExam({
     required String name,
     String? description,
+    int? sessionId,
     DateTime? startDate,
     DateTime? endDate,
     int? duration,
@@ -114,6 +143,7 @@ class TeacherExamProvider extends ChangeNotifier {
         name: name,
         description: description,
         courseId: courseId,
+        sessionId: sessionId,
         startDate: startDate,
         endDate: endDate,
         duration: duration,
@@ -146,6 +176,25 @@ class TeacherExamProvider extends ChangeNotifier {
           ? await _api.unpublishExam(exam.id)
           : await _api.publishExam(exam.id);
       _replaceExam(updated);
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  /// Attach the exam to [sessionId] (or detach with null).
+  /// Returns null on success, an error message on failure.
+  Future<String?> assignSession(ExamModel exam, int? sessionId) async {
+    try {
+      await _api.assignExamToSession(exam.id, sessionId);
+      final idx = _exams.indexWhere((e) => e.id == exam.id);
+      if (idx != -1) {
+        _exams[idx] = _exams[idx]
+            .copyWith(sessionId: sessionId, clearSession: sessionId == null);
+      }
+      notifyListeners();
       return null;
     } on ApiException catch (e) {
       return e.message;
@@ -306,7 +355,15 @@ class TeacherExamProvider extends ChangeNotifier {
 
   void _replaceExam(ExamModel updated) {
     final idx = _exams.indexWhere((e) => e.id == updated.id);
-    if (idx != -1) _exams[idx] = updated;
+    if (idx != -1) {
+      final old = _exams[idx];
+      // publish/unpublish return the bare exam (no question count / session
+      // name) — keep what we already know instead of blanking it.
+      _exams[idx] = updated.copyWith(
+        questionCount: updated.questionCount == 0 ? old.questionCount : null,
+        sessionName: updated.sessionName ?? old.sessionName,
+      );
+    }
     notifyListeners();
   }
 
@@ -314,18 +371,7 @@ class TeacherExamProvider extends ChangeNotifier {
     final idx = _exams.indexWhere((e) => e.id == examId);
     if (idx == -1) return;
     final old = _exams[idx];
-    _exams[idx] = ExamModel(
-      id: old.id,
-      name: old.name,
-      description: old.description,
-      courseId: old.courseId,
-      startDate: old.startDate,
-      duration: old.duration,
-      passingScore: old.passingScore,
-      totalMarks: old.totalMarks,
-      passcode: old.passcode,
-      isPublished: old.isPublished,
-      createdAt: old.createdAt,
+    _exams[idx] = old.copyWith(
       questionCount: (old.questionCount + delta).clamp(0, 9999),
     );
   }

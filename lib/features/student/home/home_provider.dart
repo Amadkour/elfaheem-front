@@ -119,21 +119,28 @@ class HomeProvider extends BaseProvider {
       notifyListeners();
     }
 
-    if (result['enrolled_courses'] is List) {
-      myCourses = (result['enrolled_courses'] as List)
-          .map<CourseModel>((e) => CourseModel.fromJson(e as Map<String, dynamic>))
-          .toList();
-      notifyListeners();
-
+    // if (result['enrolled_courses'] is List) {
+    //   myCourses = (result['enrolled_courses'] as List)
+    //       .map<CourseModel>((e) => CourseModel.fromJson(e as Map<String, dynamic>))
+    //       .toList();
+    //   notifyListeners();
+    //
+    // }
+    //
+    // if (result['other_courses'] is List) {
+    //   otherCourses = (result['other_courses'] as List)
+    //       .map<CourseModel>((e) => CourseModel.fromJson(e as Map<String, dynamic>))
+    //       .toList();
+    //   notifyListeners();
+    //
+    // }
+    List<Map<String, dynamic>> _asMapList(dynamic v) {
+      if (v is List && v.isNotEmpty && v.first is List) v = v.first; // [[...], total]
+      return v is List ? v.whereType<Map<String, dynamic>>().toList() : const [];
     }
 
-    if (result['other_courses'] is List) {
-      otherCourses = (result['other_courses'] as List)
-          .map<CourseModel>((e) => CourseModel.fromJson(e as Map<String, dynamic>))
-          .toList();
-      notifyListeners();
-
-    }
+    myCourses = _asMapList(result['enrolled_courses']).map(CourseModel.fromJson).toList();
+    otherCourses = _asMapList(result['other_courses']).map(CourseModel.fromJson).toList();
 
     if (result['best_teachers'] is Map &&
         result['best_teachers']['items'] is List) {
