@@ -6,12 +6,13 @@ library;
 
 enum SavedMethodType { card, bankAccount }
 
-enum CardBrand { mada, visa, mastercard, applePay, stcPay, unknown }
+enum CardBrand { mada, visa, mastercard, applePay, stcPay,paymob, unknown }
 
 extension CardBrandX on CardBrand {
   String get label {
     switch (this) {
       case CardBrand.mada:       return 'مدى';
+      case CardBrand.paymob:       return 'paymob';
       case CardBrand.visa:       return 'Visa';
       case CardBrand.mastercard: return 'Mastercard';
       case CardBrand.applePay:   return 'Apple Pay';
@@ -27,6 +28,7 @@ extension CardBrandX on CardBrand {
       case CardBrand.mastercard: return 'mastercard';
       case CardBrand.applePay:   return 'apple_pay';
       case CardBrand.stcPay:     return 'stc_pay';
+      case CardBrand.paymob:     return 'paymob';
       case CardBrand.unknown:    return 'mada';
     }
   }
@@ -35,6 +37,7 @@ extension CardBrandX on CardBrand {
   String get feeLabel {
     switch (this) {
       case CardBrand.mada:   return '1.9% + 1 ر.س';
+      case CardBrand.paymob:   return '3% + 3 ج';
       case CardBrand.stcPay: return '2.5% + 1 ر.س';
       default:               return '2.9% + 1 ر.س';
     }
@@ -168,7 +171,7 @@ class FeeBreakdown {
     required this.gatewayFee,
     required this.gatewayLabel,
     required this.total,
-    this.currency = 'SAR',
+    this.currency = '',
   });
 
   factory FeeBreakdown.fromJson(Map<String, dynamic> j) => FeeBreakdown(
@@ -185,8 +188,8 @@ class FeeBreakdown {
   factory FeeBreakdown.calculate({
     required double coursePrice,
     required CardBrand brand,
-    double platformFeePct = 10.0,
-    double vatRate        = 0.15,
+    double platformFeePct = 5.0,
+    double vatRate        = 0.3,
   }) {
     final gw = _gwRate(brand);
     final platform    = coursePrice * (platformFeePct / 100);

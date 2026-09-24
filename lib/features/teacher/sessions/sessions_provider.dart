@@ -79,17 +79,19 @@ class TeacherCourseScreenProvider extends BaseProvider {
     final result = await run(
           () => _api.get('/api/v1/courses/${_course.id}/sessions'),
     );
+    print(result);
     if (result['items'] is List) {
-      _sessions =
-      result
-          .map(
-            (e) => TeacherSessionItem.fromJson(e as Map<String, dynamic>),
-      )
+      if((result['items'] as List).isNotEmpty) {
+        _sessions = (result['items'] as List)
+          .map((e) => TeacherSessionItem.fromJson(e))
           .toList()
         ..sort((a, b) => a.order.compareTo(b.order));
+      }else {
+        _sessions = [];
+      }
       _materialLoaded.clear();
       _uploadingMaterial.clear();
-      print(sessions.length);
+      print(_sessions.length);
       notifyListeners();
     }
   }

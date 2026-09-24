@@ -105,7 +105,7 @@ class EnrollmentProvider extends BaseProvider {
   /// user paying through Paymob sees a Saudi Riyal symbol on an EGP charge.
   /// Defaults to SAR while `_paymentProvider` is still loading, matching
   /// this app's original (Moyasar-only) behaviour.
-  String get currencySymbol => _paymentProvider == 'paymob' ? 'ج.م' : 'ر.س';
+  String currencySymbol = 'ج.م';
 
   /// Call once when the enrollment screen mounts (e.g. from its initState),
   /// before the method picker renders, so supportsStcPay is correct on
@@ -143,6 +143,7 @@ class EnrollmentProvider extends BaseProvider {
         _paymobIntegrationId = (paymobSdk['integration_id'] as num?)?.toInt();
         _paymobIframeId = (paymobSdk['iframe_id'] as num?)?.toInt();
         _paymobSandbox = paymobSdk['is_sandbox'] as bool? ?? true;
+        currencySymbol= paymobSdk['currency'];
       } else {
         _paymobApiKey = null;
         _paymobIntegrationId = null;

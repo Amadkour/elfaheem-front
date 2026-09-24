@@ -265,68 +265,68 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           SizedBox(height: context.height / 50),
 
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              GestureDetector(
-                onTap: () {
-                  provider.changeMode(!provider.darkMode);
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 500),
-                  width: 72,
-                  height: 38,
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(40),
-                    gradient: provider.darkMode
-                        ? const LinearGradient(
-                            colors: [Color(0xff0F172A), Color(0xff1E293B)],
-                          )
-                        : context.colors.accentGradient,
-                  ),
-                  child: Stack(
-                    children: [
-                      AnimatedAlign(
-                        duration: const Duration(milliseconds: 500),
-                        curve: Curves.easeInOut,
-                        alignment: provider.darkMode
-                            ? Alignment.centerRight
-                            : Alignment.centerLeft,
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 500),
-                          transitionBuilder: (child, animation) {
-                            return RotationTransition(
-                              turns: animation,
-                              child: child,
-                            );
-                          },
-                          child: Container(
-                            key: ValueKey(provider.darkMode),
-                            width: 30,
-                            height: 30,
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              provider.darkMode
-                                  ? Icons.dark_mode_rounded
-                                  : Icons.wb_sunny_rounded,
-                              color: provider.darkMode
-                                  ? Colors.indigo
-                                  : Colors.orange,
-                              size: 18,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+          // Row(
+          //   mainAxisAlignment: MainAxisAlignment.center,
+          //   children: [
+          //     GestureDetector(
+          //       onTap: () {
+          //         provider.changeMode(!provider.darkMode);
+          //       },
+          //       child: AnimatedContainer(
+          //         duration: const Duration(milliseconds: 500),
+          //         width: 72,
+          //         height: 38,
+          //         padding: const EdgeInsets.all(4),
+          //         decoration: BoxDecoration(
+          //           borderRadius: BorderRadius.circular(40),
+          //           gradient: provider.darkMode
+          //               ? const LinearGradient(
+          //                   colors: [Color(0xff0F172A), Color(0xff1E293B)],
+          //                 )
+          //               : context.colors.accentGradient,
+          //         ),
+          //         child: Stack(
+          //           children: [
+          //             AnimatedAlign(
+          //               duration: const Duration(milliseconds: 500),
+          //               curve: Curves.easeInOut,
+          //               alignment: provider.darkMode
+          //                   ? Alignment.centerRight
+          //                   : Alignment.centerLeft,
+          //               child: AnimatedSwitcher(
+          //                 duration: const Duration(milliseconds: 500),
+          //                 transitionBuilder: (child, animation) {
+          //                   return RotationTransition(
+          //                     turns: animation,
+          //                     child: child,
+          //                   );
+          //                 },
+          //                 child: Container(
+          //                   key: ValueKey(provider.darkMode),
+          //                   width: 30,
+          //                   height: 30,
+          //                   decoration: const BoxDecoration(
+          //                     color: Colors.white,
+          //                     shape: BoxShape.circle,
+          //                   ),
+          //                   child: Icon(
+          //                     provider.darkMode
+          //                         ? Icons.dark_mode_rounded
+          //                         : Icons.wb_sunny_rounded,
+          //                     color: provider.darkMode
+          //                         ? Colors.indigo
+          //                         : Colors.orange,
+          //                     size: 18,
+          //                   ),
+          //                 ),
+          //               ),
+          //             ),
+          //           ],
+          //         ),
+          //       ),
+          //     ),
+          //   ],
+          // ),
         ],
       ),
     );

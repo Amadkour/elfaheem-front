@@ -56,7 +56,7 @@ class _EnrollmentScreenState extends State<EnrollmentScreen> {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => EnrollmentProvider(widget.course)),
-        ChangeNotifierProvider(create: (_) => SavedMethodsProvider()..fetch()),
+        ChangeNotifierProvider(create: (_) => SavedMethodsProvider()),
       ],
       child: const _EnrollView(),
     );
@@ -664,10 +664,10 @@ class _FeeBreakdownCardState extends State<_FeeBreakdownCard> {
                   child: Icon(Icons.receipt_long_rounded, color: c.primary, size: 18),
                 ),
                 const SizedBox(width: 10),
-                Expanded(child: Text('تفاصيل الفاتورة',
+                Expanded(child: Text('billing_details'.tr,
                     style: c.h3.copyWith(fontSize: 14))),
                 // Total preview (always visible)
-                Text(fees.fmt(fees.total),
+                Text(fees.fmt(fees.total) + enroll.currencySymbol,
                     style: c.h3.copyWith(color: c.primary, fontSize: 16)),
                 const SizedBox(width: 8),
                 AnimatedRotation(
@@ -691,16 +691,16 @@ class _FeeBreakdownCardState extends State<_FeeBreakdownCard> {
               child: Column(children: [
                 Divider(color: c.divider, height: 1),
                 const SizedBox(height: 14),
-                _FeeRow(label: 'سعر الكورس',
+                _FeeRow(label: 'course_price'.tr,
                     value: fees.fmt(fees.coursePrice),
                     icon: Icons.school_rounded),
-                _FeeRow(label: 'رسوم المنصة (10%)',
+                _FeeRow(label: 'platform_fees'.tr,
                     value: fees.fmt(fees.platformFee),
                     icon: Icons.store_rounded),
-                _FeeRow(label: 'ضريبة القيمة المضافة (15%)',
+                _FeeRow(label: 'VAT',
                     value: fees.fmt(fees.vatOnPlatform),
                     icon: Icons.receipt_rounded),
-                _FeeRow(label: 'رسوم بوابة الدفع',
+                _FeeRow(label: 'gateway_fees',
                     value: fees.fmt(fees.gatewayFee),
                     icon: Icons.credit_card_rounded,
                     sub: fees.gatewayLabel),

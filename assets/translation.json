@@ -3665,8 +3665,24 @@
     "en": "Page",
     "ar": "صفحة"
   },
-  "of_word": {
-    "en": "of",
-    "ar": "من"
+  "billing_details": {
+    "en": "Billing Details",
+    "ar": "تفاصيل العملية"
+  },
+  "platform_fees": {
+    "en": "Platform Fees",
+    "ar": "ضريبة المنصة"
+  },
+  "VAT": {
+    "en": "VAT",
+    "ar": "الضربية المضافة"
+  },
+  "gateway_fees": {
+    "en": "Gateway Fees",
+    "ar": "ضريبة بوابة الدفع"
+  },
+  "user_not_found": {
+    "en": "Incorrect User name or Password",
+    "ar": "خطأ في البريد الاكتروني او كلمة المرور"
   }
 }

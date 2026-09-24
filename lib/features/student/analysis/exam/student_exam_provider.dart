@@ -150,7 +150,8 @@ class StudentExamProvider extends ChangeNotifier {
     _courseExamsError[courseId] = null;
     notifyListeners();
     try {
-      _courseExams[courseId] = await _api.fetchCourseExams(courseId);
+      //todo
+      // _courseExams[courseId] = await _api.fetchCourseExams(courseId);
     } on ApiException catch (e) {
       _courseExamsError[courseId] = e.message;
     } catch (e) {
