@@ -50,7 +50,11 @@ class CourseRoadmapSection extends StatelessWidget {
   final List<CourseSummary> similarCourses;
   final ValueChanged<CourseSummary> onTapCourse;
 
-   CourseRoadmapSection({
+  /// When set (and the teacher defined next steps), shows a button that opens
+  /// the roadmap checkout: enrol in every course on the path and pay once.
+  final VoidCallback? onEnrollRoadmap;
+
+  CourseRoadmapSection({
     super.key,
     required this.currentCourseName,
     this.recentCompletedCourses = const [],
@@ -58,6 +62,7 @@ class CourseRoadmapSection extends StatelessWidget {
     required this.recommendedCourses,
     required this.similarCourses,
     required this.onTapCourse,
+    this.onEnrollRoadmap,
   });
 
   List<CourseSummary> get _combined {
@@ -138,6 +143,13 @@ class CourseRoadmapSection extends StatelessWidget {
             nextCourses: nextCourses,
             onTapCourse: onTapCourse,
           ),
+          if (onEnrollRoadmap != null && nextCourses.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            _EnrollRoadmapButton(
+              label: 'roadmap_enroll_all'.tr,
+              onTap: onEnrollRoadmap!,
+            ),
+          ],
           if (combined.isNotEmpty) ...[
             const SizedBox(height: 24),
             Row(
@@ -361,8 +373,8 @@ class _RoadmapNode extends StatelessWidget {
               color: isCurrent
                   ? _kRoadmapGold
                   : (isCompleted
-                        ? _kRoadmapGold.withValues(alpha: 0.18)
-                        : Colors.white.withValues(alpha: 0.08)),
+                  ? _kRoadmapGold.withValues(alpha: 0.18)
+                  : Colors.white.withValues(alpha: 0.08)),
               border: Border.all(
                 color: isMuted ? Colors.white24 : _kRoadmapGold,
                 width: 1.4,
@@ -399,6 +411,44 @@ class _RoadmapNode extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _EnrollRoadmapButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _EnrollRoadmapButton({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    const ink = Color(0xFF1E1B4B);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 46,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(colors: [_kRoadmapGold, _kRoadmapGoldSoft]),
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.rocket_launch_rounded, size: 18, color: ink),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                fontFamily: 'tajawal',
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: ink,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

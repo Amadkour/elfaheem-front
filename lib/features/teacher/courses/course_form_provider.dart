@@ -155,9 +155,9 @@ class CourseFormProvider extends BaseProvider {
 
   Future<void> _loadOtherCourses({int? excludeCourseId}) async {
     final result = await run(() => _api.get('/api/v1/my-courses'));
-    if (result is List) {
-      otherCourses = result
-          .whereType<Map<String, dynamic>>()
+    if (result['items'] is List) {
+      otherCourses = (result['items'] as List<dynamic>)
+          .whereType<dynamic>()
           .where((c) => c['id'] != excludeCourseId)
           .map((c) => {'id': c['id'], 'text': (c['name'] ?? c['title'] ?? '').toString()})
           .toList();

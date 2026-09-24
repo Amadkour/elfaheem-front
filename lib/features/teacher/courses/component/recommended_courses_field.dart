@@ -72,7 +72,7 @@ class RecommendedCoursesField extends StatelessWidget {
                         : '${selected.length} ${'courses_selected_count'.tr}',
                     style: TextStyle(
                       fontFamily: 'tajawal',
-                      fontSize: 13,
+                      fontSize: 16,
                       color: selected.isEmpty
                           ? context.colors.textLight
                           : context.colors.textDark,
