@@ -8,7 +8,7 @@ import 'package:timeago/timeago.dart' as timeago;
 /// Application configuration and context.colors.
 class AppConfig {
   static const String baseUrl =
-      'https://nextbrain.sit';
+      'https://nextbrain.site/api';
   static String lang = 'ar';
   static bool showLogs = false;
 
