@@ -384,7 +384,7 @@ class ProfileHeader extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: context.colors.primary.withValues(alpha: 0.1),
                 border: Border.all(
-                  color: context.colors.primaryDark,
+                  color: context.colors.primary,
                   width: 2.5,
                 ),
               ),
@@ -397,8 +397,8 @@ class ProfileHeader extends StatelessWidget {
                     )
                   : Icon(
                       Icons.person_rounded,
-                      size: 52,
-                      color: context.colors.primaryDark,
+                      size: 70,
+                      color: context.colors.primary,
                     ),
             ),
           ],

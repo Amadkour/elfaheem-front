@@ -14,8 +14,6 @@ import '../../utils/widget/primary_menue.dart' show MyPrimaryMenu;
 import 'auth_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
-// مهم للـ blur
-
 // ── Brand colours ─────────────────────────────────────────────────────────────
 const _kBrandLight = Color(0xFFEBF1FD);
 const _kBorder = Color(0xFFE5E7EB);

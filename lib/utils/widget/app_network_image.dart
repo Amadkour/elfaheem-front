@@ -33,38 +33,37 @@ class AppNetworkImage extends StatelessWidget {
     this.borderRadius,
     this.color,
     this.padding = EdgeInsets.zero,
-    this.enableFullscreen = true,
+    this.enableFullscreen = false,
     this.heroTag,
-     this.isDark=false,
+    this.isDark = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final tag = heroTag ?? url;
 
-    Widget img =url.isNotEmpty?Image.network(
-      url,
-      width: width,
-      height: height,
-      fit: fit,
-      errorBuilder: (_, _, _) =>SizedBox(
-          width: width,
-          height: height,
-          child: ImageFallback(dark: isDark,)),
-      loadingBuilder: (_, child, progress) {
-        if (progress == null) return child;
-        return Container(
-          width: width,
-          height: height,
-          color: color ?? context.colors.cardBg,
-          child: Center(child: AppLoadingIndicator()),
-        );
-      },
-    ):SizedBox(
-        width: width,
-        height: height,
-        child: ImageFallback(dark: isDark,));
-
+    Widget img = url.startsWith('assets')
+        ? Image.asset(url, width: width, height: height, fit: fit)
+        : Image.network(
+            url,
+            width: width,
+            height: height,
+            fit: fit,
+            errorBuilder: (_, _, _) => SizedBox(
+              width: width,
+              height: height,
+              child: ImageFallback(dark: isDark),
+            ),
+            loadingBuilder: (_, child, progress) {
+              if (progress == null) return child;
+              return Container(
+                width: width,
+                height: height,
+                color: color ?? context.colors.cardBg,
+                child: Center(child: AppLoadingIndicator()),
+              );
+            },
+          );
     // Wrap in Hero for smooth shared-element transition
     if (enableFullscreen) {
       img = Hero(tag: tag, child: img);
