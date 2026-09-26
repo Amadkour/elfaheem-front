@@ -1,6 +1,7 @@
 // shared/session/components/add_material_sheet.dart
 //
-// Bottom sheet for adding a new material (file upload or external link).
+// Bottom sheet (mobile) / centered dialog (wide screens & web) for adding a
+// new material (file upload or external link).
 // Scoped to TeacherCourseScreenProvider via context.read — no extra provider
 // wrapper needed since it's always opened from within the provider scope.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -8,16 +9,22 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../config/app_config.dart';
 import '../../../../../config/theme/app_theme.dart';
 import '../../../../../config/theme/theme_config_provider.dart';
+import '../../../../../utils/helpers.dart';
 import '../../../../teacher/sessions/sessions_provider.dart';
-import 'session_shared_widgets.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+
+// Screens at/above this width get the centered "card" treatment instead of a
+// full-width bottom sheet — covers desktop web and tablets in landscape.
+const double _kWideBreakpoint = 720;
+
 // ─────────────────────────────────────────────────────────────────────────────
-// Public entry — small button that opens the sheet
+// Public entry — small button that opens the sheet/dialog
 // ─────────────────────────────────────────────────────────────────────────────
 
 class AddMaterialButton extends StatelessWidget {
@@ -28,49 +35,88 @@ class AddMaterialButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => showModalBottomSheet(
-        context: context,
-        backgroundColor: Colors.transparent,
-        isScrollControlled: true,
-        builder: (_) => ChangeNotifierProvider.value(
-          value: context.read<TeacherCourseScreenProvider>(),
-          child: AddMaterialSheet(sessionId: sessionId),
+      onTap: () => showAddMaterialSheet(context, sessionId: sessionId),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          gradient: context.colors.primaryGradient,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: context.colors.primaryShadow,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.add_rounded, size: 15, color: Colors.white),
+            const SizedBox(width: 5),
+            Text(
+              'add_material'.tr,
+              style: const TextStyle(
+                fontFamily: 'bahji',
+                fontSize: 12,
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
         ),
       ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: context.colors.primary.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-              color: context.colors.primary.withValues(alpha: 0.3)),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.add_rounded, size: 14, color: context.colors.primary),
-          const SizedBox(width: 4),
-          Text(
-            'add_material'.tr,
-            style: TextStyle(
-              fontFamily: 'bahji',
-              fontSize: 11,
-              color: context.colors.primary,
-              fontWeight: FontWeight.w700,
+    );
+  }
+}
+
+/// Opens the Add Material UI, picking the right chrome for the current
+/// screen size: a bottom sheet on phones, a centered card on wide screens.
+Future<void> showAddMaterialSheet(
+  BuildContext context, {
+  required int sessionId,
+}) async {
+  final provider = context.read<TeacherCourseScreenProvider>();
+  final isWide = MediaQuery.sizeOf(context).width >= _kWideBreakpoint;
+
+  if (isWide) {
+    await showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (_) => ChangeNotifierProvider.value(
+        value: provider,
+        child: Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(24),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: AddMaterialSheet(sessionId: sessionId, isWide: true),
             ),
           ),
-        ]),
+        ),
+      ),
+    );
+  } else {
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => ChangeNotifierProvider.value(
+        value: provider,
+        child: AddMaterialSheet(sessionId: sessionId, isWide: false),
       ),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// The sheet itself
+// The sheet / dialog content
 // ─────────────────────────────────────────────────────────────────────────────
 
 class AddMaterialSheet extends StatefulWidget {
   final int sessionId;
+  final bool isWide;
 
-  const AddMaterialSheet({super.key, required this.sessionId});
+  const AddMaterialSheet({
+    super.key,
+    required this.sessionId,
+    this.isWide = false,
+  });
 
   @override
   State<AddMaterialSheet> createState() => _AddMaterialSheetState();
@@ -81,6 +127,11 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
   int _fileTypeIdx = 0;
   PlatformFile? _pickedFile;
   bool _saving = false;
+
+  String? _nameError;
+  String? _fileError;
+  String? _urlError;
+  String? _submitError;
 
   final _nameCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
@@ -108,7 +159,14 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
   ];
 
   static const _documentExtensions = [
-    'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt',
+    'pdf',
+    'doc',
+    'docx',
+    'xls',
+    'xlsx',
+    'ppt',
+    'pptx',
+    'txt',
   ];
 
   @override
@@ -126,8 +184,9 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
     final isVideo = opt.fileType == FileType.video;
     final result = await FilePicker.pickFiles(
       type: opt.fileType,
-      allowedExtensions:
-          opt.fileType == FileType.custom ? _documentExtensions : null,
+      allowedExtensions: opt.fileType == FileType.custom
+          ? _documentExtensions
+          : null,
       // Videos stream straight from disk on upload (see _submit) — no need
       // to buffer the whole file into memory just to pick it. On web,
       // file_picker only ever exposes bytes (no real filesystem path), so
@@ -135,54 +194,93 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
       withData: !isVideo || kIsWeb,
     );
     if (result != null && result.files.isNotEmpty && mounted) {
-      setState(() => _pickedFile = result.files.first);
-      if (_nameCtrl.text.isEmpty) {
-        _nameCtrl.text =
-            _pickedFile!.name.replaceAll(RegExp(r'\.[^.]+$'), '');
-      }
+      setState(() {
+        _pickedFile = result.files.first;
+        _fileError = null;
+        if (_nameCtrl.text.isEmpty) {
+          _nameCtrl.text = _pickedFile!.name.replaceAll(
+            RegExp(r'\.[^.]+$'),
+            '',
+          );
+          _nameError = null;
+        }
+      });
+      HapticFeedback.selectionClick();
+    }
+  }
+
+  void _clearFile() {
+    setState(() => _pickedFile = null);
+  }
+
+  Future<void> _pasteUrl() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text?.trim();
+    if (text != null && text.isNotEmpty && mounted) {
+      setState(() {
+        _urlCtrl.text = text;
+        _urlError = null;
+      });
     }
   }
 
   // ── Submit ─────────────────────────────────────────────────────────────────
 
   Future<void> _submit() async {
-    final name = _nameCtrl.text.trim();
-    if (name.isEmpty) {
-      _showError('please_enter_name'.tr);
+    setState(() {
+      _submitError = null;
+      _nameError = _nameCtrl.text.trim().isEmpty
+          ? 'please_enter_name'.tr
+          : null;
+      _fileError = _mode == 0 && _pickedFile == null
+          ? 'please_pick_file'.tr
+          : null;
+      _urlError = _mode == 1 && _urlCtrl.text.trim().isEmpty
+          ? 'please_enter_url'.tr
+          : null;
+    });
+
+    if (_nameError != null || _fileError != null || _urlError != null) {
+      HapticFeedback.selectionClick();
       return;
     }
 
+    final name = _nameCtrl.text.trim();
     final prov = context.read<TeacherCourseScreenProvider>();
 
     if (_mode == 0) {
-      if (_pickedFile == null) {
-        _showError('please_pick_file'.tr);
-        return;
-      }
-
       final isVideo = _fileTypeOptions[_fileTypeIdx].fileType == FileType.video;
       final path = _pickedFile!.path;
+      final Uint8List? bytes=_pickedFile?.bytes;
 
-      if (isVideo && !kIsWeb && path != null) {
-        // Long videos: hand off to the background upload queue and close
-        // the sheet right away — no spinner here, progress shows in the
-        // app-wide upload footer instead, and the sheet doesn't block on
-        // an upload that could take minutes.
+      // FIX: this used to check `path != null` alone as a stand-in for
+      // "not running on web". On this environment, file_picker can hand
+      // back a non-null `.path` on web too (e.g. a blob reference) that
+      // isn't a real filesystem path, and the background-upload branch
+      // below calls dart:io.File(path) — which doesn't exist on web at
+      // all — throwing "Unsupported operation: _Namespace" the instant
+      // it's constructed. `kIsWeb` is the actual, reliable platform check;
+      // `path != null` alone is not.
+      if (isVideo && path != null) {
+        // Long videos (mobile/desktop only): hand off to the background
+        // upload queue and close the sheet right away — no spinner here,
+        // progress shows in the app-wide upload footer instead, and the
+        // sheet doesn't block on an upload that could take minutes.
         prov.uploadFileMaterialInBackground(
           sessionId: widget.sessionId,
           filePath: path,
+          bytes:bytes,
           fileName: _pickedFile!.name,
           name: name,
-          description:
-              _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+          description: _descCtrl.text.trim().isEmpty
+              ? null
+              : _descCtrl.text.trim(),
         );
         if (mounted) Navigator.pop(context);
         return;
       }
-
-      final bytes = _pickedFile!.bytes;
       if (bytes == null) {
-        _showError('file_load_failed'.tr);
+        setState(() => _fileError = 'file_load_failed'.tr);
         return;
       }
 
@@ -193,45 +291,40 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
           fileName: _pickedFile!.name,
           fileBytes: bytes,
           name: name,
-          description:
-              _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+          description: _descCtrl.text.trim().isEmpty
+              ? null
+              : _descCtrl.text.trim(),
         );
         if (mounted) Navigator.pop(context);
+      } catch (_) {
+        if (mounted) setState(() => _submitError = 'generic_error'.tr);
       } finally {
         if (mounted) setState(() => _saving = false);
       }
     } else {
-      final url = _urlCtrl.text.trim();
-      if (url.isEmpty) {
-        _showError('please_enter_url'.tr);
-        return;
-      }
       setState(() => _saving = true);
       try {
         await prov.addLinkMaterial(
           sessionId: widget.sessionId,
           name: name,
-          url: url,
-          description:
-              _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+          url: _urlCtrl.text.trim(),
+          description: _descCtrl.text.trim().isEmpty
+              ? null
+              : _descCtrl.text.trim(),
         );
         if (mounted) Navigator.pop(context);
+      } catch (_) {
+        if (mounted) setState(() => _submitError = 'generic_error'.tr);
       } finally {
         if (mounted) setState(() => _saving = false);
       }
     }
   }
 
-
-  void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg,
-          style: const TextStyle(fontFamily: 'bahji', color: Colors.white)),
-      backgroundColor: context.colors.danger,
-      behavior: SnackBarBehavior.floating,
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    ));
+  bool get _isValid {
+    if (_nameCtrl.text.trim().isEmpty) return false;
+    if (_mode == 0) return _pickedFile != null;
+    return _urlCtrl.text.trim().isNotEmpty;
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────
@@ -239,87 +332,148 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final radius = widget.isWide
+        ? context.colors.radiusXL
+        : context.colors.radiusXL;
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottomInset),
-      decoration: BoxDecoration(
-        color: context.colors.cardBg,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Directionality(
-        textDirection: TextDirection.rtl,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Handle
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: context.colors.textLight.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
+    return PopScope(
+      canPop: !_saving,
+      child: Container(
+        margin: widget.isWide
+            ? EdgeInsets.zero
+            : const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        constraints: widget.isWide
+            ? const BoxConstraints(maxHeight: 640)
+            : null,
+        decoration: BoxDecoration(
+          color: context.colors.cardBg,
+          borderRadius: widget.isWide
+              ? BorderRadius.circular(radius)
+              : BorderRadius.circular(radius),
+          boxShadow: widget.isWide
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 32,
+                    offset: const Offset(0, 12),
+                  ),
+                ]
+              : null,
+        ),
+        child: Directionality(
+          textDirection: Helpers.pageDirection,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              widget.isWide ? 20 : 12,
+              20,
+              20 + (widget.isWide ? 0 : bottomInset),
             ),
-            Text('add_material_title'.tr, style: context.colors.h3),
-            const SizedBox(height: 16),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!widget.isWide) _DragHandle(),
+                  _Header(isWide: widget.isWide, saving: _saving),
+                  const SizedBox(height: 18),
 
-            // Mode toggle (file / link)
-            _ModeToggle(
-              selected: _mode,
-              onChanged: (v) => setState(() => _mode = v),
-            ),
-            const SizedBox(height: 16),
+                  // Mode toggle (file / link)
+                  _ModeToggle(
+                    selected: _mode,
+                    onChanged: (v) {
+                      HapticFeedback.selectionClick();
+                      setState(() {
+                        _mode = v;
+                        _fileError = null;
+                        _urlError = null;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 18),
 
-            if (_mode == 0) ...[
-              _FileTypeSelector(
-                options: _fileTypeOptions,
-                selectedIndex: _fileTypeIdx,
-                onChanged: (i) => setState(() => _fileTypeIdx = i),
-              ),
-              const SizedBox(height: 14),
-              _FilePickerZone(pickedFile: _pickedFile, onTap: _pickFile),
-            ] else
-              SessionField(ctrl: _urlCtrl, label: 'url_label'.tr),
-
-            const SizedBox(height: 12),
-            SessionField(ctrl: _nameCtrl, label: 'name_label'.tr),
-            const SizedBox(height: 10),
-            SessionField(ctrl: _descCtrl, label: 'description_optional'.tr),
-            const SizedBox(height: 20),
-
-            // Submit button
-            SizedBox(
-              width: double.infinity,
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
-                child: _saving
-                    ? const Center(child: AppLoadingIndicator())
-                    : ElevatedButton(
-                        key: const ValueKey('submit'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: context.colors.primary,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                  if (_mode == 0) ...[
+                    _FileTypeSelector(
+                      options: _fileTypeOptions,
+                      selectedIndex: _fileTypeIdx,
+                      onChanged: (i) => setState(() {
+                        _fileTypeIdx = i;
+                        _pickedFile = null;
+                      }),
+                    ),
+                    const SizedBox(height: 14),
+                    _FilePickerZone(
+                      pickedFile: _pickedFile,
+                      color: _fileTypeOptions[_fileTypeIdx].color,
+                      icon: _fileTypeOptions[_fileTypeIdx].icon,
+                      errorText: _fileError,
+                      onTap: _pickFile,
+                      onClear: _clearFile,
+                    ),
+                  ] else
+                    _PremiumField(
+                      controller: _urlCtrl,
+                      label: 'url_label'.tr,
+                      hint: 'link_url_hint'.tr,
+                      icon: Icons.link_rounded,
+                      errorText: _urlError,
+                      keyboardType: TextInputType.url,
+                      onChanged: (_) {
+                        if (_urlError != null) setState(() => _urlError = null);
+                      },
+                      trailing: TextButton(
+                        onPressed: _pasteUrl,
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        onPressed: _submit,
                         child: Text(
-                          'add_material_btn'.tr,
-                          style: const TextStyle(
+                          'paste_url'.tr,
+                          style: TextStyle(
                             fontFamily: 'bahji',
-                            fontSize: 14,
-                            color: Colors.white,
+                            fontSize: 12,
                             fontWeight: FontWeight.w700,
+                            color: context.colors.primary,
                           ),
                         ),
                       ),
+                    ),
+
+                  const SizedBox(height: 12),
+                  _PremiumField(
+                    controller: _nameCtrl,
+                    label: 'name_label'.tr,
+                    hint: 'material_name_hint'.tr,
+                    icon: Icons.badge_outlined,
+                    errorText: _nameError,
+                    onChanged: (_) {
+                      if (_nameError != null) setState(() => _nameError = null);
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  _PremiumField(
+                    controller: _descCtrl,
+                    label: 'description_optional'.tr,
+                    hint: 'material_description_hint'.tr,
+                    icon: Icons.notes_rounded,
+                    maxLines: 3,
+                  ),
+
+                  if (_submitError != null) ...[
+                    const SizedBox(height: 14),
+                    _ErrorBanner(message: _submitError!),
+                  ],
+
+                  const SizedBox(height: 20),
+                  _SubmitButton(
+                    saving: _saving,
+                    enabled: _isValid,
+                    onPressed: _submit,
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -327,7 +481,93 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// File / Link mode toggle
+// Drag handle (bottom-sheet only)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _DragHandle extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        width: 40,
+        height: 4,
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: context.colors.textLight.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(4),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Header — icon avatar, title, subtitle, close button
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _Header extends StatelessWidget {
+  final bool isWide;
+  final bool saving;
+
+  const _Header({required this.isWide, required this.saving});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            gradient: context.colors.primaryGradient,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: context.colors.primaryShadow,
+          ),
+          child: const Icon(
+            Icons.upload_file_rounded,
+            color: Colors.white,
+            size: 20,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('add_material_title'.tr, style: context.colors.h3),
+              const SizedBox(height: 2),
+              Text(
+                'add_material_subtitle'.tr,
+                style: context.colors.body.copyWith(
+                  fontSize: 12,
+                  color: context.colors.textLight,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+          onPressed: saving ? null : () => Navigator.pop(context),
+          icon: Icon(
+            Icons.close_rounded,
+            size: 20,
+            color: saving
+                ? context.colors.textLight.withValues(alpha: 0.4)
+                : context.colors.textMedium,
+          ),
+          tooltip: 'close'.tr,
+          splashRadius: 20,
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// File / Link mode toggle — animated sliding pill
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ModeToggle extends StatelessWidget {
@@ -339,50 +579,66 @@ class _ModeToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      height: 46,
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: context.colors.background,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-            color: context.colors.textLight.withValues(alpha: 0.15)),
+          color: context.colors.textLight.withValues(alpha: 0.15),
+        ),
       ),
-      child: Row(children: [
-        _segment('file_mode'.tr, 0, Icons.upload_file_rounded, context),
-        _segment('link_mode'.tr, 1, Icons.link_rounded, context),
-      ]),
+      child: Row(
+        children: [
+          _segment('file_mode'.tr, 0, Icons.upload_file_rounded, context),
+          _segment('link_mode'.tr, 1, Icons.link_rounded, context),
+        ],
+      ),
     );
   }
 
   Widget _segment(
-      String label, int index, IconData icon, BuildContext context) {
+    String label,
+    int index,
+    IconData icon,
+    BuildContext context,
+  ) {
     final sel = selected == index;
     return Expanded(
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: () => onChanged(index),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Container(
+          padding: EdgeInsets.all(5),
           decoration: BoxDecoration(
-            color: sel ? context.colors.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(9),
+            borderRadius: BorderRadius.circular(10),
+            gradient: sel ? context.colors.primaryGradient : null,
           ),
-          child:
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(icon,
-                size: 15,
-                color:
-                    sel ? Colors.white : context.colors.textMedium),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'bahji',
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color:
-                    sel ? Colors.white : context.colors.textMedium,
-              ),
+          child: AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 180),
+            textAlign: TextAlign.center,
+
+            style: TextStyle(
+              fontFamily: 'bahji',
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: sel ? Colors.white : context.colors.secondText,
             ),
-          ]),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: 15,
+                  color: sel ? Colors.white : context.colors.secondText,
+                ),
+                const SizedBox(width: 5),
+                Text(label),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -415,38 +671,41 @@ class _FileTypeSelector extends StatelessWidget {
             onTap: () => onChanged(i),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOut,
               margin: EdgeInsets.only(left: i < options.length - 1 ? 8 : 0),
-              padding: const EdgeInsets.symmetric(vertical: 10),
+              padding: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
                 color: selected
-                    ? opt.color.withValues(alpha: 0.15)
+                    ? opt.color.withValues(alpha: 0.22)
                     : context.colors.background,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: selected
                       ? opt.color
-                      : context.colors.textLight.withValues(alpha: 0.2),
+                      : context.colors.textLight.withValues(alpha: 0.18),
+                  width: selected ? 1.4 : 1,
                 ),
               ),
-              child: Column(children: [
-                Icon(opt.icon,
-                    color: selected
-                        ? opt.color
-                        : context.colors.textLight,
-                    size: 22),
-                const SizedBox(height: 4),
-                Text(
-                  opt.labelKey.tr,
-                  style: TextStyle(
-                    fontFamily: 'bahji',
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: selected
-                        ? opt.color
-                        : context.colors.textLight,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Icon(
+                    opt.icon,
+                    color: selected ? opt.color : context.colors.textLight,
+                    size: 22,
                   ),
-                ),
-              ]),
+                  const SizedBox(height: 5),
+                  Text(
+                    opt.labelKey.tr,
+                    style: TextStyle(
+                      fontFamily: 'bahji',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: selected ? opt.color : context.colors.textLight,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -456,57 +715,452 @@ class _FileTypeSelector extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Drop-zone / picked-file indicator
+// Drop-zone / picked-file card
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _FilePickerZone extends StatelessWidget {
   final PlatformFile? pickedFile;
+  final Color color;
+  final IconData icon;
+  final String? errorText;
   final VoidCallback onTap;
+  final VoidCallback onClear;
 
-  const _FilePickerZone({required this.pickedFile, required this.onTap});
+  const _FilePickerZone({
+    required this.pickedFile,
+    required this.color,
+    required this.icon,
+    required this.onTap,
+    required this.onClear,
+    this.errorText,
+  });
 
   @override
   Widget build(BuildContext context) {
     final picked = pickedFile != null;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: picked
-              ? context.colors.success.withValues(alpha: 0.08)
-              : context.colors.background,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: picked
-                ? context.colors.success.withValues(alpha: 0.4)
-                : context.colors.textLight.withValues(alpha: 0.2),
-            width: 1.5,
+    final borderColor = errorText != null
+        ? context.colors.danger
+        : (picked ? color : context.colors.textLight.withValues(alpha: 0.35));
+
+    Widget content;
+    if (picked) {
+      content = Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    pickedFile!.name,
+                    style: context.colors.body.copyWith(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: context.colors.textDark,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _humanFileSize(pickedFile!.size),
+                    style: context.colors.body.copyWith(
+                      fontSize: 11,
+                      color: context.colors.textLight,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            GestureDetector(
+              onTap: onTap,
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: Icon(
+                  Icons.autorenew_rounded,
+                  size: 18,
+                  color: context.colors.primary,
+                ),
+              ),
+            ),
+            GestureDetector(
+              onTap: onClear,
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: Icon(
+                  Icons.close_rounded,
+                  size: 18,
+                  color: context.colors.danger,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      content = Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: context.colors.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.cloud_upload_outlined,
+                size: 22,
+                color: context.colors.primary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'tap_to_pick_file'.tr,
+              style: context.colors.body.copyWith(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: context.colors.textMedium,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: picked ? null : onTap,
+          child: CustomPaint(
+            painter: picked
+                ? null
+                : _DashedRRectPainter(
+                    color: borderColor,
+                    radius: context.colors.radiusMedium,
+                  ),
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: picked
+                    ? color.withValues(alpha: 0.06)
+                    : context.colors.background,
+                borderRadius: BorderRadius.circular(
+                  context.colors.radiusMedium,
+                ),
+                border: picked
+                    ? Border.all(color: borderColor, width: 1.4)
+                    : null,
+              ),
+              child: content,
+            ),
           ),
         ),
-        child: Column(children: [
-          Icon(
-            picked
-                ? Icons.check_circle_rounded
-                : Icons.upload_file_rounded,
-            size: 28,
-            color:
-                picked ? context.colors.success : context.colors.textMedium,
-          ),
+        if (errorText != null) ...[
           const SizedBox(height: 6),
-          Text(
-            picked ? pickedFile!.name : 'tap_to_pick_file'.tr,
-            style: context.colors.body.copyWith(
-              fontSize: 13,
-              color: picked
-                  ? context.colors.success
-                  : context.colors.textMedium,
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Text(
+              errorText!,
+              style: TextStyle(
+                fontFamily: 'bahji',
+                fontSize: 11,
+                color: context.colors.danger,
+              ),
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
-        ]),
+        ],
+      ],
+    );
+  }
+}
+
+/// Lightweight dashed rounded-rect border, drawn without any extra package.
+class _DashedRRectPainter extends CustomPainter {
+  final Color color;
+  final double radius;
+  final double strokeWidth;
+  final double dashLength;
+  final double gapLength;
+
+  _DashedRRectPainter({
+    required this.color,
+    required this.radius,
+    this.strokeWidth = 1.4,
+    this.dashLength = 6,
+    this.gapLength = 5,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke;
+
+    final rrect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        strokeWidth / 2,
+        strokeWidth / 2,
+        size.width - strokeWidth,
+        size.height - strokeWidth,
+      ),
+      Radius.circular(radius),
+    );
+    final basePath = Path()..addRRect(rrect);
+    final dashedPath = Path();
+
+    for (final metric in basePath.computeMetrics()) {
+      var distance = 0.0;
+      while (distance < metric.length) {
+        final next = (distance + dashLength).clamp(0.0, metric.length);
+        dashedPath.addPath(metric.extractPath(distance, next), Offset.zero);
+        distance = next + gapLength;
+      }
+    }
+    canvas.drawPath(dashedPath, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedRRectPainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.radius != radius;
+}
+
+String _humanFileSize(int bytes) {
+  if (bytes <= 0) return '0 KB';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  var i = 0;
+  double size = bytes.toDouble();
+  while (size >= 1024 && i < units.length - 1) {
+    size /= 1024;
+    i++;
+  }
+  final decimals = (i == 0 || size >= 10) ? 0 : 1;
+  return '${size.toStringAsFixed(decimals)} ${units[i]}';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Premium text field
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _PremiumField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final String? hint;
+  final IconData icon;
+  final String? errorText;
+  final int maxLines;
+  final TextInputType? keyboardType;
+  final ValueChanged<String>? onChanged;
+  final Widget? trailing;
+
+  const _PremiumField({
+    required this.controller,
+    required this.label,
+    required this.icon,
+    this.hint,
+    this.errorText,
+    this.maxLines = 1,
+    this.keyboardType,
+    this.onChanged,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasError = errorText != null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'bahji',
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: context.colors.textDark,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          decoration: BoxDecoration(
+            color: context.colors.background,
+            borderRadius: BorderRadius.circular(context.colors.radiusMedium),
+            border: Border.all(
+              color: hasError
+                  ? context.colors.danger
+                  : context.colors.textLight.withValues(alpha: 0.18),
+              width: hasError ? 1.4 : 1,
+            ),
+          ),
+          child: TextField(
+            controller: controller,
+            maxLines: maxLines,
+            keyboardType: keyboardType,
+            onChanged: onChanged,
+            style: TextStyle(
+              fontFamily: 'bahji',
+              fontSize: 13.5,
+              color: context.colors.textDark,
+            ),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: TextStyle(
+                fontFamily: 'bahji',
+                fontSize: 13,
+                color: context.colors.textLight.withValues(alpha: 0.7),
+              ),
+              prefixIcon: Icon(icon, size: 18, color: context.colors.textLight),
+              suffixIcon: trailing,
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 13,
+                horizontal: 4,
+              ),
+            ),
+          ),
+        ),
+        if (hasError) ...[
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Text(
+              errorText!,
+              style: TextStyle(
+                fontFamily: 'bahji',
+                fontSize: 11,
+                color: context.colors.danger,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Submit button
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SubmitButton extends StatelessWidget {
+  final bool saving;
+  final bool enabled;
+  final VoidCallback onPressed;
+
+  const _SubmitButton({
+    required this.saving,
+    required this.enabled,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: GestureDetector(
+        onTap: saving ? null : onPressed,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          decoration: BoxDecoration(
+            gradient: enabled ? context.colors.primaryGradient : null,
+            color: enabled
+                ? null
+                : context.colors.textLight.withValues(alpha: 0.25),
+            borderRadius: BorderRadius.circular(context.colors.radiusMedium),
+            boxShadow: enabled ? context.colors.primaryShadow : null,
+          ),
+          child: Center(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              child: saving
+                  ? const SizedBox(
+                      key: ValueKey('loading'),
+                      width: 22,
+                      height: 22,
+                      child: AppLoadingIndicator(),
+                    )
+                  : Row(
+                      key: const ValueKey('label'),
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.add_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'add_material_btn'.tr,
+                          style: const TextStyle(
+                            fontFamily: 'bahji',
+                            fontSize: 14,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Inline error banner (submit failures)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ErrorBanner extends StatelessWidget {
+  final String message;
+
+  const _ErrorBanner({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: context.colors.danger.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: context.colors.danger.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.error_outline_rounded,
+            size: 16,
+            color: context.colors.danger,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                fontFamily: 'bahji',
+                fontSize: 12,
+                color: context.colors.danger,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

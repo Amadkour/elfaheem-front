@@ -325,6 +325,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
     required int sessionId,
     required String filePath,
     required String fileName,
+    final Uint8List? bytes,
     required String name,
     String? description,
     int order = 0,
@@ -333,11 +334,12 @@ class TeacherCourseScreenProvider extends BaseProvider {
       dio: _api.dio,
       sessionId: sessionId,
       path: filePath,
+      bytes: bytes!,
       fileName: fileName,
       endpoint: '/api/v1/sessions/$sessionId/materials/from-upload',
       contentType: _guessVideoContentType(fileName),
       fields: {
-        'name': name,
+        'name': fileName,
         if (description != null && description.isNotEmpty)
           'description': description,
         'order': order.toString(),

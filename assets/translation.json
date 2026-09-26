@@ -3760,5 +3760,29 @@
   "transfer_time_expired": {
     "en": "Time's up — please submit right away to avoid your request being rejected",
     "ar": "انتهت المهلة — يرجى الإرسال فوراً لتفادي رفض الطلب"
+  },
+  "add_material_subtitle": {
+    "en": "Upload a file or share a link with your students",
+    "ar": "ارفع ملفاً أو شارك رابطاً مع طلابك"
+  },
+  "link_url_hint": {
+    "en": "https://example.com",
+    "ar": "https://example.com"
+  },
+  "material_name_hint": {
+    "en": "e.g. Chapter 1 slides",
+    "ar": "مثال: شرائح الفصل الأول"
+  },
+  "material_description_hint": {
+    "en": "Add extra details for students",
+    "ar": "أضف تفاصيل إضافية للطلاب"
+  },
+  "close": {
+    "en": "Close",
+    "ar": "إغلاق"
+  },
+  "paste_url": {
+    "en": "Paste",
+    "ar": "لصق"
   }
 }

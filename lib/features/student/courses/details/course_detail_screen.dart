@@ -827,4 +827,4 @@ class _EnrollWrap extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
           child: SafeArea(top: false, child: child),
         );
-}
+        }

@@ -20,7 +20,6 @@ class UploadQueueManager extends ChangeNotifier {
   // JSON calls to our own API (presign, finalize) — this one is ONLY for
   // the raw file bytes.
   static final Dio _rawDio = Dio(BaseOptions(sendTimeout: null, receiveTimeout: null));
-
   final List<UploadTask> _tasks = [];
 
   List<UploadTask> get tasks => List.unmodifiable(_tasks);
@@ -43,31 +42,12 @@ class UploadQueueManager extends ChangeNotifier {
   bool isUploadingForSession(int sessionId) => _tasks.any(
           (t) => t.sessionId == sessionId && t.status == UploadStatus.uploading);
 
-  /// Uploads the file at [path] DIRECTLY to MinIO (bypassing the backend
-  /// entirely for the file bytes, so it can't 413 on whatever sits in front
-  /// of the API) and returns the decoded JSON response on success, or null
-  /// on failure/cancellation.
-  ///
-  /// Three steps, all sharing one [CancelToken] so `cancel()` aborts
-  /// whichever is in flight:
-  ///   1. POST [endpoint]'s sibling `/presign` route (via [dio], our
-  ///      authenticated API) → {upload_url, object_key, content_type}
-  ///   2. PUT the file bytes straight to `upload_url` (via the bare
-  ///      [_rawDio], streamed from disk) — this is the step that reports
-  ///      progress and is the one that used to 413
-  ///   3. POST [endpoint] itself (via [dio]) with [fields] + the confirmed
-  ///      `object_key` as a JSON body — the server verifies the object
-  ///      actually landed and creates the material row
-  ///
-  /// [dio] must be the app's already-authenticated Dio instance (from
-  /// ApiClient) — this manager never re-implements auth or base-URL
-  /// handling itself for calls to our own API, it just reuses what's
-  /// already there.
   Future<Map<String, dynamic>?> enqueueFileUpload({
     required Dio dio,
     required int sessionId,
     required String path,
     required String fileName,
+    required Uint8List bytes,
     required String endpoint, // now the JSON "finalize" route, e.g. .../materials/from-upload
     required Map<String, String> fields,
     MediaType? contentType,
@@ -82,18 +62,19 @@ class UploadQueueManager extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final file = File(path);
-      final fileLength = await file.length();
+      final fileLength = bytes.length;
       task.totalBytes = fileLength;
 
       // 1) presign — small JSON call through the authenticated API
       final presignEndpoint = _siblingPath(endpoint, 'presign');
+      print("1-===================presign API --------");
       final presign = await dio.post(
         presignEndpoint,
         queryParameters: {'filename': fileName},
         cancelToken: cancelToken,
       );
       final presignData = presign.data as Map<String, dynamic>;
+      print(presignData);
       final uploadUrl = presignData['upload_url'] as String;
       final objectKey = presignData['object_key'] as String;
       final resolvedContentType = presignData['content_type'] as String? ??
@@ -104,7 +85,7 @@ class UploadQueueManager extends ChangeNotifier {
       // so it's the only one wired to progress tracking.
       await _rawDio.put(
         uploadUrl,
-        data: file.openRead(),
+        data: bytes,
         options: Options(headers: {
           Headers.contentTypeHeader: resolvedContentType,
           Headers.contentLengthHeader: fileLength,
@@ -149,14 +130,14 @@ class UploadQueueManager extends ChangeNotifier {
       task.errorMessage = cancelled
           ? null
           : (e.response?.data?.toString() ?? e.message);
-      log('Upload failed for $fileName: ${task.errorMessage}');
+      log('Upload failed for1 $fileName: ${task.errorMessage}');
       notifyListeners();
       _scheduleRemoval(task, delay: const Duration(seconds: 4));
       return null;
     } catch (e) {
       task.status = UploadStatus.failed;
       task.errorMessage = e.toString();
-      log('Upload failed for $fileName: $e');
+      log('Upload failed for2 $fileName: $e');
       notifyListeners();
       _scheduleRemoval(task, delay: const Duration(seconds: 4));
       return null;
