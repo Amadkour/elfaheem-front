@@ -1,3 +1,5 @@
+import 'package:flutter_education_app/features/student/models.dart';
+
 class CategoryCourseModel {
   final String id;
   final String title;
@@ -36,4 +38,6 @@ class CategoryCourseModel {
             '',
         coursesCount: (json['courses_count'] as num?)?.toInt() ?? 0,
       );
+
+  CourseModel get toCourseModel=>CourseModel.fromCategoryModel(this);
 }

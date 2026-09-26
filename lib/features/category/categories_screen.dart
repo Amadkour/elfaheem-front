@@ -9,7 +9,9 @@ import '../../config/theme/app_theme.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../../utils/widget/app_network_image.dart';
 import '../../utils/widget/app_bar.dart';
+import '../shared/course/home_course_list.dart';
 import '../student/courses/details/course_detail_screen.dart';
+import '../student/home/component/course_row.dart';
 import '../student/models.dart';
 import 'categories_provider.dart';
 import 'model.dart';
@@ -248,11 +250,14 @@ class _SectionHeader extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(title, style: context.colors.h2),
-        if (provider.selectedCategory != null)
-          Text(
-            provider.selectedCategory!.description,
-            style: context.colors.h3,
-          ),
+        if (provider.selectedCategory != null) ...[
+          SizedBox(width: 2,),
+          Flexible(
+            child: Text(
+              provider.selectedCategory!.description,
+              style: context.colors.h4.copyWith(overflow: TextOverflow.ellipsis,color: context.colors.secondText,fontSize: 12),
+            ),
+          ),],
         if (showClear)
           GestureDetector(
             onTap: () async => await provider.clearSelection(),
@@ -607,20 +612,19 @@ class _CoursesSliver extends StatelessWidget {
       );
     }
 
-    return SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      sliver: SliverGrid(
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossAxisCount,
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
-          childAspectRatio: 0.72,
-        ),
-        delegate: SliverChildBuilderDelegate(
-          (_, i) => _CourseCard(course: courses[i]),
-          childCount: courses.length,
-        ),
-      ),
+    return SliverToBoxAdapter(
+      child: HomeCourseList(
+        courses: courses.map((e)=> e.toCourseModel).cast<CourseModel>().toList(),
+        pageName: 'category-my-courses',
+        isTeacher: false,
+        onTap: (CourseModel c) {
+          Navigator.pushNamed(
+            context,
+            '/course-detail',
+            arguments: c,
+          );
+        }, hasMore: true,
+      )
     );
   }
 }

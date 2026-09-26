@@ -15,12 +15,14 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:http_parser/http_parser.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/api_client.dart';
 import '../../../../core/base_provider.dart';
 import '../../auth/auth_provider.dart';
 import '../../shared/session/material/session_material_model.dart';
+import '../../shared/upload/upload_queue_manager.dart';
 import '../../student/models.dart';
 import '../home/teacher_models.dart';
 import 'live/prejoin.dart';
@@ -31,9 +33,22 @@ class TeacherCourseScreenProvider extends BaseProvider {
     required TeacherCourse initialCourse,
     ApiClient? api,
   }) : _api = api ?? ApiClient(),
-        _course = initialCourse;
+        _course = initialCourse {
+    // Bridge the global upload queue's notifications into this provider's
+    // own notifyListeners(), so widgets that already `watch` this provider
+    // (e.g. the session card's progress bar) update as a background video
+    // upload progresses, without every one of them needing a second watch
+    // on UploadQueueManager directly.
+    UploadQueueManager.instance.addListener(notifyListeners);
+  }
 
   final ApiClient _api;
+
+  @override
+  void dispose() {
+    UploadQueueManager.instance.removeListener(notifyListeners);
+    super.dispose();
+  }
 
   // ── Course header ─────────────────────────────────────────────────────────
 
@@ -239,7 +254,15 @@ class TeacherCourseScreenProvider extends BaseProvider {
       List.unmodifiable(_materials[sessionId] ?? []);
 
   bool isUploadingMaterial(int sessionId) =>
-      _uploadingMaterial[sessionId] ?? false;
+      (_uploadingMaterial[sessionId] ?? false) ||
+      UploadQueueManager.instance.isUploadingForSession(sessionId);
+
+  /// 0..1 progress for a background (video) upload on this session, or null
+  /// when nothing is uploading via the background queue — the session
+  /// card uses this to switch its progress bar from indeterminate (the old
+  /// bytes-based image/PDF flow below) to determinate.
+  double? uploadProgressForSession(int sessionId) =>
+      UploadQueueManager.instance.progressForSession(sessionId);
 
   Future<void> fetchMaterials(TeacherSessionItem session) async {
     if ((_materialLoaded[session.id] ?? false) &&
@@ -270,7 +293,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
     notifyListeners();
     try {
       final result = await _api.postMultipart(
-        '/api/v1/sessions/$sessionId/materials/file',
+        '/api/v1/sessions/$sessionId/materials/from-upload',
         fields: {
       'name': name,
       'description': ?description,
@@ -292,6 +315,52 @@ class TeacherCourseScreenProvider extends BaseProvider {
       notifyListeners();
     }
     return null;
+  }
+
+  /// Long videos: streams the file straight from disk (never loads the
+  /// whole thing into memory) through the app-wide [UploadQueueManager],
+  /// so the sheet that started it can close immediately and progress shows
+  /// in [UploadProgressFooter] on any screen — not just this one.
+  Future<SessionMaterialModel?> uploadFileMaterialInBackground({
+    required int sessionId,
+    required String filePath,
+    required String fileName,
+    required String name,
+    String? description,
+    int order = 0,
+  }) async {
+    final json = await UploadQueueManager.instance.enqueueFileUpload(
+      dio: _api.dio,
+      sessionId: sessionId,
+      path: filePath,
+      fileName: fileName,
+      endpoint: '/api/v1/sessions/$sessionId/materials/from-upload',
+      contentType: _guessVideoContentType(fileName),
+      fields: {
+        'name': name,
+        if (description != null && description.isNotEmpty)
+          'description': description,
+        'order': order.toString(),
+      },
+    );
+    if (json == null) return null;
+
+    final mat = SessionMaterialModel.fromJson(json);
+    _materials[sessionId] = [...(_materials[sessionId] ?? []), mat]
+      ..sort((a, b) => a.order.compareTo(b.order));
+    notifyListeners();
+    return mat;
+  }
+
+  MediaType _guessVideoContentType(String fileName) {
+    final ext = fileName.split('.').last.toLowerCase();
+    return switch (ext) {
+      'mov' => MediaType('video', 'quicktime'),
+      'mkv' => MediaType('video', 'x-matroska'),
+      'webm' => MediaType('video', 'webm'),
+      'avi' => MediaType('video', 'x-msvideo'),
+      _ => MediaType('video', 'mp4'),
+    };
   }
 
   Future<SessionMaterialModel?> addLinkMaterial({

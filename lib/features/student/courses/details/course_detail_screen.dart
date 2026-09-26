@@ -1,5 +1,6 @@
 /// courses/details/course_detail_screen.dart
 library;
+
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -15,6 +16,7 @@ import '../../../teacher/sessions/components/course_hero.dart';
 import '../../analysis/exam/student_exam_provider.dart';
 import '../../enrollment/enrollment_provider.dart';
 import '../../enrollment/enrollment_screen.dart';
+import '../../enrollment/roadmap_enrollment_screen.dart';
 import '../../models.dart';
 import 'components/app_responsive.dart';
 import 'components/content.dart';
@@ -24,7 +26,8 @@ import 'course_detail_provider.dart';
 void _openRecommendedCourse(BuildContext context, CourseSummary summary) {
   Navigator.of(context).push(
     MaterialPageRoute(
-      builder: (_) => CourseDetailScreen(course: CourseModel.fromSummary(summary)),
+      builder: (_) =>
+          CourseDetailScreen(course: CourseModel.fromSummary(summary)),
     ),
   );
 }
@@ -58,12 +61,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       maxWith: 1000,
       child: provider.isLoading
           ? Center(
-        child: SizedBox(
-          width: context.width / 5,
-          height: context.width / 5,
-          child: AppLoadingIndicator(),
-        ),
-      )
+              child: SizedBox(
+                width: context.width / 5,
+                height: context.width / 5,
+                child: AppLoadingIndicator(),
+              ),
+            )
           : isWide
           ? _WebDetail(provider)
           : _MobileDetail(provider),
@@ -148,11 +151,22 @@ class _MobileDetail extends StatelessWidget {
                       SliverToBoxAdapter(
                         child: CourseRoadmapSection(
                           currentCourseName: provider.course.name,
-                          recentCompletedCourses: provider.course.recentCompletedCourses,
+                          recentCompletedCourses:
+                              provider.course.recentCompletedCourses,
                           nextCourses: provider.course.nextCourses,
-                          recommendedCourses: provider.course.recommendedCourses,
+                          recommendedCourses:
+                              provider.course.recommendedCourses,
                           similarCourses: provider.course.similarCourses,
-                          onTapCourse: (s) => _openRecommendedCourse(context, s),
+                          onTapCourse: (s) =>
+                              _openRecommendedCourse(context, s),
+                          onEnrollRoadmap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => RoadmapEnrollmentScreen(
+                                courseId: int.parse(provider.course.id),
+                                courseName: provider.course.name,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                       const SliverToBoxAdapter(child: SizedBox(height: 24)),
@@ -211,7 +225,8 @@ class _WebDetail extends StatelessWidget {
                                       child: CourseHero(
                                         course: provider.course.toTeacherModel,
                                         reelUrl: provider.reelUrl,
-                                        onBack: () => Navigator.maybePop(context),
+                                        onBack: () =>
+                                            Navigator.maybePop(context),
                                         onRefresh: () => provider.refresh(),
                                         onLike: provider.toggleFavorite,
                                         isLike: provider.course.isFavorite,
@@ -220,7 +235,7 @@ class _WebDetail extends StatelessWidget {
                                     // Stars row
                                     Row(
                                       mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
                                         Spacer(),
 
@@ -228,7 +243,7 @@ class _WebDetail extends StatelessWidget {
                                           margin: EdgeInsets.all(10),
                                           decoration: BoxDecoration(
                                             gradient:
-                                            context.colors.accentGradient,
+                                                context.colors.accentGradient,
                                             borderRadius: BorderRadius.circular(
                                               10,
                                             ),
@@ -241,13 +256,16 @@ class _WebDetail extends StatelessWidget {
                                                       ChangeNotifierProvider(
                                                         create: (_) =>
                                                             ComplaintProvider(),
-                                                        child: NewComplaintScreen(
-                                                          courseTitle: provider
-                                                              .course
-                                                              .title,
-                                                          courseId:
-                                                          provider.course.id,
-                                                        ),
+                                                        child:
+                                                            NewComplaintScreen(
+                                                              courseTitle:
+                                                                  provider
+                                                                      .course
+                                                                      .title,
+                                                              courseId: provider
+                                                                  .course
+                                                                  .id,
+                                                            ),
                                                       ),
                                                 ),
                                               );
@@ -264,7 +282,7 @@ class _WebDetail extends StatelessWidget {
 
                                     Row(
                                       mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
+                                          MainAxisAlignment.spaceBetween,
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         RatingWidget(
@@ -274,14 +292,18 @@ class _WebDetail extends StatelessWidget {
                                         ),
                                         Spacer(),
 
-                                        if (provider.course.category != null) ...[
+                                        if (provider.course.category !=
+                                            null) ...[
                                           _HeroBadge(
                                             AppConfig.lang == 'ar'
-                                                ? provider.course.category!.nameAr
+                                                ? provider
+                                                      .course
+                                                      .category!
+                                                      .nameAr
                                                 : provider
-                                                .course
-                                                .category!
-                                                .nameEn,
+                                                      .course
+                                                      .category!
+                                                      .nameEn,
                                           ),
                                           //const SizedBox(height: 8),
                                         ],
@@ -321,11 +343,14 @@ class _WebDetail extends StatelessWidget {
                         SliverToBoxAdapter(
                           child: CourseRoadmapSection(
                             currentCourseName: provider.course.name,
-                            recentCompletedCourses: provider.course.recentCompletedCourses,
+                            recentCompletedCourses:
+                                provider.course.recentCompletedCourses,
                             nextCourses: provider.course.nextCourses,
-                            recommendedCourses: provider.course.recommendedCourses,
+                            recommendedCourses:
+                                provider.course.recommendedCourses,
                             similarCourses: provider.course.similarCourses,
-                            onTapCourse: (s) => _openRecommendedCourse(context, s),
+                            onTapCourse: (s) =>
+                                _openRecommendedCourse(context, s),
                           ),
                         ),
                         const SliverToBoxAdapter(child: SizedBox(height: 32)),
@@ -547,7 +572,7 @@ class _CourseMeta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.watch<CourseDetailProvider>().course;
-
+    double height=context.height<600? 80: context.height / 10;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
       child: Column(
@@ -557,28 +582,28 @@ class _CourseMeta extends StatelessWidget {
 
           // Stat chips — 4-col grid
           SizedBox(
-            height: context.height / 10,
+            height:height,
             child: Row(
               children: [
                 StatChip(
                   icon: Icons.people_alt_rounded,
                   label: '${c.studentsCount} ${'student'.tr}',
                   iconColor: context.colors.primary,
-                  maxHeight: context.height / 10,
+                  maxHeight: height,
                 ),
                 StatChip(
                   icon: Icons.video_library_rounded,
                   label: '${c.sessionsCount} ${'session'.tr}',
                   iconColor: const Color(0xFF185FA5),
                   iconBg: const Color(0xFFE6F1FB),
-                  maxHeight: context.height / 10,
+                  maxHeight: height,
                 ),
                 StatChip(
                   icon: Icons.access_time_rounded,
                   label: '${c.totalHours.toStringAsFixed(0)} ${'hour'.tr}',
                   iconColor: const Color(0xFFBA7517),
                   iconBg: const Color(0xFFFAEEDA),
-                  maxHeight: context.height / 10,
+                  maxHeight:height,
                 ),
                 if (c.certificates.isNotEmpty)
                   StatChip(
@@ -586,7 +611,7 @@ class _CourseMeta extends StatelessWidget {
                     label: 'شهادة إتمام',
                     iconColor: context.colors.accent,
                     iconBg: Color(0xFFFAEEDA),
-                    maxHeight: context.height / 10,
+                    maxHeight: height,
                   )
                 else
                   StatChip(
@@ -597,7 +622,7 @@ class _CourseMeta extends StatelessWidget {
                     iconColor: c.type == 'live'
                         ? context.colors.danger
                         : context.colors.primary,
-                    maxHeight: context.height / 10,
+                    maxHeight: height,
                   ),
               ],
             ),
@@ -746,13 +771,13 @@ class _EnrollButton extends StatelessWidget {
         onTap: p.course.isEnrolled
             ? null
             : () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => ChangeNotifierProvider(
-              create: (_) => EnrollmentProvider(p.course),
-              child: EnrollmentScreen(course: p.course),
-            ),
-          ),
-        ),
+                MaterialPageRoute(
+                  builder: (_) => ChangeNotifierProvider(
+                    create: (_) => EnrollmentProvider(p.course),
+                    child: EnrollmentScreen(course: p.course),
+                  ),
+                ),
+              ),
         child: Container(
           height: 52,
           decoration: BoxDecoration(
@@ -769,19 +794,19 @@ class _EnrollButton extends StatelessWidget {
           child: Center(
             child: p.course.isEnrolled
                 ? const SizedBox(
-              width: 24,
-              height: 24,
-              child: AppLoadingIndicator(),
-            )
+                    width: 24,
+                    height: 24,
+                    child: AppLoadingIndicator(),
+                  )
                 : Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 15,
-                fontFamily: 'bahji',
-              ),
-            ),
+                    label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      fontFamily: 'bahji',
+                    ),
+                  ),
           ),
         ),
       ),
@@ -799,7 +824,7 @@ class _EnrollWrap extends StatelessWidget {
   Widget build(BuildContext context) => isWide
       ? child
       : Padding(
-    padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-    child: SafeArea(top: false, child: child),
-  );
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: SafeArea(top: false, child: child),
+        );
 }

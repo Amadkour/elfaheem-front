@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/category/categories_provider.dart';
 import 'package:flutter_education_app/features/category/categories_screen.dart';
+import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
 import 'package:flutter_education_app/features/student/courses/details/course_detail_screen.dart';
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
 import 'package:provider/provider.dart';
@@ -179,7 +180,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               child: SizedBox(height: 16),
                             ),
                             SliverToBoxAdapter(
-                              child: CoursesRow(
+                              child: HomeCourseList(
                                 courses: provider.myCourses,
                                 pageName: 'home-my-courses',
                                 isTeacher: false,
@@ -189,7 +190,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     '/course-detail',
                                     arguments: c,
                                   );
-                                },
+                                }, hasMore: false,
                               ),
                             ),
                           ],
@@ -217,7 +218,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               child: SizedBox(height: 16),
                             ),
                             SliverToBoxAdapter(
-                              child: CoursesRow(
+                              child: HomeCourseList(
                                 pageName: 'home-other-courses',
                                 courses: provider.otherCourses,
                                 isTeacher: false,
@@ -229,7 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                           CourseDetailScreen(course: c),
                                     ),
                                   );
-                                },
+                                }, hasMore: false,
                               ),
                             ),
                           ],

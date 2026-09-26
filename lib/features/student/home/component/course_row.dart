@@ -40,7 +40,7 @@ class CoursesRow extends StatelessWidget {
     Widget list;
     // ── Mobile: horizontal scroll ───────────────────────────────────────────
     if (courses.length < 5) {
-       list = SizedBox(
+      list = SizedBox(
         height: context.height / 2 > 300 ? 300 : context.height / 3,
         child: ListView.separated(
           controller: controller,
@@ -57,8 +57,8 @@ class CoursesRow extends StatelessWidget {
           ),
         ),
       );
-    }else {
-       list = SizedBox(
+    } else {
+      list = SizedBox(
         height: context.height / 2 > 600 ? 600 : context.height / 3,
         child: GridView.builder(
           controller: controller,
@@ -71,14 +71,13 @@ class CoursesRow extends StatelessWidget {
             childAspectRatio: 3 / 2,
           ),
           itemCount: courses.length,
-          itemBuilder: (_, i) =>
-              CourseCard(
-                course: courses[i],
-                fixedWidth: 188,
-                isTeacher: isTeacher,
-                onTap: onTap,
-                pageName: pageName,
-              ),
+          itemBuilder: (_, i) => CourseCard(
+            course: courses[i],
+            fixedWidth: 188,
+            isTeacher: isTeacher,
+            onTap: onTap,
+            pageName: pageName,
+          ),
         ),
       );
     }
@@ -88,7 +87,7 @@ class CoursesRow extends StatelessWidget {
       thumbVisibility: true, // This keeps the 'cursor' visible
       trackVisibility: true, // Optional: shows the path of the scrollbar
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(15,0,15,12),
+        padding: const EdgeInsets.fromLTRB(15, 0, 15, 12),
         child: list,
       ),
     );
@@ -142,11 +141,13 @@ class CourseCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            _Thumbnail(
-              course: course,
-              isTeacher: isTeacher,
-              fullScreen: fullScreen,
-              pageName: pageName,
+            Expanded(
+              child: _Thumbnail(
+                course: course,
+                isTeacher: isTeacher,
+                fullScreen: fullScreen,
+                pageName: pageName,
+              ),
             ),
             Expanded(
               child: Padding(
@@ -174,21 +175,24 @@ class CourseCard extends StatelessWidget {
                           _StatsRow(course: course),
                       ],
                     ),
-                    if (course.description != null &&
-                        course.description!.isNotEmpty)
-                      Text(
-                        course.description!,
-                        style: context.colors.caption.copyWith(
-                          color: context.colors.textLight,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 9,
-                        ),
-                      ),
 
                     const _CardDivider(),
 
                     // Teacher
                     Spacer(flex: 1),
+                    if (course.description != null &&
+                        course.description!.isNotEmpty) ...[
+                      Text(
+                        course.description!,
+                        style: context.colors.caption.copyWith(
+                          overflow: TextOverflow.ellipsis,
+                          color: context.colors.textLight,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 9,
+                        ),
+                      ),
+                      Spacer(flex: 1),
+                    ],
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -313,11 +317,13 @@ class _Thumbnail extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        AppNetworkImage(
-          url: course.imageUrl,
-          width: double.infinity,
-          height: (context.height / 6) > 150 || fullScreen ? 150 : 150,
-          heroTag: "course-row-card-$pageName-${course.id}",
+        Positioned.fill(
+          child: AppNetworkImage(
+            url: course.imageUrl,
+            width: double.infinity,
+            fit: BoxFit.cover,
+            heroTag: "course-row-card-$pageName-${course.id}",
+          ),
         ),
         // Bottom dark gradient for readability
         Positioned.fill(

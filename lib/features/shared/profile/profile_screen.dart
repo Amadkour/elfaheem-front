@@ -4,6 +4,7 @@
 /// so dark / light mode is automatic — no extra logic needed here.
 /// ─────────────────────────────────────────────────────────────────────────────
 library;
+
 import 'package:flutter/cupertino.dart';
 
 import 'package:flutter/material.dart';
@@ -19,6 +20,7 @@ import '../../auth/auth_provider.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import '../../../utils/widget/parent_component.dart';
 import '../payment/student_saved_methods_screen.dart';
+import '../payment/teacher_transfers_screen.dart';
 import 'about/about_and_terms_screen.dart';
 import 'about/about_terms_provider.dart';
 import 'change_language_screen.dart';
@@ -124,7 +126,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               onTap: () => _push(const ChangePasswordScreen()),
                             ),
                           ),
-                          if (context.read<AuthProvider>().isTeacher)
+                          if (context.read<AuthProvider>().isTeacher) ...[
                             ParentComponent(
                               key: ValueKey('profile.teacher_profile'),
                               child: SettingsTile(
@@ -145,8 +147,19 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                                   ),
                                 ),
                               ),
-                            )
-                          else
+                            ),
+                            ParentComponent(
+                              key: ValueKey('profile.payment-method'),
+                              child: SettingsTile(
+                                icon: Icons.account_balance_wallet_rounded,
+                                iconBg: c.successTint,
+                                iconColor: c.success,
+                                label: 'payment'.tr,
+                                onTap: () =>
+                                    _push(const TeacherTransfersScreen()),
+                              ),
+                            ),
+                          ] else ...[
                             ParentComponent(
                               key: ValueKey('profile.my_favorite'),
                               child: SettingsTile(
@@ -158,17 +171,18 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                                     _push(const FavouriteCoursesScreen()),
                               ),
                             ),
-                          ParentComponent(
-                            key: ValueKey('profile.payment-method'),
-                            child: SettingsTile(
-                              icon: Icons.account_balance_wallet_rounded,
-                              iconBg: c.successTint,
-                              iconColor: c.success,
-                              label: 'payment-method'.tr,
-                              onTap: () =>
-                                  _push(const StudentSavedMethodsScreen()),
-                            ),
-                          ),
+                            // ParentComponent(
+                            //   key: ValueKey('profile.payment-method'),
+                            //   child: SettingsTile(
+                            //     icon: Icons.account_balance_wallet_rounded,
+                            //     iconBg: c.successTint,
+                            //     iconColor: c.success,
+                            //     label: 'payment-method'.tr,
+                            //     onTap: () =>
+                            //         _push(const StudentSavedMethodsScreen()),
+                            //   ),
+                            // ),
+                          ],
                         ],
                       ),
                     ),
@@ -193,8 +207,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               trailing: Switch.adaptive(
                                 value: p.notificationsEnabled,
                                 onChanged: p.toggleNotifications,
-                                activeThumbColor:
-                                    context.colors.primaryDark,
+                                activeThumbColor: context.colors.primaryDark,
                                 thumbColor: const WidgetStatePropertyAll(
                                   Colors.white,
                                 ),
@@ -223,8 +236,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                                 onChanged: (b) async {
                                   await p.changeMode(b);
                                 },
-                                activeThumbColor:
-                                    context.colors.primaryDark,
+                                activeThumbColor: context.colors.primaryDark,
                                 thumbColor: const WidgetStatePropertyAll(
                                   Colors.white,
                                 ),
@@ -383,10 +395,7 @@ class ProfileHeader extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: context.colors.primary.withValues(alpha: 0.1),
-                border: Border.all(
-                  color: context.colors.primary,
-                  width: 2.5,
-                ),
+                border: Border.all(color: context.colors.primary, width: 2.5),
               ),
               child: provider.imageUrl.isNotEmpty
                   ? ClipOval(

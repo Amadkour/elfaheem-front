@@ -13,8 +13,12 @@
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/shared/session/material/session_material_model.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
+
+import 'package:flutter_education_app/features/student/analysis/exam/student_course_exams_widget.dart'
+    show SessionExamButton;
 
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/app_theme.dart';
@@ -25,14 +29,10 @@ import '../../../teacher/analysis/attendance/teacher_attendance_screen.dart';
 import '../../../teacher/analysis/exam/teacher_exam_hub_screen.dart';
 import '../../../teacher/home/teacher_models.dart';
 import '../../../teacher/sessions/sessions_provider.dart';
-import 'package:flutter_education_app/features/student/analysis/exam/student_course_exams_widget.dart'
-    show SessionExamButton;
-import 'session_material_model.dart';
 import 'components/add_material_sheet.dart';
 import 'components/session_material_grid.dart';
 import 'components/session_progress_section.dart';
 import 'components/session_shared_widgets.dart';
-
 class SessionMaterialCard extends StatefulWidget {
   final TeacherSessionItem session;
   final TeacherCourse course;
@@ -332,6 +332,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
     final prov = context.watch<TeacherCourseScreenProvider>();
     final materials = prov.materialsFor(_session.id);
     final uploading = prov.isUploadingMaterial(_session.id);
+    final uploadProgress = prov.uploadProgressForSession(_session.id);
     final isLiveNow = _session.isLiveActive;
 
     final card = Container(
@@ -458,10 +459,14 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
           ),
 
           // ── Upload indicator ───────────────────────────────────────────────
+          // `uploadProgress` is only non-null for the new background (video)
+          // uploads — the old bytes-based image/PDF flow has no byte-level
+          // progress, so it still shows an indeterminate bar (value: null).
           if (uploading)
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
               child: LinearProgressIndicator(
+                value: uploadProgress,
                 color: context.colors.primary,
                 backgroundColor: context.colors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(4),

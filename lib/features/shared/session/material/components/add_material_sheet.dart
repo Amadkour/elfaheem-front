@@ -6,6 +6,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -122,11 +123,16 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
 
   Future<void> _pickFile() async {
     final opt = _fileTypeOptions[_fileTypeIdx];
+    final isVideo = opt.fileType == FileType.video;
     final result = await FilePicker.pickFiles(
       type: opt.fileType,
       allowedExtensions:
           opt.fileType == FileType.custom ? _documentExtensions : null,
-      withData: true,
+      // Videos stream straight from disk on upload (see _submit) — no need
+      // to buffer the whole file into memory just to pick it. On web,
+      // file_picker only ever exposes bytes (no real filesystem path), so
+      // kIsWeb still asks for them there.
+      withData: !isVideo || kIsWeb,
     );
     if (result != null && result.files.isNotEmpty && mounted) {
       setState(() => _pickedFile = result.files.first);
@@ -147,19 +153,41 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
     }
 
     final prov = context.read<TeacherCourseScreenProvider>();
-    setState(() => _saving = true);
 
-    try {
-      if (_mode == 0) {
-        if (_pickedFile == null) {
-          _showError('please_pick_file'.tr);
-          return;
-        }
-        final bytes = _pickedFile!.bytes;
-        if (bytes == null) {
-          _showError('file_load_failed'.tr);
-          return;
-        }
+    if (_mode == 0) {
+      if (_pickedFile == null) {
+        _showError('please_pick_file'.tr);
+        return;
+      }
+
+      final isVideo = _fileTypeOptions[_fileTypeIdx].fileType == FileType.video;
+      final path = _pickedFile!.path;
+
+      if (isVideo && !kIsWeb && path != null) {
+        // Long videos: hand off to the background upload queue and close
+        // the sheet right away — no spinner here, progress shows in the
+        // app-wide upload footer instead, and the sheet doesn't block on
+        // an upload that could take minutes.
+        prov.uploadFileMaterialInBackground(
+          sessionId: widget.sessionId,
+          filePath: path,
+          fileName: _pickedFile!.name,
+          name: name,
+          description:
+              _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+        );
+        if (mounted) Navigator.pop(context);
+        return;
+      }
+
+      final bytes = _pickedFile!.bytes;
+      if (bytes == null) {
+        _showError('file_load_failed'.tr);
+        return;
+      }
+
+      setState(() => _saving = true);
+      try {
         await prov.uploadFileMaterial(
           sessionId: widget.sessionId,
           fileName: _pickedFile!.name,
@@ -168,12 +196,18 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
           description:
               _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
         );
-      } else {
-        final url = _urlCtrl.text.trim();
-        if (url.isEmpty) {
-          _showError('please_enter_url'.tr);
-          return;
-        }
+        if (mounted) Navigator.pop(context);
+      } finally {
+        if (mounted) setState(() => _saving = false);
+      }
+    } else {
+      final url = _urlCtrl.text.trim();
+      if (url.isEmpty) {
+        _showError('please_enter_url'.tr);
+        return;
+      }
+      setState(() => _saving = true);
+      try {
         await prov.addLinkMaterial(
           sessionId: widget.sessionId,
           name: name,
@@ -181,12 +215,13 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
           description:
               _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
         );
+        if (mounted) Navigator.pop(context);
+      } finally {
+        if (mounted) setState(() => _saving = false);
       }
-      if (mounted) Navigator.pop(context);
-    } finally {
-      if (mounted) setState(() => _saving = false);
     }
   }
+
 
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(

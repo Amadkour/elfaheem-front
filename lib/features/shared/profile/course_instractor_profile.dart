@@ -587,7 +587,7 @@ class InstructorAvatar extends StatelessWidget {
                 Row(
                   crossAxisAlignment:CrossAxisAlignment.center,
                   children: [
-                    Expanded(
+                    Flexible(
                       child: Text(
                         teacher.name,
                         style: context.colors.navLabelSelected.copyWith(

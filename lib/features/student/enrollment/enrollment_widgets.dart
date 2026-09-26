@@ -72,13 +72,13 @@ class GradientButton extends StatelessWidget {
             child: loading
                 ? const SizedBox(width: 22, height: 22, child: AppLoadingIndicator())
                 : Text(label,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                      fontFamily: 'bahji',
-                    )),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  fontFamily: 'bahji',
+                )),
           ),
         ),
       ),
@@ -378,6 +378,15 @@ class _PaymentResultViewState extends State<PaymentResultView> with SingleTicker
 class ResultCopy {
   static const pendingTitle = 'الدفع قيد المعالجة ⏳';
   static const pendingMessage = 'تم استلام طلبك. سيُفعَّل كورسك تلقائياً خلال دقائق.';
+
+  // Shown instead of the pair above when the student already has a manual
+  // transfer (bank/InstaPay) proof awaiting teacher review for this course —
+  // see EnrollmentProvider.pendingIsManualReview.
+  static const pendingReviewTitle = 'طلبك قيد المراجعة ⏳';
+  static const pendingReviewMessage =
+      'لديك طلب دفع (تحويل بنكي / إنستاباي) قيد المراجعة حالياً. '
+      'سيقوم المعلم بمراجعته وسيتم تفعيل الكورس أو إشعارك فور الرد.';
+
   static const failedTitle = 'فشلت عملية الدفع';
   static const failedFallback = 'حدث خطأ. الرجاء المحاولة مرة أخرى.';
 }

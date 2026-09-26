@@ -26,7 +26,7 @@ class HomeCourseList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final w = context.screenW;
-    final cols = w >= 800 ? 3 : 2;
+    final cols = w >= 700 ? 3 : 2;
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
@@ -34,6 +34,7 @@ class HomeCourseList extends StatelessWidget {
         child: GridView.builder(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
           physics: const BouncingScrollPhysics(),
+          shrinkWrap: true,
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: cols,
             crossAxisSpacing: 14,
@@ -48,6 +49,7 @@ class HomeCourseList extends StatelessWidget {
             return CourseCard(
               course: courses[i],
               pageName: pageName,
+              fixedWidth: 188,
               isTeacher: isTeacher,
               fullScreen: true,
               onTap: (CourseModel c) {

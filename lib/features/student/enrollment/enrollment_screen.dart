@@ -58,8 +58,12 @@ class _EnrollView extends StatelessWidget {
         EnrollStep.pending => PaymentResultView(
           key: const ValueKey('pending'),
           kind: ResultKind.pending,
-          title: ResultCopy.pendingTitle,
-          message: ResultCopy.pendingMessage,
+          title: enroll.pendingIsManualReview
+              ? ResultCopy.pendingReviewTitle
+              : ResultCopy.pendingTitle,
+          message: enroll.pendingIsManualReview
+              ? ResultCopy.pendingReviewMessage
+              : ResultCopy.pendingMessage,
           primaryLabel: 'العودة للرئيسية',
           onPrimary: () => popToHome(context),
         ),
@@ -310,15 +314,34 @@ class _PaymentMethodPicker extends StatelessWidget {
             badge: card.isDefault ? 'افتراضية' : null,
             onTap: () => enroll.selectSavedCard(card),
           ),
-      _MethodTile(
-        selected: enroll.selectedCard == null,
-        icon: Icons.add_card_rounded,
-        iconColor: _kNewCardColor,
-        title: 'بطاقة ائتمانية / مدى جديدة',
-        subtitle: 'مدى · فيزا · ماستركارد · PCI-DSS',
-        customBadge: const _SecureBadge(),
-        onTap: enroll.selectNewCard,
-      ),
+      if (!(enroll.gateway?.instapayEnabled ?? false))
+        _MethodTile(
+          selected: enroll.selectedCard == null,
+          icon: Icons.add_card_rounded,
+          iconColor: _kNewCardColor,
+          title: 'بطاقة ائتمانية / مدى جديدة',
+          subtitle: 'مدى · فيزا · ماستركارد · PCI-DSS',
+          customBadge: const _SecureBadge(),
+          onTap: enroll.selectNewCard,
+        ),
+      if (enroll.gateway?.bankTransferEnabled ?? false)
+        _MethodTile(
+          selected: enroll.selectedManualMethod == 'bank_transfer',
+          icon: Icons.account_balance_rounded,
+          iconColor: const Color(0xFF2E7D32),
+          title: 'تحويل بنكي',
+          subtitle: 'حوّل يدوياً ثم ارفع صورة الإيصال',
+          onTap: () => enroll.selectManualMethod('bank_transfer'),
+        ),
+      if (enroll.gateway?.instapayEnabled ?? false)
+        _MethodTile(
+          selected: enroll.selectedManualMethod == 'instapay',
+          icon: Icons.qr_code_2_rounded,
+          iconColor: const Color(0xFF6A1B9A),
+          title: 'إنستاباي',
+          subtitle: 'حوّل عبر إنستاباي ثم ارفع صورة الإيصال',
+          onTap: () => enroll.selectManualMethod('instapay'),
+        ),
     ]);
   }
 }

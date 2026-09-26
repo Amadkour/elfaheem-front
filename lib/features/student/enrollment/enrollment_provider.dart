@@ -12,6 +12,7 @@ library;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/student/enrollment/transfer/transfer_payment_screen.dart';
 import 'package:moyasar/moyasar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -33,9 +34,18 @@ class EnrollmentProvider extends PaymentFlowProvider {
   int? _pendingPaymentId;
   String? _pendingTransactionId;
 
+  // Set when EnrollStep.pending was reached because a manual transfer
+  // (bank/InstaPay) proof is already awaiting teacher review — as opposed to
+  // a card payment whose webhook/verification just hasn't landed yet. The
+  // UI uses this to show "your request is under processing" copy instead of
+  // the generic "we'll confirm this in a few minutes" one.
+  bool _pendingIsManualReview = false;
+
   // ── State ─────────────────────────────────────────────────────────────────
 
   bool get isFree => course.price == 0;
+
+  bool get pendingIsManualReview => _pendingIsManualReview;
 
   SavedPaymentMethod? get selectedCard => _selectedCard;
 
@@ -60,8 +70,27 @@ class EnrollmentProvider extends PaymentFlowProvider {
   void scheduleInitialLoad() => Future.microtask(loadInitial);
 
   Future<void> loadInitial() async {
+    // A manual-transfer proof already under review takes priority over
+    // everything else: don't even load the method picker, just show the
+    // "under processing" screen so the student can't submit a duplicate.
+    if (await _hasPendingManualTransfer()) return;
     await loadGatewayConfig();
     await _ensureQuote();
+  }
+
+  /// GET /api/v1/payments/transfer-status — see TransferStatus in
+  /// enrollment_models.dart. On a hit, jumps straight to EnrollStep.pending.
+  Future<bool> _hasPendingManualTransfer() async {
+    final json = asJsonMap(await run(
+          () async => api.get('/api/v1/payments/transfer-status?course_id=${course.id}'),
+    ));
+    if (json == null) return false;
+    final status = TransferStatus.fromJson(json);
+    if (!status.hasPending) return false;
+
+    _pendingIsManualReview = true;
+    setStep(EnrollStep.pending);
+    return true;
   }
 
   Future<FeeQuote?> _ensureQuote() async {
@@ -95,15 +124,44 @@ class EnrollmentProvider extends PaymentFlowProvider {
   }
 
   // ── Confirm ───────────────────────────────────────────────────────────────
+  String? _selectedManualMethod; // "bank_transfer" | "instapay" | null
+
+  String? get selectedManualMethod => _selectedManualMethod;
+
+  void selectManualMethod(String method) {
+    _selectedManualMethod = method;
+    _selectedCard = null;
+    safeNotify();
+  }
 
   Future<void> confirm(BuildContext context) async {
     if (isLoading) return;
     if (isFree) return _enrollFree();
 
+    final manual = _selectedManualMethod;
+    if (manual != null) return _startManualTransfer(context, manual);
+
     final card = _selectedCard;
     if (card != null) return _chargeSavedCard(card);
     if (_usesMoyasarSdk) return _startMoyasarSdk(context);
     return _openHostedCheckout(context);
+  }
+
+  Future<void> _startManualTransfer(BuildContext context, String method) async {
+    final fees = await _ensureQuote(); // reuse whatever quote key bank/instapay should price under —
+    // simplest: extend _quoteMethod to return `method` itself when
+    // _selectedManualMethod is set, so /fees/preview?payment_method=bank_transfer
+    // can return course price with zero gateway fee.
+    if (!context.mounted) return;
+    final result = await Navigator.of(context).push<bool>(MaterialPageRoute(
+      builder: (_) => TransferPaymentScreen(
+        courseId: int.parse(course.id),
+        method: method,
+        amount: (fees ?? quote)?.total ?? course.price,
+        currencySymbol: currencySymbol,
+      ),
+    ));
+    if (result == true) setStep(EnrollStep.pending); // never instantly confirmed — a teacher must review it
   }
 
   Future<void> _enrollFree() async {

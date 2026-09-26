@@ -153,9 +153,9 @@ class SessionMaterialModel {
           ? RatingSummary.fromJson(json['rate'] as Map<String, dynamic>)
           : null,
       // multi-quality video
-      urlHigh:        json['url_high']         as String?,
-      urlMedium:      json['url_medium']        as String?,
-      urlLow:         json['url_low']           as String?,
+      urlHigh:        json['url_high']         as String? ?? (json['url']??''),
+      urlMedium:      json['url_medium']        as String? ?? (json['url']??''),
+      urlLow:         json['url_low']           as String? ?? (json['url']??''),
       fileSizeHigh:   json['file_size_high']    as int?,
       fileSizeMedium: json['file_size_medium']  as int?,
       fileSizeLow:    json['file_size_low']     as int?,

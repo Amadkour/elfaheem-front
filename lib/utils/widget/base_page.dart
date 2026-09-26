@@ -4,6 +4,7 @@ import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/paint_background.dart';
 
+import '../../features/shared/upload/upload_progress_footer.dart';
 import '../../features/student/courses/details/components/app_responsive.dart';
 import '../helpers.dart';
 import 'app_bar.dart';
@@ -27,6 +28,18 @@ class BasePage extends StatelessWidget {
   final Widget? bottomNavigationBar;
   final PreferredSizeWidget? appBar;
   final bool useWebCard;
+
+  /// Stacks the app-wide background-upload progress footer above whatever
+  /// bottomNavigationBar the page already wants, so a video upload started
+  /// on any screen stays visible while the teacher navigates elsewhere.
+  /// Renders nothing when there are no active uploads.
+  Widget? _footerWith(Widget? existing) {
+    if (existing == null) return const UploadProgressFooter();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [const UploadProgressFooter(), existing],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +66,7 @@ class BasePage extends StatelessWidget {
         backgroundColor:
         background ??(context.showSidebar?context.colors.background.withValues(alpha: 0.3):context.colors.background),
         floatingActionButton: floatingActionButton,
-        bottomNavigationBar: bottomNavigationBar,
+        bottomNavigationBar: _footerWith(bottomNavigationBar),
         body: DecoratedBox(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(context.colors.radiusXL),
@@ -67,6 +80,9 @@ class BasePage extends StatelessWidget {
       return Scaffold(
         backgroundColor:
             background ??(context.showSidebar?context.colors.background.withValues(alpha: 0.3):context.colors.background),
+        // NOTE: no footer here — `w` below already carries it via its own
+        // bottomNavigationBar, and `w` is what actually renders in this
+        // branch (nested inside the centered card).
 
         body: Stack(
           children: [

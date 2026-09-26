@@ -481,6 +481,7 @@ class _ApiLogInterceptor extends Interceptor {
 //   redacted).
 
 class ApiClient {
+
   ApiClient._();
 
   static final ApiClient instance = ApiClient._();
@@ -505,11 +506,11 @@ class ApiClient {
     final d = Dio(
       BaseOptions(
         baseUrl: _base,
-        connectTimeout: const Duration(seconds: 30),
+        connectTimeout: const Duration(minutes: 60),
 
         // Unlimited upload/download timeouts.
-        sendTimeout: null,
-        receiveTimeout: null,
+        sendTimeout: const Duration(minutes: 60),
+        receiveTimeout: const Duration(minutes: 60),
 
         // Keep the error body so we can read {"detail": ...}.
         receiveDataWhenStatusError: true,

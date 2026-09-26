@@ -3684,5 +3684,81 @@
   "user_not_found": {
     "en": "Incorrect User name or Password",
     "ar": "خطأ في البريد الاكتروني او كلمة المرور"
+  },
+  "required_money": {
+    "en": "Amount Required",
+    "ar": "المبلغ المطلوب"
+  },
+  "transfer_bank_title": {
+    "en": "Bank Transfer",
+    "ar": "تحويل بنكي"
+  },
+  "transfer_instapay_title": {
+    "en": "InstaPay",
+    "ar": "إنستاباي"
+  },
+  "transfer_details_title": {
+    "en": "Transfer Details",
+    "ar": "بيانات التحويل"
+  },
+  "sender_name_label": {
+    "en": "Sender Name",
+    "ar": "اسم المُرسِل"
+  },
+  "sender_phone_label": {
+    "en": "Sender Phone Number (optional)",
+    "ar": "رقم هاتف المُرسِل (اختياري)"
+  },
+  "bank_reference_label": {
+    "en": "Bank Transfer Reference Number (optional)",
+    "ar": "رقم مرجع التحويل (اختياري)"
+  },
+  "instapay_reference_label": {
+    "en": "InstaPay Transaction Number (optional)",
+    "ar": "رقم عملية إنستاباي (اختياري)"
+  },
+  "transfer_receipt_image_label": {
+    "en": "Transfer Receipt Image",
+    "ar": "صورة إيصال التحويل"
+  },
+  "submit_transfer_proof_btn": {
+    "en": "Submit Transfer Proof",
+    "ar": "إرسال إثبات التحويل"
+  },
+  "bank_name_row_label": {
+    "en": "Bank",
+    "ar": "البنك"
+  },
+  "account_name_row_label": {
+    "en": "Account Name",
+    "ar": "اسم الحساب"
+  },
+  "iban_row_label": {
+    "en": "IBAN",
+    "ar": "الآيبان"
+  },
+  "instapay_id_row_label": {
+    "en": "InstaPay Number",
+    "ar": "رقم إنستاباي"
+  },
+  "swift_row_label": {
+    "en": "SWIFT",
+    "ar": "SWIFT"
+  },
+  "tap_attach_receipt": {
+    "en": "Tap to attach the receipt image",
+    "ar": "اضغط لإرفاق صورة الإيصال"
+  },
+  "transfer_time_warning": {
+    "en": "You must submit this request within 2 minutes of sending the money to avoid errors",
+    "ar": "لابد ان ترسل الطلب في خلال دقيقتين فقط من وقت ارسال النقود لتجنب الاخطاء"
+  },
+  "transfer_time_remaining": {
+    "en": "Time remaining",
+    "ar": "الوقت المتبقي"
+  },
+  "transfer_time_expired": {
+    "en": "Time's up — please submit right away to avoid your request being rejected",
+    "ar": "انتهت المهلة — يرجى الإرسال فوراً لتفادي رفض الطلب"
   }
 }
