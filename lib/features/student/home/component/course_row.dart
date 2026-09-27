@@ -401,11 +401,7 @@ class _Thumbnail extends StatelessWidget {
                 DiscountRibbon.forCourse(course: course),
                 if ( course.discountEndsAt != null) ...[
                   SizedBox(height: 2,),
-                  Positioned(
-                    bottom: 10,
-                    left: 10,
-                    child: DiscountCountdownBadge(course: course, compact: true),
-                  ),]
+                  DiscountCountdownBadge(course: course, compact: true),]
               ],
             ),
           ),

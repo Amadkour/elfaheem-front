@@ -80,7 +80,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
   final _descCtrl = TextEditingController();
   final _durCtrl = TextEditingController(text: '60');
   final _orderCtrl = TextEditingController(text: '0');
-  String _type = 'live';
+  String _type = 'pre-recorded';
   DateTime? _scheduled;
 
   String? _nameError;
@@ -224,7 +224,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
     // is why the details section previously appeared stuck closed.
     final liveProvider = context.watch<TeacherCourseScreenProvider>();
     final loading = liveProvider.submitLoading;
-    final detailsOpen = liveProvider.openCourseDetails;
+    final detailsOpen = liveProvider.openMoreDetailsForAddSession;
     final radius = context.colors.radiusXL;
 
     return PopScope(
