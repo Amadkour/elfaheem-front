@@ -66,6 +66,16 @@ class _EnrollView extends StatelessWidget {
               : ResultCopy.pendingMessage,
           primaryLabel: 'العودة للرئيسية',
           onPrimary: () => popToHome(context),
+          // Manual-transfer review only: let the student withdraw the
+          // pending proof and go send a corrected one right away, instead
+          // of waiting for the teacher to reject it first.
+          secondaryLabel: enroll.pendingIsManualReview ? 'إرسال الطلب مرة أخرى' : null,
+          onSecondary: ()  async {
+            await enroll.loadGatewayConfig();
+            await  enroll.ensureQuote();
+            enroll.setStep(EnrollStep.method);
+
+          }
         ),
         EnrollStep.success => PaymentResultView(
           key: const ValueKey('success'),
@@ -78,9 +88,9 @@ class _EnrollView extends StatelessWidget {
         EnrollStep.failed => PaymentResultView(
           key: const ValueKey('failed'),
           kind: ResultKind.failed,
-          title: ResultCopy.failedTitle,
+          title: enroll.manualTransferRejected ? ResultCopy.rejectedTitle : ResultCopy.failedTitle,
           message: enroll.failureReason ?? ResultCopy.failedFallback,
-          primaryLabel: 'حاول مرة أخرى',
+          primaryLabel: enroll.manualTransferRejected ? 'إرسال الطلب مرة أخرى' : 'حاول مرة أخرى',
           onPrimary: enroll.backToMethod,
           secondaryLabel: 'العودة للرئيسية',
           onSecondary: () => popToHome(context),
@@ -179,7 +189,7 @@ class _CourseSummaryCard extends StatelessWidget {
             if (course.teacher != null) InstructorAvatar(teacher: course.teacher!, size: 50, canOpen: true),
             const SizedBox(height: 10),
             Row(children: [
-              _PriceBadge(price: course.price, currencySymbol: currencySymbol),
+              _PriceBadge(price: course.finalPrice??0, currencySymbol: currencySymbol),
               const SizedBox(width: 8),
               _TypeTag(type: course.type),
             ]),
@@ -303,17 +313,17 @@ class _PaymentMethodPicker extends StatelessWidget {
         Text('طريقة الدفع', style: c.h3.copyWith(fontSize: 15)),
       ]),
       const SizedBox(height: 14),
-      if (enroll.supportsSavedCards)
-        for (final card in cards)
-          _MethodTile(
-            selected: enroll.selectedCard?.id == card.id,
-            icon: Icons.credit_card_rounded,
-            iconColor: _brandColor(card.cardBrand),
-            title: card.displayTitle,
-            subtitle: '${card.cardBrand?.feeLabel ?? ''} رسوم المعالجة',
-            badge: card.isDefault ? 'افتراضية' : null,
-            onTap: () => enroll.selectSavedCard(card),
-          ),
+      // if (enroll.supportsSavedCards)
+      //   for (final card in cards)
+      //     _MethodTile(
+      //       selected: enroll.selectedCard?.id == card.id,
+      //       icon: Icons.credit_card_rounded,
+      //       iconColor: _brandColor(card.cardBrand),
+      //       title: card.displayTitle,
+      //       subtitle: '${card.cardBrand?.feeLabel ?? ''} رسوم المعالجة',
+      //       badge: card.isDefault ? 'افتراضية' : null,
+      //       onTap: () => enroll.selectSavedCard(card),
+      //     ),
       if (!(enroll.gateway?.instapayEnabled ?? false))
         _MethodTile(
           selected: enroll.selectedCard == null,

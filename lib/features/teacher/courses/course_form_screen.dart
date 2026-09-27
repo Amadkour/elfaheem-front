@@ -66,7 +66,9 @@ class _CourseFormInnerState extends State<_CourseFormInner>
   late final TextEditingController _hoursCtrl;
   final ExpansibleController _categoryCtrl = ExpansibleController();
   final ExpansibleController _typeCtrl = ExpansibleController();
-
+  late final TextEditingController _discountPercentCtrl;
+  late final TextEditingController _discountDaysCtrl;
+  bool _removeDiscount = false;
   XFile? _logoFile;
   Uint8List? _logoBytes;
 
@@ -108,9 +110,6 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     // an existing course shows its current reel right away:
     //   CourseReelController(initialUrl: c?.reelUrl)
     _reelCtrl = CourseReelController();
-    // Rebuild on pick/replace/remove so the Save button and the preview
-    // update immediately (mirrors how the text controllers use _rebuild).
-    _reelCtrl.addListener(_rebuild);
     _titleCtrl = TextEditingController(text: c?.title ?? '');
     _descCtrl = TextEditingController(text: c?.description ?? '');
     _priceCtrl = TextEditingController(
@@ -119,15 +118,27 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     _hoursCtrl = TextEditingController(
       text: c != null ? c.expectedHours.toString() : '',
     );
+    _discountPercentCtrl = TextEditingController(
+      text: c?.discountPercentage != null && c!.discountPercentage! > 0
+          ? c.discountPercentage.toString()
+          : '',
+    );
+    _discountDaysCtrl = TextEditingController(
+      text: c?.discountDays?.toString() ?? '',
+    );
+
+    for (final ctrl in [_titleCtrl, _descCtrl, _priceCtrl, _hoursCtrl,
+      _discountPercentCtrl, _discountDaysCtrl]) {
+      ctrl.addListener(_rebuild);
+    }
+    // Rebuild on pick/replace/remove so the Save button and the preview
+    // update immediately (mirrors how the text controllers use _rebuild).
+    _reelCtrl.addListener(_rebuild);
     _isPublished = c?.isPublished ?? false;
     _progressStatus = c?.status ?? CourseStatus.inProgress;
     _certTitleCtrl = TextEditingController(
       text: 'default_certificate_title'.tr,
     );
-
-    for (final ctrl in [_titleCtrl, _descCtrl, _priceCtrl, _hoursCtrl]) {
-      ctrl.addListener(_rebuild);
-    }
 
     _fadeCtrl = AnimationController(
       vsync: this,
@@ -152,7 +163,8 @@ class _CourseFormInnerState extends State<_CourseFormInner>
   void dispose() {
     _reelCtrl.removeListener(_rebuild);
     _reelCtrl.dispose();
-    for (final ctrl in [_titleCtrl, _descCtrl, _priceCtrl, _hoursCtrl]) {
+    for (final ctrl in [_titleCtrl, _descCtrl, _priceCtrl, _hoursCtrl,
+      _discountPercentCtrl, _discountDaysCtrl]) {
       ctrl.removeListener(_rebuild);
       ctrl.dispose();
     }
@@ -170,14 +182,20 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     final c = widget.course!;
     final newPrice = double.tryParse(_priceCtrl.text) ?? c.price;
     final newHours = double.tryParse(_hoursCtrl.text) ?? c.expectedHours;
+    final newDiscount = double.tryParse(_discountPercentCtrl.text);
+    final oldDiscount = c.discountPercentage;
+    final newDays = int.tryParse(_discountDaysCtrl.text);
+    final oldDays = c.discountDays;
     return _titleCtrl.text.trim() != c.title ||
         _descCtrl.text.trim() != (c.description ?? '') ||
         newPrice != c.price ||
         newHours != c.expectedHours ||
+        newDiscount != oldDiscount ||
+        newDays != oldDays ||
+        _removeDiscount ||
         _logoFile != null ||
         _reelCtrl.hasChanges;
   }
-
   // ── Submit ────────────────────────────────────────────────────────────────
 
   /// [publish] only matters in CREATE mode: true = publish immediately,
@@ -191,33 +209,37 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     if (!_formKey.currentState!.validate()) return;
 
     TeacherCourse? result;
+    final discountPercentage = double.tryParse(_discountPercentCtrl.text);
+    final discountDays = int.tryParse(_discountDaysCtrl.text);
 
     if (_isEdit) {
       result = await formProvider.submitUpdate(
         widget.course!,
         name: _titleCtrl.text.trim(),
-        description: _descCtrl.text.trim().isEmpty
-            ? null
-            : _descCtrl.text.trim(),
+        description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
         fees: double.tryParse(_priceCtrl.text),
         totalHours: double.tryParse(_hoursCtrl.text),
+        discountPercentage: discountPercentage,
+        discountDays: discountDays,
+        // Only actually clear when the field ended up empty — if the
+        // teacher hit "Remove discount" and then typed a new percentage,
+        // that new value wins instead of silently deleting it.
+        clearDiscount: discountPercentage == null &&
+            (_removeDiscount || (widget.course!.discountPercentage ?? 0) > 0),
         logoFile: _logoFile,
       );
     } else {
-      final type =
-          (formProvider.selectedTeachingType?['text'] as String?) ?? 'recorded';
+      final type = (formProvider.selectedTeachingType?['text'] as String?) ?? 'recorded';
       result = await formProvider.submitCreate(
         title: _titleCtrl.text.trim(),
         type: type,
-        description: _descCtrl.text.trim().isEmpty
-            ? null
-            : _descCtrl.text.trim(),
+        description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
         fees: double.tryParse(_priceCtrl.text) ?? 0,
         totalHours: double.tryParse(_hoursCtrl.text),
+        discountPercentage: discountPercentage,
+        discountDays: discountDays,
         logoFile: _logoFile,
-        certificateTemplateTitle: _certTemplateFile != null
-            ? _certTitleCtrl.text.trim()
-            : null,
+        certificateTemplateTitle: _certTemplateFile != null ? _certTitleCtrl.text.trim() : null,
         certificateTemplateFile: _certTemplateFile,
         publish: publish,
       );
@@ -492,8 +514,89 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
-
+                      const SizedBox(height: 18),
+                      Text(
+                        'discount_section_title'.tr,          // e.g. "Discount (optional)"
+                        style: TextStyle(
+                          fontFamily: 'bahji',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black.withValues(alpha: 0.55),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'discount_section_hint'.tr,           // e.g. "Leave empty for no discount"
+                        style: TextStyle(
+                          fontFamily: 'tajawal',
+                          fontSize: 11,
+                          color: context.colors.textLight,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _LabeledField(
+                              label: 'discount_percentage_label'.tr,   // "Discount %"
+                              child: MyTextField(
+                                controller: _discountPercentCtrl,
+                                label: 'discount_percentage_label'.tr,
+                                keyboard: const TextInputType.numberWithOptions(decimal: true),
+                                validator: (v) {
+                                  final n = double.tryParse(v ?? '');
+                                  if (v != null && v.trim().isNotEmpty && (n == null || n <= 0 || n > 100)) {
+                                    return 'discount_percentage_validator'.tr; // "0–100"
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _LabeledField(
+                              label: 'discount_days_label'.tr,          // "Days (optional)"
+                              child: MyTextField(
+                                controller: _discountDaysCtrl,
+                                label: 'discount_days_label'.tr,
+                                keyboard: TextInputType.number,
+                                validator: (v) {
+                                  final n = int.tryParse(v ?? '');
+                                  if (v != null && v.trim().isNotEmpty && (n == null || n <= 0)) {
+                                    return 'discount_days_validator'.tr; // "must be a positive number of days"
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_isEdit &&
+                          (widget.course?.discountActive ?? false) &&
+                          _discountPercentCtrl.text.trim().isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton(
+                            onPressed: () => setState(() {
+                              _discountPercentCtrl.clear();
+                              _discountDaysCtrl.clear();
+                              _removeDiscount = true;
+                            }),
+                            child: Text(
+                              'remove_discount_btn'.tr,                // "Remove discount"
+                              style: TextStyle(
+                                fontFamily: 'bahji',
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: context.colors.danger,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                       // Classification card
                       _FormCard(
                         icon: Icons.category_rounded,

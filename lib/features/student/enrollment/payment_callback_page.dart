@@ -131,8 +131,7 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage>
   };
 
   void _goHome() =>
-      Navigator.of(context).pushNamedAndRemoveUntil('/', (r) => false);
-
+      Navigator.of(context).popUntil((route) => route.isFirst);
   @override
   Widget build(BuildContext context) {
     if (!_ready || _title.isEmpty) {

@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
+import '../../../shared/course/course_price_tag.dart';
 import '../../../student/models.dart' show AppCurrencyX;
 import '../../home/teacher_models.dart';
 import '../students/course_student_screen.dart';
@@ -46,8 +47,20 @@ class CourseStatsRow extends StatelessWidget {
       _StatItem(
         icon: Icons.sell_rounded,
         label: 'cost'.tr,
-        value: course.currency.format(course.price),
+        value: course.currency.format(course.finalPrice??0),
         color: const Color(0xFF1DB954),
+        valueBuilder: course.discountActive??false
+            ? (context) => CoursePriceTag(
+          originalPrice: course.price,
+          finalPrice: course.finalPrice??0,
+          discountActive: true,
+          format: course.currency.format,
+          color: context.colors.textDark,
+          fontSize: 13,
+          originalFontSize: 9,
+          alignment: CrossAxisAlignment.center,
+        )
+            : null,
       ),
       _StatItem(
         icon: Icons.timer_rounded,
@@ -74,7 +87,7 @@ class CourseStatsRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children:
-            stats.map((s) => Expanded(child: _StatChip(item: s))).toList(),
+        stats.map((s) => Expanded(child: _StatChip(item: s))).toList(),
       ),
     );
   }
@@ -89,12 +102,17 @@ class _StatItem {
   final Color color;
   final VoidCallback? onTap;
 
+  /// Optional override for the value area (e.g. a discounted price with a
+  /// struck-through original). Falls back to a plain [Text] of [value].
+  final Widget Function(BuildContext context)? valueBuilder;
+
   const _StatItem({
     required this.icon,
     required this.label,
     required this.value,
     required this.color,
     this.onTap,
+    this.valueBuilder,
   });
 }
 
@@ -118,15 +136,16 @@ class _StatChip extends StatelessWidget {
           child: Icon(item.icon, size: 18, color: item.color),
         ),
         const SizedBox(height: 6),
-        Text(
-          item.value,
-          style: TextStyle(
-            fontFamily: 'tajawal',
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-            color: context.colors.textDark,
-          ),
-        ),
+        item.valueBuilder?.call(context) ??
+            Text(
+              item.value,
+              style: TextStyle(
+                fontFamily: 'tajawal',
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: context.colors.textDark,
+              ),
+            ),
         const SizedBox(height: 2),
         Text(
           item.label,
@@ -134,7 +153,7 @@ class _StatChip extends StatelessWidget {
             fontFamily: 'tajawal',
             fontSize: 10,
             decoration:
-                item.onTap == null ? null : TextDecoration.underline,
+            item.onTap == null ? null : TextDecoration.underline,
             decorationColor: Colors.blueAccent,
             decorationThickness: 2,
             color: context.colors.textMedium,

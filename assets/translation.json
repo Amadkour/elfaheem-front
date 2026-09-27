@@ -3784,5 +3784,45 @@
   "paste_url": {
     "en": "Paste",
     "ar": "لصق"
+  },
+  "discount_section_title": {
+    "en": "Discount (optional)",
+    "ar": "خصم (اختياري)"
+  },
+  "discount_section_hint": {
+    "en": "Leave empty for no discount",
+    "ar": "اتركه فارغاً في حال عدم وجود خصم"
+  },
+  "discount_percentage_label": {
+    "en": "Discount %",
+    "ar": "نسبة الخصم %"
+  },
+  "discount_percentage_validator": {
+    "en": "Enter a value between 1 and 100",
+    "ar": "أدخل قيمة بين 1 و 100"
+  },
+  "discount_days_label": {
+    "en": "Days (optional)",
+    "ar": "عدد الأيام (اختياري)"
+  },
+  "discount_days_validator": {
+    "en": "Enter a positive number of days",
+    "ar": "أدخل عدد أيام صحيح وموجب"
+  },
+  "remove_discount_btn": {
+    "en": "Remove discount",
+    "ar": "إزالة الخصم"
+  },
+  "discount_ends_in": {
+    "en": "Ends in",
+    "ar": "ينتهي خلال"
+  },
+  "discount_ends_today": {
+    "en": "Ends today",
+    "ar": "ينتهي اليوم"
+  },
+  "day_unit": {
+    "en": "day",
+    "ar": "يوم"
   }
 }

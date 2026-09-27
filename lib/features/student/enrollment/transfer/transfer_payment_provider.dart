@@ -19,8 +19,11 @@ import '../enrollment_models.dart';
 enum TransferSubmitStep { form, submitting, submitted, failed }
 
 class TransferPaymentProvider extends BaseProvider {
-  TransferPaymentProvider({required this.courseId, required this.method, ApiClient? api})
-      : api = api ?? ApiClient();
+  TransferPaymentProvider({
+    required this.courseId,
+    required this.method,
+    ApiClient? api,
+  }) : api = api ?? ApiClient();
 
   final int courseId;
   final String method; // "bank_transfer" | "instapay"
@@ -32,25 +35,40 @@ class TransferPaymentProvider extends BaseProvider {
   XFile? _proofImage;
 
   TransferMethodDetails? get details => _details;
+
   TransferSubmitStep get step => _step;
+
   String? get failureReason => _failureReason;
+
   XFile? get proofImage => _proofImage;
-  Uint8List?  proofImageBytes  ;
+  Uint8List? proofImageBytes;
 
   bool get isBankTransfer => method == 'bank_transfer';
 
-  Future<void> setProofImage(XFile file)async {
+  Future<void> setProofImage(XFile file) async {
     _proofImage = file;
-    proofImageBytes=await file.readAsBytes();
+    proofImageBytes = await file.readAsBytes();
     notifyListeners();
   }
 
   Future<void> loadDetails() async {
-    final json = asJsonMap(await run(
-          () async => api.get('/api/v1/payments/transfer-methods?course_id=$courseId'),
-    ));
+    final json = asJsonMap(
+      await run(
+        () async =>
+            api.get('/api/v1/payments/transfer-methods?course_id=$courseId'),
+      ),
+    );
     if (json != null) _details = TransferMethodDetails.fromJson(json);
     notifyListeners();
+  }
+
+  Future<void> cancelAndRetryManualTransfer() async {
+    final r = await run(
+      () => api.post(
+        '/api/v1/payments/transfers/cancel-mine',
+        queryParams: {'course_id': courseId},
+      ),
+    );
   }
 
   Future<bool> submit({
@@ -67,19 +85,22 @@ class TransferPaymentProvider extends BaseProvider {
     notifyListeners();
 
     try {
+      await cancelAndRetryManualTransfer();
+
       await api.postMultipart(
         '/api/v1/payments/transfer',
         fields: {
           'course_id': courseId.toString(),
           'method': method,
           'sender_name': senderName,
-          if (senderPhone != null && senderPhone.isNotEmpty) 'sender_phone': senderPhone,
+          if (senderPhone != null && senderPhone.isNotEmpty)
+            'sender_phone': senderPhone,
           if (transferReference != null && transferReference.isNotEmpty)
             'transfer_reference': transferReference,
         },
         filePath: _proofImage!.path,
-        fileBytes:proofImageBytes,
-        fileName:_proofImage!.name,
+        fileBytes: proofImageBytes,
+        fileName: _proofImage!.name,
         fileField: 'proof_image',
       );
       _step = TransferSubmitStep.submitted;

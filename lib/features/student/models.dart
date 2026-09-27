@@ -7,7 +7,10 @@ import 'package:flutter_education_app/features/category/categories_provider.dart
 import '../../../utils/helpers.dart';
 import '../../../utils/widget/rating_widget.dart';
 import '../category/model.dart';
+import '../shared/course/discount_info.dart';
 import '../teacher/home/teacher_models.dart';
+
+export '../shared/course/discount_info.dart';
 
 enum CourseStatus { all, inProgress, completed }
 
@@ -68,7 +71,9 @@ extension AppCurrencyX on AppCurrency {
   String get label => labelKey.tr;
 
   /// Formats a price with this currency's symbol, e.g. "150 ج.م" or "free".
-  String format(double price) => price == 0 ? 'free'.tr : '${price.toStringAsFixed(price.truncateToDouble() == price ? 0 : 2)} $symbol';
+  String format(double price) => price == 0
+      ? 'free'.tr
+      : '${price.toStringAsFixed(price.truncateToDouble() == price ? 0 : 2)} $symbol';
 
   static AppCurrency fromCode(String? code) => AppCurrency.values.firstWhere(
         (c) => c.code == (code ?? 'EGP').toUpperCase(),
@@ -131,29 +136,29 @@ class SessionModel {
   }
 
   factory SessionModel.fromJson(Map<String, dynamic> j) => SessionModel(
-      id: j['id'] as int? ?? -1,
-      courseId: j['course_id'] as int? ?? 0,
-      name: j['name'] as String? ?? '',
-      description: j['description'] as String? ?? '',
-      type: j['type'] as String? ?? 'pre-recorded',
-      durationMinutes: j['duration_minutes'] as int? ?? 0,
-      order: j['order'] as int? ?? 0,
-      isLiveActive: j['is_live_active'] as bool? ?? false,
-      rateSummary: j.containsKey('rate') && j['rate'] != null
-          ? RatingSummary.fromJson(j['rate'] as Map<String, dynamic>)
-          : null,
-      scheduledAt: j['scheduled_at'] != null
-          ? (j['scheduled_at'] as String).toLocalSaTime
-          : null,
-      createdAt: j['created_at'] != null
-          ? (j['created_at'] as String).toLocalSaTime
-          : DateTime.now(),
-      recordingUrl: j['recording_url'] as String? ?? '',
-      recordingStatus: j['recording_status'] as String? ?? '',
-      totalMaterial: j['total_materials'] as int? ?? 0,
-      completeMaterial: j['complete_materials'] as int? ?? 0,
-      progress: j['progress'] as double? ?? 0.0,
-      isCompleted: j['completeness'] as bool
+    id: j['id'] as int? ?? -1,
+    courseId: j['course_id'] as int? ?? 0,
+    name: j['name'] as String? ?? '',
+    description: j['description'] as String? ?? '',
+    type: j['type'] as String? ?? 'pre-recorded',
+    durationMinutes: j['duration_minutes'] as int? ?? 0,
+    order: j['order'] as int? ?? 0,
+    isLiveActive: j['is_live_active'] as bool? ?? false,
+    rateSummary: j.containsKey('rate') && j['rate'] != null
+        ? RatingSummary.fromJson(j['rate'] as Map<String, dynamic>)
+        : null,
+    scheduledAt: j['scheduled_at'] != null
+        ? (j['scheduled_at'] as String).toLocalSaTime
+        : null,
+    createdAt: j['created_at'] != null
+        ? (j['created_at'] as String).toLocalSaTime
+        : DateTime.now(),
+    recordingUrl: j['recording_url'] as String? ?? '',
+    recordingStatus: j['recording_status'] as String? ?? '',
+    totalMaterial: j['total_materials'] as int? ?? 0,
+    completeMaterial: j['complete_materials'] as int? ?? 0,
+    progress: j['progress'] as double? ?? 0.0,
+    isCompleted: j['completeness'] as bool,
   );
 
   TeacherSessionItem get toTeacher => TeacherSessionItem(
@@ -264,43 +269,45 @@ class TeacherSessionItem {
       recordingStatus: j['recording_status'] as String?,
       totalMaterial: j['total_materials'] as int? ?? 0,
       completeMaterial: j['complete_materials'] as int? ?? 0,
-      progress:j.containsKey('progress')? double.parse((j['progress'].toString()) as String? ?? '0.0'):0.0,
+      progress: j.containsKey('progress')
+          ? double.parse((j['progress'].toString()) as String? ?? '0.0')
+          : 0.0,
       rateSummary: j.containsKey('rate') && j['rate'] != null
           ? RatingSummary.fromJson(j['rate'] as Map<String, dynamic>)
           : null,
     );
   }
 
-  TeacherSessionItem copyWith(
-      {String? name,
-        String? description,
-        DateTime? scheduledAt,
-        DateTime? createdAt,
-        int? durationMinutes,
-        int? order,
-        bool? isLiveActive,
-        String? roomUrl,
-        String? recordingUrl,
-        String? recordingStatus}) =>
-      TeacherSessionItem(
-        id: id,
-        courseId: courseId,
-        name: name ?? this.name,
-        description: description ?? this.description,
-        type: type,
-        rateSummary: rateSummary,
-        scheduledAt: scheduledAt ?? this.scheduledAt,
-        durationMinutes: durationMinutes ?? this.durationMinutes,
-        order: order ?? this.order,
-        isLiveActive: isLiveActive ?? this.isLiveActive,
-        roomUrl: roomUrl ?? this.roomUrl,
-        recordingUrl: recordingUrl ?? this.recordingUrl,
-        recordingStatus: recordingStatus ?? this.recordingStatus,
-        createdAt: createdAt ?? this.createdAt,
-        totalMaterial: totalMaterial,
-        completeMaterial: completeMaterial,
-        progress: progress,
-      );
+  TeacherSessionItem copyWith({
+    String? name,
+    String? description,
+    DateTime? scheduledAt,
+    DateTime? createdAt,
+    int? durationMinutes,
+    int? order,
+    bool? isLiveActive,
+    String? roomUrl,
+    String? recordingUrl,
+    String? recordingStatus,
+  }) => TeacherSessionItem(
+    id: id,
+    courseId: courseId,
+    name: name ?? this.name,
+    description: description ?? this.description,
+    type: type,
+    rateSummary: rateSummary,
+    scheduledAt: scheduledAt ?? this.scheduledAt,
+    durationMinutes: durationMinutes ?? this.durationMinutes,
+    order: order ?? this.order,
+    isLiveActive: isLiveActive ?? this.isLiveActive,
+    roomUrl: roomUrl ?? this.roomUrl,
+    recordingUrl: recordingUrl ?? this.recordingUrl,
+    recordingStatus: recordingStatus ?? this.recordingStatus,
+    createdAt: createdAt ?? this.createdAt,
+    totalMaterial: totalMaterial,
+    completeMaterial: completeMaterial,
+    progress: progress,
+  );
 }
 
 class TeacherProfileData {
@@ -350,7 +357,8 @@ class TeacherProfileData {
         createdAt: (j['created_at'] as String).toLocalSaTime,
         teacherProfile: j['teacher_profile'] != null
             ? TeacherProfileDetail.fromJson(
-            j['teacher_profile'] as Map<String, dynamic>)
+          j['teacher_profile'] as Map<String, dynamic>,
+        )
             : null,
       );
 
@@ -388,7 +396,8 @@ class TeacherProfileDetail {
         userId: j['user_id'] as int,
         experienceYears: j['experience_years'] as int,
         specialization: CategoryModel.fromJson(
-            j['specialization'] as Map<String, dynamic>? ?? {}),
+          j['specialization'] as Map<String, dynamic>? ?? {},
+        ),
         teachingType: j['teaching_type'] as String,
         paymentType: j['payment_type'] as String,
         about: j['about'] as String?,
@@ -399,13 +408,22 @@ class TeacherProfileDetail {
 /// Lightweight course card used for "next course", "recommended courses",
 /// and "similar courses" — everything a small preview card needs, without
 /// pulling in the full CourseModel (schedules/certificates/etc).
-class CourseSummary {
+class CourseSummary with DiscountInfo {
   final int id;
   final String name;
   final String imageUrl;
+  @override
   final double price;
+  @override
+  final double finalPrice;
   final AppCurrency currency;
   final double averageRating;
+  @override
+  final DateTime? discountEndsAt;
+  @override
+  final bool? discountActive;
+  @override
+  final double? discountPercentage;
 
   const CourseSummary({
     required this.id,
@@ -414,6 +432,10 @@ class CourseSummary {
     this.price = 0,
     this.currency = AppCurrency.egp,
     this.averageRating = 0,
+    required this.finalPrice,
+    this.discountEndsAt,
+    this.discountActive,
+    this.discountPercentage,
   });
 
   factory CourseSummary.fromJson(Map<String, dynamic> j) => CourseSummary(
@@ -423,14 +445,22 @@ class CourseSummary {
     price: (j['fees'] as num?)?.toDouble() ?? 0,
     currency: AppCurrencyX.fromCode(j['currency'] as String?),
     averageRating: (j['average_rating'] as num?)?.toDouble() ?? 0,
+    discountEndsAt: j['discount_ends_at'] != null
+        ? DateTime.tryParse(j['discount_ends_at'] as String)
+        : null,
+    discountActive: j['discount_active'] as bool? ?? false,
+    discountPercentage: (j['discount_percentage'] as num?)?.toDouble() ?? 0.0,
+    finalPrice: (j['final_price'] as num?)?.toDouble() ?? 0.0,
   );
 }
 
-class CourseModel {
+class CourseModel with DiscountInfo {
   final String id, name, imageUrl, type;
-  final String?  description;
+  final String? description;
   final CategoryModel? category;
-  final double price, totalHours;
+  @override
+  final double price;
+  final double totalHours;
   final AppCurrency currency;
   final CourseStatus status;
   final int studentsCount, sessionsCount;
@@ -438,12 +468,20 @@ class CourseModel {
   bool isEnrolled;
   bool isFavorite;
   bool isSubscribed;
+  @override
+  final DateTime? discountEndsAt;
+  @override
+  final bool? discountActive;
+  @override
+  final double? discountPercentage;
 
   // Progress fields — populated by the API for enrolled students.
   // Progress is based on materials only (0.0–100.0).
   double progress;
   int materialsTotal;
   final double expectedHours;
+  @override
+  final double? finalPrice;
   int materialsCompleted;
   final List<CourseSchedule> schedules;
   final List<CourseCertificate> certificates;
@@ -455,60 +493,77 @@ class CourseModel {
   final List<CourseSummary> recommendedCourses;
   final List<CourseSummary> similarCourses;
   final List<CourseSummary> recentCompletedCourses;
+  final int? discountDays;
 
-  CourseModel(
-      {required this.id,
-        required this.name,
-        required this.imageUrl,
-        required this.price,
-        required this.type,
-        this.currency = AppCurrency.egp,
-        this.status = CourseStatus.inProgress,
-        this.category,
-        this.description,
-        this.studentsCount = 0,
-        this.sessionsCount = 0,
-        this.totalHours = 0.0,
-        this.isFavorite = false,
-        this.isSubscribed = false,
-        this.progress = 0.0,
-        this.materialsTotal = 0,
-        this.materialsCompleted = 0,
-        this.schedules = const [],
-        this.certificates = const [],
-        this.tools = const [],
-        this.prerequisites = const [],
-        required this.isEnrolled,
-        this.teacher,
-        required this.isPublished,
-        required this.expectedHours,
-        this.rateSummary,
-        this.nextCourses = const [],
-        this.recommendedCourses = const [],
-        this.similarCourses = const [],
-        this.recentCompletedCourses = const []});
+  CourseModel({
+    required this.id,
+    required this.name,
+    required this.imageUrl,
+    required this.price,
+    required this.type,
+    this.currency = AppCurrency.egp,
+    this.status = CourseStatus.inProgress,
+    this.category,
+    this.description,
+    this.studentsCount = 0,
+    this.sessionsCount = 0,
+    this.totalHours = 0.0,
+    this.isFavorite = false,
+    this.isSubscribed = false,
+    this.progress = 0.0,
+    this.materialsTotal = 0,
+    this.materialsCompleted = 0,
+    this.schedules = const [],
+    this.certificates = const [],
+    this.tools = const [],
+    this.prerequisites = const [],
+    required this.isEnrolled,
+    this.teacher,
+    required this.isPublished,
+    required this.expectedHours,
+    this.rateSummary,
+    this.nextCourses = const [],
+    this.recommendedCourses = const [],
+    this.similarCourses = const [],
+    this.recentCompletedCourses = const [],
+    this.finalPrice,
+    this.discountEndsAt,
+    this.discountActive,
+    this.discountPercentage, this.discountDays,
+  });
 
   String get title => name;
 
   int get hoursCount => totalHours.round();
 
   factory CourseModel.fromCategoryModel(CategoryCourseModel cat) => CourseModel(
+    id: cat.id,
+    name: cat.title,
+    category: CategoryModel(
       id: cat.id,
-      name: cat.title,
-      category: CategoryModel(id: cat.id, nameEn: cat.title, nameAr:  cat.title, imageUrl:  cat.imageUrl, description: ''),
+      nameEn: cat.title,
+      nameAr: cat.title,
       imageUrl: cat.imageUrl,
-      price: cat.price,
-      type: 'recorded',
-      currency: AppCurrency.egp,
-      status: CourseStatus.inProgress,
-      certificates: [],
-      tools: [],
-      schedules: [],
-      prerequisites: [],
-      isEnrolled: false,
-      teacher: null,
-      isPublished: true,
-      expectedHours: 0);
+      description: '',
+    ),
+    imageUrl: cat.imageUrl,
+    price: cat.price,
+    type: 'recorded',
+    currency: AppCurrency.egp,
+    status: CourseStatus.inProgress,
+    certificates: [],
+    tools: [],
+    schedules: [],
+    prerequisites: [],
+    isEnrolled: false,
+    teacher: null,
+    isPublished: true,
+    expectedHours: 0,
+    finalPrice: cat.finalPrice,
+    discountEndsAt: cat.discountEndsAt,
+    discountActive: cat.discountActive,
+    discountPercentage: cat.discountPercentage,
+  );
 
   factory CourseModel.fromJson(Map<String, dynamic> j) => CourseModel(
     id: j['id'].toString(),
@@ -521,7 +576,7 @@ class CourseModel {
     currency: AppCurrencyX.fromCode(j['currency'] as String?),
     status: CourseStatusX.fromApiValue(j['status'] as String?),
     studentsCount:
-    j['students_count'] as int? ?? j['enrollment_count'] as int? ?? 0,
+    (j['students_count'] as int? ?? j['enrollment_count'] as int? ?? 0)+700,
     sessionsCount: j['sessions_count'] as int? ?? 0,
     totalHours: (j['total_hours'] as num?)?.toDouble() ?? 0.0,
     expectedHours: (j['expected_hours'] as num?)?.toDouble() ?? 0.0,
@@ -564,6 +619,13 @@ class CourseModel {
     recentCompletedCourses: (j['recent_completed_courses'] as List? ?? [])
         .map((e) => CourseSummary.fromJson(e as Map<String, dynamic>))
         .toList(),
+    discountEndsAt: j['discount_ends_at'] != null
+        ? DateTime.tryParse(j['discount_ends_at'] as String)
+        : null,
+    discountActive: j['discount_active'] as bool? ?? false,
+    discountPercentage: (j['discount_percentage'] as num?)?.toDouble() ?? 0.0,
+    finalPrice: (j['final_price'] as num?)?.toDouble() ?? 0.0,
+    discountDays: (j['discount_days'] as num?)?.toInt(),
   );
 
   /// Builds a minimal-but-valid CourseModel from a lightweight summary card
@@ -580,71 +642,82 @@ class CourseModel {
     isEnrolled: false,
     isPublished: true,
     expectedHours: 0,
+    finalPrice: s.finalPrice,
+    discountEndsAt: s.discountEndsAt,
+    discountActive: s.discountActive,
+    discountPercentage: s.discountPercentage,
   );
 
   TeacherCourse get toTeacherModel => TeacherCourse(
-      id: int.parse(id),
-      title: title,
-      rateSummary: rateSummary,
-      progress: progress,
-      imageUrl: imageUrl,
-      totalHours: totalHours,
-      description: description,
-      category: category,
-      certificates: certificates,
-      schedules: schedules,
-      prerequisites: prerequisites,
-      studentsCount: studentsCount,
-      sessionsCount: sessionsCount,
-      tools: tools,
-      isPublished: true,
-      price: price,
-      currency: currency,
-      status: status,
-      type: type,
-      nextCourses: nextCourses,
-      recommendedCourseIds: recommendedCourses.map((e)=>e.id).toList(),
-      similarCourses: similarCourses,
-      expectedHours: expectedHours);
+    id: int.parse(id),
+    title: title,
+    rateSummary: rateSummary,
+    progress: progress,
+    imageUrl: imageUrl,
+    totalHours: totalHours,
+    description: description,
+    category: category,
+    certificates: certificates,
+    schedules: schedules,
+    prerequisites: prerequisites,
+    studentsCount: studentsCount,
+    sessionsCount: sessionsCount,
+    tools: tools,
+    isPublished: true,
+    price: price,
+    currency: currency,
+    status: status,
+    type: type,
+    nextCourses: nextCourses,
+    recommendedCourseIds: recommendedCourses.map((e) => e.id).toList(),
+    similarCourses: similarCourses,
+    expectedHours: expectedHours,
+  );
 
-  CourseModel copyWith(
-      {bool? isFavorite,
-        double? progress,
-        int? materialsTotal,
-        int? materialsCompleted,
-        List<SessionModel>? sessions,
-        CategoryModel? category,
-        int? studentsCount}) =>
-      CourseModel(
-          id: id,
-          name: name,
-          imageUrl: imageUrl,
-          price: price,
-          type: type,
-          currency: currency,
-          status: status,
-          category: category ?? this.category,
-          rateSummary: rateSummary,
-          studentsCount: studentsCount ?? this.studentsCount,
-          sessionsCount: sessionsCount,
-          totalHours: totalHours,
-          teacher: teacher,
-          description: description,
-          isFavorite: isFavorite ?? this.isFavorite,
-          progress: progress ?? this.progress,
-          materialsTotal: materialsTotal ?? this.materialsTotal,
-          materialsCompleted: materialsCompleted ?? this.materialsCompleted,
-          schedules: schedules,
-          certificates: certificates,
-          tools: tools,
-          prerequisites: prerequisites,
-          isEnrolled: isEnrolled,
-          isPublished: isPublished,
-          nextCourses: nextCourses,
-          recommendedCourses: recommendedCourses,
-          similarCourses: similarCourses,
-          recentCompletedCourses: recentCompletedCourses,
-          expectedHours: expectedHours);
+  CourseModel copyWith({
+    bool? isFavorite,
+    double? progress,
+    int? materialsTotal,
+    int? materialsCompleted,
+    List<SessionModel>? sessions,
+    CategoryModel? category,
+    int? studentsCount,
+  }) => CourseModel(
+    id: id,
+    name: name,
+    imageUrl: imageUrl,
+    price: price,
+    type: type,
+    currency: currency,
+    status: status,
+    category: category ?? this.category,
+    rateSummary: rateSummary,
+    studentsCount: studentsCount ?? this.studentsCount,
+    sessionsCount: sessionsCount,
+    totalHours: totalHours,
+    teacher: teacher,
+    description: description,
+    isFavorite: isFavorite ?? this.isFavorite,
+    progress: progress ?? this.progress,
+    materialsTotal: materialsTotal ?? this.materialsTotal,
+    materialsCompleted: materialsCompleted ?? this.materialsCompleted,
+    schedules: schedules,
+    certificates: certificates,
+    tools: tools,
+    prerequisites: prerequisites,
+    isEnrolled: isEnrolled,
+    isPublished: isPublished,
+    nextCourses: nextCourses,
+    recommendedCourses: recommendedCourses,
+    similarCourses: similarCourses,
+    recentCompletedCourses: recentCompletedCourses,
+    expectedHours: expectedHours,
+    finalPrice: finalPrice,
+    discountEndsAt: discountEndsAt,
+    discountActive: discountActive,
+    discountPercentage: discountPercentage,
+    discountDays: discountDays,
+  );
 }
 
 class AttendanceRecord {
@@ -652,15 +725,17 @@ class AttendanceRecord {
   final bool isCheckedIn;
   final String? checkInAt, checkOutAt;
 
-  const AttendanceRecord(
-      {required this.sessionId,
-        required this.isCheckedIn,
-        this.checkInAt,
-        this.checkOutAt});
+  const AttendanceRecord({
+    required this.sessionId,
+    required this.isCheckedIn,
+    this.checkInAt,
+    this.checkOutAt,
+  });
 
   factory AttendanceRecord.fromJson(Map<String, dynamic> j) => AttendanceRecord(
-      sessionId: j['session_id'] as int? ?? 0,
-      isCheckedIn: j['check_in_date'] != null,
-      checkInAt: j['check_in_date'] as String? ?? '',
-      checkOutAt: j['check_out_date'] as String? ?? '');
+    sessionId: j['session_id'] as int? ?? 0,
+    isCheckedIn: j['check_in_date'] != null,
+    checkInAt: j['check_in_date'] as String? ?? '',
+    checkOutAt: j['check_out_date'] as String? ?? '',
+  );
 }

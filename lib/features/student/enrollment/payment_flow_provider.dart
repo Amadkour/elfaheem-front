@@ -45,7 +45,6 @@ abstract class PaymentFlowProvider extends BaseProvider {
     if (!_disposed) notifyListeners();
   }
 
-  @protected
   void setStep(EnrollStep step, {String? reason}) {
     _step = step;
     _failureReason = reason;

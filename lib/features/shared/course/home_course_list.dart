@@ -1,8 +1,7 @@
+
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/student/models.dart';
-import '../../../config/theme/theme_config_provider.dart';
 import '../../student/courses/details/components/app_responsive.dart';
-import '../../student/courses/details/course_detail_screen.dart';
 import '../../student/home/component/course_row.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
@@ -53,8 +52,7 @@ class HomeCourseList extends StatelessWidget {
               isTeacher: isTeacher,
               fullScreen: true,
               onTap: (CourseModel c) {
-                Navigator.pushNamed(context, '/course-detail', arguments: c);
-
+                onTap.call(c);
               },
             );
           },

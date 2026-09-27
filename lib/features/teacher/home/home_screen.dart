@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
 import 'package:flutter_education_app/features/teacher/courses/course_form_screen.dart';
 import 'package:flutter_education_app/features/teacher/courses/courses_screen.dart';
 import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboard_provider.dart';
@@ -16,7 +17,6 @@ import '../../auth/auth_provider.dart';
 import '../../shared/notification/notifications_provider.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import '../../student/dashboard/dashboard_screen.dart';
-import '../../student/home/component/course_row.dart';
 import '../../student/home/component/home_section_header.dart';
 import '../../student/models.dart';
 import '../courses/component/teacher_stats.dart';
@@ -113,7 +113,10 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                           child: SectionHeader(
                             title: 'courses'.tr,
                             actionLabel: 'show_all'.tr,
-                            icon: Icon(Icons.fullscreen_rounded,color: context.colors.primary,),
+                            icon: Icon(
+                              Icons.fullscreen_rounded,
+                              color: context.colors.primary,
+                            ),
                             onAction: _openAllCourses,
                           ),
                         ),
@@ -125,7 +128,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
 
                           child: loading
                               ? const CoursesShimmer(count: 4)
-                              : CoursesRow(
+                              : HomeCourseList(
                                   courses: provider.homeCourses
                                       .take(8)
                                       .map((e) => e.toCourseModel)
@@ -148,6 +151,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                                     );
                                   },
                                   pageName: 'teacher-home-my-courses',
+                                  hasMore: false,
                                 ),
                         ),
                       ),
@@ -191,30 +195,6 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
     );
   }
 }
-
-// ── Zoom-out page transition ───────────────────────────────────────────────
-//
-// Used when opening the full teacher courses screen from the home grid: the
-// destination starts slightly enlarged and settles down to its natural size
-// while it fades in — a "zoom out" reveal, as opposed to the app's default
-// plain fade (`_fade` in main.dart).
-
-PageRouteBuilder _zoomOutRoute(Widget page) => PageRouteBuilder(
-  transitionDuration: const Duration(milliseconds: 380),
-  reverseTransitionDuration: const Duration(milliseconds: 260),
-  pageBuilder: (_, __, ___) => page,
-  transitionsBuilder: (_, animation, __, child) {
-    final curved = CurvedAnimation(
-      parent: animation,
-      curve: Curves.easeOutCubic,
-    );
-    final scale = Tween<double>(begin: 1.12, end: 1.0).animate(curved);
-    return FadeTransition(
-      opacity: curved,
-      child: ScaleTransition(scale: scale, child: child),
-    );
-  },
-);
 
 // ── Web top bar ───────────────────────────────────────────────────────────────
 
@@ -392,55 +372,6 @@ class CoursesShimmer extends StatelessWidget {
   );
 }
 
-// ── Home course row — horizontal, up to 8 items ─────────────────────────────
-
-class _TeacherHomeCoursesRow extends StatelessWidget {
-  final List<TeacherCourse> courses;
-
-  const _TeacherHomeCoursesRow({required this.courses});
-
-  @override
-  Widget build(BuildContext context) {
-    if (courses.isEmpty) return const _NoCoursesHint();
-
-    return SizedBox(
-      height: 200,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        itemCount: courses.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 14),
-        itemBuilder: (_, i) => SizedBox(
-          width: 170,
-          child: _TeacherHomeCourseTile(course: courses[i]),
-        ),
-      ),
-    );
-  }
-}
-
-class _NoCoursesHint extends StatelessWidget {
-  const _NoCoursesHint();
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-    child: Text(
-      'no_courses_section'.tr,
-      style: context.colors.caption.copyWith(color: context.colors.textLight),
-      textAlign: TextAlign.center,
-    ),
-  );
-}
-
-/// A single tile in the home course row.
-///
-/// Tapping opens the course's sessions screen. `_opening` guards against a
-/// fast double-tap pushing the same destination twice — it's set the moment
-/// the tap is handled and only cleared once the pushed route is popped, so
-/// the tile shows its own small loading state for as long as navigation (and
-/// the pushed screen) is in front of it.
 class _TeacherHomeCourseTile extends StatefulWidget {
   final TeacherCourse course;
 

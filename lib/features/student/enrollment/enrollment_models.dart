@@ -231,28 +231,36 @@ class TransferMethodDetails {
 
 /// GET /api/v1/payments/transfer-status?course_id={id}
 ///
-/// Lets the enrollment flow show "your request is under processing" instead
-/// of the payment-method picker when a manual transfer proof is already
-/// awaiting teacher review for this course.
+/// Lets the enrollment flow (and the course-details "payment status" badge)
+/// show the right thing instead of the payment-method picker: still under
+/// review, rejected with a reason, or nothing on file.
 class TransferStatus {
   final bool hasPending;
+  final String? status; // "pending" | "approved" | "rejected" | "cancelled" | null
   final int? paymentId;
   final String? method; // "bank_transfer" | "instapay"
   final double? amount;
   final String? currency;
   final DateTime? submittedAt;
+  final String? rejectionReason;
 
   const TransferStatus({
     required this.hasPending,
+    this.status,
     this.paymentId,
     this.method,
     this.amount,
     this.currency,
     this.submittedAt,
+    this.rejectionReason,
   });
+
+  bool get isPending => status == 'pending';
+  bool get isRejected => status == 'rejected';
 
   factory TransferStatus.fromJson(Map<String, dynamic> j) => TransferStatus(
     hasPending: j['has_pending'] == true,
+    status: j['status'] as String?,
     paymentId: (j['payment_id'] as num?)?.toInt(),
     method: j['method'] as String?,
     amount: (j['amount'] as num?)?.toDouble(),
@@ -260,6 +268,7 @@ class TransferStatus {
     submittedAt: j['submitted_at'] == null
         ? null
         : DateTime.tryParse(j['submitted_at'] as String),
+    rejectionReason: j['rejection_reason'] as String?,
   );
 }
 

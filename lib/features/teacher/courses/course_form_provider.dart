@@ -358,6 +358,8 @@ class CourseFormProvider extends BaseProvider {
     double fees = 0,
     double? totalHours,
     XFile? logoFile,
+    double? discountPercentage,     // ← new
+    int? discountDays,              // ← new
 
     /// Optional certificate template set up at course-creation time. Both
     /// must be provided together — a template with no title is ignored.
@@ -383,6 +385,8 @@ class CourseFormProvider extends BaseProvider {
       'total_hours': ?totalHours,
       'next_course_ids': selectedNextCourses.map((c) => c['id']).toList(),
       'recommended_course_ids': selectedRecommendedCourseIds.toList(),
+      if (discountPercentage != null) 'discount_percentage': discountPercentage,
+      if (discountDays != null) 'discount_days': discountDays,
       },
       ),
     );
@@ -444,6 +448,9 @@ class CourseFormProvider extends BaseProvider {
         double? fees,
         double? totalHours,
         XFile? logoFile,
+        double? discountPercentage,   // ← new; pass null to leave untouched
+        bool clearDiscount = false,
+        int? discountDays,
       }) async {
     // Step 1: patch scalar fields
     final patchResult = await run(
@@ -459,6 +466,9 @@ class CourseFormProvider extends BaseProvider {
       'total_hours': ?totalHours,
       'next_course_ids': selectedNextCourses.map((c) => c['id']).toList(),
       'recommended_course_ids': selectedRecommendedCourseIds.toList(),
+      if (clearDiscount) 'discount_percentage': null
+      else if (discountPercentage != null) 'discount_percentage': discountPercentage,
+      if (discountDays != null) 'discount_days': discountDays,
       },
       ),
     );

@@ -190,7 +190,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                     '/course-detail',
                                     arguments: c,
                                   );
-                                }, hasMore: false,
+                                },
+                                hasMore: false,
                               ),
                             ),
                           ],
@@ -223,14 +224,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                 courses: provider.otherCourses,
                                 isTeacher: false,
                                 onTap: (CourseModel c) {
-                                  Navigator.push(
+                                  Navigator.pushNamed(
                                     context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          CourseDetailScreen(course: c),
-                                    ),
+                                    '/course-detail',
+                                    arguments: c,
                                   );
-                                }, hasMore: false,
+                                },
+                                hasMore: false,
                               ),
                             ),
                           ],

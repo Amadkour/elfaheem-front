@@ -7,6 +7,8 @@ import '../../../../config/app_config.dart';
 import '../../../../config/theme/app_theme.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/widget/app_network_image.dart';
+import '../../../shared/course/course_price_tag.dart';
+import '../../../shared/course/discount_info.dart';
 import '../../../shared/profile/course_instractor_profile.dart';
 
 class CoursesRow extends StatelessWidget {
@@ -388,6 +390,31 @@ class _Thumbnail extends StatelessWidget {
             ),
           ),
 
+        // Discount ribbon — top right, under the type badge
+        if (course.hasDiscount)
+          Positioned(
+            top: 34,
+            right: 10,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                DiscountRibbon.forCourse(course: course),
+                if ( course.discountEndsAt != null) ...[
+                  SizedBox(height: 2,),
+                  Positioned(
+                    bottom: 10,
+                    left: 10,
+                    child: DiscountCountdownBadge(course: course, compact: true),
+                  ),]
+              ],
+            ),
+          ),
+
+        // Countdown — bottom left, opposite the price badge. This is the
+        // "hurry up" nudge: calm amber while there's still time, switching
+        // to a pulsing red pill once the discount enters its last 24h.
+
+
         // Price badge — bottom right
         Positioned(
           bottom: 10,
@@ -395,30 +422,49 @@ class _Thumbnail extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: course.price == 0
+              color: course.effectivePrice == 0
                   ? const Color(0xFF0F6E56)
                   : context.colors.primary,
               borderRadius: BorderRadius.circular(10),
               boxShadow: [
                 BoxShadow(
                   color:
-                      (course.price == 0
-                              ? const Color(0xFF0F6E56)
-                              : context.colors.primary)
-                          .withValues(alpha: 0.35),
+                  (course.effectivePrice == 0
+                      ? const Color(0xFF0F6E56)
+                      : context.colors.primary)
+                      .withValues(alpha: 0.35),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
               ],
             ),
-            child: Text(
-              course.currency.format(course.price),
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 11,
-                fontFamily: 'bahji',
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                if (course.hasDiscount) ...[
+                  Text(
+                    course.currency.format(course.price),
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.75),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 9,
+                      fontFamily: 'bahji',
+                      decoration: TextDecoration.lineThrough,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                ],
+                Text(
+                  course.currency.format(course.effectivePrice),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 11,
+                    fontFamily: 'bahji',
+                  ),
+                ),
+              ],
             ),
           ),
         ),

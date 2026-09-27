@@ -11,7 +11,10 @@ import '../../../config/app_config.dart';
 import '../../../utils/helpers.dart';
 import '../../../utils/widget/rating_widget.dart';
 import '../../category/categories_provider.dart';
+import '../../shared/course/discount_info.dart';
 import '../courses/component/teacher_stats.dart';
+
+export '../../shared/course/discount_info.dart';
 
 class CourseSchedule {
   final int id;
@@ -66,13 +69,13 @@ class CourseCertificate {
   final String title;
   final String? description;
   final String? templateUrl;
+
   const CourseCertificate({
     required this.id,
     required this.courseId,
     required this.title,
     this.description,
     this.templateUrl,
-
   });
 
   factory CourseCertificate.fromJson(Map<String, dynamic> j) =>
@@ -82,7 +85,6 @@ class CourseCertificate {
         title: j['title'] as String? ?? '',
         description: j['description'] as String?,
         templateUrl: j['template_url'] as String?,
-
       );
 }
 
@@ -292,10 +294,13 @@ class ScheduleSession {
 }
 
 // ── TeacherCourse ─────────────────────────────────────────────────────────────
-class TeacherCourse {
+class TeacherCourse with DiscountInfo {
   final int id, studentsCount, sessionsCount;
   final String title, imageUrl, type;
-  final double totalHours, price, progress, expectedHours;
+  final double totalHours;
+  @override
+  final double price;
+  final double progress, expectedHours;
   final String? description;
   final CategoryModel? category;
   final bool isPublished;
@@ -306,14 +311,31 @@ class TeacherCourse {
   final RatingSummary? rateSummary;
   final AppCurrency currency;
   final CourseStatus status;
+
   // ── Next courses (ORDERED roadmap) / recommended courses ────────────────
   final List<int> nextCourseIds;
   final List<int> recommendedCourseIds;
+
   // ── Rich recommendation cards (for the course-profile page) ────────────────
   final List<CourseSummary> nextCourses;
   final List<CourseSummary> recommendedCourseSummaries;
   final List<CourseSummary> similarCourses;
+  @override
+  final DateTime? discountEndsAt;
+  @override
+  final bool? discountActive;
+  @override
+  final double? finalPrice;
+  @override
+  final double? discountPercentage;
+  final int? discountDays;
+
   const TeacherCourse({
+    this.finalPrice,
+    this.discountEndsAt,
+    this.discountActive,
+    this.discountPercentage,
+    this.discountDays,
     required this.id,
     required this.title,
     required this.imageUrl,
@@ -340,6 +362,7 @@ class TeacherCourse {
     this.nextCourses = const [],
     this.recommendedCourseSummaries = const [],
     this.similarCourses = const [],
+
   });
 
   factory TeacherCourse.dummy(int courseId) => TeacherCourse(
@@ -358,11 +381,18 @@ class TeacherCourse {
     id: j['id'] as int,
     title: j['name'] as String? ?? '',
     imageUrl: j['image_url'] as String? ?? '',
-    studentsCount: j['students_count'] as int? ?? 0,
+    studentsCount: (j['students_count'] as int? ?? 0)+700,
     expectedHours: j['expected_hours'] as double? ?? 0.0,
     sessionsCount: j['sessions_count'] as int? ?? 0,
     totalHours: (j['total_hours'] as num?)?.toDouble() ?? 0,
-    price: (j['fees'] as num?)?.toDouble() ?? 0,
+    discountDays: j['discount_days'] as int?,
+    price: (j['price'] as num?)?.toDouble() ?? (j['fees'] as num?)?.toDouble() ?? 0,
+    finalPrice: (j['final_price'] as num?)?.toDouble(),
+    discountActive: j['discount_active'] as bool?,
+    discountPercentage: (j['discount_percentage'] as num?)?.toDouble(),
+    discountEndsAt: j['discount_ends_at'] != null
+        ? DateTime.tryParse(j['discount_ends_at'] as String)
+        : null,
     progress: (j['progress'] as num?)?.toDouble() ?? 0.0,
     currency: AppCurrencyX.fromCode(j['currency'] as String?),
     status: CourseStatusX.fromApiValue(j['status'] as String?),
@@ -406,30 +436,36 @@ class TeacherCourse {
   );
 
   CourseModel get toCourseModel => CourseModel(
-    id: id.toString(),
-    name: title,
-    imageUrl: imageUrl,
-    price: price,
-    rateSummary: rateSummary,
-    progress: progress,
-    type: type,
-    isEnrolled: false,
-    certificates: certificates,
-    tools: tools,
-    prerequisites: prerequisites,
-    schedules: schedules,
-    description: description,
-    studentsCount: studentsCount,
-    sessionsCount: sessionsCount,
-    totalHours: totalHours,
-    expectedHours: expectedHours,
-    category: category,
-    isPublished: isPublished,
+      id: id.toString(),
+      name: title,
+      imageUrl: imageUrl,
+      price: price,
+      rateSummary: rateSummary,
+      progress: progress,
+      type: type,
+      isEnrolled: false,
+      certificates: certificates,
+      tools: tools,
+      prerequisites: prerequisites,
+      schedules: schedules,
+      description: description,
+      studentsCount: studentsCount,
+      sessionsCount: sessionsCount,
+      totalHours: totalHours,
+      expectedHours: expectedHours,
+      category: category,
+      isPublished: isPublished,
+      finalPrice: finalPrice,
+      discountEndsAt: discountEndsAt,
+      discountActive: discountActive,
+      discountPercentage: discountPercentage,
+      discountDays:discountDays
   );
 
   TeacherCourse copyWith({
     bool? isPublished,
     String? imageUrl,
+    int? discountDays,
     List<CourseSchedule>? schedules,
     List<CourseCertificate>? certificates,
     List<CourseTool>? tools,
@@ -438,6 +474,11 @@ class TeacherCourse {
     CourseStatus? status,
     List<int>? nextCourseIds,
     List<int>? recommendedCourseIds,
+    DateTime? discountEndsAt,
+    bool? discountActive,
+    double? discountPercentage,
+    double? price,
+    double? finalPrice,
   }) => TeacherCourse(
     currency: currency ?? this.currency,
     status: status ?? this.status,
@@ -447,10 +488,11 @@ class TeacherCourse {
     imageUrl: imageUrl ?? this.imageUrl,
     totalHours: totalHours,
     type: type,
+    discountDays: discountDays ?? this.discountDays,
     expectedHours: expectedHours,
     studentsCount: studentsCount,
     sessionsCount: sessionsCount,
-    price: price,
+    price: price ?? this.price,
     category: category,
     isPublished: isPublished ?? this.isPublished,
     description: description,
@@ -460,6 +502,14 @@ class TeacherCourse {
     prerequisites: prerequisites ?? this.prerequisites,
     nextCourseIds: nextCourseIds ?? this.nextCourseIds,
     recommendedCourseIds: recommendedCourseIds ?? this.recommendedCourseIds,
+    finalPrice: finalPrice ?? this.finalPrice,
+    discountEndsAt: discountEndsAt ?? this.discountEndsAt,
+    discountActive: discountActive ?? this.discountActive,
+    discountPercentage: discountPercentage ?? this.discountPercentage,
+    rateSummary: rateSummary,
+    nextCourses: nextCourses,
+    recommendedCourseSummaries: recommendedCourseSummaries,
+    similarCourses: similarCourses,
   );
 }
 

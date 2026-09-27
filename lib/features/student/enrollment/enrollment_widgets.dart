@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../../config/app_config.dart' as helpers;
 import '../../../config/theme/app_theme.dart';
 import '../../../config/theme/theme_config_provider.dart';
+import '../../../core/api_client.dart';
 import '../../../utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'enrollment_models.dart';
@@ -389,6 +390,140 @@ class ResultCopy {
 
   static const failedTitle = 'فشلت عملية الدفع';
   static const failedFallback = 'حدث خطأ. الرجاء المحاولة مرة أخرى.';
+
+  // Shown instead of failedTitle when EnrollStep.failed was reached because
+  // a teacher rejected a manual transfer — see
+  // EnrollmentProvider.manualTransferRejected.
+  static const rejectedTitle = 'تم رفض طلب الدفع ❌';
+}
+
+// ── Payment-status badge (course details, next to the enroll button) ───────────
+
+/// Shows the status of a student's outstanding manual-transfer (bank/
+/// InstaPay) request for a course, wherever it's dropped in — typically
+/// right above the enroll button on the course details screen — so a
+/// student with a pending or rejected request sees it before trying to
+/// enroll again. Renders nothing when there's no manual-transfer history,
+/// or the last one was cancelled/approved (approved implies they're already
+/// enrolled, which the normal "isEnrolled" UI already covers).
+///
+/// Independent of EnrollmentProvider by design: it fetches
+/// GET /api/v1/payments/transfer-status itself, so it can be dropped next to
+/// the enroll button without that screen needing its own provider wired up
+/// for it.
+class ManualTransferStatusBanner extends StatefulWidget {
+  final String courseId;
+
+  /// Called when the student taps "send payment again" on a rejected
+  /// request — normally: reopen the enrollment screen.
+  final VoidCallback onRetry;
+
+  const ManualTransferStatusBanner({
+    super.key,
+    required this.courseId,
+    required this.onRetry,
+  });
+
+  @override
+  State<ManualTransferStatusBanner> createState() => _ManualTransferStatusBannerState();
+}
+
+class _ManualTransferStatusBannerState extends State<ManualTransferStatusBanner> {
+  final _api = ApiClient();
+  bool _loading = true;
+  String? _status; // "pending" | "approved" | "rejected" | "cancelled" | null
+  String? _rejectionReason;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant ManualTransferStatusBanner old) {
+    super.didUpdateWidget(old);
+    if (old.courseId != widget.courseId) _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    String? status;
+    String? reason;
+    try {
+      final raw = await _api.get('/api/v1/payments/transfer-status?course_id=${widget.courseId}');
+      final json = asJsonMap(raw);
+      status = json?['status'] as String?;
+      reason = json?['rejection_reason'] as String?;
+    } catch (_) {
+      // No connectivity / unauthenticated / etc. — badge just stays hidden.
+      status = null;
+    }
+    if (!mounted) return;
+    setState(() {
+      _status = status;
+      _rejectionReason = reason;
+      _loading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading || _status == null || _status == 'cancelled' || _status == 'approved') {
+      return const SizedBox.shrink();
+    }
+    final c = context.colors;
+    final isRejected = _status == 'rejected';
+    final tone = isRejected ? c.danger : Colors.orange.shade700;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: tone.withValues(alpha: .08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: tone.withValues(alpha: .3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            isRejected ? Icons.error_outline_rounded : Icons.hourglass_top_rounded,
+            color: tone,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isRejected ? 'تم رفض طلب الدفع السابق' : 'طلب الدفع الخاص بك قيد المراجعة',
+                  style: c.label.copyWith(color: tone, fontWeight: FontWeight.w800),
+                ),
+                if (isRejected && (_rejectionReason?.isNotEmpty ?? false)) ...[
+                  const SizedBox(height: 4),
+                  Text(_rejectionReason!, style: c.caption.copyWith(color: tone)),
+                ],
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: widget.onRetry,
+                  child: Text(
+                    isRejected ? 'إرسال الطلب مرة أخرى' : 'عرض تفاصيل الطلب',
+                    style: c.label.copyWith(
+                      color: tone,
+                      fontWeight: FontWeight.w800,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Thin scaffold used by both screens so direction + background match.

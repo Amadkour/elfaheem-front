@@ -25,7 +25,9 @@ import 'payment_flow_provider.dart';
 export 'payment_flow_provider.dart' show EnrollStep;
 
 class EnrollmentProvider extends PaymentFlowProvider {
-  EnrollmentProvider(this.course, {super.api});
+  EnrollmentProvider(this.course, {super.api}){
+    _selectedManualMethod='instapay';
+  }
 
   final CourseModel course;
 
@@ -37,15 +39,22 @@ class EnrollmentProvider extends PaymentFlowProvider {
   // Set when EnrollStep.pending was reached because a manual transfer
   // (bank/InstaPay) proof is already awaiting teacher review — as opposed to
   // a card payment whose webhook/verification just hasn't landed yet. The
-  // UI uses this to show "your request is under processing" copy instead of
-  // the generic "we'll confirm this in a few minutes" one.
+  // UI uses this to show "your request is under processing" copy (plus a
+  // "send it again" option that cancels-and-resubmits) instead of the
+  // generic "we'll confirm this in a few minutes" one.
   bool _pendingIsManualReview = false;
+
+  // Set when EnrollStep.failed was reached because the teacher rejected a
+  // manual transfer, rather than an actual gateway failure. The UI swaps
+  // "حاول مرة أخرى" copy for a clearer "send payment again" and a distinct title.
+  bool _manualTransferRejected = false;
 
   // ── State ─────────────────────────────────────────────────────────────────
 
-  bool get isFree => course.price == 0;
+  bool get isFree => course.finalPrice == 0;
 
   bool get pendingIsManualReview => _pendingIsManualReview;
+  bool get manualTransferRejected => _manualTransferRejected;
 
   SavedPaymentMethod? get selectedCard => _selectedCard;
 
@@ -70,30 +79,62 @@ class EnrollmentProvider extends PaymentFlowProvider {
   void scheduleInitialLoad() => Future.microtask(loadInitial);
 
   Future<void> loadInitial() async {
-    // A manual-transfer proof already under review takes priority over
-    // everything else: don't even load the method picker, just show the
-    // "under processing" screen so the student can't submit a duplicate.
-    if (await _hasPendingManualTransfer()) return;
+    // An existing manual-transfer attempt (pending or rejected) takes
+    // priority over everything else: don't even load the method picker.
+    if (await _checkManualTransferStatus()) return;
     await loadGatewayConfig();
-    await _ensureQuote();
+    await ensureQuote();
   }
 
   /// GET /api/v1/payments/transfer-status — see TransferStatus in
-  /// enrollment_models.dart. On a hit, jumps straight to EnrollStep.pending.
-  Future<bool> _hasPendingManualTransfer() async {
+  /// enrollment_models.dart. Returns true (and sets the appropriate step)
+  /// when there's an outstanding pending or rejected transfer to show
+  /// instead of the normal method picker.
+  Future<bool> _checkManualTransferStatus() async {
     final json = asJsonMap(await run(
           () async => api.get('/api/v1/payments/transfer-status?course_id=${course.id}'),
     ));
     if (json == null) return false;
     final status = TransferStatus.fromJson(json);
-    if (!status.hasPending) return false;
 
-    _pendingIsManualReview = true;
-    setStep(EnrollStep.pending);
-    return true;
+    if (status.isPending) {
+      _pendingIsManualReview = true;
+      setStep(EnrollStep.pending);
+      return true;
+    }
+    if (status.isRejected) {
+      _manualTransferRejected = true;
+      setStep(
+        EnrollStep.failed,
+        reason: status.rejectionReason?.isNotEmpty == true
+            ? status.rejectionReason
+            : 'تم رفض طلب الدفع السابق. يمكنك إرسال طلب جديد.',
+      );
+      return true;
+    }
+    return false;
   }
 
-  Future<FeeQuote?> _ensureQuote() async {
+  /// Withdraws the student's own still-pending transfer proof and takes
+  /// them back to the method picker so they can send a corrected one — the
+  /// "send payment again" action on the pending/manual-review screen.
+  Future<void> cancelAndRetryManualTransfer() async {
+    final r = await run(
+          () => api.post('/api/v1/payments/transfers/cancel-mine', queryParams: {'course_id': course.id}),
+    );
+    if (r != null) backToMethod();
+  }
+
+  /// Back to the method picker, clearing any manual-transfer flags so a
+  /// fresh attempt starts from a clean slate.
+  @override
+  void backToMethod() {
+    _pendingIsManualReview = false;
+    _manualTransferRejected = false;
+    super.backToMethod();
+  }
+
+  Future<FeeQuote?> ensureQuote() async {
     if (isFree) return null;
     final key = _quoteMethod;
     final cached = _quotes[key];
@@ -114,13 +155,13 @@ class EnrollmentProvider extends PaymentFlowProvider {
   void selectSavedCard(SavedPaymentMethod card) {
     _selectedCard = card;
     safeNotify();
-    _ensureQuote();
+    ensureQuote();
   }
 
   void selectNewCard() {
     _selectedCard = null;
     safeNotify();
-    _ensureQuote();
+    ensureQuote();
   }
 
   // ── Confirm ───────────────────────────────────────────────────────────────
@@ -148,7 +189,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
   }
 
   Future<void> _startManualTransfer(BuildContext context, String method) async {
-    final fees = await _ensureQuote(); // reuse whatever quote key bank/instapay should price under —
+    final fees = await ensureQuote(); // reuse whatever quote key bank/instapay should price under —
     // simplest: extend _quoteMethod to return `method` itself when
     // _selectedManualMethod is set, so /fees/preview?payment_method=bank_transfer
     // can return course price with zero gateway fee.
@@ -157,7 +198,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
       builder: (_) => TransferPaymentScreen(
         courseId: int.parse(course.id),
         method: method,
-        amount: (fees ?? quote)?.total ?? course.price,
+        amount: (fees ?? quote)?.total ?? (course.finalPrice??0),
         currencySymbol: currencySymbol,
       ),
     ));
@@ -182,7 +223,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
     if (publishableKey == null || publishableKey.isEmpty) {
       return _openHostedCheckout(context); // no SDK key configured → hosted page
     }
-    final fees = await _ensureQuote();
+    final fees = await ensureQuote();
     if (fees == null) {
       setStep(EnrollStep.failed, reason: 'تعذّر تحميل تفاصيل الرسوم. حاول مرة أخرى.');
       return;
