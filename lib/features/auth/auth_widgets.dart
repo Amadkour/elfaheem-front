@@ -623,7 +623,7 @@ class RolePicker extends StatelessWidget {
                   color: context.colors.inputBg,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: isSelected ? context.colors.primaryDark : _kBorder,
+                    color: isSelected ? context.colors.primary : _kBorder,
                     width: isSelected ? 2 : 1.5,
                   ),
                 ),
@@ -634,7 +634,7 @@ class RolePicker extends StatelessWidget {
                       height: 40,
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? context.colors.primaryDark.withValues(alpha: 0.15)
+                            ? context.colors.primary.withValues(alpha: 0.15)
                             : const Color(0xFF9CA3AF).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -643,7 +643,7 @@ class RolePicker extends StatelessWidget {
                             ? Icons.cast_for_education_outlined
                             : Icons.school_outlined,
                         color: isSelected
-                            ? context.colors.primaryDark
+                            ? context.colors.primary
                             : _kMuted,
                         size: 20,
                       ),

@@ -5,6 +5,7 @@
 // unlocks — and must tick the checkbox before the submit button activates.
 // ─────────────────────────────────────────────────────────────────────────────
 library;
+
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 import 'dart:async';
@@ -52,24 +53,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
   /// Whether the user has ticked the "I accept" checkbox after reading terms.
   bool _termsAccepted = false;
 
-  DateTime selectedDate =
-      DateTime.now().subtract(const Duration(days: 360 * 20));
+  DateTime selectedDate = DateTime.now().subtract(
+    const Duration(days: 360 * 20),
+  );
 
   @override
   void initState() {
     super.initState();
-    // _emailController.text = 'Ahmed.Madkour@it-ranks.com';
-    // _fullNameController.text = 'Ahmed Madkour';
-    // _phoneController.text = '01110672232';
-    // _passwordController.text = 'Aa@@aA2291996';
-    // _confirmedPasswordController.text = 'Aa@@aA2291996';
-    //
-    // _passwordController.addListener(() => setState(() {}));
-    // _confirmedPasswordController.addListener(() => setState(() {}));
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AuthProvider>().loadSpecialization(context);
-      // Pre-fetch terms so the sheet opens instantly
       context.read<AboutTermsProvider>().loadTerms(context);
     });
   }
@@ -98,14 +90,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
     if (mounted &&
-       ( context
-            .read<AboutTermsProvider>()
-            .terms!
-            .sections
-            .every((e) => e.accept))|| accepted==true) {
+            (context.read<AboutTermsProvider>().terms!.sections.every(
+              (e) => e.accept,
+            )) ||
+        accepted == true) {
       setState(() => _termsAccepted = true);
     }
-
   }
 
   // ── Submit ────────────────────────────────────────────────────────────────
@@ -113,31 +103,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_formKey.currentState!.validate()) return;
     if (_passwordController.text != _confirmedPasswordController.text) {
       Fluttertoast.showToast(
-          msg: 'password must be identical',
-          timeInSecForIosWeb: 3,
-          backgroundColor: context.colors.danger);
+        msg: 'password must be identical',
+        timeInSecForIosWeb: 3,
+        backgroundColor: context.colors.danger,
+      );
       return;
     }
     if (_dobController.text.isEmpty) {
       Fluttertoast.showToast(
-          msg: 'please select your birth of date',
-          timeInSecForIosWeb: 3,
-          backgroundColor: context.colors.danger);
+        msg: 'please select your birth of date',
+        timeInSecForIosWeb: 3,
+        backgroundColor: context.colors.danger,
+      );
       return;
     }
     final authProvider = context.read<AuthProvider>();
     if (authProvider.selectedRole == null) {
       Fluttertoast.showToast(
-          msg: 'please select your role',
-          timeInSecForIosWeb: 3,
-          backgroundColor: context.colors.danger);
+        msg: 'please select your role',
+        timeInSecForIosWeb: 3,
+        backgroundColor: context.colors.danger,
+      );
       return;
     }
     if (!_termsAccepted) {
       Fluttertoast.showToast(
-          msg: 'يجب قراءة والموافقة على الشروط والأحكام',
-          timeInSecForIosWeb: 3,
-          backgroundColor: context.colors.danger);
+        msg: 'يجب قراءة والموافقة على الشروط والأحكام',
+        timeInSecForIosWeb: 3,
+        backgroundColor: context.colors.danger,
+      );
       return;
     }
     final success = await authProvider.register(
@@ -170,34 +164,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width > 800;
-    return Consumer<AuthProvider>(builder: (context, provider, _) {
-      return BasePage(
-        child:
-            isWide ? _buildWideLayout(provider) : _buildNarrowLayout(provider),
-      );
-    });
+    return Consumer<AuthProvider>(
+      builder: (context, provider, _) {
+        return Scaffold(
+          body: BasePage(
+            child: isWide
+                ? _buildWideLayout(provider)
+                : _buildNarrowLayout(provider),
+          ),
+        );
+      },
+    );
   }
 
-  Widget _buildWideLayout(AuthProvider provider) => Row(children: [
-        AuthSidebar(),
-        Expanded(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
-              child: SizedBox(width: 800, child: _buildForm(provider)),
-            ),
+  Widget _buildWideLayout(AuthProvider provider) => Row(
+    children: [
+      AuthSidebar(),
+      Expanded(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
+            child: SizedBox(width: 800, child: _buildForm(provider)),
           ),
         ),
-      ]);
+      ),
+    ],
+  );
 
   Widget _buildNarrowLayout(AuthProvider provider) => Center(
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-            child: _buildForm(provider),
-          ),
-        ),
-      );
+    child: SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+        child: _buildForm(provider),
+      ),
+    ),
+  );
 
   Widget _buildForm(AuthProvider provider) {
     final c = context.colors;
@@ -212,55 +213,70 @@ class _RegisterScreenState extends State<RegisterScreen> {
           // Back
           GestureDetector(
             onTap: () => Navigator.pop(context),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              const Icon(Icons.arrow_back_ios_rounded, size: 14),
-              const SizedBox(width: 4),
-              Text('login'.tr,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.arrow_back_ios_rounded, size: 14),
+                const SizedBox(width: 4),
+                Text(
+                  'login'.tr,
                   style: TextStyle(
-                      fontFamily: 'tajawal',
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: c.textDark)),
-            ]),
+                    fontFamily: 'tajawal',
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: c.textDark,
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 20),
 
-          Text('create_account'.tr,
-              style: TextStyle(
-                  fontFamily: 'tajawal',
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: c.textDark)),
+          Text(
+            'create_account'.tr,
+            style: TextStyle(
+              fontFamily: 'tajawal',
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: c.textDark,
+            ),
+          ),
           const SizedBox(height: 6),
-          Text('registration_welcome'.tr,
-              style: TextStyle(
-                  fontFamily: 'tajawal',
-                  fontSize: 14,
-                  color: c.secondText,
-                  height: 1.5)),
+          Text(
+            'registration_welcome'.tr,
+            style: TextStyle(
+              fontFamily: 'tajawal',
+              fontSize: 14,
+              color: c.secondText,
+              height: 1.5,
+            ),
+          ),
           const SizedBox(height: 28),
 
           // Full name
           IconTextField(
-              controller: _fullNameController,
-              label: 'full_name'.tr,
-              icon: Icons.person_outline_rounded),
+            controller: _fullNameController,
+            label: 'full_name'.tr,
+            icon: Icons.person_outline_rounded,
+          ),
           const SizedBox(height: 20),
 
           // Email
           IconTextField(
-              controller: _emailController,
-              label: 'email'.tr,
-              icon: Icons.email_outlined,
-              keyboard: TextInputType.emailAddress),
+            controller: _emailController,
+            label: 'email'.tr,
+            icon: Icons.email_outlined,
+            keyboard: TextInputType.emailAddress,
+          ),
           const SizedBox(height: 20),
 
           // Phone
           IconTextField(
-              controller: _phoneController,
-              label: 'phone'.tr,
-              icon: Icons.phone_outlined,
-              keyboard: TextInputType.phone),
+            controller: _phoneController,
+            label: 'phone'.tr,
+            icon: Icons.phone_outlined,
+            keyboard: TextInputType.phone,
+          ),
           const SizedBox(height: 20),
 
           // Date of birth
@@ -307,33 +323,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
             controller: _confirmedPasswordController,
             label: 'confirmed_password'.tr,
             obscure: _obscureConfirm,
-            onToggle: () =>
-                setState(() => _obscureConfirm = !_obscureConfirm),
+            onToggle: () => setState(() => _obscureConfirm = !_obscureConfirm),
           ),
           Container(
             padding: const EdgeInsets.all(16),
-            decoration:
-                BoxDecoration(color: c.inputBg, borderRadius: c.brMedium),
+            decoration: BoxDecoration(
+              color: c.inputBg,
+              borderRadius: c.brMedium,
+            ),
             child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('المتطلبات', style: c.label.copyWith(fontSize: 12)),
-                  const SizedBox(height: 10),
-                  PasswordReq(
-                      met: _reqMinLength, label: '٦ أحرف على الأقل', c: c),
-                  PasswordReq(
-                      met: _reqUppercase,
-                      label: 'حرف كبير واحد على الأقل (A-Z)',
-                      c: c),
-                  PasswordReq(
-                      met: _reqDigit,
-                      label: 'رقم واحد على الأقل (0-9)',
-                      c: c),
-                  PasswordReq(
-                      met: _reqMatch,
-                      label: 'تطابق كلمة المرور الجديدة',
-                      c: c),
-                ]),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('المتطلبات', style: c.label.copyWith(fontSize: 12)),
+                const SizedBox(height: 10),
+                PasswordReq(
+                  met: _reqMinLength,
+                  label: '٦ أحرف على الأقل',
+                  c: c,
+                ),
+                PasswordReq(
+                  met: _reqUppercase,
+                  label: 'حرف كبير واحد على الأقل (A-Z)',
+                  c: c,
+                ),
+                PasswordReq(
+                  met: _reqDigit,
+                  label: 'رقم واحد على الأقل (0-9)',
+                  c: c,
+                ),
+                PasswordReq(
+                  met: _reqMatch,
+                  label: 'تطابق كلمة المرور الجديدة',
+                  c: c,
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 24),
 
@@ -392,20 +416,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Color _strengthColor(ThemeConfigProvider c) => switch (_strength) {
-        1 => c.danger,
-        2 => c.warning,
-        3 => c.success,
-        4 => c.primaryDark,
-        _ => c.divider,
-      };
+    1 => c.danger,
+    2 => c.warning,
+    3 => c.success,
+    4 => c.primaryDark,
+    _ => c.divider,
+  };
 
   String _strengthLabel() => switch (_strength) {
-        1 => 'ضعيف',
-        2 => 'مقبول',
-        3 => 'قوي',
-        4 => 'قوي جداً',
-        _ => '',
-      };
+    1 => 'ضعيف',
+    2 => 'مقبول',
+    3 => 'قوي',
+    4 => 'قوي جداً',
+    _ => '',
+  };
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -452,9 +476,12 @@ class _TermsAcceptRow extends StatelessWidget {
               onChanged: (v) => onCheckChanged(v ?? false),
               activeColor: c.success,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(5)),
+                borderRadius: BorderRadius.circular(5),
+              ),
               side: BorderSide(
-                  color: accepted ? c.success : c.textLight, width: 1.5),
+                color: accepted ? c.success : c.textLight,
+                width: 1.5,
+              ),
             ),
           ),
           const SizedBox(width: 10),
@@ -463,10 +490,11 @@ class _TermsAcceptRow extends StatelessWidget {
             child: Text.rich(
               TextSpan(
                 style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 13,
-                    color: c.textMedium,
-                    height: 1.5),
+                  fontFamily: 'tajawal',
+                  fontSize: 13,
+                  color: c.textMedium,
+                  height: 1.5,
+                ),
                 children: [
                   const TextSpan(text: 'أوافق على '),
                   WidgetSpan(
@@ -504,10 +532,11 @@ class _TermsAcceptRow extends StatelessWidget {
               child: Text(
                 accepted ? 'إعادة القراءة' : 'اقرأ الآن',
                 style: const TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white),
+                  fontFamily: 'tajawal',
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
               ),
             ),
           ),
@@ -546,11 +575,9 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
     final pos = _scrollCtrl.position;
     // Consider "read" when within 48 px of the bottom
     if ((pos.pixels >= pos.maxScrollExtent - 48) ||
-        context
-            .read<AboutTermsProvider>()
-            .terms!
-            .sections
-            .every((e) => e.accept)) {
+        context.read<AboutTermsProvider>().terms!.sections.every(
+          (e) => e.accept,
+        )) {
       setState(() => _hasReadAll = true);
     }
   }
@@ -576,85 +603,98 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
           color: c.cardBg,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        child: Column(children: [
-          // ── Drag handle ─────────────────────────────────────────────
-          const SizedBox(height: 12),
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: c.divider,
-              borderRadius: BorderRadius.circular(2),
+        child: Column(
+          children: [
+            // ── Drag handle ─────────────────────────────────────────────
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: c.divider,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          // ── Header ──────────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  gradient: c.primaryGradient,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: c.primaryShadow,
-                ),
-                child: const Icon(Icons.description_outlined,
-                    color: Colors.white, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('الشروط والأحكام',
-                          style: c.h2.copyWith(fontSize: 17)),
-                      if (p.terms?.meta != null)
-                        Text('آخر تحديث: ${p.terms!.meta!.lastUpdated}',
-                            style: c.caption.copyWith(fontSize: 11)),
-                    ]),
-              ),
-              // Close
-              GestureDetector(
-                onTap: () => Navigator.pop(context, false),
-                child: Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: c.background,
-                    shape: BoxShape.circle,
-                  ),
-                  child:
-                      Icon(Icons.close_rounded, size: 18, color: c.textMedium),
-                ),
-              ),
-            ]),
-          ),
-          const SizedBox(height: 4),
-
-          // ── "Scroll to read" hint ────────────────────────────────────
-          if (!_hasReadAll)
+            // ── Header ──────────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-              child: _ScrollHint(),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      gradient: c.primaryGradient,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: c.primaryShadow,
+                    ),
+                    child: const Icon(
+                      Icons.description_outlined,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'الشروط والأحكام',
+                          style: c.h2.copyWith(fontSize: 17),
+                        ),
+                        if (p.terms?.meta != null)
+                          Text(
+                            'آخر تحديث: ${p.terms!.meta!.lastUpdated}',
+                            style: c.caption.copyWith(fontSize: 11),
+                          ),
+                      ],
+                    ),
+                  ),
+                  // Close
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context, false),
+                    child: Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: c.background,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.close_rounded,
+                        size: 18,
+                        color: c.textMedium,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
+            const SizedBox(height: 4),
 
-          Divider(color: c.divider, height: 16),
+            // ── "Scroll to read" hint ────────────────────────────────────
+            if (!_hasReadAll)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                child: _ScrollHint(),
+              ),
 
-          // ── Content ──────────────────────────────────────────────────
-          Expanded(
-            child: _buildContent(p, c),
-          ),
+            Divider(color: c.divider, height: 16),
 
-          // ── Bottom bar ───────────────────────────────────────────────
-          _BottomBar(
-            hasReadAll: _hasReadAll,
-            onScrollToEnd: _scrollToEnd,
-            onAccept: () => Navigator.pop(context, true),
-          ),
-        ]),
+            // ── Content ──────────────────────────────────────────────────
+            Expanded(child: _buildContent(p, c)),
+
+            // ── Bottom bar ───────────────────────────────────────────────
+            _BottomBar(
+              hasReadAll: _hasReadAll,
+              onScrollToEnd: _scrollToEnd,
+              onAccept: () => Navigator.pop(context, true),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -667,27 +707,36 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
     // Error
     if (p.termsError != null) {
       return Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.wifi_off_rounded, size: 48, color: c.textLight),
-          const SizedBox(height: 12),
-          Text(p.termsError!,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.wifi_off_rounded, size: 48, color: c.textLight),
+            const SizedBox(height: 12),
+            Text(
+              p.termsError!,
               style: c.body.copyWith(color: c.textMedium),
-              textAlign: TextAlign.center),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: () => p.loadTerms(context, forceRefresh: true),
-            icon: const Icon(Icons.refresh_rounded),
-            label: const Text('إعادة المحاولة',
-                style: TextStyle(fontFamily: 'tajawal')),
-          ),
-        ]),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: () => p.loadTerms(context, forceRefresh: true),
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text(
+                'إعادة المحاولة',
+                style: TextStyle(fontFamily: 'tajawal'),
+              ),
+            ),
+          ],
+        ),
       );
     }
     // Empty
     if (p.terms == null || p.terms!.sections.isEmpty) {
       return Center(
-        child: Text('لا توجد شروط وأحكام متاحة حالياً',
-            style: c.body.copyWith(color: c.textMedium)),
+        child: Text(
+          'لا توجد شروط وأحكام متاحة حالياً',
+          style: c.body.copyWith(color: c.textMedium),
+        ),
       );
     }
 
@@ -697,12 +746,13 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
       itemCount: p.terms!.sections.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (_, i) => _SectionCard(
-          section: p.terms!.sections[i],
-          index: i,
-          onTap: (TermsSectionModel t) {
-            t.toggle();
-            setState(() {});
-          }),
+        section: p.terms!.sections[i],
+        index: i,
+        onTap: (TermsSectionModel t) {
+          t.toggle();
+          setState(() {});
+        },
+      ),
     );
   }
 
@@ -718,8 +768,11 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
 // ── Section card ──────────────────────────────────────────────────────────────
 
 class _SectionCard extends StatelessWidget {
-  const _SectionCard(
-      {required this.section, required this.index, required this.onTap});
+  const _SectionCard({
+    required this.section,
+    required this.index,
+    required this.onTap,
+  });
 
   final TermsSectionModel section;
   final int index;
@@ -752,48 +805,60 @@ class _SectionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: c.divider),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Header
-        Row(children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: c.primaryTint,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(_icon(section.iconName), size: 17, color: c.primary),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(section.title, style: c.h3.copyWith(fontSize: 14)),
-          ),
-          InkWell(
-            onTap: () {
-              onTap.call(section);
-            },
-            child: Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: c.successTint,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                  section.accept
-                      ? Icons.check_circle
-                      : Icons.radio_button_unchecked,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: c.primaryTint,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  _icon(section.iconName),
                   size: 17,
-                  color: c.success),
-            ),
+                  color: c.primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(section.title, style: c.h3.copyWith(fontSize: 14)),
+              ),
+              InkWell(
+                onTap: () {
+                  onTap.call(section);
+                },
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: c.successTint,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    section.accept
+                        ? Icons.check_circle
+                        : Icons.radio_button_unchecked,
+                    size: 17,
+                    color: c.success,
+                  ),
+                ),
+              ),
+              // Section number
+            ],
           ),
-          // Section number
-        ]),
-        Divider(color: c.divider, height: 20),
-        // Body
-        Text(section.body,
-            style: c.body.copyWith(height: 1.85, fontSize: 13.5)),
-      ]),
+          Divider(color: c.divider, height: 20),
+          // Body
+          Text(
+            section.body,
+            style: c.body.copyWith(height: 1.85, fontSize: 13.5),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -814,10 +879,13 @@ class _ScrollHintState extends State<_ScrollHint>
   void initState() {
     super.initState();
     _anim = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 900))
-      ..repeat(reverse: true);
-    _bounce = Tween<double>(begin: 0, end: 6)
-        .animate(CurvedAnimation(parent: _anim, curve: Curves.easeInOut));
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _bounce = Tween<double>(
+      begin: 0,
+      end: 6,
+    ).animate(CurvedAnimation(parent: _anim, curve: Curves.easeInOut));
   }
 
   @override
@@ -836,27 +904,33 @@ class _ScrollHintState extends State<_ScrollHint>
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: c.primary.withValues(alpha: 0.2)),
       ),
-      child: Row(children: [
-        AnimatedBuilder(
-          animation: _bounce,
-          builder: (_, _) => Transform.translate(
-            offset: Offset(0, _bounce.value),
-            child: Icon(Icons.keyboard_double_arrow_down_rounded,
-                size: 18, color: c.primary),
+      child: Row(
+        children: [
+          AnimatedBuilder(
+            animation: _bounce,
+            builder: (_, _) => Transform.translate(
+              offset: Offset(0, _bounce.value),
+              child: Icon(
+                Icons.keyboard_double_arrow_down_rounded,
+                size: 18,
+                color: c.primary,
+              ),
+            ),
           ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            'يرجى قراءة جميع الشروط والتمرير إلى الأسفل لتفعيل زر القبول',
-            style: TextStyle(
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'يرجى قراءة جميع الشروط والتمرير إلى الأسفل لتفعيل زر القبول',
+              style: TextStyle(
                 fontFamily: 'tajawal',
                 fontSize: 12,
                 color: c.primary,
-                fontWeight: FontWeight.w600),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
-        ),
-      ]),
+        ],
+      ),
     );
   }
 }
@@ -885,69 +959,86 @@ class _BottomBar extends StatelessWidget {
         color: c.cardBg,
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.07),
-              blurRadius: 10,
-              offset: const Offset(0, -3)),
+            color: Colors.black.withValues(alpha: 0.07),
+            blurRadius: 10,
+            offset: const Offset(0, -3),
+          ),
         ],
       ),
-      child: hasReadAll ||
-              context
-                  .read<AboutTermsProvider>()
-                  .terms!
-                  .sections
-                  .every((e) => e.accept)
+      child:
+          hasReadAll ||
+              context.read<AboutTermsProvider>().terms!.sections.every(
+                (e) => e.accept,
+              )
           // ── Unlocked: show accept button ─────────────────────────────
-          ? Column(mainAxisSize: MainAxisSize.min, children: [
-              // Success hint
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: c.successTint,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: c.success.withValues(alpha: 0.35)),
-                ),
-                child: Row(children: [
-                  Icon(Icons.check_circle_outline_rounded,
-                      size: 18, color: c.success),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'لقد قرأت جميع الشروط، يمكنك الموافقة الآن',
-                      style: TextStyle(
-                          fontFamily: 'tajawal',
-                          fontSize: 12,
-                          color: c.success,
-                          fontWeight: FontWeight.w600),
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Success hint
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: c.successTint,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: c.success.withValues(alpha: 0.35),
                     ),
                   ),
-                ]),
-              ),
-              // Accept button
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: onAccept,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: c.success,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle_outline_rounded,
+                        size: 18,
+                        color: c.success,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'لقد قرأت جميع الشروط، يمكنك الموافقة الآن',
+                          style: TextStyle(
+                            fontFamily: 'tajawal',
+                            fontSize: 12,
+                            color: c.success,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  icon:
-                      const Icon(Icons.verified_outlined, color: Colors.white),
-                  label: const Text(
-                    'أوافق على الشروط والأحكام',
-                    style: TextStyle(
+                ),
+                // Accept button
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: onAccept,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: c.success,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    icon: const Icon(
+                      Icons.verified_outlined,
+                      color: Colors.white,
+                    ),
+                    label: const Text(
+                      'أوافق على الشروط والأحكام',
+                      style: TextStyle(
                         fontFamily: 'tajawal',
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: Colors.white),
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ])
+              ],
+            )
           // ── Locked: nudge user to scroll ─────────────────────────────
           : SizedBox(
               width: double.infinity,
@@ -957,17 +1048,21 @@ class _BottomBar extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 13),
                   side: BorderSide(color: c.primary, width: 1.5),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
-                icon: Icon(Icons.keyboard_double_arrow_down_rounded,
-                    color: c.primary),
+                icon: Icon(
+                  Icons.keyboard_double_arrow_down_rounded,
+                  color: c.primary,
+                ),
                 label: Text(
                   'انتقل إلى نهاية الشروط',
                   style: TextStyle(
-                      fontFamily: 'tajawal',
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: c.primary),
+                    fontFamily: 'tajawal',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: c.primary,
+                  ),
                 ),
               ),
             ),

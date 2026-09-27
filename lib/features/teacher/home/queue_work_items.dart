@@ -98,11 +98,6 @@ class ScheduleQueueList extends StatefulWidget {
 
 class _ScheduleQueueListState extends State<ScheduleQueueList> {
   late final Timer _ticker;
-
-  /// Ticks once a second. Cards subscribe individually via
-  /// ValueListenableBuilder, so a tick no longer rebuilds this whole widget
-  /// (header + every day group + every card) — only the small countdown
-  /// area inside cards that are actually live or starting soon.
   final ValueNotifier<DateTime> _now = ValueNotifier(DateTime.now().toUtc());
 
   /// Sessions for which we have already fired the refresh call this run.
@@ -112,18 +107,40 @@ class _ScheduleQueueListState extends State<ScheduleQueueList> {
   void initState() {
     super.initState();
     // Tick every second so countdowns stay smooth.
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _onTick());
+    _ticker = Timer.periodic(const Duration(seconds: 10), (_) => _onTick());
+    _startPolling();
   }
+  Timer? _pollTimer;
 
+  void _startPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (!mounted) return;
+      if (!context.read<AuthProvider>().isAuthenticated) {
+        _pollTimer?.cancel();
+        return;
+      }
+      context.read<TeacherHomeProvider>().refreshSilently();
+    });
+  }
   @override
   void dispose() {
     _ticker.cancel();
     _now.dispose();
     super.dispose();
   }
-
   void _onTick() {
     if (!mounted) return;
+
+    // Guard every tick, not just on start — the user can log out at any
+    // point while this widget stays alive (AutomaticKeepAliveClientMixin
+    // keeps it mounted across tab switches), and without this check the
+    // countdown crossing a session's start time would still fire an
+    // authenticated-only API call with no valid session.
+    if (!context.read<AuthProvider>().isAuthenticated) {
+      _ticker.cancel();
+      return;
+    }
 
     final now = DateTime.now().toUtc();
 
@@ -134,19 +151,13 @@ class _ScheduleQueueListState extends State<ScheduleQueueList> {
       final (:start, :end) = _sessionDateTimes(session);
       final untilStart = start.difference(now);
 
-      // Fire once when we cross the 0-second mark (was positive, now ≤ 0).
       if (untilStart.inSeconds <= 0 && untilStart.inSeconds > -5) {
         _refreshFired.add(scheduleId);
-        log(
-          '[SCHEDULE] Session ${session.sessionId} starting — refreshing dashboard',
-        );
-        // Silent: a background timer crossing a boundary shouldn't flash a
-        // full-screen loading state on the dashboard.
+        log('[SCHEDULE] Session ${session.sessionId} starting — refreshing dashboard');
         context.read<TeacherHomeProvider>().refreshSilently();
       }
     }
 
-    // Notify only the countdown listeners — not a widget rebuild.
     _now.value = now;
   }
 
