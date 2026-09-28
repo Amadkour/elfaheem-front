@@ -15,7 +15,7 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 // webview_flutter is imported only on mobile; the stub keeps Flutter Web compiling.
 import 'package:webview_flutter/webview_flutter.dart'
-    if (dart.library.html) 'webview_stub.dart';
+if (dart.library.html) 'webview_stub.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Hosted checkout WebView
@@ -72,11 +72,11 @@ class _MobileCheckoutPageState extends State<MobileCheckoutPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('إتمام الدفع'),
+        title: Text('complete_payment_title'.tr),
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.close),
-          tooltip: 'إلغاء',
+          tooltip: 'cancel'.tr,
           onPressed: () => Navigator.of(context).pop('cancelled'),
         ),
       ),
@@ -84,13 +84,13 @@ class _MobileCheckoutPageState extends State<MobileCheckoutPage> {
         children: [
           WebViewWidget(controller: _controller),
           if (_loading)
-            const Center(
+            Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  AppLoadingIndicator(),
-                  SizedBox(height: 16),
-                  Text('جارٍ تحميل صفحة الدفع…'),
+                  const AppLoadingIndicator(),
+                  const SizedBox(height: 16),
+                  Text('loading_payment_page'.tr),
                 ],
               ),
             ),
@@ -122,7 +122,7 @@ class MoyasarCardPaymentScreen extends StatelessWidget {
       child: Scaffold(
         backgroundColor: c.background,
         appBar: AppBar(
-          title: Text('بيانات البطاقة',
+          title: Text('card_details_title'.tr,
               style: TextStyle(fontFamily: 'bahji', color: c.textDark, fontWeight: FontWeight.w700)),
           backgroundColor: c.cardBg,
           surfaceTintColor: Colors.transparent,

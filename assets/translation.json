@@ -3824,5 +3824,185 @@
   "day_unit": {
     "en": "day",
     "ar": "يوم"
+  },
+  "course_price": {
+    "en": "Course Price",
+    "ar": "سعر الكورس"
+  },
+  "day_short": {
+    "en": "d",
+    "ar": "ي"
+  },
+  "hour_short": {
+    "en": "h",
+    "ar": "س"
+  },
+  "discount_ending_now": {
+    "en": "Ending now",
+    "ar": "ينتهي الآن"
+  },
+  "payment_success_title": {
+    "en": "Payment successful! 🎉",
+    "ar": "تم الدفع بنجاح! 🎉"
+  },
+  "payment_success_message": {
+    "en": "Your payment is confirmed and the course is active. You can start now!",
+    "ar": "تم تأكيد دفعتك وتفعيل الكورس. يمكنك البدء الآن!"
+  },
+  "payment_pending_title": {
+    "en": "Payment processing ⏳",
+    "ar": "الدفع قيد المعالجة ⏳"
+  },
+  "payment_pending_message": {
+    "en": "We received your request. Your course will activate automatically within minutes.",
+    "ar": "تم استلام طلبك. سيُفعَّل كورسك تلقائياً خلال دقائق."
+  },
+  "payment_failed_title": {
+    "en": "Payment failed",
+    "ar": "فشلت عملية الدفع"
+  },
+  "payment_failed_message_generic": {
+    "en": "The payment wasn't completed. Please try again.",
+    "ar": "لم يتم إتمام الدفع. الرجاء المحاولة مرة أخرى."
+  },
+  "payment_failed_fallback": {
+    "en": "Something went wrong. Please try again.",
+    "ar": "حدث خطأ. الرجاء المحاولة مرة أخرى."
+  },
+  "payment_rejected_title": {
+    "en": "Payment request rejected ❌",
+    "ar": "تم رفض طلب الدفع ❌"
+  },
+  "payment_pending_review_title": {
+    "en": "Your request is under review ⏳",
+    "ar": "طلبك قيد المراجعة ⏳"
+  },
+  "payment_pending_review_message": {
+    "en": "You have a payment request (bank transfer / InstaPay) currently under review. The teacher will review it and the course will be activated or you'll be notified as soon as there's a response.",
+    "ar": "لديك طلب دفع (تحويل بنكي / إنستاباي) قيد المراجعة حالياً. سيقوم المعلم بمراجعته وسيتم تفعيل الكورس أو إشعارك فور الرد."
+  },
+  "payment_error_session_expired": {
+    "en": "Your session expired. Please try again.",
+    "ar": "انتهت صلاحية الجلسة. الرجاء المحاولة من جديد."
+  },
+  "payment_error_amount_mismatch": {
+    "en": "The payment amount doesn't match. Contact support.",
+    "ar": "مبلغ الدفع غير متطابق. تواصل مع الدعم."
+  },
+  "payment_error_no_payment_id": {
+    "en": "Payment ID is missing. Please try again.",
+    "ar": "معرّف الدفع مفقود. الرجاء المحاولة مرة أخرى."
+  },
+  "start_learning_now": {
+    "en": "Start learning now",
+    "ar": "ابدأ التعلم الآن"
+  },
+  "try_again_payment": {
+    "en": "Try again",
+    "ar": "حاول مرة أخرى"
+  },
+  "resend_transfer_request": {
+    "en": "Send request again",
+    "ar": "إرسال الطلب مرة أخرى"
+  },
+  "enroll_free_now": {
+    "en": "Enroll for free now",
+    "ar": "سجّل مجاناً الآن"
+  },
+  "pay_action": {
+    "en": "Pay",
+    "ar": "ادفع"
+  },
+  "enroll_course_title": {
+    "en": "Enroll in course",
+    "ar": "تسجيل في الكورس"
+  },
+  "complete_payment_title": {
+    "en": "Complete payment",
+    "ar": "إتمام الدفع"
+  },
+  "free_course_banner_title": {
+    "en": "This course is free! 🎉",
+    "ar": "هذا الكورس مجاني! 🎉"
+  },
+  "free_banner_subtitle": {
+    "en": "Tap \"Enroll for free now\" for instant access.",
+    "ar": "اضغط \"سجّل مجاناً الآن\" للحصول على وصول فوري."
+  },
+  "type_tag_live": {
+    "en": "🔴 Live",
+    "ar": "🔴 مباشر"
+  },
+  "type_tag_recorded": {
+    "en": "▶ Recorded",
+    "ar": "▶ مسجّل"
+  },
+  "new_card_title": {
+    "en": "New credit / mada card",
+    "ar": "بطاقة ائتمانية / مدى جديدة"
+  },
+  "new_card_subtitle": {
+    "en": "mada · Visa · Mastercard · PCI-DSS",
+    "ar": "مدى · فيزا · ماستركارد · PCI-DSS"
+  },
+  "bank_transfer_subtitle": {
+    "en": "Transfer manually then upload the receipt",
+    "ar": "حوّل يدوياً ثم ارفع صورة الإيصال"
+  },
+  "instapay_subtitle": {
+    "en": "Transfer via InstaPay then upload the receipt",
+    "ar": "حوّل عبر إنستاباي ثم ارفع صورة الإيصال"
+  },
+  "secure_badge": {
+    "en": "Secure",
+    "ar": "آمن"
+  },
+  "total_label": {
+    "en": "Total",
+    "ar": "الإجمالي"
+  },
+  "verifying_payment_title": {
+    "en": "Confirming payment…",
+    "ar": "جارٍ تأكيد الدفع…"
+  },
+  "verifying_payment_subtitle": {
+    "en": "Please wait a moment.",
+    "ar": "الرجاء الانتظار قليلاً."
+  },
+  "transfer_rejected_banner_title": {
+    "en": "Your previous payment request was rejected",
+    "ar": "تم رفض طلب الدفع السابق"
+  },
+  "transfer_pending_banner_title": {
+    "en": "Your payment request is under review",
+    "ar": "طلب الدفع الخاص بك قيد المراجعة"
+  },
+  "view_request_details": {
+    "en": "View request details",
+    "ar": "عرض تفاصيل الطلب"
+  },
+  "loading_payment_page": {
+    "en": "Loading payment page…",
+    "ar": "جارٍ تحميل صفحة الدفع…"
+  },
+  "card_details_title": {
+    "en": "Card details",
+    "ar": "بيانات البطاقة"
+  },
+  "enroll_success_title": {
+    "en": "Success! 🎉",
+    "ar": "تم بنجاح! 🎉"
+  },
+  "enroll_success_message": {
+    "en": "The course is now active. You can start now!",
+    "ar": "تم تفعيل الكورس. يمكنك البدء الآن!"
+  },
+  "roadmap_enroll_all": {
+    "en": "Enroll Roadmap",
+    "ar": "الاشتراك"
+  },
+  "incorrect_email_or_password": {
+    "en": "Invalid credentials check E-MAIL or PASSWORD",
+    "ar": "بياناتك غير صحيحة تحقق من البريد الاكتروني او كلمة المرور"
   }
 }

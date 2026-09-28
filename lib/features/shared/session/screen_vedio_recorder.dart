@@ -8,8 +8,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/features/shared/session/material/session_material_model.dart';
+import 'package:flutter_education_app/core/api_client.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
+import 'package:screen_protector/screen_protector.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'package:flutter_education_app/config/theme/app_theme.dart';
@@ -19,6 +21,9 @@ import '../../../utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 import '../../student/courses/details/course_detail_provider.dart';
+import '../../student/courses/security/device_blocked_dialog.dart';
+import '../../student/courses/security/device_id_service.dart';
+import '../../student/courses/security/device_security_provider.dart';
 // ════════════════════════════════════════════════════════════════════════════
 // VideoPlayerScreen
 // ════════════════════════════════════════════════════════════════════════════
@@ -59,9 +64,9 @@ class VideoPlayerScreen extends StatefulWidget {
         .asMap()
         .entries
         .map((e) => _LegacyHelper.variantFromLabel(
-              label: e.value.label,
-              url: e.value.url,
-            ))
+      label: e.value.label,
+      url: e.value.url,
+    ))
         .toList();
 
     final model = _LegacyHelper.buildModel(
@@ -164,7 +169,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   // ── Getters ───────────────────────────────────────────────────────────────
   bool get _isAudioMode => _activeVariant.isAudio;
 
-  SessionMaterialModel get _mat => widget.material;
+  // URLs come from POST .../play when the list endpoint hid them.
+  SessionMaterialModel? _resolved;
+  SessionMaterialModel get _mat => _resolved ?? widget.material;
+  String? _viewsNote;   // e.g. "المشاهدات المتبقية هذا الشهر: 2"
 
   // ─────────────────────────────────────────────────────────────────────────
   // Lifecycle
@@ -193,11 +201,82 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         .animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
     WakelockPlus.enable().ignore();
-    _initPlayer(_activeVariant, autoPlay: widget.autoPlay);
+    _protectScreen(true);
+    _startPlayback();
 
     if (widget.startFullScreen) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _enterFullScreen());
     }
+  }
+
+  /// Blocks screenshots / screen recording while the player is open
+  /// (Android FLAG_SECURE, iOS blur in app switcher + screenshot prevention).
+  Future<void> _protectScreen(bool on) async {
+    if (kIsWeb) return;
+    try {
+      if (on) {
+        await ScreenProtector.preventScreenshotOn();
+        await ScreenProtector.protectDataLeakageWithBlur();
+      } else {
+        await ScreenProtector.preventScreenshotOff();
+        await ScreenProtector.protectDataLeakageWithBlurOff();
+      }
+    } catch (_) {}
+  }
+
+  /// Asks the server for the video URLs (this is what counts a view), then plays.
+  Future<void> _startPlayback() async {
+    if (widget.material.requiresPlay && widget.material.id != 0) {
+      try {
+        final r = await ApiClient().post(
+          '/api/v1/sessions/${widget.material.sessionId}/materials/${widget.material.id}/play',
+        );
+        if (r is! Map<String, dynamic>) throw StateError('bad play response');
+        final resolved = widget.material.withPlayData(r);
+        if (!mounted) return;
+        final left = r['views_left'];
+        setState(() {
+          _resolved = resolved;
+          _viewsNote = left == null ? null : 'المشاهدات المتبقية هذا الشهر: $left';
+          _activeVariant = resolved.videoVariants.isNotEmpty
+              ? resolved.videoVariants.first
+              : resolved.availableVariants.first;
+        });
+      } on ApiException catch (e) {
+        if (!mounted) return;
+        await _handlePlayError(e);
+        return;
+      } catch (_) {
+        if (mounted) setState(() { _isLoading = false; _hasError = true; });
+        return;
+      }
+    }
+    if (!mounted) return;
+    await _initPlayer(_activeVariant, autoPlay: widget.autoPlay);
+  }
+
+  Future<void> _handlePlayError(ApiException e) async {
+    if (e.isDeviceBlocked) {
+      final p = DeviceSecurityProvider();
+      await p.check();
+      if (mounted) await showDeviceBlockedDialog(context, p);
+    } else if (e.isViewLimit) {
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            title: const Text('انتهت المشاهدات'),
+            content: Text(e.message),
+            actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('حسناً'))],
+          ),
+        ),
+      );
+    } else {
+      Helpers.showMessage(e.message);
+    }
+    if (mounted) Navigator.of(context).maybePop();
   }
 
   @override
@@ -209,6 +288,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     _vc?.removeListener(_onVcUpdate);
     _vc?.dispose();
     WakelockPlus.disable().ignore();
+    _protectScreen(false);
     _restoreSystemUI();
     super.dispose();
   }
@@ -218,10 +298,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   // ─────────────────────────────────────────────────────────────────────────
 
   Future<void> _initPlayer(
-    MaterialVariant variant, {
-    Duration seekTo = Duration.zero,
-    bool autoPlay = true,
-  }) async {
+      MaterialVariant variant, {
+        Duration seekTo = Duration.zero,
+        bool autoPlay = true,
+      }) async {
     if (!mounted) return;
     setState(() {
       _isLoading = true;
@@ -232,7 +312,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       Helpers.showMessage( 'video_not_available'.tr);
       return;
     }
-    final next = VideoPlayerController.networkUrl(Uri.parse(variant.url!));
+    // Stream links only work together with this device's id header.
+    final next = VideoPlayerController.networkUrl(
+      Uri.parse(variant.url!),
+      httpHeaders: await DeviceIdService.instance.headers(),
+    );
     try {
       await next.initialize();
       next.addListener(_onVcUpdate);
@@ -308,7 +392,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     final wasPlaying = _vc?.value.isPlaying ?? false;
     // For audio streams, always start from beginning; for video, preserve pos
     final pos =
-        v.isAudio ? Duration.zero : (_vc?.value.position ?? Duration.zero);
+    v.isAudio ? Duration.zero : (_vc?.value.position ?? Duration.zero);
     await _initPlayer(v, seekTo: pos, autoPlay: wasPlaying);
   }
 
@@ -489,17 +573,17 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   Widget _buildBody() {
     final vc = _vc;
     final pos =
-        _vcReady ? (vc?.value.position ?? Duration.zero) : Duration.zero;
+    _vcReady ? (vc?.value.position ?? Duration.zero) : Duration.zero;
     final dur =
-        _vcReady ? (vc?.value.duration ?? Duration.zero) : Duration.zero;
+    _vcReady ? (vc?.value.duration ?? Duration.zero) : Duration.zero;
     final fraction = dur.inMilliseconds > 0
         ? (_isSeeking ? _seekFraction : pos.inMilliseconds / dur.inMilliseconds)
-            .clamp(0.0, 1.0)
+        .clamp(0.0, 1.0)
         : 0.0;
     final buffered = () {
       if (!_vcReady || vc == null || vc.value.buffered.isEmpty) return 0.0;
       return (vc.value.buffered.last.end.inMilliseconds /
-              (dur.inMilliseconds > 0 ? dur.inMilliseconds : 1))
+          (dur.inMilliseconds > 0 ? dur.inMilliseconds : 1))
           .clamp(0.0, 1.0);
     }();
     final isPlaying = _vcReady && (vc?.value.isPlaying ?? false);
@@ -600,7 +684,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                   color: c.primary.withValues(alpha: 0.18),
                 ),
                 child:
-                    Icon(Icons.music_note_rounded, size: 54, color: c.primary),
+                Icon(Icons.music_note_rounded, size: 54, color: c.primary),
               ),
             ),
           ),
@@ -636,16 +720,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     return Row(children: [
       Expanded(
           child: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onTap: _toggleControls,
-        onDoubleTap: () => _seekRelative(10, forward: false),
-      )),
+            behavior: HitTestBehavior.translucent,
+            onTap: _toggleControls,
+            onDoubleTap: () => _seekRelative(10, forward: false),
+          )),
       Expanded(
           child: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onTap: _toggleControls,
-        onDoubleTap: () => _seekRelative(10, forward: true),
-      )),
+            behavior: HitTestBehavior.translucent,
+            onTap: _toggleControls,
+            onDoubleTap: () => _seekRelative(10, forward: true),
+          )),
     ]);
   }
 
@@ -653,40 +737,40 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
   Widget _buildSeekFlash() {
     Widget half(bool active, bool forward) => Expanded(
-          child: active
-              ? Container(
-                  decoration: BoxDecoration(
-                    gradient: RadialGradient(
-                      center: forward
-                          ? Alignment.centerLeft
-                          : Alignment.centerRight,
-                      radius: 1.4,
-                      colors: [
-                        Colors.white.withValues(alpha: 0.13),
-                        Colors.transparent
-                      ],
-                    ),
-                  ),
-                  child: Center(
-                      child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(
-                      forward
-                          ? Icons.forward_10_rounded
-                          : Icons.replay_10_rounded,
+      child: active
+          ? Container(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            center: forward
+                ? Alignment.centerLeft
+                : Alignment.centerRight,
+            radius: 1.4,
+            colors: [
+              Colors.white.withValues(alpha: 0.13),
+              Colors.transparent
+            ],
+          ),
+        ),
+        child: Center(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Icon(
+                forward
+                    ? Icons.forward_10_rounded
+                    : Icons.replay_10_rounded,
+                color: Colors.white,
+                size: 48,
+              ),
+              const SizedBox(height: 4),
+              Text(forward ? '+10s' : '-10s',
+                  style: const TextStyle(
                       color: Colors.white,
-                      size: 48,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(forward ? '+10s' : '-10s',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 15,
-                            fontFamily: 'tajawal')),
-                  ])),
-                )
-              : const SizedBox.expand(),
-        );
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      fontFamily: 'tajawal')),
+            ])),
+      )
+          : const SizedBox.expand(),
+    );
     return Row(
         children: [half(_flashRewind, false), half(_flashForward, true)]);
   }
@@ -727,7 +811,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       child: Row(children: [
         IconButton(
           onPressed: () =>
-              _isFullScreen ? _exitFullScreen() : Navigator.maybePop(context),
+          _isFullScreen ? _exitFullScreen() : Navigator.maybePop(context),
           icon: const Icon(Icons.arrow_back_ios_new_rounded,
               color: Colors.white, size: 20),
         ),
@@ -790,8 +874,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
               finished
                   ? Icons.replay_rounded
                   : (isPlaying
-                      ? Icons.pause_rounded
-                      : Icons.play_arrow_rounded),
+                  ? Icons.pause_rounded
+                  : Icons.play_arrow_rounded),
               color: Colors.white,
               size: 42,
             ),
@@ -817,7 +901,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   }) {
     final c = context.colors;
     final bot =
-        _isFullScreen ? 10.0 : MediaQuery.of(context).padding.bottom + 4;
+    _isFullScreen ? 10.0 : MediaQuery.of(context).padding.bottom + 4;
 
     return Container(
       decoration: BoxDecoration(
@@ -930,12 +1014,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
               filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
               child: Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(30),
                   border:
-                      Border.all(color: Colors.white.withValues(alpha: 0.22)),
+                  Border.all(color: Colors.white.withValues(alpha: 0.22)),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   const Icon(Icons.lock_rounded, color: Colors.white, size: 18),
@@ -961,15 +1045,15 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     final c = context.colors;
     return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-      SizedBox(
-          width: 44,
-          height: 44,
-          child: AppLoadingIndicator()),
-      const SizedBox(height: 14),
-      Text('loading_video'.tr,
-          style: const TextStyle(
-              color: Colors.white60, fontSize: 13, fontFamily: 'tajawal')),
-    ]));
+          SizedBox(
+              width: 44,
+              height: 44,
+              child: AppLoadingIndicator()),
+          const SizedBox(height: 14),
+          Text('loading_video'.tr,
+              style: const TextStyle(
+                  color: Colors.white60, fontSize: 13, fontFamily: 'tajawal')),
+        ]));
   }
 
   Widget _buildErrorState() {
@@ -1077,10 +1161,10 @@ class _StreamPickerSheet extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         ...videoVariants.map((v) => _VariantTile(
-              variant: v,
-              selected: v.url == activeVariant.url,
-              onTap: () => onSelect(v),
-            )),
+          variant: v,
+          selected: v.url == activeVariant.url,
+          onTap: () => onSelect(v),
+        )),
 
         // ── Audio section ─────────────────────────────────────────────────
         if (hasAudio) ...[
@@ -1092,10 +1176,10 @@ class _StreamPickerSheet extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           ...audioVariants.map((v) => _VariantTile(
-                variant: v,
-                selected: v.url == activeVariant.url,
-                onTap: () => onSelect(v),
-              )),
+            variant: v,
+            selected: v.url == activeVariant.url,
+            onTap: () => onSelect(v),
+          )),
         ],
       ]),
     );
@@ -1150,7 +1234,7 @@ class _VariantTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final accentColor =
-        variant.isAudio ? Colors.tealAccent.shade400 : c.primary;
+    variant.isAudio ? Colors.tealAccent.shade400 : c.primary;
 
     return GestureDetector(
       onTap: onTap,
@@ -1208,7 +1292,7 @@ class _VariantTile extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(variant.sizeLabel,
                       style:
-                          c.caption.copyWith(color: c.textLight, fontSize: 11)),
+                      c.caption.copyWith(color: c.textLight, fontSize: 11)),
                 ],
               ],
             ),
@@ -1224,7 +1308,7 @@ class _VariantTile extends StatelessWidget {
             opacity: selected ? 1.0 : 0.0,
             duration: const Duration(milliseconds: 180),
             child:
-                Icon(Icons.check_circle_rounded, color: accentColor, size: 20),
+            Icon(Icons.check_circle_rounded, color: accentColor, size: 20),
           ),
         ]),
       ),
@@ -1265,10 +1349,10 @@ class _QualityBadge extends StatelessWidget {
     final tierColor = variant.isAudio
         ? accent
         : switch (variant.tier) {
-            QualityTier.high => const Color(0xFFFFB300),
-            QualityTier.medium => const Color(0xFF4CAF50),
-            QualityTier.low => c.textLight,
-          };
+      QualityTier.high => const Color(0xFFFFB300),
+      QualityTier.medium => const Color(0xFF4CAF50),
+      QualityTier.low => c.textLight,
+    };
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -1343,16 +1427,16 @@ class _CircleCtrlBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: 0.10)),
-          child: Icon(icon, color: Colors.white, size: size),
-        ),
-      );
+    onTap: onTap,
+    child: Container(
+      width: 56,
+      height: 56,
+      decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: 0.10)),
+      child: Icon(icon, color: Colors.white, size: size),
+    ),
+  );
 }
 
 class _GlassIconBtn extends StatelessWidget {
@@ -1364,21 +1448,21 @@ class _GlassIconBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Tooltip(
-        message: tooltip ?? '',
-        child: GestureDetector(
-          onTap: onTap,
-          child: Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: 0.10),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-            ),
-            child: Icon(icon, color: Colors.white70, size: 18),
-          ),
+    message: tooltip ?? '',
+    child: GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: 0.10),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
         ),
-      );
+        child: Icon(icon, color: Colors.white70, size: 18),
+      ),
+    ),
+  );
 }
 
 class _ControlChip extends StatelessWidget {
@@ -1437,23 +1521,23 @@ class _GlassPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.16),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: color.withValues(alpha: 0.35)),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, color: color, size: 14),
-          const SizedBox(width: 6),
-          Text(label,
-              style: TextStyle(
-                  color: color,
-                  fontSize: 12,
-                  fontFamily: 'tajawal',
-                  fontWeight: FontWeight.w700)),
-        ]),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.16),
+      borderRadius: BorderRadius.circular(22),
+      border: Border.all(color: color.withValues(alpha: 0.35)),
+    ),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, color: color, size: 14),
+      const SizedBox(width: 6),
+      Text(label,
+          style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontFamily: 'tajawal',
+              fontWeight: FontWeight.w700)),
+    ]),
+  );
 }
 
 // ── Speed sheet ───────────────────────────────────────────────────────────────

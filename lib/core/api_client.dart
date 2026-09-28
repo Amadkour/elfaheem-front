@@ -15,6 +15,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/main.dart';
+import '../features/student/courses/security/device_blocked_dialog.dart';
+import '../features/student/courses/security/device_id_service.dart';
+import '../features/student/courses/security/device_security_provider.dart';
 
 // ── User-facing messages (single place to translate / edit) ──────────────────
 
@@ -72,12 +75,30 @@ class ApiException implements Exception {
   final String message;
   final dynamic body;
 
+  /// Machine code for our own coded errors: DEVICE_MISMATCH, DEVICE_ID_MISSING,
+  /// VIEW_LIMIT_REACHED, SWITCH_LIMIT, ... (null for everything else).
+  final String? code;
+
   const ApiException({
     required this.statusCode,
     required this.message,
     this.type = ApiErrorType.unknown,
     this.body,
+    this.code,
   });
+
+  bool get isDeviceBlocked => code == 'DEVICE_MISMATCH' || code == 'DEVICE_ID_MISSING';
+  bool get isViewLimit => code == 'VIEW_LIMIT_REACHED';
+
+  /// {"detail": {"code": "X", "message": "..."}} -> (code, message)
+  static (String?, String?) codedDetail(dynamic body) {
+    if (body is Map && body['detail'] is Map) {
+      final d = body['detail'] as Map;
+      final code = d['code']?.toString();
+      if (code != null && code.isNotEmpty) return (code, d['message']?.toString());
+    }
+    return (null, null);
+  }
 
   bool get isNetwork => type == ApiErrorType.network;
   bool get isTimeout => type == ApiErrorType.timeout;
@@ -173,7 +194,8 @@ class ApiException implements Exception {
     final status = res?.statusCode ?? 0;
     final body = res?.data;
     final type = _typeFor(status);
-    final serverMsg = _messageFromBody(body);
+    final (code, codedMsg) = codedDetail(body);
+    final serverMsg = codedMsg ?? _messageFromBody(body);   // coded messages are already user-ready
 
     // Never leak raw 5xx internals to users; the body is still available.
     final message = type == ApiErrorType.server
@@ -185,6 +207,7 @@ class ApiException implements Exception {
       type: type,
       message: message,
       body: body,
+      code: code,
     );
   }
 
@@ -524,7 +547,7 @@ class ApiClient {
 
     // Logger first: it sees every request, response and error (including the
     // first 401 that the auth interceptor later recovers from).
-    if (AppConfig.showLogs) {
+    if (AppConfig.testMode) {
       d.interceptors.add(_ApiLogInterceptor());
     }
 
@@ -544,7 +567,23 @@ class ApiClient {
         }
       }
 
+      // Device identity on EVERY request (server binds / checks it).
+      try {
+        options.headers.addAll(await DeviceIdService.instance.headers());
+      } catch (_) {}
+
       handler.next(options);
+    },
+
+    // ── Login from a device that isn't the registered one -> dialog ───────
+    onResponse: (response, handler) {
+      final d = response.data;
+      if (response.requestOptions.path.endsWith('/auth/login') &&
+          d is Map &&
+          d['device_allowed'] == false) {
+        _showDeviceBlocked(delay: const Duration(milliseconds: 900));
+      }
+      handler.next(response);
     },
 
     // ── 401 → refresh once → retry; 403 → verify screen ───────────────────
@@ -554,7 +593,12 @@ class ApiClient {
       final needsAuth = req.extra['auth'] != false;
 
       if (status == 403 && needsAuth) {
-        _goToVerify();
+        final (code, _) = ApiException.codedDetail(error.response?.data);
+        if (code == 'DEVICE_MISMATCH' || code == 'DEVICE_ID_MISSING') {
+          _showDeviceBlocked();          // dialog instead of the verify screen
+        } else if (code == null) {
+          _goToVerify();                  // original behaviour
+        }
         return handler.next(error);
       }
 
@@ -717,7 +761,7 @@ class ApiClient {
     try {
       await _storage.clear();
 
-      if (AppConfig.showLogs) log('redirect to login', name: 'API');
+      if (AppConfig.testMode) log('redirect to login', name: 'API');
 
       navigatorKey.currentState?.pushNamedAndRemoveUntil(
         '/login',
@@ -726,6 +770,27 @@ class ApiClient {
     } finally {
       Future.delayed(const Duration(seconds: 2), () => _redirecting = false);
     }
+  }
+
+  bool _deviceDialogOpen = false;
+
+  /// Shows the "this device isn't allowed" dialog once (guarded against repeats).
+  void _showDeviceBlocked({Duration delay = Duration.zero}) {
+    if (_deviceDialogOpen) return;
+    _deviceDialogOpen = true;
+    Future.delayed(delay, () async {
+      try {
+        final ctx = navigatorKey.currentContext;
+        if (ctx == null) return;
+        final p = DeviceSecurityProvider();
+        await p.check();
+        if (p.allowed) return;
+        if (!ctx.mounted) return;
+        await showDeviceBlockedDialog(ctx, p);
+      } finally {
+        _deviceDialogOpen = false;
+      }
+    });
   }
 
   void _goToVerify() {
@@ -947,7 +1012,7 @@ class ApiClient {
 
         final wait = retryDelay * attempt;
 
-        if (AppConfig.showLogs) {
+        if (AppConfig.testMode) {
           log(
             '[postMultipart] $path attempt $attempt failed '
                 '(${e.type.name}, status=${e.statusCode}) — retrying in '

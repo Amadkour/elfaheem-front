@@ -7,6 +7,7 @@
 //      `availableQualities` computed getter returns all playable variants.
 
 import 'package:flutter_education_app/utils/helpers.dart';
+import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/utils/widget/rating_widget.dart';
 
 enum SessionMaterialType { image, video, pdf, document, link,recorded,recording }
@@ -107,6 +108,10 @@ class SessionMaterialModel {
   final String? audioMediumKey;
   final int?    audioMediumSize;
 
+  /// True for videos: the list endpoint sends NO url — the player must call
+  /// POST /sessions/{sessionId}/materials/{id}/play first (counts the view).
+  final bool requiresPlay;
+
   const SessionMaterialModel({
     required this.id,
     required this.sessionId,
@@ -133,7 +138,32 @@ class SessionMaterialModel {
     this.audioMediumUrl,
     this.audioMediumKey,
     this.audioMediumSize,
+    this.requiresPlay = false,
   });
+
+  /// Copy of this material with the URLs returned by the /play endpoint.
+  SessionMaterialModel withPlayData(Map<String, dynamic> j) {
+    String? u(String k) {
+      final v = j[k] as String?;
+      if (v == null || v.isEmpty) return null;
+      // protected videos come back as a relative /api/v1/stream/<token> path
+      return v.startsWith('/') ? '${ApiClient().baseUrl}$v' : v;
+    }
+    final primary = u('url');
+    return SessionMaterialModel(
+      id: id, sessionId: sessionId, name: name, description: description,
+      type: type, fileSize: fileSize, key: key, order: order,
+      createdAt: createdAt, completed: completed, rateSummary: rateSummary,
+      urlHigh: u('url_high') ?? primary,
+      urlMedium: u('url_medium') ?? primary,
+      urlLow: u('url_low') ?? primary,
+      fileSizeHigh: fileSizeHigh, fileSizeMedium: fileSizeMedium, fileSizeLow: fileSizeLow,
+      audioUrl: u('audio_url'), audioKey: audioKey, audioSize: audioSize,
+      audioMediumUrl: u('audio_medium_url'), audioMediumKey: audioMediumKey,
+      audioMediumSize: audioMediumSize,
+      requiresPlay: false,
+    );
+  }
 
   // ── JSON deserialisation ──────────────────────────────────────────────────
 
@@ -166,6 +196,7 @@ class SessionMaterialModel {
       audioMediumUrl:  json['audio_medium_url']   as String?,
       audioMediumKey:  json['audio_medium_key']   as String?,
       audioMediumSize: json['audio_medium_size']  as int?,
+      requiresPlay:    json['requires_play'] as bool? ?? false,
     );
   }
 

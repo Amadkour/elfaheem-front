@@ -20,7 +20,6 @@ import '../features/student/courses/my_courses/my_courses_provider.dart';
 import '../features/student/home/home_provider.dart';
 import 'package:nested/nested.dart';
 import '../features/student/reward/rewards_provider.dart';
-import '../features/student/sessions/sessions_provider.dart';
 import '../features/teacher/home/teacher_home_provider.dart';
 import '../features/teacher/schedules/schedules_provider.dart';
 import '../features/teacher/sessions/students/course_student_provider.dart';
@@ -96,9 +95,6 @@ List<SingleChildWidget> appProviders({
   ChangeNotifierProvider<CoursesProvider>(create: (_) => CoursesProvider()),
   ChangeNotifierProvider<RewardsProvider>(create: (_) => RewardsProvider()),
   ChangeNotifierProvider<HomeProvider>(create: (_) => HomeProvider()),
-  ChangeNotifierProvider<StudentSessionsProvider>(
-    create: (_) => StudentSessionsProvider(),
-  ),
   ChangeNotifierProvider<EnrolledStudentsProvider>(
     create: (_) => EnrolledStudentsProvider(api: api),
   ),

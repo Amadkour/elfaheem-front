@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../../config/app_config.dart';
 import '../../../config/theme/app_theme.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_network_image.dart';
@@ -56,33 +57,33 @@ class _EnrollView extends StatelessWidget {
         EnrollStep.method => const _MethodStep(key: ValueKey('method')),
         EnrollStep.verifying => const PaymentVerifyingView(key: ValueKey('verifying')),
         EnrollStep.pending => PaymentResultView(
-          key: const ValueKey('pending'),
-          kind: ResultKind.pending,
-          title: enroll.pendingIsManualReview
-              ? ResultCopy.pendingReviewTitle
-              : ResultCopy.pendingTitle,
-          message: enroll.pendingIsManualReview
-              ? ResultCopy.pendingReviewMessage
-              : ResultCopy.pendingMessage,
-          primaryLabel: 'العودة للرئيسية',
-          onPrimary: () => popToHome(context),
-          // Manual-transfer review only: let the student withdraw the
-          // pending proof and go send a corrected one right away, instead
-          // of waiting for the teacher to reject it first.
-          secondaryLabel: enroll.pendingIsManualReview ? 'إرسال الطلب مرة أخرى' : null,
-          onSecondary: ()  async {
-            await enroll.loadGatewayConfig();
-            await  enroll.ensureQuote();
-            enroll.setStep(EnrollStep.method);
+            key: const ValueKey('pending'),
+            kind: ResultKind.pending,
+            title: enroll.pendingIsManualReview
+                ? ResultCopy.pendingReviewTitle
+                : ResultCopy.pendingTitle,
+            message: enroll.pendingIsManualReview
+                ? ResultCopy.pendingReviewMessage
+                : ResultCopy.pendingMessage,
+            primaryLabel: 'back_to_home'.tr,
+            onPrimary: () => popToHome(context),
+            // Manual-transfer review only: let the student withdraw the
+            // pending proof and go send a corrected one right away, instead
+            // of waiting for the teacher to reject it first.
+            secondaryLabel: enroll.pendingIsManualReview ? 'resend_transfer_request'.tr : null,
+            onSecondary: ()  async {
+              await enroll.loadGatewayConfig();
+              await  enroll.ensureQuote();
+              enroll.setStep(EnrollStep.method);
 
-          }
+            }
         ),
         EnrollStep.success => PaymentResultView(
           key: const ValueKey('success'),
           kind: ResultKind.success,
-          title: 'تم بنجاح! 🎉',
-          message: 'تم تفعيل الكورس. يمكنك البدء الآن!',
-          primaryLabel: 'ابدأ التعلم الآن',
+          title: 'enroll_success_title'.tr,
+          message: 'enroll_success_message'.tr,
+          primaryLabel: 'start_learning_now'.tr,
           onPrimary: () => popToHome(context),
         ),
         EnrollStep.failed => PaymentResultView(
@@ -90,9 +91,9 @@ class _EnrollView extends StatelessWidget {
           kind: ResultKind.failed,
           title: enroll.manualTransferRejected ? ResultCopy.rejectedTitle : ResultCopy.failedTitle,
           message: enroll.failureReason ?? ResultCopy.failedFallback,
-          primaryLabel: enroll.manualTransferRejected ? 'إرسال الطلب مرة أخرى' : 'حاول مرة أخرى',
+          primaryLabel: enroll.manualTransferRejected ? 'resend_transfer_request'.tr : 'try_again_payment'.tr,
           onPrimary: enroll.backToMethod,
-          secondaryLabel: 'العودة للرئيسية',
+          secondaryLabel: 'back_to_home'.tr,
           onSecondary: () => popToHome(context),
         ),
       },
@@ -114,14 +115,14 @@ class _MethodStep extends StatelessWidget {
     final quote = enroll.quote;
 
     final label = enroll.isFree
-        ? 'سجّل مجاناً الآن'
+        ? 'enroll_free_now'.tr
         : quote == null
-        ? 'متابعة'
-        : 'ادفع ${quote.fmt(quote.total)} ${enroll.currencySymbol}';
+        ? 'continue'.tr
+        : '${'pay_action'.tr} ${quote.fmt(quote.total)} ${enroll.currencySymbol}';
 
     return CenteredBody(
       child: Column(children: [
-        enrollAppBar(enroll.isFree ? 'تسجيل في الكورس' : 'إتمام الدفع'),
+        enrollAppBar(enroll.isFree ? 'enroll_course_title'.tr : 'complete_payment_title'.tr),
         Expanded(
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
@@ -218,7 +219,7 @@ class _PriceBadge extends StatelessWidget {
         border: Border.all(color: tone.withValues(alpha: .3)),
       ),
       child: Text(
-        isFree ? 'مجاني' : '${price.toStringAsFixed(2)} $currencySymbol',
+        isFree ? 'free'.tr : '${price.toStringAsFixed(2)} $currencySymbol',
         style: c.label.copyWith(color: tone, fontWeight: FontWeight.w800, fontSize: 12),
       ),
     );
@@ -237,7 +238,7 @@ class _TypeTag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(color: tone.withValues(alpha: .08), borderRadius: BorderRadius.circular(6)),
-      child: Text(isLive ? '🔴 مباشر' : '▶ مسجّل',
+      child: Text(isLive ? 'type_tag_live'.tr : 'type_tag_recorded'.tr,
           style: c.caption.copyWith(color: tone, fontWeight: FontWeight.w700, fontSize: 11)),
     );
   }
@@ -270,9 +271,9 @@ class _FreeCourseBanner extends StatelessWidget {
         const SizedBox(width: 16),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('هذا الكورس مجاني! 🎉', style: c.h3.copyWith(color: c.success)),
+            Text('free_course_banner_title'.tr, style: c.h3.copyWith(color: c.success)),
             const SizedBox(height: 4),
-            Text('اضغط "سجّل مجاناً الآن" للحصول على وصول فوري.', style: c.caption),
+            Text('free_banner_subtitle'.tr, style: c.caption),
           ]),
         ),
       ]),
@@ -310,7 +311,7 @@ class _PaymentMethodPicker extends StatelessWidget {
           child: const Icon(Icons.payment_rounded, size: 18, color: Colors.white),
         ),
         const SizedBox(width: 10),
-        Text('طريقة الدفع', style: c.h3.copyWith(fontSize: 15)),
+        Text('payment_method'.tr, style: c.h3.copyWith(fontSize: 15)),
       ]),
       const SizedBox(height: 14),
       // if (enroll.supportsSavedCards)
@@ -329,8 +330,8 @@ class _PaymentMethodPicker extends StatelessWidget {
           selected: enroll.selectedCard == null,
           icon: Icons.add_card_rounded,
           iconColor: _kNewCardColor,
-          title: 'بطاقة ائتمانية / مدى جديدة',
-          subtitle: 'مدى · فيزا · ماستركارد · PCI-DSS',
+          title: 'new_card_title'.tr,
+          subtitle: 'new_card_subtitle'.tr,
           customBadge: const _SecureBadge(),
           onTap: enroll.selectNewCard,
         ),
@@ -339,8 +340,8 @@ class _PaymentMethodPicker extends StatelessWidget {
           selected: enroll.selectedManualMethod == 'bank_transfer',
           icon: Icons.account_balance_rounded,
           iconColor: const Color(0xFF2E7D32),
-          title: 'تحويل بنكي',
-          subtitle: 'حوّل يدوياً ثم ارفع صورة الإيصال',
+          title: 'transfer_bank_title'.tr,
+          subtitle: 'bank_transfer_subtitle'.tr,
           onTap: () => enroll.selectManualMethod('bank_transfer'),
         ),
       if (enroll.gateway?.instapayEnabled ?? false)
@@ -348,8 +349,8 @@ class _PaymentMethodPicker extends StatelessWidget {
           selected: enroll.selectedManualMethod == 'instapay',
           icon: Icons.qr_code_2_rounded,
           iconColor: const Color(0xFF6A1B9A),
-          title: 'إنستاباي',
-          subtitle: 'حوّل عبر إنستاباي ثم ارفع صورة الإيصال',
+          title: 'transfer_instapay_title'.tr,
+          subtitle: 'instapay_subtitle'.tr,
           onTap: () => enroll.selectManualMethod('instapay'),
         ),
     ]);
@@ -369,7 +370,7 @@ class _SecureBadge extends StatelessWidget {
     child: Row(mainAxisSize: MainAxisSize.min, children: [
       const Icon(Icons.lock_rounded, size: 9, color: Colors.green),
       const SizedBox(width: 3),
-      Text('آمن',
+      Text('secure_badge'.tr,
           style: TextStyle(
               fontSize: 10, fontWeight: FontWeight.w700, color: Colors.green.shade700, fontFamily: 'bahji')),
     ]),

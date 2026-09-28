@@ -199,7 +199,7 @@ class _FeeBreakdownCardState extends State<FeeBreakdownCard> {
                 const SizedBox(height: 14),
                 _FeeRow(label: 'course_price'.tr, value: q.fmt(q.coursePrice), icon: Icons.school_rounded),
                 _FeeRow(label: 'platform_fees'.tr, value: q.fmt(q.platformFee), icon: Icons.store_rounded),
-                _FeeRow(label: 'VAT', value: q.fmt(q.vatOnPlatform), icon: Icons.receipt_rounded),
+                _FeeRow(label: 'VAT'.tr, value: q.fmt(q.vatOnPlatform), icon: Icons.receipt_rounded),
                 _FeeRow(
                   label: 'gateway_fees'.tr,
                   value: q.fmt(q.gatewayFee),
@@ -210,7 +210,7 @@ class _FeeBreakdownCardState extends State<FeeBreakdownCard> {
                 Divider(color: c.divider, height: 1),
                 const SizedBox(height: 12),
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  Text('الإجمالي', style: c.h2.copyWith(fontSize: 16)),
+                  Text('total_label'.tr, style: c.h2.copyWith(fontSize: 16)),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                     decoration: BoxDecoration(
@@ -272,9 +272,9 @@ class PaymentVerifyingView extends StatelessWidget {
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         const SizedBox(width: 64, height: 64, child: AppLoadingIndicator()),
         const SizedBox(height: 24),
-        Text('جارٍ تأكيد الدفع…', style: c.h2.copyWith(fontSize: 18), textAlign: TextAlign.center),
+        Text('verifying_payment_title'.tr, style: c.h2.copyWith(fontSize: 18), textAlign: TextAlign.center),
         const SizedBox(height: 8),
-        Text('الرجاء الانتظار قليلاً.', style: c.caption, textAlign: TextAlign.center),
+        Text('verifying_payment_subtitle'.tr, style: c.caption, textAlign: TextAlign.center),
       ]),
     );
   }
@@ -377,24 +377,22 @@ class _PaymentResultViewState extends State<PaymentResultView> with SingleTicker
 
 /// Copy for the three result kinds, shared so both flows say the same thing.
 class ResultCopy {
-  static const pendingTitle = 'الدفع قيد المعالجة ⏳';
-  static const pendingMessage = 'تم استلام طلبك. سيُفعَّل كورسك تلقائياً خلال دقائق.';
+  static String get pendingTitle => 'payment_pending_title'.tr;
+  static String get pendingMessage => 'payment_pending_message'.tr;
 
   // Shown instead of the pair above when the student already has a manual
   // transfer (bank/InstaPay) proof awaiting teacher review for this course —
   // see EnrollmentProvider.pendingIsManualReview.
-  static const pendingReviewTitle = 'طلبك قيد المراجعة ⏳';
-  static const pendingReviewMessage =
-      'لديك طلب دفع (تحويل بنكي / إنستاباي) قيد المراجعة حالياً. '
-      'سيقوم المعلم بمراجعته وسيتم تفعيل الكورس أو إشعارك فور الرد.';
+  static String get pendingReviewTitle => 'payment_pending_review_title'.tr;
+  static String get pendingReviewMessage => 'payment_pending_review_message'.tr;
 
-  static const failedTitle = 'فشلت عملية الدفع';
-  static const failedFallback = 'حدث خطأ. الرجاء المحاولة مرة أخرى.';
+  static String get failedTitle => 'payment_failed_title'.tr;
+  static String get failedFallback => 'payment_failed_fallback'.tr;
 
   // Shown instead of failedTitle when EnrollStep.failed was reached because
   // a teacher rejected a manual transfer — see
   // EnrollmentProvider.manualTransferRejected.
-  static const rejectedTitle = 'تم رفض طلب الدفع ❌';
+  static String get rejectedTitle => 'payment_rejected_title'.tr;
 }
 
 // ── Payment-status badge (course details, next to the enroll button) ───────────
@@ -498,7 +496,7 @@ class _ManualTransferStatusBannerState extends State<ManualTransferStatusBanner>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isRejected ? 'تم رفض طلب الدفع السابق' : 'طلب الدفع الخاص بك قيد المراجعة',
+                  isRejected ? 'transfer_rejected_banner_title'.tr : 'transfer_pending_banner_title'.tr,
                   style: c.label.copyWith(color: tone, fontWeight: FontWeight.w800),
                 ),
                 if (isRejected && (_rejectionReason?.isNotEmpty ?? false)) ...[
@@ -509,7 +507,7 @@ class _ManualTransferStatusBannerState extends State<ManualTransferStatusBanner>
                 GestureDetector(
                   onTap: widget.onRetry,
                   child: Text(
-                    isRejected ? 'إرسال الطلب مرة أخرى' : 'عرض تفاصيل الطلب',
+                    isRejected ? 'resend_transfer_request'.tr : 'view_request_details'.tr,
                     style: c.label.copyWith(
                       color: tone,
                       fontWeight: FontWeight.w800,

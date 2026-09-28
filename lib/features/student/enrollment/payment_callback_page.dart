@@ -35,9 +35,11 @@
 library;
 
 import 'package:flutter/material.dart';
+import '../../../config/app_config.dart';
 import '../../../config/theme/app_theme.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+
 class PaymentCallbackPage extends StatefulWidget {
   const PaymentCallbackPage({super.key});
   @override
@@ -109,23 +111,23 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage>
     switch (status) {
       case 'paid':
         _cbState = _CbState.success;
-        _title   = 'تم الدفع بنجاح! 🎉';
-        _message = 'تم تأكيد دفعتك وتفعيل الكورس. يمكنك البدء الآن!';
+        _title   = 'payment_success_title'.tr;
+        _message = 'payment_success_message'.tr;
       case 'initiated':
         _cbState = _CbState.pending;
-        _title   = 'الدفع قيد المعالجة ⏳';
-        _message = 'تم استلام طلبك. سيُفعَّل كورسك تلقائياً خلال دقائق.';
+        _title   = 'payment_pending_title'.tr;
+        _message = 'payment_pending_message'.tr;
       default:
         _cbState = _CbState.failed;
-        _title   = 'فشلت عملية الدفع';
-        _message = _humanMessage(message) ?? 'لم يتم إتمام الدفع. الرجاء المحاولة مرة أخرى.';
+        _title   = 'payment_failed_title'.tr;
+        _message = _humanMessage(message) ?? 'payment_failed_message_generic'.tr;
     }
   }
 
   String? _humanMessage(String? raw) => switch (raw) {
-    'session_not_found' => 'انتهت صلاحية الجلسة. الرجاء المحاولة من جديد.',
-    'amount_mismatch'   => 'مبلغ الدفع غير متطابق. تواصل مع الدعم.',
-    'no_payment_id'     => 'معرّف الدفع مفقود. الرجاء المحاولة مرة أخرى.',
+    'session_not_found' => 'payment_error_session_expired'.tr,
+    'amount_mismatch'   => 'payment_error_amount_mismatch'.tr,
+    'no_payment_id'     => 'payment_error_no_payment_id'.tr,
     null                => null,
     _                   => raw,
   };
@@ -190,8 +192,8 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage>
 
                   _GradBtn(
                     label: _cbState == _CbState.success
-                        ? 'ابدأ التعلم الآن'
-                        : 'العودة للرئيسية',
+                        ? 'start_learning_now'.tr
+                        : 'back_to_home'.tr,
                     c1: c1, c2: c2,
                     onTap: _goHome,
                   ),
@@ -208,7 +210,7 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage>
                             borderRadius: BorderRadius.circular(30)),
                         side: BorderSide(color: c.divider),
                       ),
-                      child: Text('حاول مرة أخرى',
+                      child: Text('try_again_payment'.tr,
                           style: c.label.copyWith(color: c.textMedium)),
                     ),
                   ],

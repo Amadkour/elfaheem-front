@@ -53,6 +53,9 @@ dependencies:
   # Dart SDKs). Used only inside web_notification_web.dart.
   web: ^1.1.0
   linkify: ^5.0.0
+  flutter_secure_storage: ^10.3.4
+  android_id: ^0.5.2+1
+  screen_protector: ^1.5.3
 dependency_overrides:
   flutter_webrtc:
     git:

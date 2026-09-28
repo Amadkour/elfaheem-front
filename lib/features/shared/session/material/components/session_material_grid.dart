@@ -153,7 +153,7 @@ class SessionMaterialGrid extends StatelessWidget {
     // For recording / recorded, surface the creation date as part of the title.
     final String displayName = isRecording
         ? 'recording_in_progress'
-              .tr // hardcoded "Recording in progress…"
+        .tr // hardcoded "Recording in progress…"
         : (isRecorded ? '${m.name}  •  ${_formatDate(m.createdAt)}' : m.name);
 
     return GestureDetector(
@@ -194,7 +194,7 @@ class SessionMaterialGrid extends StatelessWidget {
                   ),
                 )
               else if (isRecording)
-                // Pulsing red strip for active recording
+              // Pulsing red strip for active recording
                 Container(
                   height: 3,
                   decoration: BoxDecoration(
@@ -216,10 +216,10 @@ class SessionMaterialGrid extends StatelessWidget {
                     isRecording
                         ? _RecordingSpinnerIcon(color: color)
                         : MaterialIconWidget(
-                            icon: icon,
-                            color: color,
-                            isCompleted: isCompleted,
-                          ),
+                      icon: icon,
+                      color: color,
+                      isCompleted: isCompleted,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(
@@ -259,7 +259,7 @@ class SessionMaterialGrid extends StatelessWidget {
                                   if (isRecording)
                                     _LiveDotBadge(color: color)
                                   else if (isRecorded)
-                                    // Show formatted date for recorded items
+                                  // Show formatted date for recorded items
                                     Text(
                                       _formatDate(m.createdAt),
                                       style: context.colors.caption.copyWith(
@@ -338,14 +338,14 @@ class SessionMaterialGrid extends StatelessWidget {
                             ),
                             child: isCompleted
                                 ? const Padding(
-                                    key: ValueKey('check'),
-                                    padding: EdgeInsets.only(right: 5),
-                                    child: Icon(
-                                      Icons.check_circle_rounded,
-                                      size: 15,
-                                      color: Color(0xFF00C48C),
-                                    ),
-                                  )
+                              key: ValueKey('check'),
+                              padding: EdgeInsets.only(right: 5),
+                              child: Icon(
+                                Icons.check_circle_rounded,
+                                size: 15,
+                                color: Color(0xFF00C48C),
+                              ),
+                            )
                                 : const SizedBox.shrink(key: ValueKey('empty')),
                           ),
                           Icon(
@@ -389,10 +389,10 @@ class SessionMaterialGrid extends StatelessWidget {
   // ── Tap handler ────────────────────────────────────────────────────────────
 
   Future<void> _onTapMaterial(
-    BuildContext context,
-    SessionMaterialModel m,
-    bool isCompleted,
-  ) async {
+      BuildContext context,
+      SessionMaterialModel m,
+      bool isCompleted,
+      ) async {
     // Belt-and-braces: the card that hosts this grid already blocks
     // expansion for a locked session, but guard the actual open action too
     // in case this grid is ever reached another way.
@@ -406,11 +406,13 @@ class SessionMaterialGrid extends StatelessWidget {
       );
       return;
     }
-    if (m.urlLow == null) {
+    // Protected videos arrive WITHOUT a url (m.requiresPlay): the player fetches
+    // a device-bound stream link via POST .../play, which also counts the view.
+    if (!m.requiresPlay && (m.urlLow == null || m.urlLow!.isEmpty)) {
       Helpers.showMessage('video_not_available'.tr);
       return;
     }
-    final uri = Uri.parse(m.urlLow ?? m.urlHigh ?? m.urlHigh ?? '');
+    final uri = Uri.parse(m.urlLow ?? m.urlHigh ?? '');
 
     if ([
       SessionMaterialType.video,
@@ -692,21 +694,21 @@ class MaterialIconWidget extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: isCompleted
                 ? const LinearGradient(
-                    colors: [Color(0xFF00C48C), Color(0xFF00E5A0)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
+              colors: [Color(0xFF00C48C), Color(0xFF00E5A0)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            )
                 : null,
             color: isCompleted ? null : effectiveColor.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(10),
             boxShadow: isCompleted
                 ? [
-                    BoxShadow(
-                      color: const Color(0xFF00C48C).withValues(alpha: 0.30),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ]
+              BoxShadow(
+                color: const Color(0xFF00C48C).withValues(alpha: 0.30),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ]
                 : null,
           ),
           child: Icon(
