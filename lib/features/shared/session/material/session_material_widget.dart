@@ -29,6 +29,7 @@ import '../../../teacher/analysis/attendance/teacher_attendance_screen.dart';
 import '../../../teacher/analysis/exam/teacher_exam_hub_screen.dart';
 import '../../../teacher/home/teacher_models.dart';
 import '../../../teacher/sessions/sessions_provider.dart';
+import '../../course/studend_course_roadmap_section.dart';
 import 'components/add_material_sheet.dart';
 import 'components/session_material_grid.dart';
 import 'components/session_progress_section.dart';
@@ -37,7 +38,7 @@ class SessionMaterialCard extends StatefulWidget {
   final TeacherSessionItem session;
   final TeacherCourse course;
   final bool isTeacher;
-
+  final int sessionNumber;
   /// True when this session should be shown as locked to the current
   /// student — i.e. it's beyond what an unpaid preview or the student's
   /// current progress allows them to open. Ignored for teachers.
@@ -48,7 +49,7 @@ class SessionMaterialCard extends StatefulWidget {
     required this.session,
     required this.course,
     required this.isTeacher,
-    this.locked = false,
+    this.locked = false, required this.sessionNumber,
   });
 
   @override
@@ -361,6 +362,23 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
                 // Name + age
                 Row(
                   children: [
+                    Container(
+                      padding: EdgeInsets.all(10),
+                      margin: EdgeInsets.all(7),
+                      alignment: Alignment.centerLeft,
+                      decoration: BoxDecoration(
+                          gradient:LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: darkRoadmapGradientColors(context),
+                          ),
+                          shape: BoxShape.circle
+                      ),
+                      child: Text(
+                        widget.sessionNumber.toString(),
+                        style: context.colors.h3.copyWith(color: Colors.white,height: 0.5),
+                      ),
+                    ),
                     Flexible(
                       child: Text(
                         _session.name,
@@ -376,6 +394,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+
                   ],
                 ),
 

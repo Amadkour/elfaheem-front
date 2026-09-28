@@ -6,7 +6,10 @@ import 'dart:developer';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:crypto/crypto.dart' hide Hmac;   // add crypto: ^3.0.0 to pubspec.yaml if missing
+import 'package:cryptography/cryptography.dart';   // add cryptography: ^2.7.0 to pubspec.yaml
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';           // IOHttpClientAdapter — mobile only
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
@@ -503,6 +506,138 @@ class _ApiLogInterceptor extends Interceptor {
 // - AppConfig.showLogs == true logs request, response and error (secrets
 //   redacted).
 
+// ── Application-layer envelope encryption (X25519 ECDH -> AES-256-GCM) ──────
+// Encrypts JSON request/response bodies on top of TLS. This is meant to keep
+// a body unreadable to anything sitting between TLS termination and the app
+// itself (a misconfigured proxy, request logging that captures raw bodies) —
+// it is NOT a defense against a rooted device running Frida hooked directly
+// onto this very code, since the app must have the plaintext to work at all.
+//
+// UNVERIFIED: written from pubspec.yaml/requirements.txt, not compiled
+// against a real Flutter build. The most likely thing to need a small fix
+// against your installed `cryptography` version is the Hkdf.deriveKey named
+// parameter for the salt (called `nonce` below, matching the package's API
+// at the time this was written — check that against `flutter pub deps` if
+// it doesn't compile).
+//
+// Wire format matches helpers/encryption_middleware.py on the server:
+//   header: X-Enc-Session: <session_id>
+//   body:   {"n": "<base64 nonce>", "ct": "<base64 ciphertext+tag>"}
+
+class _EncSession {
+  _EncSession(this.sessionId, this.key);
+  final String sessionId;
+  final SecretKey key;
+}
+
+class _EncryptionInterceptor extends Interceptor {
+  static final _algo = AesGcm.with256bits();
+  static final _kdfAlgo = Hkdf(hmac: Hmac.sha256(), outputLength: 32);
+  static const _hkdfInfo = <int>[101, 108, 102, 97, 104, 101, 101, 109]; // 'elfaheem'
+
+  _EncSession? _session;
+  Future<_EncSession>? _handshake;
+
+  bool _skips(RequestOptions o) =>
+      o.path.contains('/security/handshake') || o.data is FormData;
+
+  Future<_EncSession> _ensureSession() {
+    final cached = _session;
+    if (cached != null) return Future.value(cached);
+    return _handshake ??= _handshakeNow().whenComplete(() => _handshake = null);
+  }
+
+  Future<_EncSession> _handshakeNow() async {
+    final algo = X25519();
+    final clientKeyPair = await algo.newKeyPair();
+    final clientPublic = await clientKeyPair.extractPublicKey();
+
+    // A bare Dio instance, deliberately NOT the pinned/encrypted one above —
+    // the handshake bootstraps the very session this interceptor is part of,
+    // so it can't depend on itself. TLS + AppConfig.baseUrl still apply.
+    final res = await Dio(BaseOptions(baseUrl: AppConfig.baseUrl)).post(
+      '/api/v1/security/handshake',
+      data: {'client_public_key': base64Encode(clientPublic.bytes)},
+    );
+    final serverPublicBytes = base64Decode(res.data['server_public_key'] as String);
+    final sessionId = res.data['session_id'] as String;
+
+    final serverPublic = SimplePublicKey(serverPublicBytes, type: KeyPairType.x25519);
+    final shared = await algo.sharedSecretKey(
+      keyPair: clientKeyPair,
+      remotePublicKey: serverPublic,
+    );
+    final sharedBytes = await shared.extractBytes();
+    final derived = await _kdfAlgo.deriveKey(
+      secretKey: SecretKey(sharedBytes),
+      nonce: const <int>[],   // HKDF salt — matches server's salt=None
+      info: _hkdfInfo,
+    );
+
+    final session = _EncSession(sessionId, derived);
+    _session = session;
+    return session;
+  }
+
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
+    if (_skips(options)) return handler.next(options);
+    try {
+      final session = await _ensureSession();
+      final plaintext = utf8.encode(jsonEncode(options.data));
+      final nonce = _algo.newNonce();
+      final box = await _algo.encrypt(plaintext, secretKey: session.key, nonce: nonce);
+      options.data = {
+        'n': base64Encode(nonce),
+        'ct': base64Encode(box.cipherText + box.mac.bytes),
+      };
+      options.headers['X-Enc-Session'] = session.sessionId;
+    } catch (_) {
+      // Handshake/network failure -> fall through unencrypted rather than
+      // hard-fail every request; auth + TLS + pinning still apply regardless.
+    }
+    handler.next(options);
+  }
+
+  @override
+  void onResponse(Response response, ResponseInterceptorHandler handler) async {
+    final data = response.data;
+    final session = _session;
+    if (data is Map && data.containsKey('n') && data.containsKey('ct') && session != null) {
+      try {
+        final nonce = base64Decode(data['n'] as String);
+        final ctFull = base64Decode(data['ct'] as String);
+        const macBytes = 16; // AES-GCM tag length
+        final mac = Mac(ctFull.sublist(ctFull.length - macBytes));
+        final cipherText = ctFull.sublist(0, ctFull.length - macBytes);
+        final box = SecretBox(cipherText, nonce: nonce, mac: mac);
+        final plain = await _algo.decrypt(box, secretKey: session.key);
+        response.data = jsonDecode(utf8.decode(plain));
+      } catch (_) {
+        // Leave response.data as the raw envelope; downstream parsing will
+        // fail visibly (a normal ApiException) rather than crash here.
+      }
+    }
+    handler.next(response);
+  }
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) async {
+    final data = err.response?.data;
+    if (data is Map && data['error'] == 'encryption_session_expired') {
+      _session = null;
+      try {
+        await _ensureSession();
+        final clone = await Dio(BaseOptions(baseUrl: AppConfig.baseUrl)).fetch(err.requestOptions);
+        return handler.resolve(clone);
+      } catch (_) {
+        // fall through to the normal error mapping below
+      }
+    }
+    handler.next(err);
+  }
+}
+
 class ApiClient {
 
   ApiClient._();
@@ -524,6 +659,27 @@ class ApiClient {
   Dio get dio => _dio;
 
   // ── Dio setup ─────────────────────────────────────────────────────────────
+
+  // ── Certificate pinning (mobile only — a browser tab controls its own TLS,
+  // nothing here can change that) ─────────────────────────────────────────
+  //
+  // Get the current pin:
+  //   openssl s_client -connect nextbrain.site:443 -servername nextbrain.site \
+  //     </dev/null 2>/dev/null | openssl x509 -outform der | sha256sum
+  //
+  // Whenever certbot renews the cert (~every 60–90 days) the hash changes.
+  // Add the NEW pin below a few days before the old cert expires, keep BOTH
+  // during the overlap, then delete the old one — otherwise the app goes
+  // dark for every user the moment it renews.
+  static const _pinnedCertSha256 = <String>[
+    '93d682e09f1a3f195d50f3ed70e80c4c45206e527f332d7bd36ea03045141402',
+    // 'REPLACE_WITH_NEXT_PIN_BEFORE_RENEWAL',
+  ];
+
+  static bool _certMatchesPin(X509Certificate cert, String host, int port) {
+    final hash = sha256.convert(cert.der).toString();
+    return _pinnedCertSha256.contains(hash);
+  }
 
   Dio _buildDio() {
     final d = Dio(
@@ -552,6 +708,30 @@ class ApiClient {
     }
 
     d.interceptors.add(_authInterceptor());
+
+    // Encrypts the JSON body of every request/response after auth headers
+    // are attached and before the (pinned, mobile-only) TLS connection is
+    // opened. Added last so its onRequest runs last (sees the final
+    // headers/data) and its onResponse runs first (decrypts before the
+    // logger above gets to inspect response.data).
+    d.interceptors.add(_EncryptionInterceptor());
+
+    // withTrustedRoots: false -> the OS/system CA list is NOT consulted at all,
+    // so a proxy's CA being "trusted" on this device (rooted/test builds) no
+    // longer matters. Every connection now falls through to our own check,
+    // which is the only thing deciding whether the cert is accepted.
+    // Web has no dart:io HttpClient, so this whole block is mobile-only.
+    // IMPORTANT: this Dio instance must only ever talk to _base's host. If any
+    // other code reuses `ApiClient().dio` against a different domain (MinIO,
+    // LiveKit REST, …), that request will now fail closed — by design, but
+    // worth grepping `apiClient.dio` / `ApiClient().dio` for before shipping.
+    if (!kIsWeb) {
+      (d.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
+        final client = HttpClient(context: SecurityContext(withTrustedRoots: false));
+        client.badCertificateCallback = _certMatchesPin;
+        return client;
+      };
+    }
 
     return d;
   }

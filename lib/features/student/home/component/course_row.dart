@@ -596,9 +596,11 @@ class _StudentRow extends StatelessWidget {
             icon: Icons.workspace_premium_rounded,
           ),
           const SizedBox(width: 3),
-          Text(
-            course.certificates.first.title,
-            style: context.colors.caption.copyWith(fontSize: 10),
+          Flexible(
+            child: Text(
+              course.certificates.first.title,
+              style: context.colors.caption.copyWith(fontSize: 10),
+            ),
           ),
         ],
         if (hasStudents && hasCertificate) Spacer(),

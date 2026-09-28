@@ -15,6 +15,7 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:provider/provider.dart';
 
@@ -100,7 +101,13 @@ class TeacherCourseScreenProvider extends BaseProvider {
         _sessions = (result['items'] as List)
           .map((e) => TeacherSessionItem.fromJson(e))
           .toList()
-        ..sort((a, b) => a.order.compareTo(b.order));
+          ..sort((a, b) {
+            int compareOrder = a.order.compareTo(b.order);
+            if (compareOrder == 0) {
+              return a.createdAt.compareTo(b.createdAt);
+            }
+            return compareOrder;
+          });
       }else {
         _sessions = [];
       }
@@ -281,6 +288,14 @@ class TeacherCourseScreenProvider extends BaseProvider {
     }
   }
 
+  /// Uploads STRAIGHT to MinIO (presign → PUT → confirm) instead of routing
+  /// the file through this API server — works for every material type
+  /// (video / pdf / image / document / anything else), not just video.
+  /// Previously this called `_api.postMultipart(.../from-upload, ...)`
+  /// directly, but that endpoint only ever accepted a JSON body
+  /// ({object_key, name, description, order}); posting multipart form data to
+  /// it made FastAPI reject the request with 422 before any of our code ran —
+  /// which is why every non-video file (pptx, txt, py, pdf, ...) failed.
   Future<SessionMaterialModel?> uploadFileMaterial({
     required int sessionId,
     required String fileName,
@@ -292,16 +307,56 @@ class TeacherCourseScreenProvider extends BaseProvider {
     _uploadingMaterial[sessionId] = true;
     notifyListeners();
     try {
-      final result = await _api.postMultipart(
+      // 1) Ask the API for a short-lived signed MinIO PUT url for this file.
+      final presign = await _api.post(
+        '/api/v1/sessions/$sessionId/materials/presign',
+        queryParams: {'filename': fileName},
+      );
+      if (presign is! Map<String, dynamic>) return null;
+      final uploadUrl = presign['upload_url'] as String;
+      final objectKey = presign['object_key'] as String;
+      final contentType =
+          presign['content_type'] as String? ?? 'application/octet-stream';
+
+      // 2) PUT the bytes DIRECTLY to MinIO. A bare Dio() on purpose: the
+      //    presigned URL's own signature is the only credential MinIO
+      //    checks, this isn't our API host, and reusing `_api.dio` would
+      //    also run its 401-refresh / device-header interceptors against a
+      //    request they were never meant to see.
+      try {
+        final put = await Dio().put(
+          uploadUrl,
+          data: fileBytes,
+          options: Options(
+            contentType: contentType,
+            headers: {'Content-Length': fileBytes.length},
+          ),
+        );
+        if (put.statusCode == null || put.statusCode! >= 300) {
+          throw ApiException(
+            statusCode: put.statusCode ?? 0,
+            message: 'تعذر رفع الملف، حاول مرة أخرى',
+          );
+        }
+      } on DioException catch (e) {
+        throw ApiException(
+          statusCode: e.response?.statusCode ?? 0,
+          message: 'تعذر رفع الملف، حاول مرة أخرى',
+        );
+      }
+
+      // 3) Confirm with the API: it re-verifies the file server-side (real
+      //    size / real type straight from MinIO, never trusting what the
+      //    client claims) and creates the SessionMaterial row.
+      final result = await _api.post(
         '/api/v1/sessions/$sessionId/materials/from-upload',
-        fields: {
-      'name': name,
-      'description': ?description,
-      'order': order.toString(),
-      },
-        fileField: 'file',
-        fileName: fileName,
-        fileBytes: fileBytes,
+        body: {
+          'object_key': objectKey,
+          'name': name,
+          if (description != null && description.isNotEmpty)
+            'description': description,
+          'order': order,
+        },
       );
       if (result is Map<String, dynamic>) {
         final mat = SessionMaterialModel.fromJson(result);
@@ -339,7 +394,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
       endpoint: '/api/v1/sessions/$sessionId/materials/from-upload',
       contentType: _guessVideoContentType(fileName),
       fields: {
-        'name': fileName,
+        'name': name,
         if (description != null && description.isNotEmpty)
           'description': description,
         'order': order.toString(),

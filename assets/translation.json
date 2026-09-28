@@ -4004,5 +4004,13 @@
   "incorrect_email_or_password": {
     "en": "Invalid credentials check E-MAIL or PASSWORD",
     "ar": "بياناتك غير صحيحة تحقق من البريد الاكتروني او كلمة المرور"
+  },
+  "not_found": {
+    "en": "This Page still loading, click to reload",
+    "ar": "الصفحة قيد التحميل حاول مرة اخري"
+  },
+  "make_all_read": {
+    "en": "Make All Read",
+    "ar": "تحديد الكل كمقروء"
   }
 }

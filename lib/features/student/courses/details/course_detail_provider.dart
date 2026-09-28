@@ -128,7 +128,14 @@ class CourseDetailProvider extends BaseProvider {
       final page = items
           .map((e) => SessionModel.fromJson(e as Map<String, dynamic>))
           .toList()
-        ..sort((a, b) => a.order.compareTo(b.order));
+        ..sort((a, b) {
+          int compareOrder = a.order.compareTo(b.order);
+          if (compareOrder == 0) {
+            return a.createdAt.compareTo(b.createdAt);
+          }
+          return compareOrder;
+        });
+
       _storeGates(items);
       sessions = [...sessions, ...page];
       _sessionsSkip += page.length;

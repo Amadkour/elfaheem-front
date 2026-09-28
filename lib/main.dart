@@ -250,13 +250,6 @@ PageRoute _fade(Widget page, RouteSettings settings) => PageRouteBuilder(
 // Premium splash screen — shown while the live theme is being fetched
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Branded splash shown between app launch and the first theme response.
-///
-/// IMPORTANT: colors here are hard-coded to match `flutter_native_splash`'s
-/// config in pubspec.yaml exactly (background #D4FEFD) — not read from
-/// AppTheme — so there is zero visible hand-off flash between the OS-level
-/// native splash and this Flutter splash, on every platform.
-/// If the brand palette ever changes, update both places together.
 class _PremiumLoadingScreen extends StatelessWidget {
   const _PremiumLoadingScreen();
 

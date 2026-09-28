@@ -56,6 +56,7 @@ List<Widget> buildSessionsSlivers(BuildContext context,
           itemCount: provider.sessions.length,
           itemBuilder: (_, i) => SessionMaterialCard(
             session: provider.sessions[i],
+            sessionNumber: i+1,
             course: course,
             isTeacher: true,
           ),

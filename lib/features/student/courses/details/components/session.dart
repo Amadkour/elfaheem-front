@@ -81,6 +81,7 @@ class SessionsTab extends StatelessWidget {
                   SessionMaterialCard(
                     session: session.toTeacher,
                     course: provider.course.toTeacherModel,
+                    sessionNumber: i+1,
                     isTeacher: false,
                     locked: !provider.isSessionUnlockedById(session.id),
                   ),

@@ -54,6 +54,11 @@ dependencies:
   web: ^1.1.0
   linkify: ^5.0.0
   flutter_secure_storage: ^10.3.4
+  # X25519 / AES-GCM / HKDF for the app-layer envelope encryption in
+  # api_client.dart. NOT the same package as `crypto` above (that one is
+  # hash-only — sha256 for certificate pinning); this one is a different
+  # pub.dev package and both are needed.
+  cryptography: ^2.7.0
   android_id: ^0.5.2+1
   screen_protector: ^1.5.3
 dependency_overrides:

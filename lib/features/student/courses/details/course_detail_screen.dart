@@ -39,11 +39,9 @@ void _openRecommendedCourse(BuildContext context, CourseSummary summary) {
 /// and by the payment-status banner's "send it again" action so both push
 /// the exact same route.
 Future<void> _openEnrollment(BuildContext context, CourseModel course) async {
-  await Navigator.of(context).push(
-    MaterialPageRoute(
-      builder:(_)=>  EnrollmentScreen(course: course),
-    ),
-  );
+  await Navigator.of(
+    context,
+  ).push(MaterialPageRoute(builder: (_) => EnrollmentScreen(course: course)));
   if (context.mounted) {
     await context.read<CourseDetailProvider>().refresh();
   }
@@ -78,12 +76,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       maxWith: 1000,
       child: provider.isLoading
           ? Center(
-        child: SizedBox(
-          width: context.width / 5,
-          height: context.width / 5,
-          child: AppLoadingIndicator(),
-        ),
-      )
+              child: SizedBox(
+                width: context.width / 5,
+                height: context.width / 5,
+                child: AppLoadingIndicator(),
+              ),
+            )
           : isWide
           ? _WebDetail(provider)
           : _MobileDetail(provider),
@@ -169,10 +167,10 @@ class _MobileDetail extends StatelessWidget {
                         child: CourseRoadmapSection(
                           currentCourseName: provider.course.name,
                           recentCompletedCourses:
-                          provider.course.recentCompletedCourses,
+                              provider.course.recentCompletedCourses,
                           nextCourses: provider.course.nextCourses,
                           recommendedCourses:
-                          provider.course.recommendedCourses,
+                              provider.course.recommendedCourses,
                           similarCourses: provider.course.similarCourses,
                           onTapCourse: (s) =>
                               _openRecommendedCourse(context, s),
@@ -263,7 +261,7 @@ class _WebDetail extends StatelessWidget {
                                     // Stars row
                                     Row(
                                       mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
                                         Spacer(),
 
@@ -271,7 +269,7 @@ class _WebDetail extends StatelessWidget {
                                           margin: EdgeInsets.all(10),
                                           decoration: BoxDecoration(
                                             gradient:
-                                            context.colors.accentGradient,
+                                                context.colors.accentGradient,
                                             borderRadius: BorderRadius.circular(
                                               10,
                                             ),
@@ -285,15 +283,15 @@ class _WebDetail extends StatelessWidget {
                                                         create: (_) =>
                                                             ComplaintProvider(),
                                                         child:
-                                                        NewComplaintScreen(
-                                                          courseTitle:
-                                                          provider
-                                                              .course
-                                                              .title,
-                                                          courseId: provider
-                                                              .course
-                                                              .id,
-                                                        ),
+                                                            NewComplaintScreen(
+                                                              courseTitle:
+                                                                  provider
+                                                                      .course
+                                                                      .title,
+                                                              courseId: provider
+                                                                  .course
+                                                                  .id,
+                                                            ),
                                                       ),
                                                 ),
                                               );
@@ -310,7 +308,7 @@ class _WebDetail extends StatelessWidget {
 
                                     Row(
                                       mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
+                                          MainAxisAlignment.spaceBetween,
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         RatingWidget(
@@ -325,13 +323,13 @@ class _WebDetail extends StatelessWidget {
                                           _HeroBadge(
                                             AppConfig.lang == 'ar'
                                                 ? provider
-                                                .course
-                                                .category!
-                                                .nameAr
+                                                      .course
+                                                      .category!
+                                                      .nameAr
                                                 : provider
-                                                .course
-                                                .category!
-                                                .nameEn,
+                                                      .course
+                                                      .category!
+                                                      .nameEn,
                                           ),
                                           //const SizedBox(height: 8),
                                         ],
@@ -372,15 +370,24 @@ class _WebDetail extends StatelessWidget {
                           child: CourseRoadmapSection(
                             currentCourseName: provider.course.name,
                             recentCompletedCourses:
-                            provider.course.recentCompletedCourses,
+                                provider.course.recentCompletedCourses,
                             nextCourses: provider.course.nextCourses,
                             recommendedCourses:
-                            provider.course.recommendedCourses,
+                                provider.course.recommendedCourses,
                             similarCourses: provider.course.similarCourses,
                             onTapCourse: (s) =>
                                 _openRecommendedCourse(context, s),
+                            onEnrollRoadmap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => RoadmapEnrollmentScreen(
+                                  courseId: int.parse(provider.course.id),
+                                  courseName: provider.course.name,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
+
                         const SliverToBoxAdapter(child: SizedBox(height: 32)),
                       ],
                     ),
@@ -432,19 +439,20 @@ class _WebSidebar extends StatelessWidget {
                   children: [
                     CoursePriceTag(
                       originalPrice: c.price,
-                      finalPrice: c.finalPrice??0,
-                      discountActive: c.discountActive??false,
+                      finalPrice: c.finalPrice ?? 0,
+                      discountActive: c.discountActive ?? false,
                       format: c.currency.format,
                       fontSize: 26,
                       originalFontSize: 14,
                     ),
-                    if (c.discountActive??false) ...[
+                    if (c.discountActive ?? false) ...[
                       const SizedBox(width: 10),
                       DiscountRibbon(percentage: c.discountPercentage ?? 0),
                     ],
                   ],
                 ),
-                if ((c.discountActive??false )&& c.discountEndsAt != null) ...[
+                if ((c.discountActive ?? false) &&
+                    c.discountEndsAt != null) ...[
                   const SizedBox(height: 6),
                   DiscountCountdown(endsAt: c.discountEndsAt!),
                 ],
@@ -452,17 +460,17 @@ class _WebSidebar extends StatelessWidget {
                 isEnrolled
                     ? Text('you_are_enrolled'.tr)
                     : Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Payment-status badge — pending review / rejected
-                    // — shown right above the enroll button.
-                    ManualTransferStatusBanner(
-                      courseId: c.id,
-                      onRetry: () => _openEnrollment(context, c),
-                    ),
-                    _EnrollButton(),
-                  ],
-                ),
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Payment-status badge — pending review / rejected
+                          // — shown right above the enroll button.
+                          ManualTransferStatusBanner(
+                            courseId: c.id,
+                            onRetry: () => _openEnrollment(context, c),
+                          ),
+                          _EnrollButton(),
+                        ],
+                      ),
                 const SizedBox(height: 16),
                 _WebCourseFacts(course: c),
               ],
@@ -802,12 +810,14 @@ class _EnrollButton extends StatelessWidget {
 
     final label = p.course.finalPrice == 0
         ? 'سجّل مجاناً الآن'
-        : 'انضم الآن — ${p.course.currency.format(p.course.finalPrice??0)}';
+        : 'انضم الآن — ${p.course.currency.format(p.course.finalPrice ?? 0)}';
 
     return _EnrollWrap(
       isWide: isWide,
       child: GestureDetector(
-        onTap: p.course.isEnrolled ? null : () => _openEnrollment(context, p.course),
+        onTap: p.course.isEnrolled
+            ? null
+            : () => _openEnrollment(context, p.course),
         child: Container(
           height: 52,
           decoration: BoxDecoration(
@@ -824,19 +834,19 @@ class _EnrollButton extends StatelessWidget {
           child: Center(
             child: p.course.isEnrolled
                 ? const SizedBox(
-              width: 24,
-              height: 24,
-              child: AppLoadingIndicator(),
-            )
+                    width: 24,
+                    height: 24,
+                    child: AppLoadingIndicator(),
+                  )
                 : Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 15,
-                fontFamily: 'bahji',
-              ),
-            ),
+                    label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      fontFamily: 'bahji',
+                    ),
+                  ),
           ),
         ),
       ),
@@ -854,7 +864,7 @@ class _EnrollWrap extends StatelessWidget {
   Widget build(BuildContext context) => isWide
       ? child
       : Padding(
-    padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-    child: SafeArea(top: false, child: child),
-  );
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: SafeArea(top: false, child: child),
+        );
 }
