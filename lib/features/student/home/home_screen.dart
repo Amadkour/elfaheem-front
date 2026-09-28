@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/category/categories_provider.dart';
 import 'package:flutter_education_app/features/category/categories_screen.dart';
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
@@ -304,6 +305,10 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
     _recalcSeconds();
     _tickTimer?.cancel();
     _tickTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if(context.read<AuthProvider>().isAuthenticated){
+        _tickTimer?.cancel();
+        return;
+      }
       if (_secondsLeft > 0) {
         if (mounted) setState(() => _secondsLeft -= 60);
       } else {
