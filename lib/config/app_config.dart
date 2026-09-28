@@ -10,7 +10,7 @@ class AppConfig {
   static const String baseUrl =
       'https://nextbrain.site/api';
   static String lang = 'ar';
-  static bool showLogs = false;
+  static bool testMode = false;
 
   /// Feature kill-switch list. This default is the OFFLINE FALLBACK only —
   /// ThemeConfigProvider overwrites this with the server-side list (cached
