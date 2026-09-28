@@ -465,6 +465,7 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
                   ],
 
                   const SizedBox(height: 20),
+
                   _SubmitButton(
                     saving: _saving,
                     enabled: _isValid,
@@ -1088,12 +1089,7 @@ class _SubmitButton extends StatelessWidget {
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 180),
               child: saving
-                  ? const SizedBox(
-                      key: ValueKey('loading'),
-                      width: 22,
-                      height: 22,
-                      child: AppLoadingIndicator(),
-                    )
+                  ? AppLoadingIndicator(showLogo: false,)
                   : Row(
                       key: const ValueKey('label'),
                       mainAxisSize: MainAxisSize.min,

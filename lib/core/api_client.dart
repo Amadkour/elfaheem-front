@@ -533,7 +533,12 @@ class _EncSession {
 class _EncryptionInterceptor extends Interceptor {
   static final _algo = AesGcm.with256bits();
   static final _kdfAlgo = Hkdf(hmac: Hmac.sha256(), outputLength: 32);
-  static const _hkdfInfo = <int>[101, 108, 102, 97, 104, 101, 101, 109]; // 'elfaheem'
+  // Must be byte-identical to services/crypto_session_service.py's
+  // _HKDF_INFO / _HKDF_SALT. Built with utf8.encode rather than a hardcoded
+  // byte list — a hand-typed list here is exactly how this broke the first
+  // time (wrong bytes, silent key mismatch, decrypt failures on both ends).
+  static final _hkdfInfo = utf8.encode('elfaheem-envelope-v1');
+  static final _hkdfSalt = utf8.encode('elfaheem-envelope-salt-v1');
 
   _EncSession? _session;
   Future<_EncSession>? _handshake;
@@ -555,12 +560,17 @@ class _EncryptionInterceptor extends Interceptor {
     // A bare Dio instance, deliberately NOT the pinned/encrypted one above —
     // the handshake bootstraps the very session this interceptor is part of,
     // so it can't depend on itself. TLS + AppConfig.baseUrl still apply.
+    // ignore: avoid_print
+    ////print('[ENC] client_public=${_hex(clientPublic.bytes)}');
+
     final res = await Dio(BaseOptions(baseUrl: AppConfig.baseUrl)).post(
       '/api/v1/security/handshake',
       data: {'client_public_key': base64Encode(clientPublic.bytes)},
     );
     final serverPublicBytes = base64Decode(res.data['server_public_key'] as String);
     final sessionId = res.data['session_id'] as String;
+    // ignore: avoid_print
+    ////print('[ENC] session_id=$sessionId server_public=${_hex(serverPublicBytes)}');
 
     final serverPublic = SimplePublicKey(serverPublicBytes, type: KeyPairType.x25519);
     final shared = await algo.sharedSecretKey(
@@ -568,16 +578,25 @@ class _EncryptionInterceptor extends Interceptor {
       remotePublicKey: serverPublic,
     );
     final sharedBytes = await shared.extractBytes();
+    // ignore: avoid_print
+   //print('[ENC] session_id=$sessionId shared_secret=${_hex(sharedBytes)}');
     final derived = await _kdfAlgo.deriveKey(
       secretKey: SecretKey(sharedBytes),
-      nonce: const <int>[],   // HKDF salt — matches server's salt=None
+      nonce: _hkdfSalt,   // HKDF salt — must match server's explicit _HKDF_SALT
       info: _hkdfInfo,
     );
+    final derivedBytes = await derived.extractBytes();
+    // ignore: avoid_print
+   //print('[ENC] session_id=$sessionId derived_key=${_hex(derivedBytes)}');
 
     final session = _EncSession(sessionId, derived);
     _session = session;
     return session;
   }
+
+  // REMOVE before shipping — debug only.
+  static String _hex(List<int> bytes) =>
+      bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
@@ -587,11 +606,14 @@ class _EncryptionInterceptor extends Interceptor {
       final plaintext = utf8.encode(jsonEncode(options.data));
       final nonce = _algo.newNonce();
       final box = await _algo.encrypt(plaintext, secretKey: session.key, nonce: nonce);
-      options.data = {
-        'n': base64Encode(nonce),
-        'ct': base64Encode(box.cipherText + box.mac.bytes),
-      };
+      final n = base64Encode(nonce);
+      final ct = base64Encode(box.cipherText + box.mac.bytes);
+      options.data = {'n': n, 'ct': ct};
       options.headers['X-Enc-Session'] = session.sessionId;
+      // REMOVE before shipping — this prints the plaintext body (passwords included).
+      // ignore: avoid_print
+     //print('[ENC] session_id=${session.sessionId} SENDING path=${options.path} '
+       //   'plaintext=${utf8.decode(plaintext)} n=$n ct_len=${ct.length}');
     } catch (_) {
       // Handshake/network failure -> fall through unencrypted rather than
       // hard-fail every request; auth + TLS + pinning still apply regardless.
@@ -604,6 +626,9 @@ class _EncryptionInterceptor extends Interceptor {
     final data = response.data;
     final session = _session;
     if (data is Map && data.containsKey('n') && data.containsKey('ct') && session != null) {
+      // ignore: avoid_print
+     //print('[ENC] session_id=${session.sessionId} RECEIVED path=${response.requestOptions.path} '
+         // 'n=${data['n']} ct_len=${(data['ct'] as String).length}');
       try {
         final nonce = base64Decode(data['n'] as String);
         final ctFull = base64Decode(data['ct'] as String);
@@ -613,7 +638,11 @@ class _EncryptionInterceptor extends Interceptor {
         final box = SecretBox(cipherText, nonce: nonce, mac: mac);
         final plain = await _algo.decrypt(box, secretKey: session.key);
         response.data = jsonDecode(utf8.decode(plain));
-      } catch (_) {
+        // ignore: avoid_print
+       //print('[ENC] session_id=${session.sessionId} DECRYPT OK response=${response.data}');
+      } catch (e) {
+        // ignore: avoid_print
+       //print('[ENC] session_id=${session.sessionId} DECRYPT FAILED error=$e');
         // Leave response.data as the raw envelope; downstream parsing will
         // fail visibly (a normal ApiException) rather than crash here.
       }
