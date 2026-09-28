@@ -482,10 +482,10 @@ class _AddBankFormState extends State<_AddBankForm> {
               ),
             ),
             const SizedBox(height: 22),
-            MyPrimaryButton(
+            PrimaryButton(
               label: 'save_bank_account_btn'.tr,
               isLoading: _saving,
-              onPressed: _save,
+              onPressed: _save
             ),
           ],
         ),

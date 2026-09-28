@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../config/theme/app_theme.dart';
 import '../../config/theme/theme_config_provider.dart';
+import '../../utils/widget/primary_button.dart';
 import 'auth_provider.dart';
 import '../../utils/helpers.dart';
 import 'register_screen.dart';
@@ -63,9 +64,11 @@ class _ForgetScreenState extends State<ForgetScreen> {
         .size
         .width > 800;
 
-    return BasePage(
-      appBar: isWide ?null:ScreenAppBar(title: 'forget_password'.tr),
-      child: isWide ? _buildWideLayout() : _buildNarrowLayout(),
+    return Scaffold(
+      body: BasePage(
+        appBar: isWide ?null:ScreenAppBar(title: 'forget_password'.tr),
+        child: isWide ? _buildWideLayout() : _buildNarrowLayout(),
+      ),
     );
   }
 
@@ -161,7 +164,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
           Row(
             children: [
               Icon(Icons.info_outline_rounded, size: 13,
-                color: context.colors.primaryDark,
+                color: context.colors.primary,
               ),
               const SizedBox(width: 6),
               Text(
@@ -169,7 +172,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
                 style: TextStyle(
                   fontFamily: 'tajawal',
                   fontSize: 12,
-                  color: context.colors.primaryDark,
+                  color: context.colors.primary,
                 ),
               ),
             ],

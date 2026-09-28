@@ -331,7 +331,7 @@ class _FilterTabs extends StatelessWidget {
                     border: active
                         ? Border(
                       bottom: BorderSide(
-                        color: context.colors.primaryDark,
+                        color: context.colors.primary,
                         width: 1,
                       ),
                     )
@@ -346,7 +346,7 @@ class _FilterTabs extends StatelessWidget {
                           icon,
                           size: 13,
                           color: active
-                              ? context.colors.primaryDark
+                              ? context.colors.primary
                               : context.colors.textLight,
                         ),
                         const SizedBox(width: 5),
@@ -354,7 +354,7 @@ class _FilterTabs extends StatelessWidget {
                           labelKey.tr,
                           style: context.colors.label.copyWith(
                             color: active
-                                ? context.colors.primaryDark
+                                ? context.colors.primary
                                 : context.colors.textLight,
                             fontWeight: active
                                 ? FontWeight.w700
@@ -837,7 +837,7 @@ class _CourseCardState extends State<_CourseCard> {
                   child: _ToolbarAction(
                     icon: Icons.edit_rounded,
                     label: 'edit'.tr,
-                    color: context.colors.primaryDark,
+                    color: context.colors.primary,
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => CourseFormScreen(course: c),
@@ -990,7 +990,7 @@ class _GlassChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? context.colors.primaryDark;
+    final c = color ?? context.colors.primary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(

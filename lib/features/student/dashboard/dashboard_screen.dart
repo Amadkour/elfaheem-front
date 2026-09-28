@@ -320,7 +320,7 @@ class UserChipButton extends StatelessWidget {
                         shape: BoxShape.circle,
                         color: context.colors.primary.withValues(alpha: 0.1),
                         border: Border.all(
-                            color: context.colors.primaryDark, width: 2.5),
+                            color: context.colors.primary, width: 2.5),
                       ),
                       child: ClipOval(
                           child: AppNetworkImage(

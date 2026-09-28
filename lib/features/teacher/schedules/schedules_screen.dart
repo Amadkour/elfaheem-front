@@ -1177,7 +1177,7 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
                       .copyWith(color: context.colors.danger)),
             ],
             const SizedBox(height: 24),
-            MyPrimaryButton(
+            PrimaryButton(
                 label: 'add-appointment'.tr,
                 isLoading: loading,
                 onPressed: _valid ? _submit : null),

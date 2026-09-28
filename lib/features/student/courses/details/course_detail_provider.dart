@@ -296,7 +296,7 @@ class CourseDetailProvider extends BaseProvider {
     if (r == null && hasError) {
       completedMaterialIds.remove(materialId);
       course.materialsCompleted += 1;
-      course.progress += (course.materialsCompleted) / course.materialsTotal;
+      course.progress += ((course.materialsCompleted) / course.materialsTotal).toInt();
       notifyListeners();
     }
   }
@@ -318,7 +318,7 @@ class CourseDetailProvider extends BaseProvider {
       completedSessionIds.remove(sessionId);
 
       course.materialsCompleted += 1;
-      course.progress += (course.materialsCompleted) / course.materialsTotal;
+      course.progress += ((course.materialsCompleted) / course.materialsTotal).toInt();
       notifyListeners();
     }
   }

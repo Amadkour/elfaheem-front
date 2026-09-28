@@ -34,11 +34,13 @@ import 'components/add_material_sheet.dart';
 import 'components/session_material_grid.dart';
 import 'components/session_progress_section.dart';
 import 'components/session_shared_widgets.dart';
+
 class SessionMaterialCard extends StatefulWidget {
   final TeacherSessionItem session;
   final TeacherCourse course;
   final bool isTeacher;
   final int sessionNumber;
+
   /// True when this session should be shown as locked to the current
   /// student — i.e. it's beyond what an unpaid preview or the student's
   /// current progress allows them to open. Ignored for teachers.
@@ -49,7 +51,8 @@ class SessionMaterialCard extends StatefulWidget {
     required this.session,
     required this.course,
     required this.isTeacher,
-    this.locked = false, required this.sessionNumber,
+    this.locked = false,
+    required this.sessionNumber,
   });
 
   @override
@@ -288,8 +291,14 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
           SessionExamButton(
             courseId: _session.courseId,
             sessionId: _session.id,
-            builder: (ctx, {required icon, required label, required color, required onTap}) =>
-                SessionActionBtn(
+            builder:
+                (
+                  ctx, {
+                  required icon,
+                  required label,
+                  required color,
+                  required onTap,
+                }) => SessionActionBtn(
                   icon: icon,
                   label: label,
                   color: color,
@@ -363,20 +372,23 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
                 Row(
                   children: [
                     Container(
-                      padding: EdgeInsets.all(10),
-                      margin: EdgeInsets.all(7),
-                      alignment: Alignment.centerLeft,
+                      margin: EdgeInsets.all(4),
+                      padding: EdgeInsets.fromLTRB(10, 10, 10, 5),
+                      alignment: Alignment.bottomCenter,
                       decoration: BoxDecoration(
-                          gradient:LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: darkRoadmapGradientColors(context),
-                          ),
-                          shape: BoxShape.circle
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomLeft,
+                          end: Alignment.topRight,
+                          colors: darkRoadmapGradientColors(context),
+                        ),
+                        shape: BoxShape.circle,
                       ),
                       child: Text(
-                        widget.sessionNumber.toString(),
-                        style: context.colors.h3.copyWith(color: Colors.white,height: 0.5),
+                        (widget.sessionNumber < 10 ? '0' : '') +
+                            widget.sessionNumber.toString(),
+                        textAlign: TextAlign.center,
+
+                        style: context.colors.h4.copyWith(color: Colors.white),
                       ),
                     ),
                     Flexible(
@@ -394,7 +406,6 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-
                   ],
                 ),
 
@@ -408,8 +419,6 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
-
-                const SizedBox(height: 6),
 
                 // Type pill + duration
                 Row(
@@ -520,13 +529,15 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
             top: 10,
             child: Center(
               child: Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 9,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.7),
                   borderRadius: BorderRadius.circular(30),
                 ),
-                child:  Icon(Icons.lock_rounded, color: Colors.white, size: 16),
+                child: Icon(Icons.lock_rounded, color: Colors.white, size: 16),
               ),
             ),
           ),

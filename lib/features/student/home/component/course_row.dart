@@ -623,7 +623,7 @@ class _StudentRow extends StatelessWidget {
 
 // ── Progress bar ─────────────────────────────────────────────────────────────
 class _ProgressBar extends StatelessWidget {
-  final double progress;
+  final int progress;
 
   const _ProgressBar({required this.progress});
 

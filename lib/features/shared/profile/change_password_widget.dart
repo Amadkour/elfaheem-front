@@ -101,7 +101,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       case 1: return c.danger;
       case 2: return c.warning;
       case 3: return c.success;
-      case 4: return c.primaryDark;
+      case 4: return c.primary;
       default: return c.divider;
     }
   }
@@ -426,7 +426,7 @@ class _PasswordCard extends StatelessWidget {
           AnimatedOpacity(
             opacity: canSubmit ? 1.0 : 0.45,
             duration: const Duration(milliseconds: 200),
-            child: MyPrimaryButton(
+            child: PrimaryButton(
               label: 'change_password'.tr,
               isLoading: p.isLoading,
               onPressed:

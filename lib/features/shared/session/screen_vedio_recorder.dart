@@ -661,7 +661,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         gradient: RadialGradient(
           center: Alignment.topCenter,
           radius: 1.6,
-          colors: [c.primaryDark.withValues(alpha: 0.6), Colors.black],
+          colors: [c.primary.withValues(alpha: 0.6), Colors.black],
         ),
       ),
       child: Center(

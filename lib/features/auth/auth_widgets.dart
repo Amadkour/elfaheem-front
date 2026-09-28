@@ -196,7 +196,7 @@ class _SidebarFeature extends StatelessWidget {
           color: Colors.white.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Icon(icon, size: 16, color: const Color(0xFF93C5FD)),
+        child: Icon(icon, size: 16, color: Colors.white),
       ),
       const SizedBox(width: 12),
       Expanded(
@@ -230,19 +230,20 @@ class _TrustBadge extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 6,
-          height: 6,
-          decoration: const BoxDecoration(
+          width: 8,
+          height: 8,
+          decoration:  BoxDecoration(
             shape: BoxShape.circle,
-            color: Color(0xFF4ADE80),
+            color: context.colors.primary.withAlpha(100),
           ),
         ),
         const SizedBox(width: 6),
         Text(
           label,
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.7),
+            color: Colors.white,
             fontSize: 11,
+            fontWeight: FontWeight.w700,
             fontFamily: 'tajawal',
           ),
         ),
@@ -305,7 +306,7 @@ class IconTextField extends StatelessWidget {
             hintStyle: TextStyle(
               fontFamily: 'tajawal',
               fontSize: 14,
-              color: context.colors.textDark,
+              color: Colors.grey,
             ),
             filled: true,
             fillColor: context.colors.inputBg,
@@ -377,7 +378,7 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
           obscureText: _obscure,
           style: TextStyle(
             fontFamily: 'tajawal',
-            fontSize: 14,
+            fontSize: 16,
             color: context.colors.textDark,
           ),
           decoration: InputDecoration(
@@ -399,11 +400,11 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
                 color: const Color(0xFF9CA3AF),
               ),
             ),
-            hintText: '••••••••',
+            hintText: 'XXXXXXXX',
             hintStyle: TextStyle(
               fontFamily: 'tajawal',
               fontSize: 14,
-              color: context.colors.textDark,
+              color: Colors.grey,
             ),
             filled: true,
             fillColor: context.colors.inputBg,
@@ -431,67 +432,6 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
               (v == null || v.isEmpty) ? '${widget.label} is required' : null,
         ),
       ],
-    );
-  }
-}
-
-// ── 5. Primary button ─────────────────────────────────────────────────────────
-class PrimaryButton extends StatelessWidget {
-  final bool isLoading;
-  final bool enable;
-  final bool iconBefore;
-  final String label;
-  final IconData icon;
-  final VoidCallback? onPressed;
-
-  const PrimaryButton({
-    super.key,
-    required this.isLoading,
-    required this.label,
-    required this.icon,
-    this.onPressed,
-    this.enable = true,
-    this.iconBefore = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 52,
-      child: GestureDetector(
-        onTap: isLoading || !enable ? null : onPressed,
-        child: Container(
-          height: 36,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: BoxDecoration(
-            gradient: context.colors.accentGradient,
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: context.colors.primaryShadow,
-          ),
-          child: isLoading
-              ? AppLoadingIndicator(showLogo: false, size: 50)
-              : Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  textDirection:iconBefore? TextDirection.ltr:TextDirection.rtl,
-                  children: [
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        fontFamily: 'tajawal',
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-
-                    Icon(icon, color: Colors.white, size: 18),
-                  ],
-                ),
-        ),
-      ),
     );
   }
 }
@@ -548,7 +488,7 @@ class LinkRow extends StatelessWidget {
           style: TextStyle(
             fontFamily: 'tajawal',
             fontSize: 14,
-            color: context.colors.primaryDark,
+            color: context.colors.primary,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -790,7 +730,7 @@ class LangDropdown extends StatelessWidget {
         final RenderBox overlay =
             Overlay.of(context).context.findRenderObject() as RenderBox;
 
-        const double dropdownSpacing = 20; // 👈 تحكمي في المسافة
+        const double dropdownSpacing = 20;
 
         final Offset topLeft = button.localToGlobal(
           Offset.zero,
@@ -801,7 +741,6 @@ class LangDropdown extends StatelessWidget {
           ancestor: overlay,
         );
 
-        // 👇 نزود المسافة لتحت
         final Rect rect = Rect.fromPoints(
           topLeft.translate(0, dropdownSpacing),
           bottomRight.translate(0, dropdownSpacing),
@@ -813,7 +752,7 @@ class LangDropdown extends StatelessWidget {
         );
         final selected = await showMenu<String>(
           context: context,
-          position: position, // ✅ هنا الصح
+          position: position,
           items: provider.languages.map((l) {
             return PopupMenuItem(value: l, child: Text(l.tr));
           }).toList(),
@@ -824,17 +763,16 @@ class LangDropdown extends StatelessWidget {
         }
       },
 
-      // 👇 هنا التحكم الكامل 100%
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.language, size: 20, color: context.colors.primaryDark),
+          Icon(Icons.language, size: 20, color: context.colors.primary),
 
-          const SizedBox(width: 5), // 👈 تحكمي فيها (0 لو عايزة تلزقيهم)
+          const SizedBox(width: 5),
 
           Text(AppConfig.lang.tr, style: const TextStyle(fontSize: 13)),
 
-          const SizedBox(width: 2), // 👈 المسافة بين النص والسهم
+          const SizedBox(width: 2),
 
           const Icon(Icons.keyboard_arrow_down, size: 18),
         ],

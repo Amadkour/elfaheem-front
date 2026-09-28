@@ -17,6 +17,7 @@ import '../../config/theme/app_theme.dart';
 import '../../utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/base_page.dart';
+import '../../utils/widget/primary_button.dart';
 import 'auth_provider.dart';
 import 'auth_widgets.dart';
 import 'login_screen.dart';

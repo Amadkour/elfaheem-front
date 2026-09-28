@@ -19,7 +19,7 @@ import '../../../utils/widget/app_network_image.dart';
 import '../../auth/auth_provider.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import '../../../utils/widget/parent_component.dart';
-import '../payment/student_saved_methods_screen.dart';
+import '../../teacher/profile/requests/teacher_device_requests_screen.dart';
 import '../payment/teacher_transfers_screen.dart';
 import 'about/about_and_terms_screen.dart';
 import 'about/about_terms_provider.dart';
@@ -159,6 +159,17 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                                     _push(const TeacherTransfersScreen()),
                               ),
                             ),
+                            ParentComponent(
+                              key: ValueKey('profile.device_requests'),
+                              child: SettingsTile(
+                                icon: Icons.phonelink_lock_rounded,
+                                iconBg: c.primaryLight.withValues(alpha: 0.3),
+                                iconColor: c.primary,
+                                label: 'device_switch_requests'.tr,
+                                onTap: () =>
+                                    _push(const TeacherDeviceRequestsScreen()),
+                              ),
+                            ),
                           ] else ...[
                             ParentComponent(
                               key: ValueKey('profile.my_favorite'),
@@ -207,7 +218,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               trailing: Switch.adaptive(
                                 value: p.notificationsEnabled,
                                 onChanged: p.toggleNotifications,
-                                activeThumbColor: context.colors.primaryDark,
+                                activeThumbColor: context.colors.primary,
                                 thumbColor: const WidgetStatePropertyAll(
                                   Colors.white,
                                 ),
@@ -236,7 +247,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                                 onChanged: (b) async {
                                   await p.changeMode(b);
                                 },
-                                activeThumbColor: context.colors.primaryDark,
+                                activeThumbColor: context.colors.primary,
                                 thumbColor: const WidgetStatePropertyAll(
                                   Colors.white,
                                 ),
@@ -399,16 +410,16 @@ class ProfileHeader extends StatelessWidget {
               ),
               child: provider.imageUrl.isNotEmpty
                   ? ClipOval(
-                      child: AppNetworkImage(
-                        url: provider.imageUrl,
-                        heroTag: "profile-user-${provider.id}",
-                      ),
-                    )
+                child: AppNetworkImage(
+                  url: provider.imageUrl,
+                  heroTag: "profile-user-${provider.id}",
+                ),
+              )
                   : Icon(
-                      Icons.person_rounded,
-                      size: 70,
-                      color: context.colors.primary,
-                    ),
+                Icons.person_rounded,
+                size: 70,
+                color: context.colors.primary,
+              ),
             ),
           ],
         ),

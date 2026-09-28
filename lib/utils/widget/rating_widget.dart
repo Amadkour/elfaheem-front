@@ -344,7 +344,7 @@ class _RatingWidgetState extends State<RatingWidget>
         const SizedBox(width: 6),
         Text(
           avg.toStringAsFixed(1),
-          style: c.bodyBold.copyWith(color: AppTheme.primaryDark, fontSize: 13),
+          style: c.bodyBold.copyWith(color: AppTheme.primary, fontSize: 13),
         ),
         const SizedBox(width: 4),
         Text(
@@ -395,7 +395,7 @@ class _RatingWidgetState extends State<RatingWidget>
                     Text(
                       widget.type.label,
                       style: c.caption.copyWith(
-                        color: AppTheme.primaryDark,
+                        color: AppTheme.primary,
                         fontWeight: FontWeight.w700,
                         fontSize: 11,
                         letterSpacing: 0.5,
@@ -452,7 +452,7 @@ class _RatingWidgetState extends State<RatingWidget>
                       fontFamily: 'tajawal',
                       fontSize: 48,
                       fontWeight: FontWeight.w900,
-                      color: AppTheme.primaryDark,
+                      color: AppTheme.primary,
                       height: 1,
                     ),
                   ),
@@ -576,7 +576,7 @@ class _RatingWidgetState extends State<RatingWidget>
   Color _starColor(int v) => switch (v) {
         1 || 2 => AppTheme.danger,
         3 => AppTheme.warning,
-        _ => AppTheme.primaryDark,
+        _ => AppTheme.primary,
       };
 }
 
@@ -633,7 +633,7 @@ class _StarRow extends StatelessWidget {
                   active ? Icons.star_rounded : Icons.star_outline_rounded,
                   size: size,
                   color: active
-                      ? AppTheme.primaryDark
+                      ? AppTheme.primary
                       : Theme.of(context).brightness == Brightness.dark
                           ? AppTheme.darkTextLight
                           : AppTheme.textLight,
@@ -674,11 +674,11 @@ class _DistributionBar extends StatelessWidget {
             style: c.caption.copyWith(
               fontSize: 10,
               fontWeight: FontWeight.w700,
-              color: AppTheme.primaryDark,
+              color: AppTheme.primary,
             ),
           ),
           const SizedBox(width: 4),
-          Icon(Icons.star_rounded, color: AppTheme.primaryDark, size: 10),
+          Icon(Icons.star_rounded, color: AppTheme.primary, size: 10),
           const SizedBox(width: 6),
           Expanded(
             child: ClipRRect(
@@ -691,7 +691,7 @@ class _DistributionBar extends StatelessWidget {
                     child: Container(
                       height: 6,
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(colors:[AppTheme.primaryDark,Colors.white]),
+                        gradient: LinearGradient(colors:[AppTheme.primary,Colors.white]),
 
                       borderRadius: BorderRadius.circular(4),
                       ),

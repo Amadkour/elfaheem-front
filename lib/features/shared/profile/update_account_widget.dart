@@ -1,20 +1,4 @@
-/// ─────────────────────────────────────────────────────────────────────────────
-/// edit_account_screen.dart
-/// Shared premium edit-account screen for both student and teacher.
-///
-/// Layout:
-///   Mobile  → scrollable column: hero header (avatar + name) → form card
-///   Web     → two-column: left sticky profile card / right scrollable form
-///
-/// Usage:
-///   Navigator.push(context, MaterialPageRoute(
-///     builder: (_) => const EditAccountScreen(),          // student
-///   ));
-///   Navigator.push(context, MaterialPageRoute(
-///     builder: (_) => const EditAccountScreen(isTeacher: true),  // teacher
-///   ));
-/// ─────────────────────────────────────────────────────────────────────────────
-library;
+ library;
 
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter/cupertino.dart';
@@ -692,7 +676,7 @@ class _MobileHero extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 36),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [c.primary, c.primaryDark],
+          colors: [c.primary, c.primary],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -977,7 +961,7 @@ class _FormCard extends StatelessWidget {
           AnimatedOpacity(
             opacity: isChanged ? 1.0 : 0.45,
             duration: const Duration(milliseconds: 200),
-            child: MyPrimaryButton(
+            child: PrimaryButton(
               label: 'save_changes'.tr,
               isLoading: isSaving,
               onPressed: isChanged ? onSave : null,

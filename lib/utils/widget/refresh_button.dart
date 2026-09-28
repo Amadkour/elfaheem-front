@@ -68,7 +68,7 @@ class _RefreshButtonState extends State<RefreshButton>
             child: Icon(
               Icons.refresh_rounded,
               size: 16,
-              color: isRefreshing ? context.colors.primaryDark : Colors.white,
+              color: isRefreshing ? context.colors.primary : Colors.white,
             ),
           ),
           const SizedBox(width: 6),
@@ -78,7 +78,7 @@ class _RefreshButtonState extends State<RefreshButton>
               fontFamily: 'bahji',
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: isRefreshing ? context.colors.primaryDark : Colors.white,
+              color: isRefreshing ? context.colors.primary : Colors.white,
             ),
           ),
         ]),

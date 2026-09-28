@@ -4012,5 +4012,9 @@
   "make_all_read": {
     "en": "Make All Read",
     "ar": "تحديد الكل كمقروء"
+  },
+  "device_switch_requests": {
+    "en": "Device Switch Requests",
+    "ar": "طلبات تغيير الجهاز"
   }
 }

@@ -10,6 +10,7 @@ import '../../config/app_config.dart';
 import '../../config/theme/app_theme.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../../utils/helpers.dart';
+import '../../utils/widget/primary_button.dart';
 import '../teacher/dashboard/teacher_dashboard_screen.dart';
 import 'auth_provider.dart';
 import 'auth_widgets.dart';
@@ -170,8 +171,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildFormCard() {
-    final provider = context.watch<ProfileProvider>();
-
     return Form(
       key: _formKey,
       child: Column(
@@ -243,7 +242,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: TextStyle(
                   fontFamily: 'tajawal',
                   fontSize: 13,
-                  color: context.colors.primaryDark,
+                  color: context.colors.primary,
                   fontWeight: FontWeight.w500,
                 ),
               ),

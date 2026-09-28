@@ -35,7 +35,7 @@ class CategoriesRow extends StatelessWidget {
                   Icon(
                     Icons.category_outlined,
                     size: 36,
-                    color: context.colors.primaryDark,
+                    color: context.colors.primary,
                   ),
                   SizedBox(height: 8),
                   Text('لا توجد أقسام', style: context.colors.caption),

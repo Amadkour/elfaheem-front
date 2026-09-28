@@ -1018,7 +1018,7 @@ class _WithdrawalCard extends StatelessWidget {
     final statusColor = switch (w.status) {
       'paid' => AppTheme.success,
       'rejected' => AppTheme.danger,
-      'approved' => AppTheme.primaryDark,
+      'approved' => AppTheme.primary,
       _ => AppTheme.accent,
     };
     final statusLabel = switch (w.status) {

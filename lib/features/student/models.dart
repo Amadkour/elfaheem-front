@@ -97,7 +97,7 @@ class SessionModel {
   String? recordingUrl;
   bool isCompleted;
   final bool isLiveActive;
-  final double progress;
+  final int progress;
   final RatingSummary? rateSummary;
 
   SessionModel({
@@ -157,7 +157,7 @@ class SessionModel {
     recordingStatus: j['recording_status'] as String? ?? '',
     totalMaterial: j['total_materials'] as int? ?? 0,
     completeMaterial: j['complete_materials'] as int? ?? 0,
-    progress: j['progress'] as double? ?? 0.0,
+    progress: ((j['progress'] as double?) ?? 0.0).toInt(),
     isCompleted: j['completeness'] as bool,
   );
 
@@ -210,7 +210,7 @@ class TeacherSessionItem {
   final bool isLiveActive;
   final DateTime? scheduledAt;
   final DateTime createdAt;
-  final double progress;
+  final int progress;
   final RatingSummary? rateSummary;
 
   const TeacherSessionItem({
@@ -270,8 +270,8 @@ class TeacherSessionItem {
       totalMaterial: j['total_materials'] as int? ?? 0,
       completeMaterial: j['complete_materials'] as int? ?? 0,
       progress: j.containsKey('progress')
-          ? double.parse((j['progress'].toString()) as String? ?? '0.0')
-          : 0.0,
+          ? double.parse((j['progress'].toString()) as String? ?? '0.0').toInt()
+          : 0,
       rateSummary: j.containsKey('rate') && j['rate'] != null
           ? RatingSummary.fromJson(j['rate'] as Map<String, dynamic>)
           : null,
@@ -477,7 +477,7 @@ class CourseModel with DiscountInfo {
 
   // Progress fields — populated by the API for enrolled students.
   // Progress is based on materials only (0.0–100.0).
-  double progress;
+  int progress;
   int materialsTotal;
   final double expectedHours;
   @override
@@ -510,7 +510,7 @@ class CourseModel with DiscountInfo {
     this.totalHours = 0.0,
     this.isFavorite = false,
     this.isSubscribed = false,
-    this.progress = 0.0,
+    this.progress = 0,
     this.materialsTotal = 0,
     this.materialsCompleted = 0,
     this.schedules = const [],
@@ -587,7 +587,7 @@ class CourseModel with DiscountInfo {
     type: j['type'] as String? ?? 'recorded',
     isSubscribed: j['is_subscribed'] as bool? ?? false,
     isFavorite: j['is_favorite'] as bool? ?? false,
-    progress: (j['progress'] as num?)?.toDouble() ?? 0.0,
+    progress: ((j['progress'] as num?)?.toDouble() ?? 0.0).toInt(),
     materialsTotal: j['materials_total'] as int? ?? 0,
     materialsCompleted: j['materials_completed'] as int? ?? 0,
     schedules: (j['schedules'] as List? ?? [])
@@ -676,7 +676,7 @@ class CourseModel with DiscountInfo {
 
   CourseModel copyWith({
     bool? isFavorite,
-    double? progress,
+    int? progress,
     int? materialsTotal,
     int? materialsCompleted,
     List<SessionModel>? sessions,

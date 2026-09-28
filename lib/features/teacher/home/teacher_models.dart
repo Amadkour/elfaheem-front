@@ -300,7 +300,8 @@ class TeacherCourse with DiscountInfo {
   final double totalHours;
   @override
   final double price;
-  final double progress, expectedHours;
+  final int progress;
+  final double expectedHours;
   final String? description;
   final CategoryModel? category;
   final bool isPublished;
@@ -393,7 +394,7 @@ class TeacherCourse with DiscountInfo {
     discountEndsAt: j['discount_ends_at'] != null
         ? DateTime.tryParse(j['discount_ends_at'] as String)
         : null,
-    progress: (j['progress'] as num?)?.toDouble() ?? 0.0,
+    progress: ((j['progress'] as num?)?.toDouble().toInt() ?? 0.0).toInt(),
     currency: AppCurrencyX.fromCode(j['currency'] as String?),
     status: CourseStatusX.fromApiValue(j['status'] as String?),
     category: j['category'] != null
