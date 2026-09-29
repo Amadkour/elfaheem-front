@@ -94,13 +94,37 @@ class ApiException implements Exception {
   bool get isViewLimit => code == 'VIEW_LIMIT_REACHED';
 
   /// {"detail": {"code": "X", "message": "..."}} -> (code, message)
+  ///
+  /// Accepts a Map, a JSON String (some web/proxy paths deliver the body as a
+  /// raw String) or null. Never throws.
   static (String?, String?) codedDetail(dynamic body) {
-    if (body is Map && body['detail'] is Map) {
-      final d = body['detail'] as Map;
+    final map = asMap(body);
+    if (map != null && map['detail'] is Map) {
+      final d = map['detail'] as Map;
       final code = d['code']?.toString();
       if (code != null && code.isNotEmpty) return (code, d['message']?.toString());
     }
     return (null, null);
+  }
+
+  /// Normalises a response body: Map as-is, JSON String decoded, anything
+  /// else (null, HTML, bytes, list, invalid JSON) -> null. Never throws.
+  static Map? asMap(dynamic body) {
+    if (body is Map) return body;
+    if (body is String && body.isNotEmpty) {
+      try {
+        final d = jsonDecode(body);
+        if (d is Map) return d;
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  /// True when [body] is still an encrypted envelope (decryption did not run
+  /// or failed) — such a body must never be interpreted as a real error.
+  static bool isEncryptedEnvelope(dynamic body) {
+    final m = asMap(body);
+    return m != null && m.containsKey('n') && m.containsKey('ct');
   }
 
   bool get isNetwork => type == ApiErrorType.network;
@@ -579,7 +603,7 @@ class _EncryptionInterceptor extends Interceptor {
     );
     final sharedBytes = await shared.extractBytes();
     // ignore: avoid_print
-   //print('[ENC] session_id=$sessionId shared_secret=${_hex(sharedBytes)}');
+    //print('[ENC] session_id=$sessionId shared_secret=${_hex(sharedBytes)}');
     final derived = await _kdfAlgo.deriveKey(
       secretKey: SecretKey(sharedBytes),
       nonce: _hkdfSalt,   // HKDF salt — must match server's explicit _HKDF_SALT
@@ -587,7 +611,7 @@ class _EncryptionInterceptor extends Interceptor {
     );
     final derivedBytes = await derived.extractBytes();
     // ignore: avoid_print
-   //print('[ENC] session_id=$sessionId derived_key=${_hex(derivedBytes)}');
+    //print('[ENC] session_id=$sessionId derived_key=${_hex(derivedBytes)}');
 
     final session = _EncSession(sessionId, derived);
     _session = session;
@@ -598,9 +622,12 @@ class _EncryptionInterceptor extends Interceptor {
   static String _hex(List<int> bytes) =>
       bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
   Future<void> _tryDecrypt(Response? response) async {
-    final data = response?.data;
+    if (response == null) return;
+    // Body may be a Map (normal), a JSON String (some web paths) or null
+    // (empty body / nginx error page) — only a real envelope is touched.
+    final data = ApiException.asMap(response.data);
     final session = _session;
-    if (response == null || data is! Map || !data.containsKey('n') || !data.containsKey('ct') || session == null) {
+    if (data == null || !data.containsKey('n') || !data.containsKey('ct') || session == null) {
       return;
     }
     try {
@@ -613,25 +640,36 @@ class _EncryptionInterceptor extends Interceptor {
       final plain = await _algo.decrypt(box, secretKey: session.key);
       response.data = jsonDecode(utf8.decode(plain));
     } catch (_) {
-      // leave as-is; downstream parsing fails visibly
+      // leave as-is; callers treat an undecrypted envelope as "unknown body"
+      // (see ApiException.isEncryptedEnvelope) instead of misreading it.
     }
   }
+
+  // The ORIGINAL (plaintext) body is remembered here so a retried request —
+  // after a token refresh or an expired encryption session — is encrypted
+  // from the plaintext again, never encrypted twice.
+  static const _plainKey = '_encPlain';
+
+  Future<void> _encryptInto(RequestOptions options, _EncSession session) async {
+    if (!options.extra.containsKey(_plainKey)) {
+      options.extra[_plainKey] = options.data;
+    }
+    final plaintext = utf8.encode(jsonEncode(options.extra[_plainKey]));
+    final nonce = _algo.newNonce();
+    final box = await _algo.encrypt(plaintext, secretKey: session.key, nonce: nonce);
+    options.data = {
+      'n': base64Encode(nonce),
+      'ct': base64Encode(box.cipherText + box.mac.bytes),
+    };
+    options.headers['X-Enc-Session'] = session.sessionId;
+  }
+
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
     if (_skips(options)) return handler.next(options);
     try {
       final session = await _ensureSession();
-      final plaintext = utf8.encode(jsonEncode(options.data));
-      final nonce = _algo.newNonce();
-      final box = await _algo.encrypt(plaintext, secretKey: session.key, nonce: nonce);
-      final n = base64Encode(nonce);
-      final ct = base64Encode(box.cipherText + box.mac.bytes);
-      options.data = {'n': n, 'ct': ct};
-      options.headers['X-Enc-Session'] = session.sessionId;
-      // REMOVE before shipping — this prints the plaintext body (passwords included).
-      // ignore: avoid_print
-     //print('[ENC] session_id=${session.sessionId} SENDING path=${options.path} '
-       //   'plaintext=${utf8.decode(plaintext)} n=$n ct_len=${ct.length}');
+      await _encryptInto(options, session);
     } catch (_) {
       // Handshake/network failure -> fall through unencrypted rather than
       // hard-fail every request; auth + TLS + pinning still apply regardless.
@@ -647,14 +685,22 @@ class _EncryptionInterceptor extends Interceptor {
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
-    await _tryDecrypt(err.response);   // ← decrypt the error body too, before the session-expired check
-    final data = err.response?.data;
-    if (data is Map && data['error'] == 'encryption_session_expired') {
+    await _tryDecrypt(err.response);   // decrypt the error body too, before the session-expired check
+    final data = ApiException.asMap(err.response?.data);
+    if (data != null && data['error'] == 'encryption_session_expired') {
       _session = null;
       try {
-        await _ensureSession();
-        final clone = await Dio(BaseOptions(baseUrl: AppConfig.baseUrl)).fetch(err.requestOptions);
+        final session = await _ensureSession();
+        final o = err.requestOptions;
+        if (!_skips(o)) await _encryptInto(o, session);   // re-encrypt the ORIGINAL body with the NEW key
+        final clone = await Dio(BaseOptions(baseUrl: AppConfig.baseUrl)).fetch(o);
+        await _tryDecrypt(clone);                          // the retried response is encrypted too
         return handler.resolve(clone);
+      } on DioException catch (e) {
+        // The retry itself failed (e.g. 403 DEVICE_MISMATCH): surface THAT
+        // error (decrypted), not the stale "session expired" one.
+        await _tryDecrypt(e.response);
+        return handler.next(e);
       } catch (_) {}
     }
     handler.next(err);
@@ -724,20 +770,23 @@ class ApiClient {
       ),
     );
 
-    // Logger first: it sees every request, response and error (including the
+    // ORDER MATTERS: Dio runs onResponse/onError in the SAME order the
+    // interceptors were added (not reversed). The encryption interceptor must
+    // therefore be FIRST, so it decrypts every response/error body before the
+    // logger and the auth interceptor read it. (Added last, the auth
+    // interceptor saw raw {"n","ct"} envelopes: device_allowed / DEVICE_MISMATCH
+    // were never detected, so the "switch device" dialog never opened.)
+    // Auth headers (Authorization, X-Device-*) are not part of the encrypted
+    // body, so attaching them after encryption is fine.
+    d.interceptors.add(_EncryptionInterceptor());
+
+    // Logger next: it sees every request, response and error (including the
     // first 401 that the auth interceptor later recovers from).
     if (AppConfig.testMode) {
       d.interceptors.add(_ApiLogInterceptor());
     }
 
     d.interceptors.add(_authInterceptor());
-
-    // Encrypts the JSON body of every request/response after auth headers
-    // are attached and before the (pinned, mobile-only) TLS connection is
-    // opened. Added last so its onRequest runs last (sees the final
-    // headers/data) and its onResponse runs first (decrypts before the
-    // logger above gets to inspect response.data).
-    d.interceptors.add(_EncryptionInterceptor());
 
     // withTrustedRoots: false -> the OS/system CA list is NOT consulted at all,
     // so a proxy's CA being "trusted" on this device (rooted/test builds) no
@@ -771,18 +820,24 @@ class ApiClient {
       }
 
       // Device identity on EVERY request (server binds / checks it).
+      // If it cannot be produced we send nothing: the server answers
+      // DEVICE_ID_MISSING and the blocked-device dialog explains it, rather
+      // than the app inventing an ID that would never match.
       try {
         options.headers.addAll(await DeviceIdService.instance.headers());
-      } catch (_) {}
+      } catch (e) {
+        if (AppConfig.testMode) log('device headers unavailable: $e', name: 'API');
+      }
 
       handler.next(options);
     },
 
     // ── Login from a device that isn't the registered one -> dialog ───────
     onResponse: (response, handler) {
-      final d = response.data;
+      // Body can be a Map, a JSON String or null — asMap() covers all three.
+      final d = ApiException.asMap(response.data);
       if (response.requestOptions.path.endsWith('/auth/login') &&
-          d is Map &&
+          d != null &&
           d['device_allowed'] == false) {
         _showDeviceBlocked(delay: const Duration(milliseconds: 900));
       }
@@ -796,12 +851,21 @@ class ApiClient {
       final needsAuth = req.extra['auth'] != false;
 
       if (status == 403 && needsAuth) {
-        final (code, _) = ApiException.codedDetail(error.response?.data);
+        final raw = error.response?.data;
+        final (code, _) = ApiException.codedDetail(raw);
         if (code == 'DEVICE_MISMATCH' || code == 'DEVICE_ID_MISSING') {
           _showDeviceBlocked();          // dialog instead of the verify screen
-        } else if (code == null) {
-          _goToVerify();                  // original behaviour
+        } else if (code == null &&
+            ApiException.asMap(raw) != null &&
+            !ApiException.isEncryptedEnvelope(raw)) {
+          // A real, readable JSON error without our own code: original
+          // behaviour (verify screen). An empty body, an nginx/HTML 403 or an
+          // undecryptable envelope is NOT a verification problem, so it is
+          // just surfaced to the caller.
+          _goToVerify();
         }
+        // Other coded errors (VIEW_LIMIT_REACHED, SWITCH_LIMIT, ...) fall
+        // through untouched so the screen that made the call can handle them.
         return handler.next(error);
       }
 
@@ -977,23 +1041,42 @@ class ApiClient {
 
   bool _deviceDialogOpen = false;
 
-  /// Shows the "this device isn't allowed" dialog once (guarded against repeats).
+  /// Shows the "this device isn't allowed / switch device" dialog once
+  /// (guarded against the burst of parallel 403s a dashboard produces).
+  ///
+  /// Called only on a definitive server signal (403 DEVICE_MISMATCH /
+  /// DEVICE_ID_MISSING, or login with device_allowed == false), so it does
+  /// not second-guess the server. DeviceSecurityProvider.check() is only used
+  /// to fill the dialog (pending request, monthly limit, can-request); if it
+  /// fails the dialog still opens with the plain message.
   void _showDeviceBlocked({Duration delay = Duration.zero}) {
     if (_deviceDialogOpen) return;
     _deviceDialogOpen = true;
-    Future.delayed(delay, () async {
+    () async {
       try {
-        final ctx = navigatorKey.currentContext;
-        if (ctx == null) return;
+        if (delay > Duration.zero) await Future.delayed(delay);
+
+        // Web cold start / mid-navigation: the navigator may not have a
+        // mounted context yet — wait up to ~3s instead of silently giving up.
+        var ctx = navigatorKey.currentContext;
+        for (var i = 0; (ctx == null || !ctx.mounted) && i < 10; i++) {
+          await Future.delayed(const Duration(milliseconds: 300));
+          ctx = navigatorKey.currentContext;
+        }
+        if (ctx == null || !ctx.mounted) return;
+
         final p = DeviceSecurityProvider();
-        await p.check();
-        if (p.allowed) return;
+        try {
+          await p.check();
+        } catch (_) {}
         if (!ctx.mounted) return;
         await showDeviceBlockedDialog(ctx, p);
+      } catch (e) {
+        if (AppConfig.testMode) log('device dialog failed: $e', name: 'API');
       } finally {
         _deviceDialogOpen = false;
       }
-    });
+    }();
   }
 
   void _goToVerify() {

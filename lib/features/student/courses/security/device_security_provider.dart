@@ -12,7 +12,7 @@ class DeviceSecurityProvider extends BaseProvider {
   final ApiClient _api;
 
   bool allowed = true;
-  bool canRequest = false;
+  bool canRequest = true;
   bool hasPending = false;
   bool switchUsedThisMonth = false;
   String? nextAvailableAt;
