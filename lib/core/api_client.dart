@@ -597,7 +597,25 @@ class _EncryptionInterceptor extends Interceptor {
   // REMOVE before shipping — debug only.
   static String _hex(List<int> bytes) =>
       bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-
+  Future<void> _tryDecrypt(Response? response) async {
+    final data = response?.data;
+    final session = _session;
+    if (response == null || data is! Map || !data.containsKey('n') || !data.containsKey('ct') || session == null) {
+      return;
+    }
+    try {
+      final nonce = base64Decode(data['n'] as String);
+      final ctFull = base64Decode(data['ct'] as String);
+      const macBytes = 16;
+      final mac = Mac(ctFull.sublist(ctFull.length - macBytes));
+      final cipherText = ctFull.sublist(0, ctFull.length - macBytes);
+      final box = SecretBox(cipherText, nonce: nonce, mac: mac);
+      final plain = await _algo.decrypt(box, secretKey: session.key);
+      response.data = jsonDecode(utf8.decode(plain));
+    } catch (_) {
+      // leave as-is; downstream parsing fails visibly
+    }
+  }
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
     if (_skips(options)) return handler.next(options);
@@ -623,35 +641,13 @@ class _EncryptionInterceptor extends Interceptor {
 
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) async {
-    final data = response.data;
-    final session = _session;
-    if (data is Map && data.containsKey('n') && data.containsKey('ct') && session != null) {
-      // ignore: avoid_print
-     //print('[ENC] session_id=${session.sessionId} RECEIVED path=${response.requestOptions.path} '
-         // 'n=${data['n']} ct_len=${(data['ct'] as String).length}');
-      try {
-        final nonce = base64Decode(data['n'] as String);
-        final ctFull = base64Decode(data['ct'] as String);
-        const macBytes = 16; // AES-GCM tag length
-        final mac = Mac(ctFull.sublist(ctFull.length - macBytes));
-        final cipherText = ctFull.sublist(0, ctFull.length - macBytes);
-        final box = SecretBox(cipherText, nonce: nonce, mac: mac);
-        final plain = await _algo.decrypt(box, secretKey: session.key);
-        response.data = jsonDecode(utf8.decode(plain));
-        // ignore: avoid_print
-       //print('[ENC] session_id=${session.sessionId} DECRYPT OK response=${response.data}');
-      } catch (e) {
-        // ignore: avoid_print
-       //print('[ENC] session_id=${session.sessionId} DECRYPT FAILED error=$e');
-        // Leave response.data as the raw envelope; downstream parsing will
-        // fail visibly (a normal ApiException) rather than crash here.
-      }
-    }
+    await _tryDecrypt(response);
     handler.next(response);
   }
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
+    await _tryDecrypt(err.response);   // ← decrypt the error body too, before the session-expired check
     final data = err.response?.data;
     if (data is Map && data['error'] == 'encryption_session_expired') {
       _session = null;
@@ -659,9 +655,7 @@ class _EncryptionInterceptor extends Interceptor {
         await _ensureSession();
         final clone = await Dio(BaseOptions(baseUrl: AppConfig.baseUrl)).fetch(err.requestOptions);
         return handler.resolve(clone);
-      } catch (_) {
-        // fall through to the normal error mapping below
-      }
+      } catch (_) {}
     }
     handler.next(err);
   }
