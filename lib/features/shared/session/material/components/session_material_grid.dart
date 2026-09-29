@@ -108,6 +108,23 @@ class SessionMaterialGrid extends StatelessWidget {
       );
     }
 
+    // Teachers: one drag-and-drop list (long-press-free: grab the handle).
+    if (isTeacher) {
+      return ReorderableListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        buildDefaultDragHandles: false,
+        itemCount: materials.length,
+        onReorder: (oldIndex, newIndex) => context
+            .read<TeacherCourseScreenProvider>()
+            .reorderMaterials(session.id, oldIndex, newIndex),
+        itemBuilder: (ctx, i) => KeyedSubtree(
+          key: ValueKey('material_${materials[i].id}'),
+          child: _buildTile(ctx, materials[i], i + 1, dragIndex: i),
+        ),
+      );
+    }
+
     if (columns == 1) {
       return Column(
           children: materials
@@ -144,7 +161,12 @@ class SessionMaterialGrid extends StatelessWidget {
 
   // ── Tile ───────────────────────────────────────────────────────────────────
 
-  Widget _buildTile(BuildContext context, SessionMaterialModel m, int index) {
+  Widget _buildTile(
+      BuildContext context,
+      SessionMaterialModel m,
+      int index, {
+        int? dragIndex,
+      }) {
     final isRecording = m.type == SessionMaterialType.recording;
     final isRecorded = m.type == SessionMaterialType.recorded;
 
@@ -316,10 +338,25 @@ class SessionMaterialGrid extends StatelessWidget {
                           Row(
                             children: [
                               SessionPill(labelKey.tr, color),
-                              if (m.fileSize != null && !isRecording) ...[
+                              if (m.sizeLabel.isNotEmpty && !isRecording) ...[
                                 const SizedBox(width: 6),
                                 Text(
-                                  m.sizeLabel,
+                                  m.sizeLabel, // KB under 1 MB, else MB
+                                  style: context.colors.caption.copyWith(
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                              if (m.durationLabel.isNotEmpty && !isRecording) ...[
+                                const SizedBox(width: 8),
+                                Icon(
+                                  Icons.schedule_rounded,
+                                  size: 11,
+                                  color: context.colors.textLight,
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  m.durationLabel, // h:mm:ss
                                   style: context.colors.caption.copyWith(
                                     fontSize: 10,
                                   ),
@@ -341,6 +378,19 @@ class SessionMaterialGrid extends StatelessWidget {
                     if (isTeacher)
                       Row(
                         children: [
+                          if (dragIndex != null)
+                            ReorderableDragStartListener(
+                              index: dragIndex,
+                              child: Padding(
+                                padding:
+                                const EdgeInsets.symmetric(horizontal: 4),
+                                child: Icon(
+                                  Icons.menu,
+                                  size: 23,
+                                  color: context.colors.textLight,
+                                ),
+                              ),
+                            ),
                           if (!isRecording) ...[
                             _iconBtn(
                               icon: CupertinoIcons.settings_solid,
@@ -507,6 +557,7 @@ class SessionMaterialGrid extends StatelessWidget {
     final nameCtrl = TextEditingController(text: m.name);
     final descCtrl = TextEditingController(text: m.description ?? '');
     final urlCtrl = TextEditingController(text: m.urlLow ?? '');
+    final orderCtrl = TextEditingController(text: m.order.toString());
 
     showDialog(
       context: context,
@@ -521,6 +572,12 @@ class SessionMaterialGrid extends StatelessWidget {
                   const SizedBox(height: 12),
                   SessionField(
                       ctrl: descCtrl, label: 'description_optional'.tr),
+                  const SizedBox(height: 12),
+                  SessionField(
+                    ctrl: orderCtrl,
+                    label: 'order_label'.tr, // add key: "الترتيب" / "Order"
+                    keyboardType: TextInputType.number,
+                  ),
                   if (m.type == SessionMaterialType.link) ...[
                     const SizedBox(height: 12),
                     SessionField(ctrl: urlCtrl, label: 'url_label'.tr),
@@ -534,7 +591,10 @@ class SessionMaterialGrid extends StatelessWidget {
               await context.read<TeacherCourseScreenProvider>().updateMaterial(
                 session.id,
                 m.id,
-                name: nameCtrl.text.trim(),
+                name: nameCtrl.text.trim().isEmpty
+                    ? m.name
+                    : nameCtrl.text.trim(),
+                order: int.tryParse(orderCtrl.text.trim()) ?? m.order,
                 description: descCtrl.text
                     .trim()
                     .isEmpty

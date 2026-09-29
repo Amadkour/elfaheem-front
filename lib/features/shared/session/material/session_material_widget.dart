@@ -41,6 +41,10 @@ class SessionMaterialCard extends StatefulWidget {
   final bool isTeacher;
   final int sessionNumber;
 
+  /// Position inside the enclosing ReorderableListView (teacher only). When
+  /// set, a drag handle is shown in the card header.
+  final int? dragIndex;
+
   /// True when this session should be shown as locked to the current
   /// student — i.e. it's beyond what an unpaid preview or the student's
   /// current progress allows them to open. Ignored for teachers.
@@ -53,6 +57,7 @@ class SessionMaterialCard extends StatefulWidget {
     required this.isTeacher,
     this.locked = false,
     required this.sessionNumber,
+    this.dragIndex,
   });
 
   @override
@@ -293,17 +298,17 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
             sessionId: _session.id,
             builder:
                 (
-                  ctx, {
-                  required icon,
-                  required label,
-                  required color,
-                  required onTap,
-                }) => SessionActionBtn(
-                  icon: icon,
-                  label: label,
-                  color: color,
-                  onTap: onTap,
-                ),
+                ctx, {
+              required icon,
+              required label,
+              required color,
+              required onTap,
+            }) => SessionActionBtn(
+              icon: icon,
+              label: label,
+              color: color,
+              onTap: onTap,
+            ),
           ),
         if (isLiveType && widget.isTeacher)
           SessionActionBtn(
@@ -406,6 +411,20 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    if (widget.isTeacher && widget.dragIndex != null) ...[
+                      const Spacer(),
+                      ReorderableDragStartListener(
+                        index: widget.dragIndex!,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Icon(
+                            Icons.menu,
+                            size: 24,
+                            color: context.colors.textLight,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
 

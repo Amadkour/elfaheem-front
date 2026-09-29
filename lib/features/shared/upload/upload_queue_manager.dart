@@ -47,7 +47,7 @@ class UploadQueueManager extends ChangeNotifier {
     required int sessionId,
     required String path,
     required String fileName,
-    required Uint8List bytes,
+    Uint8List? bytes, // null on mobile/desktop video: streamed from [path]
     required String endpoint, // now the JSON "finalize" route, e.g. .../materials/from-upload
     required Map<String, String> fields,
     MediaType? contentType,
@@ -62,7 +62,7 @@ class UploadQueueManager extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final fileLength = bytes.length;
+      final fileLength = bytes?.length ?? await File(path).length();
       task.totalBytes = fileLength;
 
       // 1) presign — small JSON call through the authenticated API
@@ -85,7 +85,7 @@ class UploadQueueManager extends ChangeNotifier {
       // so it's the only one wired to progress tracking.
       await _rawDio.put(
         uploadUrl,
-        data: bytes,
+        data: bytes ?? File(path).openRead(),
         options: Options(headers: {
           Headers.contentTypeHeader: resolvedContentType,
           Headers.contentLengthHeader: fileLength,

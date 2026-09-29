@@ -280,6 +280,7 @@ class CourseDetailProvider extends BaseProvider {
   ///
   /// Endpoint: POST /api/v1/sessions/{sessionId}/materials/{materialId}/complete
   Future<void> markMaterialComplete(int sessionId, int materialId) async {
+    if (sessionId <= 0 || materialId <= 0) return; // placeholder material
     // Optimistic local update so the ✓ badge appears instantly
     if (completedMaterialIds.contains(materialId)) return; // already done
     completedMaterialIds.add(materialId);
@@ -295,9 +296,9 @@ class CourseDetailProvider extends BaseProvider {
     // If the server rejected it, roll back the optimistic update
     if (r == null && hasError) {
       completedMaterialIds.remove(materialId);
-      course.materialsCompleted += 1;
-      course.progress += ((course.materialsCompleted) / course.materialsTotal).toInt();
       notifyListeners();
+    } else {
+      await _syncProgressFromServer();
     }
   }
 
@@ -316,11 +317,32 @@ class CourseDetailProvider extends BaseProvider {
 
     if (r == null && hasError) {
       completedSessionIds.remove(sessionId);
-
-      course.materialsCompleted += 1;
-      course.progress += ((course.materialsCompleted) / course.materialsTotal).toInt();
       notifyListeners();
+    } else {
+      await _syncProgressFromServer();
     }
+  }
+
+  /// Pulls the authoritative numbers after a completion was saved: the
+  /// course's overall progress / material counters, and every session's
+  /// completeMaterial / progress / completeness (which drives which session
+  /// unlocks next). Counting locally would double-count a material the
+  /// student had already completed in an earlier run, because the backend
+  /// endpoint is idempotent and doesn't say whether the row was new.
+  /// Silent on failure — the optimistic tick stays.
+  Future<void> _syncProgressFromServer() async {
+    try {
+      final cr = await _api.get('/api/v1/courses/${course.id}', auth: true);
+      if (cr is Map<String, dynamic>) {
+        course.progress = ((cr['progress'] as num?)?.toDouble() ?? 0.0).toInt();
+        course.materialsTotal =
+            cr['materials_total'] as int? ?? course.materialsTotal;
+        course.materialsCompleted =
+            cr['materials_completed'] as int? ?? course.materialsCompleted;
+        notifyListeners();
+      }
+    } catch (_) {}
+    await refreshSessionsSilently();
   }
 
   // ── Student live-session join ─────────────────────────────────────────────

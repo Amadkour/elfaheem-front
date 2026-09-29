@@ -34,7 +34,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
     required TeacherCourse initialCourse,
     ApiClient? api,
   }) : _api = api ?? ApiClient(),
-       _course = initialCourse {
+        _course = initialCourse {
     // Bridge the global upload queue's notifications into this provider's
     // own notifyListeners(), so widgets that already `watch` this provider
     // (e.g. the session card's progress bar) update as a background video
@@ -93,22 +93,22 @@ class TeacherCourseScreenProvider extends BaseProvider {
 
   Future<void> fetchSessions() async {
     final result = await run(
-      () => _api.get('/api/v1/courses/${_course.id}/sessions'),
+          () => _api.get('/api/v1/courses/${_course.id}/sessions'),
     );
     print(result);
     if (result['items'] is List) {
       if ((result['items'] as List).isNotEmpty) {
         _sessions =
-            (result['items'] as List)
-                .map((e) => TeacherSessionItem.fromJson(e))
-                .toList()
-              ..sort((a, b) {
-                int compareOrder = a.order.compareTo(b.order);
-                if (compareOrder == 0) {
-                  return a.createdAt.compareTo(b.createdAt);
-                }
-                return compareOrder;
-              });
+        (result['items'] as List)
+            .map((e) => TeacherSessionItem.fromJson(e))
+            .toList()
+          ..sort((a, b) {
+            int compareOrder = a.order.compareTo(b.order);
+            if (compareOrder == 0) {
+              return a.createdAt.compareTo(b.createdAt);
+            }
+            return compareOrder;
+          });
       } else {
         _sessions = [];
       }
@@ -117,6 +117,37 @@ class TeacherCourseScreenProvider extends BaseProvider {
       print(_sessions.length);
       notifyListeners();
     }
+  }
+
+  /// Drag-and-drop reorder of the course's sessions (same contract as
+  /// [reorderMaterials]: optimistic UI, one request, rollback on failure).
+  Future<bool> reorderSessions(int oldIndex, int newIndex) async {
+    final list = [..._sessions];
+    if (oldIndex < 0 || oldIndex >= list.length) return false;
+    if (newIndex > oldIndex) newIndex -= 1; // ReorderableListView semantics
+    if (newIndex == oldIndex) return true;
+
+    final previous = _sessions;
+    final item = list.removeAt(oldIndex);
+    list.insert(newIndex, item);
+    _sessions = [
+      for (var i = 0; i < list.length; i++) list[i].copyWith(order: i),
+    ];
+    notifyListeners();
+
+    final r = await run(
+          () => _api.put(
+        '/api/v1/courses/${_course.id}/reorder-sessions',
+        body: {'session_ids': list.map((s) => s.id).toList()},
+      ),
+      makLoading: false,
+    );
+    if (r == null) {
+      _sessions = previous;
+      notifyListeners();
+      return false;
+    }
+    return true;
   }
 
   bool openMoreDetailsForAddSession = false;
@@ -150,17 +181,17 @@ class TeacherCourseScreenProvider extends BaseProvider {
     _submitLoading = true;
     notifyListeners();
     final result = await run(
-      () => _api.post(
+          () => _api.post(
         '/api/v1/sessions',
         body: {
-          'course_id': _course.id,
-          'name': name,
-          'type': type,
-          'description': ?description,
-          'scheduled_at': ?scheduledAt,
-          'duration_minutes': durationMinutes,
-          'order': order,
-        },
+      'course_id': _course.id,
+      'name': name,
+      'type': type,
+      'description': ?description,
+      'scheduled_at': ?scheduledAt,
+      'duration_minutes': durationMinutes,
+      'order': order,
+      },
       ),
       makLoading: false,
     );
@@ -177,7 +208,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
 
   Future<TeacherSessionItem?> quickSession({required int courseId}) async {
     final result = await run(
-      () => _api.post('/api/v1/quick_session', body: {'course_id': _course.id}),
+          () => _api.post('/api/v1/quick_session', body: {'course_id': _course.id}),
     );
     if (result is Map<String, dynamic>) {
       final s = TeacherSessionItem.fromJson(result);
@@ -189,27 +220,27 @@ class TeacherCourseScreenProvider extends BaseProvider {
   }
 
   Future<TeacherSessionItem?> updateSession(
-    int sessionId, {
-    String? name,
-    String? description,
-    String? type,
-    String? scheduledAt,
-    int? durationMinutes,
-    int? order,
-  }) async {
+      int sessionId, {
+        String? name,
+        String? description,
+        String? type,
+        String? scheduledAt,
+        int? durationMinutes,
+        int? order,
+      }) async {
     _submitLoading = true;
     notifyListeners();
     final result = await run(
-      () => _api.put(
+          () => _api.put(
         '/api/v1/sessions/$sessionId',
         body: {
-          'name': ?name,
-          'description': ?description,
-          'type': ?type,
-          'scheduled_at': ?scheduledAt,
-          'duration_minutes': ?durationMinutes,
-          'order': ?order,
-        },
+      'name': ?name,
+      'description': ?description,
+      'type': ?type,
+      'scheduled_at': ?scheduledAt,
+      'duration_minutes': ?durationMinutes,
+      'order': ?order,
+      },
       ),
       makLoading: false,
     );
@@ -260,7 +291,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
 
   bool isUploadingMaterial(int sessionId) =>
       (_uploadingMaterial[sessionId] ?? false) ||
-      UploadQueueManager.instance.isUploadingForSession(sessionId);
+          UploadQueueManager.instance.isUploadingForSession(sessionId);
 
   /// 0..1 progress for a background (video) upload on this session, or null
   /// when nothing is uploading via the background queue — the session
@@ -275,22 +306,16 @@ class TeacherCourseScreenProvider extends BaseProvider {
       return;
     }
     final r = await run(
-      () => _api.get('/api/v1/sessions/${session.id}/materials'),
+          () => _api.get('/api/v1/sessions/${session.id}/materials'),
     );
     if (r is List) {
       _materials[session.id] =
-          r
-              .map(
-                (e) => SessionMaterialModel.fromJson(e as Map<String, dynamic>),
-              )
-              .toList()
-            ..sort((a, b) {
-              int compareOrder = a.order;
-              if (compareOrder == 0) {
-                return a.createdAt.compareTo(b.createdAt);
-              }
-              return compareOrder;
-            });
+      r
+          .map(
+            (e) => SessionMaterialModel.fromJson(e as Map<String, dynamic>),
+      )
+          .toList()
+        ..sort(_byOrder);
       _materialLoaded[session.id] = true;
       notifyListeners();
     }
@@ -310,6 +335,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
     required String name,
     String? description,
     int order = 0,
+    int? durationSeconds,
     required Uint8List fileBytes,
   }) async {
     _uploadingMaterial[sessionId] = true;
@@ -360,6 +386,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
         '/api/v1/sessions/$sessionId/materials/from-upload',
         body: {
           'object_key': objectKey,
+          if (durationSeconds != null) 'duration_seconds': durationSeconds,
           'name': name,
           if (description != null && description.isNotEmpty)
             'description': description,
@@ -370,6 +397,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
         final mat = SessionMaterialModel.fromJson(result);
         _materials[sessionId] = [...(_materials[sessionId] ?? []), mat]
           ..sort((a, b) => a.order.compareTo(b.order));
+        _bumpMaterialCount(sessionId, 1);
         notifyListeners();
         return mat;
       }
@@ -392,12 +420,13 @@ class TeacherCourseScreenProvider extends BaseProvider {
     required String name,
     String? description,
     int order = 0,
+    int? durationSeconds,
   }) async {
     final json = await UploadQueueManager.instance.enqueueFileUpload(
       dio: _api.dio,
       sessionId: sessionId,
       path: filePath,
-      bytes: bytes!,
+      bytes: bytes, // null → streamed from disk by the queue
       fileName: fileName,
       endpoint: '/api/v1/sessions/$sessionId/materials/from-upload',
       contentType: _guessVideoContentType(fileName),
@@ -406,6 +435,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
         if (description != null && description.isNotEmpty)
           'description': description,
         'order': order.toString(),
+        if (durationSeconds != null) 'duration_seconds': durationSeconds.toString(),
       },
     );
     if (json == null) return null;
@@ -413,6 +443,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
     final mat = SessionMaterialModel.fromJson(json);
     _materials[sessionId] = [...(_materials[sessionId] ?? []), mat]
       ..sort((a, b) => a.order.compareTo(b.order));
+    _bumpMaterialCount(sessionId, 1);
     notifyListeners();
     return mat;
   }
@@ -436,52 +467,121 @@ class TeacherCourseScreenProvider extends BaseProvider {
     int order = 0,
   }) async {
     final r = await run(
-      () => _api.post(
+          () => _api.post(
         '/api/v1/sessions/$sessionId/materials/link',
         body: {
-          'session_id': sessionId,
-          'name': name,
-          'url': url,
-          'type': 'link',
-          'description': ?description,
-          'order': order,
-        },
+      'session_id': sessionId,
+      'name': name,
+      'url': url,
+      'type': 'link',
+      'description': ?description,
+      'order': order,
+      },
       ),
     );
     if (r is Map<String, dynamic>) {
       final mat = SessionMaterialModel.fromJson(r);
       _materials[sessionId] = [...(_materials[sessionId] ?? []), mat]
         ..sort((a, b) => a.order.compareTo(b.order));
+      _bumpMaterialCount(sessionId, 1);
       notifyListeners();
       return mat;
     }
     return null;
   }
 
-  Future<bool> updateMaterial(
-    int sessionId,
-    int materialId, {
-    String? name,
-    String? description,
-    String? url,
-    int? order,
-  }) async {
+  /// Keeps SessionItem.totalMaterial in step with add / delete. Without this
+  /// the card's "N materials" chip (hidden while totalMaterial == 0) and the
+  /// fetchMaterials() cache check stay stale until the next full refresh.
+  /// Caller must notifyListeners().
+  void _bumpMaterialCount(int sessionId, int delta) {
+    _sessions = _sessions
+        .map(
+          (s) => s.id == sessionId
+          ? s.copyWith(
+        totalMaterial: (s.totalMaterial + delta).clamp(0, 1 << 30),
+      )
+          : s,
+    )
+        .toList();
+  }
+
+  /// order first, then id (stable & matches the backend ORDER BY).
+  static int _byOrder(SessionMaterialModel a, SessionMaterialModel b) {
+    final c = a.order.compareTo(b.order);
+    return c != 0 ? c : a.id.compareTo(b.id);
+  }
+
+  /// Drag-and-drop reorder. Updates the UI immediately, then persists the
+  /// whole new sequence with ONE request; rolls back + refetches on failure.
+  Future<bool> reorderMaterials(
+      int sessionId,
+      int oldIndex,
+      int newIndex,
+      ) async {
+    final list = [...(_materials[sessionId] ?? const <SessionMaterialModel>[])];
+    if (oldIndex < 0 || oldIndex >= list.length) return false;
+    if (newIndex > oldIndex) newIndex -= 1; // ReorderableListView semantics
+    if (newIndex == oldIndex) return true;
+
+    final previous = _materials[sessionId] ?? const <SessionMaterialModel>[];
+    final item = list.removeAt(oldIndex);
+    list.insert(newIndex, item);
+    _materials[sessionId] = [
+      for (var i = 0; i < list.length; i++) list[i].copyWith(order: i),
+    ];
+    notifyListeners();
+
     final r = await run(
-      () => _api.put(
+          () => _api.put(
+        '/api/v1/sessions/$sessionId/reorder-materials',
+        body: {'material_ids': list.map((m) => m.id).toList()},
+      ),
+      makLoading: false,
+    );
+    if (r == null) {
+      _materials[sessionId] = [...previous];
+      notifyListeners();
+      return false;
+    }
+    return true;
+  }
+
+  Future<bool> updateMaterial(
+      int sessionId,
+      int materialId, {
+        String? name,
+        String? description,
+        String? url,
+        int? order,
+      }) async {
+    final r = await run(
+          () => _api.put(
         '/api/v1/sessions/$sessionId/materials/$materialId',
         body: {
-          'name': ?name,
-          'description': ?description,
-          'url': ?url,
-          'order': ?order,
-        },
+      'name': ?name,
+      'description': ?description,
+      'url': ?url,
+      'order': ?order,
+      },
       ),
     );
     if (r is Map<String, dynamic>) {
-      final updated = SessionMaterialModel.fromJson(r);
+      // Merge into the existing model: the PUT response carries no
+      // completion / rating / requires_play data, so replacing the whole
+      // object would wipe them.
       _materials[sessionId] = (_materials[sessionId] ?? [])
-          .map((m) => m.id == materialId ? updated : m)
-          .toList();
+          .map(
+            (m) => m.id == materialId
+            ? m.copyWith(
+          name: r['name'] as String? ?? name,
+          description: r['description'] as String? ?? description,
+          order: (r['order'] as num?)?.toInt() ?? order,
+        )
+            : m,
+      )
+          .toList()
+        ..sort(_byOrder);
       notifyListeners();
       return true;
     }
@@ -490,12 +590,13 @@ class TeacherCourseScreenProvider extends BaseProvider {
 
   Future<bool> deleteMaterial(int sessionId, int materialId) async {
     await run(
-      () => _api.delete('/api/v1/sessions/$sessionId/materials/$materialId'),
+          () => _api.delete('/api/v1/sessions/$sessionId/materials/$materialId'),
     );
     if (state == ProviderState.success) {
       _materials[sessionId] = (_materials[sessionId] ?? [])
           .where((m) => m.id != materialId)
           .toList();
+      _bumpMaterialCount(sessionId, -1);
       notifyListeners();
       return true;
     }
@@ -507,14 +608,14 @@ class TeacherCourseScreenProvider extends BaseProvider {
   int startSessionId = -1;
 
   Future<LiveResponseModel?> startLive(
-    int sessionId, {
-    bool enableRecording = true,
-    int durationHours = 24,
-  }) async {
+      int sessionId, {
+        bool enableRecording = true,
+        int durationHours = 24,
+      }) async {
     startSessionId = sessionId;
     notifyListeners();
     final result = await run(
-      () => _api.post(
+          () => _api.post(
         '/api/v1/live-sessions/start',
         queryParams: {
           'session_id': sessionId,
@@ -541,7 +642,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
     startSessionId = sessionId;
     notifyListeners();
     final result = await run(
-      () => _api.post(
+          () => _api.post(
         '/api/v1/live-sessions/$sessionId/end',
         queryParams: {'save_recording': saveRecording},
       ),
@@ -567,12 +668,12 @@ class TeacherCourseScreenProvider extends BaseProvider {
   /// [JoinArgs] so that [RoomPage._ClientRecorder] can authenticate its
   /// chunk-upload POSTs with the teacher's Bearer token.
   Future<void> joinLive(
-    BuildContext context,
-    int sessionId,
-    int courseId,
-    int maxParticipants,
-    bool liveNow,
-  ) async {
+      BuildContext context,
+      int sessionId,
+      int courseId,
+      int maxParticipants,
+      bool liveNow,
+      ) async {
     final AuthProvider provider = context.read<AuthProvider>();
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -609,7 +710,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
     // material) — must not flip the shared isLoading, or an unrelated
     // spinner elsewhere on screen could appear because of it.
     await run(
-      () => _api.post(
+          () => _api.post(
         '/api/v1/sessions/$sessionId/materials/$materialId/complete',
       ),
       makLoading: false,
@@ -618,14 +719,14 @@ class TeacherCourseScreenProvider extends BaseProvider {
 
   Future<void> markSessionComplete(int sessionId) async {
     await run(
-      () => _api.post('/api/v1/sessions/$sessionId/complete'),
+          () => _api.post('/api/v1/sessions/$sessionId/complete'),
       makLoading: false,
     );
   }
 
   Future<String?> fetchRecordingUrl(int sessionId) async {
     final result = await run(
-      () => _api.get('/api/v1/live-sessions/$sessionId/recording'),
+          () => _api.get('/api/v1/live-sessions/$sessionId/recording'),
     );
     if (result is Map<String, dynamic>) {
       final url = result['recording_url'] as String?;
@@ -633,9 +734,9 @@ class TeacherCourseScreenProvider extends BaseProvider {
         _sessions = _sessions
             .map(
               (s) => s.id == sessionId
-                  ? s.copyWith(recordingUrl: url, recordingStatus: 'uploaded')
-                  : s,
-            )
+              ? s.copyWith(recordingUrl: url, recordingStatus: 'uploaded')
+              : s,
+        )
             .toList();
         notifyListeners();
       }
@@ -645,21 +746,21 @@ class TeacherCourseScreenProvider extends BaseProvider {
   }
 
   void _updateSessionLiveState(
-    int sessionId, {
-    required bool isLive,
-    String? roomUrl,
-    String? recordingStatus,
-  }) {
+      int sessionId, {
+        required bool isLive,
+        String? roomUrl,
+        String? recordingStatus,
+      }) {
     _sessions = _sessions
         .map(
           (s) => s.id == sessionId
-              ? s.copyWith(
-                  isLiveActive: isLive,
-                  roomUrl: roomUrl,
-                  recordingStatus: recordingStatus,
-                )
-              : s,
-        )
+          ? s.copyWith(
+        isLiveActive: isLive,
+        roomUrl: roomUrl,
+        recordingStatus: recordingStatus,
+      )
+          : s,
+    )
         .toList();
     notifyListeners();
   }
@@ -670,28 +771,28 @@ class TeacherCourseScreenProvider extends BaseProvider {
   /// BEFORE onEnd() is called, so by the time we reach here all chunks have
   /// already been uploaded.  This method simply calls endLive() on the server.
   Future<void> _confirmEndSession(
-    dynamic user,
-    int sessionId,
-    BuildContext context,
-  ) async {
+      dynamic user,
+      int sessionId,
+      BuildContext context,
+      ) async {
     await endLive(sessionId);
   }
 
   Future<LiveResponseModel?> _onStartLive(
-    dynamic user,
-    int sessionId,
-    BuildContext context,
-  ) async {
+      dynamic user,
+      int sessionId,
+      BuildContext context,
+      ) async {
     return await startLive(sessionId);
   }
 
   /// Student join: GET /api/v1/live-sessions/{sessionId}/join
   Future<LiveResponseModel?> _onJoinLiveAsStudent(
-    int sessionId,
-    BuildContext context,
-  ) async {
+      int sessionId,
+      BuildContext context,
+      ) async {
     final result = await run(
-      () => _api.get('/api/v1/live-sessions/$sessionId/join'),
+          () => _api.get('/api/v1/live-sessions/$sessionId/join'),
     );
     if (result is Map<String, dynamic>) {
       return LiveResponseModel(

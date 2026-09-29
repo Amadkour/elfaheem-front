@@ -6,7 +6,10 @@
 // wrapper needed since it's always opened from within the provider scope.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import 'dart:io' show File;
+
 import 'package:file_picker/file_picker.dart';
+import 'package:video_player/video_player.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -67,9 +70,9 @@ class AddMaterialButton extends StatelessWidget {
 /// Opens the Add Material UI, picking the right chrome for the current
 /// screen size: a bottom sheet on phones, a centered card on wide screens.
 Future<void> showAddMaterialSheet(
-  BuildContext context, {
-  required int sessionId,
-}) async {
+    BuildContext context, {
+      required int sessionId,
+    }) async {
   final provider = context.read<TeacherCourseScreenProvider>();
   final isWide = MediaQuery.sizeOf(context).width >= _kWideBreakpoint;
 
@@ -156,6 +159,14 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
       fileType: FileType.custom,
       color: Color(0xFFF44336),
     ),
+    // ANY other file: .py .java .txt .zip .csv ... (no extension filter).
+    // Add the translation key 'other_file' (e.g. "ملف آخر" / "Other file").
+    _FileTypeOption(
+      labelKey: 'other_file',
+      icon: Icons.insert_drive_file_rounded,
+      fileType: FileType.any,
+      color: Color(0xFF607D8B),
+    ),
   ];
 
   static const _documentExtensions = [
@@ -197,15 +208,23 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
       setState(() {
         _pickedFile = result.files.first;
         _fileError = null;
-        if (_nameCtrl.text.isEmpty) {
-          _nameCtrl.text = _pickedFile!.name.replaceAll(
-            RegExp(r'\.[^.]+$'),
-            '',
-          );
-          _nameError = null;
-        }
       });
       HapticFeedback.selectionClick();
+    }
+  }
+
+  /// Video length in whole seconds (mobile/desktop only; null on web / on error).
+  Future<int?> _probeDuration(PlatformFile f) async {
+    if (kIsWeb || f.path == null) return null;
+    final c = VideoPlayerController.file(File(f.path!));
+    try {
+      await c.initialize();
+      final s = c.value.duration.inSeconds;
+      return s > 0 ? s : null;
+    } catch (_) {
+      return null;
+    } finally {
+      await c.dispose();
     }
   }
 
@@ -261,6 +280,8 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
       // all — throwing "Unsupported operation: _Namespace" the instant
       // it's constructed. `kIsWeb` is the actual, reliable platform check;
       // `path != null` alone is not.
+      final int? durationSeconds =
+      isVideo ? await _probeDuration(_pickedFile!) : null;
       if (isVideo && path != null) {
         // Long videos (mobile/desktop only): hand off to the background
         // upload queue and close the sheet right away — no spinner here,
@@ -270,6 +291,7 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
           sessionId: widget.sessionId,
           filePath: path,
           bytes:bytes,
+          durationSeconds: durationSeconds,
           fileName: _pickedFile!.name,
           name: name,
           description: _descCtrl.text.trim().isEmpty
@@ -290,6 +312,7 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
           sessionId: widget.sessionId,
           fileName: _pickedFile!.name,
           fileBytes: bytes,
+          durationSeconds: durationSeconds,
           name: name,
           description: _descCtrl.text.trim().isEmpty
               ? null
@@ -352,12 +375,12 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
               : BorderRadius.circular(radius),
           boxShadow: widget.isWide
               ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.25),
-                    blurRadius: 32,
-                    offset: const Offset(0, 12),
-                  ),
-                ]
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 32,
+              offset: const Offset(0, 12),
+            ),
+          ]
               : null,
         ),
         child: Directionality(
@@ -599,11 +622,11 @@ class _ModeToggle extends StatelessWidget {
   }
 
   Widget _segment(
-    String label,
-    int index,
-    IconData icon,
-    BuildContext context,
-  ) {
+      String label,
+      int index,
+      IconData icon,
+      BuildContext context,
+      ) {
     final sel = selected == index;
     return Expanded(
       child: GestureDetector(
@@ -850,9 +873,9 @@ class _FilePickerZone extends StatelessWidget {
             painter: picked
                 ? null
                 : _DashedRRectPainter(
-                    color: borderColor,
-                    radius: context.colors.radiusMedium,
-                  ),
+              color: borderColor,
+              radius: context.colors.radiusMedium,
+            ),
             child: Container(
               width: double.infinity,
               decoration: BoxDecoration(
@@ -1091,26 +1114,26 @@ class _SubmitButton extends StatelessWidget {
               child: saving
                   ? AppLoadingIndicator(showLogo: false,)
                   : Row(
-                      key: const ValueKey('label'),
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.add_rounded,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'add_material_btn'.tr,
-                          style: const TextStyle(
-                            fontFamily: 'bahji',
-                            fontSize: 14,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
+                key: const ValueKey('label'),
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.add_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'add_material_btn'.tr,
+                    style: const TextStyle(
+                      fontFamily: 'bahji',
+                      fontSize: 14,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
                     ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

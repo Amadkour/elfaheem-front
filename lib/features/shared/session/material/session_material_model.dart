@@ -10,6 +10,29 @@ import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/utils/widget/rating_widget.dart';
 
+// ── Formatting helpers ───────────────────────────────────────────────────────
+
+/// Bytes → "812 KB" (under 1 MB) or "3.4 MB" (1 MB and above).
+String formatBytes(int? bytes) {
+  if (bytes == null || bytes <= 0) return '';
+  const mb = 1024 * 1024;
+  if (bytes < mb) {
+    final kb = (bytes / 1024).ceil().clamp(1, 1023);
+    return '$kb KB';
+  }
+  final v = bytes / mb;
+  return '${v.toStringAsFixed(v >= 100 ? 0 : 1)} MB';
+}
+
+/// Seconds → "h:mm:ss" (e.g. 0:05:32, 1:02:09).
+String formatDuration(int? seconds) {
+  if (seconds == null || seconds <= 0) return '';
+  final h = seconds ~/ 3600;
+  final m = (seconds % 3600) ~/ 60;
+  final s = seconds % 60;
+  return '$h:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+}
+
 enum SessionMaterialType { image, video, pdf, document, link,recorded,recording }
 
 // ── Quality tier ─────────────────────────────────────────────────────────────
@@ -65,12 +88,7 @@ class MaterialVariant {
     }
   }
 
-  String get sizeLabel {
-    if (fileSizeBytes == null) return '';
-    final kb = fileSizeBytes! / 1024;
-    if (kb < 1024) return '${kb.toStringAsFixed(0)} KB';
-    return '${(kb / 1024).toStringAsFixed(1)} MB';
-  }
+  String get sizeLabel => formatBytes(fileSizeBytes);
 }
 
 // ── Main model ────────────────────────────────────────────────────────────────
@@ -87,6 +105,9 @@ class SessionMaterialModel {
   final DateTime createdAt;
   final bool    completed;
   final RatingSummary? rateSummary;
+
+  /// Video / recording length in seconds (null when unknown or not media).
+  final int? durationSeconds;
 
   // ── Multi-quality video URLs ───────────────────────────────────────────────
   final String? urlHigh;    // 1080p MP4 (same as url for high-quality tier)
@@ -124,6 +145,7 @@ class SessionMaterialModel {
     required this.createdAt,
     required this.completed,
     this.rateSummary,
+    this.durationSeconds,
     // multi-quality video
     this.urlHigh,
     this.urlMedium,
@@ -154,6 +176,7 @@ class SessionMaterialModel {
       id: id, sessionId: sessionId, name: name, description: description,
       type: type, fileSize: fileSize, key: key, order: order,
       createdAt: createdAt, completed: completed, rateSummary: rateSummary,
+      durationSeconds: (j['duration_seconds'] as num?)?.toInt() ?? durationSeconds,
       urlHigh: u('url_high') ?? primary,
       urlMedium: u('url_medium') ?? primary,
       urlLow: u('url_low') ?? primary,
@@ -182,6 +205,7 @@ class SessionMaterialModel {
       rateSummary: json.containsKey('rate') && json['rate'] != null
           ? RatingSummary.fromJson(json['rate'] as Map<String, dynamic>)
           : null,
+      durationSeconds: (json['duration_seconds'] as num?)?.toInt(),
       // multi-quality video
       urlHigh:        json['url_high']         as String? ?? (json['url']??''),
       urlMedium:      json['url_medium']        as String? ?? (json['url']??''),
@@ -197,6 +221,38 @@ class SessionMaterialModel {
       audioMediumKey:  json['audio_medium_key']   as String?,
       audioMediumSize: json['audio_medium_size']  as int?,
       requiresPlay:    json['requires_play'] as bool? ?? false,
+    );
+  }
+
+  /// Local copy with edited fields (used for optimistic edit / reorder).
+  SessionMaterialModel copyWith({
+    String? name,
+    String? description,
+    int? order,
+    bool? completed,
+    String? urlLow,
+    String? urlMedium,
+    String? urlHigh,
+  }) {
+    return SessionMaterialModel(
+      id: id, sessionId: sessionId,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      type: type, fileSize: fileSize, key: key,
+      order: order ?? this.order,
+      createdAt: createdAt,
+      completed: completed ?? this.completed,
+      rateSummary: rateSummary,
+      durationSeconds: durationSeconds,
+      urlHigh: urlHigh ?? this.urlHigh,
+      urlMedium: urlMedium ?? this.urlMedium,
+      urlLow: urlLow ?? this.urlLow,
+      fileSizeHigh: fileSizeHigh, fileSizeMedium: fileSizeMedium,
+      fileSizeLow: fileSizeLow,
+      audioUrl: audioUrl, audioKey: audioKey, audioSize: audioSize,
+      audioMediumUrl: audioMediumUrl, audioMediumKey: audioMediumKey,
+      audioMediumSize: audioMediumSize,
+      requiresPlay: requiresPlay,
     );
   }
 
@@ -293,11 +349,14 @@ class SessionMaterialModel {
     }
   }
 
-  /// Human-readable file size (primary stream)
-  String get sizeLabel {
-    if (fileSize == null) return '';
-    final kb = fileSize! / 1024;
-    if (kb < 1024) return '${kb.toStringAsFixed(1)} KB';
-    return '${(kb / 1024).toStringAsFixed(1)} MB';
-  }
+  /// Human-readable size: KB below 1 MB, MB from 1 MB up.
+  /// Falls back to the quality-tier / audio sizes (recordings have no
+  /// primary `file_size`).
+  String get sizeLabel => formatBytes(
+    fileSize ?? fileSizeHigh ?? fileSizeMedium ?? fileSizeLow ??
+        audioSize ?? audioMediumSize,
+  );
+
+  /// "h:mm:ss" or '' when the length is unknown.
+  String get durationLabel => formatDuration(durationSeconds);
 }

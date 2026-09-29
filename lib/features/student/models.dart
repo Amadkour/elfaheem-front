@@ -194,6 +194,7 @@ class SessionModel {
     totalMaterial: totalMaterial,
     completeMaterial: completeMaterial,
     progress: progress,
+    rateSummary: rateSummary,
   );
 }
 
@@ -289,6 +290,8 @@ class TeacherSessionItem {
     String? roomUrl,
     String? recordingUrl,
     String? recordingStatus,
+    int? totalMaterial,
+    int? completeMaterial,
   }) => TeacherSessionItem(
     id: id,
     courseId: courseId,
@@ -304,8 +307,8 @@ class TeacherSessionItem {
     recordingUrl: recordingUrl ?? this.recordingUrl,
     recordingStatus: recordingStatus ?? this.recordingStatus,
     createdAt: createdAt ?? this.createdAt,
-    totalMaterial: totalMaterial,
-    completeMaterial: completeMaterial,
+    totalMaterial: totalMaterial ?? this.totalMaterial,
+    completeMaterial: completeMaterial ?? this.completeMaterial,
     progress: progress,
   );
 }

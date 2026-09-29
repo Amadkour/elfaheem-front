@@ -367,6 +367,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   /// Fires at most once per screen instance — safe to call repeatedly.
   void _checkWatchThreshold() {
     if (_completionSent) return;
+    // Legacy / preview players build a placeholder material (id 0, session 0):
+    // posting /sessions/0/materials/0/complete is what returned 404.
+    if (_mat.id == 0 || _mat.sessionId == 0) return;
     final vc = _vc;
     if (vc == null || !vc.value.isInitialized) return;
 
