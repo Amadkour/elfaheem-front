@@ -121,6 +121,9 @@ class AuthProvider extends BaseProvider {
   bool isLoadingRegistration = false;
   bool isLoadingLogin = false;
 
+  /// Set by login() when the server answers 403 (account inactive / unverified).
+  bool needsVerification = false;
+  String? pendingRole; // role from the 403 body, if the backend sends it
   UserModel? get currentUser => _currentUser;
 
   bool get isStudent => persona == 'student';
@@ -334,13 +337,25 @@ class AuthProvider extends BaseProvider {
       role: 'student',
       lastLogin: DateTime.now(),
     );
-    final result = await run(
-      () => _api.post(
-        '/api/v1/auth/login',
-        body: {'gmail': gmail, 'password': password},
-        auth: false,
-      ),
-    );
+    final result = await run(() async {
+      try {
+        return await _api.post(
+          '/api/v1/auth/login',
+          body: {'gmail': gmail, 'password': password},
+          auth: false,
+        );
+      } on ApiException catch (e) {
+        // Login only returns 403 for inactive / unverified accounts.
+        if (e.statusCode == 403) {
+          needsVerification = true;
+          final b = e.body;
+          if (b is Map && b['detail'] is Map) {
+            pendingRole = b['detail']['role']?.toString();
+          }
+        }
+        rethrow;
+      }
+    });
     if (result != null && result is Map) {
       // 1. Save tokens
       await _persistTokens(result);

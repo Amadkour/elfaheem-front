@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/auth/verified_screen.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
 import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
@@ -87,6 +88,17 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
       }
+    } else if (authProvider.needsVerification) {
+      Helpers.showMessage('account_not_verified'.tr, isError: false);
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => OtpVerificationScreen(
+            email: _emailController.text.trim(),
+            role: authProvider.pendingRole ?? 'student',
+            flow: OtpFlowEnum.registration,
+          ),
+        ),
+      );
     } else {
       Helpers.showMessage(
         authProvider.errorMessage ?? 'incorrect_email_or_password'.tr,

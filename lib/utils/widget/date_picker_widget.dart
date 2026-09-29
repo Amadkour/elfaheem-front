@@ -69,13 +69,13 @@ class MyDatePicker extends StatelessWidget {
             primaryColorDark: context.colors.inputBg,
             colorScheme: isDark
                 ? ColorScheme.dark(
-              primary: context.colors.accent,       // Selected day circle
+              primary: context.colors.primary,       // Selected day circle
               onPrimary: context.colors.background, // Selected day text
               surface: context.colors.cardBg,       // Picker background
               onSurface: context.colors.textDark, // Day & header text
             )
                 : ColorScheme.light(
-              primary: context.colors.accent,       // Selected day circle
+              primary: context.colors.primary,       // Selected day circle
               onPrimary: context.colors.background, // Selected day text
               surface: context.colors.cardBg,       // Picker background
               onSurface: context.colors.textDark, // Day & header text

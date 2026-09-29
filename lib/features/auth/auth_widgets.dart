@@ -517,7 +517,7 @@ class ProgressBar extends StatelessWidget {
           margin: EdgeInsets.only(right: i < totalSteps - 1 ? 6 : 0),
           height: 4,
           decoration: BoxDecoration(
-            color: done ? context.colors.accent : _kBorder,
+            color: done ? context.colors.primary : _kBorder,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
