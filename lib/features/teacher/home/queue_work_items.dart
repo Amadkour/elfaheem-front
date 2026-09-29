@@ -113,15 +113,15 @@ class _ScheduleQueueListState extends State<ScheduleQueueList> {
   Timer? _pollTimer;
 
   void _startPolling() {
-    _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(const Duration(seconds: 10), (_) {
-      if (!mounted) return;
-      if (!context.read<AuthProvider>().isAuthenticated) {
-        _pollTimer?.cancel();
-        return;
-      }
-      context.read<TeacherHomeProvider>().refreshSilently();
-    });
+    // _pollTimer?.cancel();
+    // _pollTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+    //   if (!mounted) return;
+    //   if (!context.read<AuthProvider>().isAuthenticated) {
+    //     _pollTimer?.cancel();
+    //     return;
+    //   }
+    //   context.read<TeacherHomeProvider>().refreshSilently();
+    // });
   }
   @override
   void dispose() {

@@ -303,18 +303,18 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
 
   void _startTick() {
     _recalcSeconds();
-    _tickTimer?.cancel();
-    _tickTimer = Timer.periodic(const Duration(minutes: 1), (_) {
-      if(context.read<AuthProvider>().isAuthenticated){
-        _tickTimer?.cancel();
-        return;
-      }
-      if (_secondsLeft > 0) {
-        if (mounted) setState(() => _secondsLeft -= 60);
-      } else {
-        _schedProv.fetch().then((_) => _recalcSeconds());
-      }
-    });
+    // _tickTimer?.cancel();
+    // _tickTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+    //   if(context.read<AuthProvider>().isAuthenticated){
+    //     _tickTimer?.cancel();
+    //     return;
+    //   }
+    //   if (_secondsLeft > 0) {
+    //     if (mounted) setState(() => _secondsLeft -= 60);
+    //   } else {
+    //     _schedProv.fetch().then((_) => _recalcSeconds());
+    //   }
+    // });
     Timer.periodic(const Duration(seconds: 5), (_) {
       if (mounted) _bellCtrl.forward(from: 0);
     });
