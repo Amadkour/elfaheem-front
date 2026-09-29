@@ -207,6 +207,8 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
     if (result != null && result.files.isNotEmpty && mounted) {
       setState(() {
         _pickedFile = result.files.first;
+        _nameCtrl.text=_pickedFile!.name;
+        _descCtrl.text='${opt.labelKey} about ${_pickedFile!.name}';
         _fileError = null;
       });
       HapticFeedback.selectionClick();

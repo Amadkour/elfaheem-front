@@ -23,6 +23,8 @@ import '../../models.dart';
 import 'components/app_responsive.dart';
 import 'components/content.dart';
 import 'components/stat_chip.dart';
+import '../security/device_blocked_dialog.dart';
+import '../security/device_security_provider.dart';
 import 'course_detail_provider.dart';
 
 void _openRecommendedCourse(BuildContext context, CourseSummary summary) {
@@ -57,13 +59,47 @@ class CourseDetailScreen extends StatefulWidget {
 }
 
 class _CourseDetailScreenState extends State<CourseDetailScreen> {
+  late final CourseDetailProvider _provider;
+  bool _showingBlockedDialog = false;
+
   @override
   void initState() {
-    context.read<CourseDetailProvider>().course = widget.course;
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      context.read<CourseDetailProvider>().init(widget.course);
-    });
     super.initState();
+    _provider = context.read<CourseDetailProvider>();
+    _provider.course = widget.course;
+    _provider.addListener(_onProviderChanged);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _provider.init(widget.course);
+    });
+  }
+
+  @override
+  void dispose() {
+    _provider.removeListener(_onProviderChanged);
+    super.dispose();
+  }
+
+  /// Shows the device-blocked dialog when a sessions fetch (init / refresh /
+  /// load-more) reports the device is blocked.
+  Future<void> _onProviderChanged() async {
+    if (!_provider.consumeDeviceBlocked()) return;
+    if (_showingBlockedDialog || !mounted) return;
+
+    _showingBlockedDialog = true;
+    try {
+      final p = DeviceSecurityProvider();
+      if (await p.check() && mounted) {
+        print("----------------------------");
+        await showDeviceBlockedDialog(
+          context,
+          p,
+          courseId: int.parse(_provider.course.id),
+        );
+      }
+    } finally {
+      _showingBlockedDialog = false;
+    }
   }
 
   @override
@@ -76,12 +112,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       maxWith: 1000,
       child: provider.isLoading
           ? Center(
-              child: SizedBox(
-                width: context.width / 5,
-                height: context.width / 5,
-                child: AppLoadingIndicator(),
-              ),
-            )
+        child: SizedBox(
+          width: context.width / 5,
+          height: context.width / 5,
+          child: AppLoadingIndicator(),
+        ),
+      )
           : isWide
           ? _WebDetail(provider)
           : _MobileDetail(provider),
@@ -167,10 +203,10 @@ class _MobileDetail extends StatelessWidget {
                         child: CourseRoadmapSection(
                           currentCourseName: provider.course.name,
                           recentCompletedCourses:
-                              provider.course.recentCompletedCourses,
+                          provider.course.recentCompletedCourses,
                           nextCourses: provider.course.nextCourses,
                           recommendedCourses:
-                              provider.course.recommendedCourses,
+                          provider.course.recommendedCourses,
                           similarCourses: provider.course.similarCourses,
                           onTapCourse: (s) =>
                               _openRecommendedCourse(context, s),
@@ -261,7 +297,7 @@ class _WebDetail extends StatelessWidget {
                                     // Stars row
                                     Row(
                                       mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
+                                      MainAxisAlignment.spaceBetween,
                                       children: [
                                         Spacer(),
 
@@ -269,7 +305,7 @@ class _WebDetail extends StatelessWidget {
                                           margin: EdgeInsets.all(10),
                                           decoration: BoxDecoration(
                                             gradient:
-                                                context.colors.accentGradient,
+                                            context.colors.accentGradient,
                                             borderRadius: BorderRadius.circular(
                                               10,
                                             ),
@@ -283,15 +319,15 @@ class _WebDetail extends StatelessWidget {
                                                         create: (_) =>
                                                             ComplaintProvider(),
                                                         child:
-                                                            NewComplaintScreen(
-                                                              courseTitle:
-                                                                  provider
-                                                                      .course
-                                                                      .title,
-                                                              courseId: provider
-                                                                  .course
-                                                                  .id,
-                                                            ),
+                                                        NewComplaintScreen(
+                                                          courseTitle:
+                                                          provider
+                                                              .course
+                                                              .title,
+                                                          courseId: provider
+                                                              .course
+                                                              .id,
+                                                        ),
                                                       ),
                                                 ),
                                               );
@@ -308,7 +344,7 @@ class _WebDetail extends StatelessWidget {
 
                                     Row(
                                       mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
+                                      MainAxisAlignment.spaceBetween,
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         RatingWidget(
@@ -323,13 +359,13 @@ class _WebDetail extends StatelessWidget {
                                           _HeroBadge(
                                             AppConfig.lang == 'ar'
                                                 ? provider
-                                                      .course
-                                                      .category!
-                                                      .nameAr
+                                                .course
+                                                .category!
+                                                .nameAr
                                                 : provider
-                                                      .course
-                                                      .category!
-                                                      .nameEn,
+                                                .course
+                                                .category!
+                                                .nameEn,
                                           ),
                                           //const SizedBox(height: 8),
                                         ],
@@ -370,10 +406,10 @@ class _WebDetail extends StatelessWidget {
                           child: CourseRoadmapSection(
                             currentCourseName: provider.course.name,
                             recentCompletedCourses:
-                                provider.course.recentCompletedCourses,
+                            provider.course.recentCompletedCourses,
                             nextCourses: provider.course.nextCourses,
                             recommendedCourses:
-                                provider.course.recommendedCourses,
+                            provider.course.recommendedCourses,
                             similarCourses: provider.course.similarCourses,
                             onTapCourse: (s) =>
                                 _openRecommendedCourse(context, s),
@@ -460,17 +496,17 @@ class _WebSidebar extends StatelessWidget {
                 isEnrolled
                     ? Text('you_are_enrolled'.tr)
                     : Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // Payment-status badge — pending review / rejected
-                          // — shown right above the enroll button.
-                          ManualTransferStatusBanner(
-                            courseId: c.id,
-                            onRetry: () => _openEnrollment(context, c),
-                          ),
-                          _EnrollButton(),
-                        ],
-                      ),
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Payment-status badge — pending review / rejected
+                    // — shown right above the enroll button.
+                    ManualTransferStatusBanner(
+                      courseId: c.id,
+                      onRetry: () => _openEnrollment(context, c),
+                    ),
+                    _EnrollButton(),
+                  ],
+                ),
                 const SizedBox(height: 16),
                 _WebCourseFacts(course: c),
               ],
@@ -576,39 +612,6 @@ class _HeroBadge extends StatelessWidget {
       fontSize: 11,
       fontWeight: FontWeight.w700,
       fontFamily: 'bahji',
-    ),
-  );
-}
-
-class _CircleIconBtn extends StatelessWidget {
-  final IconData icon;
-  final Color? iconColor;
-  final VoidCallback onTap;
-
-  const _CircleIconBtn({
-    required this.icon,
-    required this.onTap,
-    this.iconColor,
-  });
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.9),
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Icon(icon, size: 20, color: iconColor ?? context.colors.textDark),
     ),
   );
 }
@@ -834,19 +837,19 @@ class _EnrollButton extends StatelessWidget {
           child: Center(
             child: p.course.isEnrolled
                 ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: AppLoadingIndicator(),
-                  )
+              width: 24,
+              height: 24,
+              child: AppLoadingIndicator(),
+            )
                 : Text(
-                    label,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
-                      fontFamily: 'bahji',
-                    ),
-                  ),
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 15,
+                fontFamily: 'bahji',
+              ),
+            ),
           ),
         ),
       ),
@@ -864,7 +867,7 @@ class _EnrollWrap extends StatelessWidget {
   Widget build(BuildContext context) => isWide
       ? child
       : Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-          child: SafeArea(top: false, child: child),
-        );
+    padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+    child: SafeArea(top: false, child: child),
+  );
 }

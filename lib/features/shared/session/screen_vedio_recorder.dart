@@ -259,7 +259,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     if (e.isDeviceBlocked) {
       final p = DeviceSecurityProvider();
       await p.check();
-      if (mounted) await showDeviceBlockedDialog(context, p);
+      if (mounted) await showDeviceBlockedDialog(context, p, courseId: null);
     } else if (e.isViewLimit) {
       await showDialog<void>(
         context: context,
@@ -367,9 +367,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   /// Fires at most once per screen instance — safe to call repeatedly.
   void _checkWatchThreshold() {
     if (_completionSent) return;
-    // Legacy / preview players build a placeholder material (id 0, session 0):
-    // posting /sessions/0/materials/0/complete is what returned 404.
-    if (_mat.id == 0 || _mat.sessionId == 0) return;
     final vc = _vc;
     if (vc == null || !vc.value.isInitialized) return;
 
@@ -664,7 +661,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         gradient: RadialGradient(
           center: Alignment.topCenter,
           radius: 1.6,
-          colors: [c.primary.withValues(alpha: 0.6), Colors.black],
+          colors: [c.primaryDark.withValues(alpha: 0.6), Colors.black],
         ),
       ),
       child: Center(

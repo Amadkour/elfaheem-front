@@ -351,6 +351,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
     final isLiveNow = _session.isLiveActive;
 
     final card = Container(
+      key: ValueKey("session_reorder_list:${widget.dragIndex}"),
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: context.colors.cardBg,

@@ -31,19 +31,27 @@ class DeviceSecurityProvider extends BaseProvider {
     }
     return allowed;
   }
+  String? switchError;
 
-  /// Sends the request to the teacher. Returns true on success.
-  Future<bool> sendSwitchRequest({int? courseId}) async {
-    final r = await run(() => _api.post(
-          '/api/v1/devices/switch-request',
-          body: {if (courseId != null) 'course_id': courseId},
-          auth: true,
-        ));
-    if (r != null) {
-      hasPending = true;
-      notifyListeners();
-      return true;
+  Future<bool> sendSwitchRequest(int courseId) async {
+    switchError = null;
+    try {
+      final r = await _api.post(
+        '/api/v1/devices/switch-request',
+        body: {'course_id': courseId},
+        auth: true,
+      );
+      if (r != null) {
+        hasPending = true;
+        notifyListeners();
+        return true;
+      }
+    } on ApiException catch (e) {
+      switchError = e.message; // "لا يوجد مدرس مرتبط بحسابك ..."
+    } catch (e) {
+      switchError = e.toString();
     }
+    notifyListeners();
     return false;
   }
 }

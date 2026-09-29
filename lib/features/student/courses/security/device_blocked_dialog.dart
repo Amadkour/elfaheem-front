@@ -11,7 +11,7 @@ import '../../../../config/theme/theme_config_provider.dart';
 import 'device_security_provider.dart';
 
 Future<void> showDeviceBlockedDialog(BuildContext context, DeviceSecurityProvider p,
-    {int? courseId}) {
+    { int? courseId}) {
   return showDialog<void>(
     context: context,
     barrierDismissible: false,
@@ -34,11 +34,11 @@ class _DeviceBlockedDialogState extends State<_DeviceBlockedDialog> {
 
   Future<void> _send() async {
     setState(() => _busy = true);
-    final ok = await widget.p.sendSwitchRequest(courseId: widget.courseId);
+    final ok = await widget.p.sendSwitchRequest( widget.courseId??-1);
     if (!mounted) return;
     setState(() {
       _busy = false;
-      _msg = ok ? 'تم إرسال الطلب إلى المدرس. سيتم إشعارك بعد الموافقة.' : 'تعذر إرسال الطلب، حاول مرة أخرى.';
+      _msg = ok ? 'تم إرسال الطلب إلى المدرس. سيتم إشعارك بعد الموافقة.' :(widget.p.switchError?? 'تعذر إرسال الطلب، حاول مرة أخرى.');
     });
   }
 
@@ -68,9 +68,9 @@ class _DeviceBlockedDialogState extends State<_DeviceBlockedDialog> {
           const SizedBox(width: 8),
           Expanded(child: Text('جهاز غير مسموح به', style: c.h3)),
         ]),
-        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(body, style: c.body),
-          if (_msg != null) ...[const SizedBox(height: 10), Text(_msg!, style: c.caption)],
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.center, children: [
+          Align( alignment:Alignment.centerRight ,child: Text(body, style: c.body)),
+          if (_msg != null) ...[const SizedBox(height: 10), Text(_msg!, style: c.caption.copyWith(color: Colors.red,fontSize: 14,fontWeight: FontWeight.w600))],
         ]),
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('إغلاق')),

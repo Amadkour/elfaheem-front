@@ -1,8 +1,11 @@
 /// courses/details/course_detail_provider.dart
 library;
 
+import 'package:flutter/cupertino.dart';
+
 import '../../../../core/api_client.dart';
 import '../../../../core/base_provider.dart';
+import '../../../../utils/helpers.dart';
 import '../../models.dart';
 import 'components/issued_certificate.dart';
 import 'session_exam_gate.dart';
@@ -41,6 +44,18 @@ class CourseDetailProvider extends BaseProvider {
   String? reelUrl;
 
   CourseDetailTab get activeTab => _activeTab;
+
+  // ── Device-blocked signal ─────────────────────────────────────────────────
+  // The provider only REPORTS that the device is blocked; the screen listens
+  // and shows the dialog (the provider must not hold a BuildContext).
+  bool _deviceBlocked = false;
+
+  /// One-shot: returns true once after a fetch hit a device-blocked error.
+  bool consumeDeviceBlocked() {
+    final v = _deviceBlocked;
+    _deviceBlocked = false;
+    return v;
+  }
 
   // ── Init ──────────────────────────────────────────────────────────────────
 
@@ -119,32 +134,48 @@ class CourseDetailProvider extends BaseProvider {
       sessions = [];
       examGates.clear();
     }
-    final result = await run(
-          () => _api.get('/api/v1/courses/$courseId/sessions',
-          queryParams: {'skip': _sessionsSkip, 'limit': _sessionsPageSize}),
-    );
-    if (result is Map && result['items'] is List) {
-      final items = result['items'] as List;
-      final page = items
-          .map((e) => SessionModel.fromJson(e as Map<String, dynamic>))
-          .toList()
-        ..sort((a, b) {
-          int compareOrder = a.order.compareTo(b.order);
-          if (compareOrder == 0) {
-            return a.createdAt.compareTo(b.createdAt);
-          }
-          return compareOrder;
-        });
+    try {
+      final result = await run(
+            () => _api.get(
+          '/api/v1/courses/$courseId/sessions',
+          queryParams: {'skip': _sessionsSkip, 'limit': _sessionsPageSize},
+        ),
+      );
+      if (result is Map && result['items'] is List) {
+        final items = result['items'] as List;
+        final page =
+        items
+            .map((e) => SessionModel.fromJson(e as Map<String, dynamic>))
+            .toList()
+          ..sort((a, b) {
+            int compareOrder = a.order.compareTo(b.order);
+            if (compareOrder == 0) {
+              return a.createdAt.compareTo(b.createdAt);
+            }
+            return compareOrder;
+          });
 
-      _storeGates(items);
-      sessions = [...sessions, ...page];
-      _sessionsSkip += page.length;
-      _hasMoreSessions = page.length == _sessionsPageSize;
+        _storeGates(items);
+        sessions = [...sessions, ...page];
+        _sessionsSkip += page.length;
+        _hasMoreSessions = page.length == _sessionsPageSize;
+      }
+      completedSessionIds.clear();
+      completedSessionIds.addAll(
+        sessions.where((e) => e.isCompleted).map((e) => e.id),
+      );
+    } on ApiException catch (e) {
+      if (e.isDeviceBlocked) {
+        // Screen listens to this and shows the device-blocked dialog.
+        _deviceBlocked = true;
+        notifyListeners();
+        return;
+      }
+      Helpers.showMessage(e.message);
+    } catch (e) {
+      Helpers.showMessage(e.toString());
+      return;
     }
-    completedSessionIds.clear();
-    completedSessionIds.addAll(
-      sessions.where((e) => e.isCompleted).map((e) => e.id),
-    );
     notifyListeners();
   }
 
@@ -162,15 +193,17 @@ class CourseDetailProvider extends BaseProvider {
   /// tab, so a freshly passed exam unlocks the next sessions immediately.
   Future<void> refreshSessionsSilently() async {
     try {
-      final limit =
-      sessions.length > _sessionsPageSize ? sessions.length : _sessionsPageSize;
+      final limit = sessions.length > _sessionsPageSize
+          ? sessions.length
+          : _sessionsPageSize;
       final result = await _api.get(
         '/api/v1/courses/${course.id}/sessions',
         queryParams: {'skip': 0, 'limit': limit},
       );
       if (result is Map && result['items'] is List) {
         final items = result['items'] as List;
-        final fresh = items
+        final fresh =
+        items
             .map((e) => SessionModel.fromJson(e as Map<String, dynamic>))
             .toList()
           ..sort((a, b) => a.order.compareTo(b.order));
