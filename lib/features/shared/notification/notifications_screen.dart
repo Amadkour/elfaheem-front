@@ -169,8 +169,9 @@ class _NotifTile extends StatelessWidget {
       onTap: () async {
         final navigator = Navigator.of(context);
         final provider = context.read<NotificationsProvider>();
-
-        await provider.markAsRead(notif.id);
+        if(!notif.isRead) {
+          await provider.markAsRead(notif.id);
+        }
 
        // navigator.pushNamed(AppRoutes.courseDetail,arguments: notif.sourceId);
       },
