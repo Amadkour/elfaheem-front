@@ -408,10 +408,11 @@ class TeacherCourseScreenProvider extends BaseProvider {
     return null;
   }
 
-  /// Long videos: streams the file straight from disk (never loads the
-  /// whole thing into memory) through the app-wide [UploadQueueManager],
-  /// so the sheet that started it can close immediately and progress shows
-  /// in [UploadProgressFooter] on any screen — not just this one.
+  /// ANY material file (video / pdf / image / document): streams the file
+  /// straight from disk (never loads the whole thing into memory) through
+  /// the app-wide [UploadQueueManager], so the sheet that started it can
+  /// close immediately and progress shows in [UploadProgressFooter] on any
+  /// screen — not just this one.
   Future<SessionMaterialModel?> uploadFileMaterialInBackground({
     required int sessionId,
     required String filePath,
@@ -429,7 +430,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
       bytes: bytes, // null → streamed from disk by the queue
       fileName: fileName,
       endpoint: '/api/v1/sessions/$sessionId/materials/from-upload',
-      contentType: _guessVideoContentType(fileName),
+      contentType: _guessContentType(fileName),
       fields: {
         'name': name,
         if (description != null && description.isNotEmpty)
@@ -448,14 +449,20 @@ class TeacherCourseScreenProvider extends BaseProvider {
     return mat;
   }
 
-  MediaType _guessVideoContentType(String fileName) {
+  /// Only a FALLBACK: the presign response's `content_type` (derived
+  /// server-side from the extension) always wins inside the queue manager.
+  MediaType? _guessContentType(String fileName) {
     final ext = fileName.split('.').last.toLowerCase();
     return switch (ext) {
+      'mp4' || 'm4v' => MediaType('video', 'mp4'),
       'mov' => MediaType('video', 'quicktime'),
       'mkv' => MediaType('video', 'x-matroska'),
       'webm' => MediaType('video', 'webm'),
       'avi' => MediaType('video', 'x-msvideo'),
-      _ => MediaType('video', 'mp4'),
+      'pdf' => MediaType('application', 'pdf'),
+      'jpg' || 'jpeg' => MediaType('image', 'jpeg'),
+      'png' => MediaType('image', 'png'),
+      _ => null, // queue falls back to application/octet-stream
     };
   }
 

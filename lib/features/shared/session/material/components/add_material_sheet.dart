@@ -192,17 +192,17 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
 
   Future<void> _pickFile() async {
     final opt = _fileTypeOptions[_fileTypeIdx];
-    final isVideo = opt.fileType == FileType.video;
     final result = await FilePicker.pickFiles(
       type: opt.fileType,
       allowedExtensions: opt.fileType == FileType.custom
           ? _documentExtensions
           : null,
-      // Videos stream straight from disk on upload (see _submit) — no need
-      // to buffer the whole file into memory just to pick it. On web,
+      // EVERY file type (video, pdf, image, document) is streamed straight
+      // from disk by the background upload queue (see _submit) — no need to
+      // buffer the whole file into memory just to pick it. On web,
       // file_picker only ever exposes bytes (no real filesystem path), so
       // kIsWeb still asks for them there.
-      withData: !isVideo || kIsWeb,
+      withData: kIsWeb,
     );
 
     if (result != null && result.files.isNotEmpty && mounted) {
@@ -302,60 +302,38 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
     if (_mode == 0) {
       final isVideo = _fileTypeOptions[_fileTypeIdx].fileType == FileType.video;
       final path = _pickedFile!.path;
-      final Uint8List? bytes=_pickedFile?.bytes;
+      final Uint8List? bytes = _pickedFile?.bytes;
 
-      // FIX: this used to check `path != null` alone as a stand-in for
-      // "not running on web". On this environment, file_picker can hand
-      // back a non-null `.path` on web too (e.g. a blob reference) that
-      // isn't a real filesystem path, and the background-upload branch
-      // below calls dart:io.File(path) — which doesn't exist on web at
-      // all — throwing "Unsupported operation: _Namespace" the instant
-      // it's constructed. `kIsWeb` is the actual, reliable platform check;
-      // `path != null` alone is not.
-      final int? durationSeconds =
-      isVideo ? await _probeDuration(_pickedFile!) : null;
-      if (isVideo && path != null) {
-        // Long videos (mobile/desktop only): hand off to the background
-        // upload queue and close the sheet right away — no spinner here,
-        // progress shows in the app-wide upload footer instead, and the
-        // sheet doesn't block on an upload that could take minutes.
-        prov.uploadFileMaterialInBackground(
-          sessionId: widget.sessionId,
-          filePath: path,
-          bytes:bytes,
-          durationSeconds: durationSeconds,
-          fileName: _pickedFile!.name,
-          name: name,
-          description: _descCtrl.text.trim().isEmpty
-              ? null
-              : _descCtrl.text.trim(),
-        );
-        if (mounted) Navigator.pop(context);
-        return;
-      }
-      if (bytes == null) {
+      // `kIsWeb` is the reliable platform check — file_picker can hand back
+      // a non-null `.path` on web too (a blob reference, not a filesystem
+      // path), and dart:io.File(path) throws on web the instant it's built.
+      //   • mobile/desktop -> stream from `path`
+      //   • web            -> upload the picked `bytes`
+      final bool canUpload = kIsWeb ? bytes != null : path != null;
+      if (!canUpload) {
         setState(() => _fileError = 'file_load_failed'.tr);
         return;
       }
 
-      setState(() => _saving = true);
-      try {
-        await prov.uploadFileMaterial(
-          sessionId: widget.sessionId,
-          fileName: _pickedFile!.name,
-          fileBytes: bytes,
-          durationSeconds: durationSeconds,
-          name: name,
-          description: _descCtrl.text.trim().isEmpty
-              ? null
-              : _descCtrl.text.trim(),
-        );
-        if (mounted) Navigator.pop(context);
-      } catch (_) {
-        if (mounted) setState(() => _submitError = 'generic_error'.tr);
-      } finally {
-        if (mounted) setState(() => _saving = false);
-      }
+      final int? durationSeconds =
+      isVideo ? await _probeDuration(_pickedFile!) : null;
+
+      // Every file type now goes through the app-wide background upload
+      // queue: the sheet closes immediately and progress / failures show in
+      // UploadProgressFooter on any screen (presign -> PUT -> confirm).
+      prov.uploadFileMaterialInBackground(
+        sessionId: widget.sessionId,
+        filePath: path ?? '',
+        bytes: kIsWeb ? bytes : null,
+        durationSeconds: durationSeconds,
+        fileName: _pickedFile!.name,
+        name: name,
+        description: _descCtrl.text.trim().isEmpty
+            ? null
+            : _descCtrl.text.trim(),
+      );
+      if (mounted) Navigator.pop(context);
+      return;
     } else {
       setState(() => _saving = true);
       try {

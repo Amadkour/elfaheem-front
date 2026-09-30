@@ -594,11 +594,12 @@ class _ExamCard extends StatelessWidget {
                             exam.isPublished
                                 ? 'exam_published_badge'.tr
                                 : 'exam_unpublished_badge'.tr,
+                            textAlign: TextAlign.center,
                             style: TextStyle(
                               fontFamily: 'bahji',
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
-                              color: exam.isPublished
+                              color: !exam.isPublished
                                   ? Colors.green
                                   : Colors.orange,
                             ),
@@ -933,7 +934,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
 
           // Body
           Expanded(
-            child: loading
+            child: loading ||prov.saving
                 ? const Center(child: AppLoadingIndicator())
                 : error != null
                 ? Center(
