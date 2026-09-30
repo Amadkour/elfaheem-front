@@ -18,6 +18,10 @@ class TeacherTransfersProvider extends BaseProvider {
   int _total = 0;
   final Set<int> _processing = {};
 
+  /// True once the first load finished successfully. The screen shows a
+  /// loader (or an error + retry) until then, never a false "empty" state.
+  bool hasLoaded = false;
+
   List<PendingTransfer> get items => _items;
   int get total => _total;
   bool isProcessing(int paymentId) => _processing.contains(paymentId);
@@ -30,6 +34,7 @@ class TeacherTransfersProvider extends BaseProvider {
         PendingTransfer.fromJson(Map<String, dynamic>.from(raw as Map)),
     ];
     _total = (json['total'] as num?)?.toInt() ?? _items.length;
+    hasLoaded = true;
     notifyListeners();
   }
 

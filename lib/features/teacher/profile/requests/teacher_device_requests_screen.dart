@@ -15,9 +15,14 @@ class TeacherDeviceRequestsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ChangeNotifierProvider(
-        create: (_) => TeacherDeviceRequestsProvider()..load(),
-        child: const _View(),
-      );
+    create: (_) {
+      final p = TeacherDeviceRequestsProvider();
+      // Deferred so the first build can't be hit by notifyListeners().
+      Future.microtask(p.load);
+      return p;
+    },
+    child: const _View(),
+  );
 }
 
 class _View extends StatelessWidget {
@@ -27,27 +32,48 @@ class _View extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.watch<TeacherDeviceRequestsProvider>();
     final c = context.colors;
+    // Not loaded yet: loader, or error + retry if the first load failed.
+    final failedFirstLoad = !p.hasLoaded && !p.isLoading && p.errorMessage != null;
+
     return Scaffold(
       backgroundColor: c.background,
       appBar: const ScreenAppBar(title: 'طلبات تغيير الجهاز'),
-      body: RefreshIndicator(
+      body: !p.hasLoaded && !failedFirstLoad
+          ? const Center(child: AppLoadingIndicator(showLogo: false))
+          : RefreshIndicator(
         onRefresh: p.load,
-        child: p.isLoading && p.items.isEmpty
-            ? const Center(child: AppLoadingIndicator(showLogo: false,))
+        child: failedFirstLoad
+            ? ListView(children: [
+          const SizedBox(height: 120),
+          Center(
+            child: Column(children: [
+              Icon(Icons.error_outline_rounded, size: 48, color: c.danger),
+              const SizedBox(height: 12),
+              Text(p.errorMessage ?? 'تعذر تحميل البيانات', style: c.body),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: p.load,
+                child: const Text('إعادة المحاولة'),
+              ),
+            ]),
+          ),
+        ])
             : p.items.isEmpty
-                ? ListView(children: [
-                    const SizedBox(height: 120),
-                    Center(child: Column(children: [
-                      Icon(Icons.phonelink_rounded, size: 48, color: c.textLight),
-                      const SizedBox(height: 12),
-                      Text('لا توجد طلبات بانتظار المراجعة', style: c.body),
-                    ])),
-                  ])
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: p.items.length,
-                    itemBuilder: (_, i) => _Card(item: p.items[i]),
-                  ),
+            ? ListView(children: [
+          const SizedBox(height: 120),
+          Center(
+            child: Column(children: [
+              Icon(Icons.phonelink_rounded, size: 48, color: c.textLight),
+              const SizedBox(height: 12),
+              Text('لا توجد طلبات بانتظار المراجعة', style: c.body),
+            ]),
+          ),
+        ])
+            : ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: p.items.length,
+          itemBuilder: (_, i) => _Card(item: p.items[i]),
+        ),
       ),
     );
   }

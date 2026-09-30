@@ -21,6 +21,8 @@ import '../../../../teacher/sessions/sessions_provider.dart';
 import '../../../course/studend_course_roadmap_section.dart';
 import '../../screen_vedio_recorder.dart';
 import '../session_material_model.dart';
+import 'material_file_style.dart';
+import 'session_exam_tile.dart';
 import 'session_shared_widgets.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -34,6 +36,11 @@ class SessionMaterialGrid extends StatelessWidget {
   final int columns;
   final bool isTeacher;
 
+  /// The exam attached to this session (null / empty → none). Rendered as the
+  /// last, non-reorderable entry.
+  final SessionExamGate? examGate;
+  final VoidCallback? onOpenExam;
+
   const SessionMaterialGrid({
     super.key,
     required this.session,
@@ -41,7 +48,11 @@ class SessionMaterialGrid extends StatelessWidget {
     required this.columns,
     required this.isTeacher,
     required this.isLoading,
+    this.examGate,
+    this.onOpenExam,
   });
+
+  bool get _hasExam => examGate != null && !examGate!.isEmpty;
 
   // ── Icons: one distinct icon per type ──────────────────────────────────────
   static const _typeIcons = {
@@ -85,7 +96,28 @@ class SessionMaterialGrid extends StatelessWidget {
     if (isLoading) {
       return const Center(child: AppLoadingIndicator());
     }
+    if (!_hasExam) return _buildMaterialsList(context);
 
+    // The session exam is ALWAYS the last entry. It lives OUTSIDE the
+    // ReorderableListView on purpose: it can't be dragged, and nothing can be
+    // dropped after it.
+    final enrolled =
+        isTeacher || context.read<CourseDetailProvider>().course.isEnrolled;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (materials.isNotEmpty) _buildMaterialsList(context),
+        SessionExamTile(
+          gate: examGate!,
+          isTeacher: isTeacher,
+          enrolled: enrolled,
+          onOpen: onOpenExam,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMaterialsList(BuildContext context) {
     if (materials.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -170,8 +202,13 @@ class SessionMaterialGrid extends StatelessWidget {
     final isRecording = m.type == SessionMaterialType.recording;
     final isRecorded = m.type == SessionMaterialType.recorded;
 
+    // Word / Excel / CSV / PowerPoint / Python get their own badge + colour.
+    final fileStyle = m.type == SessionMaterialType.document
+        ? MaterialFileStyle.forExtension(m.fileExtension)
+        : null;
     final icon = _typeIcons[m.type] ?? Icons.attach_file_rounded;
-    final color = _typeColors[m.type] ?? context.colors.primary;
+    final color =
+        fileStyle?.color ?? _typeColors[m.type] ?? context.colors.primary;
     final labelKey = _typeLabelKeys[m.type] ?? 'material_type_link';
     final isCompleted = m.completed;
 
@@ -267,6 +304,8 @@ class SessionMaterialGrid extends StatelessWidget {
                             icon: icon,
                             color: color,
                             isCompleted: isCompleted,
+                            badge: fileStyle?.badge,
+                            badgeTextColor: fileStyle?.badgeTextColor,
                           ),
                         ],
                       ),
@@ -337,7 +376,7 @@ class SessionMaterialGrid extends StatelessWidget {
                           const SizedBox(height: 3),
                           Row(
                             children: [
-                              SessionPill(labelKey.tr, color),
+                              SessionPill(fileStyle?.label ?? labelKey.tr, color),
                               if (m.sizeLabel.isNotEmpty && !isRecording) ...[
                                 const SizedBox(width: 6),
                                 Text(
@@ -778,11 +817,17 @@ class MaterialIconWidget extends StatelessWidget {
   final Color color;
   final bool isCompleted;
 
+  /// Letters drawn instead of the icon (file-type badge, e.g. "W", "PY").
+  final String? badge;
+  final Color? badgeTextColor;
+
   const MaterialIconWidget({
     super.key,
     required this.icon,
     required this.color,
     required this.isCompleted,
+    this.badge,
+    this.badgeTextColor,
   });
 
   @override
@@ -802,7 +847,11 @@ class MaterialIconWidget extends StatelessWidget {
               end: Alignment.bottomRight,
             )
                 : null,
-            color: isCompleted ? null : effectiveColor.withValues(alpha: 0.12),
+            color: isCompleted
+                ? null
+                : (badge != null
+                ? effectiveColor
+                : effectiveColor.withValues(alpha: 0.12)),
             borderRadius: BorderRadius.circular(10),
             boxShadow: isCompleted
                 ? [
@@ -814,7 +863,19 @@ class MaterialIconWidget extends StatelessWidget {
             ]
                 : null,
           ),
-          child: Icon(
+          child: (badge != null && !isCompleted)
+              ? Center(
+            child: Text(
+              badge!,
+              style: TextStyle(
+                color: badgeTextColor ?? Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: badge!.length > 2 ? 11 : 18,
+                letterSpacing: 0.3,
+              ),
+            ),
+          )
+              : Icon(
             isCompleted ? Icons.check_rounded : icon,
             color: isCompleted ? Colors.white : effectiveColor,
             size: 20,

@@ -24,6 +24,7 @@ import '../../../../config/app_config.dart';
 import '../../../../config/theme/app_theme.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/widget/rating_widget.dart';
+import '../../../student/courses/details/course_detail_provider.dart';
 import '../../../student/models.dart';
 import '../../../teacher/analysis/attendance/teacher_attendance_screen.dart';
 import '../../../teacher/analysis/exam/teacher_exam_hub_screen.dart';
@@ -83,10 +84,20 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
     // rather keep all student-facing strings in one place. Kept generic
     // (rather than branching on enrollment) since TeacherCourse doesn't
     // necessarily expose an isEnrolled flag.
-    Helpers.showMessage(
-      'هذه الجلسة مقفلة — أكمل الجلسة الحالية أو اشترك في الكورس لفتحها',
-      isError: true,
-    );
+    var message =
+        'هذه الجلسة مقفلة — أكمل الجلسة الحالية أو اشترك في الكورس لفتحها';
+    // Locked because of an unpassed exam → say WHICH exam.
+    if (!widget.isTeacher) {
+      try {
+        final cd = context.read<CourseDetailProvider>();
+        final idx = cd.sessions.indexWhere((s) => s.id == _session.id);
+        final blocking = idx < 0 ? null : cd.blockingExamFor(idx);
+        if (blocking != null) {
+          message = '${'session_exam_must_pass'.tr}: ${blocking.name}';
+        }
+      } catch (_) {}
+    }
+    Helpers.showMessage(message, isError: true);
   }
 
   @override
@@ -165,6 +176,27 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
         ),
       ),
     );
+  }
+
+  // ── Session exam ───────────────────────────────────────────────────────────
+
+  /// The exam(s) attached to this session (teacher: from the sessions list of
+  /// TeacherCourseScreenProvider, student: from CourseDetailProvider).
+  SessionExamGate? _examGate(TeacherCourseScreenProvider prov) {
+    if (widget.isTeacher) return prov.examGates[_session.id];
+    try {
+      return context.watch<CourseDetailProvider>().examGates[_session.id];
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void _openSessionExam() {
+    if (widget.isTeacher) {
+      _openExams();
+      return;
+    }
+    context.read<CourseDetailProvider>().setTab(CourseDetailTab.exam);
   }
 
   // ── Live controls ──────────────────────────────────────────────────────────
@@ -262,7 +294,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
 
   // ── Actions row ────────────────────────────────────────────────────────────
 
-  Widget _buildActionsRow(TeacherCourseScreenProvider prov) {
+  Widget _buildActionsRow(TeacherCourseScreenProvider prov, bool hasExam) {
     final isLiveType = _session.type == 'live';
     return Wrap(
       spacing: 8,
@@ -328,9 +360,9 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
             color: context.colors.success,
             onTap: prov.joinSessionId != -1 ? null : _joinLive,
           ),
-        if (_session.totalMaterial > 0)
+        if (_session.totalMaterial > 0 || hasExam)
           _MaterialsToggleButton(
-            count: _session.totalMaterial,
+            count: _session.totalMaterial + (hasExam ? 1 : 0),
             expanded: _expanded,
             onTap: _toggleExpanded,
           )
@@ -349,6 +381,8 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
     final uploading = prov.isUploadingMaterial(_session.id);
     final uploadProgress = prov.uploadProgressForSession(_session.id);
     final isLiveNow = _session.isLiveActive;
+    final examGate = _examGate(prov);
+    final hasExam = examGate != null && !examGate.isEmpty;
 
     final card = Container(
       key: ValueKey("session_reorder_list:${widget.dragIndex}"),
@@ -470,7 +504,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
                 ),
 
                 const SizedBox(height: 10),
-                _buildActionsRow(prov),
+                _buildActionsRow(prov, hasExam),
                 const Divider(height: 20),
 
                 // Rating + teacher edit/delete icons
@@ -528,6 +562,8 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
               session: _session,
               materials: materials,
               isTeacher: widget.isTeacher,
+              examGate: examGate,
+              onOpenExam: _openSessionExam,
             ),
           ),
         ],
@@ -591,11 +627,15 @@ class _MaterialsPanel extends StatelessWidget {
   final TeacherSessionItem session;
   final List<SessionMaterialModel> materials;
   final bool isTeacher;
+  final SessionExamGate? examGate;
+  final VoidCallback? onOpenExam;
 
   const _MaterialsPanel({
     required this.session,
     required this.materials,
     required this.isTeacher,
+    this.examGate,
+    this.onOpenExam,
   });
 
   @override
@@ -649,6 +689,8 @@ class _MaterialsPanel extends StatelessWidget {
             materials: materials,
             columns: context.width > 800 ? 2 : 1,
             isTeacher: isTeacher,
+            examGate: examGate,
+            onOpenExam: onOpenExam,
           ),
         ],
       ),

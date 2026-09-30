@@ -323,6 +323,22 @@ class SessionMaterialModel {
   /// True if more than one video resolution is available.
   bool get hasMultipleVideoQualities => videoVariants.length > 1;
 
+  /// Lower-case file extension without the dot ('xlsx', 'py', ...) or ''.
+  /// Read from the storage key, falling back to the URL path (a signed URL
+  /// still ends in the file name). Drives the Word/Excel/CSV/PPT/PY icons.
+  String get fileExtension {
+    String? src = key;
+    if (src == null || !src.contains('.')) {
+      src = [urlLow, urlMedium, urlHigh]
+          .firstWhere((u) => u != null && u.isNotEmpty, orElse: () => null);
+      if (src != null) src = Uri.tryParse(src)?.path ?? src;
+    }
+    if (src == null) return '';
+    final dot = src.lastIndexOf('.');
+    if (dot < 0 || dot < src.lastIndexOf('/')) return '';
+    return src.substring(dot + 1).toLowerCase();
+  }
+
   // ── Type helpers ──────────────────────────────────────────────────────────
 
   static SessionMaterialType _parseType(String t) {

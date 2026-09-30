@@ -27,6 +27,9 @@ class TeacherDeviceRequestsProvider extends BaseProvider {
 
   List<DeviceSwitchItem> items = [];
   final Set<int> _processing = {};
+
+  /// True once the first load finished successfully.
+  bool hasLoaded = false;
   bool isProcessing(int id) => _processing.contains(id);
 
   Future<void> load() async {
@@ -36,6 +39,7 @@ class TeacherDeviceRequestsProvider extends BaseProvider {
       for (final raw in (json['items'] as List? ?? const []))
         DeviceSwitchItem.fromJson(Map<String, dynamic>.from(raw as Map)),
     ];
+    hasLoaded = true;
     notifyListeners();
   }
 
@@ -47,10 +51,10 @@ class TeacherDeviceRequestsProvider extends BaseProvider {
     _processing.add(id);
     notifyListeners();
     final ok = await run(() async => api.post(
-          '/api/v1/devices/teacher/switch-requests/$id/$action',
-          body: body ?? {},
-          auth: true,
-        )) !=
+      '/api/v1/devices/teacher/switch-requests/$id/$action',
+      body: body ?? {},
+      auth: true,
+    )) !=
         null;
     _processing.remove(id);
     if (ok) items.removeWhere((e) => e.id == id);

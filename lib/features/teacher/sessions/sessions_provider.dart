@@ -24,6 +24,7 @@ import '../../../../core/base_provider.dart';
 import '../../auth/auth_provider.dart';
 import '../../shared/session/material/session_material_model.dart';
 import '../../shared/upload/upload_queue_manager.dart';
+import '../../student/courses/details/session_exam_gate.dart';
 import '../../student/models.dart';
 import '../home/teacher_models.dart';
 import 'live/prejoin.dart';
@@ -89,6 +90,12 @@ class TeacherCourseScreenProvider extends BaseProvider {
 
   int get sessionCount => _sessions.length;
 
+  /// sessionId → the published exam(s) attached to that session. Parsed from
+  /// the same GET /courses/{id}/sessions response, so no extra request.
+  final Map<int, SessionExamGate> _examGates = {};
+
+  Map<int, SessionExamGate> get examGates => Map.unmodifiable(_examGates);
+
   bool get openCourseDetails => !isLoading && sessionCount == 0;
 
   Future<void> fetchSessions() async {
@@ -111,6 +118,13 @@ class TeacherCourseScreenProvider extends BaseProvider {
           });
       } else {
         _sessions = [];
+      }
+      _examGates.clear();
+      for (final raw
+      in (result['items'] as List).whereType<Map<String, dynamic>>()) {
+        final gate = SessionExamGate.fromJson(raw['exams']);
+        final id = raw['id'];
+        if (!gate.isEmpty && id is int) _examGates[id] = gate;
       }
       _materialLoaded.clear();
       _uploadingMaterial.clear();
@@ -262,6 +276,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
     if (state == ProviderState.success) {
       _sessions = _sessions.where((s) => s.id != sessionId).toList();
       _materials.remove(sessionId);
+      _examGates.remove(sessionId);
       notifyListeners();
       return true;
     }

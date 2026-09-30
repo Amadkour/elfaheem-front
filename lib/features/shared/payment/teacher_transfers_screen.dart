@@ -20,7 +20,12 @@ class TeacherTransfersScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => TeacherTransfersProvider()..load(),
+      create: (_) {
+        final p = TeacherTransfersProvider();
+        // Deferred so the first build can't be hit by notifyListeners().
+        Future.microtask(p.load);
+        return p;
+      },
       child: const _TransfersView(),
     );
   }
@@ -34,33 +39,56 @@ class _TransfersView extends StatelessWidget {
     final p = context.watch<TeacherTransfersProvider>();
     final c = context.colors;
 
+    // Not loaded yet: loader, or error + retry if the first load failed.
+    final failedFirstLoad = !p.hasLoaded && !p.isLoading && p.errorMessage != null;
+
     return Scaffold(
       backgroundColor: c.background,
       appBar: const ScreenAppBar(title: 'طلبات الدفع بالتحويل'),
-      body: RefreshIndicator(
+      body: !p.hasLoaded && !failedFirstLoad
+          ? const Center(child: AppLoadingIndicator(showLogo: false))
+          : RefreshIndicator(
         onRefresh: p.load,
-        child: p.isLoading && p.items.isEmpty
-            ? const Center(child: AppLoadingIndicator(showLogo: false,))
-            : p.items.isEmpty
+        child: failedFirstLoad
             ? ListView(
+          children: [
+            const SizedBox(height: 120),
+            Center(
+              child: Column(
                 children: [
-                  const SizedBox(height: 120),
-                  Center(
-                    child: Column(
-                      children: [
-                        Icon(Icons.inbox_rounded, size: 48, color: c.textLight),
-                        const SizedBox(height: 12),
-                        Text('لا توجد طلبات بانتظار المراجعة', style: c.body),
-                      ],
-                    ),
+                  Icon(Icons.error_outline_rounded, size: 48, color: c.danger),
+                  const SizedBox(height: 12),
+                  Text(p.errorMessage ?? 'تعذر تحميل البيانات', style: c.body),
+                  const SizedBox(height: 12),
+                  OutlinedButton(
+                    onPressed: p.load,
+                    child: const Text('إعادة المحاولة'),
                   ),
                 ],
-              )
-            : ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: p.items.length,
-                itemBuilder: (_, i) => _TransferCard(transfer: p.items[i]),
               ),
+            ),
+          ],
+        )
+            : p.items.isEmpty
+            ? ListView(
+          children: [
+            const SizedBox(height: 120),
+            Center(
+              child: Column(
+                children: [
+                  Icon(Icons.inbox_rounded, size: 48, color: c.textLight),
+                  const SizedBox(height: 12),
+                  Text('لا توجد طلبات بانتظار المراجعة', style: c.body),
+                ],
+              ),
+            ),
+          ],
+        )
+            : ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: p.items.length,
+          itemBuilder: (_, i) => _TransferCard(transfer: p.items[i]),
+        ),
       ),
     );
   }
@@ -199,15 +227,15 @@ class _TransferCard extends StatelessWidget {
                   onPressed: busy
                       ? null
                       : () => context.read<TeacherTransfersProvider>().approve(
-                          transfer.paymentId,
-                        ),
+                    transfer.paymentId,
+                  ),
                   style: FilledButton.styleFrom(backgroundColor: c.success),
                   child: busy
                       ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: AppLoadingIndicator(showLogo: false,),
-                        )
+                    width: 18,
+                    height: 18,
+                    child: AppLoadingIndicator(showLogo: false,),
+                  )
                       : const Text('قبول'),
                 ),
               ),

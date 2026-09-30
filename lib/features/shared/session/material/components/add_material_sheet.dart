@@ -177,6 +177,8 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
     'xlsx',
     'ppt',
     'pptx',
+    'csv',
+    'py',
     'txt',
   ];
 
