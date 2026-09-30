@@ -19,8 +19,8 @@ class ProfileProvider extends BaseProvider {
   final StorageService _storage;
 
   ProfileProvider({required StorageService storage, ApiClient? api})
-    : _api = api ?? ApiClient(),
-      _storage = storage {
+      : _api = api ?? ApiClient(),
+        _storage = storage {
     _loadCachedMode();
   }
 
@@ -132,7 +132,7 @@ class ProfileProvider extends BaseProvider {
 
   Future<bool> resendOtp(String email) async {
     final result = await run(
-      () => _api.post(
+          () => _api.post(
         '/api/v1/auth/resend-otp2',
         body: {'gmail': email},
         auth: false,
@@ -177,7 +177,7 @@ class ProfileProvider extends BaseProvider {
     _setLoading(true);
     try {
       final r = await run(
-        () => ApiClient().put(
+            () => ApiClient().put(
           '/api/v1/auth/change-password',
           body: {
             'gmail': email,
@@ -187,14 +187,14 @@ class ProfileProvider extends BaseProvider {
         ),
       );
       if (r != null && r is Map) {
-        _setLoading(false);
         return r['message'] as String;
       }
-    } catch (e) {
-      _setLoading(false);
       return null;
+    } catch (e) {
+      return null;
+    } finally {
+      _setLoading(false);
     }
-    return null;
   }
 
   void _setLoading(bool v) {
@@ -245,7 +245,7 @@ class ProfileProvider extends BaseProvider {
           settings: RouteSettings(name: '/login'),
           builder: (_) => const LoginScreen(),
         ),
-        (route) => false,
+            (route) => false,
       );
     }
   }
@@ -272,7 +272,7 @@ class ProfileProvider extends BaseProvider {
         if (context.mounted) {
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const LoginScreen()),
-            (route) => false,
+                (route) => false,
           );
         }
         return deleteAfter;
@@ -317,9 +317,9 @@ class ProfileProvider extends BaseProvider {
     return _favourites
         .where(
           (s) =>
-              s.name.toLowerCase().contains(q) ||
-              (s.description?.toLowerCase().contains(q) ?? false),
-        )
+      s.name.toLowerCase().contains(q) ||
+          (s.description?.toLowerCase().contains(q) ?? false),
+    )
         .toList();
   }
 }
