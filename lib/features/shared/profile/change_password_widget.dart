@@ -47,6 +47,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   bool _obscureOld  = true;
   bool _obscureNew  = true;
   bool _obscureConf = true;
+  bool _busy = false; // loading state for the reset-password flow
 
   @override
   void initState() {
@@ -140,15 +141,19 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     if (!_canSubmit) return;
 
     final authProvider = context.read<AuthProvider>();
+    setState(() => _busy = true);
+    // Send the same trimmed value that the validation rules checked.
     final success = await authProvider.changePassword(
       email: widget.email!,
-      password: _newCtrl.text,
+      password: _new,
       code: widget.code!,
     );
 
     if (!mounted) return;
+    setState(() => _busy = false);
 
     if (success) {
+      _showSnack('password_changed_success'.tr, context.colors.success);
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
             (route) => false,
@@ -268,7 +273,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         reqDigit:       _reqDigit,
         reqDifferent:   _reqDifferent,
         reqMatch:       _reqMatch,
-        canSubmit:      _canSubmit,
+        canSubmit:      _canSubmit && !_busy,
+        busy:           _busy,
         onSubmit:       _submit,
         onSubmitForget: _resetPassword,
         fromProfile:    widget.fromProfile,
@@ -309,6 +315,7 @@ class _PasswordCard extends StatelessWidget {
   final bool reqDifferent;
   final bool reqMatch;
   final bool canSubmit;
+  final bool busy;
   final Future<void> Function() onSubmit;
   final Future<void> Function() onSubmitForget;
   final bool fromProfile;
@@ -336,6 +343,7 @@ class _PasswordCard extends StatelessWidget {
     required this.reqDifferent,
     required this.reqMatch,
     required this.canSubmit,
+    this.busy = false,
     required this.onSubmit,
     this.fromProfile = true,
     required this.onSubmitForget, this.email, this.code,
@@ -428,7 +436,7 @@ class _PasswordCard extends StatelessWidget {
             duration: const Duration(milliseconds: 200),
             child: PrimaryButton(
               label: 'change_password'.tr,
-              isLoading: p.isLoading,
+              isLoading: p.isLoading || busy,
               onPressed:
               canSubmit ? (fromProfile ? onSubmit : onSubmitForget) : null,
             ),
