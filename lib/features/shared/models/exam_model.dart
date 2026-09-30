@@ -18,6 +18,7 @@ class ExamModel {
   final int? sessionId;
   final String? sessionName;
   final DateTime? startDate;
+  final DateTime? endDate;   // submission deadline
   final int? duration;       // minutes
   final double? passingScore;
   final double? totalMarks;
@@ -25,6 +26,16 @@ class ExamModel {
   bool isPublished;
   final DateTime createdAt;
   final int questionCount;
+
+  /// Attempts per student: 0 / null = unlimited, N = at most N attempts.
+  final int? maxSubmissions;
+
+  /// null = every student gets every question, N = N random questions each.
+  final int? questionsPerStudent;
+
+  /// Random question order / random option order per student.
+  final bool shuffleQuestions;
+  final bool shuffleOptions;
 
   ExamModel({
     required this.id,
@@ -34,6 +45,7 @@ class ExamModel {
     this.sessionId,
     this.sessionName,
     this.startDate,
+    this.endDate,
     this.duration,
     this.passingScore,
     this.totalMarks,
@@ -41,32 +53,44 @@ class ExamModel {
     required this.isPublished,
     required this.createdAt,
     required this.questionCount,
+    this.maxSubmissions,
+    this.questionsPerStudent,
+    this.shuffleQuestions = false,
+    this.shuffleOptions = false,
   });
 
   /// Server shape (ExamResponse):
   /// {id, name, description?, course_id, start_date?, duration?,
-  ///  passcode?, is_published, passing_score?, total_marks?, question_count?}
+  ///  passcode?, is_published, passing_score?, total_marks?, questions_count,
+  ///  end_date?, max_submissions, questions_per_student?,
+  ///  shuffle_questions, shuffle_options}
   factory ExamModel.fromJson(Map<String, dynamic> j) {
-    print(j.keys.toList());
     return ExamModel(
-        id: j['id'] as int,
-        name: j['name'] as String,
-        description: j['description'] as String?,
-        courseId: j['course_id'] as int,
-        sessionId: (j['session_id'] as num?)?.toInt(),
-        sessionName: j['session_name'] as String?,
-        startDate: j['start_date'] != null
-            ? DateTime.tryParse(j['start_date'] as String)
-            : null,
-        duration: j['duration'] as int?,
-        passingScore: (j['passing_score'] as num?)?.toDouble(),
-        totalMarks: (j['total_marks'] as num?)?.toDouble(),
-        passcode: j['passcode'] as String?,
-        isPublished: j['is_published'] as bool? ?? false,
-        createdAt:
-            DateTime.tryParse(j['created_at'] as String? ?? '') ?? DateTime.now(),
+      id: j['id'] as int,
+      name: j['name'] as String,
+      description: j['description'] as String?,
+      courseId: j['course_id'] as int,
+      sessionId: (j['session_id'] as num?)?.toInt(),
+      sessionName: j['session_name'] as String?,
+      startDate: j['start_date'] != null
+          ? DateTime.tryParse(j['start_date'] as String)
+          : null,
+      endDate: j['end_date'] != null
+          ? DateTime.tryParse(j['end_date'] as String)
+          : null,
+      duration: j['duration'] as int?,
+      passingScore: (j['passing_score'] as num?)?.toDouble(),
+      totalMarks: (j['total_marks'] as num?)?.toDouble(),
+      passcode: j['passcode'] as String?,
+      isPublished: j['is_published'] as bool? ?? false,
+      createdAt:
+      DateTime.tryParse(j['created_at'] as String? ?? '') ?? DateTime.now(),
       questionCount:(j['questions_count'] as num?)?.toInt()??0,
-      );
+      maxSubmissions: (j['max_submissions'] as num?)?.toInt(),
+      questionsPerStudent: (j['questions_per_student'] as num?)?.toInt(),
+      shuffleQuestions: j['shuffle_questions'] as bool? ?? false,
+      shuffleOptions: j['shuffle_options'] as bool? ?? false,
+    );
   }
 
   /// [clearSession] = true detaches the exam from its session.
@@ -76,6 +100,11 @@ class ExamModel {
     int? sessionId,
     String? sessionName,
     bool clearSession = false,
+    int? maxSubmissions,
+    int? questionsPerStudent,
+    bool clearQuestionsPerStudent = false, // true = every question again
+    bool? shuffleQuestions,
+    bool? shuffleOptions,
   }) =>
       ExamModel(
         id: id,
@@ -85,6 +114,7 @@ class ExamModel {
         sessionId: clearSession ? null : (sessionId ?? this.sessionId),
         sessionName: clearSession ? null : (sessionName ?? this.sessionName),
         startDate: startDate,
+        endDate: endDate,
         duration: duration,
         passingScore: passingScore,
         totalMarks: totalMarks,
@@ -92,6 +122,12 @@ class ExamModel {
         isPublished: isPublished ?? this.isPublished,
         createdAt: createdAt,
         questionCount: questionCount ?? this.questionCount,
+        maxSubmissions: maxSubmissions ?? this.maxSubmissions,
+        questionsPerStudent: clearQuestionsPerStudent
+            ? null
+            : (questionsPerStudent ?? this.questionsPerStudent),
+        shuffleQuestions: shuffleQuestions ?? this.shuffleQuestions,
+        shuffleOptions: shuffleOptions ?? this.shuffleOptions,
       );
 
   ExamStatus get status {
@@ -208,11 +244,11 @@ class AnswerDetail {
   /// Server shape (ExamAnswerResponse):
   /// {question_id, answer?, is_correct?, marks_obtained?}
   factory AnswerDetail.fromJson(Map<String, dynamic> j) => AnswerDetail(
-        questionId: j['question_id'] as int,
-        answer: j['answer'] as String?,
-        isCorrect: j['is_correct'] as bool?,
-        marksObtained: (j['marks_obtained'] as num?)?.toDouble(),
-      );
+    questionId: j['question_id'] as int,
+    answer: j['answer'] as String?,
+    isCorrect: j['is_correct'] as bool?,
+    marksObtained: (j['marks_obtained'] as num?)?.toDouble(),
+  );
 }
 
 // ── Student: my exam result ───────────────────────────────────────────────────
@@ -255,8 +291,8 @@ class SessionOption {
   const SessionOption({required this.id, required this.name, required this.order});
 
   factory SessionOption.fromJson(Map<String, dynamic> j) => SessionOption(
-        id: j['id'] as int,
-        name: (j['name'] as String?) ?? '',
-        order: (j['order'] as num?)?.toInt() ?? 0,
-      );
+    id: j['id'] as int,
+    name: (j['name'] as String?) ?? '',
+    order: (j['order'] as num?)?.toInt() ?? 0,
+  );
 }

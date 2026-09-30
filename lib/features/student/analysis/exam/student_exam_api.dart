@@ -1,5 +1,4 @@
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/teacher/analysis/exam/exam_model.dart';
 
 import '../../../shared/models/exam_model.dart';
 

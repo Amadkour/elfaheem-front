@@ -4016,5 +4016,141 @@
   "device_switch_requests": {
     "en": "Device Switch Requests",
     "ar": "طلبات تغيير الجهاز"
+  },
+  "attempts_unlimited_hint": {
+    "en": "Attempts are unlimited",
+    "ar": "عدد المحاولات غير محدود"
+  },
+  "chip_attempts_label": {
+    "en": "Attempts",
+    "ar": "المحاولات"
+  },
+  "chip_attempts_unlimited": {
+    "en": "Unlimited attempts",
+    "ar": "محاولات غير محدودة"
+  },
+  "toggle_limit_questions": {
+    "en": "Limit questions per student",
+    "ar": "تحديد عدد الأسئلة لكل طالب"
+  },
+  "field_questions_per_student_label": {
+    "en": "Questions per student",
+    "ar": "عدد الأسئلة لكل طالب"
+  },
+  "field_questions_per_student_error": {
+    "en": "Enter a number greater than 0",
+    "ar": "أدخل رقماً أكبر من 0"
+  },
+  "questions_per_student_hint": {
+    "en": "Each student gets a different random set from the question pool",
+    "ar": "يحصل كل طالب على أسئلة عشوائية مختلفة من بنك الأسئلة"
+  },
+  "questions_exceed_pool_warning": {
+    "en": "More than the exam has; students will get all questions",
+    "ar": "العدد أكبر من أسئلة الاختبار، سيحصل الطالب على كل الأسئلة"
+  },
+  "toggle_shuffle_questions": {
+    "en": "Random question order per student",
+    "ar": "ترتيب عشوائي للأسئلة لكل طالب"
+  },
+  "toggle_shuffle_options": {
+    "en": "Random option order per student",
+    "ar": "ترتيب عشوائي للاختيارات لكل طالب"
+  },
+  "chip_random_questions_label": {
+    "en": "Random",
+    "ar": "عشوائي"
+  },
+  "chip_shuffled_label": {
+    "en": "Shuffled",
+    "ar": "ترتيب عشوائي"
+  },
+  "menu_exam_settings": {
+    "en": "Exam settings",
+    "ar": "إعدادات الاختبار"
+  },
+  "exam_rules_title": {
+    "en": "Attempts & questions",
+    "ar": "إعدادات المحاولات والأسئلة"
+  },
+  "exam_rules_apply_note": {
+    "en": "Changes apply to new papers only; a paper already handed out does not change",
+    "ar": "التغييرات تسري على الأوراق الجديدة فقط، ولا تتغير ورقة طالب بدأ بالفعل"
+  },
+  "exam_rules_saved_snack": {
+    "en": "Settings saved",
+    "ar": "تم حفظ الإعدادات"
+  },
+  "btn_save_changes": {
+    "en": "Save changes",
+    "ar": "حفظ التغييرات"
+  },
+  "btn_ok": {
+    "en": "OK",
+    "ar": "حسناً"
+  },
+  "menu_import_export": {
+    "en": "Import / export",
+    "ar": "استيراد / تصدير"
+  },
+  "btn_import_questions": {
+    "en": "Import questions from Excel / CSV",
+    "ar": "استيراد أسئلة من Excel / CSV"
+  },
+  "btn_download_template": {
+    "en": "Download sample file",
+    "ar": "تحميل ملف نموذجي"
+  },
+  "btn_export_questions": {
+    "en": "Export questions",
+    "ar": "تصدير الأسئلة"
+  },
+  "menu_export": {
+    "en": "Export",
+    "ar": "تصدير"
+  },
+  "menu_export_questions": {
+    "en": "Export questions",
+    "ar": "تصدير الأسئلة"
+  },
+  "menu_export_marks": {
+    "en": "Export marks",
+    "ar": "تصدير الدرجات"
+  },
+  "menu_export_answers": {
+    "en": "Export student answers",
+    "ar": "تصدير إجابات الطلاب"
+  },
+  "menu_export_all": {
+    "en": "Export everything",
+    "ar": "تصدير الكل"
+  },
+  "import_result_title": {
+    "en": "Import result",
+    "ar": "نتيجة الاستيراد"
+  },
+  "import_added_label": {
+    "en": "Added",
+    "ar": "تمت إضافة"
+  },
+  "import_skipped_label": {
+    "en": "Skipped",
+    "ar": "تم تخطي"
+  },
+  "import_row_label": {
+    "en": "Row",
+    "ar": "صف"
+  },
+  "import_failed_snack": {
+    "en": "Import failed",
+    "ar": "فشل استيراد الملف"
+  },
+  "template_saved_snack": {
+    "en": "Sample file saved",
+    "ar": "تم حفظ الملف النموذجي"
+  },
+  "export_saved_snack": {
+    "en": "File saved",
+    "ar": "تم حفظ الملف"
   }
 }

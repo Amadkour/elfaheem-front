@@ -204,17 +204,47 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
       // kIsWeb still asks for them there.
       withData: !isVideo || kIsWeb,
     );
+
     if (result != null && result.files.isNotEmpty && mounted) {
       setState(() {
         _pickedFile = result.files.first;
-        _nameCtrl.text=_pickedFile!.name;
-        _descCtrl.text='${opt.labelKey} about ${_pickedFile!.name}';
+        final title = _prettifyFileName(result.files.first.name);
+        _nameCtrl.text=title;
+        _descCtrl.text = '${opt.fileType.name} about $title';
         _fileError = null;
       });
       HapticFeedback.selectionClick();
     }
   }
+  /// Turns a raw file name into a clean, human-friendly title.
+  /// "lecture_03-intro_to_AI.final.pdf" -> "Lecture 03 Intro To AI Final"
+  String _prettifyFileName(String fileName) {
+    // 1. Remove the extension
+    final dot = fileName.lastIndexOf('.');
+    var name = dot > 0 ? fileName.substring(0, dot) : fileName;
 
+    // 2. Replace separators with spaces
+    name = name.replaceAll(RegExp(r'[_\-.]+'), ' ');
+
+    // 3. Split camelCase: "introToAI" -> "intro To AI"
+    name = name.replaceAllMapped(
+      RegExp(r'(?<=[a-z])(?=[A-Z])'),
+          (_) => ' ',
+    );
+
+    // 4. Collapse extra whitespace
+    name = name.replaceAll(RegExp(r'\s+'), ' ').trim();
+
+    // 5. Capitalize each word (no effect on Arabic, which has no casing)
+    return name
+        .split(' ')
+        .map((w) => w.isEmpty
+        ? w
+        : w == w.toUpperCase() && w.length <= 4
+        ? w // keep acronyms like AI, PDF, ML
+        : '${w[0].toUpperCase()}${w.substring(1)}')
+        .join(' ');
+  }
   /// Video length in whole seconds (mobile/desktop only; null on web / on error).
   Future<int?> _probeDuration(PlatformFile f) async {
     if (kIsWeb || f.path == null) return null;

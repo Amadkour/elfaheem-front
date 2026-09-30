@@ -8,7 +8,7 @@ import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import '../../../../config/app_config.dart';
 import '../../../shared/models/exam_model.dart';
-import 'exam_model.dart';
+import 'exam_files.dart';
 import 'teacher_exam_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 class TeacherExamHubScreen extends StatelessWidget {
@@ -240,7 +240,7 @@ class _HubViewState extends State<_HubView>
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          childAspectRatio: 1.35, // a bit taller: the session chip may wrap a line
+          childAspectRatio: 1.15, // taller: session + rule chips may wrap lines
           crossAxisSpacing: 14,
           mainAxisSpacing: 14),
       itemCount: prov.exams.length,
@@ -262,6 +262,8 @@ class _HubViewState extends State<_HubView>
     onResults: () => prov.loadResults(exam),
     onDelete: () => _confirmDelete(prov, exam.id),
     onManageQuestions: () => _showQuestionsSheet(context, prov, exam),
+    onEditRules: () => _showRulesSheet(prov, exam),
+    onExport: (kind) => _exportFlow(context, prov, exam, kind),
   );
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -304,6 +306,21 @@ class _HubViewState extends State<_HubView>
                       fontSize: 15,
                       fontWeight: FontWeight.w700),
                   overflow: TextOverflow.ellipsis),
+            ),
+            PopupMenuButton<String>(
+              tooltip: 'menu_export'.tr,
+              icon: Icon(Icons.file_download_outlined,
+                  color: context.colors.primary),
+              onSelected: (kind) =>
+                  _exportFlow(context, prov, prov.selectedExam!, kind),
+              itemBuilder: (_) => [
+                _menuItem('marks', Icons.grading_rounded,
+                    'menu_export_marks'.tr),
+                _menuItem('answers', Icons.fact_check_outlined,
+                    'menu_export_answers'.tr),
+                _menuItem('all', Icons.table_view_rounded,
+                    'menu_export_all'.tr),
+              ],
             ),
           ]),
           const SizedBox(height: 10),
@@ -457,6 +474,15 @@ class _HubViewState extends State<_HubView>
         builder: (_) => _AnswersSheet(result: r, exam: exam),
       );
 
+  /// Attempts + random-paper rules of an existing exam.
+  void _showRulesSheet(TeacherExamProvider prov, ExamModel exam) =>
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => _ExamRulesSheet(provider: prov, exam: exam),
+      );
+
   void _snack(String msg, Color color) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(msg, style: const TextStyle(fontFamily: 'bahji')),
@@ -479,6 +505,8 @@ class _ExamCard extends StatelessWidget {
   final String? sessionName;
   final VoidCallback onPickSession;
   final VoidCallback onToggle, onResults, onDelete, onManageQuestions;
+  final VoidCallback onEditRules;
+  final ValueChanged<String> onExport; // questions | marks | answers | all
 
   const _ExamCard({
     super.key,
@@ -489,6 +517,8 @@ class _ExamCard extends StatelessWidget {
     required this.onResults,
     required this.onDelete,
     required this.onManageQuestions,
+    required this.onEditRules,
+    required this.onExport,
   });
 
   @override
@@ -574,6 +604,30 @@ class _ExamCard extends StatelessWidget {
                             ),
                           ),
                         ),
+                        SizedBox(
+                          width: 32,
+                          height: 32,
+                          child: PopupMenuButton<String>(
+                            padding: EdgeInsets.zero,
+                            icon: Icon(Icons.more_vert_rounded,
+                                size: 22, color: Colors.grey.shade600),
+                            onSelected: (v) =>
+                                v == 'rules' ? onEditRules() : onExport(v),
+                            itemBuilder: (_) => [
+                              _menuItem('rules', Icons.tune_rounded,
+                                  'menu_exam_settings'.tr),
+                              const PopupMenuDivider(),
+                              _menuItem('questions', Icons.quiz_outlined,
+                                  'menu_export_questions'.tr),
+                              _menuItem('marks', Icons.grading_rounded,
+                                  'menu_export_marks'.tr),
+                              _menuItem('answers', Icons.fact_check_outlined,
+                                  'menu_export_answers'.tr),
+                              _menuItem('all', Icons.table_view_rounded,
+                                  'menu_export_all'.tr),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 6),
@@ -627,6 +681,36 @@ class _ExamCard extends StatelessWidget {
                       : context.colors.primary,
                 ),
               ),
+              // Attempts + random-paper rules (tap to edit).
+              GestureDetector(
+                onTap: onEditRules,
+                child: _InfoChip(
+                  icon: Icons.repeat_rounded,
+                  label: (exam.maxSubmissions ?? 0) > 0
+                      ? '${'chip_attempts_label'.tr}: ${exam.maxSubmissions}'
+                      : 'chip_attempts_unlimited'.tr,
+                  color: Colors.indigo,
+                ),
+              ),
+              if (exam.questionsPerStudent != null)
+                GestureDetector(
+                  onTap: onEditRules,
+                  child: _InfoChip(
+                    icon: Icons.filter_list_rounded,
+                    label:
+                    '${'chip_random_questions_label'.tr}: ${exam.questionsPerStudent} / ${exam.questionCount}',
+                    color: Colors.deepPurple,
+                  ),
+                ),
+              if (exam.shuffleQuestions || exam.shuffleOptions)
+                GestureDetector(
+                  onTap: onEditRules,
+                  child: _InfoChip(
+                    icon: Icons.shuffle_rounded,
+                    label: 'chip_shuffled_label'.tr,
+                    color: Colors.deepPurple,
+                  ),
+                ),
               if (exam.passcode != null)
                 _InfoChip(
                   icon: Icons.lock_outline_rounded,
@@ -807,6 +891,30 @@ class _ManageQuestionsSheet extends StatelessWidget {
                           overflow: TextOverflow.ellipsis),
                     ]),
               ),
+              // Import from Excel / CSV · sample file · export
+              PopupMenuButton<String>(
+                tooltip: 'menu_import_export'.tr,
+                icon: Icon(Icons.upload_file_rounded,
+                    color: context.colors.primary),
+                onSelected: (v) {
+                  switch (v) {
+                    case 'import':
+                      _importQuestionsFlow(context, prov, exam);
+                    case 'template':
+                      _downloadTemplateFlow(context, prov);
+                    case 'export':
+                      _exportFlow(context, prov, exam, 'questions');
+                  }
+                },
+                itemBuilder: (_) => [
+                  _menuItem('import', Icons.upload_file_rounded,
+                      'btn_import_questions'.tr),
+                  _menuItem('template', Icons.description_outlined,
+                      'btn_download_template'.tr),
+                  _menuItem('export', Icons.download_rounded,
+                      'btn_export_questions'.tr),
+                ],
+              ),
               // Add question button
               TextButton.icon(
                 onPressed: () => _showQuestionForm(context, prov,
@@ -869,7 +977,6 @@ class _ManageQuestionsSheet extends StatelessWidget {
                 : ReorderableListView.builder(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
               itemCount: questions.length,
-              onReorder: (_, _) {},
               // drag-to-reorder hint (order save via API not implemented)
               itemBuilder: (_, i) {
                 final q = questions[i];
@@ -1476,11 +1583,10 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
   final _totalMarksCtrl = TextEditingController(text: '100');
   final _passingCtrl = TextEditingController(text: '60');
   final _durationCtrl = TextEditingController(text: '60');
-  final _maxSubmissionsCtrl = TextEditingController(text: '1');
   bool _hasPasscode = false;
   bool _hasSchedule = false;
   bool _hasDeadline = false;
-  bool _hasMaxSubmissions = false;
+  ExamRules _rules = const ExamRules(); // attempts + random-paper rules
   DateTime? _scheduleDate;
   DateTime? _deadlineDate;
   int? _sessionId; // optional: the session this exam belongs to
@@ -1504,7 +1610,6 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
     _totalMarksCtrl.dispose();
     _passingCtrl.dispose();
     _durationCtrl.dispose();
-    _maxSubmissionsCtrl.dispose();
     super.dispose();
   }
 
@@ -1564,9 +1669,10 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
       passcode: _hasPasscode && _passcodeCtrl.text.trim().isNotEmpty
           ? _passcodeCtrl.text.trim()
           : null,
-      maxSubmissions: _hasMaxSubmissions
-          ? (int.tryParse(_maxSubmissionsCtrl.text) ?? 1)
-          : null,
+      maxSubmissions: _rules.maxSubmissions, // 0 = unlimited
+      questionsPerStudent: _rules.questionsPerStudent,
+      shuffleQuestions: _rules.shuffleQuestions,
+      shuffleOptions: _rules.shuffleOptions,
     );
     if (ok && context.mounted) Navigator.pop(context);
   }
@@ -1647,7 +1753,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                 // ── Attach to a session (optional) ─────────────────────
                 if (widget.provider.sessions.isNotEmpty) ...[
                   DropdownButtonFormField<int?>(
-                    value: _sessionId,
+                    initialValue: _sessionId,
                     isExpanded: true,
                     decoration: InputDecoration(
                       labelText: 'field_exam_session_label'.tr,
@@ -1816,31 +1922,10 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                       : null,
                 ),
                 const SizedBox(height: 10),
-                // ── Max submissions ────────────────────────────────────────
-                _Toggle(
-                  icon: Icons.repeat_rounded,
-                  label: 'toggle_max_submissions'.tr,
-                  value: _hasMaxSubmissions,
-                  onChanged: (v) {
-                    if (mounted) if (mounted) {
-                      setState(() => _hasMaxSubmissions = v);
-                    }
-                  },
-                  child: _hasMaxSubmissions
-                      ? _Field(
-                    ctrl: _maxSubmissionsCtrl,
-                    label: 'field_max_submissions_label'.tr,
-                    hint: '1',
-                    keyboardType: TextInputType.number,
-                    validator: (v) {
-                      final n = int.tryParse(v ?? '');
-                      if (n == null || n < 1) {
-                        return 'field_max_submissions_error'.tr;
-                      }
-                      return null;
-                    },
-                  )
-                      : null,
+                // ── Attempts + per-student random papers ──────────────────
+                _ExamRulesFields(
+                  initial: _rules,
+                  onChanged: (r) => _rules = r,
                 ),
                 const SizedBox(height: 20),
                 SizedBox(
@@ -2470,4 +2555,416 @@ class _ModernActionBtn extends StatelessWidget {
       ),
     );
   }
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Shared helpers — menu item, toast, import / export flows
+// ══════════════════════════════════════════════════════════════════════════════
+
+PopupMenuItem<String> _menuItem(String value, IconData icon, String label) =>
+    PopupMenuItem<String>(
+      value: value,
+      child: Row(children: [
+        Icon(icon, size: 18, color: Colors.grey.shade700),
+        const SizedBox(width: 10),
+        Text(label,
+            style: const TextStyle(fontFamily: 'bahji', fontSize: 13)),
+      ]),
+    );
+
+void _toast(BuildContext context, String msg, Color color) {
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+    content: Text(msg, style: const TextStyle(fontFamily: 'bahji')),
+    backgroundColor: color,
+    behavior: SnackBarBehavior.floating,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  ));
+}
+
+/// Pick an .xlsx / .csv, upload it, show what was imported / skipped.
+Future<void> _importQuestionsFlow(
+    BuildContext context, TeacherExamProvider prov, ExamModel exam) async {
+  final file = await pickQuestionsFile();
+  if (file == null || !context.mounted) return;
+  final out = await prov.importQuestions(exam.id, file);
+  if (!context.mounted) return;
+  if (out.result == null) {
+    _toast(context, out.error ?? 'import_failed_snack'.tr, Colors.redAccent);
+    return;
+  }
+  await showDialog(
+    context: context,
+    builder: (_) => _ImportResultDialog(result: out.result!),
+  );
+}
+
+Future<void> _downloadTemplateFlow(
+    BuildContext context, TeacherExamProvider prov) async {
+  final err = await prov.downloadTemplate();
+  _toast(context, err ?? 'template_saved_snack'.tr,
+      err == null ? context.colors.success : Colors.redAccent);
+}
+
+/// kind: questions | marks | answers | all
+Future<void> _exportFlow(BuildContext context, TeacherExamProvider prov,
+    ExamModel exam, String kind) async {
+  final err = await prov.exportExam(exam.id, kind);
+  _toast(context, err ?? 'export_saved_snack'.tr,
+      err == null ? context.colors.success : Colors.redAccent);
+}
+
+class _ImportResultDialog extends StatelessWidget {
+  final ImportResult result;
+  const _ImportResultDialog({required this.result});
+
+  @override
+  Widget build(BuildContext context) => Directionality(
+    textDirection: TextDirection.rtl,
+    child: AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      title: Text('import_result_title'.tr,
+          style: const TextStyle(
+              fontFamily: 'bahji', fontWeight: FontWeight.w700)),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${'import_added_label'.tr}: ${result.created}',
+                style: TextStyle(
+                    fontFamily: 'bahji',
+                    fontWeight: FontWeight.w700,
+                    color: context.colors.success)),
+            if (result.skipped > 0) ...[
+              const SizedBox(height: 6),
+              Text('${'import_skipped_label'.tr}: ${result.skipped}',
+                  style: const TextStyle(
+                      fontFamily: 'bahji',
+                      fontWeight: FontWeight.w700,
+                      color: Colors.redAccent)),
+              const SizedBox(height: 8),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 200),
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    for (final e in result.errors)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                            '${'import_row_label'.tr} ${e.row}: ${e.message}',
+                            style: const TextStyle(
+                                fontFamily: 'bahji',
+                                fontSize: 12,
+                                color: Colors.grey)),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text('btn_ok'.tr,
+              style: const TextStyle(fontFamily: 'bahji')),
+        ),
+      ],
+    ),
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Exam rules — attempts (unlimited / limited) + per-student random papers
+// ══════════════════════════════════════════════════════════════════════════════
+
+/// Attempts and random-paper switches. Reports every change through
+/// [onChanged] (no setState needed in the parent). Put it inside a [Form]:
+/// the number fields validate themselves.
+class _ExamRulesFields extends StatefulWidget {
+  final ExamRules initial;
+  final ValueChanged<ExamRules> onChanged;
+
+  /// Number of questions in the pool, when known (only used for a warning).
+  final int? poolSize;
+
+  const _ExamRulesFields({
+    required this.initial,
+    required this.onChanged,
+    this.poolSize,
+  });
+
+  @override
+  State<_ExamRulesFields> createState() => _ExamRulesFieldsState();
+}
+
+class _ExamRulesFieldsState extends State<_ExamRulesFields> {
+  late bool _limitAttempts;
+  late bool _limitQuestions;
+  late bool _shuffleQ;
+  late bool _shuffleO;
+  late final TextEditingController _attemptsCtrl;
+  late final TextEditingController _perStudentCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    final r = widget.initial;
+    _limitAttempts = !r.unlimitedAttempts;
+    _limitQuestions = r.questionsPerStudent != null;
+    _shuffleQ = r.shuffleQuestions;
+    _shuffleO = r.shuffleOptions;
+    _attemptsCtrl =
+        TextEditingController(text: _limitAttempts ? '${r.maxSubmissions}' : '1');
+    _perStudentCtrl = TextEditingController(
+        text: _limitQuestions ? '${r.questionsPerStudent}' : '10');
+    _attemptsCtrl.addListener(_emit);
+    _perStudentCtrl.addListener(() {
+      _emit();
+      if (mounted) setState(() {}); // refresh the "more than the pool" warning
+    });
+  }
+
+  @override
+  void dispose() {
+    _attemptsCtrl.dispose();
+    _perStudentCtrl.dispose();
+    super.dispose();
+  }
+
+  void _emit() {
+    final attempts = int.tryParse(_attemptsCtrl.text.trim());
+    final perStudent = int.tryParse(_perStudentCtrl.text.trim());
+    widget.onChanged(ExamRules(
+      maxSubmissions:
+      _limitAttempts ? (attempts != null && attempts > 0 ? attempts : 1) : 0,
+      questionsPerStudent: _limitQuestions && perStudent != null && perStudent > 0
+          ? perStudent
+          : null,
+      shuffleQuestions: _shuffleQ,
+      shuffleOptions: _shuffleO,
+    ));
+  }
+
+  void _set(VoidCallback change) {
+    setState(change);
+    _emit();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final n = int.tryParse(_perStudentCtrl.text.trim());
+    final pool = widget.poolSize;
+    final tooMany =
+        _limitQuestions && n != null && pool != null && pool > 0 && n > pool;
+    const hintStyle =
+    TextStyle(fontFamily: 'bahji', fontSize: 12, color: Colors.grey);
+
+    return Column(children: [
+      // ── Attempts: unlimited (off) or limited to N (on) ─────────────────────
+      _Toggle(
+        icon: Icons.repeat_rounded,
+        label: 'toggle_max_submissions'.tr,
+        value: _limitAttempts,
+        onChanged: (v) => _set(() => _limitAttempts = v),
+        child: _limitAttempts
+            ? _Field(
+          ctrl: _attemptsCtrl,
+          label: 'field_max_submissions_label'.tr,
+          hint: '1',
+          keyboardType: TextInputType.number,
+          validator: (v) {
+            final x = int.tryParse(v ?? '');
+            return (x == null || x < 1)
+                ? 'field_max_submissions_error'.tr
+                : null;
+          },
+        )
+            : null,
+      ),
+      if (!_limitAttempts)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(6, 6, 6, 0),
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Text('attempts_unlimited_hint'.tr, style: hintStyle),
+          ),
+        ),
+      const SizedBox(height: 10),
+
+      // ── How many questions each student gets ───────────────────────────────
+      _Toggle(
+        icon: Icons.filter_list_rounded,
+        label: 'toggle_limit_questions'.tr,
+        value: _limitQuestions,
+        onChanged: (v) => _set(() => _limitQuestions = v),
+        child: _limitQuestions
+            ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _Field(
+            ctrl: _perStudentCtrl,
+            label: 'field_questions_per_student_label'.tr,
+            hint: '10',
+            keyboardType: TextInputType.number,
+            validator: (v) {
+              final x = int.tryParse(v ?? '');
+              return (x == null || x < 1)
+                  ? 'field_questions_per_student_error'.tr
+                  : null;
+            },
+          ),
+          const SizedBox(height: 8),
+          Text(
+            tooMany
+                ? 'questions_exceed_pool_warning'.tr
+                : 'questions_per_student_hint'.tr,
+            style: hintStyle.copyWith(
+                color: tooMany ? Colors.orange.shade800 : Colors.grey),
+          ),
+        ])
+            : null,
+      ),
+      const SizedBox(height: 10),
+
+      // ── Random order ────────────────────────────────────────────────────────
+      _Toggle(
+        icon: Icons.shuffle_rounded,
+        label: 'toggle_shuffle_questions'.tr,
+        value: _shuffleQ,
+        onChanged: (v) => _set(() => _shuffleQ = v),
+      ),
+      const SizedBox(height: 10),
+      _Toggle(
+        icon: Icons.sort_rounded,
+        label: 'toggle_shuffle_options'.tr,
+        value: _shuffleO,
+        onChanged: (v) => _set(() => _shuffleO = v),
+      ),
+    ]);
+  }
+}
+
+/// Edit the rules of an existing exam (opened from the card's chips / ⋮ menu).
+class _ExamRulesSheet extends StatefulWidget {
+  final TeacherExamProvider provider;
+  final ExamModel exam;
+
+  const _ExamRulesSheet({required this.provider, required this.exam});
+
+  @override
+  State<_ExamRulesSheet> createState() => _ExamRulesSheetState();
+}
+
+class _ExamRulesSheetState extends State<_ExamRulesSheet> {
+  final _form = GlobalKey<FormState>();
+  late ExamRules _rules;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.exam;
+    _rules = ExamRules(
+      maxSubmissions: e.maxSubmissions ?? 0,
+      questionsPerStudent: e.questionsPerStudent,
+      shuffleQuestions: e.shuffleQuestions,
+      shuffleOptions: e.shuffleOptions,
+    );
+  }
+
+  Future<void> _save() async {
+    if (!_form.currentState!.validate()) return;
+    setState(() => _busy = true);
+    final err = await widget.provider.updateExamRules(widget.exam, _rules);
+    if (!mounted) return;
+    setState(() => _busy = false);
+    _toast(context, err ?? 'exam_rules_saved_snack'.tr,
+        err == null ? context.colors.success : Colors.redAccent);
+    if (err == null) Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) => Directionality(
+    textDirection: TextDirection.rtl,
+    child: Container(
+      decoration: BoxDecoration(
+          color: context.colors.background,
+          borderRadius:
+          const BorderRadius.vertical(top: Radius.circular(24))),
+      padding:
+      EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2))),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          child: Row(children: [
+            Icon(Icons.tune_rounded, color: context.colors.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text('exam_rules_title'.tr,
+                  style: const TextStyle(
+                      fontFamily: 'bahji',
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700)),
+            ),
+          ]),
+        ),
+        const Divider(height: 20),
+        Flexible(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Form(
+              key: _form,
+              child: Column(children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text('exam_rules_apply_note'.tr,
+                      style: const TextStyle(
+                          fontFamily: 'bahji',
+                          fontSize: 12,
+                          color: Colors.grey)),
+                ),
+                _ExamRulesFields(
+                  initial: _rules,
+                  poolSize: widget.exam.questionCount,
+                  onChanged: (r) => _rules = r,
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _busy ? null : _save,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: context.colors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: _busy
+                        ? const AppLoadingIndicator()
+                        : Text('btn_save_changes'.tr,
+                        style: const TextStyle(
+                            fontFamily: 'bahji',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700)),
+                  ),
+                ),
+              ]),
+            ),
+          ),
+        ),
+      ]),
+    ),
+  );
 }

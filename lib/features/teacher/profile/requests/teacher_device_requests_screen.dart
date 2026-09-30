@@ -33,7 +33,7 @@ class _View extends StatelessWidget {
       body: RefreshIndicator(
         onRefresh: p.load,
         child: p.isLoading && p.items.isEmpty
-            ? const Center(child: AppLoadingIndicator())
+            ? const Center(child: AppLoadingIndicator(showLogo: false,))
             : p.items.isEmpty
                 ? ListView(children: [
                     const SizedBox(height: 120),
@@ -120,7 +120,7 @@ class _Card extends StatelessWidget {
               onPressed: busy ? null : () => _approve(context),
               style: FilledButton.styleFrom(backgroundColor: c.success),
               child: busy
-                  ? const SizedBox(width: 18, height: 18, child: AppLoadingIndicator())
+                  ? const SizedBox(width: 18, height: 18, child: AppLoadingIndicator(showLogo: false,))
                   : const Text('موافقة'),
             ),
           ),

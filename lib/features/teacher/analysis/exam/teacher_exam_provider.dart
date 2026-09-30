@@ -5,6 +5,7 @@ import 'package:flutter_education_app/features/teacher/analysis/exam/teacher_exa
 
 import '../../../../core/api_client.dart';
 import '../../../shared/models/exam_model.dart';
+import 'exam_files.dart';
 
 class TeacherExamProvider extends ChangeNotifier {
   final TeacherExamApi _api;
@@ -135,6 +136,9 @@ class TeacherExamProvider extends ChangeNotifier {
     double? totalMarks,
     String? passcode,
     int? maxSubmissions,
+    int? questionsPerStudent,
+    bool shuffleQuestions = false,
+    bool shuffleOptions = false,
   }) async {
     _saving = true;
     notifyListeners();
@@ -151,6 +155,9 @@ class TeacherExamProvider extends ChangeNotifier {
         totalMarks: totalMarks,
         passcode: passcode,
         maxSubmissions: maxSubmissions,
+        questionsPerStudent: questionsPerStudent,
+        shuffleQuestions: shuffleQuestions,
+        shuffleOptions: shuffleOptions,
       );
       _exams.insert(0, created);
       return true;
@@ -181,6 +188,25 @@ class TeacherExamProvider extends ChangeNotifier {
       return e.message;
     } catch (e) {
       return e.toString();
+    }
+  }
+
+  /// Change attempts / random-paper rules. Returns null on success, else an
+  /// error message. Papers already handed out keep their layout.
+  Future<String?> updateExamRules(ExamModel exam, ExamRules rules) async {
+    _saving = true;
+    notifyListeners();
+    try {
+      final updated = await _api.updateExamSettings(exam.id, rules);
+      _replaceExam(updated);
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } catch (e) {
+      return e.toString();
+    } finally {
+      _saving = false;
+      notifyListeners();
     }
   }
 
@@ -348,6 +374,58 @@ class TeacherExamProvider extends ChangeNotifier {
       return false;
     } finally {
       notifyListeners();
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Import / export
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /// Downloads + saves the sample .xlsx. Returns null on success, else an error.
+  Future<String?> downloadTemplate() async {
+    try {
+      await saveExamFile(await _api.downloadImportTemplate());
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  /// Imports questions from an Excel / CSV file into [examId].
+  Future<({ImportResult? result, String? error})> importQuestions(
+      int examId, ExamFile file) async {
+    _saving = true;
+    notifyListeners();
+    try {
+      final r = await _api.importQuestions(examId, file);
+      final idx = _exams.indexWhere((e) => e.id == examId);
+      if (idx != -1) {
+        _exams[idx] = _exams[idx].copyWith(questionCount: r.questionsCount);
+      }
+      await loadQuestions(examId); // refresh the list the teacher is looking at
+      return (result: r, error: null);
+    } on ApiException catch (e) {
+      return (result: null, error: e.message);
+    } catch (e) {
+      return (result: null, error: e.toString());
+    } finally {
+      _saving = false;
+      notifyListeners();
+    }
+  }
+
+  /// Exports [kind] = questions | marks | answers | all as .xlsx and saves it.
+  /// Returns null on success, else an error message.
+  Future<String?> exportExam(int examId, String kind) async {
+    try {
+      await saveExamFile(await _api.exportExam(examId, kind));
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } catch (e) {
+      return e.toString();
     }
   }
 

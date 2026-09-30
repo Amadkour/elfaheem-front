@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter_education_app/core/api_client.dart';
 import '../../../shared/models/exam_model.dart';
+import 'exam_files.dart';
 
 class TeacherExamApi {
   final ApiClient _api;
@@ -28,6 +31,9 @@ class TeacherExamApi {
     double? passingScore,
     double? totalMarks,
     String? passcode,
+    int? questionsPerStudent,
+    bool shuffleQuestions = false,
+    bool shuffleOptions = false,
   }) async {
     final data = await _api.post('/api/v1/exams', body: {
       'name': name,
@@ -37,7 +43,11 @@ class TeacherExamApi {
       if (startDate != null) 'start_date': startDate.toUtc().toIso8601String(),
       if (endDate != null) 'end_date': endDate.toUtc().toIso8601String(),
       'duration': ?duration,
-      'max_submissions': ?maxSubmissions,
+      // 0 = unlimited attempts (never send null: the server would ignore it)
+      'max_submissions': maxSubmissions ?? 0,
+      'questions_per_student': ?questionsPerStudent,
+      'shuffle_questions': shuffleQuestions,
+      'shuffle_options': shuffleOptions,
       'passing_score': ?passingScore,
       'total_marks': ?totalMarks,
       'passcode': ?passcode,
@@ -75,6 +85,17 @@ class TeacherExamApi {
     }
     all.sort((a, b) => a.order.compareTo(b.order));
     return all;
+  }
+
+  /// PUT /api/v1/exams/{id}/settings — attempts + random-paper rules.
+  Future<ExamModel> updateExamSettings(int examId, ExamRules r) async {
+    final data = await _api.put('/api/v1/exams/$examId/settings', body: {
+      'max_submissions': r.maxSubmissions, // 0 = unlimited
+      'questions_per_student': r.questionsPerStudent, // null = all questions
+      'shuffle_questions': r.shuffleQuestions,
+      'shuffle_options': r.shuffleOptions,
+    });
+    return ExamModel.fromJson(data as Map<String, dynamic>);
   }
 
   /// POST /api/v1/exams/{id}/publish
@@ -151,13 +172,44 @@ class TeacherExamApi {
     await _api.delete('/api/v1/questions/$questionId');
   }
 
+  // ── Import / export ─────────────────────────────────────────────────────────
+
+  ExamFile _decodeFile(dynamic data) {
+    final m = data as Map<String, dynamic>;
+    return ExamFile(
+      m['filename'] as String? ?? 'exam.xlsx',
+      base64Decode(m['content_base64'] as String),
+    );
+  }
+
+  /// GET /api/v1/questions/import-template — the sample .xlsx.
+  Future<ExamFile> downloadImportTemplate() async =>
+      _decodeFile(await _api.get('/api/v1/questions/import-template'));
+
+  /// POST /api/v1/exams/{id}/questions/import — Excel / CSV as base64 JSON.
+  Future<ImportResult> importQuestions(int examId, ExamFile file) async {
+    final data = await _api.post('/api/v1/exams/$examId/questions/import', body: {
+      'filename': file.filename,
+      'content_base64': base64Encode(file.bytes),
+    });
+    return ImportResult.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// GET /api/v1/exams/{id}/export?kind=questions|marks|answers|all
+  Future<ExamFile> exportExam(int examId, String kind) async => _decodeFile(
+        await _api.get('/api/v1/exams/$examId/export',
+            queryParams: {'kind': kind}),
+      );
+
   // ── Results ─────────────────────────────────────────────────────────────────
 
   /// GET /api/v1/exams/{examId}/attendance-results
+  /// The server answers {..., "students": [...]}; a bare list is accepted too.
   Future<List<StudentExamResult>> fetchExamResults(int examId) async {
     final data = await _api.get('/api/v1/exams/$examId/attendance-results');
-    if (data is! List) return [];
-    return (data)
+    final list = data is Map ? data['students'] : data;
+    if (list is! List) return [];
+    return list
         .cast<Map<String, dynamic>>()
         .map(StudentExamResult.fromJson)
         .toList();

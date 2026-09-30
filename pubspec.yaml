@@ -61,6 +61,7 @@ dependencies:
   cryptography: ^2.7.0
   android_id: ^0.5.2+1
   screen_protector: ^1.5.3
+  file_saver: ^0.4.0
 dependency_overrides:
   flutter_webrtc:
     git:

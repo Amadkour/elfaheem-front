@@ -4,7 +4,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import '../../../shared/models/exam_model.dart';
-import '../../../teacher/analysis/exam/exam_model.dart';
 import 'student_exam_api.dart';
 
 // ── Quiz session state ────────────────────────────────────────────────────────
