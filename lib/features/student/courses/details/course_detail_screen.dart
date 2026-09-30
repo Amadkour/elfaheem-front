@@ -88,9 +88,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
     _showingBlockedDialog = true;
     try {
+      print("-------------[ course Id ]------------");
+      print(_provider.course.id);
+      print("-------------[ End ]------------");
+
       final p = DeviceSecurityProvider();
       if (await p.check() && mounted) {
-        print("----------------------------");
         await showDeviceBlockedDialog(
           context,
           p,

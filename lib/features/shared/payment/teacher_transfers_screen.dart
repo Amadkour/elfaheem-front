@@ -148,7 +148,7 @@ class _TransferCard extends StatelessWidget {
           Expanded(
             child: OutlinedButton(
               onPressed: busy ? null : () => _confirmReject(context),
-              style: OutlinedButton.styleFrom(foregroundColor: c.danger),
+              style: OutlinedButton.styleFrom(foregroundColor: c.danger,side: BorderSide(color:  c.danger)),
               child: const Text('رفض'),
             ),
           ),

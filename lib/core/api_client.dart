@@ -835,12 +835,12 @@ class ApiClient {
     // ── Login from a device that isn't the registered one -> dialog ───────
     onResponse: (response, handler) {
       // Body can be a Map, a JSON String or null — asMap() covers all three.
-      final d = ApiException.asMap(response.data);
-      if (response.requestOptions.path.endsWith('/auth/login') &&
-          d != null &&
-          d['device_allowed'] == false) {
-        _showDeviceBlocked(delay: const Duration(milliseconds: 900));
-      }
+      // final d = ApiException.asMap(response.data);
+      // if (response.requestOptions.path.endsWith('/auth/login') &&
+      //     d != null &&
+      //     d['device_allowed'] == false) {
+      //   _showDeviceBlocked(delay: const Duration(milliseconds: 900));
+      // }
       handler.next(response);
     },
 
@@ -854,7 +854,14 @@ class ApiClient {
         final raw = error.response?.data;
         final (code, _) = ApiException.codedDetail(raw);
         if (code == 'DEVICE_MISMATCH' || code == 'DEVICE_ID_MISSING') {
-          _showDeviceBlocked();          // dialog instead of the verify screen
+          print("url is----------------------------");
+          print(error.requestOptions.path);
+
+          if(error.requestOptions.path.endsWith('/sessions')) {
+
+            String courseId=error.requestOptions.path.split('/sessions').first.split('/').last;
+            _showDeviceBlocked(courseId: int.parse(courseId));
+          }// dialog instead of the verify screen
         } else if (code == null &&
             ApiException.asMap(raw) != null &&
             !ApiException.isEncryptedEnvelope(raw)) {
@@ -1049,7 +1056,7 @@ class ApiClient {
   /// not second-guess the server. DeviceSecurityProvider.check() is only used
   /// to fill the dialog (pending request, monthly limit, can-request); if it
   /// fails the dialog still opens with the plain message.
-  void _showDeviceBlocked({Duration delay = Duration.zero}) {
+  void _showDeviceBlocked({Duration delay = Duration.zero,int? courseId}) {
     if (_deviceDialogOpen) return;
     _deviceDialogOpen = true;
     () async {
@@ -1070,7 +1077,7 @@ class ApiClient {
           await p.check();
         } catch (_) {}
         if (!ctx.mounted) return;
-        await showDeviceBlockedDialog(ctx, p);
+        await showDeviceBlockedDialog(ctx, p,courseId: courseId);
       } catch (e) {
         if (AppConfig.testMode) log('device dialog failed: $e', name: 'API');
       } finally {

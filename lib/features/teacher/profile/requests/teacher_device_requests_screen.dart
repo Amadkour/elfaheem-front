@@ -110,7 +110,7 @@ class _Card extends StatelessWidget {
           Expanded(
             child: OutlinedButton(
               onPressed: busy ? null : () => _reject(context),
-              style: OutlinedButton.styleFrom(foregroundColor: c.danger),
+              style: OutlinedButton.styleFrom(foregroundColor: c.danger,side: BorderSide(color:  c.danger)),
               child: const Text('رفض'),
             ),
           ),
