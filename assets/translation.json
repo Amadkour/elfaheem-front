@@ -4152,5 +4152,9 @@
   "export_saved_snack": {
     "en": "File saved",
     "ar": "تم حفظ الملف"
+  },
+  "mark_all_read": {
+    "en": "Make all Read",
+    "ar": "اجعل الكل مقروءاً"
   }
 }

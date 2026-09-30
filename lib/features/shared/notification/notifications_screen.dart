@@ -5,6 +5,7 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart';
+import '../../../config/routes.dart';
 import '../../../config/theme/app_theme.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_bar.dart';
@@ -171,16 +172,7 @@ class _NotifTile extends StatelessWidget {
 
         await provider.markAsRead(notif.id);
 
-        navigator.push(
-          MaterialPageRoute(
-            builder: (_) => ChangeNotifierProvider(
-              create: (_) => TeacherCourseScreenProvider(
-                initialCourse: TeacherCourse.dummy(notif.sourceId),
-              ),
-              child: TeacherSessionsScreen(),
-            ),
-          ),
-        );
+       // navigator.pushNamed(AppRoutes.courseDetail,arguments: notif.sourceId);
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
