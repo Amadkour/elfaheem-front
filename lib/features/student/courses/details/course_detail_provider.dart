@@ -239,18 +239,15 @@ class CourseDetailProvider extends BaseProvider {
   ///
   /// Rules:
   /// • Session 1 (index 0) is always open — it's the free preview.
-  /// • Unpaid / unenrolled students never get past session 1.
-  /// • Enrolled (paid) students unlock session N only once session N-1 has
-  ///   been completed (tracked in [completedSessionIds]), so the "current"
-  ///   session is always the first one that isn't completed yet.
+  /// • Unenrolled students never get past session 1.
+  /// • Enrolled students can open any later session UNLESS an exam attached
+  ///   to an earlier session is still not passed (see [blockingExamFor]).
+  ///   Sessions without an exam never block the next one.
   bool isSessionUnlocked(int index) {
     if (index < 0 || index >= sessions.length) return false;
     if (index == 0) return true;
     if (!course.isEnrolled) return false;
-    // A published exam attached to ANY earlier session must be passed first.
-    if (blockingExamFor(index) != null) return false;
-    final previousSession = sessions[index - 1];
-    return completedSessionIds.contains(previousSession.id);
+    return blockingExamFor(index) == null;
   }
 
   /// The first not-yet-passed exam attached to a session BEFORE [index]
