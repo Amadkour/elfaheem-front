@@ -219,270 +219,273 @@ class SessionMaterialGrid extends StatelessWidget {
         .tr // hardcoded "Recording in progress…"
         : (isRecorded ? '${m.name}  •  ${_formatDate(m.createdAt)}' : m.name);
 
-    return GestureDetector(
-      onTap: isRecording ? null : () => _onTapMaterial(context, m, isCompleted),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        decoration: BoxDecoration(
-          color: context.colors.cardBg,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isCompleted
-                ? const Color(0xFF00C48C).withValues(alpha: 0.35)
-                : color.withValues(alpha: 0.18),
-            width: isCompleted ? 1.5 : 1.0,
-          ),
-          boxShadow: [
-            BoxShadow(
+    return  Directionality(
+      textDirection: Helpers.textDirOf(displayName),
+      child: GestureDetector(
+        onTap: isRecording ? null : () => _onTapMaterial(context, m, isCompleted),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          decoration: BoxDecoration(
+            color: context.colors.cardBg,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
               color: isCompleted
-                  ? const Color(0xFF00C48C).withValues(alpha: 0.10)
-                  : color.withValues(alpha: 0.06),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
+                  ? const Color(0xFF00C48C).withValues(alpha: 0.35)
+                  : color.withValues(alpha: 0.18),
+              width: isCompleted ? 1.5 : 1.0,
             ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Column(
-            children: [
-              // ── Top accent strip ─────────────────────────────────────────
-              if (isCompleted)
-                Container(
-                  height: 3,
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF00C48C), Color(0xFF00E5A0)],
-                    ),
-                  ),
-                )
-              else
-                if (isRecording)
-                // Pulsing red strip for active recording
+            boxShadow: [
+              BoxShadow(
+                color: isCompleted
+                    ? const Color(0xFF00C48C).withValues(alpha: 0.10)
+                    : color.withValues(alpha: 0.06),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Column(
+              children: [
+                // ── Top accent strip ─────────────────────────────────────────
+                if (isCompleted)
                   Container(
                     height: 3,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [color, color.withValues(alpha: 0.4)],
+                        colors: [Color(0xFF00C48C), Color(0xFF00E5A0)],
                       ),
                     ),
-                  ),
-
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ── Leading icon ────────────────────────────────────────
+                  )
+                else
+                  if (isRecording)
+                  // Pulsing red strip for active recording
                     Container(
+                      height: 3,
                       decoration: BoxDecoration(
-                          shape: BoxShape.rectangle,
-                          borderRadius: BorderRadius.circular(10),
-                          border: BoxBorder.all(color: context.colors.primary)
-                      ),
-                      child: Column(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.fromLTRB(5, 5, 5, 0),
-                            alignment: Alignment.bottomCenter,
-
-                            child: Text(
-                              (index < 10 ? '0' : '') +
-                                  index.toString(),
-                              textAlign: TextAlign.center,
-
-                              style: context.colors.h4.copyWith(
-                                  color: context.colors.primary),
-                            ),
-                          ),
-                          isRecording
-                              ? _RecordingSpinnerIcon(color: color)
-                              : MaterialIconWidget(
-                            icon: icon,
-                            color: color,
-                            isCompleted: isCompleted,
-                            badge: fileStyle?.badge,
-                            badgeTextColor: fileStyle?.badgeTextColor,
-                          ),
-                        ],
+                        gradient: LinearGradient(
+                          colors: [color, color.withValues(alpha: 0.4)],
+                        ),
                       ),
                     ),
 
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  displayName,
-                                  style: context.colors.body.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                    fontStyle: isRecording
-                                        ? FontStyle.italic
-                                        : FontStyle.normal,
-                                    color: isCompleted
-                                        ? context.colors.textMedium
-                                        : isRecording
-                                        ? color
-                                        : null,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 5),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (isCompleted && !isTeacher) ...[
-                                    const MaterialCompletedBadge(),
-                                    const SizedBox(width: 5),
-                                  ],
-                                  // For recording, show a live dot instead of age
-                                  if (isRecording)
-                                    _LiveDotBadge(color: color)
-                                  else
-                                    if (isRecorded)
-                                    // Show formatted date for recorded items
-                                      Text(
-                                        _formatDate(m.createdAt),
-                                        style: context.colors.caption.copyWith(
-                                          fontSize: 10,
-                                          color: color.withValues(alpha: 0.8),
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      )
-                                    else
-                                      Text(
-                                        m.createdAt.age,
-                                        style: context.colors
-                                            .navLabelUnselected,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 3),
-                          Row(
-                            children: [
-                              SessionPill(fileStyle?.label ?? labelKey.tr, color),
-                              if (m.sizeLabel.isNotEmpty && !isRecording) ...[
-                                const SizedBox(width: 6),
-                                Text(
-                                  m.sizeLabel, // KB under 1 MB, else MB
-                                  style: context.colors.caption.copyWith(
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ],
-                              if (m.durationLabel.isNotEmpty && !isRecording) ...[
-                                const SizedBox(width: 8),
-                                Icon(
-                                  Icons.schedule_rounded,
-                                  size: 11,
-                                  color: context.colors.textLight,
-                                ),
-                                const SizedBox(width: 2),
-                                Text(
-                                  m.durationLabel, // h:mm:ss
-                                  style: context.colors.caption.copyWith(
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          if (!isRecording)
-                            RatingWidget(
-                              type: RateType.material,
-                              sourceId: m.id.toString(),
-                              canEdit: !isTeacher,
-                              rateSummary: m.rateSummary,
-                            ),
-                        ],
-                      ),
-                    ),
-                    // ── Trailing: teacher actions / student open indicator ──
-                    if (isTeacher)
-                      Row(
-                        children: [
-                          if (dragIndex != null)
-                            ReorderableDragStartListener(
-                              index: dragIndex,
-                              child: Padding(
-                                padding:
-                                const EdgeInsets.symmetric(horizontal: 4),
-                                child: Icon(
-                                  Icons.menu,
-                                  size: 23,
-                                  color: context.colors.textLight,
-                                ),
-                              ),
-                            ),
-                          if (!isRecording) ...[
-                            _iconBtn(
-                              icon: CupertinoIcons.settings_solid,
-                              color: context.colors.textMedium,
-                              onTap: () => _showEditDialog(context, m),
-                            ),
-                          ],
-                          _iconBtn(
-                            icon: CupertinoIcons.minus_circle_fill,
-                            color: context.colors.danger,
-                            onTap: () => _showDeleteDialog(context, m),
-                          ),
-                        ],
-                      )
-                    else
-                      if (!isRecording)
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ── Leading icon ────────────────────────────────────────
+                      Container(
+                        decoration: BoxDecoration(
+                            shape: BoxShape.rectangle,
+                            borderRadius: BorderRadius.circular(10),
+                            border: BoxBorder.all(color: context.colors.primary)
+                        ),
+                        child: Column(
                           children: [
-                            AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 300),
-                              transitionBuilder: (child, anim) =>
-                                  ScaleTransition(
-                                    scale: anim,
-                                    child: FadeTransition(
-                                      opacity: anim,
-                                      child: child,
-                                    ),
-                                  ),
-                              child: isCompleted
-                                  ? const Padding(
-                                key: ValueKey('check'),
-                                padding: EdgeInsets.only(right: 5),
-                                child: Icon(
-                                  Icons.check_circle_rounded,
-                                  size: 15,
-                                  color: Color(0xFF00C48C),
-                                ),
-                              )
-                                  : const SizedBox.shrink(
-                                  key: ValueKey('empty')),
+                            Container(
+                              padding: EdgeInsets.fromLTRB(5, 5, 5, 0),
+                              alignment: Alignment.bottomCenter,
+
+                              child: Text(
+                                (index < 10 ? '0' : '') +
+                                    index.toString(),
+                                textAlign: TextAlign.center,
+
+                                style: context.colors.h4.copyWith(
+                                    color: context.colors.primary),
+                              ),
                             ),
-                            Icon(
-                              Icons.open_in_new_rounded,
-                              size: 16,
-                              color: context.colors.textLight,
+                            isRecording
+                                ? _RecordingSpinnerIcon(color: color)
+                                : MaterialIconWidget(
+                              icon: icon,
+                              color: color,
+                              isCompleted: isCompleted,
+                              badge: fileStyle?.badge,
+                              badgeTextColor: fileStyle?.badgeTextColor,
                             ),
                           ],
                         ),
-                  ],
+                      ),
+
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    displayName,
+                                    style: context.colors.body.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                      fontStyle: isRecording
+                                          ? FontStyle.italic
+                                          : FontStyle.normal,
+                                      color: isCompleted
+                                          ? context.colors.textMedium
+                                          : isRecording
+                                          ? color
+                                          : null,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 5),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (isCompleted && !isTeacher) ...[
+                                      const MaterialCompletedBadge(),
+                                      const SizedBox(width: 5),
+                                    ],
+                                    // For recording, show a live dot instead of age
+                                    if (isRecording)
+                                      _LiveDotBadge(color: color)
+                                    else
+                                      if (isRecorded)
+                                      // Show formatted date for recorded items
+                                        Text(
+                                          _formatDate(m.createdAt),
+                                          style: context.colors.caption.copyWith(
+                                            fontSize: 10,
+                                            color: color.withValues(alpha: 0.8),
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        )
+                                      else
+                                        Text(
+                                          m.createdAt.age,
+                                          style: context.colors
+                                              .navLabelUnselected,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Row(
+                              children: [
+                                SessionPill(fileStyle?.label ?? labelKey.tr, color),
+                                if (m.sizeLabel.isNotEmpty && !isRecording) ...[
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    m.sizeLabel, // KB under 1 MB, else MB
+                                    style: context.colors.caption.copyWith(
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                                if (m.durationLabel.isNotEmpty && !isRecording) ...[
+                                  const SizedBox(width: 8),
+                                  Icon(
+                                    Icons.schedule_rounded,
+                                    size: 11,
+                                    color: context.colors.textLight,
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    m.durationLabel, // h:mm:ss
+                                    style: context.colors.caption.copyWith(
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            if (!isRecording)
+                              RatingWidget(
+                                type: RateType.material,
+                                sourceId: m.id.toString(),
+                                canEdit: !isTeacher,
+                                rateSummary: m.rateSummary,
+                              ),
+                          ],
+                        ),
+                      ),
+                      // ── Trailing: teacher actions / student open indicator ──
+                      if (isTeacher)
+                        Row(
+                          children: [
+                            if (dragIndex != null)
+                              ReorderableDragStartListener(
+                                index: dragIndex,
+                                child: Padding(
+                                  padding:
+                                  const EdgeInsets.symmetric(horizontal: 4),
+                                  child: Icon(
+                                    Icons.menu,
+                                    size: 23,
+                                    color: context.colors.textLight,
+                                  ),
+                                ),
+                              ),
+                            if (!isRecording) ...[
+                              _iconBtn(
+                                icon: CupertinoIcons.settings_solid,
+                                color: context.colors.textMedium,
+                                onTap: () => _showEditDialog(context, m),
+                              ),
+                            ],
+                            _iconBtn(
+                              icon: CupertinoIcons.minus_circle_fill,
+                              color: context.colors.danger,
+                              onTap: () => _showDeleteDialog(context, m),
+                            ),
+                          ],
+                        )
+                      else
+                        if (!isRecording)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 300),
+                                transitionBuilder: (child, anim) =>
+                                    ScaleTransition(
+                                      scale: anim,
+                                      child: FadeTransition(
+                                        opacity: anim,
+                                        child: child,
+                                      ),
+                                    ),
+                                child: isCompleted
+                                    ? const Padding(
+                                  key: ValueKey('check'),
+                                  padding: EdgeInsets.only(right: 5),
+                                  child: Icon(
+                                    Icons.check_circle_rounded,
+                                    size: 15,
+                                    color: Color(0xFF00C48C),
+                                  ),
+                                )
+                                    : const SizedBox.shrink(
+                                    key: ValueKey('empty')),
+                              ),
+                              Icon(
+                                Icons.open_in_new_rounded,
+                                size: 16,
+                                color: context.colors.textLight,
+                              ),
+                            ],
+                          ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

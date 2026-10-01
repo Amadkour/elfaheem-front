@@ -3,6 +3,7 @@
 // Entry gate: shows exam info, score history, then launches quiz.
 // NEW: shows "Try Again" when maxSubmissions allows more rounds.
 library;
+
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -13,13 +14,16 @@ import 'student_exam_frozen_screen.dart';
 import 'student_exam_api.dart';
 import 'student_exam_provider.dart';
 import 'student_exam_quiz_screen.dart';
+import 'exam_tr.dart';
 
 class StudentExamDetailScreen extends StatefulWidget {
   final StudentExamListItem exam;
+
   const StudentExamDetailScreen({super.key, required this.exam});
 
   @override
-  State<StudentExamDetailScreen> createState() => _StudentExamDetailScreenState();
+  State<StudentExamDetailScreen> createState() =>
+      _StudentExamDetailScreenState();
 }
 
 class _StudentExamDetailScreenState extends State<StudentExamDetailScreen>
@@ -33,7 +37,9 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen>
   void initState() {
     super.initState();
     _heroCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 700));
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
     _heroAnim = CurvedAnimation(parent: _heroCtrl, curve: Curves.elasticOut);
     _heroCtrl.forward();
   }
@@ -45,13 +51,22 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen>
   }
 
   Future<void> _start() async {
-    setState(() { _starting = true; _entryError = null; });
+    setState(() {
+      _starting = true;
+      _entryError = null;
+    });
     final prov = context.read<StudentExamProvider>();
     final ok = await prov.startExam(widget.exam);
     if (!mounted) return;
-    if(mounted) if(mounted) setState(() => _starting = false);
+    if (mounted) if (mounted) setState(() => _starting = false);
     if (!ok) {
-      if(mounted) if(mounted) setState(() => _entryError = prov.questionsError ?? 'تعذّر تحميل الأسئلة');
+      if (mounted)
+        if (mounted) {
+          setState(
+            () => _entryError =
+                prov.questionsError ?? tx('exam_load_questions_failed'),
+          );
+        }
       return;
     }
     Navigator.pushReplacement(
@@ -78,7 +93,8 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen>
     final c = context.colors;
     final isDone = exam.isSubmitted;
     final canRetry = exam.canRetry && isDone;
-    final isScheduled = exam.startDate != null && exam.startDate!.isAfter(DateTime.now());
+    final isScheduled =
+        exam.startDate != null && exam.startDate!.isAfter(DateTime.now());
 
     // Accent colour based on state
     final Color accent;
@@ -91,7 +107,7 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen>
     }
 
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: Directionality.of(context),
       child: Scaffold(
         backgroundColor: c.background,
         body: CustomScrollView(
@@ -103,8 +119,11 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen>
               pinned: true,
               backgroundColor: accent,
               leading: IconButton(
-                icon: const Icon(Icons.arrow_forward_ios_rounded,
-                    color: Colors.white, size: 20),
+                icon: const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
                 onPressed: () => Navigator.pop(context),
               ),
               flexibleSpace: FlexibleSpaceBar(
@@ -124,19 +143,26 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen>
                         ScaleTransition(
                           scale: _heroAnim,
                           child: Container(
-                            width: 78, height: 78,
+                            width: 78,
+                            height: 78,
                             decoration: BoxDecoration(
                               color: Colors.white.withValues(alpha: .2),
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white.withValues(alpha: .4), width: 2),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: .4),
+                                width: 2,
+                              ),
                             ),
                             child: Icon(
                               isDone
-                                  ? (exam.passed == true ? Icons.emoji_events_rounded : Icons.replay_rounded)
+                                  ? (exam.passed == true
+                                        ? Icons.emoji_events_rounded
+                                        : Icons.replay_rounded)
                                   : isScheduled
                                   ? Icons.schedule_rounded
                                   : Icons.quiz_rounded,
-                              color: Colors.white, size: 38,
+                              color: Colors.white,
+                              size: 38,
                             ),
                           ),
                         ),
@@ -146,8 +172,10 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen>
                           child: Text(
                             exam.name,
                             style: const TextStyle(
-                              fontFamily: 'bahji', fontSize: 17,
-                              fontWeight: FontWeight.w800, color: Colors.white,
+                              fontFamily: 'bahji',
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
                             ),
                             textAlign: TextAlign.center,
                             maxLines: 2,
@@ -159,7 +187,9 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen>
                           Text(
                             exam.courseName!,
                             style: const TextStyle(
-                              fontFamily: 'bahji', fontSize: 13, color: Colors.white70,
+                              fontFamily: 'bahji',
+                              fontSize: 13,
+                              color: Colors.white70,
                             ),
                           ),
                         ],
@@ -171,8 +201,10 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen>
               title: Text(
                 exam.name,
                 style: const TextStyle(
-                  fontFamily: 'bahji', fontSize: 15,
-                  fontWeight: FontWeight.w700, color: Colors.white,
+                  fontFamily: 'bahji',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -183,18 +215,24 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen>
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   // ── Description ──────────────────────────────────────────
-                  if (exam.description != null && exam.description!.isNotEmpty) ...[
+                  if (exam.description != null &&
+                      exam.description!.isNotEmpty) ...[
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: accent.withValues(alpha: .06),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: accent.withValues(alpha: .15)),
+                        border: Border.all(
+                          color: accent.withValues(alpha: .15),
+                        ),
                       ),
                       child: Text(
                         exam.description!,
                         style: TextStyle(
-                          fontFamily: 'bahji', fontSize: 13, color: c.textMedium, height: 1.6,
+                          fontFamily: 'bahji',
+                          fontSize: 13,
+                          color: c.textMedium,
+                          height: 1.6,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -203,45 +241,71 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen>
                   ],
 
                   // ── Info card ─────────────────────────────────────────────
-                  _InfoCard(accent: accent, children: [
-                    _InfoRow(Icons.help_outline_rounded, 'عدد الأسئلة',
-                        '${exam.questionCount} سؤال', c.primary),
-                    _InfoRow(Icons.timer_outlined, 'المدة',
-                        '${exam.duration ?? 0} دقيقة', Colors.teal),
-                    if (exam.passingScore != null)
-                      _InfoRow(Icons.star_outline_rounded, 'درجة النجاح',
-                          '${exam.passingScore!.toInt()}%', Colors.amber.shade700),
-                    if (exam.totalMarks != null)
-                      _InfoRow(Icons.grade_outlined, 'إجمالي الدرجات',
-                          '${exam.totalMarks!.toInt()} درجة', Colors.purple),
-                    if (exam.startDate != null)
-                      _InfoRow(Icons.schedule_rounded, 'وقت البدء',
-                          _fmtDate(exam.startDate!), Colors.orange),
-                    if (exam.endDate != null)
+                  _InfoCard(
+                    accent: accent,
+                    children: [
                       _InfoRow(
-                        Icons.hourglass_bottom_rounded,
-                        'الموعد النهائي',
-                        _fmtDate(exam.endDate!),
-                        exam.isDeadlineFrozen ? Colors.redAccent : Colors.orange,
-                      ),
-                    // Submissions counter
-                    if (exam.maxSubmissions != null && exam.maxSubmissions! > 0) ...[
-                      _InfoRow(
-                        Icons.repeat_rounded,
-                        'المحاولات المستخدمة',
-                        '${exam.submissionCount} / ${exam.maxSubmissions}',
-                        Colors.purple,
+                        Icons.help_outline_rounded,
+                        tx('exam_question_count'),
+                        tx('exam_n_questions', {'n': exam.questionCount}),
+                        c.primary,
                       ),
                       _InfoRow(
-                        Icons.replay_circle_filled_rounded,
-                        'المحاولات المتبقية',
-                        '${exam.computedRemainingSubmissions ?? 0}',
-                        (exam.computedRemainingSubmissions ?? 0) > 0
-                            ? Colors.green
-                            : Colors.redAccent,
+                        Icons.timer_outlined,
+                        tx('exam_duration'),
+                        tx('exam_n_minutes', {'n': exam.duration ?? 0}),
+                        Colors.teal,
                       ),
+                      if (exam.passingScore != null)
+                        _InfoRow(
+                          Icons.star_outline_rounded,
+                          tx('exam_passing_score'),
+                          '${exam.passingScore!.toInt()}%',
+                          Colors.amber.shade700,
+                        ),
+                      if (exam.totalMarks != null)
+                        _InfoRow(
+                          Icons.grade_outlined,
+                          tx('exam_total_marks'),
+                          tx('exam_n_marks', {'n': exam.totalMarks!.toInt()}),
+                          Colors.purple,
+                        ),
+                      if (exam.startDate != null)
+                        _InfoRow(
+                          Icons.schedule_rounded,
+                          tx('exam_start_time'),
+                          _fmtDate(exam.startDate!),
+                          Colors.orange,
+                        ),
+                      if (exam.endDate != null)
+                        _InfoRow(
+                          Icons.hourglass_bottom_rounded,
+                          tx('exam_deadline'),
+                          _fmtDate(exam.endDate!),
+                          exam.isDeadlineFrozen
+                              ? Colors.redAccent
+                              : Colors.orange,
+                        ),
+                      // Submissions counter
+                      if (exam.maxSubmissions != null &&
+                          exam.maxSubmissions! > 0) ...[
+                        _InfoRow(
+                          Icons.repeat_rounded,
+                          tx('exam_used_attempts'),
+                          '${exam.submissionCount} / ${exam.maxSubmissions}',
+                          Colors.purple,
+                        ),
+                        _InfoRow(
+                          Icons.replay_circle_filled_rounded,
+                          tx('exam_remaining_attempts'),
+                          '${exam.computedRemainingSubmissions ?? 0}',
+                          (exam.computedRemainingSubmissions ?? 0) > 0
+                              ? Colors.green
+                              : Colors.redAccent,
+                        ),
+                      ],
                     ],
-                  ]),
+                  ),
                   const SizedBox(height: 16),
 
                   // ── Best score card ───────────────────────────────────────
@@ -273,7 +337,7 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen>
                     if (!isDone)
                       _ActionButton(
                         loading: _starting,
-                        label: 'ابدأ الاختبار الآن',
+                        label: tx('exam_start_now'),
                         icon: Icons.play_arrow_rounded,
                         color: c.primary,
                         onPressed: _start,
@@ -282,15 +346,17 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen>
                       if (canRetry)
                         _ActionButton(
                           loading: _starting,
-                          label: 'حاول مرة أخرى',
+                          label: tx('exam_retry'),
                           icon: Icons.replay_rounded,
                           color: const Color(0xFF6C5CE7),
                           onPressed: _start,
-                          subtitle: '${exam.computedRemainingSubmissions} محاولة متبقية',
+                          subtitle: tx('exam_n_attempts_left', {
+                            'n': exam.computedRemainingSubmissions,
+                          }),
                         ),
                       const SizedBox(height: 12),
                       _OutlineBtn(
-                        label: 'العودة',
+                        label: tx('exam_back'),
                         onPressed: () => Navigator.pop(context),
                       ),
                     ],
@@ -313,6 +379,7 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen>
 class _InfoCard extends StatelessWidget {
   final List<Widget> children;
   final Color accent;
+
   const _InfoCard({required this.children, required this.accent});
 
   @override
@@ -326,13 +393,19 @@ class _InfoCard extends StatelessWidget {
       border: Border.all(color: accent.withValues(alpha: .10)),
     ),
     child: Column(
-      children: children.asMap().entries.map((e) => Column(
-        children: [
-          e.value,
-          if (e.key < children.length - 1)
-            Divider(height: 18, color: Colors.grey.shade100),
-        ],
-      )).toList(),
+      children: children
+          .asMap()
+          .entries
+          .map(
+            (e) => Column(
+              children: [
+                e.value,
+                if (e.key < children.length - 1)
+                  Divider(height: 18, color: Colors.grey.shade100),
+              ],
+            ),
+          )
+          .toList(),
     ),
   );
 }
@@ -341,25 +414,43 @@ class _InfoRow extends StatelessWidget {
   final IconData icon;
   final String label, value;
   final Color color;
+
   const _InfoRow(this.icon, this.label, this.value, this.color);
 
   @override
-  Widget build(BuildContext context) => Row(children: [
-    Container(
-      width: 32, height: 32,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: .10),
-        borderRadius: BorderRadius.circular(9),
+  Widget build(BuildContext context) => Row(
+    children: [
+      Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: .10),
+          borderRadius: BorderRadius.circular(9),
+        ),
+        child: Icon(icon, color: color, size: 17),
       ),
-      child: Icon(icon, color: color, size: 17),
-    ),
-    const SizedBox(width: 10),
-    Expanded(child: Text(label,
-        style: const TextStyle(fontFamily: 'bahji', fontSize: 13, color: Colors.grey))),
-    Text(value, style: TextStyle(
-      fontFamily: 'bahji', fontSize: 13, fontWeight: FontWeight.w700, color: color,
-    )),
-  ]);
+      const SizedBox(width: 10),
+      Expanded(
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontFamily: 'bahji',
+            fontSize: 13,
+            color: Colors.grey,
+          ),
+        ),
+      ),
+      Text(
+        value,
+        style: TextStyle(
+          fontFamily: 'bahji',
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
+    ],
+  );
 }
 
 // ── Score card ────────────────────────────────────────────────────────────────
@@ -367,6 +458,7 @@ class _InfoRow extends StatelessWidget {
 class _ScoreCard extends StatelessWidget {
   final StudentExamListItem exam;
   final bool canRetry;
+
   const _ScoreCard({required this.exam, required this.canRetry});
 
   Color get _color => exam.passed == true ? AppTheme.success : Colors.redAccent;
@@ -379,63 +471,115 @@ class _ScoreCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [_color.withValues(alpha: .10), _color.withValues(alpha: .04)],
+          colors: [
+            _color.withValues(alpha: .10),
+            _color.withValues(alpha: .04),
+          ],
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: _color.withValues(alpha: .3)),
       ),
-      child: Column(children: [
-        Row(children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: _color.withValues(alpha: .12),
-              borderRadius: BorderRadius.circular(20),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: _color.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.emoji_events_rounded, size: 14, color: _color),
+                    const SizedBox(width: 4),
+                    Text(
+                      tx('exam_best_score'),
+                      style: TextStyle(
+                        fontFamily: 'bahji',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: _color,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              Text(
+                exam.passed == true
+                    ? tx('exam_passed_mark')
+                    : tx('exam_failed_mark'),
+                style: TextStyle(
+                  fontFamily: 'bahji',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: _color,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _ScoreStat(
+                '${pct.toStringAsFixed(1)}%',
+                tx('exam_percentage'),
+                _color,
+              ),
+              Container(
+                width: 1,
+                height: 40,
+                color: _color.withValues(alpha: .2),
+              ),
+              _ScoreStat(
+                '${exam.marksObtained?.toStringAsFixed(0) ?? 0} / ${exam.totalMarks?.toStringAsFixed(0) ?? 0}',
+                tx('exam_grade'),
+                _color,
+              ),
+              Container(
+                width: 1,
+                height: 40,
+                color: _color.withValues(alpha: .2),
+              ),
+              _ScoreStat(
+                '${exam.answeredCount} / ${exam.questionCount}',
+                tx('exam_you_answered'),
+                Colors.grey,
+              ),
+            ],
+          ),
+          if (exam.submissionCount > 0) ...[
+            const SizedBox(height: 14),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.repeat_rounded,
+                  size: 13,
+                  color: Colors.grey.shade500,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  tx('exam_submitted_n_times', {'n': exam.submissionCount}),
+                  style: TextStyle(
+                    fontFamily: 'bahji',
+                    fontSize: 12,
+                    color: Colors.grey.shade500,
+                  ),
+                ),
+              ],
             ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.emoji_events_rounded, size: 14, color: _color),
-              const SizedBox(width: 4),
-              Text('أفضل نتيجة', style: TextStyle(
-                fontFamily: 'bahji', fontSize: 11, fontWeight: FontWeight.w700, color: _color,
-              )),
-            ]),
-          ),
-          const Spacer(),
-          Text(
-            exam.passed == true ? 'ناجح ✓' : 'راسب ✗',
-            style: TextStyle(
-              fontFamily: 'bahji', fontSize: 14, fontWeight: FontWeight.w700, color: _color,
-            ),
-          ),
-        ]),
-        const SizedBox(height: 16),
-        Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-          _ScoreStat('${pct.toStringAsFixed(1)}%', 'النسبة', _color),
-          Container(width: 1, height: 40, color: _color.withValues(alpha: .2)),
-          _ScoreStat(
-            '${exam.marksObtained?.toStringAsFixed(0) ?? 0} / ${exam.totalMarks?.toStringAsFixed(0) ?? 0}',
-            'الدرجة', _color,
-          ),
-          Container(width: 1, height: 40, color: _color.withValues(alpha: .2)),
-          _ScoreStat(
-            '${exam.answeredCount} / ${exam.questionCount}',
-            'أجبت', Colors.grey,
-          ),
-        ]),
-        if (exam.submissionCount > 0) ...[
-          const SizedBox(height: 14),
-          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(Icons.repeat_rounded, size: 13, color: Colors.grey.shade500),
-            const SizedBox(width: 4),
-            Text(
-              'تم التقديم ${exam.submissionCount} مرة',
-              style: TextStyle(fontFamily: 'bahji', fontSize: 12, color: Colors.grey.shade500),
-            ),
-          ]),
+          ],
         ],
-      ]),
+      ),
     );
   }
 }
@@ -443,16 +587,32 @@ class _ScoreCard extends StatelessWidget {
 class _ScoreStat extends StatelessWidget {
   final String value, label;
   final Color color;
+
   const _ScoreStat(this.value, this.label, this.color);
 
   @override
-  Widget build(BuildContext context) => Column(children: [
-    Text(value, style: TextStyle(
-      fontFamily: 'bahji', fontSize: 18, fontWeight: FontWeight.w800, color: color,
-    )),
-    const SizedBox(height: 2),
-    Text(label, style: const TextStyle(fontFamily: 'bahji', fontSize: 11, color: Colors.grey)),
-  ]);
+  Widget build(BuildContext context) => Column(
+    children: [
+      Text(
+        value,
+        style: TextStyle(
+          fontFamily: 'bahji',
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+          color: color,
+        ),
+      ),
+      const SizedBox(height: 2),
+      Text(
+        label,
+        style: const TextStyle(
+          fontFamily: 'bahji',
+          fontSize: 11,
+          color: Colors.grey,
+        ),
+      ),
+    ],
+  );
 }
 
 // ── Action buttons ────────────────────────────────────────────────────────────
@@ -482,38 +642,57 @@ class _ActionButton extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [color, color.withValues(alpha: .8)],
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(30),
-        boxShadow: [BoxShadow(
-          color: color.withValues(alpha: .38),
-          blurRadius: 18, offset: const Offset(0, 7),
-        )],
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: .38),
+            blurRadius: 18,
+            offset: const Offset(0, 7),
+          ),
+        ],
       ),
       child: Center(
         child: loading
             ? const SizedBox(
-            width: 22, height: 22,
-            child: AppLoadingIndicator())
+                width: 22,
+                height: 22,
+                child: AppLoadingIndicator(),
+              )
             : Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Icon(icon, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              Text(label, style: const TextStyle(
-                fontFamily: 'bahji', fontSize: 16,
-                fontWeight: FontWeight.w800, color: Colors.white,
-              )),
-            ]),
-            if (subtitle != null) ...[
-              const SizedBox(height: 2),
-              Text(subtitle!, style: const TextStyle(
-                fontFamily: 'bahji', fontSize: 11, color: Colors.white70,
-              )),
-            ],
-          ],
-        ),
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(icon, color: Colors.white, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        label,
+                        style: const TextStyle(
+                          fontFamily: 'bahji',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle!,
+                      style: const TextStyle(
+                        fontFamily: 'bahji',
+                        fontSize: 11,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
       ),
     ),
   );
@@ -522,6 +701,7 @@ class _ActionButton extends StatelessWidget {
 class _OutlineBtn extends StatelessWidget {
   final String label;
   final VoidCallback onPressed;
+
   const _OutlineBtn({required this.label, required this.onPressed});
 
   @override
@@ -535,10 +715,15 @@ class _OutlineBtn extends StatelessWidget {
         border: Border.all(color: Colors.grey.shade300),
       ),
       child: Center(
-        child: Text(label, style: TextStyle(
-          fontFamily: 'bahji', fontSize: 15,
-          fontWeight: FontWeight.w600, color: Colors.grey.shade600,
-        )),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'bahji',
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade600,
+          ),
+        ),
       ),
     ),
   );
@@ -546,22 +731,33 @@ class _OutlineBtn extends StatelessWidget {
 
 class _ErrorBanner extends StatelessWidget {
   final String message;
+
   const _ErrorBanner({required this.message});
 
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(14),
     decoration: BoxDecoration(
-      color: Colors.red.shade50, borderRadius: BorderRadius.circular(14),
+      color: Colors.red.shade50,
+      borderRadius: BorderRadius.circular(14),
       border: Border.all(color: Colors.red.shade200),
     ),
-    child: Row(children: [
-      const Icon(Icons.error_outline_rounded, color: Colors.red, size: 18),
-      const SizedBox(width: 10),
-      Expanded(child: Text(message, style: const TextStyle(
-        fontFamily: 'bahji', fontSize: 13, color: Colors.red,
-      ))),
-    ]),
+    child: Row(
+      children: [
+        const Icon(Icons.error_outline_rounded, color: Colors.red, size: 18),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            message,
+            style: const TextStyle(
+              fontFamily: 'bahji',
+              fontSize: 13,
+              color: Colors.red,
+            ),
+          ),
+        ),
+      ],
+    ),
   );
 }
 
@@ -574,16 +770,22 @@ class _WarningNotice extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
       border: Border.all(color: Colors.orange.withValues(alpha: .25)),
     ),
-    child: const Row(children: [
-      Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
-      SizedBox(width: 10),
-      Expanded(
-        child: Text(
-          'بمجرد بدء الاختبار لا يمكن إيقافه مؤقتاً. تأكد من اتصالك قبل البدء.',
-          style: TextStyle(fontFamily: 'bahji', fontSize: 12, color: Colors.orange),
+    child: Row(
+      children: [
+        const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            tx('exam_start_warning'),
+            style: const TextStyle(
+              fontFamily: 'bahji',
+              fontSize: 12,
+              color: Colors.orange,
+            ),
+          ),
         ),
-      ),
-    ]),
+      ],
+    ),
   );
 }
 
@@ -591,6 +793,7 @@ class _WarningNotice extends StatelessWidget {
 
 class _CountdownCard extends StatefulWidget {
   final DateTime target;
+
   const _CountdownCard({required this.target});
 
   @override
@@ -611,11 +814,17 @@ class _CountdownCardState extends State<_CountdownCard> {
   void _tick() {
     if (!mounted) return;
     final r = widget.target.difference(DateTime.now());
-    if(mounted) if(mounted) setState(() => _remaining = r.isNegative ? Duration.zero : r);
+    if (mounted)
+      if (mounted) {
+        setState(() => _remaining = r.isNegative ? Duration.zero : r);
+      }
   }
 
   @override
-  void dispose() { _timer.cancel(); super.dispose(); }
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => Container(
@@ -626,42 +835,81 @@ class _CountdownCardState extends State<_CountdownCard> {
       borderRadius: BorderRadius.circular(20),
       border: Border.all(color: Colors.orange.withValues(alpha: .25)),
     ),
-    child: Column(children: [
-      const Text('يبدأ الاختبار خلال', style: TextStyle(
-        fontFamily: 'bahji', fontSize: 13, color: Colors.orange, fontWeight: FontWeight.w600,
-      )),
-      const SizedBox(height: 14),
-      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        _TimeBox(_remaining.inHours.toString().padLeft(2, '0'), 'ساعة'),
-        const _Colon(),
-        _TimeBox((_remaining.inMinutes % 60).toString().padLeft(2, '0'), 'دقيقة'),
-        const _Colon(),
-        _TimeBox((_remaining.inSeconds % 60).toString().padLeft(2, '0'), 'ثانية'),
-      ]),
-    ]),
+    child: Column(
+      children: [
+        Text(
+          tx('exam_starts_in'),
+          style: const TextStyle(
+            fontFamily: 'bahji',
+            fontSize: 13,
+            color: Colors.orange,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 14),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _TimeBox(
+              _remaining.inHours.toString().padLeft(2, '0'),
+              tx('exam_hours'),
+            ),
+            const _Colon(),
+            _TimeBox(
+              (_remaining.inMinutes % 60).toString().padLeft(2, '0'),
+              tx('exam_minutes'),
+            ),
+            const _Colon(),
+            _TimeBox(
+              (_remaining.inSeconds % 60).toString().padLeft(2, '0'),
+              tx('exam_seconds'),
+            ),
+          ],
+        ),
+      ],
+    ),
   );
 }
 
 class _TimeBox extends StatelessWidget {
   final String value, label;
+
   const _TimeBox(this.value, this.label);
 
   @override
-  Widget build(BuildContext context) => Column(children: [
-    Container(
-      width: 56, height: 56,
-      decoration: BoxDecoration(
-        color: Colors.orange.withValues(alpha: .10),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.orange.withValues(alpha: .2)),
+  Widget build(BuildContext context) => Column(
+    children: [
+      Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          color: Colors.orange.withValues(alpha: .10),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.orange.withValues(alpha: .2)),
+        ),
+        child: Center(
+          child: Text(
+            value,
+            style: const TextStyle(
+              fontFamily: 'bahji',
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              color: Colors.orange,
+            ),
+          ),
+        ),
       ),
-      child: Center(child: Text(value, style: const TextStyle(
-        fontFamily: 'bahji', fontSize: 22, fontWeight: FontWeight.w900, color: Colors.orange,
-      ))),
-    ),
-    const SizedBox(height: 5),
-    Text(label, style: const TextStyle(fontFamily: 'bahji', fontSize: 11, color: Colors.grey)),
-  ]);
+      const SizedBox(height: 5),
+      Text(
+        label,
+        style: const TextStyle(
+          fontFamily: 'bahji',
+          fontSize: 11,
+          color: Colors.grey,
+        ),
+      ),
+    ],
+  );
 }
 
 class _Colon extends StatelessWidget {
@@ -670,6 +918,13 @@ class _Colon extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const Padding(
     padding: EdgeInsets.symmetric(horizontal: 8),
-    child: Text(':', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Colors.orange)),
+    child: Text(
+      ':',
+      style: TextStyle(
+        fontSize: 26,
+        fontWeight: FontWeight.w900,
+        color: Colors.orange,
+      ),
+    ),
   );
 }

@@ -4360,5 +4360,421 @@
   "roadmap_current_course": {
     "en": "Current course",
     "ar": "الكورس الحالي"
+  },
+  "exam_cancel": {
+    "en": "Cancel",
+    "ar": "إلغاء"
+  },
+  "exam_back": {
+    "en": "Back",
+    "ar": "العودة"
+  },
+  "exam_retry": {
+    "en": "Try again",
+    "ar": "حاول مرة أخرى"
+  },
+  "exam_reload": {
+    "en": "Retry",
+    "ar": "إعادة المحاولة"
+  },
+  "exam_redo": {
+    "en": "Retry",
+    "ar": "إعادة"
+  },
+  "exam_passed_mark": {
+    "en": "Passed ✓",
+    "ar": "ناجح ✓"
+  },
+  "exam_failed_mark": {
+    "en": "Failed ✗",
+    "ar": "راسب ✗"
+  },
+  "exam_best_score": {
+    "en": "Best score",
+    "ar": "أفضل نتيجة"
+  },
+  "exam_passing_score": {
+    "en": "Passing score",
+    "ar": "درجة النجاح"
+  },
+  "exam_question_count": {
+    "en": "Questions",
+    "ar": "عدد الأسئلة"
+  },
+  "exam_duration": {
+    "en": "Duration",
+    "ar": "المدة"
+  },
+  "exam_exam_duration": {
+    "en": "Exam duration",
+    "ar": "مدة الاختبار"
+  },
+  "exam_n_questions": {
+    "en": "{n} questions",
+    "ar": "{n} سؤال"
+  },
+  "exam_n_minutes": {
+    "en": "{n} min",
+    "ar": "{n} دقيقة"
+  },
+  "exam_total_marks": {
+    "en": "Total marks",
+    "ar": "إجمالي الدرجات"
+  },
+  "exam_n_marks": {
+    "en": "{n} marks",
+    "ar": "{n} درجة"
+  },
+  "exam_start_time": {
+    "en": "Start time",
+    "ar": "وقت البدء"
+  },
+  "exam_deadline": {
+    "en": "Deadline",
+    "ar": "الموعد النهائي"
+  },
+  "exam_used_attempts": {
+    "en": "Attempts used",
+    "ar": "المحاولات المستخدمة"
+  },
+  "exam_remaining_attempts": {
+    "en": "Attempts remaining",
+    "ar": "المحاولات المتبقية"
+  },
+  "exam_remaining_attempts_short": {
+    "en": "Remaining attempts",
+    "ar": "محاولات متبقية"
+  },
+  "exam_attempt_number": {
+    "en": "Attempt number",
+    "ar": "رقم المحاولة"
+  },
+  "exam_your_score": {
+    "en": "Your score",
+    "ar": "درجتك"
+  },
+  "exam_answered_questions": {
+    "en": "Answered questions",
+    "ar": "الأسئلة المجابة"
+  },
+  "exam_answered": {
+    "en": "Answered",
+    "ar": "مُجاب"
+  },
+  "exam_unanswered": {
+    "en": "Unanswered",
+    "ar": "غير مُجاب"
+  },
+  "exam_your_answer": {
+    "en": "Your answer: {answer}",
+    "ar": "إجابتك: {answer}"
+  },
+  "exam_not_answered": {
+    "en": "You did not answer this question",
+    "ar": "لم تُجب على هذا السؤال"
+  },
+  "exam_question_n": {
+    "en": "Question {n}",
+    "ar": "السؤال {n}"
+  },
+  "exam_marks_of_total": {
+    "en": "{obtained} / {total} marks",
+    "ar": "{obtained} / {total} درجة"
+  },
+  "exam_n_attempts_left": {
+    "en": "{n} attempts left",
+    "ar": "{n} محاولة متبقية"
+  },
+  "exam_attempts_left_short": {
+    "en": "{n} left",
+    "ar": "{n} متبقية"
+  },
+  "exam_attempts_of": {
+    "en": "{used}/{max} attempts",
+    "ar": "{used}/{max} محاولة"
+  },
+  "exam_attempts_zero": {
+    "en": "Attempts 0/{max}",
+    "ar": "محاولات 0/{max}"
+  },
+  "exam_minutes_short": {
+    "en": "{n}m",
+    "ar": "{n}د"
+  },
+  "exam_questions_short": {
+    "en": "{n}Q",
+    "ar": "{n}س"
+  },
+  "exam_deadline_ended": {
+    "en": "Deadline passed",
+    "ar": "انتهى الموعد"
+  },
+  "exam_ends_in_h": {
+    "en": "Ends in {h}h",
+    "ar": "ينتهي خلال {h}س"
+  },
+  "exam_hm_short": {
+    "en": "{h}h {m}m",
+    "ar": "{h}س {m}د"
+  },
+  "exam_quiz_unanswered_title": {
+    "en": "Unanswered questions!",
+    "ar": "يوجد أسئلة بدون إجابة!"
+  },
+  "exam_quiz_confirm_title": {
+    "en": "Are you sure?",
+    "ar": "هل أنت متأكد؟"
+  },
+  "exam_quiz_unanswered_msg": {
+    "en": "You left {count} questions unanswered. Submit now?",
+    "ar": "لم تجب على {count} سؤال. هل تريد التقديم الآن؟"
+  },
+  "exam_quiz_confirm_msg": {
+    "en": "All your answers will be sent and you won't be able to edit them later.",
+    "ar": "ستُرسَل جميع إجاباتك ولن تتمكن من التعديل لاحقاً."
+  },
+  "exam_quiz_submit_short": {
+    "en": "Submit",
+    "ar": "تقديم"
+  },
+  "exam_quiz_answered_progress": {
+    "en": "{answered} / {total} answered",
+    "ar": "{answered} / {total} مُجاب"
+  },
+  "exam_quiz_counter": {
+    "en": "Question {current} / {total}",
+    "ar": "السؤال {current} / {total}"
+  },
+  "exam_quiz_answer_hint": {
+    "en": "Type your answer here…",
+    "ar": "اكتب إجابتك هنا…"
+  },
+  "exam_quiz_next": {
+    "en": "Next question",
+    "ar": "السؤال التالي"
+  },
+  "exam_quiz_submit": {
+    "en": "Submit exam",
+    "ar": "تقديم الاختبار"
+  },
+  "exam_quiz_questions": {
+    "en": "Questions",
+    "ar": "الأسئلة"
+  },
+  "exam_option_letters": {
+    "en": "A,B,C,D,E,F",
+    "ar": "أ,ب,ج,د,هـ,و"
+  },
+  "exam_result_title": {
+    "en": "Exam result",
+    "ar": "نتيجة الاختبار"
+  },
+  "exam_result_submit_warning": {
+    "en": "Some answers could not be sent: {error}",
+    "ar": "تعذّر إرسال بعض الإجابات: {error}"
+  },
+  "exam_result_breakdown": {
+    "en": "Question breakdown",
+    "ar": "تفصيل الأسئلة"
+  },
+  "exam_result_start_learning": {
+    "en": "Start learning now",
+    "ar": "ابدأ التعلم الآن"
+  },
+  "exam_result_back_course": {
+    "en": "Back to course",
+    "ar": "العودة إلى المادة"
+  },
+  "exam_result_congrats": {
+    "en": "Congratulations! You passed the exam 🎉",
+    "ar": "تهانينا! اجتزت الاختبار 🎉"
+  },
+  "exam_result_not_passed": {
+    "en": "You did not pass this time",
+    "ar": "لم تجتز الاختبار هذه المرة"
+  },
+  "exam_result_pass_detail": {
+    "en": "You scored {pct}%, above the passing score ({passing}%)",
+    "ar": "حققت {pct}% وهو أعلى من حد النجاح ({passing}%)"
+  },
+  "exam_result_fail_detail": {
+    "en": "You scored {pct}% and the passing score is {passing}%",
+    "ar": "حققت {pct}% وحد النجاح {passing}%"
+  },
+  "exam_result_q_title": {
+    "en": "Question {n}: {title}",
+    "ar": "السؤال {n}: {title}"
+  },
+  "exam_attempts_remaining_n": {
+    "en": "{n} attempts remaining",
+    "ar": "متبقي {n} محاولة"
+  },
+  "exam_load_questions_failed": {
+    "en": "Failed to load the questions",
+    "ar": "تعذّر تحميل الأسئلة"
+  },
+  "exam_start_now": {
+    "en": "Start exam now",
+    "ar": "ابدأ الاختبار الآن"
+  },
+  "exam_percentage": {
+    "en": "Percentage",
+    "ar": "النسبة"
+  },
+  "exam_grade": {
+    "en": "Score",
+    "ar": "الدرجة"
+  },
+  "exam_you_answered": {
+    "en": "Answered",
+    "ar": "أجبت"
+  },
+  "exam_submitted_n_times": {
+    "en": "Submitted {n} times",
+    "ar": "تم التقديم {n} مرة"
+  },
+  "exam_start_warning": {
+    "en": "Once the exam starts it can't be paused. Make sure you're connected before you begin.",
+    "ar": "بمجرد بدء الاختبار لا يمكن إيقافه مؤقتاً. تأكد من اتصالك قبل البدء."
+  },
+  "exam_hours": {
+    "en": "Hours",
+    "ar": "ساعة"
+  },
+  "exam_minutes": {
+    "en": "Minutes",
+    "ar": "دقيقة"
+  },
+  "exam_seconds": {
+    "en": "Seconds",
+    "ar": "ثانية"
+  },
+  "exam_frozen_deadline_title": {
+    "en": "The exam deadline has passed",
+    "ar": "انتهى الموعد النهائي للاختبار"
+  },
+  "exam_frozen_attempts_title": {
+    "en": "You've used all your attempts",
+    "ar": "استنفدت جميع محاولاتك"
+  },
+  "exam_frozen_deadline_msg": {
+    "en": "This exam can no longer be submitted.\nContact your teacher if you need extra time.",
+    "ar": "لم يعد بالإمكان تقديم هذا الاختبار.\nتواصل مع المعلم إذا كنت بحاجة لمهلة إضافية."
+  },
+  "exam_frozen_attempts_msg": {
+    "en": "You've submitted this exam {count} times, which is the maximum allowed.",
+    "ar": "لقد قدّمت هذا الاختبار {count} مرة وهو الحد المسموح به."
+  },
+  "exam_back_to_exams": {
+    "en": "Back to exams",
+    "ar": "العودة للاختبارات"
+  },
+  "exam_last_result": {
+    "en": "Your latest result",
+    "ar": "نتيجتك الأخيرة"
+  },
+  "exam_my_exams": {
+    "en": "My exams",
+    "ar": "اختباراتي"
+  },
+  "exam_list_summary": {
+    "en": "{exams} exams in {courses} courses",
+    "ar": "{exams} اختبار في {courses} مادة"
+  },
+  "exam_tab_active": {
+    "en": "Active ({n})",
+    "ar": "نشطة ({n})"
+  },
+  "exam_tab_upcoming": {
+    "en": "Upcoming ({n})",
+    "ar": "قادمة ({n})"
+  },
+  "exam_tab_submitted": {
+    "en": "Submitted ({n})",
+    "ar": "مقدّمة ({n})"
+  },
+  "exam_tab_closed": {
+    "en": "Closed ({n})",
+    "ar": "مغلقة ({n})"
+  },
+  "exam_empty_active": {
+    "en": "No active exams right now",
+    "ar": "لا توجد اختبارات نشطة الآن"
+  },
+  "exam_empty_upcoming": {
+    "en": "No upcoming exams",
+    "ar": "لا توجد اختبارات قادمة"
+  },
+  "exam_empty_submitted": {
+    "en": "You haven't submitted any exam yet",
+    "ar": "لم تُقدّم أي اختبار بعد"
+  },
+  "exam_empty_closed": {
+    "en": "No closed exams",
+    "ar": "لا توجد اختبارات مغلقة"
+  },
+  "exam_retry_hint": {
+    "en": "You can try again ({n} attempts remaining)",
+    "ar": "يمكنك المحاولة مرة أخرى ({n} محاولة متبقية)"
+  },
+  "exam_status_closed_label": {
+    "en": "Closed",
+    "ar": "مغلق"
+  },
+  "exam_status_open_label": {
+    "en": "Active",
+    "ar": "نشط"
+  },
+  "exam_session_exam_pct": {
+    "en": "Session exam · {pct}%",
+    "ar": "اختبار الجلسة · {pct}%"
+  },
+  "exam_session_exam": {
+    "en": "Session exam",
+    "ar": "اختبار الجلسة"
+  },
+  "exam_closed": {
+    "en": "Exam closed",
+    "ar": "الاختبار مغلق"
+  },
+  "exam_start": {
+    "en": "Start exam",
+    "ar": "بدء الاختبار"
+  },
+  "exam_no_exams_course": {
+    "en": "No exams for this course yet",
+    "ar": "لا توجد اختبارات لهذه المادة بعد"
+  },
+  "exam_exams": {
+    "en": "Exams",
+    "ar": "الاختبارات"
+  },
+  "exam_n_exams": {
+    "en": "{n} exams",
+    "ar": "{n} اختبار"
+  },
+  "exam_passcode_title": {
+    "en": "Exam Passcode",
+    "ar": "رمز الاختبار"
+  },
+  "exam_passcode_hint": {
+    "en": "Enter the 6-digit code provided\nby your instructor to begin.",
+    "ar": "أدخل الرمز المكوّن من 6 أرقام\nالذي قدّمه المعلم للبدء."
+  },
+  "exam_passcode_wrong": {
+    "en": "Incorrect passcode. Please try again.",
+    "ar": "رمز غير صحيح. حاول مرة أخرى."
+  },
+  "exam_err_deadline": {
+    "en": "The deadline for this exam has passed",
+    "ar": "انتهى الموعد النهائي لهذا الاختبار"
+  },
+  "exam_err_attempts": {
+    "en": "You've used all the attempts allowed",
+    "ar": "لقد استنفدت جميع محاولاتك المسموح بها"
+  },
+  "exam_err_no_questions": {
+    "en": "This exam has no questions yet",
+    "ar": "هذا الاختبار لا يحتوي على أسئلة بعد"
   }
 }

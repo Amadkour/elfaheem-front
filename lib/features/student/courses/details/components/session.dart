@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../analysis/exam/student_course_exams_widget.dart'
+    show openStudentExam;
+import '../../../analysis/exam/student_exam_provider.dart';
 import '../../../../../config/app_config.dart';
 import '../../../../../config/theme/app_theme.dart';
 import '../../../../../config/theme/theme_config_provider.dart';
@@ -17,6 +21,37 @@ class SessionsTab extends StatelessWidget {
 
   final List<SessionModel> presented;
   final CourseDetailProvider provider;
+
+  /// Opens the session's exam directly (passcode sheet first if protected).
+  /// Falls back to the exam tab if the exam can't be resolved.
+  Future<void> _openExam(BuildContext context, int examId) async {
+    final prov = context.read<StudentExamProvider>();
+    final cid = provider.course.id.toString();
+
+    if (!prov.courseExamsLoadedFor(cid)) {
+      await prov.loadCourseExams(cid);
+    }
+    final exam =
+        prov.courseExamsFor(cid).where((e) => e.id == examId).firstOrNull;
+
+    if (!context.mounted) return;
+    if (exam == null) {
+      provider.setTab(CourseDetailTab.exam);
+      return;
+    }
+    final sessionId = exam.sessionId;
+    await openStudentExam(
+      context,
+      prov,
+      exam,
+      // Runs after the result screen closes: refreshes the screen and, if the
+      // exam was passed, completes the session + its materials and unlocks
+      // the next session.
+          () => sessionId == null
+          ? provider.refresh()
+          : provider.onSessionExamPassed(sessionId),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +126,7 @@ class SessionsTab extends StatelessWidget {
                     _SessionExamBanner(
                       gate: gate,
                       enrolled: provider.course.isEnrolled,
-                      onOpenExams: () => provider.setTab(CourseDetailTab.exam),
+                      onOpenExam: (examId) => _openExam(context, examId),
                     ),
                 ],
               ),
@@ -118,19 +153,38 @@ class SessionsTab extends StatelessWidget {
 // Session exam banner — sits right under the session that owns the exam.
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _SessionExamBanner extends StatelessWidget {
+class _SessionExamBanner extends StatefulWidget {
   final SessionExamGate gate;
   final bool enrolled;
-  final VoidCallback onOpenExams;
+  final Future<void> Function(int examId) onOpenExam;
 
   const _SessionExamBanner({
     required this.gate,
     required this.enrolled,
-    required this.onOpenExams,
+    required this.onOpenExam,
   });
 
   @override
+  State<_SessionExamBanner> createState() => _SessionExamBannerState();
+}
+
+class _SessionExamBannerState extends State<_SessionExamBanner> {
+  bool _opening = false;
+
+  Future<void> _open(int examId) async {
+    if (_opening) return;
+    setState(() => _opening = true);
+    try {
+      await widget.onOpenExam(examId);
+    } finally {
+      if (mounted) setState(() => _opening = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final gate = widget.gate;
+    final enrolled = widget.enrolled;
     // Show the exam still to pass; when everything is passed, the first one.
     final exam = gate.firstPending ?? gate.exams.first;
     final c = context.colors;
@@ -221,7 +275,7 @@ class _SessionExamBanner extends StatelessWidget {
           if (enrolled && exam.canStart) ...[
             const SizedBox(width: 8),
             FilledButton(
-              onPressed: onOpenExams,
+              onPressed: _opening ? null : () => _open(exam.id),
               style: FilledButton.styleFrom(
                 backgroundColor: color,
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -230,9 +284,19 @@ class _SessionExamBanner extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              child: Text(
-                exam.attempted ? 'session_exam_retry'.tr : 'session_exam_start'.tr,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+              child: _opening
+                  ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: Colors.white),
+              )
+                  : Text(
+                exam.attempted
+                    ? 'session_exam_retry'.tr
+                    : 'session_exam_start'.tr,
+                style: const TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w700),
               ),
             ),
           ],

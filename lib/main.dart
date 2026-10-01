@@ -16,6 +16,7 @@ import 'package:flutter_education_app/features/student/models.dart';
 import 'package:flutter_education_app/utils/remote_config_service.dart';
 import 'package:flutter_education_app/utils/top_route_observer.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -234,7 +235,10 @@ class _ElFaheemAppState extends State<ElFaheemApp> {
       case '/notifications':
         return _fade(const _Guard(child: NotificationsScreen()), settings);
       default:
-        return _fade(const _NotFoundScreen(), settings);
+        debugPrint(
+          'Unknown route: ${settings.name} args=${settings.arguments}',
+        );
+        return _fade(_NotFoundScreen(routeName: settings.name), settings);
     }
   }
 }
@@ -298,7 +302,10 @@ class _Guard extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _NotFoundScreen extends StatelessWidget {
-  const _NotFoundScreen();
+  const _NotFoundScreen({this.routeName});
+
+  /// Shown only in debug builds, to spot which route is missing.
+  final String? routeName;
 
   @override
   Widget build(BuildContext context) {
@@ -309,13 +316,10 @@ class _NotFoundScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              '404',
-              style: TextStyle(
-                fontSize: 64,
-                fontWeight: FontWeight.w900,
-                color: c.textDark,
-              ),
+            AppNetworkImage(
+              url: 'assets/images/logo.png',
+              height: 100,
+              width: 100,
             ),
             Text(
               'not_found'.tr,
@@ -325,6 +329,11 @@ class _NotFoundScreen extends StatelessWidget {
                 color: c.textMedium,
               ),
             ),
+            if (kDebugMode && routeName != null)
+              Text(
+                routeName!,
+                style: TextStyle(fontSize: 12, color: c.textLight),
+              ),
             const SizedBox(height: 20),
             TextButton(
               onPressed: () => Navigator.of(context).pushReplacementNamed(

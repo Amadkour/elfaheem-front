@@ -330,17 +330,18 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
             sessionId: _session.id,
             builder:
                 (
-                ctx, {
-              required icon,
-              required label,
-              required color,
-              required onTap,
-            }) => SessionActionBtn(
-              icon: icon,
-              label: label,
-              color: color,
-              onTap: onTap,
-            ),
+                  ctx, {
+                  required icon,
+                  required label,
+                  required color,
+                  required onTap,
+                }) => SessionActionBtn(
+                  icon: icon,
+                  label: label,
+                  color: color,
+                  onTap: onTap,
+                ),
+            callback: prov.refresh,
           ),
         if (isLiveType && widget.isTeacher)
           SessionActionBtn(
@@ -384,189 +385,196 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
     final examGate = _examGate(prov);
     final hasExam = examGate != null && !examGate.isEmpty;
 
-    final card = Container(
-      key: ValueKey("session_reorder_list:${widget.dragIndex}"),
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: context.colors.cardBg,
-        borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-        boxShadow: context.colors.cardShadow,
-        border: Border(
-          right: BorderSide(
-            color: isLiveNow
-                ? context.colors.danger.withValues(alpha: 0.8)
-                : context.colors.primary.withValues(alpha: 0.8),
-            width: 4,
+    final card = Directionality(
+      textDirection: Helpers.textDirOf(_session.name),
+      child: Container(
+        key: ValueKey("session_reorder_list:${widget.dragIndex}"),
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: context.colors.cardBg,
+          borderRadius: BorderRadius.circular(context.colors.radiusMedium),
+          boxShadow: context.colors.cardShadow,
+          border: Border(
+            right: BorderSide(
+              color: isLiveNow
+                  ? context.colors.danger.withValues(alpha: 0.8)
+                  : context.colors.primary.withValues(alpha: 0.8),
+              width: 4,
+            ),
           ),
         ),
-      ),
-      child: Column(
-        children: [
-          // ── Main card body ───────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Name + age
-                Row(
-                  children: [
-                    Container(
-                      margin: EdgeInsets.all(4),
-                      padding: EdgeInsets.fromLTRB(10, 10, 10, 5),
-                      alignment: Alignment.bottomCenter,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.bottomLeft,
-                          end: Alignment.topRight,
-                          colors: darkRoadmapGradientColors(context),
+        child: Column(
+          children: [
+            // ── Main card body ───────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Name + age
+                  Row(
+                    children: [
+                      Container(
+                        margin: EdgeInsets.all(4),
+                        padding: EdgeInsets.fromLTRB(10, 10, 10, 5),
+                        alignment: Alignment.bottomCenter,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.bottomLeft,
+                            end: Alignment.topRight,
+                            colors: darkRoadmapGradientColors(context),
+                          ),
+                          shape: BoxShape.circle,
                         ),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        (widget.sessionNumber < 10 ? '0' : '') +
-                            widget.sessionNumber.toString(),
-                        textAlign: TextAlign.center,
+                        child: Text(
+                          (widget.sessionNumber < 10 ? '0' : '') +
+                              widget.sessionNumber.toString(),
+                          textAlign: TextAlign.center,
 
-                        style: context.colors.h4.copyWith(color: Colors.white),
+                          style: context.colors.h4.copyWith(
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
-                    ),
-                    Flexible(
-                      child: Text(
-                        _session.name,
-                        style: context.colors.h3,
+                      Flexible(
+                        child: Text(
+                          _session.name,
+                          style: context.colors.h3,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _session.createdAt.age,
+                        style: context.colors.navLabelUnselected,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    const SizedBox(width: 6),
+                      if (widget.isTeacher && widget.dragIndex != null) ...[
+                        const Spacer(),
+                        ReorderableDragStartListener(
+                          index: widget.dragIndex!,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: Icon(
+                              Icons.menu,
+                              size: 24,
+                              color: context.colors.textLight,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+
+                  // Description
+                  if (_session.description != null) ...[
+                    const SizedBox(height: 2),
                     Text(
-                      _session.createdAt.age,
+                      _session.description!,
                       style: context.colors.navLabelUnselected,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (widget.isTeacher && widget.dragIndex != null) ...[
-                      const Spacer(),
-                      ReorderableDragStartListener(
-                        index: widget.dragIndex!,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Icon(
-                            Icons.menu,
-                            size: 24,
-                            color: context.colors.textLight,
-                          ),
-                        ),
+                  ],
+
+                  // Type pill + duration
+                  Row(
+                    children: [
+                      SessionTypePill(isLive: isLiveNow),
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.access_time_rounded,
+                        size: 12,
+                        color: context.colors.textLight,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        '${_session.durationMinutes} ${'m'.tr}',
+                        style: context.colors.caption,
                       ),
                     ],
-                  ],
-                ),
+                  ),
 
-                // Description
-                if (_session.description != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    _session.description!,
-                    style: context.colors.navLabelUnselected,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  const SizedBox(height: 10),
+                  const Divider(height: 1),
+
+                  // Student progress section
+                  SessionProgressSection(
+                    totalMaterial: _session.totalMaterial,
+                    completeMaterial: _session.completeMaterial,
+                    isTeacher: widget.isTeacher,
+                    isFull: false,
+                  ),
+
+                  const SizedBox(height: 10),
+                  _buildActionsRow(prov, hasExam),
+                  const Divider(height: 20),
+
+                  // Rating + teacher edit/delete icons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      RatingWidget(
+                        type: RateType.session,
+                        sourceId: _session.id.toString(),
+                        canEdit: !widget.isTeacher,
+                        rateSummary: _session.rateSummary,
+                      ),
+                      if (widget.isTeacher)
+                        Row(
+                          children: [
+                            _iconAction(
+                              icon: CupertinoIcons.settings_solid,
+                              color: context.colors.textMedium,
+                              tooltip: 'edit_session'.tr,
+                              onTap: _showEditSessionDialog,
+                            ),
+                            _iconAction(
+                              icon: Icons.delete,
+                              color: context.colors.danger,
+                              tooltip: 'delete_session'.tr,
+                              onTap: _showDeleteSessionDialog,
+                            ),
+                          ],
+                        ),
+                    ],
                   ),
                 ],
-
-                // Type pill + duration
-                Row(
-                  children: [
-                    SessionTypePill(isLive: isLiveNow),
-                    const SizedBox(width: 8),
-                    Icon(
-                      Icons.access_time_rounded,
-                      size: 12,
-                      color: context.colors.textLight,
-                    ),
-                    const SizedBox(width: 3),
-                    Text(
-                      '${_session.durationMinutes} ${'m'.tr}',
-                      style: context.colors.caption,
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 10),
-                const Divider(height: 1),
-
-                // Student progress section
-                SessionProgressSection(
-                  totalMaterial: _session.totalMaterial,
-                  completeMaterial: _session.completeMaterial,
-                  isTeacher: widget.isTeacher,
-                  isFull: false,
-                ),
-
-                const SizedBox(height: 10),
-                _buildActionsRow(prov, hasExam),
-                const Divider(height: 20),
-
-                // Rating + teacher edit/delete icons
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    RatingWidget(
-                      type: RateType.session,
-                      sourceId: _session.id.toString(),
-                      canEdit: !widget.isTeacher,
-                      rateSummary: _session.rateSummary,
-                    ),
-                    if (widget.isTeacher)
-                      Row(
-                        children: [
-                          _iconAction(
-                            icon: CupertinoIcons.settings_solid,
-                            color: context.colors.textMedium,
-                            tooltip: 'edit_session'.tr,
-                            onTap: _showEditSessionDialog,
-                          ),
-                          _iconAction(
-                            icon: Icons.delete,
-                            color: context.colors.danger,
-                            tooltip: 'delete_session'.tr,
-                            onTap: _showDeleteSessionDialog,
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // ── Upload indicator ───────────────────────────────────────────────
-          // `uploadProgress` is only non-null for the new background (video)
-          // uploads — the old bytes-based image/PDF flow has no byte-level
-          // progress, so it still shows an indeterminate bar (value: null).
-          if (uploading)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
-              child: LinearProgressIndicator(
-                value: uploadProgress,
-                color: context.colors.primary,
-                backgroundColor: context.colors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(4),
               ),
             ),
 
-          // ── Expandable materials panel ─────────────────────────────────────
-          SizeTransition(
-            sizeFactor: _expandAnim,
-            child: _MaterialsPanel(
-              session: _session,
-              materials: materials,
-              isTeacher: widget.isTeacher,
-              examGate: examGate,
-              onOpenExam: _openSessionExam,
+            // ── Upload indicator ───────────────────────────────────────────────
+            // `uploadProgress` is only non-null for the new background (video)
+            // uploads — the old bytes-based image/PDF flow has no byte-level
+            // progress, so it still shows an indeterminate bar (value: null).
+            if (uploading)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+                child: LinearProgressIndicator(
+                  value: uploadProgress,
+                  color: context.colors.primary,
+                  backgroundColor: context.colors.primary.withValues(
+                    alpha: 0.1,
+                  ),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+
+            // ── Expandable materials panel ─────────────────────────────────────
+            SizeTransition(
+              sizeFactor: _expandAnim,
+              child: _MaterialsPanel(
+                session: _session,
+                materials: materials,
+                isTeacher: widget.isTeacher,
+                examGate: examGate,
+                onOpenExam: _openSessionExam,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
 

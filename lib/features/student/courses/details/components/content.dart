@@ -24,7 +24,7 @@ class TabContent extends StatelessWidget {
         CourseDetailTab.about => const AboutTab(key: ValueKey('about')),
         CourseDetailTab.live =>  SessionsTab(key: ValueKey('live'),provider:provider,presented:provider.liveSessions),
         CourseDetailTab.lessons =>  SessionsTab(key: ValueKey('sessions'),provider:provider,presented:provider.sessions),
-        CourseDetailTab.exam =>  StudentCourseExamsWidget(courseId:courseId ,),
+        CourseDetailTab.exam =>  StudentCourseExamsWidget(callback: provider.refresh,courseId: provider.course.id,),
       },
     );
   }

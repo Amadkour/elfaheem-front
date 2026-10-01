@@ -12,6 +12,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'student_exam_api.dart';
 import 'student_exam_detail_screen.dart';
 import 'student_exam_provider.dart';
+import 'exam_tr.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 class StudentExamListScreen extends StatefulWidget {
   const StudentExamListScreen({super.key});
@@ -50,7 +51,7 @@ class _StudentExamListScreenState extends State<StudentExamListScreen>
     final frozen    = all.where((e) => e.isFrozen && !e.isSubmitted).toList();
 
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: Directionality.of(context),
       child: Scaffold(
         backgroundColor: c.background,
         body: NestedScrollView(
@@ -75,12 +76,12 @@ class _StudentExamListScreenState extends State<StudentExamListScreen>
                       children: [
                         const Icon(Icons.quiz_rounded, color: Colors.white, size: 36),
                         const SizedBox(height: 8),
-                        const Text('اختباراتي', style: TextStyle(
+                        Text(tx('exam_my_exams'), style: const TextStyle(
                           fontFamily: 'bahji', fontSize: 22,
                           fontWeight: FontWeight.w800, color: Colors.white,
                         )),
                         const SizedBox(height: 4),
-                        Text('${all.length} اختبار في ${all.map((e) => e.courseId).toSet().length} مادة',
+                        Text(tx('exam_list_summary', {'exams': all.length, 'courses': all.map((e) => e.courseId).toSet().length}),
                             style: const TextStyle(fontFamily: 'bahji', fontSize: 13, color: Colors.white70)),
                       ],
                     ),
@@ -98,10 +99,10 @@ class _StudentExamListScreenState extends State<StudentExamListScreen>
                 isScrollable: true,
                 tabAlignment: TabAlignment.start,
                 tabs: [
-                  Tab(text: 'نشطة (${active.length})'),
-                  Tab(text: 'قادمة (${upcoming.length})'),
-                  Tab(text: 'مقدّمة (${submitted.length})'),
-                  Tab(text: 'مغلقة (${frozen.length})'),
+                  Tab(text: tx('exam_tab_active', {'n': active.length})),
+                  Tab(text: tx('exam_tab_upcoming', {'n': upcoming.length})),
+                  Tab(text: tx('exam_tab_submitted', {'n': submitted.length})),
+                  Tab(text: tx('exam_tab_closed', {'n': frozen.length})),
                 ],
               ),
             ),
@@ -116,10 +117,10 @@ class _StudentExamListScreenState extends State<StudentExamListScreen>
               : TabBarView(
             controller: _tabCtrl,
             children: [
-              _ExamList(exams: active,    emptyMsg: 'لا توجد اختبارات نشطة الآن'),
-              _ExamList(exams: upcoming,  emptyMsg: 'لا توجد اختبارات قادمة'),
-              _ExamList(exams: submitted, emptyMsg: 'لم تُقدّم أي اختبار بعد'),
-              _ExamList(exams: frozen,    emptyMsg: 'لا توجد اختبارات مغلقة'),
+              _ExamList(exams: active,    emptyMsg: tx('exam_empty_active')),
+              _ExamList(exams: upcoming,  emptyMsg: tx('exam_empty_upcoming')),
+              _ExamList(exams: submitted, emptyMsg: tx('exam_empty_submitted')),
+              _ExamList(exams: frozen,    emptyMsg: tx('exam_empty_closed')),
             ],
           ),
         ),
@@ -230,18 +231,18 @@ class _ExamCard extends StatelessWidget {
 
           // ── Meta chips ───────────────────────────────────────────────────
           Wrap(spacing: 8, runSpacing: 6, children: [
-            _MetaChip(Icons.timer_outlined, '${exam.duration ?? 0}د', Colors.teal),
-            _MetaChip(Icons.help_outline_rounded, '${exam.questionCount}س', _accent),
+            _MetaChip(Icons.timer_outlined, tx('exam_minutes_short', {'n': exam.duration ?? 0}), Colors.teal),
+            _MetaChip(Icons.help_outline_rounded, tx('exam_questions_short', {'n': exam.questionCount}), _accent),
             if (exam.maxSubmissions != null && exam.maxSubmissions! > 0) ...[
               _MetaChip(
                 Icons.repeat_rounded,
-                '${exam.submissionCount}/${exam.maxSubmissions} محاولة',
+                tx('exam_attempts_of', {'used': exam.submissionCount, 'max': exam.maxSubmissions}),
                 Colors.purple,
               ),
               if (!exam.isFrozen)
                 _MetaChip(
                   Icons.replay_rounded,
-                  '${exam.computedRemainingSubmissions ?? 0} متبقية',
+                  tx('exam_attempts_left_short', {'n': exam.computedRemainingSubmissions ?? 0}),
                   (exam.computedRemainingSubmissions ?? 0) > 0 ? Colors.green : Colors.redAccent,
                 ),
             ],
@@ -269,7 +270,7 @@ class _ExamCard extends StatelessWidget {
                 const Icon(Icons.replay_rounded, size: 14, color: Color(0xFF6C5CE7)),
                 const SizedBox(width: 6),
                 Text(
-                  'يمكنك المحاولة مرة أخرى (${exam.computedRemainingSubmissions} محاولة متبقية)',
+                  tx('exam_retry_hint', {'n': exam.computedRemainingSubmissions}),
                   style: const TextStyle(
                     fontFamily: 'bahji', fontSize: 11,
                     fontWeight: FontWeight.w700, color: Color(0xFF6C5CE7),
@@ -332,7 +333,7 @@ class _StatusBadge extends StatelessWidget {
       border: Border.all(color: accent.withValues(alpha: .3)),
     ),
     child: Text(
-      exam.isFrozen ? 'مغلق' : 'نشط',
+      exam.isFrozen ? tx('exam_status_closed_label') : tx('exam_status_open_label'),
       style: TextStyle(fontFamily: 'bahji', fontSize: 11, fontWeight: FontWeight.w700, color: accent),
     ),
   );
@@ -353,7 +354,7 @@ class _ScoreBar extends StatelessWidget {
       Row(children: [
         const Icon(Icons.emoji_events_rounded, size: 12, color: Colors.amber),
         const SizedBox(width: 4),
-        Text('أفضل نتيجة',
+        Text(tx('exam_best_score'),
             style: const TextStyle(fontFamily: 'bahji', fontSize: 11, color: Colors.grey)),
         const Spacer(),
         Text('${pct.toStringAsFixed(1)}%',
@@ -432,12 +433,12 @@ class _DeadlineChipState extends State<_DeadlineChip> {
     final isUrgent = !isDead && _remaining.inHours < 3;
     final color = isDead ? Colors.redAccent : isUrgent ? Colors.orange : Colors.grey;
     final label = isDead
-        ? 'انتهى الموعد'
+        ? tx('exam_deadline_ended')
         : _remaining.inHours >= 24
         ? '${widget.endDate.day}/${widget.endDate.month}'
         : isUrgent
-        ? '${_remaining.inHours}س ${_remaining.inMinutes % 60}د'
-        : 'ينتهي ${_remaining.inHours}س';
+        ? tx('exam_hm_short', {'h': _remaining.inHours, 'm': _remaining.inMinutes % 60})
+        : tx('exam_ends_in_h', {'h': _remaining.inHours});
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
@@ -493,7 +494,7 @@ class _ErrorState extends StatelessWidget {
         ElevatedButton.icon(
           onPressed: onRetry,
           icon: const Icon(Icons.refresh_rounded, size: 18),
-          label: const Text('إعادة المحاولة', style: TextStyle(fontFamily: 'bahji')),
+          label: Text(tx('exam_reload'), style: const TextStyle(fontFamily: 'bahji')),
           style: ElevatedButton.styleFrom(
             backgroundColor: context.colors.primary,
             foregroundColor: Colors.white,

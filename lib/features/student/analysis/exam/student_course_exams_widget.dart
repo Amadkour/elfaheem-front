@@ -8,23 +8,35 @@ import 'passcode_screen.dart';
 import 'student_exam_api.dart';
 import 'student_exam_detail_screen.dart';
 import 'student_exam_provider.dart';
+import 'exam_tr.dart';
 
 /// Opens [exam] the same way the course exam list does: passcode sheet first
 /// when the exam is protected, otherwise straight to the detail screen.
 /// Shared by the exam list tiles and the per-session "Start exam" button.
-void openStudentExam(
+Future<void> openStudentExam(
     BuildContext context,
     StudentExamProvider prov,
     StudentExamListItem exam,
-    ) {
+    Future Function() callback
+    ) async {
+  // [callback] must run AFTER the result screen is closed. detail → quiz →
+  // result all use pushReplacement, so awaiting the first push is NOT enough
+  // (it completes when the quiz opens). The result screen fires this hook
+  // through StudentExamProvider.finishFlow(); it also covers the passcode
+  // path, which has no Navigator.push to await.
+  prov.onFlowFinished = () async {
+    await callback();
+  };
+
   if (exam.enablePasscode) {
     ExamPasscodeSheet.show(
       context: context,
       exam: exam,
       correctPasscode: exam.passcode!,
+      provider: prov,
     );
   } else {
-    Navigator.push(
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => ChangeNotifierProvider.value(
@@ -33,6 +45,13 @@ void openStudentExam(
         ),
       ),
     );
+    // Detail screen closed WITHOUT starting a quiz → no result screen will
+    // ever fire the hook, so run it now. (If a quiz was started the session
+    // is non-null and the result screen will fire it later.)
+    if (prov.session == null && prov.onFlowFinished != null) {
+      prov.onFlowFinished = null;
+      await callback();
+    }
   }
 }
 
@@ -42,6 +61,7 @@ void openStudentExam(
 class SessionExamButton extends StatefulWidget {
   final int courseId;
   final int sessionId;
+  final Future<void>Function()  callback;
 
   /// Renders the button so the host card keeps its own button style.
   final Widget Function(
@@ -56,7 +76,7 @@ class SessionExamButton extends StatefulWidget {
     super.key,
     required this.courseId,
     required this.sessionId,
-    required this.builder,
+    required this.builder, required this.callback,
   });
 
   @override
@@ -92,14 +112,14 @@ class _SessionExamButtonState extends State<SessionExamButton> {
     final Color color;
     if (done) {
       label = exam.percentage != null
-          ? 'اختبار الجلسة · ${exam.percentage!.toStringAsFixed(0)}%'
-          : 'اختبار الجلسة';
+          ? tx('exam_session_exam_pct', {'pct': exam.percentage!.toStringAsFixed(0)})
+          : tx('exam_session_exam');
       color = exam.passed == true ? AppTheme.success : Colors.redAccent;
     } else if (closed) {
-      label = 'الاختبار مغلق';
+      label = tx('exam_closed');
       color = Colors.grey;
     } else {
-      label = 'بدء الاختبار';
+      label = tx('exam_start');
       color = context.colors.primary;
     }
 
@@ -108,15 +128,16 @@ class _SessionExamButtonState extends State<SessionExamButton> {
       icon: done ? Icons.check_circle_rounded : Icons.quiz_rounded,
       label: label,
       color: color,
-      onTap: closed ? null : () => openStudentExam(context, prov, exam),
+      onTap: closed ? null : () => openStudentExam(context, prov, exam,widget.callback),
     );
   }
 }
 
 class StudentCourseExamsWidget extends StatefulWidget {
+  final Future<void>Function()  callback;
   final String courseId;
 
-  const StudentCourseExamsWidget({super.key, required this.courseId});
+  const StudentCourseExamsWidget({super.key, required this.callback, required this.courseId});
 
   @override
   State<StudentCourseExamsWidget> createState() =>
@@ -138,8 +159,11 @@ class _StudentCourseExamsWidgetState extends State<StudentCourseExamsWidget> {
     final loading = prov.loadingCourseExamsFor(widget.courseId);
     final error = prov.courseExamsErrorFor(widget.courseId);
     final exams = prov.courseExamsFor(widget.courseId);
+    final loaded = prov.courseExamsLoadedFor(widget.courseId);
 
-    if (loading) {
+    // Show the spinner on the very first frame too (before the post-frame
+    // load starts) so "no exams yet" never flashes.
+    if (loading || (!loaded && error == null)) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
         child: Center(child: AppLoadingIndicator()),
@@ -160,21 +184,21 @@ class _StudentCourseExamsWidgetState extends State<StudentCourseExamsWidget> {
           ),
           TextButton(
             onPressed: () => prov.loadCourseExams(widget.courseId),
-            child: const Text('إعادة',
-                style: TextStyle(fontFamily: 'bahji', fontSize: 12)),
+            child: Text(tx('exam_redo'),
+                style: const TextStyle(fontFamily: 'bahji', fontSize: 12)),
           ),
         ]),
       );
     }
 
     if (exams.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
         child: Row(children: [
-          Icon(Icons.quiz_outlined, size: 18, color: Colors.grey),
-          SizedBox(width: 8),
-          Text('لا توجد اختبارات لهذه المادة بعد',
-              style: TextStyle(
+          const Icon(Icons.quiz_outlined, size: 18, color: Colors.grey),
+          const SizedBox(width: 8),
+          Text(tx('exam_no_exams_course'),
+              style: const TextStyle(
                   fontFamily: 'bahji', fontSize: 13, color: Colors.grey)),
         ]),
       );
@@ -189,14 +213,14 @@ class _StudentCourseExamsWidgetState extends State<StudentCourseExamsWidget> {
           child: Row(children: [
             Icon(Icons.quiz_rounded, size: 18, color: context.colors.primary),
             const SizedBox(width: 8),
-            Text('الاختبارات',
+            Text(tx('exam_exams'),
                 style: TextStyle(
                     fontFamily: 'bahji',
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: context.colors.primary)),
             const Spacer(),
-            Text('${exams.length} اختبار',
+            Text(tx('exam_n_exams', {'n': exams.length}),
                 style: const TextStyle(
                     fontFamily: 'bahji', fontSize: 12, color: Colors.grey)),
           ]),
@@ -207,7 +231,7 @@ class _StudentCourseExamsWidgetState extends State<StudentCourseExamsWidget> {
           exam: exam,
           onTap: exam.isFrozen
               ? null
-              : () => openStudentExam(context, prov, exam),
+              : () => openStudentExam(context, prov, exam,widget.callback),
         )),
 
         const SizedBox(height: 8),
@@ -329,13 +353,13 @@ class _MetaRow extends StatelessWidget {
     // Duration
     parts.add(_MetaChip(
         icon: Icons.timer_outlined,
-        label: '${exam.duration ?? 0}د',
+        label: tx('exam_minutes_short', {'n': exam.duration ?? 0}),
         color: Colors.teal));
 
     // Questions
     parts.add(_MetaChip(
         icon: Icons.help_outline_rounded,
-        label: '${exam.questionCount}س',
+        label: tx('exam_questions_short', {'n': exam.questionCount}),
         color: accent));
 
     // Remaining submissions
@@ -344,8 +368,8 @@ class _MetaRow extends StatelessWidget {
       parts.add(_MetaChip(
           icon: Icons.repeat_rounded,
           label: exam.isFrozen && !exam.isSubmitted
-              ? 'محاولات 0/${exam.maxSubmissions}'
-              : '$rem/${exam.maxSubmissions} محاولة',
+              ? tx('exam_attempts_zero', {'max': exam.maxSubmissions})
+              : tx('exam_attempts_of', {'used': rem, 'max': exam.maxSubmissions}),
           color: exam.isSubmissionsFrozen ? Colors.redAccent : Colors.purple));
     }
 
@@ -356,10 +380,10 @@ class _MetaRow extends StatelessWidget {
       String deadlineLabel;
       Color deadlineColor;
       if (exam.isDeadlineFrozen) {
-        deadlineLabel = 'انتهى الموعد';
+        deadlineLabel = tx('exam_deadline_ended');
         deadlineColor = Colors.redAccent;
       } else if (diff.inHours < 24) {
-        deadlineLabel = 'ينتهي خلال ${diff.inHours}س';
+        deadlineLabel = tx('exam_ends_in_h', {'h': diff.inHours});
         deadlineColor = diff.inHours < 3 ? Colors.redAccent : Colors.orange;
       } else {
         deadlineLabel = '${exam.endDate!.day}/${exam.endDate!.month}';

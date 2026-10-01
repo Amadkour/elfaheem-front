@@ -452,7 +452,6 @@ class RequestActionButtons extends StatelessWidget {
             onPressed: ctl.busy ? null : ctl.approve,
             icon: ctl.busy
                 ? const SizedBox(
-              width: 16,
               height: 16,
               child: AppLoadingIndicator(showLogo: false),
             )

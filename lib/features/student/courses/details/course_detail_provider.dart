@@ -6,6 +6,8 @@ import 'package:flutter/cupertino.dart';
 import '../../../../core/api_client.dart';
 import '../../../../core/base_provider.dart';
 import '../../../../utils/helpers.dart';
+import '../../../shared/session/material/session_material_model.dart'
+    show SessionMaterialModel;
 import '../../models.dart';
 import 'components/issued_certificate.dart';
 import 'session_exam_gate.dart';
@@ -206,7 +208,10 @@ class CourseDetailProvider extends BaseProvider {
         items
             .map((e) => SessionModel.fromJson(e as Map<String, dynamic>))
             .toList()
-          ..sort((a, b) => a.order.compareTo(b.order));
+          ..sort((a, b) {
+            final c = a.order.compareTo(b.order);
+            return c != 0 ? c : a.createdAt.compareTo(b.createdAt);
+          });
         examGates.clear();
         _storeGates(items);
         sessions = fresh;
@@ -232,32 +237,78 @@ class CourseDetailProvider extends BaseProvider {
     }
   }
 
-  // ── Premium / sequential unlock logic ────────────────────────────────────
+  // ── Sequential unlock logic ──────────────────────────────────────────────
 
   /// Whether the session at [index] (position within the sorted [sessions]
   /// list) is open for the current student.
   ///
   /// Rules:
   /// • Session 1 (index 0) is always open — it's the free preview.
-  /// • Unenrolled students never get past session 1.
-  /// • Enrolled students can open any later session UNLESS an exam attached
-  ///   to an earlier session is still not passed (see [blockingExamFor]).
-  ///   Sessions without an exam never block the next one.
+  /// • Any later session is open only if the student is ENROLLED and the
+  ///   PREVIOUS session is complete (server-computed `completeness`: every
+  ///   material completed AND the session's exam passed, when it has one).
   bool isSessionUnlocked(int index) {
     if (index < 0 || index >= sessions.length) return false;
     if (index == 0) return true;
     if (!course.isEnrolled) return false;
-    return blockingExamFor(index) == null;
+    return sessions[index - 1].isCompleted;
   }
 
-  /// The first not-yet-passed exam attached to a session BEFORE [index]
-  /// (null → no exam is blocking this session). Also drives the UI message.
+  /// The session right before [index], or null for the first one.
+  /// Lets the UI say "finish «X» first" on a locked session.
+  SessionModel? previousSessionOf(int index) =>
+      (index > 0 && index <= sessions.length) ? sessions[index - 1] : null;
+
+  /// The not-yet-passed exam of the previous session (null → the lock, if any,
+  /// is caused by unfinished materials rather than an exam). Drives the UI message.
   SessionExamInfo? blockingExamFor(int index) {
-    for (var j = 0; j < index && j < sessions.length; j++) {
-      final pending = examGates[sessions[j].id]?.firstPending;
-      if (pending != null) return pending;
+    final prev = previousSessionOf(index);
+    return prev == null ? null : examGates[prev.id]?.firstPending;
+  }
+
+  // ── Exam passed → complete session + open next ───────────────────────────
+
+  /// Call this right after the student passes an exam attached to [sessionId].
+  ///
+  /// 1. Re-reads sessions + exam gates + `completeness` from the server.
+  ///    Passing the exam does NOT complete the materials — the session only
+  ///    becomes complete when its materials are done too (server decides).
+  /// 2. Returns the next session if it is now unlocked, otherwise null
+  ///    (materials unfinished, other exams pending, last session, not enrolled).
+  Future<SessionModel?> onSessionExamPassed(int sessionId) async {
+    await _syncProgressFromServer(); // progress numbers + refreshSessionsSilently
+    final stillPending = examGates[sessionId]?.firstPending != null;
+
+    var idx = sessions.indexWhere((s) => s.id == sessionId);
+    if (idx == -1) return null;
+
+    // Next session may be on a page that hasn't been loaded yet.
+    if (idx + 1 >= sessions.length && _hasMoreSessions) {
+      await loadMoreSessions();
+      idx = sessions.indexWhere((s) => s.id == sessionId);
     }
-    return null;
+
+    final nextIdx = idx + 1;
+    if (nextIdx >= sessions.length) return null;
+    final next = isSessionUnlocked(nextIdx) ? sessions[nextIdx] : null;
+
+    // Signal for the UI: "open this session now" (see consumeSessionToOpen).
+    // Only when this call actually just finished the session's exam gate.
+    if (next != null && !stillPending) {
+      _sessionToOpenId = next.id;
+      notifyListeners();
+    }
+    return next;
+  }
+
+  int? _sessionToOpenId;
+
+  /// One-shot: the id of the session that should be opened now (the one that
+  /// just unlocked after passing the previous session's exam), or null.
+  int? consumeSessionToOpen() {
+    final v = _sessionToOpenId;
+    _sessionToOpenId = null;
+    return v;
   }
 
   /// Same rule as [isSessionUnlocked] but looked up by session id — useful
@@ -338,19 +389,12 @@ class CourseDetailProvider extends BaseProvider {
   /// Endpoint: POST /api/v1/sessions/{sessionId}/complete
   Future<void> markSessionComplete(int sessionId) async {
     if (completedSessionIds.contains(sessionId)) return;
-    completedSessionIds.add(sessionId);
-    notifyListeners();
-
-    final r = await run(
+    // No optimistic add: completeness is computed by the server (materials +
+    // exam), and an optimistic flag would unlock the next session too early.
+    await run(
           () => _api.post('/api/v1/sessions/$sessionId/complete', auth: true),
     );
-
-    if (r == null && hasError) {
-      completedSessionIds.remove(sessionId);
-      notifyListeners();
-    } else {
-      await _syncProgressFromServer();
-    }
+    await _syncProgressFromServer();
   }
 
   /// Pulls the authoritative numbers after a completion was saved: the

@@ -61,35 +61,37 @@ class _TransfersView extends StatelessWidget {
         child: !p.hasLoaded && !failedFirstLoad
             ? const Center(child: AppLoadingIndicator(showLogo: false))
             : RefreshIndicator(
-          onRefresh: p.load,
-          child: failedFirstLoad
-              ? RequestStateView(
-            icon: Icons.error_outline_rounded,
-            color: c.danger,
-            message: p.errorMessage ?? 'failed_to_load'.tr,
-            actionLabel: 'retry'.tr,
-            onAction: p.load,
-          )
-              : p.items.isEmpty
-              ? RequestStateView(
-            icon: Icons.task_alt_rounded,
-            message: 'no_pending_requests'.tr,
-          )
-              : ListView.builder(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            // +1: the hint banner is the first row.
-            itemCount: p.items.length + 1,
-            itemBuilder: (_, i) {
-              if (i == 0) return SwipeHintBanner(count: p.items.length);
-              final t = p.items[i - 1];
-              return _TransferCard(
-                key: ValueKey(t.paymentId),
-                transfer: t,
-              );
-            },
-          ),
-        ),
+                onRefresh: p.load,
+                child: failedFirstLoad
+                    ? RequestStateView(
+                        icon: Icons.error_outline_rounded,
+                        color: c.danger,
+                        message: p.errorMessage ?? 'failed_to_load'.tr,
+                        actionLabel: 'retry'.tr,
+                        onAction: p.load,
+                      )
+                    : p.items.isEmpty
+                    ? RequestStateView(
+                        icon: Icons.task_alt_rounded,
+                        message: 'no_pending_requests'.tr,
+                      )
+                    : ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                        // +1: the hint banner is the first row.
+                        itemCount: p.items.length + 1,
+                        itemBuilder: (_, i) {
+                          if (i == 0) {
+                            return SwipeHintBanner(count: p.items.length);
+                          }
+                          final t = p.items[i - 1];
+                          return _TransferCard(
+                            key: ValueKey(t.paymentId),
+                            transfer: t,
+                          );
+                        },
+                      ),
+              ),
       ),
     );
   }
@@ -114,7 +116,9 @@ class _TransferCard extends StatelessWidget {
     final ok = await p.approve(transfer.paymentId);
     showRequestSnack(
       messenger,
-      ok ? 'request_approved'.tr : (p.errorMessage ?? 'request_approve_failed'.tr),
+      ok
+          ? 'request_approved'.tr
+          : (p.errorMessage ?? 'request_approve_failed'.tr),
       color: ok ? c.success : c.danger,
       icon: ok ? Icons.check_circle_rounded : Icons.error_outline_rounded,
     );
@@ -133,12 +137,15 @@ class _TransferCard extends StatelessWidget {
       requireReason: true,
       quickReasons: _quickReasons,
     );
-    if (reason == null || reason.isEmpty) return false; // cancelled → spring back
+    if (reason == null || reason.isEmpty)
+      return false; // cancelled → spring back
 
     final ok = await p.reject(transfer.paymentId, reason);
     showRequestSnack(
       messenger,
-      ok ? 'request_rejected'.tr : (p.errorMessage ?? 'request_reject_failed'.tr),
+      ok
+          ? 'request_rejected'.tr
+          : (p.errorMessage ?? 'request_reject_failed'.tr),
       color: c.danger,
       icon: ok ? Icons.cancel_rounded : Icons.error_outline_rounded,
     );
@@ -363,15 +370,15 @@ class _ProofImage extends StatelessWidget {
               loadingBuilder: (_, child, progress) => progress == null
                   ? child
                   : Container(
-                height: _height,
-                alignment: Alignment.center,
-                color: c.divider.withValues(alpha: 0.4),
-                child: const SizedBox(
-                  width: 26,
-                  height: 26,
-                  child: AppLoadingIndicator(showLogo: false),
-                ),
-              ),
+                      height: _height,
+                      alignment: Alignment.center,
+                      color: c.divider.withValues(alpha: 0.4),
+                      child: const SizedBox(
+                        width: 26,
+                        height: 26,
+                        child: AppLoadingIndicator(showLogo: false),
+                      ),
+                    ),
               errorBuilder: (_, __, ___) => Container(
                 height: _height,
                 alignment: Alignment.center,
@@ -395,7 +402,10 @@ class _ProofImage extends StatelessWidget {
               right: 0,
               bottom: 0,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.bottomCenter,
@@ -405,7 +415,11 @@ class _ProofImage extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.zoom_out_map_rounded, color: Colors.white, size: 16),
+                    const Icon(
+                      Icons.zoom_out_map_rounded,
+                      color: Colors.white,
+                      size: 16,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       'receipt_tap_to_zoom'.tr,

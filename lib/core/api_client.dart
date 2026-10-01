@@ -33,7 +33,7 @@ class ApiMessages {
   static const badCertificate = 'Could not establish a secure connection.';
   static const badRequest = 'The request could not be processed.';
   static const unauthorized = 'Your session has expired. Please log in again.';
-  static const forbidden = 'You do not have permission to do this.';
+  static const forbidden = 'Sorry, this action isn\'t available for your account right now.';
   static const notFound = 'The requested item was not found.';
   static const conflict = 'This action conflicts with existing data.';
   static const validation = 'Some of the submitted data is invalid.';
@@ -225,8 +225,11 @@ class ApiException implements Exception {
     final serverMsg = codedMsg ?? _messageFromBody(body);   // coded messages are already user-ready
 
     // Never leak raw 5xx internals to users; the body is still available.
+    // A plain 403 (no machine code) always gets the friendly message.
     final message = type == ApiErrorType.server
         ? ApiMessages.server
+        : (type == ApiErrorType.forbidden && code == null)
+        ? ApiMessages.forbidden
         : (serverMsg ?? _defaultMessage(type));
 
     return ApiException(
@@ -844,7 +847,7 @@ class ApiClient {
       handler.next(response);
     },
 
-    // ── 401 → refresh once → retry; 403 → verify screen ───────────────────
+    // ── 401 → refresh once → retry; 403 → device dialog or friendly message ─
     onError: (error, handler) async {
       final req = error.requestOptions;
       final status = error.response?.statusCode;
@@ -854,25 +857,18 @@ class ApiClient {
         final raw = error.response?.data;
         final (code, _) = ApiException.codedDetail(raw);
         if (code == 'DEVICE_MISMATCH' || code == 'DEVICE_ID_MISSING') {
-          print("url is----------------------------");
-          print(error.requestOptions.path);
-
-          if(error.requestOptions.path.endsWith('/sessions')) {
-
-            String courseId=error.requestOptions.path.split('/sessions').first.split('/').last;
+          if (error.requestOptions.path.endsWith('/sessions')) {
+            final courseId = error.requestOptions.path
+                .split('/sessions')
+                .first
+                .split('/')
+                .last;
             _showDeviceBlocked(courseId: int.parse(courseId));
-          }// dialog instead of the verify screen
-        } else if (code == null &&
-            ApiException.asMap(raw) != null &&
-            !ApiException.isEncryptedEnvelope(raw)) {
-          // A real, readable JSON error without our own code: original
-          // behaviour (verify screen). An empty body, an nginx/HTML 403 or an
-          // undecryptable envelope is NOT a verification problem, so it is
-          // just surfaced to the caller.
-          _goToVerify();
+          }
         }
-        // Other coded errors (VIEW_LIMIT_REACHED, SWITCH_LIMIT, ...) fall
-        // through untouched so the screen that made the call can handle them.
+        // Any other 403 (VIEW_LIMIT_REACHED, SWITCH_LIMIT, plain forbidden,
+        // ...): NO navigation. The error is passed to the caller, which shows
+        // ApiException.message (a friendly text for a plain 403).
         return handler.next(error);
       }
 
@@ -1026,7 +1022,6 @@ class ApiClient {
   // ── Navigation side-effects (guarded against duplicate pushes) ────────────
 
   bool _redirecting = false;
-  bool _verifying = false;
 
   Future<void> _redirectToLogin() async {
     if (_redirecting) return;
@@ -1084,15 +1079,6 @@ class ApiClient {
         _deviceDialogOpen = false;
       }
     }();
-  }
-
-  void _goToVerify() {
-    if (_verifying) return;
-    _verifying = true;
-
-    navigatorKey.currentState?.pushNamed('/verify');
-
-    Future.delayed(const Duration(seconds: 2), () => _verifying = false);
   }
 
   // ── Version check ─────────────────────────────────────────────────────────

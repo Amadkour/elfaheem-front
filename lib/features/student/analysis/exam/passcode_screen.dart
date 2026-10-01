@@ -2,23 +2,33 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 
+import 'package:provider/provider.dart';
+
+import 'exam_tr.dart';
 import 'student_exam_detail_screen.dart';
+import 'student_exam_provider.dart';
 
 class ExamPasscodeSheet extends StatefulWidget {
   const ExamPasscodeSheet({
     super.key,
     required this.exam,
     required this.correctPasscode,
+    this.provider,
   });
 
   final dynamic exam; // replace with your Exam model type
   final String correctPasscode;
+
+  /// Provider handed down to the detail screen that opens after the sheet
+  /// closes (the sheet lives on the root navigator, above the course screen).
+  final StudentExamProvider? provider;
 
   /// Convenience method – shows the modal bottom sheet.
   static void show({
     required BuildContext context,
     required dynamic exam,
     required String correctPasscode,
+    StudentExamProvider? provider,
   }) {
     showModalBottomSheet(
       context: context,
@@ -28,6 +38,7 @@ class ExamPasscodeSheet extends StatefulWidget {
       builder: (_) => ExamPasscodeSheet(
         exam: exam,
         correctPasscode: correctPasscode,
+        provider: provider,
       ),
     );
   }
@@ -50,7 +61,7 @@ class _ExamPasscodeSheetState extends State<ExamPasscodeSheet>
     duration: const Duration(milliseconds: 480),
   );
   late final Animation<double> _shakeAnim =
-      Tween<double>(begin: 0, end: 1).animate(
+  Tween<double>(begin: 0, end: 1).animate(
     CurvedAnimation(parent: _shakeCtrl, curve: Curves.elasticOut),
   );
 
@@ -96,10 +107,17 @@ class _ExamPasscodeSheetState extends State<ExamPasscodeSheet>
     if (_entered == widget.correctPasscode) {
       HapticFeedback.heavyImpact();
       if (!mounted) return;
-      Navigator.of(context).pop(); // close sheet
-      Navigator.of(context).push(
+      final nav = Navigator.of(context);
+      final prov = widget.provider;
+      nav.pop(); // close sheet
+      nav.push(
         MaterialPageRoute(
-          builder: (_) => StudentExamDetailScreen(exam: widget.exam),
+          builder: (_) => prov == null
+              ? StudentExamDetailScreen(exam: widget.exam)
+              : ChangeNotifierProvider.value(
+            value: prov,
+            child: StudentExamDetailScreen(exam: widget.exam),
+          ),
         ),
       );
     } else {
@@ -146,69 +164,69 @@ class _ExamPasscodeSheetState extends State<ExamPasscodeSheet>
   }
 
   Widget _buildHandle() => Container(
-        margin: const EdgeInsets.only(top: 14, bottom: 4),
-        width: 40,
-        height: 4,
-        decoration: BoxDecoration(
-          color: const Color(0xFF3A3A4A),
-          borderRadius: BorderRadius.circular(2),
-        ),
-      );
+    margin: const EdgeInsets.only(top: 14, bottom: 4),
+    width: 40,
+    height: 4,
+    decoration: BoxDecoration(
+      color: const Color(0xFF3A3A4A),
+      borderRadius: BorderRadius.circular(2),
+    ),
+  );
 
   Widget _buildHeader() => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-        child: Column(
-          children: [
-            // Icon badge
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  colors: [_accentGold, Color(0xFF8B6914)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: _accentGold.withValues(alpha: 0.35),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.lock_outline_rounded,
-                color: _bgColor,
-                size: 28,
-              ),
+    padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+    child: Column(
+      children: [
+        // Icon badge
+        Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const LinearGradient(
+              colors: [_accentGold, Color(0xFF8B6914)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            const SizedBox(height: 18),
-            const Text(
-              'Exam Passcode',
-              style: TextStyle(
-                color: _textPrimary,
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.3,
-                fontFamily: 'Georgia', // elegant serif fallback
+            boxShadow: [
+              BoxShadow(
+                color: _accentGold.withValues(alpha: 0.35),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
               ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Enter the 6-digit code provided\nby your instructor to begin.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: _textSecondary,
-                fontSize: 14,
-                height: 1.55,
-                letterSpacing: 0.1,
-              ),
-            ),
-          ],
+            ],
+          ),
+          child: const Icon(
+            Icons.lock_outline_rounded,
+            color: _bgColor,
+            size: 28,
+          ),
         ),
-      );
+        const SizedBox(height: 18),
+        Text(
+          tx('exam_passcode_title'),
+          style: const TextStyle(
+            color: _textPrimary,
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.3,
+            fontFamily: 'Georgia', // elegant serif fallback
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          tx('exam_passcode_hint'),
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: _textSecondary,
+            fontSize: 14,
+            height: 1.55,
+            letterSpacing: 0.1,
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _buildDots() {
     return AnimatedBuilder(
@@ -235,12 +253,12 @@ class _ExamPasscodeSheetState extends State<ExamPasscodeSheet>
               color: _hasError ? _errorRed : (filled ? _dotFilled : _dotEmpty),
               boxShadow: filled && !_hasError
                   ? [
-                      BoxShadow(
-                        color: _accentGold.withValues(alpha: 0.5),
-                        blurRadius: 10,
-                        spreadRadius: 1,
-                      )
-                    ]
+                BoxShadow(
+                  color: _accentGold.withValues(alpha: 0.5),
+                  blurRadius: 10,
+                  spreadRadius: 1,
+                )
+              ]
                   : null,
             ),
           );
@@ -253,11 +271,11 @@ class _ExamPasscodeSheetState extends State<ExamPasscodeSheet>
     return AnimatedOpacity(
       opacity: _hasError ? 1 : 0,
       duration: const Duration(milliseconds: 200),
-      child: const Padding(
-        padding: EdgeInsets.only(top: 12),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 12),
         child: Text(
-          'Incorrect passcode. Please try again.',
-          style: TextStyle(
+          tx('exam_passcode_wrong'),
+          style: const TextStyle(
             color: _errorRed,
             fontSize: 13,
             fontWeight: FontWeight.w500,
@@ -281,17 +299,17 @@ class _ExamPasscodeSheetState extends State<ExamPasscodeSheet>
       child: Column(
         children: keys.map((row) {
           return  Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: row.map((key) {
-                return Expanded(
-                    child:Padding(
-                    padding: const EdgeInsets.all(5),
-                    child: (key=='x')
-                        ? _buildCloseKey()
-                        : (key == 'del')
-                            ? _buildDeleteKey()
-                            : _buildDigitKey(key)));
-              }).toList(),
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: row.map((key) {
+              return Expanded(
+                  child:Padding(
+                      padding: const EdgeInsets.all(5),
+                      child: (key=='x')
+                          ? _buildCloseKey()
+                          : (key == 'del')
+                          ? _buildDeleteKey()
+                          : _buildDigitKey(key)));
+            }).toList(),
 
           );
         }).toList(),
@@ -329,10 +347,10 @@ class _ExamPasscodeSheetState extends State<ExamPasscodeSheet>
       onTap: ()=>Navigator.pop(context),
       background: Colors.red.shade400,
       child: const Icon(
-      Icons.clear,
-      color: Colors.white,
-      size: 22,
-    ),
+        Icons.clear,
+        color: Colors.white,
+        size: 22,
+      ),
     );
   }
 }

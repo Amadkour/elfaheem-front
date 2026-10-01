@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/student/models.dart'
     show CourseModel, AppCurrencyX;
 import '../../../../config/app_config.dart';
-import '../../../../config/theme/app_theme.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/widget/app_network_image.dart';
 import '../../../shared/course/course_price_tag.dart';
@@ -553,7 +552,7 @@ class _MetaRow extends StatelessWidget {
           ),
           const SizedBox(width: 3),
           Text(
-            '${course.sessionsCount} ${'session'.tr}',
+            '${course.sessionsCount} ${'session'.tr}',maxLines: 1,
             style: context.colors.caption.copyWith(fontSize: 10),
           ),
         ],
@@ -565,7 +564,7 @@ class _MetaRow extends StatelessWidget {
           ),
           const SizedBox(width: 3),
           Text(
-            '${course.hoursCount} ${'hours'.tr}',
+            '${course.hoursCount} ${'hours'.tr}',maxLines: 1,
             style: context.colors.caption.copyWith(fontSize: 10),
           ),
         ],
@@ -598,7 +597,7 @@ class _StudentRow extends StatelessWidget {
           const SizedBox(width: 3),
           Flexible(
             child: Text(
-              course.certificates.first.title,
+              course.certificates.first.title,maxLines: 1,
               style: context.colors.caption.copyWith(fontSize: 10),
             ),
           ),
@@ -611,7 +610,7 @@ class _StudentRow extends StatelessWidget {
           ),
           const SizedBox(width: 3),
           Text(
-            '${course.studentsCount} ${'student'.tr}',
+            '${course.studentsCount} ${'student'.tr}', maxLines: 1,
             style: context.colors.caption.copyWith(fontSize: 10),
           ),
         ],
