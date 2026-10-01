@@ -114,6 +114,18 @@
       document.body.style.background = "transparent";
     }
   </script>
+  <script>
+    // Remove the splash as soon as Flutter has drawn its first frame.
+    window.addEventListener('flutter-first-frame', function () {
+      removeSplashFromWeb();
+    });
+  </script>
+  <script>
+    // Remove the splash as soon as Flutter has drawn its first frame.
+    window.addEventListener('flutter-first-frame', function () {
+      removeSplashFromWeb();
+    });
+  </script>
 </head>
 <body>
   <picture id="splash">

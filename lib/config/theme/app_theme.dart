@@ -30,7 +30,7 @@ class AppTheme {
 
   // ── Premium Brand palette ─────────────────────────────────────────────────
   static const Color primary         = Color(0xFF24B1B1);   // Main Brand Teal
-  static const Color primaryDark     = Color(0xFFE5B030);   // Deeper hover/press tone
+  static const Color primaryDark     = Color(0xFF2E2E2E);   // Deeper hover/press tone
   static const Color primaryLight    = Color(0xFF24B1B1);   // Same as primary (per palette)
   static const Color lightPrimary    = Color(0x2024B1B1);   // 12% opacity teal
 

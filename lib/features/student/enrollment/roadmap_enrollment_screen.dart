@@ -9,6 +9,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../config/app_config.dart';
 import '../../../config/theme/app_theme.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_network_image.dart';
@@ -46,33 +47,33 @@ class _RoadmapView extends StatelessWidget {
         EnrollStep.method => _RoadmapBody(key: const ValueKey('body'), courseName: courseName),
         EnrollStep.verifying => const PaymentVerifyingView(key: ValueKey('verifying')),
         EnrollStep.pending => PaymentResultView(
-            key: const ValueKey('pending'),
-            kind: ResultKind.pending,
-            title: ResultCopy.pendingTitle,
-            message: 'تم استلام طلبك. سيتم تفعيل كورسات المسار تلقائياً خلال دقائق.',
-            primaryLabel: 'العودة للرئيسية',
-            onPrimary: () => popToHome(context),
-          ),
+          key: const ValueKey('pending'),
+          kind: ResultKind.pending,
+          title: 'payment_pending_title'.tr,
+          message: 'roadmap_pending_message'.tr,
+          primaryLabel: 'back_to_home'.tr,
+          onPrimary: () => popToHome(context),
+        ),
         EnrollStep.success => PaymentResultView(
-            key: const ValueKey('success'),
-            kind: ResultKind.success,
-            title: 'تم التسجيل في المسار! 🎉',
-            message: count > 1
-                ? 'تم تفعيل $count كورسات. يمكنك البدء الآن!'
-                : 'تم تفعيل الكورس. يمكنك البدء الآن!',
-            primaryLabel: 'ابدأ التعلم الآن',
-            onPrimary: () => popToHome(context),
-          ),
+          key: const ValueKey('success'),
+          kind: ResultKind.success,
+          title: 'roadmap_success_title'.tr,
+          message: count > 1
+              ? '$count ${'roadmap_courses_activated_suffix'.tr}'
+              : 'enroll_success_message'.tr,
+          primaryLabel: 'start_learning_now'.tr,
+          onPrimary: () => popToHome(context),
+        ),
         EnrollStep.failed => PaymentResultView(
-            key: const ValueKey('failed'),
-            kind: ResultKind.failed,
-            title: ResultCopy.failedTitle,
-            message: p.failureReason ?? ResultCopy.failedFallback,
-            primaryLabel: 'حاول مرة أخرى',
-            onPrimary: p.backToMethod,
-            secondaryLabel: 'العودة للرئيسية',
-            onSecondary: () => popToHome(context),
-          ),
+          key: const ValueKey('failed'),
+          kind: ResultKind.failed,
+          title: 'payment_failed_title'.tr,
+          message: p.failureReason ?? 'payment_failed_fallback'.tr,
+          primaryLabel: 'try_again_payment'.tr,
+          onPrimary: p.backToMethod,
+          secondaryLabel: 'back_to_home'.tr,
+          onSecondary: () => popToHome(context),
+        ),
       },
     );
   }
@@ -95,9 +96,9 @@ class _RoadmapBody extends StatelessWidget {
     if (p.loadFailed) {
       content = Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text('تعذّر تحميل المسار', style: c.h3),
+          Text('roadmap_load_failed'.tr, style: c.h3),
           const SizedBox(height: 16),
-          SizedBox(width: 200, child: SoftOutlineButton(label: 'إعادة المحاولة', onTap: p.load)),
+          SizedBox(width: 200, child: SoftOutlineButton(label: 'retry'.tr, onTap: p.load)),
         ]),
       );
     } else if (quote == null) {
@@ -125,7 +126,7 @@ class _RoadmapBody extends StatelessWidget {
 
     return CenteredBody(
       child: Column(children: [
-        enrollAppBar('التسجيل في المسار'),
+        enrollAppBar('roadmap_enrollment_title'.tr),
         Expanded(child: content),
         if (quote != null)
           EnrollConfirmBar(
@@ -138,10 +139,10 @@ class _RoadmapBody extends StatelessWidget {
   }
 
   String _label(RoadmapQuote q, String symbol) {
-    if (q.nothingToDo) return 'أنت مسجّل في كل كورسات المسار';
+    if (q.nothingToDo) return 'roadmap_all_enrolled'.tr;
     final fees = q.fees;
-    if (fees == null) return 'سجّل مجاناً في ${q.freeCount} كورس';
-    return 'سجّل وادفع ${fees.fmt(fees.total)} $symbol';
+    if (fees == null) return '${'roadmap_enroll_free_prefix'.tr} ${q.freeCount} ${'roadmap_course_unit'.tr}';
+    return '${'roadmap_enroll_and_pay'.tr} ${fees.fmt(fees.total)} $symbol';
   }
 }
 
@@ -154,9 +155,9 @@ class _Intro extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final parts = <String>[
-      if (quote.payableCount > 0) '${quote.payableCount} مدفوع',
-      if (quote.freeCount > 0) '${quote.freeCount} مجاني',
-      if (quote.ownedCount > 0) '${quote.ownedCount} مسجّل بالفعل',
+      if (quote.payableCount > 0) '${quote.payableCount} ${'roadmap_paid'.tr}',
+      if (quote.freeCount > 0) '${quote.freeCount} ${'roadmap_free'.tr}',
+      if (quote.ownedCount > 0) '${quote.ownedCount} ${'roadmap_already_enrolled'.tr}',
     ];
     return Container(
       padding: const EdgeInsets.all(16),
@@ -179,10 +180,10 @@ class _Intro extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(courseName == null ? 'المسار التعليمي' : 'مسار: $courseName',
+            Text(courseName == null ? 'roadmap_default_title'.tr : '${'roadmap_label'.tr}: $courseName',
                 style: c.h3.copyWith(fontSize: 15), maxLines: 2, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 4),
-            Text('${quote.items.length} كورسات · ${parts.join(' · ')}', style: c.caption),
+            Text('${quote.items.length} ${'roadmap_courses_word'.tr} · ${parts.join(' · ')}', style: c.caption),
           ]),
         ),
       ]),
@@ -202,8 +203,8 @@ class _RoadmapItemTile extends StatelessWidget {
     final owned = item.state == RoadmapItemState.owned;
 
     final (String tag, Color tone) = switch (item.state) {
-      RoadmapItemState.owned => ('مسجّل', c.success),
-      RoadmapItemState.free => ('مجاني', c.success),
+      RoadmapItemState.owned => ('enrolled'.tr, c.success),
+      RoadmapItemState.free => ('free'.tr, c.success),
       RoadmapItemState.payable => ('${item.price.toStringAsFixed(2)} $currencySymbol', c.primary),
     };
 
@@ -254,7 +255,7 @@ class _RoadmapItemTile extends StatelessWidget {
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     if (item.isCurrent)
-                      Text('الكورس الحالي',
+                      Text('roadmap_current_course'.tr,
                           style: c.caption.copyWith(color: c.primary, fontWeight: FontWeight.w700, fontSize: 10)),
                     Text(item.name,
                         style: c.label.copyWith(fontWeight: FontWeight.w700, fontSize: 14),

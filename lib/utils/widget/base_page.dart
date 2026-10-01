@@ -18,7 +18,7 @@ class BasePage extends StatelessWidget {
     this.bottomNavigationBar,
     this.appBar,
     this.useWebCard = false,
-    this.maxWith,
+    this.maxWith,  this.enableFooterWidget=true,
   });
 
   final double? maxWith;
@@ -28,6 +28,7 @@ class BasePage extends StatelessWidget {
   final Widget? bottomNavigationBar;
   final PreferredSizeWidget? appBar;
   final bool useWebCard;
+  final bool enableFooterWidget;
 
   /// Stacks the app-wide background-upload progress footer above whatever
   /// bottomNavigationBar the page already wants, so a video upload started
@@ -59,15 +60,15 @@ class BasePage extends StatelessWidget {
         ),
       );
     }
-    Widget w = Directionality(
-      textDirection: Helpers.pageDirection,
-      child: Scaffold(
+    Widget w =  Scaffold(
         appBar: appBar,
         backgroundColor:
-        background ??(context.showSidebar?context.colors.background.withValues(alpha: 0.3):context.colors.background),
+        background ??context.colors.background,
         floatingActionButton: floatingActionButton,
-        bottomNavigationBar: _footerWith(bottomNavigationBar),
-        body: DecoratedBox(
+        bottomNavigationBar:enableFooterWidget? _footerWith(bottomNavigationBar):null,
+        body: Directionality(
+          textDirection: Helpers.pageDirection,
+          child:DecoratedBox(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(context.colors.radiusXL),
           ),
@@ -77,49 +78,52 @@ class BasePage extends StatelessWidget {
     );
 
     if (useWebCard && context.width > 599) {
-      return Scaffold(
-        backgroundColor:
-            background ??(context.showSidebar?context.colors.background.withValues(alpha: 0.3):context.colors.background),
-        // NOTE: no footer here — `w` below already carries it via its own
-        // bottomNavigationBar, and `w` is what actually renders in this
-        // branch (nested inside the centered card).
+      return Directionality(
+          textDirection: Helpers.pageDirection,
+          child: Scaffold(
+          backgroundColor:
+              background ??(context.colors.background),
+          // NOTE: no footer here — `w` below already carries it via its own
+          // bottomNavigationBar, and `w` is what actually renders in this
+          // branch (nested inside the centered card).
 
-        body: Stack(
-          children: [
-            Positioned.fill(
-              child: CustomPaint(
-                painter: ElearningPatternPainter(
-                  color: context.colors.primaryLight.withValues(alpha:0.2),
-                  width: Helpers.calculateRemainingWidth(context),
-                ),
-              ),
-            ),
-            Align(
-              alignment: AlignmentGeometry.center,
-              child: Container(
-                width: Helpers.calculateRemainingWidth(
-                  context,
-                  maxWith: maxWith,
-                ),
-                margin: EdgeInsets.symmetric(vertical: 10),
-                padding: const EdgeInsets.all(0.0),
-                decoration: BoxDecoration(
-                  // border: BoxBorder.all(
-                  //   color: context.colors.primary,
-                  //   width: 1,
-                  // ),
-                  borderRadius: BorderRadius.circular(context.colors.radiusXL),
-                  color: context.colors.background,
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadiusGeometry.circular(
-                    context.colors.radiusXL,
+          body: Stack(
+            children: [
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: ElearningPatternPainter(
+                    color: context.colors.primaryLight.withValues(alpha:0.2),
+                    width: Helpers.calculateRemainingWidth(context),
                   ),
-                  child: w,
                 ),
               ),
-            ),
-          ],
+              Align(
+                alignment: AlignmentGeometry.center,
+                child: Container(
+                  width: Helpers.calculateRemainingWidth(
+                    context,
+                    maxWith: maxWith,
+                  ),
+                  margin: EdgeInsets.symmetric(vertical: 10),
+                  padding: const EdgeInsets.all(0.0),
+                  decoration: BoxDecoration(
+                    // border: BoxBorder.all(
+                    //   color: context.colors.primary,
+                    //   width: 1,
+                    // ),
+                    borderRadius: BorderRadius.circular(context.colors.radiusXL),
+                    color: context.colors.background,
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadiusGeometry.circular(
+                      context.colors.radiusXL,
+                    ),
+                    child: w,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }

@@ -60,6 +60,7 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
     MyCoursesProvider provider = context.watch<MyCoursesProvider>();
     return BasePage(
       useWebCard: true,
+      enableFooterWidget: false,
       appBar: ScreenAppBar(
         title: widget.forMyCourses ? 'my_courses'.tr : 'explorer_courses'.tr,
       ),

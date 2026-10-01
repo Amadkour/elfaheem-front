@@ -249,12 +249,10 @@ class ThemeConfigProvider extends ChangeNotifier {
   /// In dark mode this intentionally resolves to the charcoal slide-bar
   /// gradient rather than a dark variant of the brand gradient — a large
   /// brand-coloured block doesn't read as premium in dark mode.
-  LinearGradient get primaryGradient =>
-      isDark ? _darkSlideBarGradient : primaryGradientOnColor;
+  LinearGradient get primaryGradient => primaryGradientOnColor;
 
   /// Same "charcoal instead of brand colour" behaviour as [primaryGradient].
-  LinearGradient get primarySliderGradient =>
-      isDark ? _darkSlideBarGradient : _sliderGradient;
+  LinearGradient get primarySliderGradient => _sliderGradient;
 
   LinearGradient get disableGradient => LinearGradient(
     begin: Alignment.topLeft,
@@ -276,7 +274,7 @@ class ThemeConfigProvider extends ChangeNotifier {
     ],
   );
 
-  LinearGradient get sliderGradient => _sliderGradient;
+  LinearGradient get sliderGradient => isDark? AppTheme.darkSlideBarGradient: _sliderGradient;
 
   LinearGradient get tealGradient => LinearGradient(
     begin: Alignment.topLeft,

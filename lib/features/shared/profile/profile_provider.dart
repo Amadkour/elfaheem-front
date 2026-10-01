@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:cross_file/cross_file.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
 import 'package:http/http.dart' hide MultipartFile;
@@ -11,6 +12,8 @@ import '../../../config/storage_service.dart';
 import '../../auth/auth_provider.dart';
 import '../../auth/login_screen.dart';
 import '../../student/models.dart';
+import '../../teacher/profile/enrollment_request/teacher_transfers_provider.dart';
+import '../../teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import 'package:path/path.dart' as p;
 
 enum PasswordStep { form, otp }
@@ -240,6 +243,8 @@ class ProfileProvider extends BaseProvider {
     _reset();
 
     if (context.mounted) {
+      context.read<TeacherTransfersProvider>().reset();
+      context.read<TeacherDeviceRequestsProvider>().reset();
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           settings: RouteSettings(name: '/login'),
@@ -270,6 +275,8 @@ class ProfileProvider extends BaseProvider {
         _reset();
 
         if (context.mounted) {
+          context.read<TeacherTransfersProvider>().reset();
+          context.read<TeacherDeviceRequestsProvider>().reset();
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const LoginScreen()),
                 (route) => false,

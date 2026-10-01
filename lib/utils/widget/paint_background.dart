@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart';
 
 
 class ElearningPatternPainter extends CustomPainter {
@@ -9,9 +10,6 @@ class ElearningPatternPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // final color = isDark
-    //     ? Colors.white.withValues(alpha: 0.05)
-    //     : AppTheme.primary.withValues(alpha: 0.09);
     final rnd = Random(42);
 
 

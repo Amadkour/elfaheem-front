@@ -703,6 +703,10 @@
     "en": "Enrolled",
     "ar": "مسجّل"
   },
+  "enrollment_requests": {
+    "en": "Enrollment Requests",
+    "ar": "طلبات الاشتراك"
+  },
   "view_answers": {
     "en": "Answers",
     "ar": "الإجابات"
@@ -4156,5 +4160,205 @@
   "mark_all_read": {
     "en": "Make all Read",
     "ar": "اجعل الكل مقروءاً"
+  },
+  "request_accept": {
+    "en": "Accept",
+    "ar": "قبول"
+  },
+  "request_reject": {
+    "en": "Reject",
+    "ar": "رفض"
+  },
+  "request_approve": {
+    "en": "Approve",
+    "ar": "موافقة"
+  },
+  "copied_to_clipboard": {
+    "en": "Copied",
+    "ar": "تم النسخ"
+  },
+  "requests_pending_review": {
+    "en": "requests awaiting review",
+    "ar": "طلب بانتظار المراجعة"
+  },
+  "swipe_hint_accept_left": {
+    "en": "Swipe the card left to accept or right to reject",
+    "ar": "اسحب البطاقة لليسار للقبول أو لليمين للرفض"
+  },
+  "swipe_hint_accept_right": {
+    "en": "Swipe the card right to accept or left to reject",
+    "ar": "اسحب البطاقة لليمين للقبول أو لليسار للرفض"
+  },
+  "no_pending_requests": {
+    "en": "No requests awaiting review",
+    "ar": "لا توجد طلبات بانتظار المراجعة"
+  },
+  "rejection_reason_title": {
+    "en": "Rejection reason",
+    "ar": "سبب الرفض"
+  },
+  "rejection_reason_hint": {
+    "en": "Write why this request is being rejected",
+    "ar": "اكتب سبب رفض هذا الطلب"
+  },
+  "request_approved": {
+    "en": "Request accepted",
+    "ar": "تم قبول الطلب"
+  },
+  "request_approve_failed": {
+    "en": "Couldn't accept the request",
+    "ar": "تعذر قبول الطلب"
+  },
+  "request_rejected": {
+    "en": "Request rejected",
+    "ar": "تم رفض الطلب"
+  },
+  "request_reject_failed": {
+    "en": "Couldn't reject the request",
+    "ar": "تعذر رفض الطلب"
+  },
+  "transfer_requests_title": {
+    "en": "Transfer Payment Requests",
+    "ar": "طلبات الدفع بالتحويل"
+  },
+  "transfer_reason_unclear_receipt": {
+    "en": "The receipt image is unclear",
+    "ar": "صورة الإيصال غير واضحة"
+  },
+  "transfer_reason_amount_mismatch": {
+    "en": "The amount doesn't match",
+    "ar": "المبلغ غير مطابق"
+  },
+  "transfer_reason_invalid_details": {
+    "en": "The transfer details are incorrect",
+    "ar": "بيانات التحويل غير صحيحة"
+  },
+  "payment_method_title": {
+    "en": "Payment method",
+    "ar": "طريقة الدفع"
+  },
+  "sender_phone_short": {
+    "en": "Sender phone",
+    "ar": "هاتف المُرسِل"
+  },
+  "reference_number": {
+    "en": "Reference number",
+    "ar": "رقم المرجع"
+  },
+  "receipt_load_failed": {
+    "en": "Couldn't load the image",
+    "ar": "تعذر تحميل الصورة"
+  },
+  "receipt_tap_to_zoom": {
+    "en": "Transfer receipt · tap to zoom",
+    "ar": "إيصال التحويل · اضغط للتكبير"
+  },
+  "device_request_approved": {
+    "en": "Approved. The account was moved to the new device",
+    "ar": "تمت الموافقة، تم نقل الحساب للجهاز الجديد"
+  },
+  "device_approve_failed": {
+    "en": "Couldn't approve the request",
+    "ar": "تعذرت الموافقة"
+  },
+  "device_reason_monthly_limit": {
+    "en": "A request was already approved for this student this month",
+    "ar": "تم قبول طلب لهذا الطالب هذا الشهر"
+  },
+  "device_reason_unknown_device": {
+    "en": "The new device is not recognized",
+    "ar": "الجهاز الجديد غير معروف"
+  },
+  "new_device": {
+    "en": "New device",
+    "ar": "الجهاز الجديد"
+  },
+  "unknown_value": {
+    "en": "Unknown",
+    "ar": "غير معروف"
+  },
+  "student_phone_label": {
+    "en": "Student phone",
+    "ar": "هاتف الطالب"
+  },
+  "device_monthly_limit_note": {
+    "en": "Note: only one request per student can be approved each month.",
+    "ar": "ملاحظة: يمكن الموافقة على طلب واحد فقط لكل طالب في الشهر."
+  },
+  "payment_session_create_failed": {
+    "en": "Couldn't create the payment session. Please try again.",
+    "ar": "فشل إنشاء جلسة الدفع. حاول مرة أخرى."
+  },
+  "payment_session_incomplete": {
+    "en": "The session data is incomplete. Please try again.",
+    "ar": "بيانات الجلسة غير مكتملة. حاول مرة أخرى."
+  },
+  "payment_open_failed": {
+    "en": "Couldn't open the payment page",
+    "ar": "تعذّر فتح صفحة الدفع"
+  },
+  "roadmap_enrollment_title": {
+    "en": "Roadmap Enrollment",
+    "ar": "التسجيل في المسار"
+  },
+  "roadmap_pending_message": {
+    "en": "We received your request. The roadmap's courses will activate automatically within minutes.",
+    "ar": "تم استلام طلبك. سيتم تفعيل كورسات المسار تلقائياً خلال دقائق."
+  },
+  "roadmap_success_title": {
+    "en": "You're enrolled in the roadmap! 🎉",
+    "ar": "تم التسجيل في المسار! 🎉"
+  },
+  "roadmap_courses_activated_suffix": {
+    "en": "courses activated. You can start now!",
+    "ar": "كورسات تم تفعيلها. يمكنك البدء الآن!"
+  },
+  "roadmap_load_failed": {
+    "en": "Couldn't load the roadmap",
+    "ar": "تعذّر تحميل المسار"
+  },
+  "roadmap_all_enrolled": {
+    "en": "You're enrolled in every course on the roadmap",
+    "ar": "أنت مسجّل في كل كورسات المسار"
+  },
+  "roadmap_enroll_free_prefix": {
+    "en": "Enroll for free in",
+    "ar": "سجّل مجاناً في"
+  },
+  "roadmap_course_unit": {
+    "en": "courses",
+    "ar": "كورس"
+  },
+  "roadmap_enroll_and_pay": {
+    "en": "Enroll & pay",
+    "ar": "سجّل وادفع"
+  },
+  "roadmap_default_title": {
+    "en": "Learning Roadmap",
+    "ar": "المسار التعليمي"
+  },
+  "roadmap_label": {
+    "en": "Roadmap",
+    "ar": "مسار"
+  },
+  "roadmap_paid": {
+    "en": "paid",
+    "ar": "مدفوع"
+  },
+  "roadmap_free": {
+    "en": "free",
+    "ar": "مجاني"
+  },
+  "roadmap_already_enrolled": {
+    "en": "already enrolled",
+    "ar": "مسجّل بالفعل"
+  },
+  "roadmap_courses_word": {
+    "en": "courses",
+    "ar": "كورسات"
+  },
+  "roadmap_current_course": {
+    "en": "Current course",
+    "ar": "الكورس الحالي"
   }
 }

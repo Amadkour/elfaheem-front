@@ -8,6 +8,7 @@ library;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../../config/app_config.dart';
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
 import 'checkout_pages.dart';
@@ -66,19 +67,19 @@ abstract class PaymentFlowProvider extends BaseProvider {
   // ── Hosted checkout ───────────────────────────────────────────────────────
 
   Future<void> openHostedCheckout(
-    BuildContext context,
-    String path, {
-    Map<String, dynamic>? body,
-  }) async {
+      BuildContext context,
+      String path, {
+        Map<String, dynamic>? body,
+      }) async {
     makeLoading();
     safeNotify();
     try {
       final session = asJsonMap(await run(
-        () async => body == null ? api.post(path) : api.post(path, body: body),
+            () async => body == null ? api.post(path) : api.post(path, body: body),
       ));
 
       if (session == null) {
-        setStep(EnrollStep.failed, reason: 'فشل إنشاء جلسة الدفع. حاول مرة أخرى.');
+        setStep(EnrollStep.failed, reason: 'payment_session_create_failed'.tr);
         return;
       }
       if (session['already_paid'] == true || session['status'] == 'enrolled') {
@@ -88,7 +89,7 @@ abstract class PaymentFlowProvider extends BaseProvider {
 
       final url = session['checkout_url'] as String?;
       if (url == null || url.isEmpty) {
-        setStep(EnrollStep.failed, reason: 'بيانات الجلسة غير مكتملة. حاول مرة أخرى.');
+        setStep(EnrollStep.failed, reason: 'payment_session_incomplete'.tr);
         return;
       }
 
@@ -97,13 +98,13 @@ abstract class PaymentFlowProvider extends BaseProvider {
       if (!context.mounted) return;
 
       final Widget page =
-          kIsWeb ? IFrameCheckoutPage(url: url) : MobileCheckoutPage(url: url);
+      kIsWeb ? IFrameCheckoutPage(url: url) : MobileCheckoutPage(url: url);
       final result = await Navigator.of(context).push<String>(
         MaterialPageRoute(fullscreenDialog: true, builder: (_) => page),
       );
       _handleCheckoutResult(result ?? 'cancelled');
     } catch (e) {
-      setStep(EnrollStep.failed, reason: 'تعذّر فتح صفحة الدفع: $e');
+      setStep(EnrollStep.failed, reason: '${'payment_open_failed'.tr}: $e');
     } finally {
       stopLoading();
       safeNotify();
@@ -119,7 +120,7 @@ abstract class PaymentFlowProvider extends BaseProvider {
       case 'cancelled':
         setStep(EnrollStep.method); // user closed the sheet — not an error
       default:
-        setStep(EnrollStep.failed, reason: 'فشلت عملية الدفع. حاول مرة أخرى.');
+        setStep(EnrollStep.failed, reason: 'payment_failed_message_generic'.tr);
     }
   }
 }

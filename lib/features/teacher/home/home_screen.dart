@@ -61,6 +61,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
 
     return BasePage(
       useWebCard: true,
+      enableFooterWidget: false,
       child: SafeArea(
         child: RefreshIndicator(
           color: context.colors.primary,

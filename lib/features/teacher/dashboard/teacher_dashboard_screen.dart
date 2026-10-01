@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
 import 'package:flutter_education_app/features/teacher/courses/teacher_courses_provider.dart';
 import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboard_provider.dart';
+import 'package:flutter_education_app/features/teacher/profile/enrollment_request/teacher_transfers_provider.dart';
+import 'package:flutter_education_app/features/teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
@@ -33,7 +35,13 @@ class _State extends State<TeacherDashboardScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await context.read<NotificationsProvider>().fetchNotifications();
+      final transfers = context.read<TeacherTransfersProvider>();
+      final devices = context.read<TeacherDeviceRequestsProvider>();
+      await Future.wait([
+        context.read<NotificationsProvider>().fetchNotifications(),
+        transfers.ensureLoaded(), // one request, reused by the screen
+        devices.ensureLoaded(),
+      ]);
     });
     TeacherHomeProvider provider = context.read<TeacherHomeProvider>();
     dashboardItems.clear();
@@ -90,39 +98,52 @@ class _State extends State<TeacherDashboardScreen> {
           onPopInvokedWithResult: (_,_){
             provider.onChangeTab(0);
           },
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final unread = context.watch<NotificationsProvider>().unreadCount;
+          child: Directionality(
+            textDirection: Helpers.pageDirection,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final unread = context.watch<NotificationsProvider>().unreadCount;
+                // select: rebuild the dashboard only when the NUMBER changes,
+                // not on every loading/processing notification of the providers.
+                final pending =
+                    context.select<TeacherTransfersProvider, int>((p) => p.total) +
+                        context.select<TeacherDeviceRequestsProvider, int>(
+                              (p) => p.items.length,
+                        );
+                for (final item in dashboardItems) {
+                  item.badge = item.label == 'my_profile' ? pending : 0;
+                }
 
-              final w = constraints.maxWidth;
-              if (w >= 900) {
-                return WideShell(
+                final w = constraints.maxWidth;
+                if (w >= 900) {
+                  return WideShell(
+                    currentIndex: provider.currentTab,
+                    onTap: (i) {
+                      if (mounted) provider.onChangeTab(i);
+                    },
+                    dashboardItems: dashboardItems,
+                    unreadCount: unread,
+                  );
+                }
+                if (kIsWeb && w >= 600) {
+                  return RailShell(
+                    currentIndex: provider.currentTab,
+                    onTap: (i) {
+                      if (mounted) provider.onChangeTab(i);
+                    },
+                    dashboardItems: dashboardItems,
+                    unreadCount: unread,
+                  );
+                }
+                return MobileShell(
                   currentIndex: provider.currentTab,
                   onTap: (i) {
                     if (mounted) provider.onChangeTab(i);
                   },
                   dashboardItems: dashboardItems,
-                  unreadCount: unread,
                 );
-              }
-              if (kIsWeb && w >= 600) {
-                return RailShell(
-                  currentIndex: provider.currentTab,
-                  onTap: (i) {
-                    if (mounted) provider.onChangeTab(i);
-                  },
-                  dashboardItems: dashboardItems,
-                  unreadCount: unread,
-                );
-              }
-              return MobileShell(
-                currentIndex: provider.currentTab,
-                onTap: (i) {
-                  if (mounted) provider.onChangeTab(i);
-                },
-                dashboardItems: dashboardItems,
-              );
-            },
+              },
+            ),
           ),
         );
       },
@@ -150,7 +171,7 @@ class _TeacherScheduleTabState extends State<TeacherScheduleTab>
     super.initState();
     _prov = context.read<TeacherScheduleOverviewProvider>();
     WidgetsBinding.instance.addPostFrameCallback(
-      (_) async => await _prov.fetch(),
+          (_) async => await _prov.fetch(),
     );
   }
 
@@ -169,16 +190,16 @@ class _TeacherScheduleTabState extends State<TeacherScheduleTab>
       child: SafeArea(
         child: _prov.isLoading
             ? Center(
-                child: AppLoadingIndicator(),
-              )
+          child: AppLoadingIndicator(),
+        )
             : ScheduleTabBody(
-                provider: _prov,
-                getData: () => _prov.data,
-                onRefresh: _prov.fetch,
-                title: "time-table".tr,
-                emptyMessage: 'no-time-table'.tr,
-                getLastFetched: () => _prov.lastFetched,
-              ),
+          provider: _prov,
+          getData: () => _prov.data,
+          onRefresh: _prov.fetch,
+          title: "time-table".tr,
+          emptyMessage: 'no-time-table'.tr,
+          getLastFetched: () => _prov.lastFetched,
+        ),
       ),
     );
   }
@@ -190,11 +211,15 @@ class DashboardItem {
   final Future<void> Function()? onRefresh;
   final Widget screen;
 
+  /// Number shown on the tab icon (0 = hidden). Set by the dashboard.
+  int badge;
+
   DashboardItem(
-    this.icon,
-    this.selectedIcon,
-    this.label,
-    this.onRefresh,
-    this.screen,
-  );
+      this.icon,
+      this.selectedIcon,
+      this.label,
+      this.onRefresh,
+      this.screen, {
+        this.badge = 0,
+      });
 }

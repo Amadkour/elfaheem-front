@@ -32,6 +32,21 @@ class TeacherDeviceRequestsProvider extends BaseProvider {
   bool hasLoaded = false;
   bool isProcessing(int id) => _processing.contains(id);
 
+  /// Loads only if nothing was loaded yet and no load is running, so the
+  /// dashboard badge and the screen share ONE request.
+  Future<void> ensureLoaded() async {
+    if (hasLoaded || isLoading) return;
+    await load();
+  }
+
+  /// Clears cached data (call on logout / account switch).
+  void reset() {
+    items = [];
+    _processing.clear();
+    hasLoaded = false;
+    notifyListeners();
+  }
+
   Future<void> load() async {
     final json = asJsonMap(await run(() async => api.get('/api/v1/devices/teacher/switch-requests', auth: true)));
     if (json == null) return;
@@ -47,6 +62,8 @@ class TeacherDeviceRequestsProvider extends BaseProvider {
 
   Future<bool> reject(int id, String reason) => _act(id, 'reject', body: {'rejection_reason': reason});
 
+  /// Calls the server only. The item is NOT removed here: the screen plays
+  /// its exit animation first and then calls [removeItem].
   Future<bool> _act(int id, String action, {Map<String, dynamic>? body}) async {
     _processing.add(id);
     notifyListeners();
@@ -57,8 +74,13 @@ class TeacherDeviceRequestsProvider extends BaseProvider {
     )) !=
         null;
     _processing.remove(id);
-    if (ok) items.removeWhere((e) => e.id == id);
     notifyListeners();
     return ok; // on failure `errorMessage` (e.g. "one switch per month") is shown by the screen
+  }
+
+  /// Drops a handled request from the list (called after the exit animation).
+  void removeItem(int id) {
+    items.removeWhere((e) => e.id == id);
+    notifyListeners();
   }
 }

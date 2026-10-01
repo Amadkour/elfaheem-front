@@ -12,6 +12,7 @@ import '../../../config/theme/app_theme.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_network_image.dart';
+import '../../../utils/widget/count_badge.dart';
 import '../../../utils/widget/refresh_button.dart';
 import '../analysis/student_analytics_provider.dart';
 import '../analysis/student_analytics_screen.dart';
@@ -230,6 +231,7 @@ class WideShell extends StatelessWidget {
                           selected: currentIndex == i,
                           // badge: i == 4 && unread > 0 ? unread : 0,
                           onTap: () => onTap(i),
+                          badge: dashboardItems[i].badge,
                         ),
 
                       const Spacer(),
@@ -372,6 +374,7 @@ class _SidebarTile extends StatelessWidget {
   final IconData selectedIcon;
   final String label;
   final bool selected;
+  final int badge;
 
   // final int badge;
   final VoidCallback onTap;
@@ -382,7 +385,7 @@ class _SidebarTile extends StatelessWidget {
     required this.label,
     required this.selected,
     // required this.badge,
-    required this.onTap,
+    required this.onTap, required this.badge,
   });
 
   @override
@@ -425,7 +428,7 @@ class _SidebarTile extends StatelessWidget {
               size: 20,
             ),
             const SizedBox(width: 12),
-            Expanded(
+            Flexible(
               child: Text(
                 label,
                 style: TextStyle(
@@ -438,19 +441,20 @@ class _SidebarTile extends StatelessWidget {
                 ),
               ),
             ),
-            // if (badge > 0)
-            //   Container(
-            //     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-            //     decoration: BoxDecoration(
-            //         color: context.colors.danger,
-            //         borderRadius: BorderRadius.circular(20)),
-            //     child: Text('$badge',
-            //         style: const TextStyle(
-            //             color: Colors.white,
-            //             fontSize: 10,
-            //             fontWeight: FontWeight.w800,
-            //             fontFamily: 'bahji')),
-            //   ),
+            if (badge > 0) ...[
+              SizedBox(width: 10,),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                    color: context.colors.danger,
+                    borderRadius: BorderRadius.circular(20)),
+                child: Text('$badge',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        fontFamily: 'bahji')),
+              ),]
           ],
         ),
       ),
@@ -473,7 +477,7 @@ class _WideTopBar extends StatelessWidget {
     return Container(
       height: 64,
       decoration: BoxDecoration(
-        color: context.colors.primary,
+        color: context.colors.isDark?context.colors.primaryDark: context.colors.primary,
         border: Border(
             bottom: BorderSide(
                 color: context.colors.primary.withValues(alpha: 0.08))),
@@ -585,14 +589,20 @@ class RailShell extends StatelessWidget {
                     leading: Padding(
                       padding: const EdgeInsets.only(top: 24, bottom: 12),
                       child: Icon(Icons.school_rounded,
-                          color: context.colors.accent,
+                          color: context.colors.accent2,
                           size: 26),
                     ),
                     destinations: [
                       for (int i = 0; i < dashboardItems.length; i++)
                         NavigationRailDestination(
-                          icon: Icon(dashboardItems[i].icon),
-                          selectedIcon: Icon(dashboardItems[i].selectedIcon),
+                          icon: CountBadge(
+                            count: dashboardItems[i].badge,
+                            child: Icon(dashboardItems[i].icon),
+                          ),
+                          selectedIcon: CountBadge(
+                            count: dashboardItems[i].badge,
+                            child: Icon(dashboardItems[i].selectedIcon),
+                          ),
                           label: Text(dashboardItems[i].label.tr),
                         ),
                     ],
@@ -720,13 +730,20 @@ class _BottomNav extends StatelessWidget {
                                   ]
                                 : null,
                           ),
-                          child: Icon(
-                            active ? item.selectedIcon : item.icon,
-                            size: 20,
-                            color: active
-                                ? Colors.white
-                                : context.colors.textLight,
+                          child: CountBadge(
+                            count: dashboardItems[i].badge,
+
+                            child: Center(
+                              child: Icon(
+                                active ? item.selectedIcon : item.icon,
+                                size: 20,
+                                color: active
+                                    ? Colors.white
+                                    : context.colors.textLight,
+                              ),
+                            ),
                           ),
+
                         ),
                         const SizedBox(height: 3),
                         Text(

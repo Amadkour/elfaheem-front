@@ -268,9 +268,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                     borderRadius: BorderRadius.circular(context.colors.radiusXL),
                   ),
                   color: context.colors.cardBg,
-                  child: Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: main
+                  child: ColoredBox(
+                    color:context.colors.isDark?context.colors.primaryDark: context.colors.primary.withAlpha(30),
+                    child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: main
+                    ),
                   ),
                 ),
               ),

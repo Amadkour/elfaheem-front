@@ -64,11 +64,9 @@ class _ForgetScreenState extends State<ForgetScreen> {
         .size
         .width > 800;
 
-    return Scaffold(
-      body: BasePage(
+    return  BasePage(
         appBar: isWide ?null:ScreenAppBar(title: 'forget_password'.tr),
         child: isWide ? _buildWideLayout() : _buildNarrowLayout(),
-      ),
     );
   }
 
@@ -205,7 +203,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
       padding: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(context.colors.radiusXL),
-        color: context.colors.cardBg,
+        color:context.colors.isDark?context.colors.primaryDark: context.colors.primary.withAlpha(30),
       ),
       child: form
     );

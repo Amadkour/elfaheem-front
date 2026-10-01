@@ -9,6 +9,7 @@ import 'package:flutter/cupertino.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/profile/components/setting_group.dart';
+import 'package:flutter_education_app/features/teacher/dashboard/requests_badge_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/student_favorite_screen.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -16,11 +17,14 @@ import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_network_image.dart';
+import '../../../utils/widget/count_badge.dart';
 import '../../auth/auth_provider.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import '../../../utils/widget/parent_component.dart';
-import '../../teacher/profile/requests/teacher_device_requests_screen.dart';
-import '../payment/teacher_transfers_screen.dart';
+import '../../teacher/profile/enrollment_request/teacher_transfers_provider.dart';
+import '../../teacher/profile/enrollment_request/teacher_transfers_screen.dart';
+import '../../teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
+import '../../teacher/profile/switch_device_requests/teacher_device_requests_screen.dart';
 import 'about/about_and_terms_screen.dart';
 import 'about/about_terms_provider.dart';
 import 'change_language_screen.dart';
@@ -67,6 +71,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
 
     return BasePage(
       useWebCard: true,
+      enableFooterWidget: false,
       child: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -149,25 +154,31 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                             ParentComponent(
-                              key: ValueKey('profile.payment-method'),
-                              child: SettingsTile(
-                                icon: Icons.account_balance_wallet_rounded,
-                                iconBg: c.successTint,
-                                iconColor: c.success,
-                                label: 'payment'.tr,
-                                onTap: () =>
-                                    _push(const TeacherTransfersScreen()),
+                              key: ValueKey('profile.enrollment_request'),
+                              child: TileCountOverlay(
+                                count: context.select<TeacherTransfersProvider, int>((p) => p.total),
+                                child: SettingsTile(
+                                  icon: Icons.account_balance_wallet_rounded,
+                                  iconBg: c.successTint,
+                                  iconColor: c.success,
+                                  label: 'enrollment_requests'.tr,
+                                  onTap: () => _push(const TeacherTransfersScreen()),
+                                ),
                               ),
                             ),
                             ParentComponent(
                               key: ValueKey('profile.device_requests'),
-                              child: SettingsTile(
-                                icon: Icons.phonelink_lock_rounded,
-                                iconBg: c.primaryLight.withValues(alpha: 0.3),
-                                iconColor: c.primary,
-                                label: 'device_switch_requests'.tr,
-                                onTap: () =>
-                                    _push(const TeacherDeviceRequestsScreen()),
+                              child: TileCountOverlay(
+                                count: context.select<TeacherDeviceRequestsProvider, int>(
+                                      (p) => p.items.length,
+                                ),
+                                child: SettingsTile(
+                                  icon: Icons.phonelink_lock_rounded,
+                                  iconBg: c.primaryLight.withValues(alpha: 0.3),
+                                  iconColor: c.primary,
+                                  label: 'device_switch_requests'.tr,
+                                  onTap: () => _push(const TeacherDeviceRequestsScreen()),
+                                ),
                               ),
                             ),
                           ] else ...[

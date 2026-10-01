@@ -83,6 +83,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
     return BasePage(
       useWebCard: true,
+      enableFooterWidget: false,
       maxWith: 1000,
       child: provider.isLoading
           ? Center(

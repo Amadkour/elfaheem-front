@@ -43,6 +43,7 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen>
 
     return BasePage(
       useWebCard: true,
+      enableFooterWidget: false,
       child: SafeArea(
         child: prov.isLoading
             ? Center(
