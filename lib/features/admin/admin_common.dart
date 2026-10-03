@@ -12,6 +12,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
+import 'package:provider/provider.dart';
+
+import '../shared/profile/profile_provider.dart';
 
 /// Arabic / English inline text (the admin screens ship with both).
 String t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
@@ -281,17 +284,29 @@ class EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 52, color: c.textLight),
-          const SizedBox(height: 10),
-          Text(message,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontFamily: 'tajawal', color: c.textMedium)),
-        ]),
-      ),
+    return Column(
+      children: [
+        IconButton(onPressed: () async {
+          final ok = await Helpers.confirmDialog(context);
+          if (ok == true && context.mounted) {
+            await context.read<ProfileProvider>().logout(
+              context,
+            );
+          }
+        }, icon: Icon(Icons.logout)),
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Icon(icon, size: 52, color: c.textLight),
+              const SizedBox(height: 10),
+              Text(message,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontFamily: 'tajawal', color: c.textMedium)),
+            ]),
+          ),
+        ),
+      ],
     );
   }
 }
