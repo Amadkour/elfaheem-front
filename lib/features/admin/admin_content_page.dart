@@ -1,0 +1,278 @@
+// lib/features/admin/admin_content_page.dart — Terms & Conditions + About editors (AR + EN).
+library;
+
+import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:provider/provider.dart';
+
+import 'admin_common.dart';
+import 'admin_list.dart';
+import 'admin_providers.dart';
+
+class AdminContentPage extends StatelessWidget {
+  const AdminContentPage({super.key});
+
+  @override
+  Widget build(BuildContext context) => ChangeNotifierProvider(
+        create: (_) => AdminContentProvider()..load(),
+        child: const _View(),
+      );
+}
+
+class _View extends StatelessWidget {
+  const _View();
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.watch<AdminContentProvider>();
+    final c = context.colors;
+
+    Widget body;
+    if (p.sections.isEmpty && p.termsMeta == null && p.aboutInfo == null && p.isLoading) {
+      body = const Center(child: CircularProgressIndicator());
+    } else if (p.error != null && p.sections.isEmpty && p.termsMeta == null) {
+      body = ErrorRetry(message: p.error!, onRetry: p.load);
+    } else {
+      final about = p.aboutInfo;
+      final meta = p.termsMeta;
+      body = RefreshIndicator(
+        onRefresh: p.load,
+        child: ListView(padding: const EdgeInsets.fromLTRB(14, 12, 14, 90), children: [
+          Section(
+            title: t('من نحن', 'About'),
+            trailing: TextButton.icon(
+              icon: const Icon(Icons.edit_rounded, size: 18),
+              label: Text(t('تعديل', 'Edit')),
+              onPressed: () => _aboutForm(context, p),
+            ),
+            child: about == null
+                ? Text(t('لم تُضبط بعد', 'Not set yet'), style: TextStyle(fontFamily: 'tajawal', color: c.textLight))
+                : Column(children: [
+                    KeyValue(t('الاسم', 'Name'), '${asStr(about['name_ar'])} / ${asStr(about['name_en'])}'),
+                    KeyValue(t('الشعار', 'Tagline'), '${asStr(about['tagline_ar'])} / ${asStr(about['tagline_en'])}'),
+                    KeyValue(t('الرسالة', 'Mission'), asStr(about['mission_ar'])),
+                  ]),
+          ),
+          Section(
+            title: t('الشروط والأحكام', 'Terms & conditions'),
+            trailing: TextButton.icon(
+              icon: const Icon(Icons.edit_rounded, size: 18),
+              label: Text(t('الإصدار', 'Version')),
+              onPressed: () => _metaForm(context, p),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              if (meta != null) ...[
+                KeyValue(t('الإصدار', 'Version'), asStr(meta['version'])),
+                KeyValue(t('آخر تحديث', 'Last updated'), '${asStr(meta['last_updated_ar'])} / ${asStr(meta['last_updated_en'])}'),
+              ] else
+                Text(t('لا توجد بيانات إصدار', 'No version info'), style: TextStyle(fontFamily: 'tajawal', color: c.textLight)),
+            ]),
+          ),
+          for (final s in p.sections)
+            RowCard(
+              onTap: () => _sectionForm(context, p, existing: s),
+              child: Row(children: [
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(asStr(s['title_ar'], asStr(s['title_en'])),
+                        style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
+                    Text(asStr(s['body_ar']),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: c.textMedium)),
+                  ]),
+                ),
+                if (!asBool(s['is_active'], true)) StatusChip(t('مخفي', 'Hidden'), c.warning),
+                IconButton(
+                  icon: Icon(Icons.delete_outline_rounded, color: c.danger),
+                  onPressed: () async {
+                    final ok = await confirm(context, message: t('حذف هذا القسم؟', 'Delete this section?'), danger: true);
+                    if (ok) await p.deleteSection(asInt(s['id']));
+                  },
+                ),
+              ]),
+            ),
+        ]),
+      );
+    }
+
+    return Directionality(
+      textDirection: dir,
+      child: Scaffold(
+        backgroundColor: c.background,
+        appBar: AppBar(title: Text(t('الشروط ومن نحن', 'Terms & About'), style: const TextStyle(fontFamily: 'tajawal'))),
+        floatingActionButton: FloatingActionButton.extended(
+          backgroundColor: c.primary,
+          onPressed: () => _sectionForm(context, p),
+          icon: const Icon(Icons.add_rounded, color: Colors.white),
+          label: Text(t('إضافة قسم', 'Add section'), style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
+        ),
+        body: body,
+      ),
+    );
+  }
+}
+
+String? _nz(TextEditingController c) => c.text.trim().isEmpty ? null : c.text.trim();
+
+Future<void> _aboutForm(BuildContext context, AdminContentProvider p) {
+  final a = p.aboutInfo ?? {};
+  final nAr = TextEditingController(text: asStr(a['name_ar']));
+  final nEn = TextEditingController(text: asStr(a['name_en']));
+  final tAr = TextEditingController(text: asStr(a['tagline_ar']));
+  final tEn = TextEditingController(text: asStr(a['tagline_en']));
+  final mAr = TextEditingController(text: asStr(a['mission_ar']));
+  final mEn = TextEditingController(text: asStr(a['mission_en']));
+  bool busy = false;
+
+  return showAdminSheet(context, (ctx) {
+    return StatefulBuilder(builder: (ctx, setS) {
+      return Column(mainAxisSize: MainAxisSize.min, children: [
+        SheetHeader(t('من نحن', 'About')),
+        Flexible(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+            child: Column(children: [
+              Field(controller: nAr, label: t('الاسم (عربي)', 'Name (AR)')),
+              Field(controller: nEn, label: t('الاسم (إنجليزي)', 'Name (EN)'), ltr: true),
+              Field(controller: tAr, label: t('الشعار (عربي)', 'Tagline (AR)')),
+              Field(controller: tEn, label: t('الشعار (إنجليزي)', 'Tagline (EN)'), ltr: true),
+              Field(controller: mAr, label: t('الرسالة (عربي)', 'Mission (AR)'), maxLines: 3),
+              Field(controller: mEn, label: t('الرسالة (إنجليزي)', 'Mission (EN)'), maxLines: 3, ltr: true),
+              PrimaryButton(
+                label: t('حفظ', 'Save'),
+                busy: busy,
+                onPressed: () async {
+                  setS(() => busy = true);
+                  final ok = await p.saveAbout({
+                    'name_ar': _nz(nAr), 'name_en': _nz(nEn),
+                    'tagline_ar': _nz(tAr), 'tagline_en': _nz(tEn),
+                    'mission_ar': _nz(mAr), 'mission_en': _nz(mEn),
+                  });
+                  if (ctx.mounted) {
+                    setS(() => busy = false);
+                    if (ok) Navigator.pop(ctx);
+                  }
+                },
+              ),
+            ]),
+          ),
+        ),
+      ]);
+    });
+  }).whenComplete(() {
+    for (final x in [nAr, nEn, tAr, tEn, mAr, mEn]) {
+      x.dispose();
+    }
+  });
+}
+
+Future<void> _metaForm(BuildContext context, AdminContentProvider p) {
+  final m = p.termsMeta ?? {};
+  final ver = TextEditingController(text: asStr(m['version']));
+  final dAr = TextEditingController(text: asStr(m['last_updated_ar']));
+  final dEn = TextEditingController(text: asStr(m['last_updated_en']));
+  bool busy = false;
+
+  return showAdminSheet(context, (ctx) {
+    return StatefulBuilder(builder: (ctx, setS) {
+      return Column(mainAxisSize: MainAxisSize.min, children: [
+        SheetHeader(t('إصدار الشروط', 'Terms version')),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+          child: Column(children: [
+            Field(controller: ver, label: t('رقم الإصدار', 'Version'), ltr: true),
+            Field(controller: dAr, label: t('آخر تحديث (عربي)', 'Last updated (AR)')),
+            Field(controller: dEn, label: t('آخر تحديث (إنجليزي)', 'Last updated (EN)'), ltr: true),
+            PrimaryButton(
+              label: t('حفظ', 'Save'),
+              busy: busy,
+              onPressed: () async {
+                setS(() => busy = true);
+                final ok = await p.saveMeta({'version': _nz(ver), 'last_updated_ar': _nz(dAr), 'last_updated_en': _nz(dEn)});
+                if (ctx.mounted) {
+                  setS(() => busy = false);
+                  if (ok) Navigator.pop(ctx);
+                }
+              },
+            ),
+          ]),
+        ),
+      ]);
+    });
+  }).whenComplete(() {
+    for (final x in [ver, dAr, dEn]) {
+      x.dispose();
+    }
+  });
+}
+
+Future<void> _sectionForm(BuildContext context, AdminContentProvider p, {Map<String, dynamic>? existing}) {
+  final icon = TextEditingController(text: asStr(existing?['icon_name'], 'gavel'));
+  final tAr = TextEditingController(text: asStr(existing?['title_ar']));
+  final tEn = TextEditingController(text: asStr(existing?['title_en']));
+  final bAr = TextEditingController(text: asStr(existing?['body_ar']));
+  final bEn = TextEditingController(text: asStr(existing?['body_en']));
+  final order = TextEditingController(text: asStr(existing?['order'], '${p.sections.length + 1}'));
+  bool active = asBool(existing?['is_active'], true);
+  bool busy = false;
+
+  return showAdminSheet(context, (ctx) {
+    return StatefulBuilder(builder: (ctx, setS) {
+      return Column(mainAxisSize: MainAxisSize.min, children: [
+        SheetHeader(existing == null ? t('إضافة قسم', 'Add section') : t('تعديل القسم', 'Edit section')),
+        Flexible(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+            child: Column(children: [
+              Field(controller: tAr, label: t('العنوان (عربي)', 'Title (AR)')),
+              Field(controller: tEn, label: t('العنوان (إنجليزي)', 'Title (EN)'), ltr: true),
+              Field(controller: bAr, label: t('النص (عربي)', 'Body (AR)'), maxLines: 5),
+              Field(controller: bEn, label: t('النص (إنجليزي)', 'Body (EN)'), maxLines: 5, ltr: true),
+              Row(children: [
+                Expanded(child: Field(controller: icon, label: t('اسم الأيقونة', 'Icon name'), ltr: true)),
+                const SizedBox(width: 10),
+                Expanded(child: Field(controller: order, label: t('الترتيب', 'Order'), keyboard: TextInputType.number)),
+              ]),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(t('ظاهر للمستخدمين', 'Visible to users'), style: const TextStyle(fontFamily: 'tajawal')),
+                value: active,
+                onChanged: (v) => setS(() => active = v),
+              ),
+              PrimaryButton(
+                label: t('حفظ', 'Save'),
+                busy: busy,
+                onPressed: () async {
+                  if (tAr.text.trim().isEmpty || bAr.text.trim().isEmpty) {
+                    toast(t('العنوان والنص بالعربية مطلوبان', 'Arabic title and body are required'), error: true);
+                    return;
+                  }
+                  setS(() => busy = true);
+                  final body = <String, dynamic>{
+                    'icon_name': icon.text.trim().isEmpty ? 'gavel' : icon.text.trim(),
+                    'title_ar': tAr.text.trim(),
+                    'title_en': _nz(tEn),
+                    'body_ar': bAr.text.trim(),
+                    'body_en': _nz(bEn),
+                    'order': int.tryParse(order.text.trim()) ?? 0,
+                    'is_active': active,
+                  };
+                  final ok = await p.saveSection(id: existing == null ? null : asInt(existing['id']), body: body);
+                  if (ctx.mounted) {
+                    setS(() => busy = false);
+                    if (ok) Navigator.pop(ctx);
+                  }
+                },
+              ),
+            ]),
+          ),
+        ),
+      ]);
+    });
+  }).whenComplete(() {
+    for (final x in [icon, tAr, tEn, bAr, bEn, order]) {
+      x.dispose();
+    }
+  });
+}

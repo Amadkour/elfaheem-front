@@ -31,8 +31,10 @@ import 'features/auth/verified_screen.dart';
 import 'features/shared/notification/notification_service.dart';
 import 'features/shared/notification/notifications_screen.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'features/shared/subscription/subscription_screen.dart';
 import 'features/student/courses/details/course_detail_screen.dart';
 import 'features/teacher/dashboard/teacher_dashboard_screen.dart';
+import 'features/admin/admin_dashboard_screen.dart';
 import 'features/shared/profile/profile_provider.dart';
 import 'firebase_options.dart';
 
@@ -143,14 +145,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> {
     }
 
     final auth = context.read<AuthProvider>();
-    final String initialRoute;
-    if (!auth.isAuthenticated) {
-      initialRoute = '/login';
-    } else if (auth.isTeacher) {
-      initialRoute = '/teacher_dashboard';
-    } else {
-      initialRoute = '/dashboard';
-    }
+    final String initialRoute = auth.isAuthenticated ? auth.homeRoute : '/login';
 
     final isDark = context.watch<ProfileProvider>().darkMode;
     final appName = RemoteConfigService.instance.appName;
@@ -226,6 +221,10 @@ class _ElFaheemAppState extends State<ElFaheemApp> {
         return _fade(const _Guard(child: DashboardScreen()), settings);
       case '/teacher_dashboard':
         return _fade(const _Guard(child: TeacherDashboardScreen()), settings);
+      case '/admin_dashboard':
+        return _fade(const _Guard(child: AdminDashboardScreen()), settings);
+      case '/subscription':
+        return _fade(const _Guard(child: SubscriptionScreen()), settings);
       case '/course-detail':
         final course = settings.arguments as CourseModel;
         return _fade(
@@ -337,9 +336,7 @@ class _NotFoundScreen extends StatelessWidget {
             const SizedBox(height: 20),
             TextButton(
               onPressed: () => Navigator.of(context).pushReplacementNamed(
-                context.read<AuthProvider>().isTeacher
-                    ? '/teacher_dashboard'
-                    : '/dashboard',
+                context.read<AuthProvider>().homeRoute,
               ),
               child: Text(
                 'home'.tr,

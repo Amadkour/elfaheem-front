@@ -872,6 +872,14 @@ class ApiClient {
         return handler.next(error);
       }
 
+      // 402 SUBSCRIPTION_REQUIRED → the admin turned subscriptions on and this
+      // student has no active plan: send them to the paywall (once).
+      if (status == 402 && needsAuth) {
+        final (code, _) = ApiException.codedDetail(error.response?.data);
+        if (code == 'SUBSCRIPTION_REQUIRED') _showPaywall();
+        return handler.next(error);
+      }
+
       if (status != 401 || !needsAuth) {
         return handler.next(error);
       }
@@ -1051,6 +1059,18 @@ class ApiClient {
   /// not second-guess the server. DeviceSecurityProvider.check() is only used
   /// to fill the dialog (pending request, monthly limit, can-request); if it
   /// fails the dialog still opens with the plain message.
+  bool _paywallOpen = false;
+
+  void _showPaywall() {
+    if (_paywallOpen) return;
+    final nav = navigatorKey.currentState;
+    if (nav == null) return;
+    _paywallOpen = true;
+    nav
+        .pushNamedAndRemoveUntil('/subscription', (route) => false)
+        .whenComplete(() => _paywallOpen = false);
+  }
+
   void _showDeviceBlocked({Duration delay = Duration.zero,int? courseId}) {
     if (_deviceDialogOpen) return;
     _deviceDialogOpen = true;
@@ -1160,6 +1180,54 @@ class ApiClient {
       );
 
   // ── DELETE ────────────────────────────────────────────────────────────────
+
+  /// multipart/form-data POST where the file is OPTIONAL (e.g. the subscription
+  /// form: a free plan has no receipt image, a paid plan does).
+  Future<dynamic> postForm(
+      String path, {
+        required Map<String, dynamic> fields,
+        String? fileField,
+        String? fileName,
+        Uint8List? fileBytes,
+        bool auth = true,
+      }) {
+    String mime = 'image/jpeg';
+    final lower = (fileName ?? '').toLowerCase();
+    if (lower.endsWith('.png')) mime = 'image/png';
+    if (lower.endsWith('.webp')) mime = 'image/webp';
+    if (lower.endsWith('.gif')) mime = 'image/gif';
+    final form = FormData.fromMap({
+      for (final e in fields.entries)
+        if (e.value != null) e.key: e.value,
+      if (fileField != null && fileBytes != null)
+        fileField: MultipartFile.fromBytes(
+          fileBytes,
+          filename: (fileName == null || fileName.isEmpty) ? 'receipt.jpg' : fileName,
+          contentType: MediaType.parse(mime),
+        ),
+    });
+    return _execute(
+          () => _dio.post(path, data: form, options: _fileOpts(auth: auth)),
+    );
+  }
+
+  /// PATCH (used by the About / Terms / app-version admin endpoints).
+  Future<dynamic> patch(
+      String path, {
+        dynamic body,
+        Map<String, dynamic>? queryParams,
+        bool auth = true,
+        CancelToken? cancelToken,
+      }) =>
+      _execute(
+            () => _dio.patch(
+          path,
+          data: body,
+          queryParameters: queryParams,
+          cancelToken: cancelToken,
+          options: _jsonOpts(auth: auth, method: 'PATCH'),
+        ),
+      );
 
   Future<dynamic> delete(
       String path, {

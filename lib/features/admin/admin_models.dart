@@ -1,0 +1,207 @@
+// lib/features/admin/admin_models.dart — typed views of the /api/v1/admin/* JSON.
+library;
+
+import 'package:flutter_education_app/config/app_config.dart';
+
+import 'admin_common.dart';
+
+class SubInfo {
+  SubInfo(this.j);
+  final Map<String, dynamic> j;
+
+  int get id => asInt(j['id']);
+  String get planCode => asStr(j['plan_code']);
+  String get status => asStr(j['status']); // pending|active|rejected|expired|cancelled
+  String? get startsAt => asStrOrNull(j['starts_at']);
+  String? get endsAt => asStrOrNull(j['ends_at']);
+  double get amount => asDouble(j['amount']);
+  String get currency => asStr(j['currency']);
+  String? get paymentMethod => asStrOrNull(j['payment_method']);
+  String? get rejectionReason => asStrOrNull(j['rejection_reason']);
+  bool get grantedByAdmin => asBool(j['granted_by_admin']);
+  String? get createdAt => asStrOrNull(j['created_at']);
+  // admin list only
+  int get studentId => asInt(j['student_id']);
+  String get studentName => asStr(j['student_name']);
+  String get studentGmail => asStr(j['student_gmail']);
+  String? get senderName => asStrOrNull(j['sender_name']);
+  String? get senderPhone => asStrOrNull(j['sender_phone']);
+  String? get transferReference => asStrOrNull(j['transfer_reference']);
+  String? get proofImageUrl => asStrOrNull(j['proof_image_url']);
+}
+
+class EnrolledCourse {
+  EnrolledCourse(this.id, this.name, this.status);
+  final int id;
+  final String name;
+  final String status;
+}
+
+class AdminUser {
+  AdminUser(this.j)
+      : enrolledCourses = asMapList(j['enrolled_courses'])
+            .map((e) => EnrolledCourse(
+                asInt(e['id']), asStr(e['name']), asStr(e['status'])))
+            .toList(),
+        subscription =
+            j['subscription'] is Map ? SubInfo(asMap(j['subscription'])) : null;
+
+  final Map<String, dynamic> j;
+  final List<EnrolledCourse> enrolledCourses;
+  final SubInfo? subscription;
+
+  int get id => asInt(j['id']);
+  String get name => asStr(j['name']);
+  String get gmail => asStr(j['gmail']);
+  String get phone => asStr(j['phone']);
+  String get role => asStr(j['role']);
+  String get country => asStr(j['country']);
+  String? get dob => asStrOrNull(j['dob']);
+  String? get imageUrl => asStrOrNull(j['image_url']);
+  bool get isActive => asBool(j['is_active']);
+  bool get isVerified => asBool(j['is_verified']);
+  bool get pendingDeletion => asBool(j['pending_deletion']);
+  String? get createdAt => asStrOrNull(j['created_at']);
+  String? get lastLogin => asStrOrNull(j['last_login']);
+  int get loginTimes => asInt(j['login_times']);
+  int get coursesCount => asInt(j['courses_count']);
+  double get netEarnings => asDouble(j['net_earnings']);
+
+  bool get hasActiveSubscription => subscription?.status == 'active';
+}
+
+class AdminDevice {
+  AdminDevice(this.j);
+  final Map<String, dynamic> j;
+  int get id => asInt(j['id']);
+  String get deviceName => asStr(j['device_name'], '—');
+  String get deviceId => asStr(j['device_id']);
+  String? get boundAt => asStrOrNull(j['bound_at']);
+  String? get lastSeenAt => asStrOrNull(j['last_seen_at']);
+}
+
+class UserDetail {
+  UserDetail(this.j)
+      : devices = asMapList(j['devices']).map(AdminDevice.new).toList(),
+        subscriptions =
+            asMapList(j['subscriptions']).map((e) => SubInfo(e)).toList();
+  final Map<String, dynamic> j;
+  final List<AdminDevice> devices;
+  final List<SubInfo> subscriptions;
+
+  AdminUser get user => AdminUser(j);
+  String get bio => asStr(j['bio']);
+  String? get lastDeviceSwitchAt => asStrOrNull(j['last_device_switch_at']);
+  List<Map<String, dynamic>> get enrollments => asMapList(j['enrollments']);
+  List<Map<String, dynamic>> get payments => asMapList(j['payments']);
+}
+
+class PaymentSettings {
+  PaymentSettings(this.j);
+  final Map<String, dynamic> j;
+  String? get provider => asStrOrNull(j['payment_provider']);
+  List<String>? get allowedMethods => j['allowed_methods'] is List
+      ? (j['allowed_methods'] as List).map((e) => '$e').toList()
+      : null;
+  double? get feePercent =>
+      j['platform_fee_percent'] == null ? null : asDouble(j['platform_fee_percent']);
+  double get effectiveFeePercent => asDouble(j['effective_platform_fee_percent']);
+}
+
+class AdminCourse {
+  AdminCourse(this.j) : paymentSettings = PaymentSettings(asMap(j['payment_settings']));
+  final Map<String, dynamic> j;
+  final PaymentSettings paymentSettings;
+
+  int get id => asInt(j['id']);
+  String get name => asStr(j['name']);
+  String get description => asStr(j['description']);
+  double get fees => asDouble(j['fees']);
+  String get currency => asStr(j['currency'], 'EGP');
+  String get type => asStr(j['type']);
+  String get status => asStr(j['status']); // in_progress|completed
+  bool get isPublished => asBool(j['is_published']);
+  int? get maxStudents => j['max_students'] == null ? null : asInt(j['max_students']);
+  String? get imageUrl => asStrOrNull(j['image_url']);
+  int? get categoryId => j['category_id'] == null ? null : asInt(j['category_id']);
+  int get teacherId => asInt(j['teacher_id']);
+  String get teacherName => asStr(j['teacher_name']);
+  int get studentsCount => asInt(j['students_count']);
+  int get paidCount => asInt(j['paid_count']);
+  double get income => asDouble(j['income']);
+  int get pendingPayments => asInt(j['pending_payments']);
+  List<Map<String, dynamic>> get recentPayments => asMapList(j['recent_payments']);
+}
+
+class AdminCategory {
+  AdminCategory(this.j);
+  final Map<String, dynamic> j;
+  int get id => asInt(j['id']);
+  String get nameAr => asStr(j['name_ar']);
+  String get nameEn => asStr(j['name_en']);
+  String get display => AppConfig.lang == 'ar'
+      ? (nameAr.isNotEmpty ? nameAr : nameEn)
+      : (nameEn.isNotEmpty ? nameEn : nameAr);
+  String get description => asStr(j['description']);
+  int? get parentId => j['parent_id'] == null ? null : asInt(j['parent_id']);
+  int get coursesCount => asInt(j['courses_count']);
+}
+
+class Plan {
+  Plan(this.j);
+  final Map<String, dynamic> j;
+  int get id => asInt(j['id']);
+  String get code => asStr(j['code']);
+  String get nameAr => asStr(j['name_ar']);
+  String get nameEn => asStr(j['name_en']);
+  String get name => t(nameAr, nameEn);
+  double get price => asDouble(j['price']);
+  String get currency => asStr(j['currency'], 'EGP');
+  int get durationDays => asInt(j['duration_days'], 30);
+  bool get isActive => asBool(j['is_active'], true);
+}
+
+class ThemePresetModel {
+  ThemePresetModel(this.j);
+  final Map<String, dynamic> j;
+  int get id => asInt(j['id']);
+  String get key => asStr(j['key']);
+  String get nameAr => asStr(j['name_ar']);
+  String get nameEn => asStr(j['name_en']);
+  String get name => t(nameAr, nameEn);
+  bool get isBuiltin => asBool(j['is_builtin']);
+  Map<String, String> get colors =>
+      asMap(j['colors']).map((k, v) => MapEntry(k, '$v'));
+}
+
+class FeatureItem {
+  FeatureItem(this.j);
+  final Map<String, dynamic> j;
+  String get key => asStr(j['key']);
+  String get label => t(asStr(j['label_ar'], key), asStr(j['label_en'], key));
+  List<String> get hiddenOn =>
+      (j['hidden_on'] is List) ? (j['hidden_on'] as List).map((e) => '$e').toList() : <String>[];
+}
+
+class Overview {
+  Overview(this.j);
+  final Map<String, dynamic> j;
+  int i(String k) => asInt(j[k]);
+  double d(String k) => asDouble(j[k]);
+  bool get subscriptionRequired => asBool(j['subscription_required']);
+}
+
+/// Pagination envelope used by every list endpoint.
+class PageData {
+  PageData(Map<String, dynamic> j)
+      : items = asMapList(j['items']),
+        total = asInt(j['total']),
+        page = asInt(j['page'], 1),
+        pages = asInt(j['pages'], 1),
+        extra = j;
+  final List<Map<String, dynamic>> items;
+  final int total;
+  final int page;
+  final int pages;
+  final Map<String, dynamic> extra;
+}

@@ -61,7 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (success) {
       bool isTeacher = authProvider.currentUser?.role == 'teacher';
 
-      if (authProvider.currentUser?.role == 'super-admin') {
+      if ( ['super-admin','admin','developer'].contains(authProvider.currentUser?.role) ) {
         await Helpers.confirmDialog(
           context,
           title: 'select personal',
