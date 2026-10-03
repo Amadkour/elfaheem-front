@@ -9,6 +9,7 @@ import '../../../config/routes.dart';
 import '../../../config/theme/app_theme.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_bar.dart';
+import '../../../utils/widget/app_navigator.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../teacher/sessions/sessions_provider.dart';
 import 'notifications_provider.dart';
@@ -88,8 +89,9 @@ class _NotifGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<NotificationsProvider>();
+    // FIX: "today" used allNotifs, so every notification showed in both sections.
     List<NotificationModel> notifs = group == NotifGroup.today
-        ? provider.allNotifs
+        ? provider.todayNotifs
         : provider.yesterdayNotifs;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -167,13 +169,12 @@ class _NotifTile extends StatelessWidget {
 
     return GestureDetector(
       onTap: () async {
-        final navigator = Navigator.of(context);
         final provider = context.read<NotificationsProvider>();
-        if(!notif.isRead) {
+        if (!notif.isRead) {
           await provider.markAsRead(notif.id);
         }
-
-       // navigator.pushNamed(AppRoutes.courseDetail,arguments: notif.sourceId);
+        // Opens the course profile (student or teacher version) / profile / etc. — resolved by the server.
+        await AppNavigator.openNotification(notif.id);
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),

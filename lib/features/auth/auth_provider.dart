@@ -126,15 +126,15 @@ class AuthProvider extends BaseProvider {
   String? pendingRole; // role from the 403 body, if the backend sends it
   UserModel? get currentUser => _currentUser;
 
-  bool get isStudent => persona == 'student';
+  bool get isStudent => currentUser?.role == 'student';
 
   bool get selectedRoleIsStudent => selectedRole!['text'] == 'student';
 
-  bool get isTeacher => persona == 'teacher';
+  bool get isTeacher => currentUser?.role == 'teacher';
 
-  bool get isAdmin => persona == 'admin';
+  bool get isAdmin => currentUser?.role == 'admin';
 
-  bool get isSuper => persona == 'super-admin';
+  bool get isSuper => currentUser?.role == 'super-admin';
 
   bool get isAuthenticated => _storage.isAuthenticated();
 
@@ -153,7 +153,6 @@ class AuthProvider extends BaseProvider {
     if (saved != null) {
       _currentUser = UserModel.fromJson(saved);
     }
-    persona = _storage.getPersona ?? 'student';
   }
 
   // ── Step 1: Register ──────────────────────────────────────────────────────────
@@ -382,15 +381,6 @@ class AuthProvider extends BaseProvider {
     notifyListeners();
     return false;
   }
-
-  Future<void> savePersona(String persona) async {
-    log("=================[ save Persona is: $persona ]");
-    await _storage.savePersona(persona);
-    persona = _storage.getPersona ?? 'student';
-  }
-
-  String persona = 'student';
-
   // ── Refresh Token ─────────────────────────────────────────────────────────────
 
   Future<bool> refreshToken(String refreshToken) async {

@@ -17,6 +17,8 @@ import 'package:flutter_education_app/utils/remote_config_service.dart';
 import 'package:flutter_education_app/utils/top_route_observer.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
+import 'package:flutter_education_app/utils/widget/deep_link_service.dart';
+import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:provider/provider.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -25,14 +27,17 @@ import 'config/theme/app_theme.dart';
 import 'config/storage_service.dart';
 import 'config/theme/theme_config_provider.dart';
 import 'core/providers.dart';
+import 'features/admin/admin_view_as_page.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/register_screen.dart';
 import 'features/auth/verified_screen.dart';
+import 'features/shared/notification/admin_message_dialogs.dart';
 import 'features/shared/notification/notification_service.dart';
 import 'features/shared/notification/notifications_screen.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'features/shared/subscription/subscription_screen.dart';
 import 'features/student/courses/details/course_detail_screen.dart';
+import 'features/student/courses/details/course_link_loader.dart';
 import 'features/teacher/dashboard/teacher_dashboard_screen.dart';
 import 'features/admin/admin_dashboard_screen.dart';
 import 'features/shared/profile/profile_provider.dart';
@@ -42,6 +47,7 @@ late StorageService _storage;
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
+  usePathUrlStrategy();
   if (!kIsWeb) {
     runZonedGuarded(() async {
       WidgetsFlutterBinding.ensureInitialized();
@@ -116,9 +122,14 @@ class ElFaheemApp extends StatefulWidget {
   State<ElFaheemApp> createState() => _ElFaheemAppState();
 }
 
-class _ElFaheemAppState extends State<ElFaheemApp> {
+class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
   @override
   void initState() {
+    WidgetsBinding.instance.addObserver(this);
+
+    ViewAsBanner.onExit = () => navigatorKey.currentState
+        ?.pushNamedAndRemoveUntil('/admin_dashboard', (r) => false);
+
     // NOTE: load() must NOT be called synchronously here. ThemeConfigProvider
     // .load() calls notifyListeners() before its first await, and calling
     // that mid-mount (while sibling providers like NotificationsProvider are
@@ -135,6 +146,20 @@ class _ElFaheemAppState extends State<ElFaheemApp> {
   }
 
   @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState s) {
+    if (s == AppLifecycleState.resumed &&
+        context.read<AuthProvider>().isAuthenticated) {
+      AdminMessageDialogs.checkPending();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final tc = context.watch<ThemeConfigProvider>();
 
@@ -145,7 +170,9 @@ class _ElFaheemAppState extends State<ElFaheemApp> {
     }
 
     final auth = context.read<AuthProvider>();
-    final String initialRoute = auth.isAuthenticated ? auth.homeRoute : '/login';
+    final String initialRoute = auth.isAuthenticated
+        ? auth.homeRoute
+        : '/login';
 
     final isDark = context.watch<ProfileProvider>().darkMode;
     final appName = RemoteConfigService.instance.appName;
@@ -173,6 +200,9 @@ class _ElFaheemAppState extends State<ElFaheemApp> {
           themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
           initialRoute: initialRoute,
           onGenerateRoute: _router,
+          onGenerateInitialRoutes: (name) => [
+            _router(RouteSettings(name: name))!,
+          ],
           localizationsDelegates: const [
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
@@ -199,6 +229,14 @@ class _ElFaheemAppState extends State<ElFaheemApp> {
   }
 
   Route<dynamic>? _router(RouteSettings settings) {
+    final link = DeepLinkService.parse(settings.name);              // /c/12?ref=5
+    if (link != null) {
+      if (!context.read<AuthProvider>().isAuthenticated) {          // open it right after login
+        DeepLinkService.instance.setPending(link);
+        return _fade(const LoginScreen(), const RouteSettings(name: '/login'));
+      }
+      return _fade(_Guard(child: CourseLinkLoader(courseId: link.courseId, ref: link.ref)), settings);
+    }
     switch (settings.name) {
       case '/login':
         return _fade(const LoginScreen(), settings);
@@ -279,21 +317,26 @@ class _PremiumLoadingScreen extends StatelessWidget {
 // Auth guard
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _Guard extends StatelessWidget {
+class _Guard extends StatefulWidget {
   final Widget child;
-
   const _Guard({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    if (!context.read<AuthProvider>().isAuthenticated) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+  @override State<_Guard> createState() => _GuardState();
+}
+class _GuardState extends State<_Guard> {
+  @override void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!context.read<AuthProvider>().isAuthenticated) {
         Navigator.of(context).pushReplacementNamed('/login');
-      });
-      return const SizedBox.shrink();
-    }
-    return child;
+        return;
+      }
+      DeepLinkService.instance.consumePending();     // link opened while logged out
+      AdminMessageDialogs.checkPending();            // dialogs sent by admins
+    });
   }
+  @override Widget build(BuildContext context) =>
+      context.read<AuthProvider>().isAuthenticated ? widget.child : const SizedBox.shrink();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -335,9 +378,9 @@ class _NotFoundScreen extends StatelessWidget {
               ),
             const SizedBox(height: 20),
             TextButton(
-              onPressed: () => Navigator.of(context).pushReplacementNamed(
-                context.read<AuthProvider>().homeRoute,
-              ),
+              onPressed: () => Navigator.of(
+                context,
+              ).pushReplacementNamed(context.read<AuthProvider>().homeRoute),
               child: Text(
                 'home'.tr,
                 style: TextStyle(

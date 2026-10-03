@@ -20,11 +20,13 @@ import 'admin_courses_page.dart';
 import 'admin_list.dart' show RowCard;
 import 'admin_features_page.dart';
 import 'admin_overview_page.dart';
+import 'admin_send_message_page.dart';
 import 'admin_subscriptions_page.dart';
 import 'admin_system_page.dart';
 import 'admin_theme_page.dart';
 import 'admin_users_page.dart';
 import 'admin_versions_page.dart';
+import 'admin_view_as_page.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -42,10 +44,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final c = context.colors;
 
     // Defence in depth: the server enforces roles on every call anyway.
-    if (!(auth.isAdmin || auth.isSuper)) {
+    print("user role is: ${auth.currentUser?.role ?? ''}");
+    if (!['admin', 'super-admin'].contains(auth.currentUser?.role ?? '')) {
       return Directionality(
         textDirection: dir,
-        child: Scaffold(body: EmptyState(t('هذه الصفحة للمديرين فقط', 'Admins only'), icon: Icons.lock_rounded)),
+        child: Scaffold(
+          body: EmptyState(
+            t('هذه الصفحة للمديرين فقط', 'Admins only'),
+            icon: Icons.lock_rounded,
+          ),
+        ),
       );
     }
 
@@ -67,7 +75,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       child: Scaffold(
         backgroundColor: c.background,
         appBar: AppBar(
-          title: Text(titles[_tab], style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
+          title: Text(
+            titles[_tab],
+            style: const TextStyle(
+              fontFamily: 'tajawal',
+              fontWeight: FontWeight.w800,
+            ),
+          ),
           actions: [
             IconButton(
               tooltip: t('تسجيل الخروج', 'Log out'),
@@ -86,10 +100,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           selectedIndex: _tab,
           onDestinationSelected: (i) => setState(() => _tab = i),
           destinations: [
-            NavigationDestination(icon: const Icon(Icons.dashboard_rounded), label: t('الرئيسية', 'Overview')),
-            NavigationDestination(icon: const Icon(Icons.school_rounded), label: t('الطلاب', 'Students')),
-            NavigationDestination(icon: const Icon(Icons.menu_book_rounded), label: t('الكورسات', 'Courses')),
-            NavigationDestination(icon: const Icon(Icons.apps_rounded), label: t('المزيد', 'More')),
+            NavigationDestination(
+              icon: const Icon(Icons.dashboard_rounded),
+              label: t('الرئيسية', 'Overview'),
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.school_rounded),
+              label: t('الطلاب', 'Students'),
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.menu_book_rounded),
+              label: t('الكورسات', 'Courses'),
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.apps_rounded),
+              label: t('المزيد', 'More'),
+            ),
           ],
         ),
       ),
@@ -97,8 +123,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 }
 
-Future<bool> _confirmLogout(BuildContext context) =>
-    confirm(context, message: t('هل تريد تسجيل الخروج؟', 'Log out?'), danger: true);
+Future<bool> _confirmLogout(BuildContext context) => confirm(
+  context,
+  message: t('هل تريد تسجيل الخروج؟', 'Log out?'),
+  danger: true,
+);
 
 class _MorePage extends StatelessWidget {
   const _MorePage();
@@ -107,42 +136,135 @@ class _MorePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
 
-    Widget tile(IconData icon, Color color, String title, String sub, Widget page) => RowCard(
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => page)),
-          child: Row(children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(12)),
-              child: Icon(icon, color: color),
+    Widget tile(
+      IconData icon,
+      Color color,
+      String title,
+      String sub,
+      Widget page,
+    ) => RowCard(
+      onTap: () =>
+          Navigator.of(context).push(MaterialPageRoute(builder: (_) => page)),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
-                Text(sub, style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight)),
-              ]),
+            child: Icon(icon, color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontFamily: 'tajawal',
+                    fontWeight: FontWeight.w800,
+                    color: c.textDark,
+                  ),
+                ),
+                Text(
+                  sub,
+                  style: TextStyle(
+                    fontFamily: 'tajawal',
+                    fontSize: 12,
+                    color: c.textLight,
+                  ),
+                ),
+              ],
             ),
-            Icon(Icons.chevron_left_rounded, color: c.textLight),
-          ]),
-        );
+          ),
+          Icon(Icons.chevron_left_rounded, color: c.textLight),
+        ],
+      ),
+    );
 
-    return ListView(padding: const EdgeInsets.all(14), children: [
-      tile(Icons.person_pin_rounded, c.purple, t('المعلمون', 'Teachers'), t('إضافة وتعديل وتحكم', 'Add, edit and control'),
-          const AdminUsersPage(role: 'teacher')),
-      tile(Icons.category_rounded, c.success, t('التصنيفات', 'Categories'), t('إدارة تصنيفات الكورسات', 'Manage course categories'),
-          const AdminCategoriesPage()),
-      tile(Icons.card_membership_rounded, c.primary, t('الاشتراكات', 'Subscriptions'),
-          t('مجاني/مدفوع، الأسعار، الطلبات', 'Free/paid, prices, requests'), const AdminSubscriptionsPage()),
-      tile(Icons.devices_rounded, c.warning, t('الأجهزة والدفع', 'Devices & payments'),
-          t('عدد الأجهزة، مدة التبديل، طرق الدفع', 'Device limit, switch period, methods'), const AdminSystemPage()),
-      tile(Icons.palette_rounded, c.purple, t('المظهر', 'Theme'), t('ثيمات جاهزة ومخصصة', 'Built-in and custom themes'),
-          const AdminThemePage()),
-      tile(Icons.toggle_on_rounded, c.success, t('الميزات', 'Features'), t('إخفاء وإظهار الميزات', 'Hide / unhide features'),
-          const AdminFeaturesPage()),
-      tile(Icons.system_update_rounded, c.danger, t('إصدارات التطبيق', 'App versions'),
-          t('نشر وتحديث إجباري', 'Publish and force updates'), const AdminVersionsPage()),
-      tile(Icons.gavel_rounded, c.charcoal, t('الشروط ومن نحن', 'Terms & About'), t('تعديل المحتوى بلغتين', 'Edit bilingual content'),
-          const AdminContentPage()),
-    ]);
+    return ListView(
+      padding: const EdgeInsets.all(14),
+      children: [
+        tile(
+          Icons.campaign_rounded,
+          c.primary,
+          t('إرسال رسالة', 'Send a message'),
+          t('للكل · لطلاب كورس · لطالب محدد', 'All · a course · one student'),
+          const AdminSendMessagePage(),
+        ),
+        if (context.read<AuthProvider>().isSuper)
+          tile(
+            Icons.visibility_rounded,
+            c.warning,
+            t('عرض كمستخدم', 'View as user'),
+            t(
+              'شاهد لوحة طالب أو معلم (قراءة فقط)',
+              'See a student / teacher dashboard (read-only)',
+            ),
+            const AdminViewAsPage(),
+          ),
+        tile(
+          Icons.person_pin_rounded,
+          c.purple,
+          t('المعلمون', 'Teachers'),
+          t('إضافة وتعديل وتحكم', 'Add, edit and control'),
+          const AdminUsersPage(role: 'teacher'),
+        ),
+        tile(
+          Icons.category_rounded,
+          c.success,
+          t('التصنيفات', 'Categories'),
+          t('إدارة تصنيفات الكورسات', 'Manage course categories'),
+          const AdminCategoriesPage(),
+        ),
+        tile(
+          Icons.card_membership_rounded,
+          c.primary,
+          t('الاشتراكات', 'Subscriptions'),
+          t('مجاني/مدفوع، الأسعار، الطلبات', 'Free/paid, prices, requests'),
+          const AdminSubscriptionsPage(),
+        ),
+        tile(
+          Icons.devices_rounded,
+          c.warning,
+          t('الأجهزة والدفع', 'Devices & payments'),
+          t(
+            'عدد الأجهزة، مدة التبديل، طرق الدفع',
+            'Device limit, switch period, methods',
+          ),
+          const AdminSystemPage(),
+        ),
+        tile(
+          Icons.palette_rounded,
+          c.purple,
+          t('المظهر', 'Theme'),
+          t('ثيمات جاهزة ومخصصة', 'Built-in and custom themes'),
+          const AdminThemePage(),
+        ),
+        tile(
+          Icons.toggle_on_rounded,
+          c.success,
+          t('الميزات', 'Features'),
+          t('إخفاء وإظهار الميزات', 'Hide / unhide features'),
+          const AdminFeaturesPage(),
+        ),
+        tile(
+          Icons.system_update_rounded,
+          c.danger,
+          t('إصدارات التطبيق', 'App versions'),
+          t('نشر وتحديث إجباري', 'Publish and force updates'),
+          const AdminVersionsPage(),
+        ),
+        tile(
+          Icons.gavel_rounded,
+          c.charcoal,
+          t('الشروط ومن نحن', 'Terms & About'),
+          t('تعديل المحتوى بلغتين', 'Edit bilingual content'),
+          const AdminContentPage(),
+        ),
+      ],
+    );
   }
 }

@@ -25,6 +25,7 @@ import 'component/recommended_courses_field.dart';
 import 'component/next_courses_field.dart';
 import 'course_form_provider.dart';
 import 'course_reel_field.dart';
+import 'course_privacy_card.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public entry point  — wraps the inner screen in a scoped provider
@@ -59,7 +60,8 @@ class _CourseFormInner extends StatefulWidget {
 class _CourseFormInnerState extends State<_CourseFormInner>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-
+  late bool _isPrivate;
+  final _accessCodeCtrl = TextEditingController();
   late final TextEditingController _titleCtrl;
   late final TextEditingController _descCtrl;
   late final TextEditingController _priceCtrl;
@@ -103,8 +105,8 @@ class _CourseFormInnerState extends State<_CourseFormInner>
   @override
   void initState() {
     super.initState();
-
     final c = widget.course;
+    _isPrivate = widget.course?.isPrivate ?? false;
     // TODO: once `TeacherCourse` exposes a `reelUrl` field (parsed from the
     // `reel_url` key returned by GET /courses/{id}), pass it here so editing
     // an existing course shows its current reel right away:
@@ -170,6 +172,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     }
     _certTitleCtrl.dispose();
     _fadeCtrl.dispose();
+    _accessCodeCtrl.dispose();
     super.dispose();
   }
 
@@ -215,6 +218,8 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     if (_isEdit) {
       result = await formProvider.submitUpdate(
         widget.course!,
+        isPrivate: _isPrivate,
+        accessCode: _accessCodeCtrl.text,
         name: _titleCtrl.text.trim(),
         description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
         fees: double.tryParse(_priceCtrl.text),
@@ -233,6 +238,8 @@ class _CourseFormInnerState extends State<_CourseFormInner>
       result = await formProvider.submitCreate(
         title: _titleCtrl.text.trim(),
         type: type,
+        isPrivate: _isPrivate,
+        accessCode: _accessCodeCtrl.text,
         description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
         fees: double.tryParse(_priceCtrl.text) ?? 0,
         totalHours: double.tryParse(_hoursCtrl.text),
@@ -597,6 +604,13 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                           ),
                         ),
                       ],
+                      CoursePrivacyCard(
+                        isPrivate: _isPrivate,
+                        codeCtrl: _accessCodeCtrl,
+                        courseId: widget.course?.id,                    // edit → loads the current code
+                        onChanged: (v) => setState(() => _isPrivate = v),
+                      ),
+                      const SizedBox(height: 18),
                       // Classification card
                       _FormCard(
                         icon: Icons.category_rounded,

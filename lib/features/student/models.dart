@@ -458,6 +458,7 @@ class CourseSummary with DiscountInfo {
 }
 
 class CourseModel with DiscountInfo {
+  final bool isPrivate;                                   // field
   final String id, name, imageUrl, type;
   final String? description;
   final CategoryModel? category;
@@ -499,6 +500,7 @@ class CourseModel with DiscountInfo {
   final int? discountDays;
 
   CourseModel({
+    this.isPrivate = false,                                 // constructor
     required this.id,
     required this.name,
     required this.imageUrl,
@@ -572,6 +574,7 @@ class CourseModel with DiscountInfo {
     id: j['id'].toString(),
     name: j['name'] as String? ?? '',
     imageUrl: j['image_url'] as String? ?? '',
+    isPrivate: j['is_private'] as bool? ?? false,
     category: j['category'] != null
         ? CategoryModel.fromJson(j['category'] as Map<String, dynamic>)
         : null,

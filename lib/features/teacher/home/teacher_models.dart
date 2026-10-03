@@ -312,6 +312,7 @@ class TeacherCourse with DiscountInfo {
   final RatingSummary? rateSummary;
   final AppCurrency currency;
   final CourseStatus status;
+  final bool isPrivate;
 
   // ── Next courses (ORDERED roadmap) / recommended courses ────────────────
   final List<int> nextCourseIds;
@@ -355,7 +356,7 @@ class TeacherCourse with DiscountInfo {
     required this.progress,
     required this.expectedHours,
     this.rateSummary,
-
+    this.isPrivate = false,
     this.currency = AppCurrency.egp,
     this.status = CourseStatus.inProgress,
     this.nextCourseIds = const [],
@@ -384,6 +385,7 @@ class TeacherCourse with DiscountInfo {
     imageUrl: j['image_url'] as String? ?? '',
     studentsCount: (j['students_count'] as int? ?? 0)+700,
     expectedHours: j['expected_hours'] as double? ?? 0.0,
+    isPrivate: j['is_private'] as bool? ?? false,
     sessionsCount: j['sessions_count'] as int? ?? 0,
     totalHours: (j['total_hours'] as num?)?.toDouble() ?? 0,
     discountDays: j['discount_days'] as int?,

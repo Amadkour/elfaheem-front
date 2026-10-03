@@ -7,7 +7,9 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/teacher/sessions/sessions_provider.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/theme/theme_config_provider.dart';
+import '../../../../utils/helpers.dart';
 import '../../../../utils/widget/base_page.dart';
+import '../../../../utils/widget/deep_link_service.dart';
 import '../../../../utils/widget/rating_widget.dart';
 import '../../../shared/course/course_price_tag.dart';
 import '../../../shared/course/studend_course_roadmap_section.dart';
@@ -25,6 +27,7 @@ import 'components/content.dart';
 import 'components/stat_chip.dart';
 import '../security/device_blocked_dialog.dart';
 import '../security/device_security_provider.dart';
+import 'components/student_course_hero.dart';
 import 'course_detail_provider.dart';
 
 void _openRecommendedCourse(BuildContext context, CourseSummary summary) {
@@ -36,6 +39,10 @@ void _openRecommendedCourse(BuildContext context, CourseSummary summary) {
   );
 }
 
+Future<void> _share(CourseDetailProvider p) async {
+  final copied = await DeepLinkService.shareCourse(courseId: int.parse(p.course.id), courseName: p.course.name);
+  if (copied) Helpers.showMessage('تم نسخ الرابط');
+}
 /// Opens the enrollment flow and, once the student comes back, refreshes the
 /// course details (enrolled state, price, etc). Shared by the enroll button
 /// and by the payment-status banner's "send it again" action so both push
@@ -145,11 +152,13 @@ class _MobileDetail extends StatelessWidget {
                             borderRadius: BorderRadius.circular(20),
                             border: BoxBorder.all(color: Colors.black),
                           ),
-                          child: CourseHero(
-                            course: provider.course.toTeacherModel,
+                          child: StudentCourseHero(
+                            course: provider.course,
                             reelUrl: provider.reelUrl,
                             onBack: () => Navigator.maybePop(context),
                             onRefresh: () => provider.refresh(),
+                            onLike: provider.toggleFavorite,
+                            onShare: () => _share(provider),
                           ),
                         ),
                       ),
@@ -259,14 +268,13 @@ class _WebDetail extends StatelessWidget {
                                       decoration: BoxDecoration(
                                         borderRadius: BorderRadius.circular(20),
                                       ),
-                                      child: CourseHero(
-                                        course: provider.course.toTeacherModel,
+                                      child:StudentCourseHero(
+                                        course: provider.course,
                                         reelUrl: provider.reelUrl,
-                                        onBack: () =>
-                                            Navigator.maybePop(context),
+                                        onBack: () => Navigator.maybePop(context),
                                         onRefresh: () => provider.refresh(),
                                         onLike: provider.toggleFavorite,
-                                        isLike: provider.course.isFavorite,
+                                        onShare: () => _share(provider),
                                       ),
                                     ),
                                     // Stars row

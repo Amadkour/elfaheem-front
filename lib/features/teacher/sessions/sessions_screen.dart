@@ -40,8 +40,6 @@
 //     `watch` — confined to a `SliverMainAxisGroup` so its rebuilds can never
 //     leak into the hero or details card next to it.
 // ─────────────────────────────────────────────────────────────────────────
-
-import 'dart:developer';
 import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
@@ -200,6 +198,7 @@ class _TeacherSessionsView extends StatelessWidget {
                   selector: (_, p) => (p.course, p.reelUrl),
                   builder: (context, data, _) {
                     final (course, reelUrl) = data;
+
                     return CourseHero(
                       course: course,
                       reelUrl: reelUrl,

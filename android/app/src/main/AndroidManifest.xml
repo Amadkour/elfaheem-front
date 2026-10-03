@@ -1,9 +1,10 @@
-<manifest xmlns:tools="http://schemas.android.com/tools"
-    xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Camera & Microphone -->
     <uses-feature android:name="android.hardware.camera" />
     <uses-feature android:name="android.hardware.camera.autofocus" />
+
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
@@ -14,9 +15,13 @@
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
 
     <!-- Bluetooth -->
-    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
 
     <!--
         Foreground Service permissions.
@@ -42,10 +47,10 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
     <application
-        android:usesCleartextTraffic="true"
-        android:label="flutter_education_app"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:label="flutter_education_app"
+        android:usesCleartextTraffic="true">
 
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
@@ -68,12 +73,26 @@
 
         <activity
             android:name=".MainActivity"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:exported="true"
+            android:hardwareAccelerated="true"
             android:launchMode="singleTop"
             android:theme="@style/LaunchTheme"
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
-            android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
+            <meta-data
+                android:name="flutter_deeplinking_enabled"
+                android:value="true" />
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="nextbrain.site"
+                    android:pathPrefix="/c/"
+                    android:scheme="https" />
+            </intent-filter>
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme" />
@@ -91,8 +110,8 @@
         -->
         <service
             android:name=".ScreenCaptureService"
-            android:foregroundServiceType="mediaProjection|microphone"
-            android:exported="false" />
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection|microphone" />
 
         <!--
             flutter_webrtc screen share FGS — required on Android 14.
@@ -103,8 +122,8 @@
         -->
         <service
             android:name="com.cloudwebrtc.webrtc.FlutterRTCMediaProjectionService"
-            android:foregroundServiceType="mediaProjection"
-            android:exported="false" />
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
 
         <meta-data
             android:name="flutterEmbedding"

@@ -10,6 +10,9 @@ import '../../../core/api_client.dart';
 import '../../../main.dart';
 import '../../../utils/top_route_observer.dart';
 import 'package:provider/provider.dart';
+import 'dart:convert';
+import '../../../utils/widget/app_navigator.dart';
+import 'admin_message_dialogs.dart';
 
 // TODO: adjust this path if CourseDetailProvider actually lives elsewhere.
 import 'package:flutter_education_app/features/student/courses/details/course_detail_provider.dart';
@@ -221,6 +224,11 @@ class NotificationService {
     if (data['type'] == 'session_started' || data['type'] == 'session_ended') {
       _refreshCourseDetailIfActive(data['course_id'] as String?);
     }
+    // Admin broadcast shown as a dialog: show it now instead of waiting for the next app start.
+    if (data['type'] == 'admin_message' &&
+        (data['display'] == 'dialog' || data['display'] == 'dialog_action')) {
+      AdminMessageDialogs.checkPending();
+    }
 
     final notification = message.notification;
     if (notification == null) return;
@@ -242,6 +250,7 @@ class NotificationService {
       title: notification.title,
       body: notification.body,
       notificationDetails: _notifDetails,
+      payload: jsonEncode(message.data), // lets a tap on the local notification open the right screen
     );
   }
 
@@ -279,11 +288,20 @@ class NotificationService {
   }
 
   // ── Tap handlers ──────────────────────────────────────────────────────────
+  // Push tap (app in background / terminated): open the course / module the push points to.
   void _onNotificationTap(RemoteMessage message) {
-    navigatorKey.currentState?.pushNamed('/notifications');
+    AppNavigator.openFromPush(Map<String, dynamic>.from(message.data));
   }
 
+  // Tap on the local notification we displayed for a foreground push.
   void _onTap(NotificationResponse response) {
+    try {
+      final p = response.payload;
+      if (p != null && p.isNotEmpty) {
+        AppNavigator.openFromPush(Map<String, dynamic>.from(jsonDecode(p) as Map));
+        return;
+      }
+    } catch (_) {}
     navigatorKey.currentState?.pushNamed('/notifications');
   }
 

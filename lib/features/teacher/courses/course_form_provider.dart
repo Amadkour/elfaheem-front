@@ -358,8 +358,9 @@ class CourseFormProvider extends BaseProvider {
     double fees = 0,
     double? totalHours,
     XFile? logoFile,
-    double? discountPercentage,     // ← new
-    int? discountDays,              // ← new
+    double? discountPercentage,
+    bool isPrivate = false, String? accessCode,
+    int? discountDays,
 
     /// Optional certificate template set up at course-creation time. Both
     /// must be provided together — a template with no title is ignored.
@@ -377,6 +378,8 @@ class CourseFormProvider extends BaseProvider {
         body: {
       'name': title,
       'type': type,
+          'is_private': isPrivate,
+          if (isPrivate && (accessCode ?? '').trim().isNotEmpty) 'access_code': accessCode!.trim(),
       'fees': fees,
       'currency': selectedCurrency.code,
       'description': ?description,
@@ -445,6 +448,8 @@ class CourseFormProvider extends BaseProvider {
       TeacherCourse original, {
         required String name,
         String? description,
+        bool isPrivate = false,
+        String? accessCode,
         double? fees,
         double? totalHours,
         XFile? logoFile,
@@ -459,7 +464,10 @@ class CourseFormProvider extends BaseProvider {
         body: {
       'name': name,
       'description': ?description,
-      'fees': ?fees,
+          'is_private': isPrivate,
+          if (isPrivate && (accessCode ?? '').trim().isNotEmpty) 'access_code': accessCode!.trim(),
+
+          'fees': ?fees,
       'currency': selectedCurrency.code,
       if (selectedSpecialization?['id'] != null)
       'category_id': selectedSpecialization!['id'],

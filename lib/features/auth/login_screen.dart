@@ -1,18 +1,13 @@
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/verified_screen.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
-import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
-import '../../config/theme/app_theme.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../../utils/helpers.dart';
 import '../../utils/widget/primary_button.dart';
-import '../teacher/dashboard/teacher_dashboard_screen.dart';
 import 'auth_provider.dart';
 import 'auth_widgets.dart';
 import 'forget_screen.dart';
@@ -59,34 +54,10 @@ class _LoginScreenState extends State<LoginScreen> {
     );
     if (!mounted) return;
     if (success) {
-      bool isTeacher = authProvider.currentUser?.role == 'teacher';
 
-      if ( ['super-admin','admin','developer'].contains(authProvider.currentUser?.role) ) {
-        await Helpers.confirmDialog(
-          context,
-          title: 'select personal',
-          confirm: 'teacher'.tr,
-          cancel: 'student'.tr,
-          onConfirm: () async {
-            isTeacher = true;
-            Navigator.pop(context);
-          },
-          onCancel: () async {
-            isTeacher = false;
-            Navigator.pop(context);
-          },
-        );
-      }
-      await authProvider.savePersona(isTeacher ? 'teacher' : 'student');
        authProvider.loadCachedUser();
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => isTeacher
-                ? const TeacherDashboardScreen()
-                : const DashboardScreen(),
-          ),
-        );
+        Navigator.of(context).pushNamed(authProvider.homeRoute);
       }
     } else if (authProvider.needsVerification) {
       Helpers.showMessage('account_not_verified'.tr, isError: false);

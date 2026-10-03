@@ -46,6 +46,9 @@ class NotificationModel {
   bool isRead;
   final int sourceId;
 
+  /// Raw `related_type` from the API (course / session / exam / payment / profile …).
+  final String relatedType;
+
   NotificationModel({
     required this.id,
     required this.title,
@@ -54,6 +57,7 @@ class NotificationModel {
     this.iconAsset = '',
     this.isRead = false,
     required this.sourceId,
+    this.relatedType = '',
   });
 
   // ── fromJson ────────────────────────────────────────────────────────────────
@@ -90,11 +94,13 @@ class NotificationModel {
       isRead: json['is_read'] as bool? ?? false,
       iconAsset: iconAsset,
       group: group,
+      relatedType: type,
     );
   }
 
   /// Maps API `type` string → icon asset key expected by the screen.
   static String _resolveIconAsset(String type) {
+    if (type == 'message' || type == 'profile' || type == 'notifications') return '';
     if (type.contains('payment') || type.contains('pay')) return 'payment';
     if (type.contains('badge') ||
         type.contains('certificate') ||
@@ -120,6 +126,7 @@ class NotificationModel {
     iconAsset: iconAsset,
     isRead: isRead ?? this.isRead,
     sourceId: sourceId,
+    relatedType: relatedType,
   );
 }
 
@@ -139,7 +146,7 @@ class NotificationsProvider extends BaseProvider {
 
   /// Larger page to ensure both "today" and "yesterday" buckets fill up
   /// in a single fetch.
-  static const int _pageSize = 30;
+  static const int _pageSize = 30; // sent as `limit`; hasMore = (page.length == _pageSize)
 
   // ── Getters — consumed directly by the screen ─────────────────────────────────
 
@@ -179,8 +186,8 @@ class NotificationsProvider extends BaseProvider {
     dynamic result = await run(() => _api.get(
       '/api/v1/notifications',
       queryParams: {
-        'skip': 0,
-        'limit': 20,
+        'skip': _skip,
+        'limit': _pageSize,
         'unread_only': unreadOnly,
       },
     ));
@@ -284,4 +291,4 @@ class NotificationsProvider extends BaseProvider {
       notifyListeners();
     }
   }
-}
+}

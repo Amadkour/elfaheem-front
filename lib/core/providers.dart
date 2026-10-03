@@ -32,7 +32,6 @@ List<SingleChildWidget> appProviders({
 }) => [
   // Storage — shared singleton
   Provider<StorageService>.value(value: storage),
-  Provider<StorageService>.value(value: storage),
   ChangeNotifierProvider<TeacherTransfersProvider>(
     create: (_) => TeacherTransfersProvider(),
   ),

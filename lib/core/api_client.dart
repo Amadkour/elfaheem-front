@@ -21,6 +21,7 @@ import 'package:flutter_education_app/main.dart';
 import '../features/student/courses/security/device_blocked_dialog.dart';
 import '../features/student/courses/security/device_id_service.dart';
 import '../features/student/courses/security/device_security_provider.dart';
+import '../utils/widget/view_as_state.dart';
 
 // ── User-facing messages (single place to translate / edit) ──────────────────
 
@@ -816,6 +817,8 @@ class ApiClient {
     onRequest: (options, handler) async {
       if (options.extra['auth'] != false) {
         final token = await _storage.accessToken;
+        final viewAs = ViewAsState.targetId;
+        if (viewAs != null) options.headers['X-View-As'] = viewAs.toString();
 
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
