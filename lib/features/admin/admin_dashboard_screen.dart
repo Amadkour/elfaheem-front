@@ -11,9 +11,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
+import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
+import '../../utils/helpers.dart';
 import 'admin_categories_page.dart';
 import 'admin_common.dart';
 import 'admin_content_page.dart';
@@ -70,6 +72,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return BasePage(
       useWebCard: true,
       maxWith: 1100,
+      appBar: ScreenAppBar(title: 'control',showBack: false,actions: [
+        IconButton(onPressed: () async {
+          final ok = await Helpers.confirmDialog(context);
+          if (ok == true && context.mounted) {
+            await context.read<ProfileProvider>().logout(
+              context,
+            );
+          }
+        }, icon: Icon(Icons.logout)),
+      ],),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
