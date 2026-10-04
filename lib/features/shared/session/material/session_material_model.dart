@@ -261,35 +261,40 @@ class SessionMaterialModel {
   // The caller (VideoPlayerScreen / quality picker) uses this to populate
   // the Video and Audio sections of the stream-selection sheet.
   //
-  // Order: high → medium → low for each media type, with video listed first.
+  // Video is listed low → medium → high (the player starts on `.first`),
+  // then the audio streams (high → medium).
+  //
+  // A single-quality video (or a protected one right after /play) has the SAME
+  // url in all three tiers, because fromJson / withPlayData fall back to the
+  // primary url. Listing the tiers as they are produced a picker with three
+  // identical "360p / 720p / 1080p" rows, and switching between them did
+  // nothing. So tiers are de-duplicated by url, keeping the highest label.
 
   List<MaterialVariant> get availableVariants {
     final variants = <MaterialVariant>[];
 
     // ── Video streams ─────────────────────────────────────────────────────
-    final highUrl   = urlHigh;
-    final mediumUrl = urlMedium;
-    final lowUrl    = urlLow;
-
-    // Always add high (at minimum the primary url is always present)
-    variants.add(MaterialVariant(
-      url: lowUrl, tier: QualityTier.low,
-      isAudio: false, fileSizeBytes: fileSizeLow ?? fileSize,
-    ));
-
-    if (mediumUrl != null && mediumUrl.isNotEmpty) {
-      variants.add(MaterialVariant(
-        url: mediumUrl, tier: QualityTier.medium,
-        isAudio: false, fileSizeBytes: fileSizeMedium,
+    final seen = <String>{};
+    final video = <MaterialVariant>[];
+    void addVideo(String? url, QualityTier tier, int? size) {
+      if (url == null || url.isEmpty || !seen.add(url)) return;
+      video.add(MaterialVariant(
+        url: url, tier: tier, isAudio: false, fileSizeBytes: size,
       ));
     }
 
-    if (highUrl != null && highUrl.isNotEmpty) {
-      variants.add(MaterialVariant(
-        url: highUrl, tier: QualityTier.high,
-        isAudio: false, fileSizeBytes: fileSizeHigh,
-      ));
+    // walk high → low so a shared url keeps its highest tier label
+    addVideo(urlHigh, QualityTier.high, fileSizeHigh);
+    addVideo(urlMedium, QualityTier.medium, fileSizeMedium);
+    addVideo(urlLow, QualityTier.low, fileSizeLow);
+
+    if (video.length == 1 && video.first.fileSizeBytes == null) {
+      final only = video.first;
+      video[0] = MaterialVariant(
+        url: only.url, tier: only.tier, isAudio: false, fileSizeBytes: fileSize,
+      );
     }
+    variants.addAll(video.reversed); // low → medium → high
 
     // ── Audio streams ─────────────────────────────────────────────────────
     if (audioUrl != null && audioUrl!.isNotEmpty) {
@@ -303,6 +308,16 @@ class SessionMaterialModel {
       variants.add(MaterialVariant(
         url: audioMediumUrl!, tier: QualityTier.medium,
         isAudio: true, fileSizeBytes: audioMediumSize,
+      ));
+    }
+
+    // Nothing playable yet - protected videos have no url until POST .../play
+    // answers. The player still needs one entry to start from (it reads
+    // `.first` in initState), so hand it an empty placeholder. Audio-only
+    // recordings never get here: they fall through to their audio streams.
+    if (variants.isEmpty) {
+      variants.add(const MaterialVariant(
+        url: null, tier: QualityTier.high, isAudio: false,
       ));
     }
 
@@ -360,8 +375,8 @@ class SessionMaterialModel {
       case SessionMaterialType.pdf:      return 'PDF';
       case SessionMaterialType.document: return 'مستند';
       case SessionMaterialType.link:     return 'رابط';
-      case SessionMaterialType.recorded: return 'تسجبل';
-      case SessionMaterialType.recording: return 'progress';
+      case SessionMaterialType.recorded: return 'تسجيل';
+      case SessionMaterialType.recording: return 'جارٍ التسجيل';
     }
   }
 

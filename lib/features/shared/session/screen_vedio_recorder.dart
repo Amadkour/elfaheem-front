@@ -308,14 +308,18 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       _hasError = false;
     });
 
-    if (variant.url == null) {
-      Helpers.showMessage( 'video_not_available'.tr);
+    if (variant.url == null || variant.url!.isEmpty) {
+      Helpers.showMessage('video_not_available'.tr);
+      // _isLoading was switched on above - without this the spinner never stops.
+      if (mounted) setState(() { _isLoading = false; _hasError = true; });
       return;
     }
-    // Stream links only work together with this device's id header.
+    // Mobile: stream links only work together with this device's id header.
+    // Web: a <video> element can't send headers; the server's link already carries
+    // the id as ?d=..., so send none (also avoids a CORS preflight on /stream).
     final next = VideoPlayerController.networkUrl(
       Uri.parse(variant.url!),
-      httpHeaders: await DeviceIdService.instance.headers(),
+      httpHeaders: kIsWeb ? const <String, String>{} : await DeviceIdService.instance.headers(),
     );
     try {
       await next.initialize();
