@@ -841,12 +841,12 @@ class ApiClient {
     // ── Login from a device that isn't the registered one -> dialog ───────
     onResponse: (response, handler) {
       // Body can be a Map, a JSON String or null — asMap() covers all three.
-      // final d = ApiException.asMap(response.data);
-      // if (response.requestOptions.path.endsWith('/auth/login') &&
-      //     d != null &&
-      //     d['device_allowed'] == false) {
-      //   _showDeviceBlocked(delay: const Duration(milliseconds: 900));
-      // }
+      final d = ApiException.asMap(response.data);
+      if (response.requestOptions.path.endsWith('/auth/login') &&
+          d != null &&
+          d['device_allowed'] == false) {
+        _showDeviceBlocked(delay: const Duration(milliseconds: 900));
+      }
       handler.next(response);
     },
 

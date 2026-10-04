@@ -6,8 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/app_config.dart';
+import '../../utils/widget/app_bar.dart';
 import '../../utils/widget/view_as_state.dart';
 import 'admin_common.dart';
 
@@ -56,14 +59,12 @@ class _AdminViewAsPageState extends State<AdminViewAsPage> {
   Widget build(BuildContext context) {
     final c = context.colors;
     if (!context.read<AuthProvider>().isSuper) {
-      return Scaffold(body: EmptyState(t('للمدير العام فقط', 'Super-admin only'), icon: Icons.lock_rounded));
+      return BasePage(useWebCard:true,child: EmptyState(t('للمدير العام فقط', 'Super-admin only'), icon: Icons.lock_rounded));
     }
-    return Directionality(
-      textDirection: dir,
-      child: Scaffold(
-        backgroundColor: c.background,
-        appBar: AppBar(title: Text(t('عرض كمستخدم', 'View as user'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800))),
-        body: Center(
+    return BasePage(
+      useWebCard: true,
+      maxWith: 1100,
+      appBar:ScreenAppBar(title: 'view_as_user'.tr),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 640),
             child: Column(children: [
@@ -116,8 +117,7 @@ class _AdminViewAsPageState extends State<AdminViewAsPage> {
               ),
             ]),
           ),
-        ),
-      ),
+
     );
   }
 }

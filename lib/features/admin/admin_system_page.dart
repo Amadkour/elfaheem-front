@@ -8,6 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/app_config.dart';
+import '../../utils/widget/app_bar.dart';
+import '../../utils/widget/base_page.dart';
 import 'admin_common.dart';
 import 'admin_providers.dart';
 
@@ -143,13 +146,13 @@ class _ViewState extends State<_View> {
       ]);
     }
 
-    return Directionality(
-      textDirection: dir,
-      child: Scaffold(
-        backgroundColor: c.background,
-        appBar: AppBar(title: Text(t('الأجهزة والدفع', 'Devices & payments'), style: const TextStyle(fontFamily: 'tajawal'))),
-        body: body,
-      ),
+    return BasePage(
+
+      useWebCard: true,
+      maxWith: 1100,
+      appBar: ScreenAppBar(title: 'devices_and_payments'.tr),
+      child: body,
+
     );
   }
 }

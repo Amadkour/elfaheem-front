@@ -3,8 +3,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/utils/widget/app_bar.dart';
+import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/app_config.dart';
 import 'admin_common.dart';
 import 'admin_list.dart';
 import 'admin_providers.dart';
@@ -96,19 +99,18 @@ class _View extends StatelessWidget {
       );
     }
 
-    return Directionality(
-      textDirection: dir,
-      child: Scaffold(
-        backgroundColor: c.background,
-        appBar: AppBar(title: Text(t('الشروط ومن نحن', 'Terms & About'), style: const TextStyle(fontFamily: 'tajawal'))),
+    return BasePage(
+
+      useWebCard: true,
+      maxWith: 1100,
+        appBar: ScreenAppBar(title: 'terms_and_conditions'.tr,),
         floatingActionButton: FloatingActionButton.extended(
           backgroundColor: c.primary,
           onPressed: () => _sectionForm(context, p),
           icon: const Icon(Icons.add_rounded, color: Colors.white),
           label: Text(t('إضافة قسم', 'Add section'), style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
         ),
-        body: body,
-      ),
+        child: body,
     );
   }
 }

@@ -1,4 +1,15 @@
 /// courses/details/course_detail_screen.dart
+///
+/// Layouts
+///  • phone / tablet  (< 980 px): hero → rating/support → highlights → tabs →
+///                                content, with a sticky price + enroll bar.
+///  • web / desktop   (≥ 980 px): left = hero + tabs + content (scrolls),
+///                                right = sticky price / enroll card.
+///
+/// Every fact is shown ONCE:
+///  students · lessons · hours · progress · category · teacher → hero
+///  price · discount · enroll                                  → buy card / bar
+///  certificate · live/recorded                                → highlights
 library;
 
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
@@ -24,11 +35,16 @@ import '../../enrollment/roadmap_enrollment_screen.dart';
 import '../../models.dart';
 import 'components/app_responsive.dart';
 import 'components/content.dart';
-import 'components/stat_chip.dart';
 import '../security/device_blocked_dialog.dart';
 import '../security/device_security_provider.dart';
+import 'components/share_link.dart';
 import 'components/student_course_hero.dart';
 import 'course_detail_provider.dart';
+import 'growth_tr.dart';
+
+/// Below this width we use the single-column (phone/tablet) layout.
+const double _kTwoColumnW = 980;
+const double _kSideW = 340;
 
 void _openRecommendedCourse(BuildContext context, CourseSummary summary) {
   Navigator.of(context).push(
@@ -39,14 +55,9 @@ void _openRecommendedCourse(BuildContext context, CourseSummary summary) {
   );
 }
 
-Future<void> _share(CourseDetailProvider p) async {
-  final copied = await DeepLinkService.shareCourse(courseId: int.parse(p.course.id), courseName: p.course.name);
-  if (copied) Helpers.showMessage('تم نسخ الرابط');
-}
 /// Opens the enrollment flow and, once the student comes back, refreshes the
 /// course details (enrolled state, price, etc). Shared by the enroll button
-/// and by the payment-status banner's "send it again" action so both push
-/// the exact same route.
+/// and by the payment-status banner's "send it again" action.
 Future<void> _openEnrollment(BuildContext context, CourseModel course) async {
   await Navigator.of(
     context,
@@ -55,6 +66,21 @@ Future<void> _openEnrollment(BuildContext context, CourseModel course) async {
     await context.read<CourseDetailProvider>().refresh();
   }
 }
+
+void _openSupport(BuildContext context, CourseModel course) {
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => ChangeNotifierProvider(
+        create: (_) => ComplaintProvider(),
+        child: NewComplaintScreen(courseTitle: course.title, courseId: course.id),
+      ),
+    ),
+  );
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Screen
+// ═════════════════════════════════════════════════════════════════════════════
 
 class CourseDetailScreen extends StatefulWidget {
   const CourseDetailScreen({super.key, required this.course});
@@ -79,39 +105,59 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   }
 
   @override
-  void dispose() {
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    CourseDetailProvider provider = context.watch<CourseDetailProvider>();
-    final isWide = context.showSidebar;
+    final provider = context.watch<CourseDetailProvider>();
+    final w = MediaQuery.of(context).size.width;
+    final twoCol = w >= _kTwoColumnW;
+
+    // Full-screen loader only for the FIRST load. While the next page of
+    // sessions loads (sessions already on screen) the page must stay put.
+    final loading = provider.isLoading && provider.sessions.isEmpty;
+    final loaderSize = (w / 5).clamp(80.0, 160.0).toDouble();
 
     return BasePage(
       useWebCard: true,
       enableFooterWidget: false,
-      maxWith: 1000,
-      child: provider.isLoading
+      maxWith: twoCol ? 1180 : 760,
+      child: loading
           ? Center(
-              child: SizedBox(
-                width: context.width / 5,
-                height: context.width / 5,
-                child: AppLoadingIndicator(),
-              ),
-            )
-          : isWide
-          ? _WebDetail(provider)
-          : _MobileDetail(provider),
+        child: SizedBox(
+          width: loaderSize,
+          height: loaderSize,
+          child: AppLoadingIndicator(),
+        ),
+      )
+          : _Body(twoCol: twoCol),
+    );
+  }
+}
+
+/// Provides what the tabs need, then picks the layout. One set of providers
+/// for BOTH layouts (the web layout used to be missing StudentExamProvider).
+class _Body extends StatelessWidget {
+  const _Body({required this.twoCol});
+  final bool twoCol;
+
+  @override
+  Widget build(BuildContext context) {
+    final course = context.read<CourseDetailProvider>().course;
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => StudentExamProvider()),
+        ChangeNotifierProvider(
+          create: (_) =>
+              TeacherCourseScreenProvider(initialCourse: course.toTeacherModel),
+        ),
+      ],
+      child: twoCol ? const _WebLayout() : const _MobileLayout(),
     );
   }
 }
 
 // Fires CourseDetailProvider.loadMoreSessions() a little before the
-// scrollable's true end, while the lessons tab is the active one — shared by
-// both the mobile and web layouts below, since the sessions list is embedded
-// as a non-scrolling SliverToBoxAdapter and never generates its own scroll
-// notifications; the outer CustomScrollView is what actually scrolls.
+// scrollable's true end, while the lessons tab is active. The sessions list is
+// embedded as a non-scrolling sliver, so the outer CustomScrollView is what
+// actually scrolls.
 bool _onCourseDetailScroll(BuildContext context, ScrollNotification n) {
   final provider = context.read<CourseDetailProvider>();
   if (provider.activeTab == CourseDetailTab.lessons &&
@@ -121,107 +167,198 @@ bool _onCourseDetailScroll(BuildContext context, ScrollNotification n) {
   return false;
 }
 
-// ── Mobile layout ─────────────────────────────────────────────────────────────
+/// Slivers shared by both layouts (everything under the hero).
+List<Widget> _contentSlivers(
+    BuildContext context,
+    CourseDetailProvider p, {
+      required bool showChips,
+    }) {
+  final c = p.course;
+  final highlights = _highlights(context, c);
+  return [
+    const SliverToBoxAdapter(child: _MetaRow()),
+    if (showChips && highlights.isNotEmpty)
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+          child: _HighlightChips(items: highlights),
+        ),
+      ),
+    const SliverToBoxAdapter(child: _TabBarWidget()),
+    const SliverToBoxAdapter(child: SizedBox(height: 4)),
+    SliverToBoxAdapter(
+      child: TabContent(activeTab: p.activeTab, courseId: c.id),
+    ),
+    const SliverToBoxAdapter(child: SizedBox(height: 20)),
+    SliverToBoxAdapter(
+      child: CourseRoadmapSection(
+        currentCourseName: c.name,
+        recentCompletedCourses: c.recentCompletedCourses,
+        nextCourses: c.nextCourses,
+        recommendedCourses: c.recommendedCourses,
+        similarCourses: c.similarCourses,
+        onTapCourse: (s) => _openRecommendedCourse(context, s),
+        onEnrollRoadmap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => RoadmapEnrollmentScreen(
+              courseId: int.parse(c.id),
+              courseName: c.name,
+            ),
+          ),
+        ),
+      ),
+    ),
+    const SliverToBoxAdapter(child: SizedBox(height: 32)),
+  ];
+}
 
-class _MobileDetail extends StatelessWidget {
-  const _MobileDetail(this.provider);
+// ═════════════════════════════════════════════════════════════════════════════
+// Phone / tablet layout
+// ═════════════════════════════════════════════════════════════════════════════
 
-  final CourseDetailProvider provider;
+class _MobileLayout extends StatelessWidget {
+  const _MobileLayout();
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (BuildContext context) {
-        return StudentExamProvider();
-      },
-      child: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: RefreshIndicator(
-                color: context.colors.primary,
-                onRefresh: () => provider.refresh(),
-                child: NotificationListener<ScrollNotification>(
-                  onNotification: (n) => _onCourseDetailScroll(context, n),
-                  child: CustomScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    slivers: [
-                      SliverToBoxAdapter(
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
-                            border: BoxBorder.all(color: Colors.black),
-                          ),
-                          child: StudentCourseHero(
-                            course: provider.course,
-                            reelUrl: provider.reelUrl,
-                            onBack: () => Navigator.maybePop(context),
-                            onRefresh: () => provider.refresh(),
-                            onLike: provider.toggleFavorite,
-                            onShare: () => _share(provider),
-                          ),
-                        ),
-                      ),
-                      SliverToBoxAdapter(child: _CourseMeta()),
-                      // Tabs/content render regardless of enrollment — unpaid
-                      // students get a locked preview (session 1 open, the
-                      // rest shown but locked) rather than nothing at all.
-                      // This mirrors the web layout below, which never gated
-                      // on isEnrolled to begin with.
-                      SliverToBoxAdapter(child: _TabBarWidget()),
-                      const SliverToBoxAdapter(child: SizedBox(height: 4)),
-                      SliverToBoxAdapter(
-                        child: ChangeNotifierProvider(
-                          create: (BuildContext context) =>
-                              TeacherCourseScreenProvider(
-                                initialCourse: provider.course.toTeacherModel,
-                              ),
-                          child: TabContent(
-                            activeTab: provider.activeTab,
-                            courseId: provider.course.id,
-                          ),
-                        ),
-                      ),
-                      const SliverToBoxAdapter(child: SizedBox(height: 20)),
-                      SliverToBoxAdapter(
-                        child: CourseRoadmapSection(
-                          currentCourseName: provider.course.name,
-                          recentCompletedCourses:
-                              provider.course.recentCompletedCourses,
-                          nextCourses: provider.course.nextCourses,
-                          recommendedCourses:
-                              provider.course.recommendedCourses,
-                          similarCourses: provider.course.similarCourses,
-                          onTapCourse: (s) =>
-                              _openRecommendedCourse(context, s),
-                          onEnrollRoadmap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => RoadmapEnrollmentScreen(
-                                courseId: int.parse(provider.course.id),
-                                courseName: provider.course.name,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                    ],
+    final p = context.watch<CourseDetailProvider>();
+
+    return SafeArea(
+      child: Column(
+        children: [
+          Expanded(
+            child: RefreshIndicator(
+              color: context.colors.primary,
+              onRefresh: p.refresh,
+              child: NotificationListener<ScrollNotification>(
+                onNotification: (n) => _onCourseDetailScroll(context, n),
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
                   ),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: StudentCourseHero(
+                        course: p.course,
+                        reelUrl: p.reelUrl,
+                        onBack: () => Navigator.maybePop(context),
+                        onRefresh: p.refresh,
+                        onLike: p.toggleFavorite,
+                        onShare: () => shareCourseLink(context, p.course),
+                      ),
+                    ),
+                    ..._contentSlivers(context, p, showChips: true),
+                  ],
                 ),
               ),
             ),
-            // Payment-status badge — pending review / rejected — shown right
-            // above the enroll button so a student who already tried to pay
-            // sees it before attempting to enroll again.
-            if (!provider.course.isEnrolled)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-                child: ManualTransferStatusBanner(
-                  courseId: provider.course.id,
-                  onRetry: () => _openEnrollment(context, provider.course),
+          ),
+          const _MobileBuyBar(),
+        ],
+      ),
+    );
+  }
+}
+
+/// Sticky price + enroll bar (hidden once enrolled).
+class _MobileBuyBar extends StatelessWidget {
+  const _MobileBuyBar();
+
+  @override
+  Widget build(BuildContext context) {
+    final course = context.watch<CourseDetailProvider>().course;
+    if (course.isEnrolled) return const SizedBox.shrink();
+    final c = context.colors;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        border: Border(top: BorderSide(color: Colors.black.withValues(alpha: 0.06))),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.07),
+            blurRadius: 18,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Pending-review / rejected payment notice, right above the button.
+          ManualTransferStatusBanner(
+            courseId: course.id,
+            onRetry: () => _openEnrollment(context, course),
+          ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(flex: 5, child: _PriceBlock(course: course, compact: true)),
+              const SizedBox(width: 14),
+              const Expanded(flex: 5, child: _EnrollButton()),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Web / desktop layout
+// ═════════════════════════════════════════════════════════════════════════════
+
+class _WebLayout extends StatelessWidget {
+  const _WebLayout();
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.watch<CourseDetailProvider>();
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Main column (scrolls) ───────────────────────────────────
+            Expanded(
+              child: NotificationListener<ScrollNotification>(
+                onNotification: (n) => _onCourseDetailScroll(context, n),
+                child: CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        // 20 = the horizontal padding the tab content uses,
+                        // so the hero edge lines up with the cards below it.
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                        child: StudentCourseHero(
+                          rounded: true,
+                          showRefresh: true,
+                          course: p.course,
+                          reelUrl: p.reelUrl,
+                          onBack: () => Navigator.maybePop(context),
+                          onRefresh: p.refresh,
+                          onLike: p.toggleFavorite,
+                          onShare: () => shareCourseLink(context, p.course),
+                        ),
+                      ),
+                    ),
+                    ..._contentSlivers(context, p, showChips: false),
+                  ],
                 ),
               ),
-            _EnrollButton(),
+            ),
+            const SizedBox(width: 24),
+            // ── Buy card (stays in place while the main column scrolls) ─
+            SizedBox(
+              width: _kSideW,
+              child: const SingleChildScrollView(
+                padding: EdgeInsets.only(top: 16, bottom: 32),
+                child: _SideCard(),
+              ),
+            ),
           ],
         ),
       ),
@@ -229,188 +366,220 @@ class _MobileDetail extends StatelessWidget {
   }
 }
 
-// ── Web layout: two-column ────────────────────────────────────────────────────
-
-class _WebDetail extends StatelessWidget {
-  const _WebDetail(this.provider);
-
-  final CourseDetailProvider provider;
+class _SideCard extends StatelessWidget {
+  const _SideCard();
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
+    final course = context.watch<CourseDetailProvider>().course;
+    final c = context.colors;
+    final highlights = _highlights(context, course);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: c.primary.withValues(alpha: 0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.07),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: Breakpoints.contentMax,
-                ),
-                child: RefreshIndicator(
-                  color: context.colors.primary,
-                  onRefresh: () =>
-                      context.read<CourseDetailProvider>().refresh(),
-                  child: NotificationListener<ScrollNotification>(
-                    onNotification: (n) => _onCourseDetailScroll(context, n),
-                    child: CustomScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      slivers: [
-                        SliverToBoxAdapter(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  children: [
-                                    DecoratedBox(
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child:StudentCourseHero(
-                                        course: provider.course,
-                                        reelUrl: provider.reelUrl,
-                                        onBack: () => Navigator.maybePop(context),
-                                        onRefresh: () => provider.refresh(),
-                                        onLike: provider.toggleFavorite,
-                                        onShare: () => _share(provider),
-                                      ),
-                                    ),
-                                    // Stars row
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Spacer(),
-
-                                        Container(
-                                          margin: EdgeInsets.all(10),
-                                          decoration: BoxDecoration(
-                                            gradient:
-                                                context.colors.accentGradient,
-                                            borderRadius: BorderRadius.circular(
-                                              10,
-                                            ),
-                                          ),
-                                          child: IconButton(
-                                            onPressed: () {
-                                              Navigator.of(context).push(
-                                                MaterialPageRoute(
-                                                  builder: (_) =>
-                                                      ChangeNotifierProvider(
-                                                        create: (_) =>
-                                                            ComplaintProvider(),
-                                                        child:
-                                                            NewComplaintScreen(
-                                                              courseTitle:
-                                                                  provider
-                                                                      .course
-                                                                      .title,
-                                                              courseId: provider
-                                                                  .course
-                                                                  .id,
-                                                            ),
-                                                      ),
-                                                ),
-                                              );
-                                            },
-                                            icon: Icon(
-                                              Icons.headset_mic_rounded,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                        SizedBox(height: 8),
-                                      ],
-                                    ),
-
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        RatingWidget(
-                                          type: RateType.course,
-                                          sourceId: provider.course.id,
-                                          canEdit: provider.course.isEnrolled,
-                                        ),
-                                        Spacer(),
-
-                                        if (provider.course.category !=
-                                            null) ...[
-                                          _HeroBadge(
-                                            AppConfig.lang == 'ar'
-                                                ? provider
-                                                      .course
-                                                      .category!
-                                                      .nameAr
-                                                : provider
-                                                      .course
-                                                      .category!
-                                                      .nameEn,
-                                          ),
-                                          //const SizedBox(height: 8),
-                                        ],
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              // Right: sticky sidebar
-                              SizedBox(width: 20),
-                              SizedBox(
-                                width: 260,
-                                child: SingleChildScrollView(
-                                  child: _WebSidebar(provider: provider),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        SliverToBoxAdapter(child: _CourseMeta()),
-                        SliverToBoxAdapter(child: _TabBarWidget()),
-                        const SliverToBoxAdapter(child: SizedBox(height: 4)),
-                        SliverToBoxAdapter(
-                          child: ChangeNotifierProvider(
-                            create: (BuildContext context) =>
-                                TeacherCourseScreenProvider(
-                                  initialCourse: provider.course.toTeacherModel,
-                                ),
-                            child: TabContent(
-                              activeTab: provider.activeTab,
-                              courseId: provider.course.id,
-                            ),
-                          ),
-                        ),
-                        const SliverToBoxAdapter(child: SizedBox(height: 20)),
-                        SliverToBoxAdapter(
-                          child: CourseRoadmapSection(
-                            currentCourseName: provider.course.name,
-                            recentCompletedCourses:
-                                provider.course.recentCompletedCourses,
-                            nextCourses: provider.course.nextCourses,
-                            recommendedCourses:
-                                provider.course.recommendedCourses,
-                            similarCourses: provider.course.similarCourses,
-                            onTapCourse: (s) =>
-                                _openRecommendedCourse(context, s),
-                            onEnrollRoadmap: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => RoadmapEnrollmentScreen(
-                                  courseId: int.parse(provider.course.id),
-                                  courseName: provider.course.name,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        const SliverToBoxAdapter(child: SizedBox(height: 32)),
-                      ],
+          if (course.isEnrolled)
+            Row(
+              children: [
+                Icon(Icons.verified_rounded, color: c.success, size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'you_are_enrolled'.tr,
+                    style: c.label.copyWith(
+                      color: c.textDark,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
                     ),
                   ),
+                ),
+              ],
+            )
+          else ...[
+            _PriceBlock(course: course),
+            const SizedBox(height: 16),
+            ManualTransferStatusBanner(
+              courseId: course.id,
+              onRetry: () => _openEnrollment(context, course),
+            ),
+            const _EnrollButton(),
+          ],
+          if (highlights.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            Divider(height: 1, color: Colors.black.withValues(alpha: 0.07)),
+            const SizedBox(height: 8),
+            for (final h in highlights) _Fact(item: h),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Shared pieces
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// Price (+ discount ribbon / countdown). Used by the buy card and buy bar.
+class _PriceBlock extends StatelessWidget {
+  const _PriceBlock({required this.course, this.compact = false});
+  final CourseModel course;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final discount = course.discountActive ?? false;
+
+    final priceRow = Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        CoursePriceTag(
+          originalPrice: course.price,
+          finalPrice: course.finalPrice ?? 0,
+          discountActive: discount,
+          format: course.currency.format,
+          fontSize: compact ? 20 : 28,
+          originalFontSize: compact ? 12 : 14,
+        ),
+        if (discount) ...[
+          const SizedBox(width: 10),
+          DiscountRibbon(percentage: course.discountPercentage ?? 0),
+        ],
+      ],
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        compact
+            ? FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: AlignmentDirectional.centerStart,
+          child: priceRow,
+        )
+            : priceRow,
+        if (discount && course.discountEndsAt != null) ...[
+          const SizedBox(height: 6),
+          DiscountCountdown(endsAt: course.discountEndsAt!),
+        ],
+      ],
+    );
+  }
+}
+
+class _EnrollButton extends StatelessWidget {
+  const _EnrollButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final course = context.watch<CourseDetailProvider>().course;
+    if (course.isEnrolled) return const SizedBox.shrink();
+    final c = context.colors;
+
+    // The price is already shown right next to the button, so the label
+    // only carries the action.
+    final label = (course.finalPrice ?? 0) == 0
+        ? gt('سجّل مجاناً الآن', 'Enroll for free')
+        : gt('انضم الآن', 'Enroll now');
+
+    return Container(
+      height: 52,
+      decoration: BoxDecoration(
+        gradient: c.primaryGradient,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: c.primary.withValues(alpha: 0.38),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _openEnrollment(context, course),
+          child: Center(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 15,
+                fontFamily: 'bahji',
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Rating + support ──────────────────────────────────────────────────────────
+
+class _MetaRow extends StatelessWidget {
+  const _MetaRow();
+
+  @override
+  Widget build(BuildContext context) {
+    final course = context.watch<CourseDetailProvider>().course;
+    final c = context.colors;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+      child: Row(
+        children: [
+          RatingWidget(
+            type: RateType.course,
+            sourceId: course.id,
+            canEdit: course.isEnrolled,
+          ),
+          const Spacer(),
+          Tooltip(
+            message: gt('تواصل مع الدعم', 'Contact support'),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => _openSupport(context, course),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: c.primary.withValues(alpha: 0.25)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.headset_mic_rounded, size: 16, color: c.primary),
+                    const SizedBox(width: 6),
+                    Text(
+                      gt('الدعم', 'Support'),
+                      style: c.label.copyWith(
+                        color: c.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -421,139 +590,74 @@ class _WebDetail extends StatelessWidget {
   }
 }
 
-class _WebSidebar extends StatelessWidget {
-  final CourseDetailProvider provider;
+// ── Highlights (certificate · live/recorded) ─────────────────────────────────
+// Students / lessons / hours live in the hero only.
 
-  const _WebSidebar({required this.provider});
+typedef _Highlight = ({IconData icon, String label, Color color});
 
-  @override
-  Widget build(BuildContext context) {
-    final c = provider.course;
-    final isEnrolled = provider.course.isEnrolled;
-
-    return Padding(
-      padding: const EdgeInsets.only(left: 0, right: 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Price card
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: context.colors.cardBg,
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.07),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    CoursePriceTag(
-                      originalPrice: c.price,
-                      finalPrice: c.finalPrice ?? 0,
-                      discountActive: c.discountActive ?? false,
-                      format: c.currency.format,
-                      fontSize: 26,
-                      originalFontSize: 14,
-                    ),
-                    if (c.discountActive ?? false) ...[
-                      const SizedBox(width: 10),
-                      DiscountRibbon(percentage: c.discountPercentage ?? 0),
-                    ],
-                  ],
-                ),
-                if ((c.discountActive ?? false) &&
-                    c.discountEndsAt != null) ...[
-                  const SizedBox(height: 6),
-                  DiscountCountdown(endsAt: c.discountEndsAt!),
-                ],
-                const SizedBox(height: 16),
-                isEnrolled
-                    ? Text('you_are_enrolled'.tr)
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // Payment-status badge — pending review / rejected
-                          // — shown right above the enroll button.
-                          ManualTransferStatusBanner(
-                            courseId: c.id,
-                            onRetry: () => _openEnrollment(context, c),
-                          ),
-                          _EnrollButton(),
-                        ],
-                      ),
-                const SizedBox(height: 16),
-                _WebCourseFacts(course: c),
-              ],
-            ),
-          ),
-        ],
+List<_Highlight> _highlights(BuildContext context, CourseModel c) {
+  final col = context.colors;
+  return [
+    if (c.certificates.isNotEmpty)
+      (
+      icon: Icons.workspace_premium_rounded,
+      label: gt('شهادة إتمام معتمدة', 'Certificate of completion'),
+      color: col.accent,
       ),
-    );
-  }
+    if (c.type == 'live')
+      (
+      icon: Icons.sensors_rounded,
+      label: gt('بث مباشر', 'Live sessions'),
+      color: col.danger,
+      )
+    else
+      (
+      icon: Icons.play_circle_outline_rounded,
+      label: gt('كورس مسجّل', 'Recorded course'),
+      color: col.primary,
+      ),
+  ];
 }
 
-class _WebCourseFacts extends StatelessWidget {
-  final CourseModel course;
-
-  const _WebCourseFacts({required this.course});
+class _HighlightChips extends StatelessWidget {
+  const _HighlightChips({required this.items});
+  final List<_Highlight> items;
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _Fact(
-          icon: Icons.people_alt_rounded,
-          label: '${course.studentsCount} طالب مسجّل',
-          color: context.colors.primary,
-        ),
-        _Fact(
-          icon: Icons.video_library_rounded,
-          label: '${course.sessionsCount} محاضرة',
-          color: const Color(0xFF185FA5),
-        ),
-        _Fact(
-          icon: Icons.access_time_rounded,
-          label: '${course.totalHours.toStringAsFixed(0)} ساعة إجمالية',
-          color: const Color(0xFFBA7517),
-        ),
-        if (course.certificates.isNotEmpty)
-          _Fact(
-            icon: Icons.workspace_premium_rounded,
-            label: 'شهادة إتمام معتمدة',
-            color: context.colors.accent,
+  Widget build(BuildContext context) => Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    children: [
+      for (final h in items)
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+          decoration: BoxDecoration(
+            color: h.color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(20),
           ),
-        if (course.type == 'live')
-          _Fact(
-            icon: Icons.sensors_rounded,
-            label: 'بث مباشر',
-            color: context.colors.danger,
-          )
-        else
-          _Fact(
-            icon: Icons.play_circle_outline_rounded,
-            label: 'كورس مسجّل',
-            color: context.colors.primary,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(h.icon, size: 14, color: h.color),
+              const SizedBox(width: 6),
+              Text(
+                h.label,
+                style: context.colors.label.copyWith(
+                  color: h.color,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ),
-      ],
-    );
-  }
+        ),
+    ],
+  );
 }
 
 class _Fact extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _Fact({required this.icon, required this.label, required this.color});
+  const _Fact({required this.item});
+  final _Highlight item;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -561,20 +665,22 @@ class _Fact extends StatelessWidget {
     child: Row(
       children: [
         Container(
-          width: 30,
-          height: 30,
+          width: 32,
+          height: 32,
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
+            color: item.color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(9),
           ),
-          child: Icon(icon, size: 16, color: color),
+          child: Icon(item.icon, size: 17, color: item.color),
         ),
         const SizedBox(width: 10),
-        Text(
-          label,
-          style: context.colors.body.copyWith(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
+        Expanded(
+          child: Text(
+            item.label,
+            style: context.colors.body.copyWith(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ],
@@ -582,244 +688,121 @@ class _Fact extends StatelessWidget {
   );
 }
 
-class _HeroBadge extends StatelessWidget {
-  final String label;
-
-  const _HeroBadge(this.label);
-
-  @override
-  Widget build(BuildContext context) => Text(
-    label,
-    style: TextStyle(
-      color: context.colors.textLight,
-      fontSize: 11,
-      fontWeight: FontWeight.w700,
-      fontFamily: 'bahji',
-    ),
-  );
-}
-
-// ── Meta section ──────────────────────────────────────────────────────────────
-
-class _CourseMeta extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final c = context.watch<CourseDetailProvider>().course;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 18),
-
-          // Stat chips — 4-col grid
-          SizedBox(
-            height: context.height / 10,
-            child: Row(
-              children: [
-                StatChip(
-                  icon: Icons.people_alt_rounded,
-                  label: '${c.studentsCount} ${'student'.tr}',
-                  iconColor: context.colors.primary,
-                  maxHeight: context.height / 10,
-                ),
-                StatChip(
-                  icon: Icons.video_library_rounded,
-                  label: '${c.sessionsCount} ${'session'.tr}',
-                  iconColor: const Color(0xFF185FA5),
-                  iconBg: const Color(0xFFE6F1FB),
-                  maxHeight: context.height / 10,
-                ),
-                StatChip(
-                  icon: Icons.access_time_rounded,
-                  label: '${c.totalHours.toStringAsFixed(0)} ${'hour'.tr}',
-                  iconColor: const Color(0xFFBA7517),
-                  iconBg: const Color(0xFFFAEEDA),
-                  maxHeight: context.height / 10,
-                ),
-                if (c.certificates.isNotEmpty)
-                  StatChip(
-                    icon: Icons.workspace_premium_rounded,
-                    label: 'شهادة إتمام',
-                    iconColor: context.colors.accent,
-                    iconBg: Color(0xFFFAEEDA),
-                    maxHeight: context.height / 10,
-                  )
-                else
-                  StatChip(
-                    icon: c.type == 'live'
-                        ? Icons.sensors_rounded
-                        : Icons.play_circle_outline_rounded,
-                    label: c.type == 'live' ? 'مباشر' : 'مسجّل',
-                    iconColor: c.type == 'live'
-                        ? context.colors.danger
-                        : context.colors.primary,
-                    maxHeight: context.height / 10,
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Tab bar ───────────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+// Tab bar — segmented pill
+// ═════════════════════════════════════════════════════════════════════════════
 
 class _TabBarWidget extends StatelessWidget {
-  static final _tabs = [
-    (CourseDetailTab.live, 'live'.tr, Icons.sensors_rounded),
-    (CourseDetailTab.lessons, 'sessions'.tr, Icons.play_lesson_rounded),
-    (CourseDetailTab.exam, 'exams'.tr, Icons.assignment),
-    (CourseDetailTab.about, 'course_details'.tr, Icons.info_outline_rounded),
-  ];
+  const _TabBarWidget();
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<CourseDetailProvider>();
+    final p = context.watch<CourseDetailProvider>();
+    final c = context.colors;
+
+    // The live tab only makes sense for live courses or when a live session
+    // is actually running.
+    final showLive = p.course.type == 'live' || p.liveSessions.isNotEmpty;
+    final tabs = <(CourseDetailTab, String, IconData)>[
+      if (showLive) (CourseDetailTab.live, 'live'.tr, Icons.sensors_rounded),
+      (CourseDetailTab.lessons, 'sessions'.tr, Icons.play_lesson_rounded),
+      (CourseDetailTab.exam, 'exams'.tr, Icons.assignment_rounded),
+      (CourseDetailTab.about, 'course_details'.tr, Icons.info_outline_rounded),
+    ];
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
       child: Container(
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: context.colors.cardBg,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          color: c.primary.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(18),
         ),
-        child: Row(
-          children: _tabs.map((t) {
-            final (tab, label, icon) = t;
-            final isActive = provider.activeTab == tab;
-
-            return Expanded(
-              child: GestureDetector(
-                onTap: () => context.read<CourseDetailProvider>().setTab(tab),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOut,
-                  margin: EdgeInsets.only(left: 3, right: 3, bottom: 8),
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        color: isActive
-                            ? context.colors.primary
-                            : context.colors.textLight,
-                      ),
+        child: LayoutBuilder(
+          builder: (context, box) {
+            final stacked = box.maxWidth < 520; // icon above label on phones
+            return Row(
+              children: [
+                for (final (tab, label, icon) in tabs)
+                  Expanded(
+                    child: _TabItem(
+                      label: label,
+                      icon: icon,
+                      active: p.activeTab == tab,
+                      stacked: stacked,
+                      onTap: () => context.read<CourseDetailProvider>().setTab(tab),
                     ),
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        icon,
-                        size: 14,
-                        color: isActive
-                            ? context.colors.primary
-                            : context.colors.textLight,
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        label,
-                        style: context.colors.label.copyWith(
-                          color: isActive
-                              ? context.colors.primary
-                              : context.colors.textLight,
-                          fontWeight: isActive
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              ],
             );
-          }).toList(),
+          },
         ),
       ),
     );
   }
 }
 
-// ── Enroll button ─────────────────────────────────────────────────────────────
+class _TabItem extends StatelessWidget {
+  const _TabItem({
+    required this.label,
+    required this.icon,
+    required this.active,
+    required this.stacked,
+    required this.onTap,
+  });
 
-class _EnrollButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool active, stacked;
+  final VoidCallback onTap;
+
   @override
   Widget build(BuildContext context) {
-    final p = context.watch<CourseDetailProvider>();
-    final isWide = context.showSidebar;
+    final c = context.colors;
+    final fg = active ? Colors.white : c.textLight;
 
-    if (p.course.isEnrolled) {
-      return SizedBox.shrink();
-    }
+    final text = Text(
+      label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: c.label.copyWith(
+        color: fg,
+        fontSize: stacked ? 11 : 13,
+        fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+      ),
+    );
+    final ic = Icon(icon, size: stacked ? 18 : 17, color: fg);
 
-    final label = p.course.finalPrice == 0
-        ? 'سجّل مجاناً الآن'
-        : 'انضم الآن — ${p.course.currency.format(p.course.finalPrice ?? 0)}';
-
-    return _EnrollWrap(
-      isWide: isWide,
-      child: GestureDetector(
-        onTap: p.course.isEnrolled
-            ? null
-            : () => _openEnrollment(context, p.course),
-        child: Container(
-          height: 52,
-          decoration: BoxDecoration(
-            gradient: context.colors.primaryGradient,
-            borderRadius: BorderRadius.circular(32),
-            boxShadow: [
-              BoxShadow(
-                color: context.colors.primary.withValues(alpha: 0.42),
-                blurRadius: 22,
-                offset: const Offset(0, 7),
-              ),
-            ],
-          ),
-          child: Center(
-            child: p.course.isEnrolled
-                ? const SizedBox(
-                    height: 24,
-                    child: AppLoadingIndicator(showLogo: false,),
-                  )
-                : Text(
-                    label,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
-                      fontFamily: 'bahji',
-                    ),
-                  ),
-          ),
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        padding: EdgeInsets.symmetric(vertical: stacked ? 8 : 11, horizontal: 4),
+        decoration: BoxDecoration(
+          gradient: active ? c.primaryGradient : null,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: active
+              ? [
+            BoxShadow(
+              color: c.primary.withValues(alpha: 0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ]
+              : null,
+        ),
+        child: stacked
+            ? Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [ic, const SizedBox(height: 3), text],
+        )
+            : Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [ic, const SizedBox(width: 7), Flexible(child: text)],
         ),
       ),
     );
   }
-}
-
-class _EnrollWrap extends StatelessWidget {
-  final Widget child;
-  final bool isWide;
-
-  const _EnrollWrap({required this.child, required this.isWide});
-
-  @override
-  Widget build(BuildContext context) => isWide
-      ? child
-      : Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-          child: SafeArea(top: false, child: child),
-        );
 }

@@ -5,19 +5,17 @@ import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/category/categories_provider.dart';
 import 'package:flutter_education_app/features/category/categories_screen.dart';
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
-import 'package:flutter_education_app/features/student/courses/details/course_detail_screen.dart';
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
 import '../../../config/app_config.dart' as Helpers;
-import '../../../config/theme/app_theme.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/base_page.dart';
+import '../../shared/course/course_access.dart';
 import '../../teacher/home/home_screen.dart';
 import '../courses/list/courses_list_screen.dart';
 import '../models.dart';
 import 'component/category_row.dart';
-import 'component/course_row.dart';
 import 'component/home_section_header.dart';
 import 'component/instractor_roe.dart';
 import 'component/search_bar_icon.dart';
@@ -54,7 +52,7 @@ class _CoursesShimmer extends StatelessWidget {
           itemCount: 3,
           separatorBuilder: (_, _) => const SizedBox(width: 14),
           itemBuilder: (_, _) =>
-              const Shimmer(width: 50, height: 50, radius: 25),
+          const Shimmer(width: 50, height: 50, radius: 25),
         ),
       ),
       Expanded(
@@ -93,7 +91,7 @@ class _CoursesShimmer extends StatelessWidget {
             itemCount: 3,
             separatorBuilder: (_, _) => const SizedBox(width: 14),
             itemBuilder: (_, _) =>
-                const Shimmer(width: 50, height: 50, radius: 25),
+            const Shimmer(width: 50, height: 50, radius: 25),
           ),
         ),
       ),
@@ -121,136 +119,132 @@ class _HomeScreenState extends State<HomeScreen> {
               child: provider.isLoading
                   ? const _CoursesShimmer()
                   : ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 900),
-                      child: CustomScrollView(
-                        physics: const BouncingScrollPhysics(),
-                        slivers: [
-                          // ── Top bar ──────────────────────────────────────────
-                          SliverToBoxAdapter(child: TopBar()),
+                constraints: const BoxConstraints(maxWidth: 900),
+                child: CustomScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    // ── Top bar ──────────────────────────────────────────
+                    SliverToBoxAdapter(child: TopBar()),
 
-                          // ── Search bar ───────────────────────────────────────
-                          SliverToBoxAdapter(
-                            child: SearchBarIcon(
-                              courses: provider.otherCourses,
-                            ),
-                          ),
-                          const SliverToBoxAdapter(child: SizedBox(height: 24)),
-
-                          // ── Upcoming session banner ──────────────────────────
-                          const SliverToBoxAdapter(child: _UpcomingBanner()),
-                          const SliverToBoxAdapter(child: SizedBox(height: 28)),
-
-                          // ── Categories ───────────────────────────────────────
-                          if (context
-                                  .read<CategoriesProvider>()
-                                  .categories
-                                  .length >
-                              5)
-                            SliverToBoxAdapter(
-                              child: SectionHeader(
-                                title: 'categories'.tr,
-                                actionLabel: 'show_more'.tr,
-                                onAction: () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => const CategoriesScreen(),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                          const SliverToBoxAdapter(child: CategoriesRow()),
-                          const SliverToBoxAdapter(child: SizedBox(height: 28)),
-
-                          // ── My Courses ───────────────────────────────────────
-                          if (provider.myCourses.isNotEmpty) ...[
-                            SliverToBoxAdapter(
-                              child: SectionHeader(
-                                title: 'my_courses'.tr,
-                                actionLabel: 'show_more'.tr,
-                                onAction: () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => CoursesListScreen(
-                                      homeCourses: provider.myCourses,
-                                      forMyCourses: true,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SliverToBoxAdapter(
-                              child: SizedBox(height: 16),
-                            ),
-                            SliverToBoxAdapter(
-                              child: HomeCourseList(
-                                courses: provider.myCourses,
-                                pageName: 'home-my-courses',
-                                isTeacher: false,
-                                onTap: (CourseModel c) {
-                                  Navigator.pushNamed(
-                                    context,
-                                    '/course-detail',
-                                    arguments: c,
-                                  );
-                                },
-                                hasMore: false,
-                              ),
-                            ),
-                          ],
-
-                          // ── Other Courses ────────────────────────────────────
-                          if (provider.otherCourses.isNotEmpty) ...[
-                            const SliverToBoxAdapter(
-                              child: SizedBox(height: 28),
-                            ),
-                            SliverToBoxAdapter(
-                              child: SectionHeader(
-                                title: 'other_courses'.tr,
-                                actionLabel: 'show_more'.tr,
-                                onAction: () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => CoursesListScreen(
-                                      homeCourses: provider.otherCourses,
-                                      forMyCourses: false,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SliverToBoxAdapter(
-                              child: SizedBox(height: 16),
-                            ),
-                            SliverToBoxAdapter(
-                              child: HomeCourseList(
-                                pageName: 'home-other-courses',
-                                courses: provider.otherCourses,
-                                isTeacher: false,
-                                onTap: (CourseModel c) {
-                                  Navigator.pushNamed(
-                                    context,
-                                    '/course-detail',
-                                    arguments: c,
-                                  );
-                                },
-                                hasMore: false,
-                              ),
-                            ),
-                          ],
-                          const SliverToBoxAdapter(child: SizedBox(height: 28)),
-
-                          // ── Best teachers ────────────────────────────────────
-                          SliverToBoxAdapter(
-                            child: SectionHeader(
-                              title: 'best_teachers'.tr,
-                              actionLabel: 'show_more'.tr,
-                              onAction: () {},
-                            ),
-                          ),
-                          const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                          SliverToBoxAdapter(child: InstructorsRow()),
-                          const SliverToBoxAdapter(child: SizedBox(height: 40)),
-                        ],
+                    // ── Search bar ───────────────────────────────────────
+                    SliverToBoxAdapter(
+                      child: SearchBarIcon(
+                        courses: provider.otherCourses,
                       ),
                     ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+                    // ── Upcoming session banner ──────────────────────────
+                    const SliverToBoxAdapter(child: _UpcomingBanner()),
+                    const SliverToBoxAdapter(child: SizedBox(height: 28)),
+
+                    // ── Categories ───────────────────────────────────────
+                    if (context
+                        .read<CategoriesProvider>()
+                        .categories
+                        .length >
+                        5)
+                      SliverToBoxAdapter(
+                        child: SectionHeader(
+                          title: 'categories'.tr,
+                          actionLabel: 'show_more'.tr,
+                          onAction: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const CategoriesScreen(),
+                            ),
+                          ),
+                        ),
+                      ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                    const SliverToBoxAdapter(child: CategoriesRow()),
+                    const SliverToBoxAdapter(child: SizedBox(height: 28)),
+
+                    // ── My Courses ───────────────────────────────────────
+                    if (provider.myCourses.isNotEmpty) ...[
+                      SliverToBoxAdapter(
+                        child: SectionHeader(
+                          title: 'my_courses'.tr,
+                          actionLabel: 'show_more'.tr,
+                          onAction: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => CoursesListScreen(
+                                homeCourses: provider.myCourses,
+                                forMyCourses: true,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SliverToBoxAdapter(
+                        child: SizedBox(height: 16),
+                      ),
+                      SliverToBoxAdapter(
+                        child: HomeCourseList(
+                          courses: provider.myCourses,
+                          pageName: 'home-my-courses',
+                          isTeacher: false,
+                          onTap: (CourseModel c) {
+                            // Already enrolled → no code needed.
+                            Navigator.pushNamed(
+                              context,
+                              '/course-detail',
+                              arguments: c,
+                            );
+                          },
+                          hasMore: false,
+                        ),
+                      ),
+                    ],
+
+                    // ── Other Courses ────────────────────────────────────
+                    if (provider.otherCourses.isNotEmpty) ...[
+                      const SliverToBoxAdapter(
+                        child: SizedBox(height: 28),
+                      ),
+                      SliverToBoxAdapter(
+                        child: SectionHeader(
+                          title: 'other_courses'.tr,
+                          actionLabel: 'show_more'.tr,
+                          onAction: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => CoursesListScreen(
+                                homeCourses: provider.otherCourses,
+                                forMyCourses: false,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SliverToBoxAdapter(
+                        child: SizedBox(height: 16),
+                      ),
+                      SliverToBoxAdapter(
+                        child: HomeCourseList(
+                          pageName: 'home-other-courses',
+                          courses: provider.otherCourses,
+                          isTeacher: false,
+                          // Private courses ask for the access code first.
+                          onTap: (CourseModel c) => openCourse(context, c),
+                          hasMore: false,
+                        ),
+                      ),
+                    ],
+                    const SliverToBoxAdapter(child: SizedBox(height: 28)),
+
+                    // ── Best teachers ────────────────────────────────────
+                    SliverToBoxAdapter(
+                      child: SectionHeader(
+                        title: 'best_teachers'.tr,
+                        actionLabel: 'show_more'.tr,
+                        onAction: () {},
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                    SliverToBoxAdapter(child: InstructorsRow()),
+                    const SliverToBoxAdapter(child: SizedBox(height: 40)),
+                  ],
+                ),
+              ),
             ),
           ),
         );
@@ -371,10 +365,10 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
               boxShadow: [
                 BoxShadow(
                   color:
-                      (isOngoing
-                              ? context.colors.danger
-                              : context.colors.primary)
-                          .withValues(alpha: 0.38),
+                  (isOngoing
+                      ? context.colors.danger
+                      : context.colors.primary)
+                      .withValues(alpha: 0.38),
                   blurRadius: 24,
                   offset: const Offset(0, 8),
                 ),
@@ -426,29 +420,29 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
                     Expanded(
                       child: next == null
                           ? _BannerContent(
-                              tag: 'today'.tr,
-                              title: 'no_sessions_today_title'.tr,
-                              subtitle: 'check_weekly_schedule'.tr,
-                            )
+                        tag: 'today'.tr,
+                        title: 'no_sessions_today_title'.tr,
+                        subtitle: 'check_weekly_schedule'.tr,
+                      )
                           : _BannerContent(
-                              tag: next.isOngoing
-                                  ? 'session_ongoing_tag'.tr
-                                  : 'upcoming_session_tag'.tr,
-                              title: next.courseName,
-                              subtitle: '${next.startTime} — ${next.endTime}',
-                              countdown: _countdownText.isNotEmpty
-                                  ? (next.isOngoing
-                                        ? 'ends_after_countdown'.tr.replaceAll(
-                                            '{t}',
-                                            _countdownText,
-                                          )
-                                        : 'starts_after_countdown'.tr
-                                              .replaceAll(
-                                                '{t}',
-                                                _countdownText,
-                                              ))
-                                  : null,
-                            ),
+                        tag: next.isOngoing
+                            ? 'session_ongoing_tag'.tr
+                            : 'upcoming_session_tag'.tr,
+                        title: next.courseName,
+                        subtitle: '${next.startTime} — ${next.endTime}',
+                        countdown: _countdownText.isNotEmpty
+                            ? (next.isOngoing
+                            ? 'ends_after_countdown'.tr.replaceAll(
+                          '{t}',
+                          _countdownText,
+                        )
+                            : 'starts_after_countdown'.tr
+                            .replaceAll(
+                          '{t}',
+                          _countdownText,
+                        ))
+                            : null,
+                      ),
                     ),
                     const SizedBox(width: 16),
 

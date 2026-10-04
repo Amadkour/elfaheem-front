@@ -4,6 +4,7 @@ import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../../../../utils/widget/app_loading_indicator.dart';
+import '../../../shared/passcode/passcode_screen.dart';
 import 'passcode_screen.dart';
 import 'student_exam_api.dart';
 import 'student_exam_detail_screen.dart';
@@ -29,29 +30,36 @@ Future<void> openStudentExam(
   };
 
   if (exam.enablePasscode) {
-    ExamPasscodeSheet.show(
+    final unlocked = await PasscodeSheet.show(
       context: context,
-      exam: exam,
-      correctPasscode: exam.passcode!,
-      provider: prov,
+      title: tx('exam_passcode_title'),
+      hint: tx('exam_passcode_hint'),
+      wrongText: tx('exam_passcode_wrong'),
+      pinLength: exam.passcode!.length,
+      verify: (code) => code == exam.passcode,
     );
-  } else {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ChangeNotifierProvider.value(
-          value: prov,
-          child: StudentExamDetailScreen(exam: exam),
-        ),
-      ),
-    );
-    // Detail screen closed WITHOUT starting a quiz → no result screen will
-    // ever fire the hook, so run it now. (If a quiz was started the session
-    // is non-null and the result screen will fire it later.)
-    if (prov.session == null && prov.onFlowFinished != null) {
+    if (!unlocked || !context.mounted) {
+      // Sheet dismissed: no flow started, so don't leave a stale hook behind.
       prov.onFlowFinished = null;
-      await callback();
+      return;
     }
+  }
+
+  await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => ChangeNotifierProvider.value(
+        value: prov,
+        child: StudentExamDetailScreen(exam: exam),
+      ),
+    ),
+  );
+  // Detail screen closed WITHOUT starting a quiz → no result screen will
+  // ever fire the hook, so run it now. (If a quiz was started the session
+  // is non-null and the result screen will fire it later.)
+  if (prov.session == null && prov.onFlowFinished != null) {
+    prov.onFlowFinished = null;
+    await callback();
   }
 }
 

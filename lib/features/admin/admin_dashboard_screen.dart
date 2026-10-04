@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
+import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import 'admin_categories_page.dart';
@@ -44,15 +45,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final c = context.colors;
 
     // Defence in depth: the server enforces roles on every call anyway.
-    print("user role is: ${auth.currentUser?.role ?? ''}");
     if (!['admin', 'super-admin'].contains(auth.currentUser?.role ?? '')) {
-      return Directionality(
-        textDirection: dir,
-        child: Scaffold(
-          body: EmptyState(
-            t('هذه الصفحة للمديرين فقط', 'Admins only'),
-            icon: Icons.lock_rounded,
-          ),
+      return BasePage(
+        child: EmptyState(
+          t('هذه الصفحة للمديرين فقط', 'Admins only'),
+          icon: Icons.lock_rounded,
         ),
       );
     }
@@ -70,55 +67,32 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       t('المزيد', 'More'),
     ];
 
-    return Directionality(
-      textDirection: dir,
-      child: Scaffold(
-        backgroundColor: c.background,
-        appBar: AppBar(
-          title: Text(
-            titles[_tab],
-            style: const TextStyle(
-              fontFamily: 'tajawal',
-              fontWeight: FontWeight.w800,
-            ),
+    return BasePage(
+      useWebCard: true,
+      maxWith: 1100,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _tab,
+        onDestinationSelected: (i) => setState(() => _tab = i),
+        destinations: [
+          NavigationDestination(
+            icon: const Icon(Icons.dashboard_rounded),
+            label: t('الرئيسية', 'Overview'),
           ),
-          actions: [
-            IconButton(
-              tooltip: t('تسجيل الخروج', 'Log out'),
-              icon: const Icon(Icons.logout_rounded),
-              onPressed: () async {
-                final ok = await _confirmLogout(context);
-                if (ok && context.mounted) {
-                  await context.read<ProfileProvider>().logout(context);
-                }
-              },
-            ),
-          ],
-        ),
-        body: IndexedStack(index: _tab, children: pages),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _tab,
-          onDestinationSelected: (i) => setState(() => _tab = i),
-          destinations: [
-            NavigationDestination(
-              icon: const Icon(Icons.dashboard_rounded),
-              label: t('الرئيسية', 'Overview'),
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.school_rounded),
-              label: t('الطلاب', 'Students'),
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.menu_book_rounded),
-              label: t('الكورسات', 'Courses'),
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.apps_rounded),
-              label: t('المزيد', 'More'),
-            ),
-          ],
-        ),
+          NavigationDestination(
+            icon: const Icon(Icons.school_rounded),
+            label: t('الطلاب', 'Students'),
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.menu_book_rounded),
+            label: t('الكورسات', 'Courses'),
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.apps_rounded),
+            label: t('المزيد', 'More'),
+          ),
+        ],
       ),
+      child: IndexedStack(index: _tab, children: pages)
     );
   }
 }

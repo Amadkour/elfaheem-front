@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/app_config.dart';
+import '../../utils/widget/app_bar.dart';
+import '../../utils/widget/base_page.dart';
 import 'admin_common.dart';
 import 'admin_list.dart';
 import 'admin_models.dart';
@@ -90,19 +93,13 @@ class _UsersView extends StatelessWidget {
           style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
     );
 
-    return Directionality(
-      textDirection: dir,
-      child: Scaffold(
-        backgroundColor: c.background,
-        appBar: embedded
-            ? null
-            : AppBar(
-                title: Text(isStudent ? t('الطلاب', 'Students') : t('المعلمون', 'Teachers'),
-                    style: const TextStyle(fontFamily: 'tajawal')),
-              ),
-        floatingActionButton: fab,
-        body: list,
-      ),
+    return BasePage(
+      useWebCard: true,
+      maxWith: 1100,
+      appBar:embedded?null: ScreenAppBar(title: 'students'.tr),
+
+      floatingActionButton: fab,
+      child: list,
     );
   }
 }
