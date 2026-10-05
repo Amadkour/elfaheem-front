@@ -10,12 +10,16 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:flutter_education_app/features/shared/profile/components/setting_title.dart' show SettingsTile;
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/app_config.dart';
 import '../../utils/helpers.dart';
+import '../shared/profile/change_language_screen.dart';
+import '../shared/profile/components/setting_group.dart';
 import 'admin_categories_page.dart';
 import 'admin_common.dart';
 import 'admin_content_page.dart';
@@ -73,19 +77,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       useWebCard: true,
       maxWith: 1100,
       appBar: ScreenAppBar(
-        title: 'control',
+        title: 'dashboard'.tr,
         showBack: false,
-        actions: [
-          IconButton(
-            onPressed: () async {
-              final ok = await Helpers.confirmDialog(context);
-              if (ok == true && context.mounted) {
-                await context.read<ProfileProvider>().logout(context);
-              }
-            },
-            icon: Icon(Icons.logout),
-          ),
-        ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
@@ -122,140 +115,135 @@ Future<bool> _confirmLogout(BuildContext context) => confirm(
 
 class _MorePage extends StatelessWidget {
   const _MorePage();
-
+  Future<void> _push(BuildContext context,Widget screen) async => await Navigator.of(
+    context,
+  ).push(MaterialPageRoute(builder: (_) => screen));
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final p = context.watch<ProfileProvider>();
 
-    Widget tile(
-      IconData icon,
-      Color color,
-      String title,
-      String sub,
-      Widget page,
-    ) => RowCard(
-      onTap: () =>
-          Navigator.of(context).push(MaterialPageRoute(builder: (_) => page)),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontWeight: FontWeight.w800,
-                    color: c.textDark,
-                  ),
-                ),
-                Text(
-                  sub,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 12,
-                    color: c.textLight,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Icon(Icons.chevron_left_rounded, color: c.textLight),
-        ],
-      ),
-    );
-
-    return ListView(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(14),
-      children: [
-        tile(
-          Icons.campaign_rounded,
-          c.primary,
-          t('إرسال رسالة', 'Send a message'),
-          t('للكل · لطلاب كورس · لطالب محدد', 'All · a course · one student'),
-          const AdminSendMessagePage(),
+      child:SettingsGroup(
+        title: 'more'.tr,
+        children:  [
+        SettingsTile(
+          icon: Icons.campaign_rounded,
+          iconBg: c.primary.withAlpha(50),
+          iconColor: c.primary,
+          label: 'send_message'.tr,
+          onTap: () => _push( context,const AdminSendMessagePage()),
         ),
         if (context.read<AuthProvider>().isSuper)
-          tile(
-            Icons.visibility_rounded,
-            c.warning,
-            t('عرض كمستخدم', 'View as user'),
-            t(
-              'شاهد لوحة طالب أو معلم (قراءة فقط)',
-              'See a student / teacher dashboard (read-only)',
+          SettingsTile(
+            icon: Icons.visibility_rounded,
+            iconBg: c.warning.withAlpha(50),
+            iconColor:c.warning,
+            label: 'view_as_user'.tr,
+            onTap: () => _push( context,const AdminViewAsPage()),
+          ),
+        SettingsTile(
+            icon: Icons.person_pin_rounded,
+          iconBg: c.danger.withAlpha(50),
+          iconColor:c.danger,
+            label: 'teachers'.tr,
+            onTap: () => _push( context,const AdminUsersPage(role: 'teacher')),
+          ),
+
+        SettingsTile(
+            icon: Icons.category_rounded,
+          iconBg: c.primary.withAlpha(50),
+          iconColor: c.primary,
+            label: 'categories'.tr,
+            onTap: () => _push( context,const AdminCategoriesPage()),
+          ),
+
+        SettingsTile(
+            icon: Icons.card_membership_rounded,
+          iconBg: c.warning.withAlpha(50),
+          iconColor:c.warning,
+            label: 'subscriptions'.tr,
+            onTap: () => _push( context,const AdminSubscriptionsPage()),
+          ),
+
+        SettingsTile(
+            icon: Icons.devices_rounded,
+          iconBg: c.danger.withAlpha(50),
+          iconColor:c.danger,
+            label: 'devices_and_payments'.tr,
+            onTap: () => _push( context,const AdminSystemPage()),
+          ),
+        SettingsTile(
+            icon: Icons.palette_rounded,
+          iconBg: c.purpleTint,
+          iconColor: const Color(0xFF8B6FFF),
+            label: 'theme'.tr,
+            onTap: () => _push( context,const AdminThemePage()),
+          ),
+
+        SettingsTile(
+            icon: Icons.toggle_on_rounded,
+          iconBg: c.primary.withAlpha(50),
+          iconColor: c.primary,
+            label: 'features'.tr,
+            onTap: () => _push( context,const AdminFeaturesPage()),
+          ),
+
+        SettingsTile(
+            icon: Icons.system_update_rounded,
+          iconBg: c.warning.withAlpha(50),
+          iconColor:c.warning,
+            label: 'versions'.tr,
+            onTap: () => _push( context,const AdminVersionsPage()),
+          ),
+        SettingsTile(
+            icon: Icons.gavel_rounded,
+          iconBg: c.danger.withAlpha(50),
+          iconColor:c.danger,
+            label: 'terms_and_conditions'.tr,
+            onTap: () => _push( context,const AdminContentPage()),
+          ),
+    SettingsTile(
+            icon: Icons.language_rounded,
+            iconBg: c.purpleTint,
+            iconColor: const Color(0xFF8B6FFF),
+            label: 'change_language'.tr,
+            onTap: () => _push(context,const ChangeLanguageScreen()),
+
+        ), SettingsTile(
+            icon: Icons.dark_mode_rounded,
+            iconBg: c.darkIconBg,
+            iconColor: c.textDark,
+            label: 'dark_mode'.tr,
+            trailing: Switch.adaptive(
+              value: p.darkMode,
+              onChanged: (b) async {
+                await p.changeMode(b);
+              },
+              activeThumbColor: context.colors.primary,
+              thumbColor: const WidgetStatePropertyAll(
+                Colors.white,
+              ),
             ),
-            const AdminViewAsPage(),
           ),
-        tile(
-          Icons.person_pin_rounded,
-          c.purple,
-          t('المعلمون', 'Teachers'),
-          t('إضافة وتعديل وتحكم', 'Add, edit and control'),
-          const AdminUsersPage(role: 'teacher'),
-        ),
-        tile(
-          Icons.category_rounded,
-          c.success,
-          t('التصنيفات', 'Categories'),
-          t('إدارة تصنيفات الكورسات', 'Manage course categories'),
-          const AdminCategoriesPage(),
-        ),
-        tile(
-          Icons.card_membership_rounded,
-          c.primary,
-          t('الاشتراكات', 'Subscriptions'),
-          t('مجاني/مدفوع، الأسعار، الطلبات', 'Free/paid, prices, requests'),
-          const AdminSubscriptionsPage(),
-        ),
-        tile(
-          Icons.devices_rounded,
-          c.warning,
-          t('الأجهزة والدفع', 'Devices & payments'),
-          t(
-            'عدد الأجهزة، مدة التبديل، طرق الدفع',
-            'Device limit, switch period, methods',
-          ),
-          const AdminSystemPage(),
-        ),
-        tile(
-          Icons.palette_rounded,
-          c.purple,
-          t('المظهر', 'Theme'),
-          t('ثيمات جاهزة ومخصصة', 'Built-in and custom themes'),
-          const AdminThemePage(),
-        ),
-        tile(
-          Icons.toggle_on_rounded,
-          c.success,
-          t('الميزات', 'Features'),
-          t('إخفاء وإظهار الميزات', 'Hide / unhide features'),
-          const AdminFeaturesPage(),
-        ),
-        tile(
-          Icons.system_update_rounded,
-          c.danger,
-          t('إصدارات التطبيق', 'App versions'),
-          t('نشر وتحديث إجباري', 'Publish and force updates'),
-          const AdminVersionsPage(),
-        ),
-        tile(
-          Icons.gavel_rounded,
-          c.charcoal,
-          t('الشروط ومن نحن', 'Terms & About'),
-          t('تعديل المحتوى بلغتين', 'Edit bilingual content'),
-          const AdminContentPage(),
+        SettingsTile(
+          key: ValueKey('profile.logout'),
+          icon: Icons.logout,
+          iconBg: c.dangerTint,
+          iconColor: c.danger,
+          label: 'logout'.tr,
+          onTap: () async {
+            final ok = await Helpers.confirmDialog(context);
+            if (ok == true && context.mounted) {
+              await context.read<ProfileProvider>().logout(
+                context,
+              );
+            }
+          },
         ),
       ],
+      )
     );
   }
 }

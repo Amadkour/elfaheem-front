@@ -4776,5 +4776,29 @@
   "exam_err_no_questions": {
     "en": "This exam has no questions yet",
     "ar": "هذا الاختبار لا يحتوي على أسئلة بعد"
+  },
+  "course_hero_private": {
+    "en": "Private",
+    "ar": "كورس خاص"
+  },
+  "course_hero_share": {
+    "en": "Share",
+    "ar": "مشاركة"
+  },
+  "course_hero_favourite": {
+    "en": "Favourite",
+    "ar": "المفضلة"
+  },
+  "course_hero_students": {
+    "en": "Students",
+    "ar": "طالب"
+  },
+  "course_hero_lessons": {
+    "en": "Lessons",
+    "ar": "درس"
+  },
+  "course_hero_hours": {
+    "en": "Hours",
+    "ar": "ساعة"
   }
 }

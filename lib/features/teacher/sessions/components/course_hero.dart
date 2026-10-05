@@ -10,6 +10,8 @@ import 'package:flutter_education_app/utils/helpers.dart';
 
 import '../../../../../utils/widget/refresh_button.dart';
 import '../../../../config/theme/theme_config_provider.dart';
+import '../../../shared/course/topbar.dart';
+import '../../../student/courses/details/components/share_link.dart';
 import '../../home/teacher_models.dart';
 import 'course_reel_player.dart';
 
@@ -55,34 +57,14 @@ class CourseHero extends StatelessWidget {
                   top: 12,
                   left: 16,
                   right: 16,
-                  child: Directionality(
-                    textDirection: Helpers.pageDirectionInverse,
-                    child: Row(
-                      children: [
-                        _CircleBtn(
-                          icon: Icons.arrow_back_ios_new_rounded,
-                          onTap: onBack,
-                        ),
-                        const Spacer(),
-                        RefreshButton(onTap: () async => onRefresh()),
-                        if (onEditCourse != null) ...[
-                          const SizedBox(width: 10),
-                          _CircleBtn(
-                            icon: CupertinoIcons.settings,
-                            onTap: onEditCourse!,
-                          ),
-                        ],
-                        if (onLike != null) ...[
-                          const SizedBox(width: 10),
-                          _CircleBtn(
-                            icon: (isLike ?? false)
-                                ? CupertinoIcons.heart_fill
-                                : CupertinoIcons.heart,
-                            onTap: onLike!,
-                          ),
-                        ],
-                      ],
-                    ),
+                  child:
+
+                  CourseDetailsTopBar(
+                    showRefresh: true,
+                    onRefresh: onRefresh,
+                    onBack: ()=>Navigator.pop(context),
+                    onSetting: onEditCourse,
+                    onShare: ()=> shareCourseLink(context, course.toCourseModel),
                   ),
                 ),
                 Positioned(

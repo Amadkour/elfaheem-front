@@ -44,7 +44,7 @@ import 'growth_tr.dart';
 
 /// Below this width we use the single-column (phone/tablet) layout.
 const double _kTwoColumnW = 980;
-const double _kSideW = 340;
+const double _kSideW = 240;
 
 void _openRecommendedCourse(BuildContext context, CourseSummary summary) {
   Navigator.of(context).push(
@@ -243,6 +243,7 @@ class _MobileLayout extends StatelessWidget {
                         reelUrl: p.reelUrl,
                         onBack: () => Navigator.maybePop(context),
                         onRefresh: p.refresh,
+                        showRefresh: true,
                         onLike: p.toggleFavorite,
                         onShare: () => shareCourseLink(context, p.course),
                       ),
@@ -318,21 +319,20 @@ class _WebLayout extends StatelessWidget {
 
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Main column (scrolls) ───────────────────────────────────
-            Expanded(
-              child: NotificationListener<ScrollNotification>(
-                onNotification: (n) => _onCourseDetailScroll(context, n),
-                child: CustomScrollView(
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        // 20 = the horizontal padding the tab content uses,
-                        // so the hero edge lines up with the cards below it.
-                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+        padding: const EdgeInsets.symmetric(horizontal: 5),
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (n) => _onCourseDetailScroll(context, n),
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  // 20 = the horizontal padding the tab content uses,
+                  // so the hero edge lines up with the cards below it.
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
                         child: StudentCourseHero(
                           rounded: true,
                           showRefresh: true,
@@ -344,22 +344,15 @@ class _WebLayout extends StatelessWidget {
                           onShare: () => shareCourseLink(context, p.course),
                         ),
                       ),
-                    ),
-                    ..._contentSlivers(context, p, showChips: false),
-                  ],
+                      if(context.width>1200)
+                      _SideCard(),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 24),
-            // ── Buy card (stays in place while the main column scrolls) ─
-            SizedBox(
-              width: _kSideW,
-              child: const SingleChildScrollView(
-                padding: EdgeInsets.only(top: 16, bottom: 32),
-                child: _SideCard(),
-              ),
-            ),
-          ],
+              ..._contentSlivers(context, p, showChips: false),
+            ],
+          ),
         ),
       ),
     );
@@ -376,7 +369,9 @@ class _SideCard extends StatelessWidget {
     final highlights = _highlights(context, course);
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      width: _kSideW,
+      padding: EdgeInsets.all(15),
+      margin: EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: c.cardBg,
         borderRadius: BorderRadius.circular(22),
@@ -390,7 +385,7 @@ class _SideCard extends StatelessWidget {
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
         children: [
           if (course.isEnrolled)
             Row(
@@ -602,7 +597,7 @@ List<_Highlight> _highlights(BuildContext context, CourseModel c) {
       (
       icon: Icons.workspace_premium_rounded,
       label: gt('شهادة إتمام معتمدة', 'Certificate of completion'),
-      color: col.accent,
+      color: col.success,
       ),
     if (c.type == 'live')
       (
