@@ -76,9 +76,9 @@ class InstructorData {
 
 class HomeProvider extends BaseProvider {
   // ── State ──────────────────────────────────────────────────────────────────
-  final ApiClient _api;
+  final ApiClient api;
 
-  HomeProvider({ApiClient? api}) : _api = api ?? ApiClient();
+  HomeProvider({ApiClient? api}) : api = api ?? ApiClient();
 
   // Upcoming banner — in production this comes from the dashboard API
   final UpcomingCourse upcomingCourse = const UpcomingCourse(
@@ -105,7 +105,7 @@ class HomeProvider extends BaseProvider {
   Future<void> fetchStudentDashboard() async {
     makeLoading();
     final result = await run(
-      () => _api.get(
+      () => api.get(
         '/api/v1/teacher/student-dashboard',
         auth: true,
       ),

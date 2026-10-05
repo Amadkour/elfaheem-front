@@ -4785,6 +4785,10 @@
     "en": "Share",
     "ar": "مشاركة"
   },
+  "private": {
+    "en": "Private",
+    "ar": "خاص"
+  },
   "course_hero_favourite": {
     "en": "Favourite",
     "ar": "المفضلة"

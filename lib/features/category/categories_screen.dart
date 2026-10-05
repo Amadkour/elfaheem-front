@@ -11,7 +11,7 @@ import '../../utils/widget/app_network_image.dart';
 import '../../utils/widget/app_bar.dart';
 import '../shared/course/home_course_list.dart';
 import '../student/courses/details/course_detail_screen.dart';
-import '../student/home/component/course_row.dart';
+import '../shared/course/course_row.dart';
 import '../student/models.dart';
 import 'categories_provider.dart';
 import 'model.dart';

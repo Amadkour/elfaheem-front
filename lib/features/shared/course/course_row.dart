@@ -1,14 +1,14 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/shared/course/private_flag.dart';
 import 'package:flutter_education_app/features/student/models.dart'
-    show CourseModel, AppCurrencyX;
+    show CourseModel, AppCurrencyX, DiscountInfoX;
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/widget/app_network_image.dart';
-import '../../../shared/course/course_price_tag.dart';
-import '../../../shared/course/discount_info.dart';
-import '../../../shared/profile/course_instractor_profile.dart';
+import '../profile/course_instractor_profile.dart';
+import 'course_price_tag.dart';
 
 class CoursesRow extends StatelessWidget {
   final List<CourseModel> courses;
@@ -403,6 +403,14 @@ class _Thumbnail extends StatelessWidget {
                   DiscountCountdownBadge(course: course, compact: true),]
               ],
             ),
+          ),
+
+        // Private course flag — bottom left
+        if (course.isPrivate)
+          Positioned(
+            bottom: 10,
+            left: 10,
+            child:PrivateFlag()
           ),
 
         // Countdown — bottom left, opposite the price badge. This is the

@@ -10,6 +10,7 @@ import 'package:flutter_education_app/utils/helpers.dart';
 
 import '../../../../../utils/widget/refresh_button.dart';
 import '../../../../config/theme/theme_config_provider.dart';
+import '../../../shared/course/private_flag.dart';
 import '../../../shared/course/topbar.dart';
 import '../../../student/courses/details/components/share_link.dart';
 import '../../home/teacher_models.dart';
@@ -78,30 +79,35 @@ class CourseHero extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (course.category != null)
-                          Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: context.colors.primary.withValues(
-                                alpha: 0.85,
-                              ),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              AppConfig.lang == 'ar'
-                                  ? course.category!.nameAr
-                                  : course.category!.nameEn,
+                          Row(
+                            children: [
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: context.colors.primary.withValues(
+                                    alpha: 0.85,
+                                  ),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  AppConfig.lang == 'ar'
+                                      ? course.category!.nameAr
+                                      : course.category!.nameEn,
 
-                              style: const TextStyle(
-                                fontFamily: 'tajawal',
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
+                                  style: const TextStyle(
+                                    fontFamily: 'tajawal',
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
                               ),
-                            ),
+                              if (course.isPrivate) PrivateFlag(label: 'course_hero_private'.tr),
+                            ],
                           ),
                         Text(
                           course.title,

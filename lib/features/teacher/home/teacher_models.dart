@@ -439,6 +439,7 @@ class TeacherCourse with DiscountInfo {
   );
 
   CourseModel get toCourseModel => CourseModel(
+    isPrivate: isPrivate,
       id: id.toString(),
       name: title,
       imageUrl: imageUrl,

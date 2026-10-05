@@ -18,6 +18,8 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/shared/course/topbar.dart';
 import 'package:path/path.dart';
 
+import '../../../../../utils/helpers.dart';
+import '../../../../shared/course/private_flag.dart';
 import '../../../../teacher/sessions/components/course_reel_player.dart';
 import '../../../models.dart';
 // NOTE: add the same import your other screens use for the `.tr` String extension.
@@ -71,13 +73,7 @@ class StudentCourseHero extends StatelessWidget {
               text: ar ? course.category!.nameAr : course.category!.nameEn,
               color: c.primary.withValues(alpha: 0.92),
             ),
-          if (course.isPrivate)
-            _Pill(
-              icon: Icons.lock_rounded,
-              text: 'course_hero_private'.tr,
-              color: const Color(0xFFC9A84C),
-              dark: true,
-            ),
+          if (course.isPrivate) PrivateFlag(label: 'course_hero_private'.tr),
         ];
 
         return SizedBox(
@@ -117,40 +113,73 @@ class StudentCourseHero extends StatelessWidget {
                         CourseDetailsTopBar(
                           onRefresh: onRefresh,
                           onLike: onLike,
-                          onBack: ()=>Navigator.pop(context),
+                          onBack: () => Navigator.pop(context),
                           onShare: onShare,
                           showRefresh: true,
                           isFavorite: course.isFavorite,
                         ),
                         const Spacer(),
-                        if (pills.isNotEmpty) ...[
-                          Wrap(spacing: 8, runSpacing: 6, children: pills),
-                          const SizedBox(height: 10),
-                        ],
-                        Text(
-                          course.name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontFamily: 'tajawal',
-                            fontSize: wide ? 30 : 23,
-                            fontWeight: FontWeight.w800,
-                            height: 1.25,
-                            color: Colors.white,
-                            shadows: const [
-                              Shadow(color: Colors.black54, blurRadius: 12),
+                        Directionality(
+                          textDirection: Helpers.textDirOf(
+                            course.description ?? '',
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (pills.isNotEmpty) ...[
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 6,
+                                  children: pills,
+                                ),
+                                const SizedBox(height: 10),
+                              ],
+                              Text(
+                                course.name,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontFamily: 'tajawal',
+                                  fontSize: wide ? 30 : 23,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.25,
+                                  color: Colors.white,
+                                  shadows: const [
+                                    Shadow(
+                                      color: Colors.black54,
+                                      blurRadius: 12,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (course.description != null &&
+                                  course.description!.isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Text(
+                                  course.description!,
+                                  style: TextStyle(
+                                    fontFamily: 'tajawal',
+                                    fontSize: 12,
+                                    color: Colors.white.withValues(alpha: 0.80),
+                                    height: 1.45,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                              if (course.teacher != null) ...[
+                                const SizedBox(height: 10),
+                                _TeacherChip(
+                                  name: course.teacher!.name,
+                                  imageUrl: course.teacher!.imageUrl,
+                                ),
+                              ],
+                              const SizedBox(height: 14),
+                              _statsStrip(),
                             ],
                           ),
                         ),
-                        if (course.teacher != null) ...[
-                          const SizedBox(height: 10),
-                          _TeacherChip(
-                            name: course.teacher!.name,
-                            imageUrl: course.teacher!.imageUrl,
-                          ),
-                        ],
-                        const SizedBox(height: 14),
-                        _statsStrip(),
                       ],
                     ),
                   ),

@@ -183,14 +183,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           courses: provider.myCourses,
                           pageName: 'home-my-courses',
                           isTeacher: false,
-                          onTap: (CourseModel c) {
-                            // Already enrolled → no code needed.
-                            Navigator.pushNamed(
-                              context,
-                              '/course-detail',
-                              arguments: c,
-                            );
-                          },
+                          onTap: (CourseModel c) => openCourse(context, c,provider.api),
+
                           hasMore: false,
                         ),
                       ),
@@ -224,7 +218,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           courses: provider.otherCourses,
                           isTeacher: false,
                           // Private courses ask for the access code first.
-                          onTap: (CourseModel c) => openCourse(context, c),
+                          onTap: (CourseModel c) => openCourse(context, c,provider.api),
                           hasMore: false,
                         ),
                       ),

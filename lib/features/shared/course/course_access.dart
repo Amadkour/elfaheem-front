@@ -12,23 +12,27 @@ import '../passcode/passcode_screen.dart';
 ///
 /// The code is checked by the server (POST /api/v1/courses/{id}/unlock, which
 /// is rate-limited), so it never has to be sent to the app.
-Future<void> openCourse(BuildContext context, CourseModel c) async {
+Future<void> openCourse(BuildContext context, CourseModel c,ApiClient api) async {
   if (c.isPrivate) {
-    final api = context.read<ApiClient>();
     final unlocked = await PasscodeSheet.show(
       context: context,
       title: 'course_passcode_title'.tr,
       hint: 'course_passcode_hint'.tr,
       wrongText: 'course_passcode_wrong'.tr,
-      pinLength: 6, // must match the length of your generated access codes
+      pinLength: 6,
+      // must match the length of your generated access codes
       icon: Icons.vpn_key_rounded,
       verify: (code) async {
         // Succeeds → unlocked. A wrong code / rate limit makes the server
         // answer with an error, which ApiClient throws; its message is
         // shown in the sheet via errorText below.
         // ⚠ ADAPT THIS LINE to your ApiClient's POST signature.
-        // await api.post('/api/v1/courses/${c.id}/unlock', {'code': code});
-        return true;
+       dynamic r= await api.post(
+          '/api/v1/courses/${c.id}/unlock',
+          body: {'code': code},
+          auth: true,
+        );
+        return  r['unlocked']??false;
       },
       errorText: (e) => e.toString(),
     );

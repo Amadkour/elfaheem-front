@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/student/models.dart';
 import '../../student/courses/details/components/app_responsive.dart';
-import '../../student/home/component/course_row.dart';
+import 'course_row.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 class HomeCourseList extends StatelessWidget {
