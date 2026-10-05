@@ -72,16 +72,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return BasePage(
       useWebCard: true,
       maxWith: 1100,
-      appBar: ScreenAppBar(title: 'control',showBack: false,actions: [
-        IconButton(onPressed: () async {
-          final ok = await Helpers.confirmDialog(context);
-          if (ok == true && context.mounted) {
-            await context.read<ProfileProvider>().logout(
-              context,
-            );
-          }
-        }, icon: Icon(Icons.logout)),
-      ],),
+      appBar: ScreenAppBar(
+        title: 'control',
+        showBack: false,
+        actions: [
+          IconButton(
+            onPressed: () async {
+              final ok = await Helpers.confirmDialog(context);
+              if (ok == true && context.mounted) {
+                await context.read<ProfileProvider>().logout(context);
+              }
+            },
+            icon: Icon(Icons.logout),
+          ),
+        ],
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
@@ -104,7 +109,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
         ],
       ),
-      child: IndexedStack(index: _tab, children: pages)
+      child: IndexedStack(index: _tab, children: pages),
     );
   }
 }

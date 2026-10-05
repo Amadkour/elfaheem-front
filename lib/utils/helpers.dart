@@ -153,6 +153,9 @@ class Helpers {
   static TextDirection get pageDirection =>
       AppConfig.lang == 'ar' ? TextDirection.rtl : TextDirection.ltr;
 
+  static TextDirection get pageDirectionInverse =>
+      AppConfig.lang == 'ar' ? TextDirection.ltr : TextDirection.rtl;
+
   static TextDirection textDirOf(String text) {
     for (final r in text.runes) {
       if ((r >= 0x0590 && r <= 0x08FF) ||

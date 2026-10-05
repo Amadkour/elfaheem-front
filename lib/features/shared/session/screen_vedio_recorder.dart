@@ -126,6 +126,9 @@ class _LegacyHelper {
       urlHigh: high?.url,
       urlMedium: medium?.url,
       urlLow: low?.url,
+      rawUrlHigh: high?.url,
+      rawUrlMedium: medium?.url,
+      rawUrlLow: low?.url,
       audioUrl: audioUrl,
     );
   }
@@ -182,10 +185,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   void initState() {
     super.initState();
 
-    // Default to the highest-quality video variant
-    _activeVariant = _mat.videoVariants.isNotEmpty
-        ? _mat.videoVariants.first
-        : _mat.availableVariants.first;
+    // Start on the model's default stream (lowest AVAILABLE quality - see
+    // SessionMaterialModel.defaultVideoVariant to change that in one place).
+    _activeVariant = _mat.defaultVideoVariant;
 
     _fadeCtrl = AnimationController(
       vsync: this,
@@ -238,9 +240,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         setState(() {
           _resolved = resolved;
           _viewsNote = left == null ? null : 'المشاهدات المتبقية هذا الشهر: $left';
-          _activeVariant = resolved.videoVariants.isNotEmpty
-              ? resolved.videoVariants.first
-              : resolved.availableVariants.first;
+          _activeVariant = resolved.defaultVideoVariant;
         });
       } on ApiException catch (e) {
         if (!mounted) return;
@@ -259,7 +259,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     if (e.isDeviceBlocked) {
       final p = DeviceSecurityProvider();
       await p.check();
-      if (mounted) await showDeviceBlockedDialog(context, p, courseId: null);
+      // The switch request is routed to the course's teacher, so it needs the
+      // real course id (null used to be sent as -1 and always failed).
+      if (mounted) {
+        await showDeviceBlockedDialog(
+          context, p,
+          courseId: int.tryParse(_progressProvider?.course.id.toString() ?? ''),
+        );
+      }
     } else if (e.isViewLimit) {
       await showDialog<void>(
         context: context,
@@ -320,6 +327,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     final next = VideoPlayerController.networkUrl(
       Uri.parse(variant.url!),
       httpHeaders: kIsWeb ? const <String, String>{} : await DeviceIdService.instance.headers(),
+      // Keep playing (sound) when the app goes to the background / the user
+      // opens another app. Without this video_player pauses the video on
+      // AppLifecycleState.paused. iOS also needs UIBackgroundModes=audio in
+      // Info.plist. Ignored on web.
+      videoPlayerOptions: VideoPlayerOptions(allowBackgroundPlayback: true),
     );
     try {
       await next.initialize();
@@ -970,14 +982,18 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                   fontWeight: FontWeight.w500)),
           const Spacer(),
 
-          // Stream / quality picker chip — single entry point for ALL streams
-          _ControlChip(
-            icon: _isAudioMode ? Icons.headphones_rounded : Icons.hd_rounded,
-            label: _activeVariant.label,
-            active: _isAudioMode,
-            onTap: _openStreamPicker,
-          ),
-          const SizedBox(width: 6),
+          // Stream / quality picker chip — single entry point for ALL streams.
+          // Only when the material really has more than one stream: a video
+          // with a single quality has nothing to pick.
+          if (_mat.availableVariants.length > 1) ...[
+            _ControlChip(
+              icon: _isAudioMode ? Icons.headphones_rounded : Icons.hd_rounded,
+              label: _activeVariant.label,
+              active: _isAudioMode,
+              onTap: _openStreamPicker,
+            ),
+            const SizedBox(width: 6),
+          ],
 
           // Speed
           _ControlChip(
@@ -1303,8 +1319,9 @@ class _VariantTile extends StatelessWidget {
           ),
 
           // ── Quality badge ────────────────────────────────────────────────
-          _QualityBadge(
-              variant: variant, selected: selected, accent: accentColor),
+          if (!variant.isOriginal)
+            _QualityBadge(
+                variant: variant, selected: selected, accent: accentColor),
 
           // ── Check ────────────────────────────────────────────────────────
           const SizedBox(width: 8),
@@ -1389,6 +1406,8 @@ class _ActiveStreamBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // "Original" = the only stream and its resolution is unknown: no badge.
+    if (variant.isOriginal) return const SizedBox.shrink();
     final c = context.colors;
     final color = variant.isAudio ? Colors.tealAccent.shade400 : c.primary;
     return Container(

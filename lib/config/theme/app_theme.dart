@@ -99,7 +99,7 @@ class AppTheme {
     end: Alignment.bottomCenter,
   );
   static const LinearGradient darkSlideBarGradient = LinearGradient(
-    colors: [Color(0xFF1A1A1A), Color(0xFF2E2E2E)],
+    colors: [darkCard, darkCard],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );

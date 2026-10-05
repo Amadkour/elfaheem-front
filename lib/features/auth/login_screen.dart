@@ -29,10 +29,10 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    if(AppConfig.testMode){
-      _emailController.text='super@c.c';
-      _passwordController.text='Aa@@aA2291996';
-    }else{
+    if (AppConfig.testMode) {
+      _emailController.text = 'super@c.c';
+      _passwordController.text = 'Aa@@aA2291996';
+    } else {
       _emailController.clear();
       _passwordController.clear();
     }
@@ -54,8 +54,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
     if (!mounted) return;
     if (success) {
-
-       authProvider.loadCachedUser();
+      authProvider.loadCachedUser();
       if (mounted) {
         Navigator.of(context).pushNamed(authProvider.homeRoute);
       }
@@ -84,7 +83,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Consumer<LangProvider>(
       builder: (context, l, _) {
-        return BasePage(child: isWide ? _buildWideLayout() : _buildNarrowLayout(),
+        return BasePage(
+          child: isWide ? _buildWideLayout() : _buildNarrowLayout(),
         );
       },
     );
@@ -116,7 +116,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     context.colors.radiusXL,
                   ),
                   child: ColoredBox(
-                    color:context.colors.isDark?context.colors.primaryDark: context.colors.primary.withAlpha(30),
+                    color: context.colors.isDark
+                        ? context.colors.cardBg
+                        : context.colors.primary.withAlpha(30),
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 48,
@@ -151,7 +153,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildFormCard() {
-    ProfileProvider provider=context.read<ProfileProvider>();
+    ProfileProvider provider = context.read<ProfileProvider>();
     return Form(
       key: _formKey,
       child: Column(

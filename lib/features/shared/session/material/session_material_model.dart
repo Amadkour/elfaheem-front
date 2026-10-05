@@ -33,6 +33,9 @@ String formatDuration(int? seconds) {
   return '$h:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
 }
 
+/// Non-empty String or null (the API sends null OR "" for "not there").
+String? _nonEmpty(Object? v) => (v is String && v.isNotEmpty) ? v : null;
+
 enum SessionMaterialType { image, video, pdf, document, link,recorded,recording }
 
 // ── Quality tier ─────────────────────────────────────────────────────────────
@@ -67,6 +70,7 @@ class MaterialVariant {
     required this.tier,
     required this.isAudio,
     this.fileSizeBytes,
+    this.isOriginal = false,
   });
 
   final String?     url;
@@ -74,11 +78,20 @@ class MaterialVariant {
   final bool       isAudio;
   final int?       fileSizeBytes;
 
-  /// Human-readable label shown in the picker, e.g. "720p" or "Audio 192k"
-  String get label => isAudio ? 'Audio ${_audioBitrateLabel(tier)}' : tier.label;
+  /// True when the server has ONE video file and does not say which resolution
+  /// it is (only the primary `url`, no url_high / url_medium / url_low), and for
+  /// the empty placeholder shown before POST .../play answers. `tier` is then
+  /// just a placeholder and must never be displayed as "720p".
+  final bool isOriginal;
 
-  String get fullLabel =>
-      isAudio ? 'Audio Only — ${_audioBitrateLabel(tier)}' : tier.fullLabel;
+  /// Human-readable label shown in the picker, e.g. "720p" or "Audio 192k"
+  String get label => isAudio
+      ? 'Audio ${_audioBitrateLabel(tier)}'
+      : (isOriginal ? 'Original' : tier.label);
+
+  String get fullLabel => isAudio
+      ? 'Audio Only — ${_audioBitrateLabel(tier)}'
+      : (isOriginal ? 'Original quality' : tier.fullLabel);
 
   static String _audioBitrateLabel(QualityTier t) {
     switch (t) {
@@ -118,6 +131,15 @@ class SessionMaterialModel {
   final int? fileSizeMedium;
   final int? fileSizeLow;
 
+  // ── The tiers the server REALLY has (no fallback) ─────────────────────────
+  // urlHigh / urlMedium / urlLow above are filled with the primary url when a
+  // tier is missing (other screens read them for images, PDFs and links). That
+  // makes "only 360p exists" indistinguishable from "all three exist", so the
+  // quality list is built from these instead: null = this tier does not exist.
+  final String? rawUrlHigh;
+  final String? rawUrlMedium;
+  final String? rawUrlLow;
+
   // ── Paired audio URLs (stored on the same material row) ───────────────────
   // audio_high  → 192 kbps OGG, paired with the high video tier
   // audio_medium → 96 kbps OGG, paired with the medium/low video tiers
@@ -153,6 +175,9 @@ class SessionMaterialModel {
     this.fileSizeHigh,
     this.fileSizeMedium,
     this.fileSizeLow,
+    this.rawUrlHigh,
+    this.rawUrlMedium,
+    this.rawUrlLow,
     // audio
     this.audioUrl,
     this.audioKey,
@@ -165,11 +190,13 @@ class SessionMaterialModel {
 
   /// Copy of this material with the URLs returned by the /play endpoint.
   SessionMaterialModel withPlayData(Map<String, dynamic> j) {
+    final base = ApiClient().baseUrl;
+    final root = base.endsWith('/') ? base.substring(0, base.length - 1) : base;
     String? u(String k) {
-      final v = j[k] as String?;
-      if (v == null || v.isEmpty) return null;
+      final v = _nonEmpty(j[k]);
+      if (v == null) return null;
       // protected videos come back as a relative /api/v1/stream/<token> path
-      return v.startsWith('/') ? '${ApiClient().baseUrl}$v' : v;
+      return v.startsWith('/') ? '$root$v' : v;
     }
     final primary = u('url');
     return SessionMaterialModel(
@@ -181,6 +208,7 @@ class SessionMaterialModel {
       urlMedium: u('url_medium') ?? primary,
       urlLow: u('url_low') ?? primary,
       fileSizeHigh: fileSizeHigh, fileSizeMedium: fileSizeMedium, fileSizeLow: fileSizeLow,
+      rawUrlHigh: u('url_high'), rawUrlMedium: u('url_medium'), rawUrlLow: u('url_low'),
       audioUrl: u('audio_url'), audioKey: audioKey, audioSize: audioSize,
       audioMediumUrl: u('audio_medium_url'), audioMediumKey: audioMediumKey,
       audioMediumSize: audioMediumSize,
@@ -213,6 +241,9 @@ class SessionMaterialModel {
       fileSizeHigh:   json['file_size_high']    as int?,
       fileSizeMedium: json['file_size_medium']  as int?,
       fileSizeLow:    json['file_size_low']     as int?,
+      rawUrlHigh:     _nonEmpty(json['url_high']),
+      rawUrlMedium:   _nonEmpty(json['url_medium']),
+      rawUrlLow:      _nonEmpty(json['url_low']),
       // audio
       audioUrl:        json['audio_url']          as String?,
       audioKey:        json['audio_key']          as String?,
@@ -249,6 +280,7 @@ class SessionMaterialModel {
       urlLow: urlLow ?? this.urlLow,
       fileSizeHigh: fileSizeHigh, fileSizeMedium: fileSizeMedium,
       fileSizeLow: fileSizeLow,
+      rawUrlHigh: rawUrlHigh, rawUrlMedium: rawUrlMedium, rawUrlLow: rawUrlLow,
       audioUrl: audioUrl, audioKey: audioKey, audioSize: audioSize,
       audioMediumUrl: audioMediumUrl, audioMediumKey: audioMediumKey,
       audioMediumSize: audioMediumSize,
@@ -257,23 +289,24 @@ class SessionMaterialModel {
   }
 
   // ── Computed: all playable variants ──────────────────────────────────────
-  // Returns a flat list of every stream available for this material.
-  // The caller (VideoPlayerScreen / quality picker) uses this to populate
-  // the Video and Audio sections of the stream-selection sheet.
+  // Every stream that REALLY exists for this material, nothing more:
   //
-  // Video is listed low → medium → high (the player starts on `.first`),
-  // then the audio streams (high → medium).
+  //  • server sent some of url_high / url_medium / url_low → exactly those,
+  //    each with its true label (only url_low → one "360p" entry, not three);
+  //  • server sent only the primary url → ONE entry labelled "Original", since
+  //    the resolution is unknown and must not be guessed;
+  //  • nothing yet (protected video before POST .../play) → one empty
+  //    placeholder so the player has something to start from.
   //
-  // A single-quality video (or a protected one right after /play) has the SAME
-  // url in all three tiers, because fromJson / withPlayData fall back to the
-  // primary url. Listing the tiers as they are produced a picker with three
-  // identical "360p / 720p / 1080p" rows, and switching between them did
-  // nothing. So tiers are de-duplicated by url, keeping the highest label.
+  // Order: video low → medium → high, then audio high → medium.
+  // A file stored under two tiers is listed once, with the higher label.
 
   List<MaterialVariant> get availableVariants {
     final variants = <MaterialVariant>[];
 
     // ── Video streams ─────────────────────────────────────────────────────
+    bool has(String? u) => u != null && u.isNotEmpty;
+
     final seen = <String>{};
     final video = <MaterialVariant>[];
     void addVideo(String? url, QualityTier tier, int? size) {
@@ -283,16 +316,38 @@ class SessionMaterialModel {
       ));
     }
 
-    // walk high → low so a shared url keeps its highest tier label
-    addVideo(urlHigh, QualityTier.high, fileSizeHigh);
-    addVideo(urlMedium, QualityTier.medium, fileSizeMedium);
-    addVideo(urlLow, QualityTier.low, fileSizeLow);
+    if (has(rawUrlHigh) || has(rawUrlMedium) || has(rawUrlLow)) {
+      // walk high → low so a shared file keeps its highest label
+      addVideo(rawUrlHigh, QualityTier.high, fileSizeHigh);
+      addVideo(rawUrlMedium, QualityTier.medium, fileSizeMedium);
+      addVideo(rawUrlLow, QualityTier.low, fileSizeLow);
 
-    if (video.length == 1 && video.first.fileSizeBytes == null) {
-      final only = video.first;
-      video[0] = MaterialVariant(
-        url: only.url, tier: only.tier, isAudio: false, fileSizeBytes: fileSize,
-      );
+      if (video.length == 1 && video.first.fileSizeBytes == null) {
+        final only = video.first;
+        video[0] = MaterialVariant(
+          url: only.url, tier: only.tier, isAudio: false, fileSizeBytes: fileSize,
+        );
+      }
+    } else {
+      // No tier columns: the three url* fields all hold the primary url.
+      final distinct = <String>{
+        for (final u in [urlHigh, urlMedium, urlLow]) if (has(u)) u!,
+      };
+      if (distinct.length == 1) {
+        video.add(MaterialVariant(
+          url: distinct.first,
+          tier: QualityTier.medium, // placeholder, never shown (isOriginal)
+          isAudio: false,
+          isOriginal: true,
+          fileSizeBytes:
+          fileSize ?? fileSizeHigh ?? fileSizeMedium ?? fileSizeLow,
+        ));
+      } else {
+        // hand-built models (legacy callers) with genuinely different urls
+        addVideo(urlHigh, QualityTier.high, fileSizeHigh);
+        addVideo(urlMedium, QualityTier.medium, fileSizeMedium);
+        addVideo(urlLow, QualityTier.low, fileSizeLow);
+      }
     }
     variants.addAll(video.reversed); // low → medium → high
 
@@ -317,11 +372,19 @@ class SessionMaterialModel {
     // recordings never get here: they fall through to their audio streams.
     if (variants.isEmpty) {
       variants.add(const MaterialVariant(
-        url: null, tier: QualityTier.high, isAudio: false,
+        url: null, tier: QualityTier.medium, isAudio: false, isOriginal: true,
       ));
     }
 
     return variants;
+  }
+
+  /// The stream the player starts on: the lowest AVAILABLE video quality
+  /// (cheapest on mobile data), or the first audio stream for audio-only
+  /// recordings. To start on the highest quality instead, use `.last` below.
+  MaterialVariant get defaultVideoVariant {
+    final v = videoVariants;
+    return v.isNotEmpty ? v.first : availableVariants.first;
   }
 
   /// Convenience: video-only variants (for the quality chip/sheet).

@@ -6,6 +6,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/utils/helpers.dart';
 
 import '../../../../../utils/widget/refresh_button.dart';
 import '../../../../config/theme/theme_config_provider.dart';
@@ -54,95 +55,101 @@ class CourseHero extends StatelessWidget {
                   top: 12,
                   left: 16,
                   right: 16,
-                  child: Row(
-                    children: [
-                      _CircleBtn(
-                        icon: Icons.arrow_back_ios_new_rounded,
-                        onTap: onBack,
-                      ),
-                      const Spacer(),
-                      RefreshButton(onTap: () async => onRefresh()),
-                      if (onEditCourse != null) ...[
-                        const SizedBox(width: 10),
+                  child: Directionality(
+                    textDirection: Helpers.pageDirectionInverse,
+                    child: Row(
+                      children: [
                         _CircleBtn(
-                          icon: CupertinoIcons.settings,
-                          onTap: onEditCourse!,
+                          icon: Icons.arrow_back_ios_new_rounded,
+                          onTap: onBack,
                         ),
+                        const Spacer(),
+                        RefreshButton(onTap: () async => onRefresh()),
+                        if (onEditCourse != null) ...[
+                          const SizedBox(width: 10),
+                          _CircleBtn(
+                            icon: CupertinoIcons.settings,
+                            onTap: onEditCourse!,
+                          ),
+                        ],
+                        if (onLike != null) ...[
+                          const SizedBox(width: 10),
+                          _CircleBtn(
+                            icon: (isLike ?? false)
+                                ? CupertinoIcons.heart_fill
+                                : CupertinoIcons.heart,
+                            onTap: onLike!,
+                          ),
+                        ],
                       ],
-                      if (onLike != null) ...[
-                        const SizedBox(width: 10),
-                        _CircleBtn(
-                          icon: (isLike ?? false)
-                              ? CupertinoIcons.heart_fill
-                              : CupertinoIcons.heart,
-                          onTap: onLike!,
-                        ),
-                      ],
-                    ],
+                    ),
                   ),
                 ),
                 Positioned(
                   left: 16,
                   right: 16,
                   bottom: 20,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (course.category != null)
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: context.colors.primary.withValues(
-                              alpha: 0.85,
+                  child: Directionality(
+                    textDirection: Helpers.textDirOf(course.description??''),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (course.category != null)
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
                             ),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            AppConfig.lang == 'ar'
-                                ? course.category!.nameAr
-                                : course.category!.nameEn,
+                            decoration: BoxDecoration(
+                              color: context.colors.primary.withValues(
+                                alpha: 0.85,
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              AppConfig.lang == 'ar'
+                                  ? course.category!.nameAr
+                                  : course.category!.nameEn,
 
-                            style: const TextStyle(
-                              fontFamily: 'tajawal',
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
+                              style: const TextStyle(
+                                fontFamily: 'tajawal',
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
-                        ),
-                      Text(
-                        course.title,
-                        style: const TextStyle(
-                          fontFamily: 'tajawal',
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                          height: 1.3,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (course.description != null &&
-                          course.description!.isNotEmpty) ...[
-                        const SizedBox(height: 6),
                         Text(
-                          course.description!,
-                          style: TextStyle(
+                          course.title,
+                          style: const TextStyle(
                             fontFamily: 'tajawal',
-                            fontSize: 12,
-                            color: Colors.white.withValues(alpha: 0.80),
-                            height: 1.45,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            height: 1.3,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
+                        if (course.description != null &&
+                            course.description!.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            course.description!,
+                            style: TextStyle(
+                              fontFamily: 'tajawal',
+                              fontSize: 12,
+                              color: Colors.white.withValues(alpha: 0.80),
+                              height: 1.45,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ],
@@ -221,8 +228,8 @@ class _CircleBtn extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
+          shape: BoxShape.circle,
           color: Colors.black.withValues(alpha: 0.70),
-          borderRadius: BorderRadius.circular(24),
           border: Border.all(
             color: Colors.white.withValues(alpha: 0.20),
             width: 1,
@@ -231,7 +238,7 @@ class _CircleBtn extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: Colors.white),
+            Icon(icon, size: 24, color: Colors.white),
             if (label != null) ...[
               const SizedBox(width: 6),
               Text(

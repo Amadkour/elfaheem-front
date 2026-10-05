@@ -95,7 +95,7 @@ class _View extends StatelessWidget {
             ]),
           ),
           GridView.count(
-            crossAxisCount: MediaQuery.of(context).size.width > 700 ? 4 : 2,
+            crossAxisCount: MediaQuery.of(context).size.width > 750 ? 4 : 2,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             mainAxisSpacing: 10,

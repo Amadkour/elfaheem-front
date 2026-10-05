@@ -318,17 +318,21 @@ class ThemeConfigProvider extends ChangeNotifier {
   /// Background gradient adapts to mode; light/dark variants use different
   /// alignments (matching the original hand-tuned AppTheme definitions).
   LinearGradient get slideBarGradient =>
-      isDark ? _darkSlideBarGradient : _lightSlideBarGradient;
+      isDark ? _darkSlideBarGradient : _sliderGradient;
 
   // Shared building blocks for the gradients above that reuse the same
   // stops under more than one name (primaryGradient in dark mode,
   // primarySliderGradient in light mode, slideBarGradient, etc).
+  // LinearGradient get _darkSlideBarGradient => LinearGradient(
+  //   begin: Alignment.topCenter,
+  //   end: Alignment.bottomCenter,
+  //   colors: _model?.gradientDarkSlideBar ?? AppTheme.darkSlideBarGradient.colors,
+  // );
   LinearGradient get _darkSlideBarGradient => LinearGradient(
+    colors: [_model?.darkCard ?? AppTheme.darkCard,_model?.darkCard ?? AppTheme.darkCard],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: _model?.gradientDarkSlideBar ?? AppTheme.darkSlideBarGradient.colors,
   );
-
   LinearGradient get _lightSlideBarGradient => LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
