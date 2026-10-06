@@ -475,7 +475,7 @@ class _TeacherHomeCourseTileState extends State<_TeacherHomeCourseTile> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        c.title,
+                       (AppConfig.lang=='ar'? c.titleAr:c.titleEn)??'',
                         style: context.colors.h3.copyWith(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,

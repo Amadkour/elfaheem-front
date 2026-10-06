@@ -8,6 +8,7 @@ import '../course_detail_provider.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import 'issued_certificate.dart';
+
 class AboutTab extends StatelessWidget {
   const AboutTab({super.key});
 
@@ -28,7 +29,9 @@ class AboutTab extends StatelessWidget {
               color: context.colors.accent,
             ),
             const SizedBox(height: 12),
-            ...provider.myCertificates.map((x) => _IssuedCertificateCard(cert: x)),
+            ...provider.myCertificates.map(
+              (x) => _IssuedCertificateCard(cert: x),
+            ),
             const SizedBox(height: 22),
           ],
           if (c.teacher != Null) ...[
@@ -43,7 +46,7 @@ class AboutTab extends StatelessWidget {
                 );
               },
               child: _InstructorCard(
-                name: c.teacher!.name ?? '',
+                name: c.teacher?.name??'' ,
                 category: AppConfig.lang == 'ar'
                     ? c.category!.nameAr
                     : c.category!.nameEn,
@@ -51,14 +54,15 @@ class AboutTab extends StatelessWidget {
             ),
             const SizedBox(height: 26),
           ],
-          if ((c.description ?? '').isNotEmpty) ...[
+          if (((AppConfig.lang=='ar'? c.descriptionAr:c.descriptionEn)?? '').isNotEmpty) ...[
             const _SectionTitle(
               title: 'عن الكورس',
               icon: Icons.info_outline_rounded,
             ),
             const SizedBox(height: 10),
             Text(
-              c.description!,
+              (AppConfig.lang == 'ar' ? c.descriptionAr : c.descriptionEn) ??
+                  '',
               style: context.colors.body.copyWith(height: 1.75),
             ),
             const SizedBox(height: 26),
@@ -507,7 +511,11 @@ class _IssuedCertificateCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    Icon(Icons.zoom_out_map_rounded, color: c.textMedium, size: 20),
+                    Icon(
+                      Icons.zoom_out_map_rounded,
+                      color: c.textMedium,
+                      size: 20,
+                    ),
                   ],
                 ),
               ),
@@ -523,25 +531,29 @@ class _CertificateImage extends StatelessWidget {
   final String url;
   final BoxFit fit;
 
-  const _CertificateImage({super.key, required this.url, this.fit = BoxFit.cover});
+  const _CertificateImage({
+    super.key,
+    required this.url,
+    this.fit = BoxFit.cover,
+  });
 
   @override
   Widget build(BuildContext context) => Image.network(
-        url,
-        fit: fit,
-        loadingBuilder: (_, child, progress) => progress == null
-            ? child
-            : const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-        errorBuilder: (_, _, _) => Container(
-          color: context.colors.primaryLight.withValues(alpha: 0.2),
-          alignment: Alignment.center,
-          child: Icon(
-            Icons.broken_image_outlined,
-            color: context.colors.textMedium,
-            size: 32,
-          ),
-        ),
-      );
+    url,
+    fit: fit,
+    loadingBuilder: (_, child, progress) => progress == null
+        ? child
+        : const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+    errorBuilder: (_, _, _) => Container(
+      color: context.colors.primaryLight.withValues(alpha: 0.2),
+      alignment: Alignment.center,
+      child: Icon(
+        Icons.broken_image_outlined,
+        color: context.colors.textMedium,
+        size: 32,
+      ),
+    ),
+  );
 }
 
 /// Full-screen, pinch-to-zoom viewer with an Arabic / English switch.
@@ -638,21 +650,21 @@ class _LangChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: selected ? const Color(0xFFC49A47) : Colors.white12,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: selected ? Colors.black : Colors.white70,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: selected ? const Color(0xFFC49A47) : Colors.white12,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: selected ? Colors.black : Colors.white70,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
         ),
-      );
+      ),
+    ),
+  );
 }

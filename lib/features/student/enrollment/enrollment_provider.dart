@@ -16,6 +16,7 @@ import 'package:flutter_education_app/features/student/enrollment/transfer/trans
 import 'package:moyasar/moyasar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../config/app_config.dart';
 import '../../shared/payment/saved_payment_models.dart';
 import '../../student/models.dart';
 import 'checkout_pages.dart';
@@ -233,7 +234,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
     final config = PaymentConfig(
       publishableApiKey: publishableKey,
       amount: fees.amountMinor,
-      description: 'كورس: ${course.name}',
+      description: '${'course'.tr} : ${ (AppConfig.lang=='ar'? course.titleAr:course.titleEn)??''}',
       metadata: {'course_id': course.id.toString()},
       creditCard: CreditCardConfig(saveCard: false, manual: false),
     );

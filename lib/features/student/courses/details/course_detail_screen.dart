@@ -11,32 +11,24 @@
 ///  price · discount · enroll                                  → buy card / bar
 ///  certificate · live/recorded                                → highlights
 library;
-
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/teacher/sessions/sessions_provider.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/theme/theme_config_provider.dart';
-import '../../../../utils/helpers.dart';
 import '../../../../utils/widget/base_page.dart';
-import '../../../../utils/widget/deep_link_service.dart';
 import '../../../../utils/widget/rating_widget.dart';
 import '../../../shared/course/course_price_tag.dart';
 import '../../../shared/course/studend_course_roadmap_section.dart';
 import '../../../shared/profile/compalints/complaint_provider.dart';
 import '../../../shared/profile/compalints/new_complaint_screen.dart';
-import '../../../teacher/sessions/components/course_hero.dart';
 import '../../analysis/exam/student_exam_provider.dart';
-import '../../enrollment/enrollment_provider.dart';
 import '../../enrollment/enrollment_screen.dart';
 import '../../enrollment/enrollment_widgets.dart';
 import '../../enrollment/roadmap_enrollment_screen.dart';
 import '../../models.dart';
-import 'components/app_responsive.dart';
 import 'components/content.dart';
-import '../security/device_blocked_dialog.dart';
-import '../security/device_security_provider.dart';
 import 'components/share_link.dart';
 import 'components/student_course_hero.dart';
 import 'course_detail_provider.dart';
@@ -72,7 +64,11 @@ void _openSupport(BuildContext context, CourseModel course) {
     MaterialPageRoute(
       builder: (_) => ChangeNotifierProvider(
         create: (_) => ComplaintProvider(),
-        child: NewComplaintScreen(courseTitle: course.title, courseId: course.id),
+        child: NewComplaintScreen(
+          courseTitle:
+              (AppConfig.lang == 'ar' ? course.titleAr : course.titleEn) ?? '',
+          courseId: course.id,
+        ),
       ),
     ),
   );
@@ -121,12 +117,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       maxWith: twoCol ? 1180 : 760,
       child: loading
           ? Center(
-        child: SizedBox(
-          width: loaderSize,
-          height: loaderSize,
-          child: AppLoadingIndicator(),
-        ),
-      )
+              child: SizedBox(
+                width: loaderSize,
+                height: loaderSize,
+                child: AppLoadingIndicator(),
+              ),
+            )
           : _Body(twoCol: twoCol),
     );
   }
@@ -136,6 +132,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 /// for BOTH layouts (the web layout used to be missing StudentExamProvider).
 class _Body extends StatelessWidget {
   const _Body({required this.twoCol});
+
   final bool twoCol;
 
   @override
@@ -169,10 +166,10 @@ bool _onCourseDetailScroll(BuildContext context, ScrollNotification n) {
 
 /// Slivers shared by both layouts (everything under the hero).
 List<Widget> _contentSlivers(
-    BuildContext context,
-    CourseDetailProvider p, {
-      required bool showChips,
-    }) {
+  BuildContext context,
+  CourseDetailProvider p, {
+  required bool showChips,
+}) {
   final c = p.course;
   final highlights = _highlights(context, c);
   return [
@@ -192,7 +189,8 @@ List<Widget> _contentSlivers(
     const SliverToBoxAdapter(child: SizedBox(height: 20)),
     SliverToBoxAdapter(
       child: CourseRoadmapSection(
-        currentCourseName: c.name,
+        currentCourseName:
+            (AppConfig.lang == 'ar' ? c.titleAr : c.titleEn) ?? '',
         recentCompletedCourses: c.recentCompletedCourses,
         nextCourses: c.nextCourses,
         recommendedCourses: c.recommendedCourses,
@@ -202,7 +200,8 @@ List<Widget> _contentSlivers(
           MaterialPageRoute(
             builder: (_) => RoadmapEnrollmentScreen(
               courseId: int.parse(c.id),
-              courseName: c.name,
+              courseName:
+                  (AppConfig.lang == 'ar' ? c.titleAr : c.titleEn) ?? '',
             ),
           ),
         ),
@@ -274,7 +273,9 @@ class _MobileBuyBar extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: c.cardBg,
-        border: Border(top: BorderSide(color: Colors.black.withValues(alpha: 0.06))),
+        border: Border(
+          top: BorderSide(color: Colors.black.withValues(alpha: 0.06)),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.07),
@@ -295,7 +296,10 @@ class _MobileBuyBar extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Expanded(flex: 5, child: _PriceBlock(course: course, compact: true)),
+              Expanded(
+                flex: 5,
+                child: _PriceBlock(course: course, compact: true),
+              ),
               const SizedBox(width: 14),
               const Expanded(flex: 5, child: _EnrollButton()),
             ],
@@ -344,8 +348,7 @@ class _WebLayout extends StatelessWidget {
                           onShare: () => shareCourseLink(context, p.course),
                         ),
                       ),
-                      if(context.width>1200)
-                      _SideCard(),
+                      if (context.width > 1200) _SideCard(),
                     ],
                   ),
                 ),
@@ -432,6 +435,7 @@ class _SideCard extends StatelessWidget {
 /// Price (+ discount ribbon / countdown). Used by the buy card and buy bar.
 class _PriceBlock extends StatelessWidget {
   const _PriceBlock({required this.course, this.compact = false});
+
   final CourseModel course;
   final bool compact;
 
@@ -464,10 +468,10 @@ class _PriceBlock extends StatelessWidget {
       children: [
         compact
             ? FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: AlignmentDirectional.centerStart,
-          child: priceRow,
-        )
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: priceRow,
+              )
             : priceRow,
         if (discount && course.discountEndsAt != null) ...[
           const SizedBox(height: 6),
@@ -556,7 +560,10 @@ class _MetaRow extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               onTap: () => _openSupport(context, course),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: c.primary.withValues(alpha: 0.25)),
@@ -595,27 +602,28 @@ List<_Highlight> _highlights(BuildContext context, CourseModel c) {
   return [
     if (c.certificates.isNotEmpty)
       (
-      icon: Icons.workspace_premium_rounded,
-      label: gt('شهادة إتمام معتمدة', 'Certificate of completion'),
-      color: col.success,
+        icon: Icons.workspace_premium_rounded,
+        label: gt('شهادة إتمام معتمدة', 'Certificate of completion'),
+        color: col.success,
       ),
     if (c.type == 'live')
       (
-      icon: Icons.sensors_rounded,
-      label: gt('بث مباشر', 'Live sessions'),
-      color: col.danger,
+        icon: Icons.sensors_rounded,
+        label: gt('بث مباشر', 'Live sessions'),
+        color: col.danger,
       )
     else
       (
-      icon: Icons.play_circle_outline_rounded,
-      label: gt('كورس مسجّل', 'Recorded course'),
-      color: col.primary,
+        icon: Icons.play_circle_outline_rounded,
+        label: gt('كورس مسجّل', 'Recorded course'),
+        color: col.primary,
       ),
   ];
 }
 
 class _HighlightChips extends StatelessWidget {
   const _HighlightChips({required this.items});
+
   final List<_Highlight> items;
 
   @override
@@ -652,6 +660,7 @@ class _HighlightChips extends StatelessWidget {
 
 class _Fact extends StatelessWidget {
   const _Fact({required this.item});
+
   final _Highlight item;
 
   @override
@@ -725,7 +734,8 @@ class _TabBarWidget extends StatelessWidget {
                       icon: icon,
                       active: p.activeTab == tab,
                       stacked: stacked,
-                      onTap: () => context.read<CourseDetailProvider>().setTab(tab),
+                      onTap: () =>
+                          context.read<CourseDetailProvider>().setTab(tab),
                     ),
                   ),
               ],
@@ -774,29 +784,36 @@ class _TabItem extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOut,
-        padding: EdgeInsets.symmetric(vertical: stacked ? 8 : 11, horizontal: 4),
+        padding: EdgeInsets.symmetric(
+          vertical: stacked ? 8 : 11,
+          horizontal: 4,
+        ),
         decoration: BoxDecoration(
           gradient: active ? c.primaryGradient : null,
           borderRadius: BorderRadius.circular(14),
           boxShadow: active
               ? [
-            BoxShadow(
-              color: c.primary.withValues(alpha: 0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ]
+                  BoxShadow(
+                    color: c.primary.withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
               : null,
         ),
         child: stacked
             ? Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [ic, const SizedBox(height: 3), text],
-        )
+                mainAxisSize: MainAxisSize.min,
+                children: [ic, const SizedBox(height: 3), text],
+              )
             : Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [ic, const SizedBox(width: 7), Flexible(child: text)],
-        ),
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ic,
+                  const SizedBox(width: 7),
+                  Flexible(child: text),
+                ],
+              ),
       ),
     );
   }

@@ -171,7 +171,8 @@ class _HeroHeader extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      course.title,
+                      (AppConfig.lang=='ar'? course.titleAr:course.titleEn)??'',
+
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(

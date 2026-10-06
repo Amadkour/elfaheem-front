@@ -3,6 +3,7 @@ library;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/teacher/courses/teacher_courses_provider.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart'
     show TeacherCourseStatus, TeacherCourse;
@@ -587,7 +588,7 @@ class _CourseCardState extends State<_CourseCard> {
             ),
           ),
           content: Text(
-            '${'delete_course_confirm'.tr} "${widget.course.title}"؟',
+            '${'delete_course_confirm'.tr} "${(AppConfig.lang=='ar'? widget.course.titleAr:widget.course.titleEn)??''}"؟',
             style: const TextStyle(fontFamily: 'bahji'),
           ),
           actions: [
@@ -761,7 +762,7 @@ class _CourseCardState extends State<_CourseCard> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    c.title,
+              (AppConfig.lang=='ar'? c.titleAr:c.titleEn)??'',
                     style: context.colors.h3.copyWith(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,

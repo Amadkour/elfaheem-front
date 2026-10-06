@@ -55,7 +55,7 @@ class StudentCourseHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final ar = AppConfig.lang == 'ar';
-
+    final String description=(ar? course.descriptionAr:course.descriptionEn)??'';
     return LayoutBuilder(
       builder: (context, box) {
         final w = box.maxWidth.isFinite
@@ -121,7 +121,7 @@ class StudentCourseHero extends StatelessWidget {
                         const Spacer(),
                         Directionality(
                           textDirection: Helpers.textDirOf(
-                            course.description ?? '',
+                            description,
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -136,7 +136,7 @@ class StudentCourseHero extends StatelessWidget {
                                 const SizedBox(height: 10),
                               ],
                               Text(
-                                course.name,
+                                (AppConfig.lang=='ar'? course.titleAr:course.titleEn)??'',
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -153,11 +153,10 @@ class StudentCourseHero extends StatelessWidget {
                                   ],
                                 ),
                               ),
-                              if (course.description != null &&
-                                  course.description!.isNotEmpty) ...[
+                              if (description.isNotEmpty) ...[
                                 const SizedBox(height: 6),
                                 Text(
-                                  course.description!,
+                                  description,
                                   style: TextStyle(
                                     fontFamily: 'tajawal',
                                     fontSize: 12,

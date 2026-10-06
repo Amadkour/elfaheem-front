@@ -41,6 +41,9 @@ class CourseHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    String? description = (AppConfig.lang == 'ar'
+        ? course.descriptionAr
+        : course.descriptionEn);
     return Stack(
       children: [
         SizedBox(
@@ -58,14 +61,13 @@ class CourseHero extends StatelessWidget {
                   top: 12,
                   left: 16,
                   right: 16,
-                  child:
-
-                  CourseDetailsTopBar(
+                  child: CourseDetailsTopBar(
                     showRefresh: true,
                     onRefresh: onRefresh,
-                    onBack: ()=>Navigator.pop(context),
+                    onBack: () => Navigator.pop(context),
                     onSetting: onEditCourse,
-                    onShare: ()=> shareCourseLink(context, course.toCourseModel),
+                    onShare: () =>
+                        shareCourseLink(context, course.toCourseModel),
                   ),
                 ),
                 Positioned(
@@ -73,7 +75,12 @@ class CourseHero extends StatelessWidget {
                   right: 16,
                   bottom: 20,
                   child: Directionality(
-                    textDirection: Helpers.textDirOf(course.description??''),
+                    textDirection: Helpers.textDirOf(
+                      (AppConfig.lang == 'ar'
+                              ? course.descriptionAr
+                              : course.descriptionEn) ??
+                          '',
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
@@ -106,11 +113,15 @@ class CourseHero extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              if (course.isPrivate) PrivateFlag(label: 'course_hero_private'.tr),
+                              if (course.isPrivate)
+                                PrivateFlag(label: 'course_hero_private'.tr),
                             ],
                           ),
                         Text(
-                          course.title,
+                          (AppConfig.lang == 'ar'
+                                  ? course.titleAr
+                                  : course.titleEn) ??
+                              '',
                           style: const TextStyle(
                             fontFamily: 'tajawal',
                             fontSize: 20,
@@ -121,11 +132,11 @@ class CourseHero extends StatelessWidget {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        if (course.description != null &&
-                            course.description!.isNotEmpty) ...[
+                        if (description != null &&
+                            description.isNotEmpty) ...[
                           const SizedBox(height: 6),
                           Text(
-                            course.description!,
+                            description,
                             style: TextStyle(
                               fontFamily: 'tajawal',
                               fontSize: 12,
@@ -200,48 +211,4 @@ class _GradientBackground extends StatelessWidget {
       ),
     ),
   );
-}
-
-class _CircleBtn extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  final String? label;
-
-  const _CircleBtn({required this.icon, required this.onTap}) : label = null;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.black.withValues(alpha: 0.70),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.20),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 24, color: Colors.white),
-            if (label != null) ...[
-              const SizedBox(width: 6),
-              Text(
-                label!,
-                style: const TextStyle(
-                  fontFamily: 'tajawal',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
 }

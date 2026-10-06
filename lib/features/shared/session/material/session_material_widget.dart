@@ -143,7 +143,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
           child: TeacherAttendanceScreen(
             sessionId: _session.id,
             courseId: _session.courseId,
-            courseTitle: widget.course.title,
+            courseTitle: (AppConfig.lang=='ar'? widget.course.titleAr:widget.course.titleEn)??'',
           ),
         ),
       ),
@@ -156,7 +156,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
       MaterialPageRoute(
         builder: (_) => TeacherExamHubScreen(
           courseId: _session.courseId,
-          courseTitle: widget.course.title,
+          courseTitle: (AppConfig.lang=='ar'? widget.course.titleAr:widget.course.titleEn)??'',
         ),
       ),
     );
@@ -170,7 +170,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
       MaterialPageRoute(
         builder: (_) => TeacherExamHubScreen(
           courseId: _session.courseId,
-          courseTitle: widget.course.title,
+          courseTitle: (AppConfig.lang=='ar'? widget.course.titleAr:widget.course.titleEn)??'',
           initialSessionId: _session.id,
           openCreateOnStart: true,
         ),
@@ -295,7 +295,6 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
   // ── Actions row ────────────────────────────────────────────────────────────
 
   Widget _buildActionsRow(TeacherCourseScreenProvider prov, bool hasExam) {
-    final isLiveType = _session.type == 'live';
     return Wrap(
       spacing: 8,
       runSpacing: 8,

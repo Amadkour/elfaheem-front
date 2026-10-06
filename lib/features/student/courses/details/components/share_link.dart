@@ -12,6 +12,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/deep_link_service.dart';
 
+import '../../../../../config/app_config.dart';
 import '../../../models.dart';
 import '../growth_tr.dart';
 
@@ -27,13 +28,13 @@ Future<void> shareCourseLink(BuildContext context, CourseModel course) async {
     await showShareLinkDialog(
       context,
       url: courseShareUrl(course),
-      title: course.name,
+      title: (AppConfig.lang=='ar'? course.titleAr:course.titleEn)??'',
     );
     return;
   }
   final copied = await DeepLinkService.shareCourse(
     courseId: int.parse(course.id),
-    courseName: course.name,
+    courseName:(AppConfig.lang=='ar'? course.titleAr:course.titleEn)??'',
   );
   if (copied) Helpers.showMessage(gt('تم نسخ الرابط', 'Link copied'));
 }

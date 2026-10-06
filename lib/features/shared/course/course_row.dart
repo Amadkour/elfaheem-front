@@ -122,6 +122,12 @@ class CourseCard extends StatelessWidget {
     final hasHours = course.hoursCount > 0;
     final hasCertificate = course.certificates.isNotEmpty;
     final hasStudents = course.studentsCount > 0;
+    final String description =
+        (AppConfig.lang == 'ar'
+            ? course.descriptionAr
+            : course.descriptionEn) ??
+        '';
+
     return GestureDetector(
       onTap: () => onTap.call(course),
       child: Container(
@@ -161,7 +167,10 @@ class CourseCard extends StatelessWidget {
                       children: [
                         Flexible(
                           child: Text(
-                            course.title,
+                            (AppConfig.lang == 'ar'
+                                    ? course.titleAr
+                                    : course.titleEn) ??
+                                '',
                             style: context.colors.h3.copyWith(
                               fontSize: 13,
                               overflow: TextOverflow.ellipsis,
@@ -181,10 +190,9 @@ class CourseCard extends StatelessWidget {
 
                     // Teacher
                     Spacer(flex: 1),
-                    if (course.description != null &&
-                        course.description!.isNotEmpty) ...[
+                    if (description.isNotEmpty) ...[
                       Text(
-                        course.description!,
+                        description,
                         style: context.colors.caption.copyWith(
                           overflow: TextOverflow.ellipsis,
                           color: context.colors.textLight,
@@ -398,25 +406,21 @@ class _Thumbnail extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 DiscountRibbon.forCourse(course: course),
-                if ( course.discountEndsAt != null) ...[
-                  SizedBox(height: 2,),
-                  DiscountCountdownBadge(course: course, compact: true),]
+                if (course.discountEndsAt != null) ...[
+                  SizedBox(height: 2),
+                  DiscountCountdownBadge(course: course, compact: true),
+                ],
               ],
             ),
           ),
 
         // Private course flag — bottom left
         if (course.isPrivate)
-          Positioned(
-            bottom: 10,
-            left: 10,
-            child:PrivateFlag()
-          ),
+          Positioned(bottom: 10, left: 10, child: PrivateFlag()),
 
         // Countdown — bottom left, opposite the price badge. This is the
         // "hurry up" nudge: calm amber while there's still time, switching
         // to a pulsing red pill once the discount enters its last 24h.
-
 
         // Price badge — bottom right
         Positioned(
@@ -432,10 +436,10 @@ class _Thumbnail extends StatelessWidget {
               boxShadow: [
                 BoxShadow(
                   color:
-                  (course.effectivePrice == 0
-                      ? const Color(0xFF0F6E56)
-                      : context.colors.primary)
-                      .withValues(alpha: 0.35),
+                      (course.effectivePrice == 0
+                              ? const Color(0xFF0F6E56)
+                              : context.colors.primary)
+                          .withValues(alpha: 0.35),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -560,7 +564,8 @@ class _MetaRow extends StatelessWidget {
           ),
           const SizedBox(width: 3),
           Text(
-            '${course.sessionsCount} ${'session'.tr}',maxLines: 1,
+            '${course.sessionsCount} ${'session'.tr}',
+            maxLines: 1,
             style: context.colors.caption.copyWith(fontSize: 10),
           ),
         ],
@@ -572,7 +577,8 @@ class _MetaRow extends StatelessWidget {
           ),
           const SizedBox(width: 3),
           Text(
-            '${course.hoursCount} ${'hours'.tr}',maxLines: 1,
+            '${course.hoursCount} ${'hours'.tr}',
+            maxLines: 1,
             style: context.colors.caption.copyWith(fontSize: 10),
           ),
         ],
@@ -605,7 +611,8 @@ class _StudentRow extends StatelessWidget {
           const SizedBox(width: 3),
           Flexible(
             child: Text(
-              course.certificates.first.title,maxLines: 1,
+              course.certificates.first.title,
+              maxLines: 1,
               style: context.colors.caption.copyWith(fontSize: 10),
             ),
           ),
@@ -618,7 +625,8 @@ class _StudentRow extends StatelessWidget {
           ),
           const SizedBox(width: 3),
           Text(
-            '${course.studentsCount} ${'student'.tr}', maxLines: 1,
+            '${course.studentsCount} ${'student'.tr}',
+            maxLines: 1,
             style: context.colors.caption.copyWith(fontSize: 10),
           ),
         ],

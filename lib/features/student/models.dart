@@ -459,8 +459,7 @@ class CourseSummary with DiscountInfo {
 
 class CourseModel with DiscountInfo {
   final bool isPrivate;                                   // field
-  final String id, name, imageUrl, type;
-  final String? description;
+  final String id, imageUrl, type;
   final CategoryModel? category;
   @override
   final double price;
@@ -498,18 +497,17 @@ class CourseModel with DiscountInfo {
   final List<CourseSummary> similarCourses;
   final List<CourseSummary> recentCompletedCourses;
   final int? discountDays;
+  final String? titleAr, titleEn, descriptionAr, descriptionEn;
 
   CourseModel({
     this.isPrivate = false,                                 // constructor
     required this.id,
-    required this.name,
     required this.imageUrl,
     required this.price,
     required this.type,
     this.currency = AppCurrency.egp,
     this.status = CourseStatus.inProgress,
     this.category,
-    this.description,
     this.studentsCount = 0,
     this.sessionsCount = 0,
     this.totalHours = 0.0,
@@ -534,16 +532,13 @@ class CourseModel with DiscountInfo {
     this.finalPrice,
     this.discountEndsAt,
     this.discountActive,
-    this.discountPercentage, this.discountDays,
+    this.discountPercentage, this.discountDays, this.titleAr, this.titleEn, this.descriptionAr, this.descriptionEn,
   });
-
-  String get title => name;
 
   int get hoursCount => totalHours.round();
 
   factory CourseModel.fromCategoryModel(CategoryCourseModel cat) => CourseModel(
     id: cat.id,
-    name: cat.title,
     category: CategoryModel(
       id: cat.id,
       nameEn: cat.title,
@@ -572,7 +567,6 @@ class CourseModel with DiscountInfo {
 
   factory CourseModel.fromJson(Map<String, dynamic> j) => CourseModel(
     id: j['id'].toString(),
-    name: j['name'] as String? ?? '',
     imageUrl: j['image_url'] as String? ?? '',
     isPrivate: j['is_private'] as bool? ?? false,
     category: j['category'] != null
@@ -589,7 +583,6 @@ class CourseModel with DiscountInfo {
     teacher: j['teacher'] != null
         ? TeacherProfileData.fromJson(j['teacher'] as Map<String, dynamic>)
         : null,
-    description: j['description'] as String? ?? '',
     type: j['type'] as String? ?? 'recorded',
     isSubscribed: j['is_subscribed'] as bool? ?? false,
     isFavorite: j['is_favorite'] as bool? ?? false,
@@ -632,6 +625,10 @@ class CourseModel with DiscountInfo {
     discountPercentage: (j['discount_percentage'] as num?)?.toDouble() ?? 0.0,
     finalPrice: (j['final_price'] as num?)?.toDouble() ?? 0.0,
     discountDays: (j['discount_days'] as num?)?.toInt(),
+    titleAr: j['name_ar'] as String?,
+    titleEn: j['name_en'] as String?,
+    descriptionAr: j['description_ar'] as String?,
+    descriptionEn: j['description_en'] as String?,
   );
 
   /// Builds a minimal-but-valid CourseModel from a lightweight summary card
@@ -640,7 +637,6 @@ class CourseModel with DiscountInfo {
   /// the same sparse-then-hydrate pattern as `fromCategoryModel`.
   factory CourseModel.fromSummary(CourseSummary s) => CourseModel(
     id: s.id.toString(),
-    name: s.name,
     imageUrl: s.imageUrl,
     price: s.price,
     currency: s.currency,
@@ -655,13 +651,15 @@ class CourseModel with DiscountInfo {
   );
 
   TeacherCourse get toTeacherModel => TeacherCourse(
+    titleAr: titleAr,
+    titleEn: titleEn,
+    descriptionAr: descriptionAr,
+    descriptionEn: descriptionEn,
     id: int.parse(id),
-    title: title,
     rateSummary: rateSummary,
     progress: progress,
     imageUrl: imageUrl,
     totalHours: totalHours,
-    description: description,
     category: category,
     certificates: certificates,
     schedules: schedules,
@@ -690,7 +688,6 @@ class CourseModel with DiscountInfo {
     int? studentsCount,
   }) => CourseModel(
     id: id,
-    name: name,
     imageUrl: imageUrl,
     price: price,
     type: type,
@@ -702,7 +699,6 @@ class CourseModel with DiscountInfo {
     sessionsCount: sessionsCount,
     totalHours: totalHours,
     teacher: teacher,
-    description: description,
     isFavorite: isFavorite ?? this.isFavorite,
     progress: progress ?? this.progress,
     materialsTotal: materialsTotal ?? this.materialsTotal,

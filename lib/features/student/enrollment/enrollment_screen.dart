@@ -27,6 +27,7 @@ const _kNewCardColor = Color(0xFF0F4C81);
 
 class EnrollmentScreen extends StatelessWidget {
   final CourseModel course;
+
   const EnrollmentScreen({super.key, required this.course});
 
   @override
@@ -35,7 +36,9 @@ class EnrollmentScreen extends StatelessWidget {
       providers: [
         // Created here (not in a State above it) so the provider is in scope
         // for everything below; the load starts after the first frame.
-        ChangeNotifierProvider(create: (_) => EnrollmentProvider(course)..scheduleInitialLoad()),
+        ChangeNotifierProvider(create: (_) =>
+        EnrollmentProvider(course)
+          ..scheduleInitialLoad()),
         ChangeNotifierProvider(create: (_) => SavedMethodsProvider()),
       ],
       child: const _EnrollView(),
@@ -55,47 +58,56 @@ class _EnrollView extends StatelessWidget {
     return EnrollScaffold(
       child: switch (enroll.step) {
         EnrollStep.method => const _MethodStep(key: ValueKey('method')),
-        EnrollStep.verifying => const PaymentVerifyingView(key: ValueKey('verifying')),
-        EnrollStep.pending => PaymentResultView(
-            key: const ValueKey('pending'),
-            kind: ResultKind.pending,
-            title: enroll.pendingIsManualReview
-                ? ResultCopy.pendingReviewTitle
-                : ResultCopy.pendingTitle,
-            message: enroll.pendingIsManualReview
-                ? ResultCopy.pendingReviewMessage
-                : ResultCopy.pendingMessage,
-            primaryLabel: 'back_to_home'.tr,
-            onPrimary: () => popToHome(context),
-            // Manual-transfer review only: let the student withdraw the
-            // pending proof and go send a corrected one right away, instead
-            // of waiting for the teacher to reject it first.
-            secondaryLabel: enroll.pendingIsManualReview ? 'resend_transfer_request'.tr : null,
-            onSecondary: ()  async {
-              await enroll.loadGatewayConfig();
-              await  enroll.ensureQuote();
-              enroll.setStep(EnrollStep.method);
-
-            }
-        ),
-        EnrollStep.success => PaymentResultView(
-          key: const ValueKey('success'),
-          kind: ResultKind.success,
-          title: 'enroll_success_title'.tr,
-          message: 'enroll_success_message'.tr,
-          primaryLabel: 'start_learning_now'.tr,
-          onPrimary: () => popToHome(context),
-        ),
-        EnrollStep.failed => PaymentResultView(
-          key: const ValueKey('failed'),
-          kind: ResultKind.failed,
-          title: enroll.manualTransferRejected ? ResultCopy.rejectedTitle : ResultCopy.failedTitle,
-          message: enroll.failureReason ?? ResultCopy.failedFallback,
-          primaryLabel: enroll.manualTransferRejected ? 'resend_transfer_request'.tr : 'try_again_payment'.tr,
-          onPrimary: enroll.backToMethod,
-          secondaryLabel: 'back_to_home'.tr,
-          onSecondary: () => popToHome(context),
-        ),
+        EnrollStep.verifying =>
+        const PaymentVerifyingView(key: ValueKey('verifying')),
+        EnrollStep.pending =>
+            PaymentResultView(
+                key: const ValueKey('pending'),
+                kind: ResultKind.pending,
+                title: enroll.pendingIsManualReview
+                    ? ResultCopy.pendingReviewTitle
+                    : ResultCopy.pendingTitle,
+                message: enroll.pendingIsManualReview
+                    ? ResultCopy.pendingReviewMessage
+                    : ResultCopy.pendingMessage,
+                primaryLabel: 'back_to_home'.tr,
+                onPrimary: () => popToHome(context),
+                // Manual-transfer review only: let the student withdraw the
+                // pending proof and go send a corrected one right away, instead
+                // of waiting for the teacher to reject it first.
+                secondaryLabel: enroll.pendingIsManualReview
+                    ? 'resend_transfer_request'.tr
+                    : null,
+                onSecondary: () async {
+                  await enroll.loadGatewayConfig();
+                  await enroll.ensureQuote();
+                  enroll.setStep(EnrollStep.method);
+                }
+            ),
+        EnrollStep.success =>
+            PaymentResultView(
+              key: const ValueKey('success'),
+              kind: ResultKind.success,
+              title: 'enroll_success_title'.tr,
+              message: 'enroll_success_message'.tr,
+              primaryLabel: 'start_learning_now'.tr,
+              onPrimary: () => popToHome(context),
+            ),
+        EnrollStep.failed =>
+            PaymentResultView(
+              key: const ValueKey('failed'),
+              kind: ResultKind.failed,
+              title: enroll.manualTransferRejected
+                  ? ResultCopy.rejectedTitle
+                  : ResultCopy.failedTitle,
+              message: enroll.failureReason ?? ResultCopy.failedFallback,
+              primaryLabel: enroll.manualTransferRejected
+                  ? 'resend_transfer_request'.tr
+                  : 'try_again_payment'.tr,
+              onPrimary: enroll.backToMethod,
+              secondaryLabel: 'back_to_home'.tr,
+              onSecondary: () => popToHome(context),
+            ),
       },
     );
   }
@@ -118,25 +130,33 @@ class _MethodStep extends StatelessWidget {
         ? 'enroll_free_now'.tr
         : quote == null
         ? 'continue'.tr
-        : '${'pay_action'.tr} ${quote.fmt(quote.total)} ${enroll.currencySymbol}';
+        : '${'pay_action'.tr} ${quote.fmt(quote.total)} ${enroll
+        .currencySymbol}';
 
     return CenteredBody(
       child: Column(children: [
-        enrollAppBar(enroll.isFree ? 'enroll_course_title'.tr : 'complete_payment_title'.tr),
+        enrollAppBar(
+            enroll.isFree ? 'enroll_course_title'.tr : 'complete_payment_title'
+                .tr),
         Expanded(
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
-            padding: EdgeInsets.fromLTRB(wide ? 32 : 20, 12, wide ? 32 : 20, 24),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              _CourseSummaryCard(course: enroll.course, currencySymbol: enroll.currencySymbol),
+            padding: EdgeInsets.fromLTRB(
+                wide ? 32 : 20, 12, wide ? 32 : 20, 24),
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              _CourseSummaryCard(
+                  course: enroll.course, currencySymbol: enroll.currencySymbol),
               const SizedBox(height: 24),
               if (enroll.isFree)
                 const _FreeCourseBanner()
-              else ...[
-                const _PaymentMethodPicker(),
-                const SizedBox(height: 20),
-                FeeBreakdownCard(quote: quote, currencySymbol: enroll.currencySymbol),
-              ],
+              else
+                ...[
+                  const _PaymentMethodPicker(),
+                  const SizedBox(height: 20),
+                  FeeBreakdownCard(
+                      quote: quote, currencySymbol: enroll.currencySymbol),
+                ],
             ]),
           ),
         ),
@@ -155,7 +175,9 @@ class _MethodStep extends StatelessWidget {
 class _CourseSummaryCard extends StatelessWidget {
   final CourseModel course;
   final String currencySymbol;
-  const _CourseSummaryCard({required this.course, required this.currencySymbol});
+
+  const _CourseSummaryCard(
+      {required this.course, required this.currencySymbol});
 
   @override
   Widget build(BuildContext context) {
@@ -184,13 +206,18 @@ class _CourseSummaryCard extends StatelessWidget {
         ),
         const SizedBox(width: 14),
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(course.name,
-                style: c.h3.copyWith(fontSize: 15), maxLines: 2, overflow: TextOverflow.ellipsis),
-            if (course.teacher != null) InstructorAvatar(teacher: course.teacher!, size: 50, canOpen: true),
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text((AppConfig.lang == 'ar' ? course.titleAr : course.titleEn)??'',
+                style: c.h3.copyWith(fontSize: 15),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis),
+            if (course.teacher != null) InstructorAvatar(
+                teacher: course.teacher!, size: 50, canOpen: true),
             const SizedBox(height: 10),
             Row(children: [
-              _PriceBadge(price: course.finalPrice??0, currencySymbol: currencySymbol),
+              _PriceBadge(price: course.finalPrice ?? 0,
+                  currencySymbol: currencySymbol),
               const SizedBox(width: 8),
               _TypeTag(type: course.type),
             ]),
@@ -204,6 +231,7 @@ class _CourseSummaryCard extends StatelessWidget {
 class _PriceBadge extends StatelessWidget {
   final double price;
   final String currencySymbol;
+
   const _PriceBadge({required this.price, required this.currencySymbol});
 
   @override
@@ -214,13 +242,15 @@ class _PriceBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [tone.withValues(alpha: .15), tone.withValues(alpha: .06)]),
+        gradient: LinearGradient(
+            colors: [tone.withValues(alpha: .15), tone.withValues(alpha: .06)]),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: tone.withValues(alpha: .3)),
       ),
       child: Text(
         isFree ? 'free'.tr : '${price.toStringAsFixed(2)} $currencySymbol',
-        style: c.label.copyWith(color: tone, fontWeight: FontWeight.w800, fontSize: 12),
+        style: c.label.copyWith(
+            color: tone, fontWeight: FontWeight.w800, fontSize: 12),
       ),
     );
   }
@@ -228,6 +258,7 @@ class _PriceBadge extends StatelessWidget {
 
 class _TypeTag extends StatelessWidget {
   final String type;
+
   const _TypeTag({required this.type});
 
   @override
@@ -237,9 +268,11 @@ class _TypeTag extends StatelessWidget {
     final tone = isLive ? c.danger : c.primary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: tone.withValues(alpha: .08), borderRadius: BorderRadius.circular(6)),
+      decoration: BoxDecoration(color: tone.withValues(alpha: .08),
+          borderRadius: BorderRadius.circular(6)),
       child: Text(isLive ? 'type_tag_live'.tr : 'type_tag_recorded'.tr,
-          style: c.caption.copyWith(color: tone, fontWeight: FontWeight.w700, fontSize: 11)),
+          style: c.caption.copyWith(
+              color: tone, fontWeight: FontWeight.w700, fontSize: 11)),
     );
   }
 }
@@ -254,7 +287,10 @@ class _FreeCourseBanner extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [c.success.withValues(alpha: .10), c.success.withValues(alpha: .04)],
+          colors: [
+            c.success.withValues(alpha: .10),
+            c.success.withValues(alpha: .04)
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -265,13 +301,16 @@ class _FreeCourseBanner extends StatelessWidget {
         Container(
           width: 52,
           height: 52,
-          decoration: BoxDecoration(color: c.success.withValues(alpha: .12), shape: BoxShape.circle),
+          decoration: BoxDecoration(
+              color: c.success.withValues(alpha: .12), shape: BoxShape.circle),
           child: Icon(Icons.card_giftcard_rounded, color: c.success, size: 28),
         ),
         const SizedBox(width: 16),
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('free_course_banner_title'.tr, style: c.h3.copyWith(color: c.success)),
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('free_course_banner_title'.tr,
+                style: c.h3.copyWith(color: c.success)),
             const SizedBox(height: 4),
             Text('free_banner_subtitle'.tr, style: c.caption),
           ]),
@@ -286,17 +325,9 @@ class _FreeCourseBanner extends StatelessWidget {
 class _PaymentMethodPicker extends StatelessWidget {
   const _PaymentMethodPicker();
 
-  Color _brandColor(CardBrand? brand) => switch (brand) {
-    CardBrand.mada => _kMadaColor,
-    CardBrand.visa => _kVisaColor,
-    CardBrand.mastercard => _kMcColor,
-    _ => const Color(0xFF263238),
-  };
-
   @override
   Widget build(BuildContext context) {
     final enroll = context.watch<EnrollmentProvider>();
-    final cards = context.watch<SavedMethodsProvider>().cards;
     final c = context.colors;
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -305,10 +336,12 @@ class _PaymentMethodPicker extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [c.primary, c.primary.withValues(alpha: .7)]),
+            gradient: LinearGradient(
+                colors: [c.primary, c.primary.withValues(alpha: .7)]),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: const Icon(Icons.payment_rounded, size: 18, color: Colors.white),
+          child: const Icon(
+              Icons.payment_rounded, size: 18, color: Colors.white),
         ),
         const SizedBox(width: 10),
         Text('payment_method'.tr, style: c.h3.copyWith(fontSize: 15)),
@@ -361,20 +394,24 @@ class _SecureBadge extends StatelessWidget {
   const _SecureBadge();
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-    decoration: BoxDecoration(
-      color: Colors.green.withValues(alpha: .10),
-      borderRadius: BorderRadius.circular(6),
-    ),
-    child: Row(mainAxisSize: MainAxisSize.min, children: [
-      const Icon(Icons.lock_rounded, size: 9, color: Colors.green),
-      const SizedBox(width: 3),
-      Text('secure_badge'.tr,
-          style: TextStyle(
-              fontSize: 10, fontWeight: FontWeight.w700, color: Colors.green.shade700, fontFamily: 'bahji')),
-    ]),
-  );
+  Widget build(BuildContext context) =>
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.green.withValues(alpha: .10),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          const Icon(Icons.lock_rounded, size: 9, color: Colors.green),
+          const SizedBox(width: 3),
+          Text('secure_badge'.tr,
+              style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.green.shade700,
+                  fontFamily: 'bahji')),
+        ]),
+      );
 }
 
 class _MethodTile extends StatelessWidget {
@@ -413,9 +450,14 @@ class _MethodTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? c.primary.withValues(alpha: .05) : c.cardBg,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: selected ? c.primary : c.divider, width: selected ? 2 : 1),
+          border: Border.all(
+              color: selected ? c.primary : c.divider, width: selected ? 2 : 1),
           boxShadow: selected
-              ? [BoxShadow(color: c.primary.withValues(alpha: .14), blurRadius: 12, offset: const Offset(0, 4))]
+              ? [
+            BoxShadow(color: c.primary.withValues(alpha: .14),
+                blurRadius: 12,
+                offset: const Offset(0, 4))
+          ]
               : c.cardShadow,
         ),
         child: Row(children: [
@@ -430,7 +472,8 @@ class _MethodTile extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 Flexible(
                   child: Text(title,
@@ -442,14 +485,20 @@ class _MethodTile extends StatelessWidget {
                 if (badge != null) ...[
                   const SizedBox(width: 6),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 7, vertical: 2),
                     decoration: BoxDecoration(
-                        color: Colors.amber.withValues(alpha: .15), borderRadius: BorderRadius.circular(6)),
+                        color: Colors.amber.withValues(alpha: .15),
+                        borderRadius: BorderRadius.circular(6)),
                     child: Text(badge!,
-                        style: c.caption.copyWith(color: Colors.amber.shade800, fontSize: 10)),
+                        style: c.caption.copyWith(
+                            color: Colors.amber.shade800, fontSize: 10)),
                   ),
                 ],
-                if (customBadge != null) ...[const SizedBox(width: 6), customBadge!],
+                if (customBadge != null) ...[
+                  const SizedBox(width: 6),
+                  customBadge!
+                ],
               ]),
               const SizedBox(height: 3),
               Text(subtitle, style: c.caption.copyWith(fontSize: 11)),
@@ -462,9 +511,11 @@ class _MethodTile extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: selected ? c.primary : Colors.transparent,
-              border: Border.all(color: selected ? c.primary : c.divider, width: 2),
+              border: Border.all(
+                  color: selected ? c.primary : c.divider, width: 2),
             ),
-            child: selected ? const Icon(Icons.check_rounded, size: 13, color: Colors.white) : null,
+            child: selected ? const Icon(
+                Icons.check_rounded, size: 13, color: Colors.white) : null,
           ),
         ]),
       ),

@@ -17,7 +17,8 @@ import '../../../config/app_config.dart';
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
 import '../../category/categories_provider.dart';
-import '../../student/models.dart' show AppCurrency, AppCurrencyX, CourseStatus, CourseStatusX;
+import '../../student/models.dart'
+    show AppCurrency, AppCurrencyX, CourseStatus, CourseStatusX;
 import '../home/teacher_models.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -70,14 +71,10 @@ class CourseFormState {
 
   bool get isEmpty =>
       schedules.isEmpty &&
-          certificates.isEmpty &&
-          tools.isEmpty &&
-          prerequisites.isEmpty;
+      certificates.isEmpty &&
+      tools.isEmpty &&
+      prerequisites.isEmpty;
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CourseFormProvider
-// ─────────────────────────────────────────────────────────────────────────────
 
 class CourseFormProvider extends BaseProvider {
   final ApiClient _api;
@@ -159,7 +156,12 @@ class CourseFormProvider extends BaseProvider {
       otherCourses = (result['items'] as List<dynamic>)
           .whereType<dynamic>()
           .where((c) => c['id'] != excludeCourseId)
-          .map((c) => {'id': c['id'], 'text': (c['name'] ?? c['title'] ?? '').toString()})
+          .map(
+            (c) => {
+              'id': c['id'],
+              'text': (c['name'] ?? c['title'] ?? '').toString(),
+            },
+          )
           .toList();
     } else {
       otherCourses = [];
@@ -203,17 +205,14 @@ class CourseFormProvider extends BaseProvider {
   Future<void> initCreate(BuildContext context) async {
     _form = const CourseFormState();
     selectedSpecialization = null;
-    selectedTeachingType = null;
+    selectedTeachingType = teachingTypes[1]; // recorded
     selectedCurrency = AppCurrency.egp;
     selectedNextCourses = [];
     selectedRecommendedCourseIds = {};
     _listsChanged = false;
     _pendingSchedules = [];
     notifyListeners();
-    await Future.wait([
-      _loadCategories(context),
-      _loadOtherCourses(),
-    ]);
+    await Future.wait([_loadCategories(context), _loadOtherCourses()]);
   }
 
   /// Call once from initState when opening in UPDATE mode.
@@ -225,7 +224,10 @@ class CourseFormProvider extends BaseProvider {
       prerequisites: course.prerequisites.map((e) => e.title).toList(),
     );
     selectedSpecialization = null;
-    selectedTeachingType = null;
+    selectedTeachingType = teachingTypes.firstWhere(
+      (t) => t['text'] == course.type.toString().split('.').last.toLowerCase(),
+      orElse: () => teachingTypes[1],
+    );
     selectedCurrency = course.currency;
     selectedRecommendedCourseIds = course.recommendedCourseIds.toSet();
     _listsChanged = false;
@@ -251,12 +253,12 @@ class CourseFormProvider extends BaseProvider {
   void _restoreSpecialization(TeacherCourse course) {
     try {
       selectedSpecialization = specializations.firstWhere(
-            (s) =>
-        s['text'] ==
+        (s) =>
+            s['text'] ==
             (
-            AppConfig.lang == 'ar'
-                ? course.category!.nameAr
-                : course.category!.nameEn,
+              AppConfig.lang == 'ar'
+                  ? course.category!.nameAr
+                  : course.category!.nameEn,
             ),
       );
     } catch (_) {
@@ -276,9 +278,11 @@ class CourseFormProvider extends BaseProvider {
     notifyListeners();
   }
 
-  void onChangeTeachingType(int i, ExpansibleController ctrl) {
+  void onChangeTeachingType(String type, ExpansibleController ctrl) {
     ctrl.collapse();
-    selectedTeachingType = teachingTypes[i];
+    selectedTeachingType = teachingTypes.firstWhere(
+      (item) => item['text'] == type,
+    );
     _listsChanged = true;
     notifyListeners();
   }
@@ -352,45 +356,47 @@ class CourseFormProvider extends BaseProvider {
   // ─────────────────────────────────────────────────────────────────────────
 
   Future<TeacherCourse?> submitCreate({
-    required String title,
-    required String type,
-    String? description,
+    required String titleAr,
+    required String titleEn,
+    required String descriptionAr,
+    required String descriptionEn,
+    required String type, // live | recorded | both
     double fees = 0,
     double? totalHours,
     XFile? logoFile,
     double? discountPercentage,
-    bool isPrivate = false, String? accessCode,
+    bool isPrivate = false,
+    String? accessCode,
     int? discountDays,
-
-    /// Optional certificate template set up at course-creation time. Both
-    /// must be provided together — a template with no title is ignored.
     String? certificateTemplateTitle,
     XFile? certificateTemplateFile,
-
-    /// When true, the course is published immediately after creation.
-    /// When false, it's left as a draft (the server-side default).
     bool publish = false,
   }) async {
-    // Step 1: create course record (JSON, no file)
     final result = await run(
-          () => _api.post(
+      () => _api.post(
         '/api/v1/courses',
         body: {
-      'name': title,
-      'type': type,
+          if (titleAr.trim().isNotEmpty) 'name_ar': titleAr.trim(),
+          if (titleEn.trim().isNotEmpty) 'name_en': titleEn.trim(),
+          if (descriptionAr.trim().isNotEmpty)
+            'description_ar': descriptionAr.trim(),
+          if (descriptionEn.trim().isNotEmpty)
+            'description_en': descriptionEn.trim(),
+          'type': type,
           'is_private': isPrivate,
-          if (isPrivate && (accessCode ?? '').trim().isNotEmpty) 'access_code': accessCode!.trim(),
-      'fees': fees,
-      'currency': selectedCurrency.code,
-      'description': ?description,
-      if (selectedSpecialization?['id'] != null)
-      'category_id': selectedSpecialization!['id'],
-      'total_hours': ?totalHours,
-      'next_course_ids': selectedNextCourses.map((c) => c['id']).toList(),
-      'recommended_course_ids': selectedRecommendedCourseIds.toList(),
-      if (discountPercentage != null) 'discount_percentage': discountPercentage,
-      if (discountDays != null) 'discount_days': discountDays,
-      },
+          if (isPrivate && (accessCode ?? '').trim().isNotEmpty)
+            'access_code': accessCode!.trim(),
+          'fees': fees,
+          'currency': selectedCurrency.code,
+          if (selectedSpecialization?['id'] != null)
+            'category_id': selectedSpecialization!['id'],
+          'hours': ?totalHours,
+          'next_course_ids': selectedNextCourses.map((c) => c['id']).toList(),
+          'recommended_course_ids': selectedRecommendedCourseIds.toList(),
+          if (discountPercentage != null)
+            'discount_percentage': discountPercentage,
+          if (discountDays != null) 'discount_days': discountDays,
+        },
       ),
     );
 
@@ -406,7 +412,7 @@ class CourseFormProvider extends BaseProvider {
     // Step 3: publish immediately if requested (otherwise stays a draft)
     if (publish) {
       final pubResult = await run(
-            () => _api.post('/api/v1/courses/${created.id}/publish'),
+        () => _api.post('/api/v1/courses/${created.id}/publish'),
       );
       if (pubResult != null) created = created.copyWith(isPublished: true);
     }
@@ -430,7 +436,9 @@ class CourseFormProvider extends BaseProvider {
     if (certificateTemplateFile != null &&
         (certificateTemplateTitle?.trim().isNotEmpty ?? false)) {
       await _createCertificateWithTemplate(
-        created.id, certificateTemplateTitle!.trim(), certificateTemplateFile,
+        created.id,
+        certificateTemplateTitle!.trim(),
+        certificateTemplateFile,
       );
     }
 
@@ -445,39 +453,47 @@ class CourseFormProvider extends BaseProvider {
   // ─────────────────────────────────────────────────────────────────────────
 
   Future<TeacherCourse?> submitUpdate(
-      TeacherCourse original, {
-        required String name,
-        String? description,
-        bool isPrivate = false,
-        String? accessCode,
-        double? fees,
-        double? totalHours,
-        XFile? logoFile,
-        double? discountPercentage,   // ← new; pass null to leave untouched
-        bool clearDiscount = false,
-        int? discountDays,
-      }) async {
-    // Step 1: patch scalar fields
+    TeacherCourse original, {
+    required String titleAr,
+    required String titleEn,
+    required String descriptionAr,
+    required String descriptionEn,
+    required String type,
+    bool isPrivate = false,
+    String? accessCode,
+    double? fees,
+    double? totalHours,
+    XFile? logoFile,
+    double? discountPercentage,
+    bool clearDiscount = false,
+    int? discountDays,
+  }) async {
     final patchResult = await run(
-          () => _api.put(
+      () => _api.put(
         '/api/v1/courses/${original.id}',
         body: {
-      'name': name,
-      'description': ?description,
+          // always sent, so emptying one language really clears it
+          'name_ar': titleAr.trim(),
+          'name_en': titleEn.trim(),
+          'description_ar': descriptionAr.trim(),
+          'description_en': descriptionEn.trim(),
+          'type': type,
           'is_private': isPrivate,
-          if (isPrivate && (accessCode ?? '').trim().isNotEmpty) 'access_code': accessCode!.trim(),
-
+          if (isPrivate && (accessCode ?? '').trim().isNotEmpty)
+            'access_code': accessCode!.trim(),
           'fees': ?fees,
-      'currency': selectedCurrency.code,
-      if (selectedSpecialization?['id'] != null)
-      'category_id': selectedSpecialization!['id'],
-      'total_hours': ?totalHours,
-      'next_course_ids': selectedNextCourses.map((c) => c['id']).toList(),
-      'recommended_course_ids': selectedRecommendedCourseIds.toList(),
-      if (clearDiscount) 'discount_percentage': null
-      else if (discountPercentage != null) 'discount_percentage': discountPercentage,
-      if (discountDays != null) 'discount_days': discountDays,
-      },
+          'currency': selectedCurrency.code,
+          if (selectedSpecialization?['id'] != null)
+            'category_id': selectedSpecialization!['id'],
+          'total_hours': ?totalHours,
+          'next_course_ids': selectedNextCourses.map((c) => c['id']).toList(),
+          'recommended_course_ids': selectedRecommendedCourseIds.toList(),
+          if (clearDiscount)
+            'discount_percentage': null
+          else if (discountPercentage != null)
+            'discount_percentage': discountPercentage,
+          if (discountDays != null) 'discount_days': discountDays,
+        },
       ),
     );
 
@@ -534,7 +550,7 @@ class CourseFormProvider extends BaseProvider {
 
     final refreshed =
         await _fetchCourseDetail(original.id) ??
-            TeacherCourse.fromJson(patchResult);
+        TeacherCourse.fromJson(patchResult);
     _pendingSchedules = [];
     return refreshed;
   }
@@ -546,7 +562,7 @@ class CourseFormProvider extends BaseProvider {
 
   Future<TeacherCourse?> updateStatus(int courseId, CourseStatus status) async {
     final result = await run(
-          () => _api.put(
+      () => _api.put(
         '/api/v1/courses/$courseId/status',
         body: {'status': status.apiValue},
       ),
@@ -566,9 +582,9 @@ class CourseFormProvider extends BaseProvider {
   }
 
   Future<TeacherCourse?> _uploadImage(
-      XFile logoFile, {
-        required int courseId,
-      }) async {
+    XFile logoFile, {
+    required int courseId,
+  }) async {
     try {
       final ext = p
           .extension(logoFile.path)
@@ -613,12 +629,12 @@ class CourseFormProvider extends BaseProvider {
   /// never block course creation from succeeding (the teacher can always
   /// add/fix the certificate afterward from the certificate manager).
   Future<void> _createCertificateWithTemplate(
-      int courseId,
-      String title,
-      XFile file,
-      ) async {
+    int courseId,
+    String title,
+    XFile file,
+  ) async {
     final certResult = await run(
-          () => _api.post(
+      () => _api.post(
         '/api/v1/courses/$courseId/certificates',
         body: {'title': title},
       ),
@@ -643,7 +659,7 @@ class CourseFormProvider extends BaseProvider {
     int? certId = existingCertificateId;
     if (certId == null) {
       final certResult = await run(
-            () => _api.post(
+        () => _api.post(
           '/api/v1/courses/$courseId/certificates',
           body: {'title': title},
         ),
@@ -655,7 +671,10 @@ class CourseFormProvider extends BaseProvider {
     return _uploadCertificateTemplateBytes(certId, file);
   }
 
-  Future<String?> _uploadCertificateTemplateBytes(int certId, XFile file) async {
+  Future<String?> _uploadCertificateTemplateBytes(
+    int certId,
+    XFile file,
+  ) async {
     try {
       final ext = p.extension(file.path).replaceFirst('.', '').toLowerCase();
       final mimeType = switch (ext) {
@@ -684,7 +703,9 @@ class CourseFormProvider extends BaseProvider {
       final data = response.data as Map<String, dynamic>;
       return data['template_url'] as String?;
     } on DioException catch (e) {
-      log('uploadCertificateTemplate ❌ ${e.response?.statusCode}: ${e.response?.data}');
+      log(
+        'uploadCertificateTemplate ❌ ${e.response?.statusCode}: ${e.response?.data}',
+      );
       return null;
     } catch (e) {
       log('uploadCertificateTemplate ❌ unexpected: $e');
@@ -693,12 +714,12 @@ class CourseFormProvider extends BaseProvider {
   }
 
   Future<void> _addSchedule(
-      int courseId, {
-        required String day,
-        required String startTime,
-        required String endTime,
-      }) => run(
-        () => _api.post(
+    int courseId, {
+    required String day,
+    required String startTime,
+    required String endTime,
+  }) => run(
+    () => _api.post(
       '/api/v1/courses/$courseId/schedules',
       body: {'day': day, 'start_time': startTime, 'end_time': endTime},
     ),
@@ -708,7 +729,7 @@ class CourseFormProvider extends BaseProvider {
       run(() => _api.delete('/api/v1/schedules/$scheduleId'));
 
   Future<void> _addCertificate(int courseId, {required String title}) => run(
-        () => _api.post(
+    () => _api.post(
       '/api/v1/courses/$courseId/certificates',
       body: {'title': title},
     ),
@@ -718,14 +739,14 @@ class CourseFormProvider extends BaseProvider {
       run(() => _api.delete('/api/v1/certificates/$certId'));
 
   Future<void> _addTool(int courseId, {required String name}) => run(
-        () => _api.post('/api/v1/courses/$courseId/tools', body: {'title': name}),
+    () => _api.post('/api/v1/courses/$courseId/tools', body: {'title': name}),
   );
 
   Future<void> _removeTool(int toolId) =>
       run(() => _api.delete('/api/v1/tools/$toolId'));
 
   Future<void> _addPrerequisite(int courseId, {required String title}) => run(
-        () => _api.post(
+    () => _api.post(
       '/api/v1/courses/$courseId/prerequisites',
       body: {'title': title},
     ),

@@ -71,7 +71,8 @@ import 'components/sessions_section.dart';
 void _openOwnCoursePreview(BuildContext context, CourseSummary summary) {
   final stub = TeacherCourse(
     id: summary.id,
-    title: summary.name,
+    titleAr: summary.name,
+    titleEn: summary.name,
     imageUrl: summary.imageUrl,
     totalHours: 0,
     type: 'recorded',

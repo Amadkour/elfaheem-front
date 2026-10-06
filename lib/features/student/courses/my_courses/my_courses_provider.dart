@@ -51,8 +51,10 @@ class MyCoursesProvider extends BaseProvider {
     final q = _query.toLowerCase();
     return list
         .where((s) =>
-    s.name.toLowerCase().contains(q) ||
-        (s.description?.toLowerCase().contains(q) ?? false) ||
+    (s.titleAr?.toLowerCase().contains(q)??false) ||
+    (s.titleAr?.toLowerCase().contains(q)??false) ||
+        (s.descriptionAr?.toLowerCase().contains(q) ?? false) ||
+        (s.descriptionEn?.toLowerCase().contains(q) ?? false) ||
         (s.teacher?.name.toLowerCase().contains(q) ?? false))
         .toList();
 

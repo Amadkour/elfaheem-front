@@ -39,7 +39,7 @@ class CourseSchedule {
         'saturday': 'السبت',
         'sunday': 'الأحد',
       }[day] ??
-          day;
+      day;
 
   /// Lightweight constructor for pending (not-yet-saved) entries.
   factory CourseSchedule.pending({
@@ -296,13 +296,12 @@ class ScheduleSession {
 // ── TeacherCourse ─────────────────────────────────────────────────────────────
 class TeacherCourse with DiscountInfo {
   final int id, studentsCount, sessionsCount;
-  final String title, imageUrl, type;
+  final String imageUrl, type;
   final double totalHours;
   @override
   final double price;
   final int progress;
   final double expectedHours;
-  final String? description;
   final CategoryModel? category;
   final bool isPublished;
   final List<CourseSchedule> schedules;
@@ -313,6 +312,7 @@ class TeacherCourse with DiscountInfo {
   final AppCurrency currency;
   final CourseStatus status;
   final bool isPrivate;
+  final String? titleAr, titleEn, descriptionAr, descriptionEn;
 
   // ── Next courses (ORDERED roadmap) / recommended courses ────────────────
   final List<int> nextCourseIds;
@@ -339,7 +339,6 @@ class TeacherCourse with DiscountInfo {
     this.discountPercentage,
     this.discountDays,
     required this.id,
-    required this.title,
     required this.imageUrl,
     required this.totalHours,
     required this.type,
@@ -348,7 +347,6 @@ class TeacherCourse with DiscountInfo {
     this.price = 0,
     this.category,
     this.isPublished = false,
-    this.description,
     this.schedules = const [],
     this.certificates = const [],
     this.tools = const [],
@@ -364,7 +362,10 @@ class TeacherCourse with DiscountInfo {
     this.nextCourses = const [],
     this.recommendedCourseSummaries = const [],
     this.similarCourses = const [],
-
+    this.titleAr,
+    this.titleEn,
+    this.descriptionAr,
+    this.descriptionEn,
   });
 
   factory TeacherCourse.dummy(int courseId) => TeacherCourse(
@@ -374,22 +375,25 @@ class TeacherCourse with DiscountInfo {
     type: 'live',
     isPublished: false,
     expectedHours: 0,
-    title: '',
+    titleAr: '',
+    titleEn: '',
     totalHours: 0,
     progress: 0,
   );
 
   factory TeacherCourse.fromJson(Map<String, dynamic> j) => TeacherCourse(
     id: j['id'] as int,
-    title: j['name'] as String? ?? '',
     imageUrl: j['image_url'] as String? ?? '',
-    studentsCount: (j['students_count'] as int? ?? 0)+700,
+    studentsCount: (j['students_count'] as int? ?? 0) + 700,
     expectedHours: j['expected_hours'] as double? ?? 0.0,
     isPrivate: j['is_private'] as bool? ?? false,
     sessionsCount: j['sessions_count'] as int? ?? 0,
     totalHours: (j['total_hours'] as num?)?.toDouble() ?? 0,
     discountDays: j['discount_days'] as int?,
-    price: (j['price'] as num?)?.toDouble() ?? (j['fees'] as num?)?.toDouble() ?? 0,
+    price:
+        (j['price'] as num?)?.toDouble() ??
+        (j['fees'] as num?)?.toDouble() ??
+        0,
     finalPrice: (j['final_price'] as num?)?.toDouble(),
     discountActive: j['discount_active'] as bool?,
     discountPercentage: (j['discount_percentage'] as num?)?.toDouble(),
@@ -403,7 +407,6 @@ class TeacherCourse with DiscountInfo {
         ? CategoryModel.fromJson(j['category'] as Map<String, dynamic>)
         : null,
     isPublished: j['is_published'] as bool? ?? false,
-    description: j['description'] as String?,
     type: j['type'] as String? ?? 'recorded',
     schedules: (j['schedules'] as List? ?? [])
         .map((e) => CourseSchedule.fromJson(e as Map<String, dynamic>))
@@ -436,34 +439,40 @@ class TeacherCourse with DiscountInfo {
     similarCourses: (j['similar_courses'] as List? ?? [])
         .map((e) => CourseSummary.fromJson(e as Map<String, dynamic>))
         .toList(),
+    titleAr: j['name_ar'] as String?,
+    titleEn: j['name_en'] as String?,
+    descriptionAr: j['description_ar'] as String?,
+    descriptionEn: j['description_en'] as String?,
   );
 
   CourseModel get toCourseModel => CourseModel(
+    titleAr: titleAr,
+    titleEn: titleEn,
+    descriptionAr: descriptionAr,
+    descriptionEn: descriptionEn,
     isPrivate: isPrivate,
-      id: id.toString(),
-      name: title,
-      imageUrl: imageUrl,
-      price: price,
-      rateSummary: rateSummary,
-      progress: progress,
-      type: type,
-      isEnrolled: false,
-      certificates: certificates,
-      tools: tools,
-      prerequisites: prerequisites,
-      schedules: schedules,
-      description: description,
-      studentsCount: studentsCount,
-      sessionsCount: sessionsCount,
-      totalHours: totalHours,
-      expectedHours: expectedHours,
-      category: category,
-      isPublished: isPublished,
-      finalPrice: finalPrice,
-      discountEndsAt: discountEndsAt,
-      discountActive: discountActive,
-      discountPercentage: discountPercentage,
-      discountDays:discountDays
+    id: id.toString(),
+    imageUrl: imageUrl,
+    price: price,
+    rateSummary: rateSummary,
+    progress: progress,
+    type: type,
+    isEnrolled: false,
+    certificates: certificates,
+    tools: tools,
+    prerequisites: prerequisites,
+    schedules: schedules,
+    studentsCount: studentsCount,
+    sessionsCount: sessionsCount,
+    totalHours: totalHours,
+    expectedHours: expectedHours,
+    category: category,
+    isPublished: isPublished,
+    finalPrice: finalPrice,
+    discountEndsAt: discountEndsAt,
+    discountActive: discountActive,
+    discountPercentage: discountPercentage,
+    discountDays: discountDays,
   );
 
   TeacherCourse copyWith({
@@ -487,7 +496,10 @@ class TeacherCourse with DiscountInfo {
     currency: currency ?? this.currency,
     status: status ?? this.status,
     id: id,
-    title: title,
+    titleEn: titleEn,
+    titleAr: titleAr,
+    descriptionEn: descriptionEn,
+    descriptionAr: descriptionAr,
     progress: progress,
     imageUrl: imageUrl ?? this.imageUrl,
     totalHours: totalHours,
@@ -499,7 +511,6 @@ class TeacherCourse with DiscountInfo {
     price: price ?? this.price,
     category: category,
     isPublished: isPublished ?? this.isPublished,
-    description: description,
     schedules: schedules ?? this.schedules,
     certificates: certificates ?? this.certificates,
     tools: tools ?? this.tools,
@@ -536,9 +547,9 @@ class TeacherDashboardData {
           .map((e) => TeacherCourse.fromJson(e as Map<String, dynamic>))
           .toList(),
       schedule:
-      (j['schedule'] as List? ?? j['upcoming_sessions'] as List? ?? [])
-          .map((e) => ScheduleSession.fromJson(e as Map<String, dynamic>))
-          .toList(),
+          (j['schedule'] as List? ?? j['upcoming_sessions'] as List? ?? [])
+              .map((e) => ScheduleSession.fromJson(e as Map<String, dynamic>))
+              .toList(),
     );
   }
 }
