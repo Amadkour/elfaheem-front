@@ -52,8 +52,8 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
       builder: (_) => _PickerSheet(
         api: _api,
         title: course
-            ? t('اختر الكورس', 'Choose a course')
-            : t('اختر الطالب', 'Choose a student'),
+            ? 'admin_choose_a_course'.tr
+            : 'admin_choose_a_student'.tr,
         path: course ? '/api/v1/admin/courses' : '/api/v1/admin/users',
         extra: course ? const {} : const {'role': 'student'},
         subtitleKey: course ? null : 'gmail',
@@ -65,20 +65,20 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
 
   Future<void> _send() async {
     if (_title.text.trim().isEmpty || _body.text.trim().isEmpty) {
-      return _snack(t('اكتب العنوان والرسالة', 'Enter a title and a message'));
+      return _snack('admin_enter_a_title_and_a_message'.tr);
     }
     if (_audience == 'course' && _course == null)
-      return _snack(t('اختر الكورس', 'Choose a course'));
+      return _snack('admin_choose_a_course'.tr);
     if (_audience == 'student' && _student == null)
-      return _snack(t('اختر الطالب', 'Choose a student'));
+      return _snack('admin_choose_a_student'.tr);
     if (_needsCourseForButton && _course == null)
       return _snack(
-        t('اختر الكورس الذي يفتحه الزر', 'Choose the course the button opens'),
+        'admin_choose_the_course_the_button_opens'.tr,
       );
 
     final ok = await confirm(
       context,
-      message: t('إرسال الرسالة الآن؟', 'Send this message now?'),
+      message: 'admin_send_this_message_now'.tr,
     );
     if (!ok) return;
 
@@ -102,10 +102,7 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
         },
       );
       _snack(
-        t(
-          'تم الإرسال إلى ${r['recipients']} مستخدم',
-          'Sent to ${r['recipients']} users',
-        ),
+        trp('admin_sent_to_users', {'recipients': r['recipients']}),
       );
       _title.clear();
       _body.clear();
@@ -164,12 +161,12 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            label(t('إلى من؟', 'Send to')),
+            label('admin_send_to'.tr),
             chips<String>(
               [
-                ('all_students', t('كل الطلاب', 'All students')),
-                ('course', t('طلاب كورس', 'A course')),
-                ('student', t('طالب محدد', 'One student')),
+                ('all_students', 'admin_all_students'.tr),
+                ('course', 'admin_a_course'.tr),
+                ('student', 'admin_one_student'.tr),
               ],
               _audience,
               (v) => setState(() => _audience = v),
@@ -178,7 +175,7 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
               const SizedBox(height: 8),
               pickerBtn(
                 _course?['name']?.toString() ??
-                    t('اختر الكورس', 'Choose a course'),
+                    'admin_choose_a_course'.tr,
                 Icons.menu_book_rounded,
                 () => _pick(course: true),
               ),
@@ -187,18 +184,18 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
               const SizedBox(height: 8),
               pickerBtn(
                 _student?['name']?.toString() ??
-                    t('اختر الطالب', 'Choose a student'),
+                    'admin_choose_a_student'.tr,
                 Icons.person_search_rounded,
                 () => _pick(course: false),
               ),
             ],
-            label(t('طريقة العرض', 'How it appears')),
+            label('admin_how_it_appears'.tr),
             chips<String>(
               [
-                ('email', t('بريد إلكتروني', 'E-mail')),
-                ('notification', t('إشعار', 'Notification')),
-                ('dialog', t('نافذة بدون زر', 'Dialog')),
-                ('dialog_action', t('نافذة مع زر', 'Dialog + button')),
+                ('email', 'admin_e_mail'.tr),
+                ('notification', 'admin_notification'.tr),
+                ('dialog', 'admin_dialog'.tr),
+                ('dialog_action', 'admin_dialog_button'.tr),
               ],
               _display,
               (v) => setState(() => _display = v),
@@ -208,29 +205,29 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
               DropdownButtonFormField<String>(
                 initialValue: _module,
                 decoration: InputDecoration(
-                  labelText: t('الزر يفتح', 'Button opens'),
+                  labelText: 'admin_button_opens'.tr,
                   border: const OutlineInputBorder(),
                 ),
                 items: [
                   DropdownMenuItem(
                     value: 'course',
-                    child: Text(t('صفحة الكورس', 'Course profile')),
+                    child: Text('admin_course_profile'.tr),
                   ),
                   DropdownMenuItem(
                     value: 'profile',
-                    child: Text(t('الملف الشخصي', 'Profile')),
+                    child: Text('admin_profile'.tr),
                   ),
                   DropdownMenuItem(
                     value: 'my_courses',
-                    child: Text(t('كورساتي', 'My courses')),
+                    child: Text('admin_my_courses'.tr),
                   ),
                   DropdownMenuItem(
                     value: 'notifications',
-                    child: Text(t('الإشعارات', 'Notifications')),
+                    child: Text('admin_notifications'.tr),
                   ),
                   DropdownMenuItem(
                     value: 'subscription',
-                    child: Text(t('الاشتراك', 'Subscription')),
+                    child: Text('admin_subscription'.tr),
                   ),
                 ],
                 onChanged: (v) => setState(() => _module = v ?? 'course'),
@@ -239,10 +236,7 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
                 const SizedBox(height: 8),
                 pickerBtn(
                   _course?['name']?.toString() ??
-                      t(
-                        'اختر الكورس الذي يفتحه الزر',
-                        'Choose the course it opens',
-                      ),
+                      'admin_choose_the_course_it_opens'.tr,
                   Icons.menu_book_rounded,
                   () => _pick(course: true),
                 ),
@@ -252,17 +246,17 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
                 controller: _label,
                 maxLength: 80,
                 decoration: InputDecoration(
-                  labelText: t('نص الزر (اختياري)', 'Button text (optional)'),
+                  labelText: 'admin_button_text_optional'.tr,
                   border: const OutlineInputBorder(),
                 ),
               ),
             ],
-            label(t('الرسالة', 'Message')),
+            label('admin_message_2'.tr),
             TextField(
               controller: _title,
               maxLength: 255,
               decoration: InputDecoration(
-                labelText: t('العنوان', 'Title'),
+                labelText: 'video_title'.tr,
                 border: const OutlineInputBorder(),
               ),
             ),
@@ -273,7 +267,7 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
               maxLines: 10,
               maxLength: 4000,
               decoration: InputDecoration(
-                labelText: t('نص الرسالة', 'Message'),
+                labelText: 'admin_message'.tr,
                 border: const OutlineInputBorder(),
               ),
             ),
@@ -290,7 +284,7 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
                       ),
                     )
                   : const Icon(Icons.send_rounded),
-              label: Text(t('إرسال', 'Send')),
+              label: Text('lk_send_btn'.tr),
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(50),
               ),
@@ -378,7 +372,7 @@ class _PickerSheetState extends State<_PickerSheet> {
                   icon: const Icon(Icons.arrow_forward_rounded),
                   onPressed: _load,
                 ),
-                hintText: t('بحث', 'Search'),
+                hintText: 'search'.tr,
                 border: const OutlineInputBorder(),
               ),
             ),

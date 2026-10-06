@@ -38,7 +38,7 @@ class _View extends StatelessWidget {
       body = ErrorRetry(message: p.error!, onRetry: p.load);
     } else if (p.items.isEmpty) {
       body = EmptyState(
-        t('لا توجد إصدارات منشورة', 'No versions published yet'),
+        'admin_no_versions_published_yet'.tr,
       );
     } else {
       body = RefreshIndicator(
@@ -60,7 +60,7 @@ class _View extends StatelessWidget {
         onPressed: () => _form(context, p),
         icon: const Icon(Icons.rocket_launch_rounded, color: Colors.white),
         label: Text(
-          t('نشر إصدار', 'Publish version'),
+          'admin_publish_version'.tr,
           style: const TextStyle(fontFamily: 'tajawal', color: Colors.white),
         ),
       ),
@@ -117,11 +117,11 @@ class _VersionCard extends StatelessWidget {
             spacing: 6,
             children: [
               if (asBool(v['force_update']))
-                StatusChip(t('تحديث إجباري', 'Forced'), c.danger),
+                StatusChip('admin_forced'.tr, c.danger),
               if (asBool(v['recommend_update']))
-                StatusChip(t('موصى به', 'Recommended'), c.warning),
+                StatusChip('admin_recommended'.tr, c.warning),
               if (asStrOrNull(v['min_supported']) != null)
-                StatusChip('min ${asStr(v['min_supported'])}', c.charcoal),
+                StatusChip(trp('admin_min_version', {'version': asStr(v['min_supported'])}), c.charcoal),
             ],
           ),
           if (asStrOrNull(v['release_notes_ar']) != null ||
@@ -144,17 +144,17 @@ class _VersionCard extends StatelessWidget {
               children: [
                 TextButton.icon(
                   icon: const Icon(Icons.edit_rounded, size: 18),
-                  label: Text(t('تعديل', 'Edit')),
+                  label: Text('btn_edit'.tr),
                   onPressed: () => _form(context, p, existing: v),
                 ),
                 TextButton.icon(
                   style: TextButton.styleFrom(foregroundColor: c.danger),
                   icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                  label: Text(t('حذف', 'Delete')),
+                  label: Text('delete'.tr),
                   onPressed: () async {
                     final ok = await confirm(
                       context,
-                      message: t('حذف هذا الإصدار؟', 'Delete this version?'),
+                      message: 'admin_delete_this_version'.tr,
                       danger: true,
                     );
                     if (ok) await p.remove(id);
@@ -197,8 +197,8 @@ Future<void> _form(
           children: [
             SheetHeader(
               editing
-                  ? t('تعديل الإصدار', 'Edit version')
-                  : t('نشر إصدار جديد', 'Publish new version'),
+                  ? 'admin_edit_version'.tr
+                  : 'admin_publish_new_version'.tr,
             ),
             Flexible(
               child: SingleChildScrollView(
@@ -209,14 +209,11 @@ Future<void> _form(
                     if (!editing) ...[
                       Field(
                         controller: version,
-                        label: t(
-                          'رقم الإصدار (مثال 1.2.3)',
-                          'Version (e.g. 1.2.3)',
-                        ),
+                        label: 'admin_version_e_g_1_2_3'.tr,
                         ltr: true,
                       ),
                       ChoiceRow<String>(
-                        label: t('المنصة', 'Platform'),
+                        label: 'admin_platform'.tr,
                         options: const {
                           'android': 'Android',
                           'ios': 'iOS',
@@ -228,40 +225,28 @@ Future<void> _form(
                     ],
                     Field(
                       controller: minSup,
-                      label: t(
-                        'أقل إصدار مدعوم (اختياري)',
-                        'Minimum supported (optional)',
-                      ),
+                      label: 'admin_minimum_supported_optional'.tr,
                       ltr: true,
                     ),
                     Field(
                       controller: notesAr,
-                      label: t(
-                        'ملاحظات الإصدار بالعربية',
-                        'Release notes (Arabic)',
-                      ),
+                      label: 'admin_release_notes_arabic'.tr,
                       maxLines: 3,
                     ),
                     Field(
                       controller: notesEn,
-                      label: t(
-                        'ملاحظات الإصدار بالإنجليزية',
-                        'Release notes (English)',
-                      ),
+                      label: 'admin_release_notes_english'.tr,
                       maxLines: 3,
                       ltr: true,
                     ),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text(
-                        t('تحديث إجباري', 'Force update'),
+                        'admin_force_update'.tr,
                         style: const TextStyle(fontFamily: 'tajawal'),
                       ),
                       subtitle: Text(
-                        t(
-                          'يمنع استخدام التطبيق قبل التحديث',
-                          'Blocks the app until updated',
-                        ),
+                        'admin_blocks_the_app_until_updated'.tr,
                         style: const TextStyle(
                           fontFamily: 'tajawal',
                           fontSize: 11.5,
@@ -273,7 +258,7 @@ Future<void> _form(
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text(
-                        t('تحديث موصى به', 'Recommend update'),
+                        'admin_recommend_update'.tr,
                         style: const TextStyle(fontFamily: 'tajawal'),
                       ),
                       value: recommend,
@@ -282,7 +267,7 @@ Future<void> _form(
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text(
-                        t('مفعّل', 'Active'),
+                        'admin_active_2'.tr,
                         style: const TextStyle(fontFamily: 'tajawal'),
                       ),
                       value: active,
@@ -290,13 +275,13 @@ Future<void> _form(
                     ),
                     const SizedBox(height: 8),
                     PrimaryButton(
-                      label: t('حفظ', 'Save'),
+                      label: 'save'.tr,
                       busy: busy,
                       onPressed: () async {
                         if (!editing &&
                             !_semver.hasMatch(version.text.trim())) {
                           toast(
-                            t('رقم إصدار غير صحيح', 'Invalid version number'),
+                            'admin_invalid_version_number'.tr,
                             error: true,
                           );
                           return;
@@ -304,7 +289,7 @@ Future<void> _form(
                         if (minSup.text.trim().isNotEmpty &&
                             !_semver.hasMatch(minSup.text.trim())) {
                           toast(
-                            t('أقل إصدار غير صحيح', 'Invalid minimum version'),
+                            'admin_invalid_minimum_version'.tr,
                             error: true,
                           );
                           return;

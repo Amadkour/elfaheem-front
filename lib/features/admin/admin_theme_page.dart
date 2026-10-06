@@ -43,14 +43,13 @@ class _View extends StatelessWidget {
     if (p.items.isEmpty && p.isLoading) {
       body = const Center(child: CircularProgressIndicator());
     } else if (p.items.isEmpty) {
-      body = ErrorRetry(message: p.error ?? t('تعذر تحميل البيانات', 'Could not load data'), onRetry: p.load);
+      body = ErrorRetry(message: p.error ?? 'admin_could_not_load_data'.tr, onRetry: p.load);
     } else {
       body = RefreshIndicator(
         onRefresh: p.load,
         child: ListView(padding: const EdgeInsets.fromLTRB(14, 12, 14, 90), children: [
           Text(
-            t('اختر ثيماً جاهزاً أو أنشئ ثيماً مخصصاً. يُطبَّق على كل المنصات ويصل للمستخدمين عند فتح التطبيق.',
-                'Pick a ready theme or build your own. It applies to all platforms and reaches users the next time they open the app.'),
+            'admin_pick_a_ready_theme_or_build_your_own'.tr,
             style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: c.textMedium),
           ),
           const SizedBox(height: 12),
@@ -67,7 +66,7 @@ class _View extends StatelessWidget {
           backgroundColor: c.primary,
           onPressed: p.items.isEmpty ? null : () => _openEditor(context, p),
           icon: const Icon(Icons.palette_rounded, color: Colors.white),
-          label: Text(t('ثيم مخصص', 'Custom theme'), style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
+          label: Text('admin_custom_theme'.tr, style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
         ),
         child: body,
     );
@@ -100,8 +99,8 @@ class _ThemeCard extends StatelessWidget {
             child: Text(th.name,
                 style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 16, color: c.textDark)),
           ),
-          if (active) StatusChip(t('مفعّل', 'Active'), c.success),
-          if (!th.isBuiltin) StatusChip(t('مخصص', 'Custom'), c.purple),
+          if (active) StatusChip('admin_active_2'.tr, c.success),
+          if (!th.isBuiltin) StatusChip('admin_custom'.tr, c.purple),
         ]),
         const SizedBox(height: 10),
         _Preview(
@@ -120,13 +119,13 @@ class _ThemeCard extends StatelessWidget {
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(backgroundColor: active ? c.textLight : c.primary),
               icon: const Icon(Icons.check_rounded, color: Colors.white),
-              label: Text(active ? t('مفعّل حالياً', 'Currently active') : t('تفعيل', 'Activate'),
+              label: Text(active ? 'admin_currently_active'.tr : 'admin_activate'.tr,
                   style: const TextStyle(color: Colors.white, fontFamily: 'tajawal')),
               onPressed: active
                   ? null
                   : () async {
                       final ok = await confirm(context,
-                          message: t('تفعيل "${th.name}" لكل المستخدمين؟', 'Activate "${th.name}" for all users?'));
+                          message: trp('admin_activate_for_all_users', {'name': th.name}));
                       if (ok) await p.activate(th.id);
                     },
             ),
@@ -134,14 +133,14 @@ class _ThemeCard extends StatelessWidget {
           const SizedBox(width: 8),
           OutlinedButton.icon(
             icon: Icon(th.isBuiltin ? Icons.copy_rounded : Icons.edit_rounded, size: 18),
-            label: Text(th.isBuiltin ? t('نسخ وتعديل', 'Copy') : t('تعديل', 'Edit')),
+            label: Text(th.isBuiltin ? 'admin_copy'.tr : 'btn_edit'.tr),
             onPressed: () => _openEditor(context, p, base: th, edit: !th.isBuiltin),
           ),
           if (!th.isBuiltin && !active)
             IconButton(
               icon: Icon(Icons.delete_outline_rounded, color: c.danger),
               onPressed: () async {
-                final ok = await confirm(context, message: t('حذف هذا الثيم؟', 'Delete this theme?'), danger: true);
+                final ok = await confirm(context, message: 'admin_delete_this_theme'.tr, danger: true);
                 if (ok) await p.remove(th.id);
               },
             ),
@@ -216,18 +215,18 @@ class _Preview extends StatelessWidget {
 //  Custom theme editor
 // ═════════════════════════════════════════════════════════════════════════════
 
-const _editable = <String, List<String>>{
-  // key → [arabic label, english label]
-  'primary_hex': ['اللون الأساسي', 'Primary'],
-  'primary_dark_hex': ['الأساسي الداكن', 'Primary dark'],
-  'primary_light_hex': ['الأساسي الفاتح', 'Primary light'],
-  'accent1_hex': ['لون مميز 1', 'Accent 1'],
-  'accent2_hex': ['لون مميز 2', 'Accent 2'],
-  'background_hex': ['الخلفية', 'Background'],
-  'text_dark': ['لون النص', 'Text'],
-  'text_action': ['نص الأزرار/الروابط', 'Action text'],
-  'dark_background': ['خلفية الوضع الليلي', 'Dark background'],
-  'dark_card': ['بطاقة الوضع الليلي', 'Dark card'],
+const _editable = <String, String>{
+  // colour key → translation key
+  'primary_hex': 'admin_color_primary',
+  'primary_dark_hex': 'admin_color_primary_dark',
+  'primary_light_hex': 'admin_color_primary_light',
+  'accent1_hex': 'admin_color_accent1',
+  'accent2_hex': 'admin_color_accent2',
+  'background_hex': 'admin_color_background',
+  'text_dark': 'admin_color_text_dark',
+  'text_action': 'admin_color_text_action',
+  'dark_background': 'admin_color_dark_background',
+  'dark_card': 'admin_color_dark_card',
 };
 
 Future<void> _openEditor(BuildContext context, AdminThemesProvider p, {ThemePresetModel? base, bool edit = false}) {
@@ -274,12 +273,12 @@ class _EditorState extends State<_Editor> {
 
   Future<void> _save() async {
     if (_ar.text.trim().isEmpty || _en.text.trim().isEmpty) {
-      toast(t('أدخل اسم الثيم بالعربية والإنجليزية', 'Enter the theme name in both languages'), error: true);
+      toast('admin_enter_the_theme_name_in_both_languages'.tr, error: true);
       return;
     }
     for (final e in _ctrls.entries) {
       if (!_validHex(e.value.text)) {
-        toast('${t('لون غير صحيح', 'Invalid colour')}: ${t(_editable[e.key]![0], _editable[e.key]![1])} (#RRGGBB)', error: true);
+        toast('${'admin_invalid_colour'.tr}: ${_editable[e.key]!.tr} (#RRGGBB)', error: true);
         return;
       }
       colors[e.key] = e.value.text.trim().toUpperCase();
@@ -299,7 +298,7 @@ class _EditorState extends State<_Editor> {
   @override
   Widget build(BuildContext context) {
     return Column(mainAxisSize: MainAxisSize.min, children: [
-      SheetHeader(widget.edit ? t('تعديل الثيم', 'Edit theme') : t('ثيم مخصص جديد', 'New custom theme')),
+      SheetHeader(widget.edit ? 'admin_edit_theme'.tr : 'admin_new_custom_theme'.tr),
       Flexible(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
@@ -315,8 +314,8 @@ class _EditorState extends State<_Editor> {
               card: _parseHex(colors['surface_card'] ?? '') ?? Colors.white,
             ),
             const SizedBox(height: 14),
-            Field(controller: _ar, label: t('اسم الثيم بالعربية', 'Arabic name')),
-            Field(controller: _en, label: t('اسم الثيم بالإنجليزية', 'English name'), ltr: true),
+            Field(controller: _ar, label: 'admin_arabic_name_2'.tr),
+            Field(controller: _en, label: 'admin_english_name_2'.tr, ltr: true),
             for (final e in _editable.entries)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
@@ -340,9 +339,9 @@ class _EditorState extends State<_Editor> {
                       textDirection: TextDirection.ltr,
                       onChanged: (_) => setState(() {}),
                       decoration: InputDecoration(
-                        labelText: t(e.value[0], e.value[1]),
+                        labelText: e.value.tr,
                         hintText: '#RRGGBB',
-                        errorText: _validHex(_ctrls[e.key]!.text) ? null : t('صيغة #RRGGBB', 'Use #RRGGBB'),
+                        errorText: _validHex(_ctrls[e.key]!.text) ? null : 'admin_use_rrggbb'.tr,
                         isDense: true,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
@@ -351,12 +350,11 @@ class _EditorState extends State<_Editor> {
                 ]),
               ),
             Text(
-              t('باقي الألوان (النجاح، الخطر، الوضع الليلي…) تُنسخ من الثيم الأصلي.',
-                  'All other colours (success, danger, dark mode…) are copied from the source theme.'),
+              'admin_all_other_colours_success_danger_dark'.tr,
               style: const TextStyle(fontFamily: 'tajawal', fontSize: 12),
             ),
             const SizedBox(height: 14),
-            PrimaryButton(label: t('حفظ', 'Save'), busy: busy, onPressed: _save),
+            PrimaryButton(label: 'save'.tr, busy: busy, onPressed: _save),
           ]),
         ),
       ),
@@ -376,7 +374,7 @@ class _EditorState extends State<_Editor> {
       builder: (ctx) => Directionality(
         textDirection: dir,
         child: AlertDialog(
-          title: Text(t('اختر لوناً', 'Pick a colour'), style: const TextStyle(fontFamily: 'tajawal')),
+          title: Text('admin_pick_a_colour'.tr, style: const TextStyle(fontFamily: 'tajawal')),
           content: Wrap(spacing: 10, runSpacing: 10, children: [
             for (final c in _swatches)
               GestureDetector(

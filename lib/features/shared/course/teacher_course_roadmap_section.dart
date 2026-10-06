@@ -18,6 +18,7 @@ import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
+import '../../../utils/widget/parent_component.dart';
 import '../../student/models.dart';
 import 'studend_course_roadmap_section.dart';
 
@@ -57,133 +58,136 @@ class CourseRecommendationsSection extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 6),
-      decoration: BoxDecoration(
-        color: context.colors.cardBg,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: context.colors.divider, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  gradient: context.colors.primaryGradient,
-                  borderRadius: BorderRadius.circular(10),
+    return ParentComponent(
+      key: ValueKey('roadmap'),
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 6),
+        decoration: BoxDecoration(
+          color: context.colors.cardBg,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: context.colors.divider, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    gradient: context.colors.primaryGradient,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.route_rounded,
+                    size: 17,
+                    color: Colors.white,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.route_rounded,
-                  size: 17,
-                  color: Colors.white,
+                const SizedBox(width: 10),
+                Text(
+                  'roadmap_recommendations_title'.tr,
+                  style: context.colors.h3.copyWith(fontSize: 15),
                 ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            if (nextCourses.isNotEmpty) ...[
+              _CategoryLabel(
+                icon: Icons.timeline_rounded,
+                color: context.colors.primary,
+                text: 'next_steps_title'.tr,
+                caption: '${nextCourses.length}',
               ),
-              const SizedBox(width: 10),
-              Text(
-                'roadmap_recommendations_title'.tr,
-                style: context.colors.h3.copyWith(fontSize: 15),
-              ),
+              const SizedBox(height: 14),
+              _NextStepsTimeline(courses: nextCourses, onTap: onTapOwnCourse),
+              const SizedBox(height: 20),
+              _SoftDivider(),
+              const SizedBox(height: 16),
             ],
-          ),
-          const SizedBox(height: 18),
-          if (nextCourses.isNotEmpty) ...[
-            _CategoryLabel(
-              icon: Icons.timeline_rounded,
-              color: context.colors.primary,
-              text: 'next_steps_title'.tr,
-              caption: '${nextCourses.length}',
-            ),
-            const SizedBox(height: 14),
-            _NextStepsTimeline(courses: nextCourses, onTap: onTapOwnCourse),
-            const SizedBox(height: 20),
-            _SoftDivider(),
-            const SizedBox(height: 16),
-          ],
-          if (recommendedCourses.isNotEmpty) ...[
-            _CategoryLabel(
-              icon: Icons.star_rounded,
-              color: _kPickGold,
-              text: 'teacher_picks_section_title'.tr,
-              caption: 'teacher_picks_hint'.tr,
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 196,
-              child: Scrollbar(
-                controller: controller,
-                thumbVisibility: true,
-                // This keeps the 'cursor' visible
-                trackVisibility: true,
-                // Optional: shows the path of the scrollbar
-                child: ListView.separated(
+            if (recommendedCourses.isNotEmpty) ...[
+              _CategoryLabel(
+                icon: Icons.star_rounded,
+                color: _kPickGold,
+                text: 'teacher_picks_section_title'.tr,
+                caption: 'teacher_picks_hint'.tr,
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 196,
+                child: Scrollbar(
                   controller: controller,
-                  scrollDirection: Axis.horizontal,
-                  itemCount: recommendedCourses.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 12),
-                  itemBuilder: (_, i) => RecommendCourseCard(
-                    course: recommendedCourses[i],
-                    onTap: () => onTapOwnCourse(recommendedCourses[i]),
-                    badgeText: 'teacher_pick_badge'.tr,
-                    badgeColor: _kPickGold,
-                    badgeBg: _kPickGoldBg,
-                    badgeIcon: Icons.star_rounded,
-                    isDark: false,
+                  thumbVisibility: true,
+                  // This keeps the 'cursor' visible
+                  trackVisibility: true,
+                  // Optional: shows the path of the scrollbar
+                  child: ListView.separated(
+                    controller: controller,
+                    scrollDirection: Axis.horizontal,
+                    itemCount: recommendedCourses.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 12),
+                    itemBuilder: (_, i) => RecommendCourseCard(
+                      course: recommendedCourses[i],
+                      onTap: () => onTapOwnCourse(recommendedCourses[i]),
+                      badgeText: 'teacher_pick_badge'.tr,
+                      badgeColor: _kPickGold,
+                      badgeBg: _kPickGoldBg,
+                      badgeIcon: Icons.star_rounded,
+                      isDark: false,
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-            _SoftDivider(),
-            const SizedBox(height: 16),
-          ],
-          if (similarCourses.isNotEmpty) ...[
-            _CategoryLabel(
-              icon: Icons.auto_awesome_rounded,
-              color: context.colors.primary,
-              text: 'similar_courses_section_title'.tr,
-              caption: 'suggested_hint'.tr,
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 196,
-              child: Scrollbar(
-                controller: controller2,
-                thumbVisibility: true,
-                // This keeps the 'cursor' visible
-                trackVisibility: true,
-                // Optional: shows the path of the scrollbar
-                child: ListView.separated(
+              const SizedBox(height: 20),
+              _SoftDivider(),
+              const SizedBox(height: 16),
+            ],
+            if (similarCourses.isNotEmpty) ...[
+              _CategoryLabel(
+                icon: Icons.auto_awesome_rounded,
+                color: context.colors.primary,
+                text: 'similar_courses_section_title'.tr,
+                caption: 'suggested_hint'.tr,
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 196,
+                child: Scrollbar(
                   controller: controller2,
-                  scrollDirection: Axis.horizontal,
-                  itemCount: similarCourses.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 12),
-                  itemBuilder: (_, i) => RecommendCourseCard(
-                    course: similarCourses[i],
-                    onTap: () => onTapSuggestedCourse(similarCourses[i]),
-                    badgeText: 'suggested_badge'.tr,
-                    badgeColor: context.colors.primary,
-                    badgeBg: context.colors.cardBg,
-                    badgeIcon: Icons.auto_awesome_rounded,
-                    isDark: false,
+                  thumbVisibility: true,
+                  // This keeps the 'cursor' visible
+                  trackVisibility: true,
+                  // Optional: shows the path of the scrollbar
+                  child: ListView.separated(
+                    controller: controller2,
+                    scrollDirection: Axis.horizontal,
+                    itemCount: similarCourses.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 12),
+                    itemBuilder: (_, i) => RecommendCourseCard(
+                      course: similarCourses[i],
+                      onTap: () => onTapSuggestedCourse(similarCourses[i]),
+                      badgeText: 'suggested_badge'.tr,
+                      badgeColor: context.colors.primary,
+                      badgeBg: context.colors.cardBg,
+                      badgeIcon: Icons.auto_awesome_rounded,
+                      isDark: false,
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
+              const SizedBox(height: 12),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

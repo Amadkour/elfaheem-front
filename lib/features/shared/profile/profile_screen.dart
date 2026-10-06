@@ -23,6 +23,7 @@ import '../../student/courses/details/components/app_responsive.dart';
 import '../../../utils/widget/parent_component.dart';
 import '../../teacher/profile/enrollment_request/teacher_transfers_provider.dart';
 import '../../teacher/profile/enrollment_request/teacher_transfers_screen.dart';
+import '../../teacher/profile/payout/teacher_payouts_screen.dart';
 import '../../teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import '../../teacher/profile/switch_device_requests/teacher_device_requests_screen.dart';
 import 'about/about_and_terms_screen.dart';
@@ -151,6 +152,16 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                                         .stats,
                                   ),
                                 ),
+                              ),
+                            ),
+                            ParentComponent(
+                              key: ValueKey('profile.payout'),
+                              child: SettingsTile(
+                                icon: Icons.account_balance_wallet_rounded,
+                                iconBg: c.dangerTint,
+                                iconColor: c.danger,
+                                label: 'payout'.tr,
+                                onTap: () => _push(const TeacherPayoutsScreen()),
                               ),
                             ),
                             ParentComponent(

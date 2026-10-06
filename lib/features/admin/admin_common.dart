@@ -19,6 +19,13 @@ import '../shared/profile/profile_provider.dart';
 /// Arabic / English inline text (the admin screens ship with both).
 String t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
+/// Translates [key] with `.tr`, then fills `{name}` placeholders from [params].
+String trp(String key, Map<String, Object?> params) {
+  var s = key.tr;
+  params.forEach((k, v) => s = s.replaceAll('{$k}', '${v ?? ''}'));
+  return s;
+}
+
 TextDirection get dir => Helpers.pageDirection;
 
 void toast(String message, {bool error = false}) =>
@@ -80,7 +87,7 @@ Future<bool> confirm(
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(t('إلغاء', 'Cancel'),
+            child: Text('exam_cancel'.tr,
                 style: TextStyle(fontFamily: 'tajawal', color: c.textMedium)),
           ),
           ElevatedButton(
@@ -88,7 +95,7 @@ Future<bool> confirm(
               backgroundColor: danger ? c.danger : c.primary,
             ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(confirmLabel ?? t('تأكيد', 'Confirm'),
+            child: Text(confirmLabel ?? 'confirm'.tr,
                 style: const TextStyle(
                     fontFamily: 'tajawal', color: Colors.white)),
           ),
@@ -121,10 +128,10 @@ Future<String?> askText(
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text(t('إلغاء', 'Cancel'))),
+              child: Text('exam_cancel'.tr)),
           TextButton(
               onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-              child: Text(t('موافق', 'OK'))),
+              child: Text('admin_ok'.tr)),
         ],
       ),
     ),
@@ -332,7 +339,7 @@ class ErrorRetry extends StatelessWidget {
           OutlinedButton.icon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded),
-            label: Text(t('إعادة المحاولة', 'Retry')),
+            label: Text('retry'.tr),
           ),
         ]),
       ),
@@ -531,7 +538,7 @@ class _SearchBoxState extends State<SearchBox> {
       onChanged: _changed,
       style: const TextStyle(fontFamily: 'tajawal'),
       decoration: InputDecoration(
-        hintText: widget.hint ?? t('بحث…', 'Search…'),
+        hintText: widget.hint ?? 'admin_search'.tr,
         prefixIcon: const Icon(Icons.search_rounded),
         filled: true,
         fillColor: c.inputBg,

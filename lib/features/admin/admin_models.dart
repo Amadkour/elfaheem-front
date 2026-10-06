@@ -40,11 +40,11 @@ class EnrolledCourse {
 class AdminUser {
   AdminUser(this.j)
       : enrolledCourses = asMapList(j['enrolled_courses'])
-            .map((e) => EnrolledCourse(
-                asInt(e['id']), asStr(e['name']), asStr(e['status'])))
-            .toList(),
+      .map((e) => EnrolledCourse(
+      asInt(e['id']), asStr(e['name']), asStr(e['status'])))
+      .toList(),
         subscription =
-            j['subscription'] is Map ? SubInfo(asMap(j['subscription'])) : null;
+        j['subscription'] is Map ? SubInfo(asMap(j['subscription'])) : null;
 
   final Map<String, dynamic> j;
   final List<EnrolledCourse> enrolledCourses;
@@ -84,7 +84,7 @@ class UserDetail {
   UserDetail(this.j)
       : devices = asMapList(j['devices']).map(AdminDevice.new).toList(),
         subscriptions =
-            asMapList(j['subscriptions']).map((e) => SubInfo(e)).toList();
+        asMapList(j['subscriptions']).map((e) => SubInfo(e)).toList();
   final Map<String, dynamic> j;
   final List<AdminDevice> devices;
   final List<SubInfo> subscriptions;
@@ -131,6 +131,14 @@ class AdminCourse {
   double get income => asDouble(j['income']);
   int get pendingPayments => asInt(j['pending_payments']);
   List<Map<String, dynamic>> get recentPayments => asMapList(j['recent_payments']);
+
+  /// What students ACTUALLY paid for the course (after discounts) — `income` above.
+  /// `collected` also includes platform fee / VAT / gateway fee.
+  double get collected => asDouble(j['collected']);
+  double get listPrice => asDouble(j['list_price'], fees);
+  double get finalPrice => asDouble(j['final_price'], fees);
+  bool get discountActive => asBool(j['discount_active']);
+  double get discountPercentage => asDouble(j['discount_percentage']);
 }
 
 class AdminCategory {
@@ -204,4 +212,66 @@ class PageData {
   final int page;
   final int pages;
   final Map<String, dynamic> extra;
+}
+
+/// One withdrawal request (teacher list + admin list share the same JSON).
+class Withdrawal {
+  Withdrawal(this.j);
+  final Map<String, dynamic> j;
+
+  int get id => asInt(j['id']);
+  int get teacherId => asInt(j['teacher_id']);
+  String get teacherName => asStr(j['teacher_name']);
+  String get teacherGmail => asStr(j['teacher_gmail']);
+  double get amount => asDouble(j['amount']);
+  String get status => asStr(j['status']); // pending|approved|paid|rejected
+  String? get note => asStrOrNull(j['note']);
+  String? get adminNote => asStrOrNull(j['admin_note']);
+  String? get bankReference => asStrOrNull(j['bank_reference']);
+  String? get rejectedReason => asStrOrNull(j['rejected_reason']);
+  String? get receiptUrl => asStrOrNull(j['receipt_url']);
+  String? get receiptName => asStrOrNull(j['receipt_name']);
+  String? get requestedAt => asStrOrNull(j['requested_at']);
+  String? get processedAt => asStrOrNull(j['processed_at']);
+  Map<String, dynamic> get destination => asMap(j['bank_snapshot']);
+
+  String get method => asStr(j['payout_method'], 'bank_account');
+  String? get provider => asStrOrNull(j['payout_provider']);
+  bool get automatic => asBool(j['payout_automatic']);
+  String get state => asStr(j['payout_state'], 'none'); // none|processing|paid|failed|unknown
+  String? get providerStatus => asStrOrNull(j['payout_status']);
+  String? get providerReference => asStrOrNull(j['payout_reference']);
+  String? get error => asStrOrNull(j['payout_error']);
+}
+
+String payoutMethodLabel(String m) {
+  switch (m) {
+    case 'bank_account':
+      return 'admin_bank_account'.tr;
+    case 'instapay':
+      return 'transfer_instapay_title'.tr;
+    case 'moyasar':
+      return 'admin_moyasar_auto'.tr;
+    case 'paymob':
+      return 'admin_paymob_auto'.tr;
+  }
+  return m;
+}
+
+/// One-line summary of a payout destination, safe to show in lists.
+String payoutDestinationSummary(Map<String, dynamic> d) {
+  String tail(String? v) => (v == null || v.length < 4) ? (v ?? '') : '••••${v.substring(v.length - 4)}';
+  final name = asStr(d['account_name']);
+  switch (asStr(d['method'])) {
+    case 'instapay':
+      return '$name • ${asStr(d['instapay_id'])}';
+    case 'moyasar':
+      return '$name • ${tail(asStrOrNull(d['iban']))}';
+    case 'paymob':
+      return asStr(d['kind']) == 'wallet'
+          ? '$name • ${asStr(d['issuer'])} ${asStr(d['msisdn'])}'
+          : '$name • ${asStr(d['bank_code'])} ${tail(asStrOrNull(d['bank_card_number']))}';
+    default:
+      return '${asStr(d['bank_name'])} • $name • ${tail(asStrOrNull(d['iban']))}';
+  }
 }

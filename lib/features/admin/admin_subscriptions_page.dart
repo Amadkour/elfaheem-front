@@ -37,23 +37,24 @@ class _View extends StatelessWidget {
     final header = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Padding(
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: c.cardBg,
+        // Material (not Container) paints the card colour, so the ListTiles inside can show ink splashes.
+        child: Material(
+          color: c.cardBg,
+          shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: p.required ? c.primary : c.divider, width: p.required ? 1.5 : 1),
+            side: BorderSide(color: p.required ? c.primary : c.divider, width: p.required ? 1.5 : 1),
           ),
+          child: Padding(
+          padding: const EdgeInsets.all(14),
           child: Column(children: [
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: Text(t('الاشتراك إجباري', 'Subscription required'),
+              title: Text('admin_subscription_required'.tr,
                   style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
               subtitle: Text(
                 p.required
-                    ? t('الطلاب بدون اشتراك فعّال لا يستطيعون استخدام التطبيق.',
-                        'Students without an active subscription cannot use the app.')
-                    : t('الافتراضي: التطبيق مجاني لكل الطلاب.', 'Default: the app is free for every student.'),
+                    ? 'admin_students_without_an_active'.tr
+                    : 'admin_default_the_app_is_free_for_every'.tr,
                 style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight),
               ),
               value: p.required,
@@ -63,9 +64,8 @@ class _View extends StatelessWidget {
                   : (v) async {
                       final ok = await confirm(context,
                           message: v
-                              ? t('تفعيل الاشتراك الإجباري؟ سيُمنع الطلاب غير المشتركين فوراً.',
-                                  'Require subscriptions? Unsubscribed students are blocked immediately.')
-                              : t('جعل التطبيق مجانياً للجميع؟', 'Make the app free for everyone?'),
+                              ? 'admin_require_subscriptions_unsubscribed'.tr
+                              : 'admin_make_the_app_free_for_everyone'.tr,
                           danger: v);
                       if (ok) await p.setRequired(v);
                     },
@@ -73,18 +73,19 @@ class _View extends StatelessWidget {
             const Divider(),
             for (final plan in p.plans) _PlanRow(plan: plan),
           ]),
+          ),
         ),
       ),
       const SizedBox(height: 10),
       FilterChips<String>(
         value: p.statusFilter ?? 'all',
         options: {
-          'pending': t('معلّقة', 'Pending'),
-          'active': t('نشطة', 'Active'),
-          'expired': t('منتهية', 'Expired'),
-          'rejected': t('مرفوضة', 'Rejected'),
-          'cancelled': t('ملغاة', 'Cancelled'),
-          'all': t('الكل', 'All'),
+          'pending': 'admin_pending_4'.tr,
+          'active': 'admin_active'.tr,
+          'expired': 'admin_expired'.tr,
+          'rejected': 'admin_rejected'.tr,
+          'cancelled': 'admin_cancelled_2'.tr,
+          'all': 'filter_all'.tr,
         },
         onChanged: (v) => p.setStatusFilter(v == 'all' ? null : v),
       ),
@@ -99,7 +100,7 @@ class _View extends StatelessWidget {
       child:
       PagedList<AdminSubscriptionsProvider>(
           header: header,
-          emptyText: t('لا توجد طلبات اشتراك', 'No subscription requests'),
+          emptyText: 'admin_no_subscription_requests'.tr,
           itemBuilder: (ctx, row) => _SubTile(SubInfo(row)),
         ),
     );
@@ -120,8 +121,8 @@ class _PlanRow extends StatelessWidget {
       title: Text(plan.name, style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700, color: c.textDark)),
       subtitle: Text(
         plan.price <= 0
-            ? t('مجانية', 'Free')
-            : '${money(plan.price, plan.currency)} • ${plan.durationDays} ${t('يوم', 'days')}',
+            ? 'admin_free'.tr
+            : '${money(plan.price, plan.currency)} • ${plan.durationDays} ${'admin_days'.tr}',
         style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: c.textMedium),
       ),
       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -152,28 +153,28 @@ Future<void> _editPlan(BuildContext context, AdminSubscriptionsProvider p, Plan 
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Field(
                 controller: price,
-                label: t('السعر (فارغ أو 0 = مجاني)', 'Price (empty or 0 = free)'),
+                label: 'admin_price_empty_or_0_free'.tr,
                 keyboard: const TextInputType.numberWithOptions(decimal: true),
               ),
               ChoiceRow<String>(
-                label: t('العملة', 'Currency'),
+                label: 'currency_label'.tr,
                 options: const {'EGP': 'EGP', 'SAR': 'SAR', 'USD': 'USD'},
                 value: currency,
                 onChanged: (v) => setS(() => currency = v),
               ),
-              Field(controller: days, label: t('المدة بالأيام', 'Duration (days)'), keyboard: TextInputType.number),
+              Field(controller: days, label: 'admin_duration_days'.tr, keyboard: TextInputType.number),
               PrimaryButton(
-                label: t('حفظ', 'Save'),
+                label: 'save'.tr,
                 busy: busy,
                 onPressed: () async {
                   final pr = price.text.trim().isEmpty ? 0.0 : double.tryParse(price.text.trim());
                   final d = int.tryParse(days.text.trim());
                   if (pr == null || pr < 0) {
-                    toast(t('سعر غير صحيح', 'Invalid price'), error: true);
+                    toast('admin_invalid_price'.tr, error: true);
                     return;
                   }
                   if (d == null || d < 1) {
-                    toast(t('مدة غير صحيحة', 'Invalid duration'), error: true);
+                    toast('admin_invalid_duration'.tr, error: true);
                     return;
                   }
                   setS(() => busy = true);
@@ -231,12 +232,12 @@ class _SubTile extends StatelessWidget {
             textDirection: TextDirection.ltr,
             style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight)),
         const SizedBox(height: 8),
-        KeyValue(t('الخطة', 'Plan'), '${s.planCode} • ${money(s.amount, s.currency)}'),
-        KeyValue(t('الطريقة', 'Method'), s.grantedByAdmin ? t('منحة من المدير', 'Admin grant') : (s.paymentMethod ?? '—')),
-        if (s.senderName != null) KeyValue(t('المرسل', 'Sender'), '${s.senderName} ${s.senderPhone ?? ''}'),
-        if (s.transferReference != null) KeyValue(t('المرجع', 'Reference'), s.transferReference!),
-        if (s.endsAt != null) KeyValue(t('ينتهي', 'Ends'), shortDate(s.endsAt)),
-        if (s.rejectionReason != null) KeyValue(t('سبب الرفض', 'Reason'), s.rejectionReason!),
+        KeyValue('admin_plan'.tr, '${s.planCode} • ${money(s.amount, s.currency)}'),
+        KeyValue('admin_method'.tr, s.grantedByAdmin ? 'admin_admin_grant'.tr : (s.paymentMethod ?? '—')),
+        if (s.senderName != null) KeyValue('admin_sender'.tr, '${s.senderName} ${s.senderPhone ?? ''}'),
+        if (s.transferReference != null) KeyValue('admin_reference_2'.tr, s.transferReference!),
+        if (s.endsAt != null) KeyValue('admin_ends'.tr, shortDate(s.endsAt)),
+        if (s.rejectionReason != null) KeyValue('admin_reason'.tr, s.rejectionReason!),
         if (s.proofImageUrl != null)
           Padding(
             padding: const EdgeInsets.only(top: 8),
@@ -258,7 +259,7 @@ class _SubTile extends StatelessWidget {
                     height: 60,
                     color: c.divider,
                     alignment: Alignment.center,
-                    child: Text(t('تعذر تحميل الإيصال', 'Receipt failed to load')),
+                    child: Text('admin_receipt_failed_to_load'.tr),
                   ),
                 ),
               ),
@@ -271,9 +272,9 @@ class _SubTile extends StatelessWidget {
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(backgroundColor: c.success),
                 icon: const Icon(Icons.check_rounded, color: Colors.white),
-                label: Text(t('قبول', 'Approve'), style: const TextStyle(color: Colors.white, fontFamily: 'tajawal')),
+                label: Text('admin_approve'.tr, style: const TextStyle(color: Colors.white, fontFamily: 'tajawal')),
                 onPressed: () async {
-                  final ok = await confirm(context, message: t('قبول الاشتراك؟', 'Approve this subscription?'));
+                  final ok = await confirm(context, message: 'admin_approve_this_subscription'.tr);
                   if (ok) await p.approve(s.id);
                 },
               ),
@@ -283,10 +284,10 @@ class _SubTile extends StatelessWidget {
               child: OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(foregroundColor: c.danger),
                 icon: const Icon(Icons.close_rounded),
-                label: Text(t('رفض', 'Reject')),
+                label: Text('request_reject'.tr),
                 onPressed: () async {
                   final reason = await askText(context,
-                      title: t('سبب الرفض', 'Rejection reason'), multiline: true);
+                      title: 'rejection_reason_title'.tr, multiline: true);
                   if (reason != null) await p.reject(s.id, reason.isEmpty ? null : reason);
                 },
               ),
@@ -298,10 +299,10 @@ class _SubTile extends StatelessWidget {
             child: TextButton.icon(
               style: TextButton.styleFrom(foregroundColor: c.danger),
               icon: const Icon(Icons.block_rounded),
-              label: Text(t('إلغاء الاشتراك', 'Cancel subscription')),
+              label: Text('admin_cancel_subscription'.tr),
               onPressed: () async {
                 final ok = await confirm(context,
-                    message: t('إلغاء هذا الاشتراك فوراً؟', 'Cancel this subscription now?'), danger: true);
+                    message: 'admin_cancel_this_subscription_now'.tr, danger: true);
                 if (ok) await p.cancel(s.id);
               },
             ),

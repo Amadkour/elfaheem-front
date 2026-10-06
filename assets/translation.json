@@ -4804,5 +4804,1773 @@
   "course_hero_hours": {
     "en": "Hours",
     "ar": "ساعة"
+  },
+  "admin_attach_receipt": {
+    "en": "Attach receipt",
+    "ar": "إرفاق الإيصال"
+  },
+  "admin_change_receipt": {
+    "en": "Change receipt",
+    "ar": "تغيير الإيصال"
+  },
+  "admin_view_receipt": {
+    "en": "View receipt",
+    "ar": "عرض الإيصال"
+  },
+  "admin_confirm_transfer": {
+    "en": "Confirm transfer",
+    "ar": "تأكيد التحويل"
+  },
+  "admin_receipt_required": {
+    "en": "Please attach the transfer receipt",
+    "ar": "يرجى إرفاق إيصال التحويل"
+  },
+  "admin_receipt_too_large": {
+    "en": "The receipt file is larger than 10 MB",
+    "ar": "ملف الإيصال أكبر من 10 ميجابايت"
+  },
+  "admin_receipt_read_failed": {
+    "en": "Couldn't read the receipt file. Please try again",
+    "ar": "تعذّرت قراءة ملف الإيصال، يرجى المحاولة مرة أخرى"
+  },
+  "admin_admins_only": {
+    "en": "Admins only",
+    "ar": "متاح للمشرفين فقط"
+  },
+  "admin_dashboard": {
+    "en": "Admin Dashboard",
+    "ar": "لوحة تحكم المشرف"
+  },
+  "admin_overview_2": {
+    "en": "Overview",
+    "ar": "نظرة عامة"
+  },
+  "admin_more": {
+    "en": "More",
+    "ar": "المزيد"
+  },
+  "devices_and_payments": {
+    "en": "Devices & Payments",
+    "ar": "الأجهزة والمدفوعات"
+  },
+  "features": {
+    "en": "Features",
+    "ar": "الميزات"
+  },
+  "more": {
+    "en": "More",
+    "ar": "المزيد"
+  },
+  "payout": {
+    "en": "Payout Requests",
+    "ar": "طلبات السحب"
+  },
+  "send_message": {
+    "en": "Send Message",
+    "ar": "إرسال رسالة"
+  },
+  "subscriptions": {
+    "en": "Subscriptions",
+    "ar": "الاشتراكات"
+  },
+  "teachers": {
+    "en": "Teachers",
+    "ar": "المعلمون"
+  },
+  "terms_and_conditions": {
+    "en": "Terms & Conditions",
+    "ar": "الشروط والأحكام"
+  },
+  "theme": {
+    "en": "Theme",
+    "ar": "المظهر"
+  },
+  "versions": {
+    "en": "Versions",
+    "ar": "الإصدارات"
+  },
+  "view_as_user": {
+    "en": "View as User",
+    "ar": "عرض كمستخدم"
+  },
+  "admin_students": {
+    "en": "Students",
+    "ar": "الطلاب"
+  },
+  "admin_teachers": {
+    "en": "Teachers",
+    "ar": "المعلمون"
+  },
+  "admin_course_income_after_discount": {
+    "en": "Course Income After Discount",
+    "ar": "الدخل الكلي بعد الخصم"
+  },
+  "admin_collected_incl_fees": {
+    "en": "Income After Fees",
+    "ar": "الدخل الكلي بعد الضريبة"
+  },
+  "admin_platform_income": {
+    "en": "Platform Income",
+    "ar": "دخل المنصة"
+  },
+  "admin_subscription_income": {
+    "en": "Subscription Income",
+    "ar": "دخل تسجيل الطلاب"
+  },
+  "admin_pending_transfers": {
+    "en": "Pending Transfers",
+    "ar": "العمليات المعلقة"
+  },
+  "admin_active_enrolments": {
+    "en": "Active Enrolments",
+    "ar": "الطلاب النشطة حاليا"
+  },
+  "admin_refunded": {
+    "en": "Refunded",
+    "ar": "الاشتراكات المسترده"
+  },
+  "admin_active_subscription": {
+    "en": "Admin Active Subscription",
+    "ar": "المديرين النشطين"
+  },
+  "admin_the_app_is_free": {
+    "en": "The App Is Free for Admins",
+    "ar": "التطبيق مجانا للمدرين"
+  },
+  "admin_search_by_name_or_e_mail": {
+    "en": "Search By Name or E-mail",
+    "ar": "البحث باسم الطالب او البريد الاكتروني"
+  },
+  "admin_ok": {
+    "en": "OK",
+    "ar": "حسنًا"
+  },
+  "admin_search": {
+    "en": "Search",
+    "ar": "بحث"
+  },
+  "admin_items": {
+    "en": "items",
+    "ar": "عنصر"
+  },
+  "admin_nothing_here_yet": {
+    "en": "Nothing here yet",
+    "ar": "لا يوجد شيء هنا بعد"
+  },
+  "admin_could_not_load": {
+    "en": "Could not load",
+    "ar": "تعذّر التحميل"
+  },
+  "admin_could_not_load_data": {
+    "en": "Could not load data",
+    "ar": "تعذّر تحميل البيانات"
+  },
+  "admin_super_admin_only": {
+    "en": "Super-admin only",
+    "ar": "هذه الصفحة للمشرف العام فقط"
+  },
+  "admin_view_only": {
+    "en": "View only",
+    "ar": "وضع المشاهدة فقط"
+  },
+  "app_feature": {
+    "en": "App Features",
+    "ar": "ميزات التطبيق"
+  },
+  "app_version": {
+    "en": "App Version",
+    "ar": "إصدار التطبيق"
+  },
+  "admin_created": {
+    "en": "Created",
+    "ar": "تم الإنشاء"
+  },
+  "admin_saved": {
+    "en": "Saved",
+    "ar": "تم الحفظ"
+  },
+  "admin_deleted": {
+    "en": "Deleted",
+    "ar": "تم الحذف"
+  },
+  "admin_devices_reset": {
+    "en": "Devices reset",
+    "ar": "تمت إعادة تعيين الأجهزة"
+  },
+  "admin_device_removed": {
+    "en": "Device removed",
+    "ar": "تم حذف الجهاز"
+  },
+  "admin_enrolled": {
+    "en": "Student enrolled",
+    "ar": "تم تسجيل الطالب في الكورس"
+  },
+  "admin_removed_from_course": {
+    "en": "Removed from the course",
+    "ar": "تمت إزالة الطالب من الكورس"
+  },
+  "admin_subscription_granted": {
+    "en": "Subscription granted",
+    "ar": "تم منح الاشتراك"
+  },
+  "admin_course_created": {
+    "en": "Course created",
+    "ar": "تم إنشاء الكورس"
+  },
+  "admin_course_deleted": {
+    "en": "Course deleted",
+    "ar": "تم حذف الكورس"
+  },
+  "admin_payment_settings_saved": {
+    "en": "Payment settings saved",
+    "ar": "تم حفظ إعدادات الدفع"
+  },
+  "admin_subscription_is_now_required": {
+    "en": "Subscription is now required",
+    "ar": "أصبح الاشتراك إجباريًا الآن"
+  },
+  "admin_the_app_is_now_free": {
+    "en": "The app is now free",
+    "ar": "أصبح التطبيق مجانيًا الآن"
+  },
+  "admin_plan_saved": {
+    "en": "Plan saved",
+    "ar": "تم حفظ الباقة"
+  },
+  "admin_approved_2": {
+    "en": "Approved",
+    "ar": "تمت الموافقة"
+  },
+  "admin_rejected_2": {
+    "en": "Rejected",
+    "ar": "تم الرفض"
+  },
+  "admin_cancelled": {
+    "en": "Cancelled",
+    "ar": "تم الإلغاء"
+  },
+  "admin_theme_activated_users_get_it_on_next": {
+    "en": "Theme activated. Users will get it on their next launch",
+    "ar": "تم تفعيل الثيم، وسيظهر للمستخدمين عند فتح التطبيق في المرة القادمة"
+  },
+  "admin_theme_saved": {
+    "en": "Theme saved",
+    "ar": "تم حفظ الثيم"
+  },
+  "admin_theme_deleted": {
+    "en": "Theme deleted",
+    "ar": "تم حذف الثيم"
+  },
+  "admin_version_published": {
+    "en": "Version published",
+    "ar": "تم نشر الإصدار"
+  },
+  "admin_marked_as_paid": {
+    "en": "Marked as paid",
+    "ar": "تم التحديد كمدفوع"
+  },
+  "admin_retried": {
+    "en": "Transfer sent again",
+    "ar": "تمت إعادة إرسال التحويل"
+  },
+  "admin_status_refreshed": {
+    "en": "Status refreshed",
+    "ar": "تم تحديث الحالة"
+  },
+  "admin_resolved": {
+    "en": "Resolved",
+    "ar": "تمت التسوية"
+  },
+  "admin_course_income_after_discounts": {
+    "en": "Course income (after discounts)",
+    "ar": "دخل الكورسات (بعد الخصومات)"
+  },
+  "admin_active_subscribers": {
+    "en": "active subscribers",
+    "ar": "مشترك نشط"
+  },
+  "admin_pending_2": {
+    "en": "pending",
+    "ar": "قيد الانتظار"
+  },
+  "admin_subscription_required": {
+    "en": "Subscription required",
+    "ar": "الاشتراك إجباري"
+  },
+  "admin_publish_version": {
+    "en": "Publish version",
+    "ar": "نشر إصدار"
+  },
+  "admin_publish_new_version": {
+    "en": "Publish new version",
+    "ar": "نشر إصدار جديد"
+  },
+  "admin_edit_version": {
+    "en": "Edit version",
+    "ar": "تعديل الإصدار"
+  },
+  "admin_version_e_g_1_2_3": {
+    "en": "Version (e.g. 1.2.3)",
+    "ar": "رقم الإصدار (مثال: 1.2.3)"
+  },
+  "admin_platform": {
+    "en": "Platform",
+    "ar": "المنصة"
+  },
+  "admin_minimum_supported_optional": {
+    "en": "Minimum supported version (optional)",
+    "ar": "أقل إصدار مدعوم (اختياري)"
+  },
+  "admin_release_notes_arabic": {
+    "en": "Release notes (Arabic)",
+    "ar": "ملاحظات الإصدار (بالعربية)"
+  },
+  "admin_release_notes_english": {
+    "en": "Release notes (English)",
+    "ar": "ملاحظات الإصدار (بالإنجليزية)"
+  },
+  "admin_force_update": {
+    "en": "Force update",
+    "ar": "تحديث إجباري"
+  },
+  "admin_blocks_the_app_until_updated": {
+    "en": "Blocks the app until the user updates",
+    "ar": "يمنع استخدام التطبيق حتى يقوم المستخدم بالتحديث"
+  },
+  "admin_recommend_update": {
+    "en": "Recommend update",
+    "ar": "التوصية بالتحديث"
+  },
+  "admin_active_2": {
+    "en": "Active",
+    "ar": "نشط"
+  },
+  "admin_forced": {
+    "en": "Forced",
+    "ar": "إجباري"
+  },
+  "admin_recommended": {
+    "en": "Recommended",
+    "ar": "موصى به"
+  },
+  "admin_min_version": {
+    "en": "Min {version}",
+    "ar": "الحد الأدنى {version}"
+  },
+  "admin_invalid_version_number": {
+    "en": "Invalid version number",
+    "ar": "رقم الإصدار غير صالح"
+  },
+  "admin_invalid_minimum_version": {
+    "en": "Invalid minimum version",
+    "ar": "الحد الأدنى للإصدار غير صالح"
+  },
+  "admin_no_versions_published_yet": {
+    "en": "No versions published yet",
+    "ar": "لم يتم نشر أي إصدارات بعد"
+  },
+  "admin_delete_this_version": {
+    "en": "Delete this version?",
+    "ar": "هل تريد حذف هذا الإصدار؟"
+  },
+  "admin_send_to": {
+    "en": "Send to",
+    "ar": "إرسال إلى"
+  },
+  "admin_all_students": {
+    "en": "All students",
+    "ar": "كل الطلاب"
+  },
+  "admin_a_course": {
+    "en": "A course",
+    "ar": "طلاب كورس"
+  },
+  "admin_one_student": {
+    "en": "One student",
+    "ar": "طالب واحد"
+  },
+  "admin_how_it_appears": {
+    "en": "How it appears",
+    "ar": "طريقة الظهور"
+  },
+  "admin_e_mail": {
+    "en": "E-mail",
+    "ar": "بريد إلكتروني"
+  },
+  "admin_notification": {
+    "en": "Notification",
+    "ar": "إشعار"
+  },
+  "admin_dialog": {
+    "en": "Dialog",
+    "ar": "نافذة منبثقة"
+  },
+  "admin_dialog_button": {
+    "en": "Dialog + button",
+    "ar": "نافذة منبثقة مع زر"
+  },
+  "admin_button_opens": {
+    "en": "Button opens",
+    "ar": "الزر يفتح"
+  },
+  "admin_course_profile": {
+    "en": "Course page",
+    "ar": "صفحة الكورس"
+  },
+  "admin_profile": {
+    "en": "Profile",
+    "ar": "الملف الشخصي"
+  },
+  "admin_my_courses": {
+    "en": "My courses",
+    "ar": "كورساتي"
+  },
+  "admin_notifications": {
+    "en": "Notifications",
+    "ar": "الإشعارات"
+  },
+  "admin_subscription": {
+    "en": "Subscription",
+    "ar": "الاشتراك"
+  },
+  "admin_button_text_optional": {
+    "en": "Button text (optional)",
+    "ar": "نص الزر (اختياري)"
+  },
+  "admin_message_2": {
+    "en": "Message",
+    "ar": "الرسالة"
+  },
+  "admin_message": {
+    "en": "Message",
+    "ar": "نص الرسالة"
+  },
+  "admin_choose_a_course": {
+    "en": "Choose a course",
+    "ar": "اختر كورسًا"
+  },
+  "admin_choose_a_student": {
+    "en": "Choose a student",
+    "ar": "اختر طالبًا"
+  },
+  "admin_choose_the_course_it_opens": {
+    "en": "Choose the course it opens",
+    "ar": "اختر الكورس الذي سيفتحه الزر"
+  },
+  "admin_choose_the_course_the_button_opens": {
+    "en": "Choose the course the button opens",
+    "ar": "اختر الكورس الذي سيفتحه الزر"
+  },
+  "admin_enter_a_title_and_a_message": {
+    "en": "Enter a title and a message",
+    "ar": "اكتب عنوانًا ورسالة"
+  },
+  "admin_send_this_message_now": {
+    "en": "Send this message now?",
+    "ar": "هل تريد إرسال هذه الرسالة الآن؟"
+  },
+  "admin_sent_to_users": {
+    "en": "Sent to {recipients} users",
+    "ar": "تم الإرسال إلى {recipients} مستخدم"
+  },
+  "admin_default_the_app_is_free_for_every": {
+    "en": "Default: the app is free for everyone",
+    "ar": "الوضع الافتراضي: التطبيق مجاني للجميع"
+  },
+  "admin_students_without_an_active": {
+    "en": "Students without an active subscription cannot access the app",
+    "ar": "الطلاب الذين ليس لديهم اشتراك نشط لا يمكنهم استخدام التطبيق"
+  },
+  "admin_require_subscriptions_unsubscribed": {
+    "en": "Require subscriptions? Unsubscribed students will lose access.",
+    "ar": "هل تريد جعل الاشتراك إجباريًا؟ الطلاب غير المشتركين سيفقدون الوصول إلى التطبيق."
+  },
+  "admin_make_the_app_free_for_everyone": {
+    "en": "Make the app free for everyone?",
+    "ar": "هل تريد جعل التطبيق مجانيًا للجميع؟"
+  },
+  "admin_pending_4": {
+    "en": "Pending",
+    "ar": "قيد الانتظار"
+  },
+  "admin_active": {
+    "en": "Active",
+    "ar": "نشط"
+  },
+  "admin_expired": {
+    "en": "Expired",
+    "ar": "منتهي"
+  },
+  "admin_rejected": {
+    "en": "Rejected",
+    "ar": "مرفوض"
+  },
+  "admin_cancelled_2": {
+    "en": "Cancelled",
+    "ar": "ملغي"
+  },
+  "admin_free": {
+    "en": "Free",
+    "ar": "مجاني"
+  },
+  "admin_days": {
+    "en": "days",
+    "ar": "يوم"
+  },
+  "admin_price_empty_or_0_free": {
+    "en": "Price (empty or 0 = free)",
+    "ar": "السعر (فارغ أو 0 = مجاني)"
+  },
+  "admin_duration_days": {
+    "en": "Duration (days)",
+    "ar": "المدة (بالأيام)"
+  },
+  "admin_invalid_price": {
+    "en": "Invalid price",
+    "ar": "سعر غير صالح"
+  },
+  "admin_invalid_duration": {
+    "en": "Invalid duration",
+    "ar": "مدة غير صالحة"
+  },
+  "admin_plan": {
+    "en": "Plan",
+    "ar": "الباقة"
+  },
+  "admin_method": {
+    "en": "Method",
+    "ar": "طريقة الدفع"
+  },
+  "admin_admin_grant": {
+    "en": "Granted by admin",
+    "ar": "منحة من الإدارة"
+  },
+  "admin_sender": {
+    "en": "Sender",
+    "ar": "المرسل"
+  },
+  "admin_reference_2": {
+    "en": "Reference",
+    "ar": "رقم المرجع"
+  },
+  "admin_ends": {
+    "en": "Ends",
+    "ar": "ينتهي في"
+  },
+  "admin_reason": {
+    "en": "Reason",
+    "ar": "السبب"
+  },
+  "admin_receipt_failed_to_load": {
+    "en": "Receipt failed to load",
+    "ar": "تعذّر تحميل الإيصال"
+  },
+  "admin_approve": {
+    "en": "Approve",
+    "ar": "موافقة"
+  },
+  "admin_approve_this_subscription": {
+    "en": "Approve this subscription?",
+    "ar": "هل تريد الموافقة على هذا الاشتراك؟"
+  },
+  "admin_cancel_subscription": {
+    "en": "Cancel subscription",
+    "ar": "إلغاء الاشتراك"
+  },
+  "admin_cancel_this_subscription_now": {
+    "en": "Cancel this subscription now?",
+    "ar": "هل تريد إلغاء هذا الاشتراك الآن؟"
+  },
+  "admin_no_subscription_requests": {
+    "en": "No subscription requests",
+    "ar": "لا توجد طلبات اشتراك"
+  },
+  "admin_student_devices": {
+    "en": "Student devices",
+    "ar": "أجهزة الطلاب"
+  },
+  "admin_devices_allowed_per_student": {
+    "en": "Devices allowed per student",
+    "ar": "عدد الأجهزة المسموح بها لكل طالب"
+  },
+  "admin_days_between_device_switches_default": {
+    "en": "Days between device switches (default 30)",
+    "ar": "الأيام بين تغيير الأجهزة (الافتراضي 30)"
+  },
+  "admin_a_student_may_request_one_device": {
+    "en": "A student may request one device switch per this period.",
+    "ar": "يمكن للطالب طلب تغيير الجهاز مرة واحدة كل هذه المدة."
+  },
+  "admin_payments": {
+    "en": "Payments",
+    "ar": "المدفوعات"
+  },
+  "admin_default_card_gateway": {
+    "en": "Default card gateway",
+    "ar": "بوابة الدفع بالبطاقة الافتراضية"
+  },
+  "admin_server_default": {
+    "en": "Server default",
+    "ar": "افتراضي الخادم"
+  },
+  "admin_default_platform_fee_empty_server": {
+    "en": "Default platform fee % (empty = server default)",
+    "ar": "نسبة عمولة المنصة الافتراضية % (فارغ = افتراضي الخادم)"
+  },
+  "admin_each_course_can_override_these_on_its": {
+    "en": "Each course can override these on its own page.",
+    "ar": "يمكن لكل كورس تغيير هذه الإعدادات من صفحته."
+  },
+  "admin_save_settings": {
+    "en": "Save settings",
+    "ar": "حفظ الإعدادات"
+  },
+  "admin_payment_methods": {
+    "en": "Payment methods",
+    "ar": "طرق الدفع"
+  },
+  "admin_account_name": {
+    "en": "Account name",
+    "ar": "اسم الحساب"
+  },
+  "admin_bank_name": {
+    "en": "Bank name",
+    "ar": "اسم البنك"
+  },
+  "admin_card_payment_through_the_selected": {
+    "en": "Card payment through the selected gateway.",
+    "ar": "الدفع بالبطاقة عبر البوابة المحددة."
+  },
+  "admin_edit_details": {
+    "en": "Edit details",
+    "ar": "تعديل البيانات"
+  },
+  "admin_instructions_arabic": {
+    "en": "Instructions (Arabic)",
+    "ar": "التعليمات (بالعربية)"
+  },
+  "admin_instructions_english": {
+    "en": "Instructions (English)",
+    "ar": "التعليمات (بالإنجليزية)"
+  },
+  "admin_require_sender_phone": {
+    "en": "Require sender phone",
+    "ar": "طلب رقم هاتف المرسل"
+  },
+  "admin_require_transfer_reference": {
+    "en": "Require transfer reference",
+    "ar": "طلب رقم مرجع التحويل"
+  },
+  "admin_devices_must_be_1_10": {
+    "en": "Devices must be between 1 and 10",
+    "ar": "عدد الأجهزة يجب أن يكون بين 1 و10"
+  },
+  "admin_period_must_be_1_365_days": {
+    "en": "Period must be between 1 and 365 days",
+    "ar": "المدة يجب أن تكون بين 1 و365 يومًا"
+  },
+  "admin_fee_must_be_0_100": {
+    "en": "Fee must be between 0 and 100",
+    "ar": "العمولة يجب أن تكون بين 0 و100"
+  },
+  "admin_pick_a_ready_theme_or_build_your_own": {
+    "en": "Pick a ready-made theme or build your own.",
+    "ar": "اختر ثيمًا جاهزًا أو أنشئ ثيمك الخاص."
+  },
+  "admin_custom_theme": {
+    "en": "Custom theme",
+    "ar": "ثيم مخصص"
+  },
+  "admin_custom": {
+    "en": "Custom",
+    "ar": "مخصص"
+  },
+  "admin_currently_active": {
+    "en": "Currently active",
+    "ar": "مفعّل حاليًا"
+  },
+  "admin_activate": {
+    "en": "Activate",
+    "ar": "تفعيل"
+  },
+  "admin_activate_for_all_users": {
+    "en": "Activate \"{name}\" for all users?",
+    "ar": "هل تريد تفعيل \"{name}\" لجميع المستخدمين؟"
+  },
+  "admin_copy": {
+    "en": "Copy",
+    "ar": "نسخ"
+  },
+  "admin_delete_this_theme": {
+    "en": "Delete this theme?",
+    "ar": "هل تريد حذف هذا الثيم؟"
+  },
+  "admin_edit_theme": {
+    "en": "Edit theme",
+    "ar": "تعديل الثيم"
+  },
+  "admin_new_custom_theme": {
+    "en": "New custom theme",
+    "ar": "ثيم مخصص جديد"
+  },
+  "admin_arabic_name_2": {
+    "en": "Arabic name",
+    "ar": "الاسم بالعربية"
+  },
+  "admin_english_name_2": {
+    "en": "English name",
+    "ar": "الاسم بالإنجليزية"
+  },
+  "admin_color_primary": {
+    "en": "Primary color",
+    "ar": "اللون الأساسي"
+  },
+  "admin_color_primary_dark": {
+    "en": "Primary dark",
+    "ar": "اللون الأساسي الداكن"
+  },
+  "admin_color_primary_light": {
+    "en": "Primary light",
+    "ar": "اللون الأساسي الفاتح"
+  },
+  "admin_color_accent1": {
+    "en": "Accent 1",
+    "ar": "اللون المميز 1"
+  },
+  "admin_color_accent2": {
+    "en": "Accent 2",
+    "ar": "اللون المميز 2"
+  },
+  "admin_color_background": {
+    "en": "Background",
+    "ar": "لون الخلفية"
+  },
+  "admin_color_text_dark": {
+    "en": "Dark text",
+    "ar": "لون النص الداكن"
+  },
+  "admin_color_text_action": {
+    "en": "Action text",
+    "ar": "لون نص الأزرار"
+  },
+  "admin_color_dark_background": {
+    "en": "Dark mode background",
+    "ar": "خلفية الوضع الليلي"
+  },
+  "admin_color_dark_card": {
+    "en": "Dark mode card",
+    "ar": "بطاقة الوضع الليلي"
+  },
+  "admin_all_other_colours_success_danger_dark": {
+    "en": "All other colors (success, danger, dark mode…) are derived automatically.",
+    "ar": "باقي الألوان (النجاح، الخطر، الوضع الليلي…) يتم اشتقاقها تلقائيًا."
+  },
+  "admin_use_rrggbb": {
+    "en": "Use #RRGGBB",
+    "ar": "استخدم الصيغة #RRGGBB"
+  },
+  "admin_invalid_colour": {
+    "en": "Invalid color",
+    "ar": "لون غير صالح"
+  },
+  "admin_enter_the_theme_name_in_both_languages": {
+    "en": "Enter the theme name in both languages",
+    "ar": "اكتب اسم الثيم باللغتين"
+  },
+  "admin_pick_a_colour": {
+    "en": "Pick a color",
+    "ar": "اختر لونًا"
+  },
+  "admin_about": {
+    "en": "About",
+    "ar": "عن التطبيق"
+  },
+  "admin_not_set_yet": {
+    "en": "Not set yet",
+    "ar": "لم يتم الضبط بعد"
+  },
+  "admin_tagline": {
+    "en": "Tagline",
+    "ar": "الشعار النصي"
+  },
+  "admin_mission": {
+    "en": "Mission",
+    "ar": "الرسالة"
+  },
+  "admin_terms_conditions": {
+    "en": "Terms & Conditions",
+    "ar": "الشروط والأحكام"
+  },
+  "admin_version_2": {
+    "en": "Version",
+    "ar": "الإصدار"
+  },
+  "admin_last_updated": {
+    "en": "Last updated",
+    "ar": "آخر تحديث"
+  },
+  "admin_no_version_info": {
+    "en": "No version info",
+    "ar": "لا توجد معلومات عن الإصدار"
+  },
+  "admin_hidden": {
+    "en": "Hidden",
+    "ar": "مخفي"
+  },
+  "admin_delete_this_section": {
+    "en": "Delete this section?",
+    "ar": "هل تريد حذف هذا القسم؟"
+  },
+  "admin_add_section": {
+    "en": "Add section",
+    "ar": "إضافة قسم"
+  },
+  "admin_edit_section": {
+    "en": "Edit section",
+    "ar": "تعديل القسم"
+  },
+  "admin_name_ar": {
+    "en": "Name (Arabic)",
+    "ar": "الاسم (بالعربية)"
+  },
+  "admin_name_en": {
+    "en": "Name (English)",
+    "ar": "الاسم (بالإنجليزية)"
+  },
+  "admin_tagline_ar": {
+    "en": "Tagline (Arabic)",
+    "ar": "الشعار النصي (بالعربية)"
+  },
+  "admin_tagline_en": {
+    "en": "Tagline (English)",
+    "ar": "الشعار النصي (بالإنجليزية)"
+  },
+  "admin_mission_ar": {
+    "en": "Mission (Arabic)",
+    "ar": "الرسالة (بالعربية)"
+  },
+  "admin_mission_en": {
+    "en": "Mission (English)",
+    "ar": "الرسالة (بالإنجليزية)"
+  },
+  "admin_terms_version": {
+    "en": "Terms version",
+    "ar": "إصدار الشروط"
+  },
+  "admin_version": {
+    "en": "Version",
+    "ar": "رقم الإصدار"
+  },
+  "admin_last_updated_ar": {
+    "en": "Last updated (Arabic)",
+    "ar": "آخر تحديث (بالعربية)"
+  },
+  "admin_last_updated_en": {
+    "en": "Last updated (English)",
+    "ar": "آخر تحديث (بالإنجليزية)"
+  },
+  "admin_title_ar": {
+    "en": "Title (Arabic)",
+    "ar": "العنوان (بالعربية)"
+  },
+  "admin_title_en": {
+    "en": "Title (English)",
+    "ar": "العنوان (بالإنجليزية)"
+  },
+  "admin_body_ar": {
+    "en": "Body (Arabic)",
+    "ar": "المحتوى (بالعربية)"
+  },
+  "admin_body_en": {
+    "en": "Body (English)",
+    "ar": "المحتوى (بالإنجليزية)"
+  },
+  "admin_icon_name": {
+    "en": "Icon name",
+    "ar": "اسم الأيقونة"
+  },
+  "admin_visible_to_users": {
+    "en": "Visible to users",
+    "ar": "ظاهر للمستخدمين"
+  },
+  "admin_arabic_title_and_body_are_required": {
+    "en": "Arabic title and body are required",
+    "ar": "العنوان والمحتوى بالعربية مطلوبان"
+  },
+  "admin_hide_a_feature_on_a_platform_the_app": {
+    "en": "Hide a feature on a platform; the app will no longer show it there.",
+    "ar": "أخفِ ميزة على منصة معينة، ولن يعرضها التطبيق هناك."
+  },
+  "admin_new_feature_key": {
+    "en": "New feature key",
+    "ar": "مفتاح ميزة جديدة"
+  },
+  "admin_hide_custom_key": {
+    "en": "Hide custom key",
+    "ar": "إخفاء مفتاح مخصص"
+  },
+  "admin_no_categories_yet": {
+    "en": "No categories yet",
+    "ar": "لا توجد تصنيفات بعد"
+  },
+  "admin_add_category": {
+    "en": "Add category",
+    "ar": "إضافة تصنيف"
+  },
+  "admin_edit_category": {
+    "en": "Edit category",
+    "ar": "تعديل التصنيف"
+  },
+  "admin_delete_this_category": {
+    "en": "Delete this category?",
+    "ar": "هل تريد حذف هذا التصنيف؟"
+  },
+  "admin_arabic_name": {
+    "en": "Arabic name",
+    "ar": "الاسم بالعربية"
+  },
+  "admin_english_name": {
+    "en": "English name",
+    "ar": "الاسم بالإنجليزية"
+  },
+  "admin_enter_a_category_name": {
+    "en": "Enter a category name",
+    "ar": "اكتب اسم التصنيف"
+  },
+  "admin_search_name_email_or_phone": {
+    "en": "Search by name, e-mail or phone",
+    "ar": "ابحث بالاسم أو البريد أو رقم الهاتف"
+  },
+  "admin_inactive": {
+    "en": "Inactive",
+    "ar": "غير نشط"
+  },
+  "admin_pending_deletion": {
+    "en": "Pending deletion",
+    "ar": "في انتظار الحذف"
+  },
+  "admin_any_subscription": {
+    "en": "Any subscription",
+    "ar": "أي اشتراك"
+  },
+  "admin_subscribed": {
+    "en": "Subscribed",
+    "ar": "مشترك"
+  },
+  "admin_not_subscribed": {
+    "en": "Not subscribed",
+    "ar": "غير مشترك"
+  },
+  "admin_no_students_found": {
+    "en": "No students found",
+    "ar": "لا يوجد طلاب"
+  },
+  "admin_no_teachers_found": {
+    "en": "No teachers found",
+    "ar": "لا يوجد معلمون"
+  },
+  "admin_add_student": {
+    "en": "Add student",
+    "ar": "إضافة طالب"
+  },
+  "admin_add_teacher": {
+    "en": "Add teacher",
+    "ar": "إضافة معلم"
+  },
+  "admin_sub_pending": {
+    "en": "Subscription pending",
+    "ar": "اشتراك قيد المراجعة"
+  },
+  "admin_no_sub": {
+    "en": "No subscription",
+    "ar": "بدون اشتراك"
+  },
+  "admin_profile_2": {
+    "en": "Profile",
+    "ar": "الملف الشخصي"
+  },
+  "admin_email_2": {
+    "en": "E-mail",
+    "ar": "البريد الإلكتروني"
+  },
+  "admin_phone": {
+    "en": "Phone",
+    "ar": "رقم الهاتف"
+  },
+  "admin_birth_date": {
+    "en": "Date of birth",
+    "ar": "تاريخ الميلاد"
+  },
+  "admin_joined": {
+    "en": "Joined",
+    "ar": "تاريخ الانضمام"
+  },
+  "admin_last_login": {
+    "en": "Last login",
+    "ar": "آخر تسجيل دخول"
+  },
+  "admin_logins": {
+    "en": "Logins",
+    "ar": "مرات تسجيل الدخول"
+  },
+  "admin_teacher_profile": {
+    "en": "Teacher profile",
+    "ar": "ملف المعلم"
+  },
+  "admin_experience": {
+    "en": "Experience (years)",
+    "ar": "الخبرة (بالسنوات)"
+  },
+  "admin_teaching": {
+    "en": "Teaching type",
+    "ar": "نوع التدريس"
+  },
+  "admin_payment": {
+    "en": "Payment type",
+    "ar": "نوع الدفع"
+  },
+  "admin_controls": {
+    "en": "Controls",
+    "ar": "الإجراءات"
+  },
+  "admin_deactivate_account": {
+    "en": "Deactivate account",
+    "ar": "تعطيل الحساب"
+  },
+  "admin_activate_account": {
+    "en": "Activate account",
+    "ar": "تفعيل الحساب"
+  },
+  "admin_deactivate_this_account": {
+    "en": "Deactivate this account?",
+    "ar": "هل تريد تعطيل هذا الحساب؟"
+  },
+  "admin_activate_this_account": {
+    "en": "Activate this account?",
+    "ar": "هل تريد تفعيل هذا الحساب؟"
+  },
+  "admin_permanently_delete_this_user_this": {
+    "en": "Permanently delete this user? This cannot be undone.",
+    "ar": "هل تريد حذف هذا المستخدم نهائيًا؟ لا يمكن التراجع عن ذلك."
+  },
+  "admin_grant": {
+    "en": "Grant",
+    "ar": "منح"
+  },
+  "admin_no_subscription": {
+    "en": "No subscription",
+    "ar": "لا يوجد اشتراك"
+  },
+  "admin_from": {
+    "en": "From",
+    "ar": "من"
+  },
+  "admin_until": {
+    "en": "Until",
+    "ar": "حتى"
+  },
+  "admin_amount": {
+    "en": "Amount",
+    "ar": "المبلغ"
+  },
+  "admin_subscribed_courses": {
+    "en": "Subscribed courses",
+    "ar": "الكورسات المشترك فيها"
+  },
+  "admin_enrol": {
+    "en": "Enrol",
+    "ar": "تسجيل في كورس"
+  },
+  "admin_no_courses": {
+    "en": "No courses",
+    "ar": "لا توجد كورسات"
+  },
+  "admin_remove": {
+    "en": "Remove",
+    "ar": "إزالة"
+  },
+  "admin_remove_the_student_from_this_course": {
+    "en": "Remove the student from this course?",
+    "ar": "هل تريد إزالة الطالب من هذا الكورس؟"
+  },
+  "admin_devices": {
+    "en": "Devices",
+    "ar": "الأجهزة"
+  },
+  "admin_remove_all_devices_and_reset_the": {
+    "en": "Remove all devices and reset the switch period?",
+    "ar": "هل تريد حذف كل الأجهزة وإعادة تعيين مدة تغيير الجهاز؟"
+  },
+  "admin_reset_all": {
+    "en": "Reset all",
+    "ar": "إعادة تعيين الكل"
+  },
+  "admin_no_registered_devices": {
+    "en": "No registered devices",
+    "ar": "لا توجد أجهزة مسجلة"
+  },
+  "admin_since": {
+    "en": "Since",
+    "ar": "منذ"
+  },
+  "admin_last_switch": {
+    "en": "Last device switch",
+    "ar": "آخر تغيير للجهاز"
+  },
+  "admin_grant_subscription": {
+    "en": "Grant subscription",
+    "ar": "منح اشتراك"
+  },
+  "admin_monthly": {
+    "en": "Monthly",
+    "ar": "شهري"
+  },
+  "admin_yearly": {
+    "en": "Yearly",
+    "ar": "سنوي"
+  },
+  "admin_custom_days": {
+    "en": "Custom days",
+    "ar": "عدد أيام مخصص"
+  },
+  "admin_days_2": {
+    "en": "Days",
+    "ar": "الأيام"
+  },
+  "admin_enter_a_valid_number_of_days": {
+    "en": "Enter a valid number of days",
+    "ar": "اكتب عدد أيام صحيح"
+  },
+  "admin_edit_user": {
+    "en": "Edit user",
+    "ar": "تعديل المستخدم"
+  },
+  "admin_name_is_required": {
+    "en": "Name is required",
+    "ar": "الاسم مطلوب"
+  },
+  "admin_email": {
+    "en": "E-mail",
+    "ar": "البريد الإلكتروني"
+  },
+  "admin_invalid_email": {
+    "en": "Invalid e-mail",
+    "ar": "بريد إلكتروني غير صالح"
+  },
+  "admin_country_code": {
+    "en": "Country code",
+    "ar": "رمز الدولة"
+  },
+  "admin_experience_years": {
+    "en": "Years of experience",
+    "ar": "سنوات الخبرة"
+  },
+  "admin_new_password_optional": {
+    "en": "New password (optional)",
+    "ar": "كلمة مرور جديدة (اختياري)"
+  },
+  "admin_at_least_6_characters": {
+    "en": "At least 6 characters",
+    "ar": "6 أحرف على الأقل"
+  },
+  "admin_search_course_name": {
+    "en": "Search by course name",
+    "ar": "ابحث باسم الكورس"
+  },
+  "admin_any_status": {
+    "en": "Any status",
+    "ar": "أي حالة"
+  },
+  "admin_in_progress": {
+    "en": "In progress",
+    "ar": "جاري"
+  },
+  "admin_total_course_income_after_discounts": {
+    "en": "Total course income (after discounts)",
+    "ar": "إجمالي دخل الكورسات (بعد الخصومات)"
+  },
+  "admin_add_course": {
+    "en": "Add course",
+    "ar": "إضافة كورس"
+  },
+  "admin_no_courses_found": {
+    "en": "No courses found",
+    "ar": "لا توجد كورسات"
+  },
+  "admin_income": {
+    "en": "Income",
+    "ar": "الدخل"
+  },
+  "admin_price": {
+    "en": "Price",
+    "ar": "السعر"
+  },
+  "admin_discount": {
+    "en": "Discount",
+    "ar": "خصم"
+  },
+  "admin_default_gateway": {
+    "en": "Default gateway",
+    "ar": "البوابة الافتراضية"
+  },
+  "admin_pending": {
+    "en": "pending",
+    "ar": "قيد الانتظار"
+  },
+  "admin_fee_must_be_between_0_and_100": {
+    "en": "Fee must be between 0 and 100",
+    "ar": "العمولة يجب أن تكون بين 0 و100"
+  },
+  "admin_pick_at_least_one_payment_method": {
+    "en": "Pick at least one payment method",
+    "ar": "اختر طريقة دفع واحدة على الأقل"
+  },
+  "admin_overview": {
+    "en": "Overview",
+    "ar": "نظرة عامة"
+  },
+  "admin_teacher": {
+    "en": "Teacher",
+    "ar": "المعلم"
+  },
+  "admin_list_price": {
+    "en": "List price",
+    "ar": "السعر الأصلي"
+  },
+  "admin_price_after_discount": {
+    "en": "Price after discount",
+    "ar": "السعر بعد الخصم"
+  },
+  "admin_paid": {
+    "en": "Paid",
+    "ar": "عدد الدافعين"
+  },
+  "admin_income_after_discount": {
+    "en": "Income (after discount)",
+    "ar": "الدخل (بعد الخصم)"
+  },
+  "admin_collected_from_students_incl_fees": {
+    "en": "Collected from students (incl. fees)",
+    "ar": "المحصّل من الطلاب (شامل الرسوم)"
+  },
+  "admin_effective_platform_fee": {
+    "en": "Effective platform fee",
+    "ar": "عمولة المنصة الفعلية"
+  },
+  "admin_payment_settings": {
+    "en": "Payment settings",
+    "ar": "إعدادات الدفع"
+  },
+  "admin_card_gateway": {
+    "en": "Card gateway",
+    "ar": "بوابة الدفع بالبطاقة"
+  },
+  "admin_system_default": {
+    "en": "System default",
+    "ar": "افتراضي النظام"
+  },
+  "admin_restrict_payment_methods": {
+    "en": "Restrict payment methods",
+    "ar": "تحديد طرق الدفع المتاحة"
+  },
+  "admin_bank_transfer": {
+    "en": "Bank transfer",
+    "ar": "تحويل بنكي"
+  },
+  "admin_platform_fee_empty_default": {
+    "en": "Platform fee % (empty = default)",
+    "ar": "عمولة المنصة % (فارغ = الافتراضي)"
+  },
+  "admin_instapay_is_only_shown_for_egp_courses": {
+    "en": "InstaPay is only shown for EGP courses.",
+    "ar": "إنستاباي يظهر فقط للكورسات بالجنيه المصري."
+  },
+  "admin_save_payment_settings": {
+    "en": "Save payment settings",
+    "ar": "حفظ إعدادات الدفع"
+  },
+  "admin_recent_payments": {
+    "en": "Recent payments",
+    "ar": "أحدث المدفوعات"
+  },
+  "admin_unpublish": {
+    "en": "Unpublish",
+    "ar": "إلغاء النشر"
+  },
+  "admin_reopen": {
+    "en": "Reopen",
+    "ar": "إعادة فتح"
+  },
+  "admin_mark_completed": {
+    "en": "Mark as completed",
+    "ar": "تحديد كمكتمل"
+  },
+  "admin_delete_this_course_permanently_all": {
+    "en": "Delete this course permanently? All its sessions, enrolments and data will be lost.",
+    "ar": "هل تريد حذف هذا الكورس نهائيًا؟ ستفقد كل محاضراته وتسجيلاته وبياناته."
+  },
+  "admin_choose_a_teacher": {
+    "en": "Choose a teacher",
+    "ar": "اختر معلمًا"
+  },
+  "admin_choose_teacher": {
+    "en": "Choose teacher",
+    "ar": "اختيار المعلم"
+  },
+  "admin_edit_course": {
+    "en": "Edit course",
+    "ar": "تعديل الكورس"
+  },
+  "admin_course_name": {
+    "en": "Course name",
+    "ar": "اسم الكورس"
+  },
+  "admin_max_students": {
+    "en": "Max students",
+    "ar": "الحد الأقصى للطلاب"
+  },
+  "admin_type": {
+    "en": "Type",
+    "ar": "النوع"
+  },
+  "admin_none": {
+    "en": "None",
+    "ar": "بدون"
+  },
+  "admin_teacher_payouts": {
+    "en": "Teacher Payouts",
+    "ar": "مدفوعات المعلمين"
+  },
+  "admin_requests": {
+    "en": "Requests",
+    "ar": "الطلبات"
+  },
+  "admin_settings": {
+    "en": "Settings",
+    "ar": "الإعدادات"
+  },
+  "admin_no_requests": {
+    "en": "No requests",
+    "ar": "لا توجد طلبات"
+  },
+  "admin_pending_3": {
+    "en": "Pending",
+    "ar": "قيد الانتظار"
+  },
+  "admin_approved": {
+    "en": "Approved",
+    "ar": "تمت الموافقة"
+  },
+  "admin_paid_2": {
+    "en": "Paid",
+    "ar": "مدفوع"
+  },
+  "admin_provider_paid": {
+    "en": "Paid by provider",
+    "ar": "تم الدفع عبر المزوّد"
+  },
+  "admin_processing_at_provider": {
+    "en": "Processing at provider",
+    "ar": "قيد المعالجة لدى المزوّد"
+  },
+  "admin_transfer_failed": {
+    "en": "Transfer failed",
+    "ar": "فشل التحويل"
+  },
+  "admin_unconfirmed": {
+    "en": "Unconfirmed",
+    "ar": "غير مؤكد"
+  },
+  "admin_provider": {
+    "en": "Provider status",
+    "ar": "حالة المزوّد"
+  },
+  "admin_reference": {
+    "en": "Provider reference",
+    "ar": "مرجع المزوّد"
+  },
+  "admin_transfer_ref": {
+    "en": "Transfer reference",
+    "ar": "مرجع التحويل"
+  },
+  "admin_teacher_note": {
+    "en": "Teacher note",
+    "ar": "ملاحظة المعلم"
+  },
+  "admin_requested": {
+    "en": "Requested",
+    "ar": "تاريخ الطلب"
+  },
+  "admin_approve_send": {
+    "en": "Approve & send",
+    "ar": "موافقة وإرسال"
+  },
+  "admin_approving_sends_right_now_via_continue": {
+    "en": "Approving sends {amount} right now via {method}. Continue?",
+    "ar": "الموافقة ستُرسل مبلغ {amount} الآن عبر {method}. هل تريد المتابعة؟"
+  },
+  "admin_approve_this_request_you_will_transfer": {
+    "en": "Approve this request? You will transfer the money manually afterwards.",
+    "ar": "هل تريد الموافقة على هذا الطلب؟ ستقوم بتحويل المبلغ يدويًا بعد ذلك."
+  },
+  "admin_sync_status": {
+    "en": "Sync status",
+    "ar": "تحديث الحالة"
+  },
+  "admin_it_is_re_sent_with_the_same": {
+    "en": "The transfer is re-sent with the same reference. Retry?",
+    "ar": "سيتم إعادة إرسال التحويل بنفس المرجع. هل تريد إعادة المحاولة؟"
+  },
+  "admin_send_the_transfer_again": {
+    "en": "Send the transfer again?",
+    "ar": "هل تريد إرسال التحويل مرة أخرى؟"
+  },
+  "admin_resolve": {
+    "en": "Resolve",
+    "ar": "تسوية"
+  },
+  "admin_mark_paid_manual": {
+    "en": "Mark as paid (manual)",
+    "ar": "تحديد كمدفوع (يدويًا)"
+  },
+  "admin_resolve_unconfirmed_transfer": {
+    "en": "Resolve unconfirmed transfer",
+    "ar": "تسوية تحويل غير مؤكد"
+  },
+  "admin_check_the_provider_dashboard_did_the": {
+    "en": "Check the provider dashboard: did the money actually leave?",
+    "ar": "راجع لوحة تحكم المزوّد: هل خرج المبلغ فعلًا؟"
+  },
+  "admin_reference_if_sent": {
+    "en": "Reference (if sent)",
+    "ar": "المرجع (إذا تم الإرسال)"
+  },
+  "admin_not_sent": {
+    "en": "Not sent",
+    "ar": "لم يتم الإرسال"
+  },
+  "admin_sent": {
+    "en": "Sent",
+    "ar": "تم الإرسال"
+  },
+  "admin_enter_the_reference": {
+    "en": "Enter the reference",
+    "ar": "اكتب رقم المرجع"
+  },
+  "admin_transfer_reference_bank_instapay": {
+    "en": "Transfer reference (bank / InstaPay)",
+    "ar": "مرجع التحويل (بنك / إنستاباي)"
+  },
+  "admin_search_teachers": {
+    "en": "Search teachers",
+    "ar": "ابحث عن معلم"
+  },
+  "admin_allowed_2": {
+    "en": "Allowed",
+    "ar": "مسموح"
+  },
+  "admin_blocked_2": {
+    "en": "Blocked",
+    "ar": "محظور"
+  },
+  "admin_no_teachers": {
+    "en": "No teachers",
+    "ar": "لا يوجد معلمون"
+  },
+  "admin_follows_global": {
+    "en": "Follows global setting",
+    "ar": "حسب الإعداد العام"
+  },
+  "admin_allowed": {
+    "en": "Allowed",
+    "ar": "مسموح له"
+  },
+  "admin_blocked": {
+    "en": "Blocked",
+    "ar": "محظور"
+  },
+  "admin_methods": {
+    "en": "methods",
+    "ar": "طرق"
+  },
+  "admin_accounts": {
+    "en": "accounts",
+    "ar": "حسابات"
+  },
+  "admin_withdrawal_permission": {
+    "en": "Withdrawal permission",
+    "ar": "صلاحية السحب"
+  },
+  "admin_follow_global_setting": {
+    "en": "Follow global setting",
+    "ar": "اتباع الإعداد العام"
+  },
+  "admin_allow": {
+    "en": "Allow",
+    "ar": "سماح"
+  },
+  "admin_block": {
+    "en": "Block",
+    "ar": "حظر"
+  },
+  "admin_custom_methods_for_this_teacher": {
+    "en": "Custom methods for this teacher",
+    "ar": "طرق مخصصة لهذا المعلم"
+  },
+  "admin_pick_at_least_one_method": {
+    "en": "Pick at least one method",
+    "ar": "اختر طريقة واحدة على الأقل"
+  },
+  "admin_allow_all_teachers_to_withdraw": {
+    "en": "Allow all teachers to withdraw",
+    "ar": "السماح لكل المعلمين بالسحب"
+  },
+  "admin_every_teacher_can_add_an_account_and": {
+    "en": "Every teacher can add an account and request withdrawals.",
+    "ar": "يمكن لكل معلم إضافة حساب وطلب السحب."
+  },
+  "admin_off_only_teachers_you_allow_one_by_one": {
+    "en": "Off: only teachers you allow one by one can withdraw.",
+    "ar": "إيقاف: يسحب فقط المعلمون الذين تسمح لهم واحدًا واحدًا."
+  },
+  "admin_automatic_transfer_moyasar_paymob": {
+    "en": "Automatic transfer (Moyasar / Paymob)",
+    "ar": "تحويل تلقائي (Moyasar / Paymob)"
+  },
+  "admin_on_approval_the_money_is_sent": {
+    "en": "On approval, the money is sent automatically to the teacher.",
+    "ar": "عند الموافقة، يُرسل المبلغ تلقائيًا إلى المعلم."
+  },
+  "admin_available_payout_methods": {
+    "en": "Available payout methods",
+    "ar": "طرق السحب المتاحة"
+  },
+  "admin_ready": {
+    "en": "Ready",
+    "ar": "جاهز"
+  },
+  "admin_not_configured_on_the_server_falls": {
+    "en": "Not configured on the server; falls back to manual transfer.",
+    "ar": "غير مفعّل على الخادم؛ سيتم التحويل يدويًا."
+  },
+  "admin_keep_at_least_one_method": {
+    "en": "Keep at least one method enabled",
+    "ar": "أبقِ طريقة واحدة على الأقل مفعّلة"
+  },
+  "admin_minimum_withdrawal": {
+    "en": "Minimum withdrawal",
+    "ar": "الحد الأدنى للسحب"
+  },
+  "admin_amount_empty_default": {
+    "en": "Amount (empty = default",
+    "ar": "المبلغ (فارغ = الافتراضي"
+  },
+  "admin_invalid_amount": {
+    "en": "Invalid amount",
+    "ar": "مبلغ غير صالح"
+  },
+  "admin_earnings_payouts": {
+    "en": "Earnings & Payouts",
+    "ar": "الأرباح والسحوبات"
+  },
+  "admin_withdrawals_are_not_enabled_for_your": {
+    "en": "Withdrawals are not enabled for your account yet. Contact the admin.",
+    "ar": "السحب غير مفعّل لحسابك حاليًا. تواصل مع الإدارة."
+  },
+  "admin_request_withdrawal": {
+    "en": "Request withdrawal",
+    "ar": "طلب سحب"
+  },
+  "admin_you_have_a_withdrawal_in_progress": {
+    "en": "You have a withdrawal in progress. Wait until it finishes before requesting another.",
+    "ar": "لديك طلب سحب قيد التنفيذ. انتظر حتى ينتهي قبل طلب سحب آخر."
+  },
+  "admin_payout_accounts": {
+    "en": "Payout accounts",
+    "ar": "حسابات السحب"
+  },
+  "admin_add_an_account_to_withdraw_bank": {
+    "en": "Add an account to withdraw (bank account, wallet or InstaPay).",
+    "ar": "أضف حسابًا للسحب (حساب بنكي أو محفظة أو إنستاباي)."
+  },
+  "admin_no_accounts": {
+    "en": "No accounts",
+    "ar": "لا توجد حسابات"
+  },
+  "admin_withdrawals": {
+    "en": "Withdrawals",
+    "ar": "عمليات السحب"
+  },
+  "admin_no_withdrawals_yet": {
+    "en": "No withdrawals yet",
+    "ar": "لا توجد عمليات سحب بعد"
+  },
+  "admin_available_to_withdraw": {
+    "en": "Available to withdraw",
+    "ar": "المتاح للسحب"
+  },
+  "admin_total_net": {
+    "en": "Total net",
+    "ar": "إجمالي الصافي"
+  },
+  "admin_in_progress_2": {
+    "en": "In progress",
+    "ar": "قيد التنفيذ"
+  },
+  "admin_remove_this_account": {
+    "en": "Remove this account?",
+    "ar": "هل تريد حذف هذا الحساب؟"
+  },
+  "admin_make_default_2": {
+    "en": "Make default",
+    "ar": "تعيين كافتراضي"
+  },
+  "admin_transfer_in_progress_at_the_payment": {
+    "en": "Transfer in progress at the payment provider",
+    "ar": "التحويل قيد التنفيذ لدى مزوّد الدفع"
+  },
+  "admin_waiting_for_the_admin_to_transfer_it": {
+    "en": "Waiting for the admin to transfer it",
+    "ar": "في انتظار تحويل الإدارة للمبلغ"
+  },
+  "admin_cancel_this_request": {
+    "en": "Cancel this request?",
+    "ar": "هل تريد إلغاء هذا الطلب؟"
+  },
+  "admin_cancel_request": {
+    "en": "Cancel request",
+    "ar": "إلغاء الطلب"
+  },
+  "admin_available": {
+    "en": "Available",
+    "ar": "المتاح"
+  },
+  "admin_minimum": {
+    "en": "Minimum",
+    "ar": "الحد الأدنى"
+  },
+  "admin_to_account": {
+    "en": "To account",
+    "ar": "إلى الحساب"
+  },
+  "admin_after_the_admin_approves_the_amount_is": {
+    "en": "After the admin approves, the amount is sent automatically.",
+    "ar": "بعد موافقة الإدارة، يُرسل المبلغ تلقائيًا."
+  },
+  "admin_after_approval_the_admin_transfers_the": {
+    "en": "After approval, the admin transfers the amount manually.",
+    "ar": "بعد الموافقة، تحوّل الإدارة المبلغ يدويًا."
+  },
+  "admin_note_optional": {
+    "en": "Note (optional)",
+    "ar": "ملاحظة (اختياري)"
+  },
+  "admin_send_request": {
+    "en": "Send request",
+    "ar": "إرسال الطلب"
+  },
+  "admin_amount_is_outside_the_allowed_range": {
+    "en": "Amount is outside the allowed range",
+    "ar": "المبلغ خارج النطاق المسموح"
+  },
+  "admin_no_payout_methods_are_enabled_for_you": {
+    "en": "No payout methods are enabled for you",
+    "ar": "لا توجد طرق سحب مفعّلة لك"
+  },
+  "admin_account_holder": {
+    "en": "Account holder name",
+    "ar": "اسم صاحب الحساب"
+  },
+  "admin_instapay_address_phone": {
+    "en": "InstaPay address / phone",
+    "ar": "عنوان إنستاباي / رقم الهاتف"
+  },
+  "admin_saudi_iban_sa": {
+    "en": "Saudi IBAN (SA…)",
+    "ar": "الآيبان السعودي (SA…)"
+  },
+  "admin_mobile_optional": {
+    "en": "Mobile (optional)",
+    "ar": "رقم الجوال (اختياري)"
+  },
+  "admin_city_optional": {
+    "en": "City (optional)",
+    "ar": "المدينة (اختياري)"
+  },
+  "admin_mobile_wallet": {
+    "en": "Mobile wallet",
+    "ar": "محفظة إلكترونية"
+  },
+  "admin_bank_account": {
+    "en": "Bank account",
+    "ar": "حساب بنكي"
+  },
+  "admin_wallet": {
+    "en": "Wallet",
+    "ar": "المحفظة"
+  },
+  "admin_bank_wallet": {
+    "en": "Bank wallet",
+    "ar": "محفظة بنكية"
+  },
+  "admin_wallet_number_01": {
+    "en": "Wallet number (01…)",
+    "ar": "رقم المحفظة (01…)"
+  },
+  "admin_bank_code_e_g_cib": {
+    "en": "Bank code (e.g. CIB)",
+    "ar": "كود البنك (مثال: CIB)"
+  },
+  "admin_account_number_iban": {
+    "en": "Account number / IBAN",
+    "ar": "رقم الحساب / الآيبان"
+  },
+  "admin_national_id_optional": {
+    "en": "National ID (optional)",
+    "ar": "الرقم القومي (اختياري)"
+  },
+  "admin_swift_optional": {
+    "en": "SWIFT (optional)",
+    "ar": "SWIFT (اختياري)"
+  },
+  "admin_add_payout_account": {
+    "en": "Add payout account",
+    "ar": "إضافة حساب سحب"
+  },
+  "admin_edit_account": {
+    "en": "Edit account",
+    "ar": "تعديل الحساب"
+  },
+  "admin_payout_method": {
+    "en": "Payout method",
+    "ar": "طريقة السحب"
+  },
+  "admin_automatic_transfer_in_after_admin": {
+    "en": "Automatic transfer in {currency} after admin approval.",
+    "ar": "تحويل تلقائي بعملة {currency} بعد موافقة الإدارة."
+  },
+  "admin_manual_transfer_by_the_admin_after": {
+    "en": "Manual transfer by the admin after approval.",
+    "ar": "تحويل يدوي من الإدارة بعد الموافقة."
+  },
+  "admin_nickname_optional": {
+    "en": "Nickname (optional)",
+    "ar": "اسم مختصر (اختياري)"
+  },
+  "admin_make_default": {
+    "en": "Make this the default account",
+    "ar": "تعيين كحساب افتراضي"
+  },
+  "admin_fill_in_the_required_fields": {
+    "en": "Fill in the required fields",
+    "ar": "املأ الحقول المطلوبة"
+  },
+  "admin_moyasar_auto": {
+    "en": "Moyasar (automatic)",
+    "ar": "مُيسّر (تلقائي)"
+  },
+  "admin_paymob_auto": {
+    "en": "Paymob (automatic)",
+    "ar": "باي موب (تلقائي)"
   }
 }

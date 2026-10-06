@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -55,7 +56,7 @@ class _PagedListState<P extends AdminPagedProvider> extends State<PagedList<P>> 
     } else if (p.error != null && p.rows.isEmpty) {
       body = ErrorRetry(message: p.error!, onRetry: p.refresh);
     } else if (p.rows.isEmpty) {
-      body = EmptyState(widget.emptyText ?? t('لا توجد بيانات', 'Nothing here yet'));
+      body = EmptyState(widget.emptyText ?? 'admin_nothing_here_yet'.tr);
     } else {
       body = ListView.builder(
         controller: _scroll,
@@ -73,7 +74,7 @@ class _PagedListState<P extends AdminPagedProvider> extends State<PagedList<P>> 
                     : Padding(
                         padding: const EdgeInsets.all(12),
                         child: Center(
-                          child: Text('${p.total} ${t('عنصر', 'items')}',
+                          child: Text('${p.total} ${'admin_items'.tr}',
                               style: TextStyle(
                                   fontFamily: 'tajawal',
                                   fontSize: 12,

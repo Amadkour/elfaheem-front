@@ -37,7 +37,7 @@ class _View extends StatelessWidget {
     } else if (p.error != null && p.items.isEmpty) {
       body = ErrorRetry(message: p.error!, onRetry: p.load);
     } else if (p.items.isEmpty) {
-      body = EmptyState(t('لا توجد تصنيفات', 'No categories yet'));
+      body = EmptyState('admin_no_categories_yet'.tr);
     } else {
       body = RefreshIndicator(
         onRefresh: p.load,
@@ -56,12 +56,12 @@ class _View extends StatelessWidget {
                       Text(cat.nameEn, style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight)),
                   ]),
                 ),
-                StatusChip('${cat.coursesCount} ${t('كورس', 'courses')}', c.primary),
+                StatusChip('${cat.coursesCount} ${'roadmap_course_unit'.tr}', c.primary),
                 IconButton(
                   icon: Icon(Icons.delete_outline_rounded, color: c.danger),
                   onPressed: () async {
                     final ok = await confirm(context,
-                        message: t('حذف هذا التصنيف؟', 'Delete this category?'), danger: true);
+                        message: 'admin_delete_this_category'.tr, danger: true);
                     if (ok) await p.remove(cat.id);
                   },
                 ),
@@ -79,7 +79,7 @@ class _View extends StatelessWidget {
           backgroundColor: c.primary,
           onPressed: () => _form(context, p),
           icon: const Icon(Icons.add_rounded, color: Colors.white),
-          label: Text(t('إضافة تصنيف', 'Add category'), style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
+          label: Text('admin_add_category'.tr, style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
         ),
       child: body,
     );
@@ -95,20 +95,20 @@ Future<void> _form(BuildContext context, AdminCategoriesProvider p, {AdminCatego
   return showAdminSheet(context, (ctx) {
     return StatefulBuilder(builder: (ctx, setS) {
       return Column(mainAxisSize: MainAxisSize.min, children: [
-        SheetHeader(existing == null ? t('إضافة تصنيف', 'Add category') : t('تعديل التصنيف', 'Edit category')),
+        SheetHeader(existing == null ? 'admin_add_category'.tr : 'admin_edit_category'.tr),
         Flexible(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
             child: Column(children: [
-              Field(controller: ar, label: t('الاسم بالعربية', 'Arabic name')),
-              Field(controller: en, label: t('الاسم بالإنجليزية', 'English name'), ltr: true),
-              Field(controller: desc, label: t('الوصف', 'Description'), maxLines: 3),
+              Field(controller: ar, label: 'admin_arabic_name'.tr),
+              Field(controller: en, label: 'admin_english_name'.tr, ltr: true),
+              Field(controller: desc, label: 'description'.tr, maxLines: 3),
               PrimaryButton(
-                label: t('حفظ', 'Save'),
+                label: 'save'.tr,
                 busy: busy,
                 onPressed: () async {
                   if (ar.text.trim().isEmpty && en.text.trim().isEmpty) {
-                    toast(t('أدخل اسم التصنيف', 'Enter a category name'), error: true);
+                    toast('admin_enter_a_category_name'.tr, error: true);
                     return;
                   }
                   setS(() => busy = true);

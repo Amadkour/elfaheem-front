@@ -11,6 +11,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
@@ -88,117 +89,120 @@ class CourseRoadmapSection extends StatelessWidget {
 
     final gradientColors = darkRoadmapGradientColors(context);
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(0, 8, 0, 8),
-      padding: const EdgeInsets.symmetric(vertical: 20,horizontal: 10),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: gradientColors,
-        ),
-        borderRadius: BorderRadius.circular(26),
-        boxShadow: [
-          BoxShadow(
-            color: context.colors.primary.withValues(alpha: 0.35),
-            blurRadius: 28,
-            offset: const Offset(0, 14),
+    return ParentComponent(
+      key: ValueKey('roadmap'),
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(0, 8, 0, 8),
+        padding: const EdgeInsets.symmetric(vertical: 20,horizontal: 10),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: gradientColors,
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: _kRoadmapGold.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.map_rounded,
-                  size: 18,
-                  color: _kRoadmapGold,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                'learning_roadmap_title'.tr,
-                style: const TextStyle(
-                  fontFamily: 'tajawal',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          _RoadmapPath(
-            completedCourses: recentCompletedCourses,
-            currentCourseName: currentCourseName,
-            nextCourses: nextCourses,
-            onTapCourse: onTapCourse,
-          ),
-          if (onEnrollRoadmap != null && nextCourses.isNotEmpty) ...[
-            const SizedBox(height: 18),
-            _EnrollRoadmapButton(
-              label: 'roadmap_enroll_all'.tr,
-              onTap: onEnrollRoadmap!,
+          borderRadius: BorderRadius.circular(26),
+          boxShadow: [
+            BoxShadow(
+              color: context.colors.primary.withValues(alpha: 0.35),
+              blurRadius: 28,
+              offset: const Offset(0, 14),
             ),
           ],
-          if (combined.isNotEmpty) ...[
-            const SizedBox(height: 24),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Row(
               children: [
-                Container(width: 3, height: 15, color: _kRoadmapGold),
-                const SizedBox(width: 8),
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: _kRoadmapGold.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.map_rounded,
+                    size: 18,
+                    color: _kRoadmapGold,
+                  ),
+                ),
+                const SizedBox(width: 10),
                 Text(
-                  'roadmap_explore_more_title'.tr,
+                  'learning_roadmap_title'.tr,
                   style: const TextStyle(
                     fontFamily: 'tajawal',
-                    fontSize: 13,
+                    fontSize: 15,
                     fontWeight: FontWeight.w800,
                     color: Colors.white,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 14),
-            Scrollbar(
-              controller: controller,
-              thumbVisibility: true,
-              trackVisibility: true,
-              child: SizedBox(
-                height: 220,
-                child: ListView.separated(
-                  controller: controller,
-                  scrollDirection: Axis.horizontal,
-                  clipBehavior: Clip.none,
-                  itemCount: combined.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 7),
-                  itemBuilder: (_, i) =>
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16.0),
-                        child: RecommendCourseCard(
-                          course:  combined[i],
-                          onTap: () => onTapCourse(combined[i]),
-                          badgeText: 'suggested_badge'.tr,
-                          badgeColor: context.colors.primary,
-                          badgeBg: context.colors.cardBg,
-                          badgeIcon: Icons.auto_awesome_rounded,
-                          isDark: true,
+            const SizedBox(height: 18),
+            _RoadmapPath(
+              completedCourses: recentCompletedCourses,
+              currentCourseName: currentCourseName,
+              nextCourses: nextCourses,
+              onTapCourse: onTapCourse,
+            ),
+            if (onEnrollRoadmap != null && nextCourses.isNotEmpty) ...[
+              const SizedBox(height: 18),
+              _EnrollRoadmapButton(
+                label: 'roadmap_enroll_all'.tr,
+                onTap: onEnrollRoadmap!,
+              ),
+            ],
+            if (combined.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Container(width: 3, height: 15, color: _kRoadmapGold),
+                  const SizedBox(width: 8),
+                  Text(
+                    'roadmap_explore_more_title'.tr,
+                    style: const TextStyle(
+                      fontFamily: 'tajawal',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Scrollbar(
+                controller: controller,
+                thumbVisibility: true,
+                trackVisibility: true,
+                child: SizedBox(
+                  height: 220,
+                  child: ListView.separated(
+                    controller: controller,
+                    scrollDirection: Axis.horizontal,
+                    clipBehavior: Clip.none,
+                    itemCount: combined.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 7),
+                    itemBuilder: (_, i) =>
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 16.0),
+                          child: RecommendCourseCard(
+                            course:  combined[i],
+                            onTap: () => onTapCourse(combined[i]),
+                            badgeText: 'suggested_badge'.tr,
+                            badgeColor: context.colors.primary,
+                            badgeBg: context.colors.cardBg,
+                            badgeIcon: Icons.auto_awesome_rounded,
+                            isDark: true,
+                          ),
                         ),
-                      ),
-
+      
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

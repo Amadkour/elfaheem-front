@@ -294,7 +294,6 @@ PageRoute _fade(Widget page, RouteSettings settings) => PageRouteBuilder(
 class _PremiumLoadingScreen extends StatelessWidget {
   const _PremiumLoadingScreen();
 
-  static const _bg = Color(0xFFD4FEFD); // matches flutter_native_splash color
 
   @override
   Widget build(BuildContext context) {
@@ -302,7 +301,7 @@ class _PremiumLoadingScreen extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(brightness: Brightness.light, fontFamily: 'tajawal'),
       home: Scaffold(
-        backgroundColor: _bg,
+        backgroundColor: context.colors.background,
         // AppLoadingIndicator already shows the branded logo (with its own
         // built-in fallback if the asset fails to load), so it replaces the
         // separate Image.asset + CircularProgressIndicator that used to sit

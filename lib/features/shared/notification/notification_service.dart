@@ -2,6 +2,7 @@
 import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
@@ -221,6 +222,11 @@ class NotificationService {
 
     final data = message.data;
     print(data);
+    // Silent push: the admin changed the disable list → reload it, show nothing.
+    if (data['type'] == 'disable_list_updated') {
+      _refreshDisableList();
+      return;
+    }
     if (data['type'] == 'session_started' || data['type'] == 'session_ended') {
       _refreshCourseDetailIfActive(data['course_id'] as String?);
     }
@@ -344,5 +350,26 @@ class NotificationService {
     if (Platform.isAndroid) return 'android';
     if (Platform.isIOS) return 'ios';
     return 'unknown';
+  }
+
+  // Reloads the disable list from the server. Silent: no toast, no local notification.
+  Future<void> _refreshDisableList() async {
+    try {
+      final platform = _deviceType(); // android | ios | web
+      if (platform == 'unknown') return;
+      final r = await ApiClient().get('/api/v1/disable-items/$platform');
+      final items = ((r is Map ? r['items'] : null) as List? ?? const [])
+          .map((e) => '$e')
+          .toList();
+       AppConfig.disableList.clear();
+       AppConfig.disableList.addAll(items);
+      // TODO: put the new list wherever your app reads it from, e.g.
+      //   AppConfig.disableList = items;
+      // or call whatever method of ThemeConfigProvider reloads the theme
+      // (GET /theme/{platform} already contains `disable_list`).
+      // Then notifyListeners() so hidden/unhidden widgets rebuild.
+    } catch (e) {
+      print('[FCM] refreshDisableList failed: $e');
+    }
   }
 }

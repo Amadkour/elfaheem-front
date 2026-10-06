@@ -9,6 +9,11 @@
 // so nothing here has to be added to core/providers.dart.
 library;
 
+import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart' show ChangeNotifier;
+
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
 
@@ -94,7 +99,7 @@ abstract class AdminPagedProvider extends AdminBase {
       extra = d.extra;
       error = null;
     } else if (p == 1) {
-      error = errorMessage ?? t('تعذر تحميل البيانات', 'Could not load data');
+      error = errorMessage ?? 'admin_could_not_load_data'.tr;
     }
     loaded = true;
     loadingMore = false;
@@ -116,7 +121,7 @@ class AdminOverviewProvider extends AdminBase {
       data = Overview(Map<String, dynamic>.from(r));
       error = null;
     } else {
-      error = errorMessage ?? t('تعذر تحميل البيانات', 'Could not load data');
+      error = errorMessage ?? 'admin_could_not_load_data'.tr;
     }
     notifyListeners();
   }
@@ -139,11 +144,11 @@ class AdminUsersProvider extends AdminPagedProvider {
 
   @override
   Map<String, dynamic> get filters => {
-        'role': role,
-        'search': search,
-        'status': status,
-        'subscribed': subscribed,
-      };
+    'role': role,
+    'search': search,
+    'status': status,
+    'subscribed': subscribed,
+  };
 
   List<AdminUser> get users => rows.map(AdminUser.new).toList();
 
@@ -169,14 +174,14 @@ class AdminUsersProvider extends AdminPagedProvider {
 
   Future<bool> create(Map<String, dynamic> body) async {
     final r = await call(() => api.post('$_base/users', body: body),
-        ok: t('تمت الإضافة', 'Created'));
+        ok: 'admin_created'.tr);
     if (r != null) await refresh();
     return r != null;
   }
 
   Future<bool> update(int id, Map<String, dynamic> body) async {
     final r = await call(() => api.put('$_base/users/$id', body: body),
-        ok: t('تم الحفظ', 'Saved'));
+        ok: 'admin_saved'.tr);
     if (r != null) await refresh();
     return r != null;
   }
@@ -185,43 +190,43 @@ class AdminUsersProvider extends AdminPagedProvider {
 
   Future<bool> remove(int id) async {
     final r = await call(() => api.delete('$_base/users/$id'),
-        ok: t('تم الحذف', 'Deleted'));
+        ok: 'admin_deleted'.tr);
     if (r != null) await refresh();
     return r != null;
   }
 
   Future<bool> resetDevices(int id) async =>
       await call(() => api.post('$_base/users/$id/reset-devices'),
-          ok: t('تمت إعادة ضبط الأجهزة', 'Devices reset')) !=
-      null;
+          ok: 'admin_devices_reset'.tr) !=
+          null;
 
   Future<bool> removeDevice(int userId, int rowId) async =>
       await call(() => api.delete('$_base/users/$userId/devices/$rowId'),
-          ok: t('تم حذف الجهاز', 'Device removed')) !=
-      null;
+          ok: 'admin_device_removed'.tr) !=
+          null;
 
   Future<bool> enroll(int userId, int courseId) async {
     final r = await call(
-        () => api.post('$_base/users/$userId/enroll', body: {'course_id': courseId}),
-        ok: t('تم التسجيل في الكورس', 'Enrolled'));
+            () => api.post('$_base/users/$userId/enroll', body: {'course_id': courseId}),
+        ok: 'admin_enrolled'.tr);
     if (r != null) await refresh();
     return r != null;
   }
 
   Future<bool> unenroll(int userId, int courseId) async {
     final r = await call(() => api.delete('$_base/users/$userId/enrollments/$courseId'),
-        ok: t('تم إلغاء التسجيل', 'Removed from course'));
+        ok: 'admin_removed_from_course'.tr);
     if (r != null) await refresh();
     return r != null;
   }
 
   Future<bool> grant(int userId, {String? planCode, int? days}) async {
     final r = await call(
-        () => api.post('$_base/users/$userId/subscription/grant', body: {
-              'plan_code': ?planCode,
-              'days': ?days,
-            }),
-        ok: t('تم منح الاشتراك', 'Subscription granted'));
+            () => api.post('$_base/users/$userId/subscription/grant', body: {
+        'plan_code': ?planCode,
+        'days': ?days,
+        }),
+        ok: 'admin_subscription_granted'.tr);
     if (r != null) await refresh();
     return r != null;
   }
@@ -229,7 +234,7 @@ class AdminUsersProvider extends AdminPagedProvider {
   /// Courses for the "enrol in course" picker.
   Future<List<AdminCourse>> courseChoices() async {
     final r = await run(
-        () => api.get('$_base/courses', queryParams: {'page': 1, 'size': 100}),
+            () => api.get('$_base/courses', queryParams: {'page': 1, 'size': 100}),
         makLoading: false);
     return r is Map ? PageData(Map<String, dynamic>.from(r)).items.map(AdminCourse.new).toList() : [];
   }
@@ -250,11 +255,11 @@ class AdminCoursesProvider extends AdminPagedProvider {
 
   @override
   Map<String, dynamic> get filters => {
-        'search': search,
-        'published': published,
-        'status': status,
-        'teacher_id': teacherId,
-      };
+    'search': search,
+    'published': published,
+    'status': status,
+    'teacher_id': teacherId,
+  };
 
   List<AdminCourse> get courses => rows.map(AdminCourse.new).toList();
   double get totalIncome => asDouble(asMap(extra['totals'])['income']);
@@ -281,22 +286,22 @@ class AdminCoursesProvider extends AdminPagedProvider {
 
   Future<bool> create(Map<String, dynamic> body) async {
     final r = await call(() => api.post('$_base/courses', body: body),
-        ok: t('تمت إضافة الكورس', 'Course created'));
+        ok: 'admin_course_created'.tr);
     if (r != null) await refresh();
     return r != null;
   }
 
   Future<bool> update(int id, Map<String, dynamic> body) async {
     final r = await call(() => api.put('$_base/courses/$id', body: body),
-        ok: t('تم الحفظ', 'Saved'));
+        ok: 'admin_saved'.tr);
     if (r != null) await refresh();
     return r != null;
   }
 
   Future<bool> remove(int id, {bool force = false}) async {
     final r = await call(
-        () => api.delete('$_base/courses/$id', queryParams: {'force': force}),
-        ok: t('تم حذف الكورس', 'Course deleted'));
+            () => api.delete('$_base/courses/$id', queryParams: {'force': force}),
+        ok: 'admin_course_deleted'.tr);
     if (r != null) await refresh();
     return r != null;
   }
@@ -305,15 +310,15 @@ class AdminCoursesProvider extends AdminPagedProvider {
   /// field to the system default while omitted keys stay untouched.
   Future<bool> savePaymentSettings(int id, Map<String, dynamic> body) async {
     final r = await call(
-        () => api.put('$_base/courses/$id/payment-settings', body: body),
-        ok: t('تم حفظ إعدادات الدفع', 'Payment settings saved'));
+            () => api.put('$_base/courses/$id/payment-settings', body: body),
+        ok: 'admin_payment_settings_saved'.tr);
     if (r != null) await refresh();
     return r != null;
   }
 
   Future<List<AdminUser>> teacherChoices() async {
     final r = await run(
-        () => api.get('$_base/users',
+            () => api.get('$_base/users',
             queryParams: {'role': 'teacher', 'page': 1, 'size': 100}),
         makLoading: false);
     return r is Map ? PageData(Map<String, dynamic>.from(r)).items.map(AdminUser.new).toList() : [];
@@ -339,24 +344,24 @@ class AdminCategoriesProvider extends AdminBase {
       items = asMapList(r['items']).map(AdminCategory.new).toList();
       error = null;
     } else {
-      error = errorMessage ?? t('تعذر تحميل البيانات', 'Could not load data');
+      error = errorMessage ?? 'admin_could_not_load_data'.tr;
     }
     notifyListeners();
   }
 
   Future<bool> save({int? id, required Map<String, dynamic> body}) async {
     final r = await call(
-        () => id == null
+            () => id == null
             ? api.post('$_base/categories', body: body)
             : api.put('$_base/categories/$id', body: body),
-        ok: t('تم الحفظ', 'Saved'));
+        ok: 'admin_saved'.tr);
     if (r != null) await load();
     return r != null;
   }
 
   Future<bool> remove(int id) async {
     final r = await call(() => api.delete('$_base/categories/$id'),
-        ok: t('تم الحذف', 'Deleted'));
+        ok: 'admin_deleted'.tr);
     if (r != null) await load();
     return r != null;
   }
@@ -409,10 +414,10 @@ class AdminSubscriptionsProvider extends AdminPagedProvider {
 
   Future<bool> setRequired(bool v) async {
     final r = await call(
-        () => api.put('$_base/settings', body: {'subscription_required': v}),
+            () => api.put('$_base/settings', body: {'subscription_required': v}),
         ok: v
-            ? t('تم تفعيل الاشتراك الإجباري', 'Subscription is now required')
-            : t('التطبيق الآن مجاني', 'The app is now free'));
+            ? 'admin_subscription_is_now_required'.tr
+            : 'admin_the_app_is_now_free'.tr);
     if (r != null) {
       required = v;
       notifyListeners();
@@ -422,29 +427,29 @@ class AdminSubscriptionsProvider extends AdminPagedProvider {
 
   Future<bool> savePlan(String code, Map<String, dynamic> body) async {
     final r = await call(() => api.put('$_base/subscription-plans/$code', body: body),
-        ok: t('تم حفظ الخطة', 'Plan saved'));
+        ok: 'admin_plan_saved'.tr);
     if (r != null) await loadPlans();
     return r != null;
   }
 
   Future<bool> approve(int id) async {
     final r = await call(() => api.post('$_base/subscriptions/$id/approve'),
-        ok: t('تم قبول الاشتراك', 'Approved'));
+        ok: 'admin_approved_2'.tr);
     if (r != null) await refresh();
     return r != null;
   }
 
   Future<bool> reject(int id, String? reason) async {
     final r = await call(
-        () => api.post('$_base/subscriptions/$id/reject', body: {'reason': reason}),
-        ok: t('تم رفض الطلب', 'Rejected'));
+            () => api.post('$_base/subscriptions/$id/reject', body: {'reason': reason}),
+        ok: 'admin_rejected_2'.tr);
     if (r != null) await refresh();
     return r != null;
   }
 
   Future<bool> cancel(int id) async {
     final r = await call(() => api.post('$_base/subscriptions/$id/cancel'),
-        ok: t('تم إلغاء الاشتراك', 'Cancelled'));
+        ok: 'admin_cancelled'.tr);
     if (r != null) await refresh();
     return r != null;
   }
@@ -471,14 +476,14 @@ class AdminSettingsProvider extends AdminBase {
       values = Map<String, dynamic>.from(r);
       error = null;
     } else {
-      error = errorMessage ?? t('تعذر تحميل البيانات', 'Could not load data');
+      error = errorMessage ?? 'admin_could_not_load_data'.tr;
     }
     notifyListeners();
   }
 
   Future<bool> save(Map<String, dynamic> body) async {
     final r = await call(() => api.put('$_base/settings', body: body),
-        ok: t('تم حفظ الإعدادات', 'Settings saved'));
+        ok: 'exam_rules_saved_snack'.tr);
     if (r is Map) {
       values = Map<String, dynamic>.from(r);
       notifyListeners();
@@ -501,14 +506,14 @@ class AdminPaymentMethodsProvider extends AdminBase {
       items = asMapList(r['items']);
       error = null;
     } else {
-      error = errorMessage ?? t('تعذر تحميل البيانات', 'Could not load data');
+      error = errorMessage ?? 'admin_could_not_load_data'.tr;
     }
     notifyListeners();
   }
 
   Future<bool> save(String method, Map<String, dynamic> body) async {
     final r = await call(() => api.put('$_base/payment-methods/$method', body: body),
-        ok: t('تم الحفظ', 'Saved'));
+        ok: 'admin_saved'.tr);
     if (r != null) await load();
     return r != null;
   }
@@ -534,7 +539,7 @@ class AdminThemesProvider extends AdminBase {
       activeKey = asStrOrNull(r['active_preset']);
       error = null;
     } else {
-      error = errorMessage ?? t('تعذر تحميل البيانات', 'Could not load data');
+      error = errorMessage ?? 'admin_could_not_load_data'.tr;
     }
     notifyListeners();
   }
@@ -542,10 +547,9 @@ class AdminThemesProvider extends AdminBase {
   /// Activates a preset for every platform (or just [platforms]).
   Future<bool> activate(int id, {List<String>? platforms}) async {
     final r = await call(
-        () => api.post('$_base/themes/$id/activate',
+            () => api.post('$_base/themes/$id/activate',
             body: {'platforms': platforms}),
-        ok: t('تم تفعيل الثيم — سيظهر للمستخدمين عند فتح التطبيق',
-            'Theme activated — users get it on next app start'));
+        ok: 'admin_theme_activated_users_get_it_on_next'.tr);
     if (r is Map) _apply(r);
     return r != null;
   }
@@ -553,17 +557,17 @@ class AdminThemesProvider extends AdminBase {
   Future<bool> save({int? id, required String nameAr, required String nameEn, required Map<String, String> colors}) async {
     final body = {'name_ar': nameAr, 'name_en': nameEn, 'colors': colors};
     final r = await call(
-        () => id == null
+            () => id == null
             ? api.post('$_base/themes', body: body)
             : api.put('$_base/themes/$id', body: body),
-        ok: t('تم حفظ الثيم', 'Theme saved'));
+        ok: 'admin_theme_saved'.tr);
     if (r != null) await load();
     return r != null;
   }
 
   Future<bool> remove(int id) async {
     final r = await call(() => api.delete('$_base/themes/$id'),
-        ok: t('تم حذف الثيم', 'Theme deleted'));
+        ok: 'admin_theme_deleted'.tr);
     if (r != null) await load();
     return r != null;
   }
@@ -591,14 +595,20 @@ class AdminFeaturesProvider extends AdminBase {
       }
       error = null;
     } else {
-      error = errorMessage ?? t('تعذر تحميل البيانات', 'Could not load data');
+      error = errorMessage ?? 'admin_could_not_load_data'.tr;
     }
     notifyListeners();
   }
 
-  Future<void> set(String key, bool hidden, {List<String>? platforms}) async {
-    final r = await call(() => api.put('$_base/features/$key',
-        body: {'hidden': hidden, 'platforms': platforms}));
+  Future<void> set(String key, bool hidden,
+      {List<String>? platforms, String? titleAr, String? titleEn}) async {
+    final r = await call(() =>
+        api.put('$_base/features/$key', body: {
+          'hidden': hidden,
+          'platforms': platforms,
+          'title_ar': titleAr,
+          'title_en': titleEn,
+        }));
     if (r is Map) _apply(r);
   }
 }
@@ -617,21 +627,21 @@ class AdminVersionsProvider extends AdminBase {
       items = asMapList(r);
       error = null;
     } else {
-      error = errorMessage ?? t('تعذر تحميل البيانات', 'Could not load data');
+      error = errorMessage ?? 'admin_could_not_load_data'.tr;
     }
     notifyListeners();
   }
 
   Future<bool> create(Map<String, dynamic> body) async {
     final r = await call(() => api.post('/app/', body: body),
-        ok: t('تم نشر الإصدار', 'Version published'));
+        ok: 'admin_version_published'.tr);
     if (r != null) await load();
     return r != null;
   }
 
   Future<bool> update(int id, Map<String, dynamic> body) async {
     final r = await call(() => api.patch('/app/$id', body: body),
-        ok: t('تم الحفظ', 'Saved'));
+        ok: 'admin_saved'.tr);
     if (r != null) await load();
     return r != null;
   }
@@ -644,7 +654,7 @@ class AdminVersionsProvider extends AdminBase {
 
   Future<bool> remove(int id) async {
     final r = await call(() => api.delete('/app/$id'),
-        ok: t('تم الحذف', 'Deleted'));
+        ok: 'admin_deleted'.tr);
     if (r != null) await load();
     return r != null;
   }
@@ -670,7 +680,7 @@ class AdminContentProvider extends AdminBase {
       sections = asMapList(terms['sections']);
       error = null;
     } else {
-      error = errorMessage ?? t('تعذر تحميل البيانات', 'Could not load data');
+      error = errorMessage ?? 'admin_could_not_load_data'.tr;
     }
     if (about is Map) {
       aboutInfo = about['info'] is Map ? asMap(about['info']) : null;
@@ -680,32 +690,261 @@ class AdminContentProvider extends AdminBase {
 
   Future<bool> saveMeta(Map<String, dynamic> body) async {
     final r = await call(() => api.patch('$_content/terms/meta', body: body),
-        ok: t('تم الحفظ', 'Saved'));
+        ok: 'admin_saved'.tr);
     if (r != null) await load();
     return r != null;
   }
 
   Future<bool> saveSection({int? id, required Map<String, dynamic> body}) async {
     final r = await call(
-        () => id == null
+            () => id == null
             ? api.post('$_content/terms/sections', body: body)
             : api.patch('$_content/terms/sections/$id', body: body),
-        ok: t('تم الحفظ', 'Saved'));
+        ok: 'admin_saved'.tr);
     if (r != null) await load();
     return r != null;
   }
 
   Future<bool> deleteSection(int id) async {
     final r = await call(() => api.delete('$_content/terms/sections/$id'),
-        ok: t('تم الحذف', 'Deleted'));
+        ok: 'admin_deleted'.tr);
     if (r != null) await load();
     return r != null;
   }
 
   Future<bool> saveAbout(Map<String, dynamic> body) async {
     final r = await call(() => api.patch('$_content/about/info', body: body),
-        ok: t('تم الحفظ', 'Saved'));
+        ok: 'admin_saved'.tr);
     if (r != null) await load();
     return r != null;
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  Payouts (admin): requests · per-teacher permission · global settings
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// Withdrawal requests. The existing endpoint paginates with skip/limit.
+class AdminPayoutRequestsProvider extends AdminBase {
+  String? status = 'pending'; // null = all
+  final List<Map<String, dynamic>> rows = [];
+  int total = 0;
+  bool loaded = false;
+  bool loadingMore = false;
+  String? error;
+  final Set<int> busy = {};
+
+  List<Withdrawal> get items => rows.map(Withdrawal.new).toList();
+  bool get hasMore => rows.length < total;
+
+  Future<void> setStatus(String? s) {
+    status = s;
+    return refresh();
+  }
+
+  Future<void> refresh() async {
+    rows.clear();
+    total = 0;
+    loaded = false;
+    error = null;
+    await _fetch(0);
+  }
+
+  Future<void> loadMore() async {
+    if (loadingMore || isLoading || !hasMore) return;
+    await _fetch(rows.length);
+  }
+
+  Future<void> _fetch(int skip) async {
+    if (skip > 0) {
+      loadingMore = true;
+      notifyListeners();
+    }
+    final r = await run(
+            () => api.get('$_base/withdrawals', queryParams: {
+          if (status != null) 'status': status,
+          'skip': skip,
+          'limit': 20,
+        }),
+        makLoading: skip == 0);
+    if (r is Map) {
+      rows.addAll(asMapList(r['items']));
+      total = asInt(r['total']);
+      error = null;
+    } else if (skip == 0) {
+      error = errorMessage ?? 'admin_could_not_load_data'.tr;
+    }
+    loaded = true;
+    loadingMore = false;
+    notifyListeners();
+  }
+
+  Future<bool> _act(int id, Future<dynamic> Function() fn, String ok) async {
+    busy.add(id);
+    notifyListeners();
+    final r = await call(fn, ok: ok);
+    busy.remove(id);
+    if (r != null) {
+      await refresh();
+    } else {
+      notifyListeners();
+    }
+    return r != null;
+  }
+
+  /// Approve. For Moyasar / Paymob accounts the SERVER then sends the money by itself.
+  Future<bool> approve(int id, {String? note}) => _act(
+      id,
+          () => api.post('$_base/withdrawals/$id/approve', body: {'admin_note': note}),
+      'doc_approved'.tr);
+
+  Future<bool> markPaid(int id, String reference, {String? note}) => _act(
+      id,
+          () => api.post('$_base/withdrawals/$id/mark-paid',
+          body: {'bank_reference': reference, 'admin_note': note}),
+      'admin_marked_as_paid'.tr);
+
+  /// Uploads the transfer receipt (image / PDF) for [id]. No list refresh and no
+  /// success toast — the caller confirms the transfer right after, which refreshes.
+  Future<bool> uploadReceipt(
+      int id, {
+        required String fileName,
+        String? filePath, // mobile / desktop
+        Uint8List? bytes, // web
+      }) async {
+    busy.add(id);
+    notifyListeners();
+    final r = await call(() => api.postMultipart(
+      '$_base/payouts/withdrawals/$id/receipt',
+      fields: const {},
+      fileField: 'file',
+      fileName: fileName,
+      filePath: filePath,
+      fileBytes: bytes,
+    ));
+    busy.remove(id);
+    notifyListeners();
+    return r != null;
+  }
+
+  Future<bool> reject(int id, String reason) => _act(
+      id,
+          () => api.post('$_base/withdrawals/$id/reject', body: {'rejected_reason': reason}),
+      'admin_rejected_2'.tr);
+
+  Future<bool> retry(int id) => _act(id, () => api.post('$_base/payouts/withdrawals/$id/retry'),
+      'admin_retried'.tr);
+
+  Future<bool> sync(int id) => _act(id, () => api.post('$_base/payouts/withdrawals/$id/sync'),
+      'admin_status_refreshed'.tr);
+
+  Future<bool> resolve(int id, {required bool sent, String? reference}) => _act(
+      id,
+          () => api.post('$_base/payouts/withdrawals/$id/resolve',
+          body: {'sent': sent, 'reference': reference}),
+      'admin_resolved'.tr);
+}
+
+/// Per-teacher payout permission.
+class AdminPayoutTeachersProvider extends AdminPagedProvider {
+  String search = '';
+  String? only; // allowed | blocked
+
+  @override
+  String get path => '$_base/payouts/teachers';
+
+  @override
+  Map<String, dynamic> get filters => {'search': search, 'only': only};
+
+  Future<void> setSearch(String v) {
+    search = v;
+    return refresh();
+  }
+
+  Future<void> setOnly(String? v) {
+    only = v;
+    return refresh();
+  }
+
+  /// `enabled`: true allow · false block · null follow the global switch.
+  /// `methods`: list restricts, null follows the global list. Only keys in [body] are sent.
+  Future<bool> save(int teacherId, Map<String, dynamic> body) async {
+    final r = await call(() => api.put('$_base/payouts/teachers/$teacherId', body: body),
+        ok: 'admin_saved'.tr);
+    if (r != null) await refresh();
+    return r != null;
+  }
+}
+
+/// Global payout settings.
+class AdminPayoutSettingsProvider extends AdminBase {
+  Map<String, dynamic> data = {};
+  String? error;
+
+  bool get all => asBool(data['payouts_enabled_for_all']);
+  bool get auto => asBool(data['payout_auto_enabled'], true);
+  double? get minAmount => data['payout_min_amount'] == null ? null : asDouble(data['payout_min_amount']);
+  double get defaultMin => asDouble(data['default_min_amount']);
+  List<String> get allowed =>
+      (data['payout_allowed_methods'] is List) ? (data['payout_allowed_methods'] as List).map((e) => '$e').toList() : [];
+  List<Map<String, dynamic>> get methods => asMapList(data['methods']);
+
+  Future<void> load() async {
+    final r = await run(() => api.get('$_base/payouts/settings'));
+    if (r is Map) {
+      data = Map<String, dynamic>.from(r);
+      error = null;
+    } else {
+      error = errorMessage ?? 'admin_could_not_load_data'.tr;
+    }
+    notifyListeners();
+  }
+
+  Future<bool> save(Map<String, dynamic> body) async {
+    final r = await call(() => api.put('$_base/payouts/settings', body: body), ok: 'admin_saved'.tr);
+    if (r is Map) {
+      data = Map<String, dynamic>.from(r);
+      notifyListeners();
+    }
+    return r != null;
+  }
+}
+
+
+/// Number of withdrawal requests waiting for the admin (status = pending).
+/// Feeds the badge on the dashboard "More" tab and on the payout tile —
+/// same idea as the teacher's transfer-requests badge. Never throws and never
+/// toasts: a failing badge must not break the dashboard.
+class AdminPendingPayoutsProvider extends ChangeNotifier {
+  AdminPendingPayoutsProvider({ApiClient? api}) : _api = api ?? ApiClient();
+  final ApiClient _api;
+
+  int count = 0;
+  bool _disposed = false;
+
+  Future<void> refresh() async {
+    try {
+      final r = await _api.get('$_base/withdrawals',
+          queryParams: {'status': 'pending', 'skip': 0, 'limit': 1});
+      if (_disposed || r is! Map) return;
+      final n = r['total'] != null ? asInt(r['total']) : asMapList(r['items']).length;
+      if (n != count) {
+        count = n;
+        notifyListeners();
+      }
+    } catch (_) {
+      // keep the last known number
+    }
+  }
+
+  void clear() {
+    count = 0;
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 }

@@ -42,33 +42,33 @@ class _View extends StatelessWidget {
         onRefresh: p.load,
         child: ListView(padding: const EdgeInsets.fromLTRB(14, 12, 14, 90), children: [
           Section(
-            title: t('من نحن', 'About'),
+            title: 'admin_about'.tr,
             trailing: TextButton.icon(
               icon: const Icon(Icons.edit_rounded, size: 18),
-              label: Text(t('تعديل', 'Edit')),
+              label: Text('btn_edit'.tr),
               onPressed: () => _aboutForm(context, p),
             ),
             child: about == null
-                ? Text(t('لم تُضبط بعد', 'Not set yet'), style: TextStyle(fontFamily: 'tajawal', color: c.textLight))
+                ? Text('admin_not_set_yet'.tr, style: TextStyle(fontFamily: 'tajawal', color: c.textLight))
                 : Column(children: [
-                    KeyValue(t('الاسم', 'Name'), '${asStr(about['name_ar'])} / ${asStr(about['name_en'])}'),
-                    KeyValue(t('الشعار', 'Tagline'), '${asStr(about['tagline_ar'])} / ${asStr(about['tagline_en'])}'),
-                    KeyValue(t('الرسالة', 'Mission'), asStr(about['mission_ar'])),
+                    KeyValue('name_label'.tr, '${asStr(about['name_ar'])} / ${asStr(about['name_en'])}'),
+                    KeyValue('admin_tagline'.tr, '${asStr(about['tagline_ar'])} / ${asStr(about['tagline_en'])}'),
+                    KeyValue('admin_mission'.tr, asStr(about['mission_ar'])),
                   ]),
           ),
           Section(
-            title: t('الشروط والأحكام', 'Terms & conditions'),
+            title: 'admin_terms_conditions'.tr,
             trailing: TextButton.icon(
               icon: const Icon(Icons.edit_rounded, size: 18),
-              label: Text(t('الإصدار', 'Version')),
+              label: Text('admin_version_2'.tr),
               onPressed: () => _metaForm(context, p),
             ),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               if (meta != null) ...[
-                KeyValue(t('الإصدار', 'Version'), asStr(meta['version'])),
-                KeyValue(t('آخر تحديث', 'Last updated'), '${asStr(meta['last_updated_ar'])} / ${asStr(meta['last_updated_en'])}'),
+                KeyValue('admin_version_2'.tr, asStr(meta['version'])),
+                KeyValue('admin_last_updated'.tr, '${asStr(meta['last_updated_ar'])} / ${asStr(meta['last_updated_en'])}'),
               ] else
-                Text(t('لا توجد بيانات إصدار', 'No version info'), style: TextStyle(fontFamily: 'tajawal', color: c.textLight)),
+                Text('admin_no_version_info'.tr, style: TextStyle(fontFamily: 'tajawal', color: c.textLight)),
             ]),
           ),
           for (final s in p.sections)
@@ -85,11 +85,11 @@ class _View extends StatelessWidget {
                         style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: c.textMedium)),
                   ]),
                 ),
-                if (!asBool(s['is_active'], true)) StatusChip(t('مخفي', 'Hidden'), c.warning),
+                if (!asBool(s['is_active'], true)) StatusChip('admin_hidden'.tr, c.warning),
                 IconButton(
                   icon: Icon(Icons.delete_outline_rounded, color: c.danger),
                   onPressed: () async {
-                    final ok = await confirm(context, message: t('حذف هذا القسم؟', 'Delete this section?'), danger: true);
+                    final ok = await confirm(context, message: 'admin_delete_this_section'.tr, danger: true);
                     if (ok) await p.deleteSection(asInt(s['id']));
                   },
                 ),
@@ -108,7 +108,7 @@ class _View extends StatelessWidget {
           backgroundColor: c.primary,
           onPressed: () => _sectionForm(context, p),
           icon: const Icon(Icons.add_rounded, color: Colors.white),
-          label: Text(t('إضافة قسم', 'Add section'), style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
+          label: Text('admin_add_section'.tr, style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
         ),
         child: body,
     );
@@ -130,19 +130,19 @@ Future<void> _aboutForm(BuildContext context, AdminContentProvider p) {
   return showAdminSheet(context, (ctx) {
     return StatefulBuilder(builder: (ctx, setS) {
       return Column(mainAxisSize: MainAxisSize.min, children: [
-        SheetHeader(t('من نحن', 'About')),
+        SheetHeader('admin_about'.tr),
         Flexible(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
             child: Column(children: [
-              Field(controller: nAr, label: t('الاسم (عربي)', 'Name (AR)')),
-              Field(controller: nEn, label: t('الاسم (إنجليزي)', 'Name (EN)'), ltr: true),
-              Field(controller: tAr, label: t('الشعار (عربي)', 'Tagline (AR)')),
-              Field(controller: tEn, label: t('الشعار (إنجليزي)', 'Tagline (EN)'), ltr: true),
-              Field(controller: mAr, label: t('الرسالة (عربي)', 'Mission (AR)'), maxLines: 3),
-              Field(controller: mEn, label: t('الرسالة (إنجليزي)', 'Mission (EN)'), maxLines: 3, ltr: true),
+              Field(controller: nAr, label: 'admin_name_ar'.tr),
+              Field(controller: nEn, label: 'admin_name_en'.tr, ltr: true),
+              Field(controller: tAr, label: 'admin_tagline_ar'.tr),
+              Field(controller: tEn, label: 'admin_tagline_en'.tr, ltr: true),
+              Field(controller: mAr, label: 'admin_mission_ar'.tr, maxLines: 3),
+              Field(controller: mEn, label: 'admin_mission_en'.tr, maxLines: 3, ltr: true),
               PrimaryButton(
-                label: t('حفظ', 'Save'),
+                label: 'save'.tr,
                 busy: busy,
                 onPressed: () async {
                   setS(() => busy = true);
@@ -179,15 +179,15 @@ Future<void> _metaForm(BuildContext context, AdminContentProvider p) {
   return showAdminSheet(context, (ctx) {
     return StatefulBuilder(builder: (ctx, setS) {
       return Column(mainAxisSize: MainAxisSize.min, children: [
-        SheetHeader(t('إصدار الشروط', 'Terms version')),
+        SheetHeader('admin_terms_version'.tr),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
           child: Column(children: [
-            Field(controller: ver, label: t('رقم الإصدار', 'Version'), ltr: true),
-            Field(controller: dAr, label: t('آخر تحديث (عربي)', 'Last updated (AR)')),
-            Field(controller: dEn, label: t('آخر تحديث (إنجليزي)', 'Last updated (EN)'), ltr: true),
+            Field(controller: ver, label: 'admin_version'.tr, ltr: true),
+            Field(controller: dAr, label: 'admin_last_updated_ar'.tr),
+            Field(controller: dEn, label: 'admin_last_updated_en'.tr, ltr: true),
             PrimaryButton(
-              label: t('حفظ', 'Save'),
+              label: 'save'.tr,
               busy: busy,
               onPressed: () async {
                 setS(() => busy = true);
@@ -222,32 +222,32 @@ Future<void> _sectionForm(BuildContext context, AdminContentProvider p, {Map<Str
   return showAdminSheet(context, (ctx) {
     return StatefulBuilder(builder: (ctx, setS) {
       return Column(mainAxisSize: MainAxisSize.min, children: [
-        SheetHeader(existing == null ? t('إضافة قسم', 'Add section') : t('تعديل القسم', 'Edit section')),
+        SheetHeader(existing == null ? 'admin_add_section'.tr : 'admin_edit_section'.tr),
         Flexible(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
             child: Column(children: [
-              Field(controller: tAr, label: t('العنوان (عربي)', 'Title (AR)')),
-              Field(controller: tEn, label: t('العنوان (إنجليزي)', 'Title (EN)'), ltr: true),
-              Field(controller: bAr, label: t('النص (عربي)', 'Body (AR)'), maxLines: 5),
-              Field(controller: bEn, label: t('النص (إنجليزي)', 'Body (EN)'), maxLines: 5, ltr: true),
+              Field(controller: tAr, label: 'admin_title_ar'.tr),
+              Field(controller: tEn, label: 'admin_title_en'.tr, ltr: true),
+              Field(controller: bAr, label: 'admin_body_ar'.tr, maxLines: 5),
+              Field(controller: bEn, label: 'admin_body_en'.tr, maxLines: 5, ltr: true),
               Row(children: [
-                Expanded(child: Field(controller: icon, label: t('اسم الأيقونة', 'Icon name'), ltr: true)),
+                Expanded(child: Field(controller: icon, label: 'admin_icon_name'.tr, ltr: true)),
                 const SizedBox(width: 10),
-                Expanded(child: Field(controller: order, label: t('الترتيب', 'Order'), keyboard: TextInputType.number)),
+                Expanded(child: Field(controller: order, label: 'order_label'.tr, keyboard: TextInputType.number)),
               ]),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: Text(t('ظاهر للمستخدمين', 'Visible to users'), style: const TextStyle(fontFamily: 'tajawal')),
+                title: Text('admin_visible_to_users'.tr, style: const TextStyle(fontFamily: 'tajawal')),
                 value: active,
                 onChanged: (v) => setS(() => active = v),
               ),
               PrimaryButton(
-                label: t('حفظ', 'Save'),
+                label: 'save'.tr,
                 busy: busy,
                 onPressed: () async {
                   if (tAr.text.trim().isEmpty || bAr.text.trim().isEmpty) {
-                    toast(t('العنوان والنص بالعربية مطلوبان', 'Arabic title and body are required'), error: true);
+                    toast('admin_arabic_title_and_body_are_required'.tr, error: true);
                     return;
                   }
                   setS(() => busy = true);

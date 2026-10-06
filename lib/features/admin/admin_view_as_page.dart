@@ -59,7 +59,7 @@ class _AdminViewAsPageState extends State<AdminViewAsPage> {
   Widget build(BuildContext context) {
     final c = context.colors;
     if (!context.read<AuthProvider>().isSuper) {
-      return BasePage(useWebCard:true,child: EmptyState(t('للمدير العام فقط', 'Super-admin only'), icon: Icons.lock_rounded));
+      return BasePage(useWebCard:true,child: EmptyState('admin_super_admin_only'.tr, icon: Icons.lock_rounded));
     }
     return BasePage(
       useWebCard: true,
@@ -72,8 +72,8 @@ class _AdminViewAsPageState extends State<AdminViewAsPage> {
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 child: SegmentedButton<String>(
                   segments: [
-                    ButtonSegment(value: 'student', label: Text(t('طالب', 'Student')), icon: const Icon(Icons.school_rounded)),
-                    ButtonSegment(value: 'teacher', label: Text(t('معلم', 'Teacher')), icon: const Icon(Icons.person_pin_rounded)),
+                    ButtonSegment(value: 'student', label: Text('student'.tr), icon: const Icon(Icons.school_rounded)),
+                    ButtonSegment(value: 'teacher', label: Text('teacher'.tr), icon: const Icon(Icons.person_pin_rounded)),
                   ],
                   selected: {_role},
                   onSelectionChanged: (s) {
@@ -89,7 +89,7 @@ class _AdminViewAsPageState extends State<AdminViewAsPage> {
                   onSubmitted: (_) => _load(),
                   decoration: InputDecoration(
                     prefixIcon: const Icon(Icons.search_rounded),
-                    hintText: t('ابحث بالاسم أو البريد', 'Search by name or e-mail'),
+                    hintText: 'admin_search_by_name_or_e_mail'.tr,
                     border: const OutlineInputBorder(),
                     suffixIcon: IconButton(icon: const Icon(Icons.arrow_forward_rounded), onPressed: _load),
                   ),
@@ -144,7 +144,7 @@ class ViewAsBanner extends StatelessWidget {
                     const Icon(Icons.visibility_rounded, color: Colors.white, size: 18),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text('${t('عرض فقط', 'View only')}: ${s.name}',
+                      child: Text('${'admin_view_only'.tr}: ${s.name}',
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontFamily: 'tajawal', decoration: TextDecoration.none, fontSize: 13)),
                     ),
@@ -155,7 +155,7 @@ class ViewAsBanner extends StatelessWidget {
                         // navigatorKey lives in main.dart; the banner sits above the Navigator, so go through it.
                         ViewAsBanner.onExit?.call();
                       },
-                      child: Text(t('خروج', 'Exit')),
+                      child: Text('exit'.tr),
                     ),
                   ]),
                 ),

@@ -65,15 +65,15 @@ class _ViewState extends State<_View> {
     final feeText = _fee.text.trim();
     final fee = feeText.isEmpty ? null : double.tryParse(feeText);
     if (dev == null || dev < 1 || dev > 10) {
-      toast(t('عدد الأجهزة من 1 إلى 10', 'Devices must be 1–10'), error: true);
+      toast('admin_devices_must_be_1_10'.tr, error: true);
       return;
     }
     if (days == null || days < 1 || days > 365) {
-      toast(t('المدة من 1 إلى 365 يوماً', 'Period must be 1–365 days'), error: true);
+      toast('admin_period_must_be_1_365_days'.tr, error: true);
       return;
     }
     if (feeText.isNotEmpty && (fee == null || fee < 0 || fee > 100)) {
-      toast(t('النسبة من 0 إلى 100', 'Fee must be 0–100'), error: true);
+      toast('admin_fee_must_be_0_100'.tr, error: true);
       return;
     }
     setState(() => busy = true);
@@ -97,50 +97,49 @@ class _ViewState extends State<_View> {
     if (s.values.isEmpty && s.isLoading) {
       body = const Center(child: CircularProgressIndicator());
     } else if (s.values.isEmpty) {
-      body = ErrorRetry(message: s.error ?? t('تعذر تحميل البيانات', 'Could not load data'), onRetry: s.load);
+      body = ErrorRetry(message: s.error ?? 'admin_could_not_load_data'.tr, onRetry: s.load);
     } else {
       body = ListView(padding: const EdgeInsets.all(14), children: [
         Section(
-          title: t('أجهزة الطالب', 'Student devices'),
+          title: 'admin_student_devices'.tr,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Field(controller: _devices, label: t('عدد الأجهزة المسموحة لكل طالب', 'Devices allowed per student'), keyboard: TextInputType.number),
-            Field(controller: _days, label: t('المدة بين تبديل جهاز وآخر (أيام) — الافتراضي 30', 'Days between device switches — default 30'), keyboard: TextInputType.number),
+            Field(controller: _devices, label: 'admin_devices_allowed_per_student'.tr, keyboard: TextInputType.number),
+            Field(controller: _days, label: 'admin_days_between_device_switches_default'.tr, keyboard: TextInputType.number),
             Text(
-              t('يمكن للطالب طلب تبديل جهاز مرة كل هذه المدة بعد موافقة المعلم.',
-                  'A student may request one device switch per period, approved by the teacher.'),
+              'admin_a_student_may_request_one_device'.tr,
               style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight),
             ),
           ]),
         ),
         Section(
-          title: t('الدفع', 'Payments'),
+          title: 'admin_payments'.tr,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             ChoiceRow<String?>(
-              label: t('بوابة البطاقة الافتراضية', 'Default card gateway'),
-              options: {null: t('من إعدادات الخادم', 'Server default'), 'moyasar': 'Moyasar', 'paymob': 'Paymob'},
+              label: 'admin_default_card_gateway'.tr,
+              options: {null: 'admin_server_default'.tr, 'moyasar': 'Moyasar', 'paymob': 'Paymob'},
               value: provider,
               onChanged: (v) => setState(() => provider = v),
             ),
             Field(
               controller: _fee,
-              label: t('نسبة المنصة الافتراضية % (فارغ = من إعدادات الخادم)', 'Default platform fee % (empty = server default)'),
+              label: 'admin_default_platform_fee_empty_server'.tr,
               keyboard: const TextInputType.numberWithOptions(decimal: true),
             ),
             Text(
-              t('كل كورس يمكنه تجاوز هذه القيم من صفحة الكورس.', 'Each course can override these on its own page.'),
+              'admin_each_course_can_override_these_on_its'.tr,
               style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight),
             ),
           ]),
         ),
-        PrimaryButton(label: t('حفظ الإعدادات', 'Save settings'), busy: busy, onPressed: () => _save(s)),
+        PrimaryButton(label: 'admin_save_settings'.tr, busy: busy, onPressed: () => _save(s)),
         const SizedBox(height: 18),
-        Text(t('طرق الدفع', 'Payment methods'),
+        Text('admin_payment_methods'.tr,
             style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w900, fontSize: 16, color: c.textDark)),
         const SizedBox(height: 8),
         if (pm.items.isEmpty && pm.isLoading)
           const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator()))
         else if (pm.items.isEmpty)
-          ErrorRetry(message: pm.error ?? t('تعذر التحميل', 'Could not load'), onRetry: pm.load)
+          ErrorRetry(message: pm.error ?? 'admin_could_not_load'.tr, onRetry: pm.load)
         else
           for (final m in pm.items) _MethodCard(m),
       ]);
@@ -177,20 +176,20 @@ class _MethodCard extends StatelessWidget {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         if (method == 'bank_transfer') ...[
-          KeyValue(t('البنك', 'Bank'), asStr(m['bank_name'])),
-          KeyValue(t('اسم الحساب', 'Account name'), asStr(m['account_name'])),
+          KeyValue('bank_name_row_label'.tr, asStr(m['bank_name'])),
+          KeyValue('admin_account_name'.tr, asStr(m['account_name'])),
           KeyValue('IBAN', asStr(m['iban'])),
         ],
         if (method == 'instapay') KeyValue('InstaPay ID', asStr(m['instapay_id'])),
         if (method == 'card')
-          Text(t('الدفع بالبطاقة عبر البوابة المحددة.', 'Card payment through the selected gateway.'),
+          Text('admin_card_payment_through_the_selected'.tr,
               style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: c.textLight)),
         if (method != 'card')
           Align(
             alignment: AlignmentDirectional.centerEnd,
             child: TextButton.icon(
               icon: const Icon(Icons.edit_rounded, size: 18),
-              label: Text(t('تعديل البيانات', 'Edit details')),
+              label: Text('admin_edit_details'.tr),
               onPressed: () => _edit(context, p, m),
             ),
           ),
@@ -222,28 +221,28 @@ Future<void> _edit(BuildContext context, AdminPaymentMethodsProvider p, Map<Stri
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
             child: Column(children: [
               if (method == 'bank_transfer') ...[
-                Field(controller: bank, label: t('اسم البنك', 'Bank name')),
-                Field(controller: acc, label: t('اسم الحساب', 'Account name')),
+                Field(controller: bank, label: 'admin_bank_name'.tr),
+                Field(controller: acc, label: 'admin_account_name'.tr),
                 Field(controller: iban, label: 'IBAN', ltr: true),
                 Field(controller: swift, label: 'SWIFT', ltr: true),
               ],
               if (method == 'instapay') Field(controller: insta, label: 'InstaPay ID', ltr: true),
-              Field(controller: insAr, label: t('التعليمات بالعربية', 'Instructions (Arabic)'), maxLines: 3),
-              Field(controller: insEn, label: t('التعليمات بالإنجليزية', 'Instructions (English)'), maxLines: 3, ltr: true),
+              Field(controller: insAr, label: 'admin_instructions_arabic'.tr, maxLines: 3),
+              Field(controller: insEn, label: 'admin_instructions_english'.tr, maxLines: 3, ltr: true),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: Text(t('رقم المرسل مطلوب', 'Require sender phone'), style: const TextStyle(fontFamily: 'tajawal')),
+                title: Text('admin_require_sender_phone'.tr, style: const TextStyle(fontFamily: 'tajawal')),
                 value: needPhone,
                 onChanged: (v) => setS(() => needPhone = v),
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: Text(t('رقم العملية مطلوب', 'Require transfer reference'), style: const TextStyle(fontFamily: 'tajawal')),
+                title: Text('admin_require_transfer_reference'.tr, style: const TextStyle(fontFamily: 'tajawal')),
                 value: needRef,
                 onChanged: (v) => setS(() => needRef = v),
               ),
               PrimaryButton(
-                label: t('حفظ', 'Save'),
+                label: 'save'.tr,
                 busy: busy,
                 onPressed: () async {
                   setS(() => busy = true);

@@ -34,14 +34,13 @@ class _View extends StatelessWidget {
     if (p.items.isEmpty && p.isLoading) {
       body = const Center(child: CircularProgressIndicator());
     } else if (p.items.isEmpty) {
-      body = ErrorRetry(message: p.error ?? t('تعذر تحميل البيانات', 'Could not load data'), onRetry: p.load);
+      body = ErrorRetry(message: p.error ?? 'admin_could_not_load_data'.tr, onRetry: p.load);
     } else {
       body = RefreshIndicator(
         onRefresh: p.load,
         child: ListView(padding: const EdgeInsets.fromLTRB(14, 12, 14, 90), children: [
           Text(
-            t('أخفِ ميزة على منصة معينة. تظهر في التطبيق كقائمة disable_list عند بدء التشغيل.',
-                'Hide a feature on a platform. The app receives it as disable_list at startup.'),
+            'admin_hide_a_feature_on_a_platform_the_app'.tr,
             style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: c.textMedium),
           ),
           const SizedBox(height: 10),
@@ -58,11 +57,11 @@ class _View extends StatelessWidget {
           backgroundColor: c.primary,
           onPressed: () async {
             final key = await askText(context,
-                title: t('مفتاح ميزة جديد', 'New feature key'), hint: 'profile.delete_account');
+                title: 'admin_new_feature_key'.tr, hint: 'profile.delete_account');
             if (key != null && key.isNotEmpty) await p.set(key, true);
           },
           icon: const Icon(Icons.add_rounded, color: Colors.white),
-          label: Text(t('إخفاء مفتاح مخصص', 'Hide custom key'), style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
+          label: Text('admin_hide_custom_key'.tr, style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
         ),
         child: body,
     );

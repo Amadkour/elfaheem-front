@@ -2,12 +2,10 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
-import '../../config/app_config.dart';
-import '../../utils/widget/app_bar.dart';
-import '../../utils/widget/base_page.dart';
 import 'admin_common.dart';
 import 'admin_list.dart';
 import 'admin_models.dart';
@@ -47,17 +45,17 @@ class _UsersView extends StatelessWidget {
       Padding(
         padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
         child: SearchBox(
-          hint: t('بحث بالاسم أو البريد أو الهاتف', 'Search name, email or phone'),
+          hint: 'admin_search_name_email_or_phone'.tr,
           onChanged: p.setSearch,
         ),
       ),
       FilterChips<String>(
         value: p.status ?? 'all',
         options: {
-          'all': t('الكل', 'All'),
-          'active': t('نشط', 'Active'),
-          'inactive': t('معطّل', 'Inactive'),
-          'pending_deletion': t('بانتظار الحذف', 'Pending deletion'),
+          'all': 'filter_all'.tr,
+          'active': 'exam_status_active'.tr,
+          'inactive': 'admin_inactive'.tr,
+          'pending_deletion': 'admin_pending_deletion'.tr,
         },
         onChanged: (v) => p.setStatus(v == 'all' ? null : v),
       ),
@@ -67,9 +65,9 @@ class _UsersView extends StatelessWidget {
           child: FilterChips<String>(
             value: p.subscribed == null ? 'any' : (p.subscribed! ? 'yes' : 'no'),
             options: {
-              'any': t('كل الاشتراكات', 'Any subscription'),
-              'yes': t('مشترك', 'Subscribed'),
-              'no': t('غير مشترك', 'Not subscribed'),
+              'any': 'admin_any_subscription'.tr,
+              'yes': 'admin_subscribed'.tr,
+              'no': 'admin_not_subscribed'.tr,
             },
             onChanged: (v) => p.setSubscribed(v == 'any' ? null : v == 'yes'),
           ),
@@ -80,8 +78,8 @@ class _UsersView extends StatelessWidget {
     final list = PagedList<AdminUsersProvider>(
       header: header,
       emptyText: isStudent
-          ? t('لا يوجد طلاب', 'No students found')
-          : t('لا يوجد معلمون', 'No teachers found'),
+          ? 'admin_no_students_found'.tr
+          : 'admin_no_teachers_found'.tr,
       itemBuilder: (ctx, row) => _UserTile(AdminUser(row), isStudent: isStudent),
     );
 
@@ -89,17 +87,23 @@ class _UsersView extends StatelessWidget {
       backgroundColor: c.primary,
       onPressed: () => _openForm(context, p),
       icon: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white),
-      label: Text(isStudent ? t('إضافة طالب', 'Add student') : t('إضافة معلم', 'Add teacher'),
+      label: Text(isStudent ? 'admin_add_student'.tr : 'admin_add_teacher'.tr,
           style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
     );
 
-    return BasePage(
-      useWebCard: true,
-      maxWith: 1100,
-      appBar:embedded?null: ScreenAppBar(title: 'students'.tr),
-
-      floatingActionButton: fab,
-      child: list,
+    return Directionality(
+      textDirection: dir,
+      child: Scaffold(
+        backgroundColor: c.background,
+        appBar: embedded
+            ? null
+            : AppBar(
+                title: Text(isStudent ? 'admin_students'.tr : 'admin_teachers'.tr,
+                    style: const TextStyle(fontFamily: 'tajawal')),
+              ),
+        floatingActionButton: fab,
+        body: list,
+      ),
     );
   }
 }
@@ -141,25 +145,25 @@ class _UserTile extends StatelessWidget {
             const SizedBox(height: 6),
             Wrap(spacing: 6, runSpacing: 4, children: [
               if (u.pendingDeletion)
-                StatusChip(t('بانتظار الحذف', 'Pending deletion'), c.danger)
+                StatusChip('admin_pending_deletion'.tr, c.danger)
               else
-                StatusChip(u.isActive ? t('نشط', 'Active') : t('معطّل', 'Inactive'),
+                StatusChip(u.isActive ? 'exam_status_active'.tr : 'admin_inactive'.tr,
                     u.isActive ? c.success : c.warning),
               if (isStudent)
                 StatusChip(
                   u.hasActiveSubscription
-                      ? t('مشترك', 'Subscribed')
+                      ? 'admin_subscribed'.tr
                       : (sub?.status == 'pending'
-                          ? t('اشتراك معلّق', 'Sub pending')
-                          : t('غير مشترك', 'No sub')),
+                          ? 'admin_sub_pending'.tr
+                          : 'admin_no_sub'.tr),
                   u.hasActiveSubscription
                       ? c.success
                       : (sub?.status == 'pending' ? c.warning : c.textLight),
                 ),
               if (isStudent)
-                StatusChip('${u.enrolledCourses.length} ${t('كورس', 'courses')}', c.primary)
+                StatusChip('${u.enrolledCourses.length} ${'roadmap_course_unit'.tr}', c.primary)
               else
-                StatusChip('${u.coursesCount} ${t('كورس', 'courses')}', c.primary),
+                StatusChip('${u.coursesCount} ${'roadmap_course_unit'.tr}', c.primary),
             ]),
           ]),
         ),
@@ -222,7 +226,7 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
       return SizedBox(
           height: 260,
           child: ErrorRetry(
-              message: t('تعذر تحميل البيانات', 'Could not load data'), onRetry: _load));
+              message: 'admin_could_not_load_data'.tr, onRetry: _load));
     }
     final u = d!.user;
     final isStudent = u.role == 'student';
@@ -235,41 +239,41 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
           shrinkWrap: true,
           children: [
             Section(
-              title: t('البيانات', 'Profile'),
+              title: 'admin_profile_2'.tr,
               child: Column(children: [
-                KeyValue(t('البريد', 'Email'), u.gmail),
-                KeyValue(t('الهاتف', 'Phone'), u.phone),
-                KeyValue(t('الدولة', 'Country'), u.country),
-                KeyValue(t('الميلاد', 'Birth date'), shortDate(u.dob)),
-                KeyValue(t('الحالة', 'Status'),
-                    u.pendingDeletion ? t('بانتظار الحذف', 'Pending deletion') : (u.isActive ? t('نشط', 'Active') : t('معطّل', 'Inactive'))),
-                KeyValue(t('تسجيل', 'Joined'), shortDate(u.createdAt)),
-                KeyValue(t('آخر دخول', 'Last login'), shortDateTime(u.lastLogin)),
-                KeyValue(t('مرات الدخول', 'Logins'), '${u.loginTimes}'),
+                KeyValue('admin_email_2'.tr, u.gmail),
+                KeyValue('admin_phone'.tr, u.phone),
+                KeyValue('country'.tr, u.country),
+                KeyValue('admin_birth_date'.tr, shortDate(u.dob)),
+                KeyValue('status'.tr,
+                    u.pendingDeletion ? 'admin_pending_deletion'.tr : (u.isActive ? 'exam_status_active'.tr : 'admin_inactive'.tr)),
+                KeyValue('admin_joined'.tr, shortDate(u.createdAt)),
+                KeyValue('admin_last_login'.tr, shortDateTime(u.lastLogin)),
+                KeyValue('admin_logins'.tr, '${u.loginTimes}'),
               ]),
             ),
             if (isStudent) ..._studentSections(context, p, u),
             if (!isStudent && d!.j['teacher_profile'] is Map)
               Section(
-                title: t('ملف المعلم', 'Teacher profile'),
+                title: 'admin_teacher_profile'.tr,
                 child: Column(children: [
-                  KeyValue(t('الخبرة', 'Experience'), '${asMap(d!.j['teacher_profile'])['experience_years']}'),
-                  KeyValue(t('نوع التدريس', 'Teaching'), asStr(asMap(d!.j['teacher_profile'])['teaching_type'])),
-                  KeyValue(t('نوع الدفع', 'Payment'), asStr(asMap(d!.j['teacher_profile'])['payment_type'])),
+                  KeyValue('admin_experience'.tr, '${asMap(d!.j['teacher_profile'])['experience_years']}'),
+                  KeyValue('admin_teaching'.tr, asStr(asMap(d!.j['teacher_profile'])['teaching_type'])),
+                  KeyValue('admin_payment'.tr, asStr(asMap(d!.j['teacher_profile'])['payment_type'])),
                 ]),
               ),
             Section(
-              title: t('التحكم', 'Controls'),
+              title: 'admin_controls'.tr,
               child: Column(children: [
                 PrimaryButton(
-                  label: u.isActive ? t('تعطيل الحساب', 'Deactivate account') : t('تفعيل الحساب', 'Activate account'),
+                  label: u.isActive ? 'admin_deactivate_account'.tr : 'admin_activate_account'.tr,
                   danger: u.isActive,
                   icon: u.isActive ? Icons.block_rounded : Icons.check_circle_rounded,
                   onPressed: () async {
                     final ok = await confirm(context,
                         message: u.isActive
-                            ? t('تعطيل هذا الحساب؟', 'Deactivate this account?')
-                            : t('تفعيل هذا الحساب؟', 'Activate this account?'),
+                            ? 'admin_deactivate_this_account'.tr
+                            : 'admin_activate_this_account'.tr,
                         danger: u.isActive);
                     if (!ok) return;
                     if (await p.setActive(u.id, !u.isActive)) await _load();
@@ -280,7 +284,7 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                   Expanded(
                     child: OutlinedButton.icon(
                       icon: const Icon(Icons.edit_rounded),
-                      label: Text(t('تعديل', 'Edit')),
+                      label: Text('btn_edit'.tr),
                       onPressed: () async {
                         await _openForm(context, p, existing: u);
                         await _load();
@@ -292,11 +296,10 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(foregroundColor: c.danger),
                       icon: const Icon(Icons.delete_outline_rounded),
-                      label: Text(t('حذف', 'Delete')),
+                      label: Text('delete'.tr),
                       onPressed: () async {
                         final ok = await confirm(context,
-                            message: t('حذف هذا المستخدم نهائياً؟ لا يمكن التراجع.',
-                                'Permanently delete this user? This cannot be undone.'),
+                            message: 'admin_permanently_delete_this_user_this'.tr,
                             danger: true);
                         if (!ok) return;
                         if (await p.remove(u.id) && context.mounted) Navigator.pop(context);
@@ -318,38 +321,38 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
 
     return [
       Section(
-        title: t('الاشتراك', 'Subscription'),
+        title: 'admin_subscription'.tr,
         trailing: TextButton.icon(
           onPressed: () async {
             await _grantDialog(context, p, u.id);
             await _load();
           },
           icon: const Icon(Icons.card_giftcard_rounded, size: 18),
-          label: Text(t('منح', 'Grant')),
+          label: Text('admin_grant'.tr),
         ),
         child: sub == null
-            ? Text(t('لا يوجد اشتراك', 'No subscription'),
+            ? Text('admin_no_subscription'.tr,
                 style: TextStyle(fontFamily: 'tajawal', color: c.textLight))
             : Column(children: [
-                KeyValue(t('الحالة', 'Status'), sub.status),
-                KeyValue(t('الخطة', 'Plan'), sub.planCode),
-                KeyValue(t('من', 'From'), shortDate(sub.startsAt)),
-                KeyValue(t('إلى', 'Until'), shortDate(sub.endsAt)),
-                KeyValue(t('المبلغ', 'Amount'), money(sub.amount, sub.currency)),
+                KeyValue('status'.tr, sub.status),
+                KeyValue('admin_plan'.tr, sub.planCode),
+                KeyValue('admin_from'.tr, shortDate(sub.startsAt)),
+                KeyValue('admin_until'.tr, shortDate(sub.endsAt)),
+                KeyValue('admin_amount'.tr, money(sub.amount, sub.currency)),
               ]),
       ),
       Section(
-        title: t('الكورسات المشترك بها', 'Subscribed courses'),
+        title: 'admin_subscribed_courses'.tr,
         trailing: TextButton.icon(
           onPressed: () async {
             await _enrollDialog(context, p, u.id);
             await _load();
           },
           icon: const Icon(Icons.add_rounded, size: 18),
-          label: Text(t('تسجيل', 'Enrol')),
+          label: Text('admin_enrol'.tr),
         ),
         child: d!.enrollments.isEmpty
-            ? Text(t('لا توجد كورسات', 'No courses'),
+            ? Text('admin_no_courses'.tr,
                 style: TextStyle(fontFamily: 'tajawal', color: c.textLight))
             : Column(children: [
                 for (final e in d!.enrollments)
@@ -367,11 +370,11 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                               : (asStr(e['status']) == 'dropped' ? c.danger : c.warning)),
                       if (asStr(e['status']) != 'dropped')
                         IconButton(
-                          tooltip: t('إلغاء التسجيل', 'Remove'),
+                          tooltip: 'admin_remove'.tr,
                           icon: Icon(Icons.remove_circle_outline_rounded, color: c.danger, size: 20),
                           onPressed: () async {
                             final ok = await confirm(context,
-                                message: t('إلغاء تسجيل الطالب من الكورس؟', 'Remove the student from this course?'),
+                                message: 'admin_remove_the_student_from_this_course'.tr,
                                 danger: true);
                             if (!ok) return;
                             if (await p.unenroll(u.id, asInt(e['course_id']))) await _load();
@@ -382,22 +385,21 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
               ]),
       ),
       Section(
-        title: t('الأجهزة', 'Devices'),
+        title: 'admin_devices'.tr,
         trailing: d!.devices.isEmpty
             ? null
             : TextButton(
                 onPressed: () async {
                   final ok = await confirm(context,
-                      message: t('إزالة كل الأجهزة وإعادة ضبط حد التبديل؟',
-                          'Remove all devices and reset the switch limit?'),
+                      message: 'admin_remove_all_devices_and_reset_the'.tr,
                       danger: true);
                   if (!ok) return;
                   if (await p.resetDevices(u.id)) await _load();
                 },
-                child: Text(t('إعادة ضبط', 'Reset all'), style: TextStyle(color: c.danger)),
+                child: Text('admin_reset_all'.tr, style: TextStyle(color: c.danger)),
               ),
         child: d!.devices.isEmpty
-            ? Text(t('لا توجد أجهزة مسجّلة', 'No registered devices'),
+            ? Text('admin_no_registered_devices'.tr,
                 style: TextStyle(fontFamily: 'tajawal', color: c.textLight))
             : Column(children: [
                 for (final dev in d!.devices)
@@ -407,7 +409,7 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                     leading: Icon(Icons.phone_android_rounded, color: c.primary),
                     title: Text(dev.deviceName, style: const TextStyle(fontFamily: 'tajawal')),
                     subtitle: Text(
-                        '${t('منذ', 'Since')} ${shortDate(dev.boundAt)}',
+                        '${'admin_since'.tr} ${shortDate(dev.boundAt)}',
                         style: const TextStyle(fontFamily: 'tajawal', fontSize: 11.5)),
                     trailing: IconButton(
                       icon: Icon(Icons.delete_outline_rounded, color: c.danger, size: 20),
@@ -417,12 +419,12 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                     ),
                   ),
                 if (d!.lastDeviceSwitchAt != null)
-                  KeyValue(t('آخر تبديل', 'Last switch'), shortDate(d!.lastDeviceSwitchAt)),
+                  KeyValue('admin_last_switch'.tr, shortDate(d!.lastDeviceSwitchAt)),
               ]),
       ),
       if (d!.payments.isNotEmpty)
         Section(
-          title: t('المدفوعات', 'Payments'),
+          title: 'payments'.tr,
           child: Column(children: [
             for (final pay in d!.payments.take(8))
               Padding(
@@ -432,7 +434,7 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                     child: Text('#${pay['id']} • ${asStr(pay['method'], '—')} • ${shortDate(asStrOrNull(pay['created_at']))}',
                         style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: c.textMedium)),
                   ),
-                  Text(money(asDouble(pay['amount'])),
+                  Text(money(asDouble(pay['price_paid'], asDouble(pay['amount']))),
                       style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700, color: c.textDark)),
                   const SizedBox(width: 8),
                   StatusChip(
@@ -457,29 +459,29 @@ Future<void> _grantDialog(BuildContext context, AdminUsersProvider p, int userId
       builder: (ctx, setS) => Directionality(
         textDirection: dir,
         child: AlertDialog(
-          title: Text(t('منح اشتراك', 'Grant subscription'), style: const TextStyle(fontFamily: 'tajawal')),
+          title: Text('admin_grant_subscription'.tr, style: const TextStyle(fontFamily: 'tajawal')),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
             ChoiceRow<String>(
-              options: {'monthly': t('شهري', 'Monthly'), 'yearly': t('سنوي', 'Yearly'), 'custom': t('أيام مخصصة', 'Custom days')},
+              options: {'monthly': 'admin_monthly'.tr, 'yearly': 'admin_yearly'.tr, 'custom': 'admin_custom_days'.tr},
               value: plan,
               onChanged: (v) => setS(() => plan = v),
             ),
             if (plan == 'custom')
-              Field(controller: daysCtrl, label: t('عدد الأيام', 'Days'), keyboard: TextInputType.number),
+              Field(controller: daysCtrl, label: 'admin_days_2'.tr, keyboard: TextInputType.number),
           ]),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t('إلغاء', 'Cancel'))),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text('exam_cancel'.tr)),
             TextButton(
               onPressed: () async {
                 final days = int.tryParse(daysCtrl.text.trim());
                 if (plan == 'custom' && (days == null || days < 1)) {
-                  toast(t('أدخل عدد أيام صحيح', 'Enter a valid number of days'), error: true);
+                  toast('admin_enter_a_valid_number_of_days'.tr, error: true);
                   return;
                 }
                 Navigator.pop(ctx);
                 await p.grant(userId, planCode: plan == 'custom' ? null : plan, days: plan == 'custom' ? days : null);
               },
-              child: Text(t('منح', 'Grant')),
+              child: Text('admin_grant'.tr),
             ),
           ],
         ),
@@ -493,7 +495,7 @@ Future<void> _enrollDialog(BuildContext context, AdminUsersProvider p, int userI
   final courses = await p.courseChoices();
   if (!context.mounted) return;
   if (courses.isEmpty) {
-    toast(t('لا توجد كورسات', 'No courses'), error: true);
+    toast('admin_no_courses'.tr, error: true);
     return;
   }
   final picked = await showDialog<AdminCourse>(
@@ -501,7 +503,7 @@ Future<void> _enrollDialog(BuildContext context, AdminUsersProvider p, int userI
     builder: (ctx) => Directionality(
       textDirection: dir,
       child: SimpleDialog(
-        title: Text(t('اختر الكورس', 'Choose a course'), style: const TextStyle(fontFamily: 'tajawal')),
+        title: Text('admin_choose_a_course'.tr, style: const TextStyle(fontFamily: 'tajawal')),
         children: [
           SizedBox(
             width: double.maxFinite,
@@ -594,8 +596,8 @@ class _UserFormState extends State<_UserForm> {
   Widget build(BuildContext context) {
     return Column(mainAxisSize: MainAxisSize.min, children: [
       SheetHeader(editing
-          ? t('تعديل المستخدم', 'Edit user')
-          : (role == 'teacher' ? t('إضافة معلم', 'Add teacher') : t('إضافة طالب', 'Add student'))),
+          ? 'admin_edit_user'.tr
+          : (role == 'teacher' ? 'admin_add_teacher'.tr : 'admin_add_student'.tr)),
       Flexible(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
@@ -604,33 +606,33 @@ class _UserFormState extends State<_UserForm> {
             child: Column(children: [
               Field(
                 controller: _name,
-                label: t('الاسم', 'Name'),
-                validator: (v) => (v == null || v.trim().length < 2) ? t('الاسم مطلوب', 'Name is required') : null,
+                label: 'name_label'.tr,
+                validator: (v) => (v == null || v.trim().length < 2) ? 'admin_name_is_required'.tr : null,
               ),
               Field(
                 controller: _email,
-                label: t('البريد الإلكتروني', 'Email'),
+                label: 'admin_email'.tr,
                 keyboard: TextInputType.emailAddress,
                 ltr: true,
                 enabled: !editing,
                 validator: (v) => (v == null || !v.contains('@') || !v.contains('.'))
-                    ? t('بريد غير صحيح', 'Invalid email')
+                    ? 'admin_invalid_email'.tr
                     : null,
               ),
-              Field(controller: _phone, label: t('الهاتف', 'Phone'), keyboard: TextInputType.phone, ltr: true),
-              Field(controller: _country, label: t('الدولة (كود)', 'Country code'), ltr: true),
+              Field(controller: _phone, label: 'admin_phone'.tr, keyboard: TextInputType.phone, ltr: true),
+              Field(controller: _country, label: 'admin_country_code'.tr, ltr: true),
               if (!editing && role == 'teacher')
-                Field(controller: _years, label: t('سنوات الخبرة', 'Experience years'), keyboard: TextInputType.number),
+                Field(controller: _years, label: 'admin_experience_years'.tr, keyboard: TextInputType.number),
               Field(
                 controller: _password,
-                label: editing ? t('كلمة مرور جديدة (اختياري)', 'New password (optional)') : t('كلمة المرور', 'Password'),
+                label: editing ? 'admin_new_password_optional'.tr : 'password'.tr,
                 obscure: true,
                 validator: (v) {
                   if (editing && (v == null || v.isEmpty)) return null;
-                  return (v == null || v.length < 6) ? t('6 أحرف على الأقل', 'At least 6 characters') : null;
+                  return (v == null || v.length < 6) ? 'admin_at_least_6_characters'.tr : null;
                 },
               ),
-              PrimaryButton(label: t('حفظ', 'Save'), busy: busy, onPressed: _submit),
+              PrimaryButton(label: 'save'.tr, busy: busy, onPressed: _submit),
             ]),
           ),
         ),

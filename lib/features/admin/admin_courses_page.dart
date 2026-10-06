@@ -3,6 +3,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -34,14 +35,14 @@ class _CoursesView extends StatelessWidget {
     final header = Column(children: [
       Padding(
         padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
-        child: SearchBox(hint: t('بحث باسم الكورس', 'Search course name'), onChanged: p.setSearch),
+        child: SearchBox(hint: 'admin_search_course_name'.tr, onChanged: p.setSearch),
       ),
       FilterChips<String>(
         value: p.published == null ? 'all' : (p.published! ? 'pub' : 'draft'),
         options: {
-          'all': t('الكل', 'All'),
-          'pub': t('منشور', 'Published'),
-          'draft': t('مسودة', 'Draft'),
+          'all': 'filter_all'.tr,
+          'pub': 'published'.tr,
+          'draft': 'status_draft'.tr,
         },
         onChanged: (v) => p.setPublished(v == 'all' ? null : v == 'pub'),
       ),
@@ -49,9 +50,9 @@ class _CoursesView extends StatelessWidget {
       FilterChips<String>(
         value: p.status ?? 'any',
         options: {
-          'any': t('كل الحالات', 'Any status'),
-          'in_progress': t('جارٍ', 'In progress'),
-          'completed': t('مكتمل', 'Completed'),
+          'any': 'admin_any_status'.tr,
+          'in_progress': 'admin_in_progress'.tr,
+          'completed': 'completed'.tr,
         },
         onChanged: (v) => p.setStatus(v == 'any' ? null : v),
       ),
@@ -65,7 +66,7 @@ class _CoursesView extends StatelessWidget {
             Icon(Icons.payments_rounded, color: c.primary),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(t('إجمالي دخل الكورسات', 'Total course income'),
+              child: Text('admin_total_course_income_after_discounts'.tr,
                   style: TextStyle(fontFamily: 'tajawal', color: c.textMedium)),
             ),
             Text(money(p.totalIncome),
@@ -79,16 +80,16 @@ class _CoursesView extends StatelessWidget {
       textDirection: dir,
       child: Scaffold(
         backgroundColor: c.background,
-        appBar: embedded ? null : AppBar(title: Text(t('الكورسات', 'Courses'), style: const TextStyle(fontFamily: 'tajawal'))),
+        appBar: embedded ? null : AppBar(title: Text('courses'.tr, style: const TextStyle(fontFamily: 'tajawal'))),
         floatingActionButton: FloatingActionButton.extended(
           backgroundColor: c.primary,
           onPressed: () => _openCourseForm(context, p),
           icon: const Icon(Icons.add_rounded, color: Colors.white),
-          label: Text(t('إضافة كورس', 'Add course'), style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
+          label: Text('admin_add_course'.tr, style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
         ),
         body: PagedList<AdminCoursesProvider>(
           header: header,
-          emptyText: t('لا توجد كورسات', 'No courses found'),
+          emptyText: 'admin_no_courses_found'.tr,
           itemBuilder: (ctx, row) => _CourseTile(AdminCourse(row)),
         ),
       ),
@@ -116,23 +117,25 @@ class _CourseTile extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 15, color: c.textDark)),
           ),
-          StatusChip(course.isPublished ? t('منشور', 'Published') : t('مسودة', 'Draft'),
+          StatusChip(course.isPublished ? 'published'.tr : 'status_draft'.tr,
               course.isPublished ? c.success : c.warning),
         ]),
         const SizedBox(height: 2),
         Text(course.teacherName, style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight)),
         const SizedBox(height: 10),
         Row(children: [
-          _Stat(Icons.group_rounded, '${course.studentsCount}', t('طالب', 'students')),
-          _Stat(Icons.account_balance_wallet_rounded, money(course.income, course.currency), t('الدخل', 'income')),
-          _Stat(Icons.sell_rounded, money(course.fees, course.currency), t('السعر', 'price')),
+          _Stat(Icons.group_rounded, '${course.studentsCount}', 'students'.tr),
+          _Stat(Icons.account_balance_wallet_rounded, money(course.income, course.currency), 'admin_income'.tr),
+          _Stat(Icons.sell_rounded, money(course.finalPrice, course.currency), 'admin_price'.tr),
         ]),
         const SizedBox(height: 8),
         Wrap(spacing: 6, runSpacing: 4, children: [
-          StatusChip(course.status == 'completed' ? t('مكتمل', 'Completed') : t('جارٍ', 'In progress'), c.primary),
-          StatusChip(ps.provider ?? t('البوابة الافتراضية', 'Default gateway'), c.charcoal),
+          if (course.discountActive)
+            StatusChip('${'admin_discount'.tr} ${course.discountPercentage.toStringAsFixed(0)}%', c.danger),
+          StatusChip(course.status == 'completed' ? 'completed'.tr : 'admin_in_progress'.tr, c.primary),
+          StatusChip(ps.provider ?? 'admin_default_gateway'.tr, c.charcoal),
           if (course.pendingPayments > 0)
-            StatusChip('${course.pendingPayments} ${t('دفعة معلّقة', 'pending')}', c.warning),
+            StatusChip('${course.pendingPayments} ${'admin_pending'.tr}', c.warning),
         ]),
       ]),
     );
@@ -232,12 +235,12 @@ class _CourseDetailState extends State<_CourseDetail> {
     if (feeText.isNotEmpty) {
       fee = double.tryParse(feeText);
       if (fee == null || fee < 0 || fee > 100) {
-        toast(t('النسبة يجب أن تكون بين 0 و 100', 'Fee must be between 0 and 100'), error: true);
+        toast('admin_fee_must_be_between_0_and_100'.tr, error: true);
         return;
       }
     }
     if (restrictMethods && methods.isEmpty) {
-      toast(t('اختر طريقة دفع واحدة على الأقل', 'Pick at least one payment method'), error: true);
+      toast('admin_pick_at_least_one_payment_method'.tr, error: true);
       return;
     }
     setState(() => saving = true);
@@ -259,7 +262,7 @@ class _CourseDetailState extends State<_CourseDetail> {
     if (loading) return const SizedBox(height: 260, child: Center(child: CircularProgressIndicator()));
     final co = course;
     if (co == null) {
-      return SizedBox(height: 260, child: ErrorRetry(message: t('تعذر تحميل البيانات', 'Could not load data'), onRetry: _load));
+      return SizedBox(height: 260, child: ErrorRetry(message: 'admin_could_not_load_data'.tr, onRetry: _load));
     }
 
     return Column(mainAxisSize: MainAxisSize.min, children: [
@@ -270,23 +273,27 @@ class _CourseDetailState extends State<_CourseDetail> {
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
           children: [
             Section(
-              title: t('نظرة عامة', 'Overview'),
+              title: 'admin_overview'.tr,
               child: Column(children: [
-                KeyValue(t('المعلم', 'Teacher'), co.teacherName),
-                KeyValue(t('السعر', 'Price'), money(co.fees, co.currency)),
-                KeyValue(t('الطلاب', 'Students'), '${co.studentsCount}'),
-                KeyValue(t('مدفوعات ناجحة', 'Paid'), '${co.paidCount}'),
-                KeyValue(t('الدخل', 'Income'), money(co.income, co.currency)),
-                KeyValue(t('نسبة المنصة الفعلية', 'Effective platform fee'), '${co.paymentSettings.effectiveFeePercent}%'),
+                KeyValue('admin_teacher'.tr, co.teacherName),
+                KeyValue('admin_list_price'.tr, money(co.listPrice, co.currency)),
+                if (co.discountActive)
+                  KeyValue('admin_price_after_discount'.tr,
+                      '${money(co.finalPrice, co.currency)}  (-${co.discountPercentage.toStringAsFixed(0)}%)'),
+                KeyValue('admin_students'.tr, '${co.studentsCount}'),
+                KeyValue('admin_paid'.tr, '${co.paidCount}'),
+                KeyValue('admin_income_after_discount'.tr, money(co.income, co.currency)),
+                KeyValue('admin_collected_from_students_incl_fees'.tr, money(co.collected, co.currency)),
+                KeyValue('admin_effective_platform_fee'.tr, '${co.paymentSettings.effectiveFeePercent}%'),
               ]),
             ),
             Section(
-              title: t('إعدادات الدفع', 'Payment settings'),
+              title: 'admin_payment_settings'.tr,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 ChoiceRow<String?>(
-                  label: t('بوابة الدفع بالبطاقة', 'Card gateway'),
+                  label: 'admin_card_gateway'.tr,
                   options: {
-                    null: t('الافتراضية', 'System default'),
+                    null: 'admin_system_default'.tr,
                     'moyasar': 'Moyasar',
                     'paymob': 'Paymob',
                   },
@@ -295,7 +302,7 @@ class _CourseDetailState extends State<_CourseDetail> {
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: Text(t('تحديد طرق الدفع المتاحة', 'Restrict payment methods'),
+                  title: Text('admin_restrict_payment_methods'.tr,
                       style: const TextStyle(fontFamily: 'tajawal', fontSize: 14)),
                   value: restrictMethods,
                   activeTrackColor: c.primary,
@@ -303,9 +310,9 @@ class _CourseDetailState extends State<_CourseDetail> {
                 ),
                 if (restrictMethods)
                   Wrap(spacing: 8, children: [
-                    for (final m in const {
+                    for (final m in {
                       'card': 'Moyasar / Paymob',
-                      'bank_transfer': 'تحويل بنكي',
+                      'bank_transfer': 'admin_bank_transfer'.tr,
                       'instapay': 'InstaPay',
                     }.entries)
                       FilterChip(
@@ -318,20 +325,20 @@ class _CourseDetailState extends State<_CourseDetail> {
                 const SizedBox(height: 12),
                 Field(
                   controller: _fee,
-                  label: t('نسبة المنصة % (فارغ = الافتراضي)', 'Platform fee % (empty = default)'),
+                  label: 'admin_platform_fee_empty_default'.tr,
                   keyboard: const TextInputType.numberWithOptions(decimal: true),
                 ),
                 Text(
-                  t('InstaPay يظهر فقط للكورسات بعملة الجنيه المصري.', 'InstaPay is only shown for EGP courses.'),
+                  'admin_instapay_is_only_shown_for_egp_courses'.tr,
                   style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: c.textLight),
                 ),
                 const SizedBox(height: 10),
-                PrimaryButton(label: t('حفظ إعدادات الدفع', 'Save payment settings'), busy: saving, onPressed: _savePayment),
+                PrimaryButton(label: 'admin_save_payment_settings'.tr, busy: saving, onPressed: _savePayment),
               ]),
             ),
             if (co.recentPayments.isNotEmpty)
               Section(
-                title: t('آخر المدفوعات', 'Recent payments'),
+                title: 'admin_recent_payments'.tr,
                 child: Column(children: [
                   for (final pay in co.recentPayments.take(8))
                     Padding(
@@ -341,7 +348,7 @@ class _CourseDetailState extends State<_CourseDetail> {
                           child: Text('#${pay['id']} • ${asStr(pay['method'], '—')} • ${shortDate(asStrOrNull(pay['created_at']))}',
                               style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: c.textMedium)),
                         ),
-                        Text(money(asDouble(pay['amount'])),
+                        Text(money(asDouble(pay['price_paid'], asDouble(pay['amount']))),
                             style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700, color: c.textDark)),
                         const SizedBox(width: 8),
                         StatusChip(
@@ -354,13 +361,13 @@ class _CourseDetailState extends State<_CourseDetail> {
                 ]),
               ),
             Section(
-              title: t('التحكم', 'Controls'),
+              title: 'admin_controls'.tr,
               child: Column(children: [
                 Row(children: [
                   Expanded(
                     child: OutlinedButton.icon(
                       icon: Icon(co.isPublished ? Icons.visibility_off_rounded : Icons.visibility_rounded),
-                      label: Text(co.isPublished ? t('إخفاء', 'Unpublish') : t('نشر', 'Publish')),
+                      label: Text(co.isPublished ? 'admin_unpublish'.tr : 'publish_exam'.tr),
                       onPressed: () async {
                         if (await p.update(co.id, {'is_published': !co.isPublished})) await _load();
                       },
@@ -370,7 +377,7 @@ class _CourseDetailState extends State<_CourseDetail> {
                   Expanded(
                     child: OutlinedButton.icon(
                       icon: const Icon(Icons.edit_rounded),
-                      label: Text(t('تعديل', 'Edit')),
+                      label: Text('btn_edit'.tr),
                       onPressed: () async {
                         await _openCourseForm(context, p, existing: co);
                         await _load();
@@ -383,7 +390,7 @@ class _CourseDetailState extends State<_CourseDetail> {
                   Expanded(
                     child: OutlinedButton.icon(
                       icon: Icon(co.status == 'completed' ? Icons.replay_rounded : Icons.flag_rounded),
-                      label: Text(co.status == 'completed' ? t('إعادة فتح', 'Reopen') : t('تحديد كمكتمل', 'Mark completed')),
+                      label: Text(co.status == 'completed' ? 'admin_reopen'.tr : 'admin_mark_completed'.tr),
                       onPressed: () async {
                         final next = co.status == 'completed' ? 'in_progress' : 'completed';
                         if (await p.update(co.id, {'status': next})) await _load();
@@ -395,11 +402,10 @@ class _CourseDetailState extends State<_CourseDetail> {
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(foregroundColor: c.danger),
                       icon: const Icon(Icons.delete_outline_rounded),
-                      label: Text(t('حذف', 'Delete')),
+                      label: Text('delete'.tr),
                       onPressed: () async {
                         final ok = await confirm(context,
-                            message: t('حذف الكورس نهائياً؟ سيُحذف كل محتواه إن وُجد طلاب مسجلون.',
-                                'Delete this course permanently? All content is removed.'),
+                            message: 'admin_delete_this_course_permanently_all'.tr,
                             danger: true);
                         if (!ok) return;
                         if (await p.remove(co.id, force: true) && context.mounted) Navigator.pop(context);
@@ -484,7 +490,7 @@ class _CourseFormState extends State<_CourseForm> {
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
     if (teacherId == null) {
-      toast(t('اختر المعلم', 'Choose a teacher'), error: true);
+      toast('admin_choose_a_teacher'.tr, error: true);
       return;
     }
     setState(() => busy = true);
@@ -513,7 +519,7 @@ class _CourseFormState extends State<_CourseForm> {
       builder: (ctx) => Directionality(
         textDirection: dir,
         child: SimpleDialog(
-          title: Text(t('اختر المعلم', 'Choose teacher'), style: const TextStyle(fontFamily: 'tajawal')),
+          title: Text('admin_choose_teacher'.tr, style: const TextStyle(fontFamily: 'tajawal')),
           children: [
             SizedBox(
               width: double.maxFinite,
@@ -541,7 +547,7 @@ class _CourseFormState extends State<_CourseForm> {
         (editing ? widget.existing!.teacherName : null);
 
     return Column(mainAxisSize: MainAxisSize.min, children: [
-      SheetHeader(editing ? t('تعديل الكورس', 'Edit course') : t('إضافة كورس', 'Add course')),
+      SheetHeader(editing ? 'admin_edit_course'.tr : 'admin_add_course'.tr),
       Flexible(
         child: !ready
             ? const SizedBox(height: 200, child: Center(child: CircularProgressIndicator()))
@@ -552,36 +558,36 @@ class _CourseFormState extends State<_CourseForm> {
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Field(
                       controller: _name,
-                      label: t('اسم الكورس', 'Course name'),
-                      validator: (v) => (v == null || v.trim().length < 2) ? t('الاسم مطلوب', 'Name is required') : null,
+                      label: 'admin_course_name'.tr,
+                      validator: (v) => (v == null || v.trim().length < 2) ? 'admin_name_is_required'.tr : null,
                     ),
-                    Field(controller: _desc, label: t('الوصف', 'Description'), maxLines: 3),
+                    Field(controller: _desc, label: 'description'.tr, maxLines: 3),
                     Row(children: [
                       Expanded(
                         child: Field(
                           controller: _fees,
-                          label: t('السعر', 'Price'),
+                          label: 'price_label'.tr,
                           keyboard: const TextInputType.numberWithOptions(decimal: true),
                           validator: (v) {
                             final n = double.tryParse((v ?? '').trim());
-                            return (n == null || n < 0) ? t('سعر غير صحيح', 'Invalid price') : null;
+                            return (n == null || n < 0) ? 'admin_invalid_price'.tr : null;
                           },
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: Field(controller: _max, label: t('الحد الأقصى للطلاب', 'Max students'), keyboard: TextInputType.number),
+                        child: Field(controller: _max, label: 'admin_max_students'.tr, keyboard: TextInputType.number),
                       ),
                     ]),
                     ChoiceRow<String>(
-                      label: t('العملة', 'Currency'),
+                      label: 'currency_label'.tr,
                       options: const {'EGP': 'EGP', 'SAR': 'SAR', 'USD': 'USD'},
                       value: currency,
                       onChanged: (v) => setState(() => currency = v),
                     ),
                     ChoiceRow<String>(
-                      label: t('النوع', 'Type'),
-                      options: {'recorded': t('مسجّل', 'Recorded'), 'live': t('مباشر', 'Live')},
+                      label: 'admin_type'.tr,
+                      options: {'recorded': 'session_type_recorded'.tr, 'live': 'session_type_live'.tr},
                       value: type,
                       onChanged: (v) => setState(() => type = v),
                     ),
@@ -590,25 +596,25 @@ class _CourseFormState extends State<_CourseForm> {
                       child: OutlinedButton.icon(
                         onPressed: _pickTeacher,
                         icon: const Icon(Icons.school_rounded),
-                        label: Text(teacherName ?? t('اختر المعلم', 'Choose teacher')),
+                        label: Text(teacherName ?? 'admin_choose_teacher'.tr),
                       ),
                     ),
                     if (categories.isNotEmpty)
                       ChoiceRow<int?>(
-                        label: t('التصنيف', 'Category'),
-                        options: {null: t('بدون', 'None'), for (final cat in categories) cat.id: cat.display},
+                        label: 'category_label'.tr,
+                        options: {null: 'admin_none'.tr, for (final cat in categories) cat.id: cat.display},
                         value: categoryId,
                         onChanged: (v) => setState(() => categoryId = v),
                       ),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: Text(t('منشور', 'Published'), style: const TextStyle(fontFamily: 'tajawal')),
+                      title: Text('published'.tr, style: const TextStyle(fontFamily: 'tajawal')),
                       value: published,
                       activeTrackColor: c.primary,
                       onChanged: (v) => setState(() => published = v),
                     ),
                     const SizedBox(height: 8),
-                    PrimaryButton(label: t('حفظ', 'Save'), busy: busy, onPressed: _submit),
+                    PrimaryButton(label: 'save'.tr, busy: busy, onPressed: _submit),
                   ]),
                 ),
               ),
