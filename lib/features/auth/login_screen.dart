@@ -29,13 +29,13 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    if (AppConfig.testMode) {
-      _emailController.text = 'super@c.c';
-      _passwordController.text = 'Aa@@aA2291996';
-    } else {
+    // if (AppConfig.testMode) {
+    //   _emailController.text = 'super@c.c';
+    //   _passwordController.text = 'Aa@@aA2291996';
+    // } else {
       _emailController.clear();
       _passwordController.clear();
-    }
+    // }
   }
 
   @override
