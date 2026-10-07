@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
 import '../../../analysis/exam/student_course_exams_widget.dart'
     show openStudentExam;
@@ -82,7 +83,7 @@ class SessionsTab extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 14),
-              Text('لا توجد دروس بعد', style: context.colors.body),
+              Text('sessions_empty'.tr, style: context.colors.body),
             ],
           ),
         ),
@@ -94,12 +95,14 @@ class SessionsTab extends StatelessWidget {
         // Progress summary banner
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
-          child: SessionProgressSection(
-            totalMaterial: provider.course.materialsTotal,
-            completeMaterial: provider.course.materialsCompleted,
-            isTeacher: false,
-            isFull: true,
-          ),
+          child: ParentComponent(
+              featureKey: 'sessions.progress',
+              child: SessionProgressSection(
+                totalMaterial: provider.course.materialsTotal,
+                completeMaterial: provider.course.materialsCompleted,
+                isTeacher: false,
+                isFull: true,
+              )),
         ),
         ListView.builder(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -113,21 +116,25 @@ class SessionsTab extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 10),
               child: Column(
                 children: [
-                  SessionMaterialCard(
-                    session: session.toTeacher,
-                    course: provider.course.toTeacherModel,
-                    sessionNumber: i+1,
-                    isTeacher: false,
-                    locked: !provider.isSessionUnlockedById(session.id),
-                  ),
+                  ParentComponent(
+                      featureKey: 'sessions.card',
+                      child: SessionMaterialCard(
+                        session: session.toTeacher,
+                        course: provider.course.toTeacherModel,
+                        sessionNumber: i+1,
+                        isTeacher: false,
+                        locked: !provider.isSessionUnlockedById(session.id),
+                      )),
                   // The exam the teacher attached to this session: passing it
                   // is what unlocks the sessions that come after it.
                   if (gate != null && !gate.isEmpty)
-                    _SessionExamBanner(
-                      gate: gate,
-                      enrolled: provider.course.isEnrolled,
-                      onOpenExam: (examId) => _openExam(context, examId),
-                    ),
+                    ParentComponent(
+                        featureKey: 'sessions.exam_banner',
+                        child: _SessionExamBanner(
+                          gate: gate,
+                          enrolled: provider.course.isEnrolled,
+                          onOpenExam: (examId) => _openExam(context, examId),
+                        )),
                 ],
               ),
             );

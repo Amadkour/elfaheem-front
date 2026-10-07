@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
 import 'package:provider/provider.dart';
@@ -37,27 +38,33 @@ class _FavouriteCoursesScreenState extends State<FavouriteCoursesScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<ProfileProvider>();
     return BasePage(
+      key: const ValueKey('favorites'),
       useWebCard: true,
       appBar: ScreenAppBar(title: 'my_favorite'.tr),
       child: Column(children: [
-        MySearchBar(
-          controller: _search,
-          hint: 'search_course_by_name_description',
-          onChanged: context.read<ProfileProvider>().setQuery,
+        ParentComponent(
+          featureKey: 'favorites.search',
+          child: MySearchBar(
+            controller: _search,
+            hint: 'search_course_by_name_description',
+            onChanged: context.read<ProfileProvider>().setQuery,
+          ),
         ),
         Expanded(
-            child: HomeCourseList(
-          hasMore: false,
-          pageName: 'favorite',
-          courses: provider.favourites,
-          onTap: (CourseModel c) {
-            Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => CourseDetailScreen(course: c)));
-          },
-          isTeacher: false,
-        ))
+            child: ParentComponent(
+                featureKey: 'favorites.list',
+                child: HomeCourseList(
+                  hasMore: false,
+                  pageName: 'favorite',
+                  courses: provider.favourites,
+                  onTap: (CourseModel c) {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => CourseDetailScreen(course: c)));
+                  },
+                  isTeacher: false,
+                )))
       ]),
     );
   }

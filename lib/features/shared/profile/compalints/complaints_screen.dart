@@ -5,15 +5,13 @@
 library;
 
 import 'dart:developer';
-
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../config/app_config.dart';
-import '../../../../config/theme/app_theme.dart';
 import '../../../../config/theme/theme_config_provider.dart';
-import '../../../../utils/helpers.dart';
 import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/base_page.dart';
 import '../../../auth/auth_provider.dart';
@@ -68,14 +66,13 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
     final p = context.watch<ComplaintProvider>();
     final auth = context.watch<AuthProvider>();
     log(' persona is ${auth.isStudent}');
-    return BasePage(
-      useWebCard: true,
+    return BasePage(key: const ValueKey('complaints'), useWebCard: true,
       child: SafeArea(
         child: Column(
           children: [
             ScreenAppBar(title: 'complaints_and_support'.tr),
-            _StatsBanner(stats: p.stats),
-            _FilterRow(provider: p, searchCtrl: _searchCtrl),
+            ParentComponent(featureKey: 'complaints.stats', child: _StatsBanner(stats: p.stats)),
+            ParentComponent(featureKey: 'complaints.filters', child: _FilterRow(provider: p, searchCtrl: _searchCtrl)),
             Expanded(
               child: p.isLoadingList && p.complaints.isEmpty
                   ? const Center(child: AppLoadingIndicator())
@@ -621,11 +618,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     final auth = context.read<AuthProvider>();
     final complaint = p.selected;
     log(' persona is===========> ${auth.isStudent}');
-    return Directionality(
-      textDirection: Helpers.pageDirection,
-      child: Scaffold(
-        backgroundColor: c.background,
-        body: SafeArea(
+    return BasePage(child: SafeArea(
           child: Column(
             children: [
               ScreenAppBar(title: 'complaint_details_title'.tr),
@@ -642,14 +635,14 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                       children: [
                         // ── Info card ──────────────────────────────────────────
-                        _InfoCard(
+                        ParentComponent(featureKey: 'complaint_detail.info', child: _InfoCard(
                           complaint: complaint,
                           isAdmin: !auth.isStudent,
                           provider: p,
-                        ),
+                        )),
                         const SizedBox(height: 16),
                         // ── Replies ────────────────────────────────────────────
-                        if (complaint.replies.isNotEmpty) ...[
+                        if (complaint.replies.isNotEmpty) ParentComponent(featureKey: 'complaint_detail.replies', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                           Padding(
                             padding: const EdgeInsets.only(bottom: 10),
                             child: Text('replies_label'.tr, style: c.h3),
@@ -661,13 +654,13 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                        ],
+                        ])),
                       ],
                     ),
                   ),
                   // ── Reply input ──────────────────────────────────────────────
                   if (complaint.status != ComplaintStatus.closed)
-                    _ReplyInput(
+                    ParentComponent(featureKey: 'complaint_detail.reply_input', child: _ReplyInput(
                       controller: _replyCtrl,
                       isSending: p.isSending,
                       pendingAttachments: p.pendingReplyAttachments,
@@ -676,13 +669,12 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                       onPickCamera: () => p.pickReplyImageFromCamera(),
                       onPickFile: () => p.pickReplyFile(),
                       onRemoveImage: (i) => p.removeReplyImage(i),
-                    ),
+                    )),
                 ],
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 }
 

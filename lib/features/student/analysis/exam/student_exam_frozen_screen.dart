@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -67,6 +68,7 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
   @override
   Widget build(BuildContext context) {
     return BasePage(
+      key: const ValueKey('exam_frozen'),
       useWebCard: true,
       appBar: AppBar(
         backgroundColor: _accent,
@@ -163,34 +165,36 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
           // ── Score summary if submitted ───────────────────────────────────
           if (_hasScore) ...[
             const SizedBox(height: 12),
-            _ScoreSummaryCard(exam: e, accent: _accent),
+            ParentComponent(featureKey: 'exam_frozen.score', child: _ScoreSummaryCard(exam: e, accent: _accent)),
           ],
 
           // ── Exam meta ────────────────────────────────────────────────────
           const SizedBox(height: 12),
-          _InfoCard(children: [
-            if (e.duration != null)
-              _InfoRow(
-                icon: Icons.timer_outlined,
-                label: tx('exam_exam_duration'),
-                value: tx('exam_n_minutes', {'n': e.duration}),
-                color: Colors.teal,
-              ),
-            if (e.questionCount > 0)
-              _InfoRow(
-                icon: Icons.help_outline_rounded,
-                label: tx('exam_question_count'),
-                value: '${e.questionCount}',
-                color: context.colors.primary,
-              ),
-            if (e.passingScore != null)
-              _InfoRow(
-                icon: Icons.star_outline_rounded,
-                label: tx('exam_passing_score'),
-                value: '${e.passingScore!.toInt()}%',
-                color: Colors.amber.shade700,
-              ),
-          ]),
+          ParentComponent(
+              featureKey: 'exam_frozen.meta',
+              child: _InfoCard(children: [
+                if (e.duration != null)
+                  _InfoRow(
+                    icon: Icons.timer_outlined,
+                    label: tx('exam_exam_duration'),
+                    value: tx('exam_n_minutes', {'n': e.duration}),
+                    color: Colors.teal,
+                  ),
+                if (e.questionCount > 0)
+                  _InfoRow(
+                    icon: Icons.help_outline_rounded,
+                    label: tx('exam_question_count'),
+                    value: '${e.questionCount}',
+                    color: context.colors.primary,
+                  ),
+                if (e.passingScore != null)
+                  _InfoRow(
+                    icon: Icons.star_outline_rounded,
+                    label: tx('exam_passing_score'),
+                    value: '${e.passingScore!.toInt()}%',
+                    color: Colors.amber.shade700,
+                  ),
+              ])),
 
           const SizedBox(height: 28),
 

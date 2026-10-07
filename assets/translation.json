@@ -6572,5 +6572,481 @@
   "admin_paymob_auto": {
     "en": "Paymob (automatic)",
     "ar": "باي موب (تلقائي)"
+  },
+  "favorites": {
+    "en": "My favorites",
+    "ar": "المفضلة"
+  },
+  "sub_choose_plan": {
+    "en": "Choose a plan",
+    "ar": "اختر خطة"
+  },
+  "sub_enter_sender": {
+    "en": "Enter the sender name",
+    "ar": "أدخل اسم المرسل"
+  },
+  "sub_attach_receipt_error": {
+    "en": "Attach the receipt image",
+    "ar": "أرفق صورة الإيصال"
+  },
+  "sub_activated_toast": {
+    "en": "Your subscription is active",
+    "ar": "تم تفعيل اشتراكك"
+  },
+  "sub_request_sent": {
+    "en": "Request sent for review",
+    "ar": "تم إرسال طلبك للمراجعة"
+  },
+  "sub_active_title": {
+    "en": "Your subscription is active",
+    "ar": "اشتراكك فعّال"
+  },
+  "sub_ends_on": {
+    "en": "Ends on",
+    "ar": "ينتهي في"
+  },
+  "sub_continue": {
+    "en": "Continue",
+    "ar": "متابعة"
+  },
+  "sub_under_review": {
+    "en": "Your request is under review",
+    "ar": "طلبك قيد المراجعة"
+  },
+  "sub_review_subtitle": {
+    "en": "It will be activated once an admin approves it.",
+    "ar": "سيتم تفعيل الاشتراك بعد موافقة الإدارة."
+  },
+  "sub_refresh_status": {
+    "en": "Refresh status",
+    "ar": "تحديث الحالة"
+  },
+  "sub_app_free": {
+    "en": "The app is currently free",
+    "ar": "التطبيق مجاني حالياً"
+  },
+  "sub_no_subscription_needed": {
+    "en": "No subscription needed.",
+    "ar": "لا حاجة لاشتراك."
+  },
+  "sub_subscribe_to_continue": {
+    "en": "Subscribe to continue",
+    "ar": "اشترك للمتابعة"
+  },
+  "sub_prev_rejected": {
+    "en": "Your previous request was rejected",
+    "ar": "تم رفض طلبك السابق"
+  },
+  "sub_days": {
+    "en": "days",
+    "ar": "يوم"
+  },
+  "sub_free": {
+    "en": "Free",
+    "ar": "مجاني"
+  },
+  "sub_no_payment_methods": {
+    "en": "No payment method is available right now. Contact support.",
+    "ar": "طرق الدفع غير متاحة حالياً. تواصل مع الإدارة."
+  },
+  "sub_payment_method": {
+    "en": "Payment method",
+    "ar": "طريقة الدفع"
+  },
+  "sub_bank_transfer": {
+    "en": "Bank transfer",
+    "ar": "تحويل بنكي"
+  },
+  "sub_transfer_to": {
+    "en": "Transfer the amount to",
+    "ar": "حوّل المبلغ إلى"
+  },
+  "sub_bank": {
+    "en": "Bank",
+    "ar": "البنك"
+  },
+  "sub_account": {
+    "en": "Account",
+    "ar": "اسم الحساب"
+  },
+  "sub_notes": {
+    "en": "Notes",
+    "ar": "تعليمات"
+  },
+  "sub_amount": {
+    "en": "Amount",
+    "ar": "المبلغ"
+  },
+  "sub_sender_name": {
+    "en": "Sender name",
+    "ar": "اسم المرسل"
+  },
+  "sub_sender_phone": {
+    "en": "Sender phone (optional)",
+    "ar": "رقم المرسل (اختياري)"
+  },
+  "sub_reference": {
+    "en": "Transfer reference (optional)",
+    "ar": "رقم العملية (اختياري)"
+  },
+  "sub_attach_receipt": {
+    "en": "Attach receipt image",
+    "ar": "إرفاق صورة الإيصال"
+  },
+  "sub_activate_free": {
+    "en": "Activate for free",
+    "ar": "تفعيل مجاناً"
+  },
+  "sub_send_request": {
+    "en": "Send request",
+    "ar": "إرسال الطلب"
+  },
+  "sub_logout": {
+    "en": "Log out",
+    "ar": "تسجيل الخروج"
+  },
+  "sub_title": {
+    "en": "Subscription",
+    "ar": "الاشتراك"
+  },
+  "upload_done": {
+    "en": "Done",
+    "ar": "تم الرفع"
+  },
+  "upload_failed": {
+    "en": "Upload failed",
+    "ar": "فشل الرفع"
+  },
+  "upload_cancelled": {
+    "en": "Cancelled",
+    "ar": "أُلغي الرفع"
+  },
+  "an_title": {
+    "en": "My exams and attendance",
+    "ar": "اختباراتي وحضوري"
+  },
+  "an_subtitle": {
+    "en": "Choose a course to view your attendance and results",
+    "ar": "اختر كورساً لعرض سجل حضورك ونتائجك"
+  },
+  "an_go_enroll": {
+    "en": "Go to \"My courses\" to enroll",
+    "ar": "اذهب إلى \"كورساتي\" للتسجيل"
+  },
+  "an_search_hint": {
+    "en": "Search for a course...",
+    "ar": "ابحث عن كورس..."
+  },
+  "an_no_courses": {
+    "en": "You haven't enrolled in any course yet",
+    "ar": "لم تسجّل في أي كورس بعد"
+  },
+  "an_no_results": {
+    "en": "No search results",
+    "ar": "لا توجد نتائج للبحث"
+  },
+  "an_completed": {
+    "en": "completed",
+    "ar": "مكتمل"
+  },
+  "an_attendance": {
+    "en": "Attendance",
+    "ar": "الحضور"
+  },
+  "an_exams": {
+    "en": "Exams",
+    "ar": "الاختبارات"
+  },
+  "an_lectures": {
+    "en": "lectures",
+    "ar": "محاضرة"
+  },
+  "att_title": {
+    "en": "Attendance record",
+    "ar": "سجل الحضور"
+  },
+  "att_check_in_time": {
+    "en": "Check-in time",
+    "ar": "وقت الدخول"
+  },
+  "att_check_out_time": {
+    "en": "Check-out time",
+    "ar": "وقت الخروج"
+  },
+  "att_check_out": {
+    "en": "Check out",
+    "ar": "تسجيل المغادرة"
+  },
+  "att_check_in": {
+    "en": "Check in",
+    "ar": "تسجيل الحضور"
+  },
+  "att_checked_out_msg": {
+    "en": "You have checked out",
+    "ar": "تم تسجيل مغادرتك"
+  },
+  "att_checked_in_msg": {
+    "en": "You have checked in ✓",
+    "ar": "تم تسجيل حضورك ✓"
+  },
+  "att_error": {
+    "en": "An error occurred",
+    "ar": "حدث خطأ"
+  },
+  "exam_frozen": {
+    "en": "Exam unavailable",
+    "ar": "الاختبار غير متاح"
+  },
+  "sessions_empty": {
+    "en": "No lessons yet",
+    "ar": "لا توجد دروس بعد"
+  },
+  "cas_too_many": {
+    "en": "Too many attempts. Try again in {minutes} min",
+    "ar": "محاولات كثيرة. حاول بعد {minutes} دقيقة"
+  },
+  "cas_wrong_code": {
+    "en": "Wrong code ({n} tries left)",
+    "ar": "الكود غير صحيح (متبقي {n} محاولات)"
+  },
+  "cas_server_unreachable": {
+    "en": "Could not reach the server",
+    "ar": "تعذر الاتصال بالخادم"
+  },
+  "cas_private_course": {
+    "en": "Private course",
+    "ar": "كورس خاص"
+  },
+  "cas_enter_code": {
+    "en": "Enter the code your teacher gave you to open \"{name}\"",
+    "ar": "أدخل الكود الذي أعطاه لك المدرس لفتح \"{name}\""
+  },
+  "courses_list": {
+    "en": "Courses",
+    "ar": "الكورسات"
+  },
+  "dev_request_sent": {
+    "en": "The request was sent to the teacher. You will be notified once it is approved.",
+    "ar": "تم إرسال الطلب إلى المدرس. سيتم إشعارك بعد الموافقة."
+  },
+  "dev_send_failed": {
+    "en": "Could not send the request, please try again.",
+    "ar": "تعذر إرسال الطلب، حاول مرة أخرى."
+  },
+  "dev_pending_body": {
+    "en": "You have a device change request under review by the teacher.",
+    "ar": "لديك طلب تغيير جهاز قيد المراجعة عند المدرس."
+  },
+  "dev_used_this_month_body": {
+    "en": "This account is registered on another device, and you have already used this month's device change request. You can send a new request next month.",
+    "ar": "هذا الحساب مسجّل على جهاز آخر، وقد استخدمت طلب تغيير الجهاز لهذا الشهر. يمكنك إرسال طلب جديد في الشهر القادم."
+  },
+  "dev_blocked_body": {
+    "en": "This account is registered on another device, and viewing is only possible from the device you registered and paid from.\n\nIf this is your new device, you can send a request to the teacher to move the account (once per month).",
+    "ar": "هذا الحساب مسجّل على جهاز آخر، ولا يمكن المشاهدة إلا من الجهاز الذي سجّلت ودفعت منه.\n\nإذا كان هذا جهازك الجديد يمكنك إرسال طلب للمدرس لنقل الحساب (مرة واحدة كل شهر)."
+  },
+  "dev_blocked_title": {
+    "en": "Device not allowed",
+    "ar": "جهاز غير مسموح به"
+  },
+  "dev_close": {
+    "en": "Close",
+    "ar": "إغلاق"
+  },
+  "dev_send_request": {
+    "en": "Send request to teacher",
+    "ar": "إرسال طلب للمدرس"
+  },
+  "payment_callback": {
+    "en": "Payment result",
+    "ar": "نتيجة الدفع"
+  },
+  "pc_code_6_digits": {
+    "en": "Code must be 6 digits",
+    "ar": "الكود 6 أرقام"
+  },
+  "pc_public_course": {
+    "en": "Public course",
+    "ar": "كورس عام"
+  },
+  "pc_private_hint": {
+    "en": "Opens only with the code; hidden from the public catalogue",
+    "ar": "لا يفتح إلا بالكود، ولا يظهر في الكتالوج العام"
+  },
+  "pc_public_hint": {
+    "en": "Visible to everyone in the catalogue",
+    "ar": "يظهر للجميع في الكتالوج"
+  },
+  "pc_leave_empty": {
+    "en": "Leave empty to auto-generate",
+    "ar": "اتركه فارغاً ليُنشأ تلقائياً"
+  },
+  "pc_copy": {
+    "en": "Copy",
+    "ar": "نسخ"
+  },
+  "pc_generate": {
+    "en": "Generate code",
+    "ar": "إنشاء كود"
+  },
+  "sc_add": {
+    "en": "Add",
+    "ar": "إضافة"
+  },
+  "sc_empty": {
+    "en": "Nothing added yet",
+    "ar": "لم يتم الإضافة بعد"
+  },
+  "analytics_hub": {
+    "en": "Analytics",
+    "ar": "التحليلات"
+  },
+  "hs_schedule_title": {
+    "en": "Schedule",
+    "ar": "الجدول الزمني"
+  },
+  "hs_upcoming": {
+    "en": "Upcoming sessions",
+    "ar": "المواعيد القادمة"
+  },
+  "hs_good_morning": {
+    "en": "Good morning 🌟",
+    "ar": "صباح الخير 🌟"
+  },
+  "hs_add_course": {
+    "en": "Add a new course",
+    "ar": "إضافة دورة جديدة"
+  },
+  "teacher_home": {
+    "en": "Home",
+    "ar": "الرئيسية"
+  },
+  "app_tagline": {
+    "en": "Smart learning platform",
+    "ar": "منصة التعلم الذكي"
+  },
+  "teacher_courses": {
+    "en": "My courses",
+    "ar": "كورساتي"
+  },
+  "teacher_attendance": {
+    "en": "Attendance",
+    "ar": "الحضور"
+  },
+  "qw_live_now": {
+    "en": "Live now",
+    "ar": "مباشر الآن"
+  },
+  "qw_ends_in": {
+    "en": "Ends in",
+    "ar": "ينتهي بعد"
+  },
+  "qw_starts_in": {
+    "en": "Starts in",
+    "ar": "يبدأ بعد"
+  },
+  "qw_live": {
+    "en": "Live",
+    "ar": "مباشر"
+  },
+  "qw_start": {
+    "en": "Start",
+    "ar": "ابدأ"
+  },
+  "qw_start_now": {
+    "en": "Start now",
+    "ar": "ابدأ الان"
+  },
+  "qw_minute_short": {
+    "en": "m",
+    "ar": "د"
+  },
+  "qw_student": {
+    "en": "students",
+    "ar": "طالب"
+  },
+  "qw_unlimited": {
+    "en": "Unlimited",
+    "ar": "غير محدود"
+  },
+  "qw_today": {
+    "en": "Today",
+    "ar": "اليوم"
+  },
+  "qw_no_sessions": {
+    "en": "No sessions in the coming week",
+    "ar": "لا توجد مواعيد خلال الأسبوع القادم"
+  },
+  "teacher_exams_hub": {
+    "en": "Exams",
+    "ar": "الاختبارات"
+  },
+  "cf_basic_info": {
+    "en": "Basic information",
+    "ar": "المعلومات الأساسية"
+  },
+  "cf_title_ar": {
+    "en": "Course title (Arabic)",
+    "ar": "عنوان الكورس (عربي)"
+  },
+  "cf_title_required": {
+    "en": "Enter at least one title (Arabic or English)",
+    "ar": "أدخل عنواناً واحداً على الأقل (عربي أو إنجليزي)"
+  },
+  "cf_title_en": {
+    "en": "Course title (English)",
+    "ar": "عنوان الكورس (إنجليزي)"
+  },
+  "cf_desc_ar": {
+    "en": "Description (Arabic)",
+    "ar": "الوصف (عربي)"
+  },
+  "cf_desc_en": {
+    "en": "Description (English)",
+    "ar": "الوصف (إنجليزي)"
+  },
+  "cf_advanced": {
+    "en": "Advanced settings",
+    "ar": "إعدادات متقدمة"
+  },
+  "cf_advanced_sub": {
+    "en": "Hours, discount, privacy, roadmap, schedule",
+    "ar": "الساعات، الخصم، الخصوصية، المسار، المواعيد"
+  },
+  "cf_optional": {
+    "en": "Optional extras",
+    "ar": "إضافات اختيارية"
+  },
+  "cf_optional_sub": {
+    "en": "Intro reel, certificate template, tools, prerequisites",
+    "ar": "عرض أولي، قالب الشهادة، الأدوات، المتطلبات"
+  },
+  "cf_type_live": {
+    "en": "Live",
+    "ar": "مباشر"
+  },
+  "cf_type_recorded": {
+    "en": "Recorded",
+    "ar": "مسجّل"
+  },
+  "cf_type_both": {
+    "en": "Both",
+    "ar": "الاثنان"
+  },
+  "cf_hint_live": {
+    "en": "Live sessions only",
+    "ar": "حصص مباشرة فقط"
+  },
+  "cf_hint_both": {
+    "en": "Live sessions + recorded lessons",
+    "ar": "حصص مباشرة + دروس مسجّلة"
+  },
+  "cf_hint_recorded": {
+    "en": "Recorded lessons only",
+    "ar": "دروس مسجّلة فقط"
+  },
+  "course_form": {
+    "en": "Course form",
+    "ar": "نموذج الكورس"
   }
 }

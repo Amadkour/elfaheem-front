@@ -14,6 +14,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
@@ -25,12 +26,12 @@ import 'certificate_manager_provider.dart';
 /// Call this to open the manager. `certificateId`/`certificateTitle` come
 /// from the course's CourseCertificate list; `templateUrl` may be null.
 Future<void> showCertificateManagerSheet(
-  BuildContext context, {
-  required int courseId,
-  required int certificateId,
-  required String certificateTitle,
-  String? templateUrl,
-}) {
+    BuildContext context, {
+      required int courseId,
+      required int certificateId,
+      required String certificateTitle,
+      String? templateUrl,
+    }) {
   final isWide = MediaQuery.of(context).size.width > 760;
 
   return showModalBottomSheet(
@@ -89,9 +90,9 @@ class _CertificateManagerBodyState extends State<_CertificateManagerBody> {
     if (file == null) return;
     setState(() => _templateLoading = true);
     final url = await context.read<CertificateManagerProvider>().uploadTemplate(
-          widget.certificateId,
-          file,
-        );
+      widget.certificateId,
+      file,
+    );
     setState(() {
       _templateLoading = false;
       if (url != null) _templateUrl = url;
@@ -203,15 +204,20 @@ class _Content extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final templatePane = _TemplatePane(
-      certificateTitle: certificateTitle,
-      templateUrl: templateUrl,
-      isLoading: templateLoading,
-      onPick: onPickTemplate,
-      onRemove: onRemoveTemplate,
-      onIssueAll: onIssueAll,
+    final templatePane = ParentComponent(
+        featureKey: 'certificates.template',
+        child: _TemplatePane(
+          certificateTitle: certificateTitle,
+          templateUrl: templateUrl,
+          isLoading: templateLoading,
+          onPick: onPickTemplate,
+          onRemove: onRemoveTemplate,
+          onIssueAll: onIssueAll,
+        ));
+    final studentsPane = ParentComponent(
+      featureKey: 'certificates.students',
+      child: _StudentsPane(certificateId: certificateId),
     );
-    final studentsPane = _StudentsPane(certificateId: certificateId);
 
     return Column(
       children: [
@@ -219,19 +225,19 @@ class _Content extends StatelessWidget {
         Expanded(
           child: isWide
               ? Row(
-                  children: [
-                    SizedBox(width: 320, child: templatePane),
-                    VerticalDivider(width: 1, color: Colors.black.withValues(alpha: 0.06)),
-                    Expanded(child: studentsPane),
-                  ],
-                )
+            children: [
+              SizedBox(width: 320, child: templatePane),
+              VerticalDivider(width: 1, color: Colors.black.withValues(alpha: 0.06)),
+              Expanded(child: studentsPane),
+            ],
+          )
               : Column(
-                  children: [
-                    templatePane,
-                    Divider(height: 1, color: Colors.black.withValues(alpha: 0.06)),
-                    Expanded(child: studentsPane),
-                  ],
-                ),
+            children: [
+              templatePane,
+              Divider(height: 1, color: Colors.black.withValues(alpha: 0.06)),
+              Expanded(child: studentsPane),
+            ],
+          ),
         ),
       ],
     );
@@ -245,54 +251,54 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.fromLTRB(20, 18, 12, 14),
-        decoration: BoxDecoration(gradient: context.colors.primaryGradient),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 20),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'certificate_manager_title'.tr,
-                    style: const TextStyle(
-                      fontFamily: 'bahji',
-                      fontSize: 12,
-                      color: Colors.white70,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontFamily: 'tajawal',
-                      fontSize: 16,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            IconButton(
-              onPressed: () => Navigator.maybePop(context),
-              icon: const Icon(Icons.close_rounded, color: Colors.white),
-            ),
-          ],
+    padding: const EdgeInsets.fromLTRB(20, 18, 12, 14),
+    decoration: BoxDecoration(gradient: context.colors.primaryGradient),
+    child: Row(
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.18),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 20),
         ),
-      );
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'certificate_manager_title'.tr,
+                style: const TextStyle(
+                  fontFamily: 'bahji',
+                  fontSize: 12,
+                  color: Colors.white70,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: 'tajawal',
+                  fontSize: 16,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+          onPressed: () => Navigator.maybePop(context),
+          icon: const Icon(Icons.close_rounded, color: Colors.white),
+        ),
+      ],
+    ),
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -342,40 +348,40 @@ class _TemplatePane extends StatelessWidget {
                 border: Border.all(color: context.colors.divider, width: 1.2),
                 gradient: templateUrl == null
                     ? const LinearGradient(
-                        colors: [Color(0xFFFDF8EF), Color(0xFFF3E9D2)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
+                  colors: [Color(0xFFFDF8EF), Color(0xFFF3E9D2)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
                     : null,
               ),
               clipBehavior: Clip.antiAlias,
               child: isLoading
                   ? const Center(child: AppLoadingIndicator())
                   : templateUrl != null
-                      ? Image.network(templateUrl!, fit: BoxFit.cover)
-                      : Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.auto_awesome_rounded,
-                                  size: 28, color: Color(0xFFC49A47)),
-                              const SizedBox(height: 8),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
-                                child: Text(
-                                  'certificate_premium_template_hint'.tr,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontFamily: 'tajawal',
-                                    fontSize: 11,
-                                    color: Color(0xFF8A6D2E),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                  ? Image.network(templateUrl!, fit: BoxFit.cover)
+                  : Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.auto_awesome_rounded,
+                        size: 28, color: Color(0xFFC49A47)),
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'certificate_premium_template_hint'.tr,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontFamily: 'tajawal',
+                          fontSize: 11,
+                          color: Color(0xFF8A6D2E),
+                          fontWeight: FontWeight.w600,
                         ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -424,26 +430,26 @@ class _TemplatePane extends StatelessWidget {
               child: Center(
                 child: provider.issuingAll
                     ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: AppLoadingIndicator(),
-                      )
+                  width: 18,
+                  height: 18,
+                  child: AppLoadingIndicator(),
+                )
                     : Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.send_rounded, size: 16, color: Colors.white),
-                          const SizedBox(width: 8),
-                          Text(
-                            'send_to_all_students_btn'.tr,
-                            style: const TextStyle(
-                              fontFamily: 'tajawal',
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.send_rounded, size: 16, color: Colors.white),
+                    const SizedBox(width: 8),
+                    Text(
+                      'send_to_all_students_btn'.tr,
+                      style: const TextStyle(
+                        fontFamily: 'tajawal',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
                       ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -515,12 +521,12 @@ class _StudentsPane extends StatelessWidget {
                     : null,
                 child: (s.imageUrl == null || s.imageUrl!.isEmpty)
                     ? Text(
-                        s.name.isNotEmpty ? s.name[0].toUpperCase() : '?',
-                        style: TextStyle(
-                          color: context.colors.primary,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      )
+                  s.name.isNotEmpty ? s.name[0].toUpperCase() : '?',
+                  style: TextStyle(
+                    color: context.colors.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                )
                     : null,
               ),
               const SizedBox(width: 10),

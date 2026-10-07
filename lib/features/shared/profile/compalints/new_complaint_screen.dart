@@ -1,6 +1,7 @@
 library;
 
 import 'dart:io';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -74,9 +75,9 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
       priority: _priority,
       courseId: widget.courseId,
       suggestedSolution:
-          _suggestionCtrl.text
-              .trim()
-              .isEmpty // ← NEW
+      _suggestionCtrl.text
+          .trim()
+          .isEmpty // ← NEW
           ? null
           : _suggestionCtrl.text.trim(),
     );
@@ -137,8 +138,7 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
   @override
   Widget build(BuildContext context) {
     final p = context.watch<ComplaintProvider>();
-    return BasePage(
-      useWebCard: true,
+    return BasePage(key: const ValueKey('new_complaint'), useWebCard: true,
       child: SafeArea(
         child: Column(
           children: [
@@ -166,9 +166,9 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
                     onPriorityChanged: (v) => setState(() => _priority = v),
                     onToggleSuggestion:
                         () => // ← NEW
-                        setState(
+                    setState(
                           () => _suggestionExpanded = !_suggestionExpanded,
-                        ),
+                    ),
                     onSubmit: _submit,
                     onPickGallery: () => p.pickComplaintImages(),
                     onPickCamera: () => p.pickComplaintImageFromCamera(),
@@ -359,16 +359,16 @@ class _FormTab extends StatelessWidget {
             const SizedBox(height: 20),
 
             // ── Category ─────────────────────────────────────────────────────
-            _Label(text: 'category_label'.tr),
-            const SizedBox(height: 8),
-            _CategoryPicker(selected: category, onChanged: onCategoryChanged),
-            const SizedBox(height: 20),
+            ParentComponent(featureKey: 'new_complaint.category', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [_Label(text: 'category_label'.tr),
+              const SizedBox(height: 8),
+              _CategoryPicker(selected: category, onChanged: onCategoryChanged),
+              const SizedBox(height: 20)])),
 
             // ── Priority ─────────────────────────────────────────────────────
-            _Label(text: 'priority_label'.tr),
-            const SizedBox(height: 8),
-            _PriorityPicker(selected: priority, onChanged: onPriorityChanged),
-            const SizedBox(height: 20),
+            ParentComponent(featureKey: 'new_complaint.priority', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [_Label(text: 'priority_label'.tr),
+              const SizedBox(height: 8),
+              _PriorityPicker(selected: priority, onChanged: onPriorityChanged),
+              const SizedBox(height: 20)])),
 
             // ── Description ──────────────────────────────────────────────────
             _Label(text: 'detailed_description_label'.tr),
@@ -384,24 +384,24 @@ class _FormTab extends StatelessWidget {
             const SizedBox(height: 20),
 
             // ── Attachments ──────────────────────────────────────────────────
-            _AttachmentSection(
+            ParentComponent(featureKey: 'new_complaint.attachments', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [_AttachmentSection(
               attachments: pendingAttachments,
               onPickGallery: onPickGallery,
               onPickCamera: onPickCamera,
               onPickFile: onPickFile,
               onRemove: onRemoveImage,
             ),
-            const SizedBox(height: 20),
+              const SizedBox(height: 20)])),
 
             // ════════════════════════════════════════════════════════════════
             //  Suggested Solution  — optional, expandable
             // ════════════════════════════════════════════════════════════════
-            _SuggestedSolutionField(
+            ParentComponent(featureKey: 'new_complaint.suggested_solution', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [_SuggestedSolutionField(
               controller: suggestionCtrl,
               isExpanded: suggestionExpanded,
               onToggle: onToggleSuggestion,
             ),
-            const SizedBox(height: 32),
+              const SizedBox(height: 32)])),
 
             // ── Submit ───────────────────────────────────────────────────────
             PrimaryButton(
@@ -644,9 +644,9 @@ class _HistoryTab extends StatelessWidget {
           final isLoaded = loadedIds.contains(complaint.id);
           final full = isLoaded
               ? provider.complaints.firstWhere(
-                  (c) => c.id == complaint.id,
-                  orElse: () => complaint,
-                )
+                (c) => c.id == complaint.id,
+            orElse: () => complaint,
+          )
               : complaint;
 
           return _ComplaintHistoryCard(
@@ -791,9 +791,9 @@ class _ComplaintHistoryCard extends StatelessWidget {
             firstChild: const SizedBox.shrink(),
             secondChild: isLoading
                 ? const Padding(
-                    padding: EdgeInsets.all(20),
-                    child: Center(child: AppLoadingIndicator()),
-                  )
+              padding: EdgeInsets.all(20),
+              child: Center(child: AppLoadingIndicator()),
+            )
                 : _ExpandedBody(complaint: complaint),
           ),
         ],
@@ -1029,7 +1029,7 @@ class _AttachmentSection extends StatelessWidget {
           runSpacing: 10,
           children: [
             ...attachments.asMap().entries.map(
-              (e) => _AttachmentThumb(
+                  (e) => _AttachmentThumb(
                 index: e.key,
                 attachment: e.value,
                 onRemove: onRemove,
@@ -1073,7 +1073,7 @@ class _AttachmentThumb extends StatelessWidget {
 
   bool get _isPdf =>
       attachment.file.name.toLowerCase().endsWith('.pdf') ||
-      attachment.localPreviewUrl.toLowerCase().endsWith('.pdf');
+          attachment.localPreviewUrl.toLowerCase().endsWith('.pdf');
 
   @override
   Widget build(BuildContext context) {
@@ -1085,50 +1085,50 @@ class _AttachmentThumb extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           child: _isPdf
               ? Container(
-                  width: _size,
-                  height: _size,
-                  decoration: BoxDecoration(
-                    gradient: c.accentGradient.withOpacity(1),
+            width: _size,
+            height: _size,
+            decoration: BoxDecoration(
+              gradient: c.accentGradient.withOpacity(1),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.picture_as_pdf_outlined,
+                  size: 26,
+                  color: Colors.white,
+                ),
+                const SizedBox(height: 4),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(
+                    attachment.file.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: 'bahji',
+                      fontSize: 9,
+                      color: Colors.white,
+                    ),
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.picture_as_pdf_outlined,
-                        size: 26,
-                        color: Colors.white,
-                      ),
-                      const SizedBox(height: 4),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: Text(
-                          attachment.file.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontFamily: 'bahji',
-                            fontSize: 9,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                )
+                ),
+              ],
+            ),
+          )
               : kIsWeb
               ? Image.network(
-                  attachment.localPreviewUrl,
-                  width: _size,
-                  height: _size,
-                  fit: BoxFit.cover,
-                )
+            attachment.localPreviewUrl,
+            width: _size,
+            height: _size,
+            fit: BoxFit.cover,
+          )
               : Image.file(
-                  File(attachment.localPreviewUrl),
-                  width: _size,
-                  height: _size,
-                  fit: BoxFit.cover,
-                ),
+            File(attachment.localPreviewUrl),
+            width: _size,
+            height: _size,
+            fit: BoxFit.cover,
+          ),
         ),
         Positioned(
           top: -6,
@@ -1376,10 +1376,10 @@ class _HistoryReplyBubble extends StatelessWidget {
                   : null,
               child: reply.senderImage == null
                   ? Icon(
-                      Icons.support_agent_rounded,
-                      size: 14,
-                      color: c.primary,
-                    )
+                Icons.support_agent_rounded,
+                size: 14,
+                color: c.primary,
+              )
                   : null,
             ),
             const SizedBox(width: 6),
@@ -1431,8 +1431,8 @@ class _HistoryReplyBubble extends StatelessWidget {
                       children: reply.attachments
                           .map(
                             (a) =>
-                                NetworkAttachmentTile(attachment: a, size: 70),
-                          )
+                            NetworkAttachmentTile(attachment: a, size: 70),
+                      )
                           .toList(),
                     ),
                   ],
@@ -1614,24 +1614,24 @@ class _CategoryPicker extends StatelessWidget {
     final c = context.colors;
     final labels = {
       ComplaintCategory.general: (
-        'category_general'.tr,
-        Icons.help_outline_rounded,
+      'category_general'.tr,
+      Icons.help_outline_rounded,
       ),
       ComplaintCategory.technical: (
-        'category_technical'.tr,
-        Icons.bug_report_outlined,
+      'category_technical'.tr,
+      Icons.bug_report_outlined,
       ),
       ComplaintCategory.payment: (
-        'category_payment'.tr,
-        Icons.payment_outlined,
+      'category_payment'.tr,
+      Icons.payment_outlined,
       ),
       ComplaintCategory.courseContent: (
-        'category_content'.tr,
-        Icons.book_outlined,
+      'category_content'.tr,
+      Icons.book_outlined,
       ),
       ComplaintCategory.teacher: (
-        'category_teacher'.tr,
-        Icons.person_outline_rounded,
+      'category_teacher'.tr,
+      Icons.person_outline_rounded,
       ),
       ComplaintCategory.student: ('category_student'.tr, Icons.school_outlined),
     };

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
 import 'package:flutter_education_app/features/teacher/sessions/sessions_screen.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
@@ -58,15 +59,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 physics: const BouncingScrollPhysics(),
                 children: [
                   const SizedBox(height: 8),
-                  _NotifGroup(
+                  ParentComponent(featureKey: 'notifications.today', child: _NotifGroup(
                     group: NotifGroup.today,
                     groupTitle: 'today'.tr,
-                  ),
+                  )),
                   const SizedBox(height: 20),
-                  _NotifGroup(
+                  ParentComponent(featureKey: 'notifications.yesterday', child: _NotifGroup(
                     group: NotifGroup.yesterday,
                     groupTitle: 'yesterday'.tr,
-                  ),
+                  )),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -101,7 +102,7 @@ class _NotifGroup extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(groupTitle, style: context.colors.h2),
-            GestureDetector(
+            ParentComponent(featureKey: 'notifications.mark_all_read', child: GestureDetector(
               onTap: () async {
                 // FIX: capture provider before the async gap so we never
                 // access context after notifyListeners() may deactivate
@@ -115,7 +116,7 @@ class _NotifGroup extends StatelessWidget {
                   color: context.colors.primary,
                 ),
               ),
-            ),
+            )),
           ],
         ),
         const SizedBox(height: 12),

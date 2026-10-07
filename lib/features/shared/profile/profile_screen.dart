@@ -71,6 +71,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
     final isWide = context.showSidebar;
 
     return BasePage(
+      key: const ValueKey('profile'),
       useWebCard: true,
       enableFooterWidget: false,
       child: SafeArea(
@@ -97,14 +98,14 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
 
                   // ── Account section ──────────────────────────────────────
                   ParentComponent(
+                    featureKey: 'profile.account',
                     child: Padding(
-                      key: ValueKey('profile.account'),
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: SettingsGroup(
                         title: 'account'.tr,
                         children: [
                           ParentComponent(
-                            key: ValueKey('profile.update_account'),
+                            featureKey: 'profile.update_account',
                             child: SettingsTile(
                               icon: Icons.person_rounded,
                               iconBg: c.primaryTint,
@@ -123,7 +124,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           ParentComponent(
-                            key: ValueKey('profile.change_password'),
+                            featureKey: 'profile.change_password',
                             child: SettingsTile(
                               icon: Icons.lock_rounded,
                               iconBg: c.accentTint,
@@ -134,7 +135,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                           ),
                           if (context.read<AuthProvider>().isTeacher) ...[
                             ParentComponent(
-                              key: ValueKey('profile.teacher_profile'),
+                              featureKey: 'profile.teacher_profile',
                               child: SettingsTile(
                                 icon: Icons.person_rounded,
                                 iconBg: c.dangerTint,
@@ -155,7 +156,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                             ParentComponent(
-                              key: ValueKey('profile.payout'),
+                              featureKey: 'profile.payout',
                               child: SettingsTile(
                                 icon: Icons.account_balance_wallet_rounded,
                                 iconBg: c.dangerTint,
@@ -165,7 +166,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                             ParentComponent(
-                              key: ValueKey('profile.enrollment_request'),
+                              featureKey: 'profile.enrollment_request',
                               child: TileCountOverlay(
                                 count: context.select<TeacherTransfersProvider, int>((p) => p.total),
                                 child: SettingsTile(
@@ -178,7 +179,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                             ParentComponent(
-                              key: ValueKey('profile.device_requests'),
+                              featureKey: 'profile.device_requests',
                               child: TileCountOverlay(
                                 count: context.select<TeacherDeviceRequestsProvider, int>(
                                       (p) => p.items.length,
@@ -194,7 +195,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                             ),
                           ] else ...[
                             ParentComponent(
-                              key: ValueKey('profile.my_favorite'),
+                              featureKey: 'profile.my_favorite',
                               child: SettingsTile(
                                 icon: Icons.favorite_rounded,
                                 iconBg: c.dangerTint,
@@ -224,14 +225,14 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
 
                   // ── Settings section ─────────────────────────────────────
                   ParentComponent(
+                    featureKey: 'profile.settings',
                     child: Padding(
-                      key: ValueKey('profile.settings'),
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: SettingsGroup(
                         title: 'settings'.tr,
                         children: [
                           ParentComponent(
-                            key: ValueKey('profile.notifications'),
+                            featureKey: 'profile.notifications',
                             child: SettingsTile(
                               icon: Icons.notifications_rounded,
                               iconBg: c.successTint,
@@ -248,7 +249,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           ParentComponent(
-                            key: ValueKey('profile.help_center'),
+                            featureKey: 'profile.change_language',
                             child: SettingsTile(
                               icon: Icons.language_rounded,
                               iconBg: c.purpleTint,
@@ -258,7 +259,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           ParentComponent(
-                            key: ValueKey('profile.dark_mode'),
+                            featureKey: 'profile.dark_mode',
                             child: SettingsTile(
                               icon: Icons.dark_mode_rounded,
                               iconBg: c.darkIconBg,
@@ -284,14 +285,14 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
 
                   // ── Help section ─────────────────────────────────────────
                   ParentComponent(
+                    featureKey: 'profile.help_group',
                     child: Padding(
-                      key: ValueKey('profile.help_group'),
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: SettingsGroup(
                         title: 'help'.tr,
                         children: [
                           ParentComponent(
-                            key: ValueKey('profile.help_center'),
+                            featureKey: 'profile.help_center',
                             child: SettingsTile(
                               onTap: () => _push(
                                 ChangeNotifierProvider(
@@ -306,7 +307,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           ParentComponent(
-                            key: ValueKey('profile.privacy'),
+                            featureKey: 'profile.privacy',
                             child: SettingsTile(
                               icon: Icons.privacy_tip_rounded,
                               iconBg: c.successTint,
@@ -316,7 +317,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           ParentComponent(
-                            key: ValueKey('profile.about'),
+                            featureKey: 'profile.about',
                             child: SettingsTile(
                               icon: Icons.info_rounded,
                               iconBg: c.accentTint,
@@ -338,16 +339,16 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
 
                   // ── Logout ───────────────────────────────────────────────
                   ParentComponent(
+                    featureKey: 'profile.exit_group',
                     child: Padding(
-                      key: ValueKey('profile.exit_group'),
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                       child: SettingsGroup(
                         title: 'exit'.tr,
                         itemBackground: c.danger.withAlpha(30),
                         children: [
                           ParentComponent(
+                            featureKey: 'profile.logout',
                             child: SettingsTile(
-                              key: ValueKey('profile.logout'),
                               icon: Icons.logout,
                               iconBg: c.dangerTint,
                               iconColor: c.danger,
@@ -363,8 +364,8 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           ParentComponent(
+                            featureKey: 'profile.delete_account',
                             child: SettingsTile(
-                              key: ValueKey('profile.delete_account'),
                               icon: Icons.delete,
                               iconBg: c.dangerTint,
                               iconColor: c.danger,
@@ -416,7 +417,12 @@ class ProfileHeader extends StatelessWidget {
   const ProfileHeader({super.key, required this.provider});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'profile.header',
+    child: _featureContent(context),
+  );
+
+  Widget _featureContent(BuildContext context) {
     return Column(
       children: [
         Stack(

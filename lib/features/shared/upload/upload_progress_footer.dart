@@ -11,6 +11,7 @@
 //  * [visible] lets a page opt out entirely (see BasePage.showUploadQueue).
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
@@ -35,45 +36,47 @@ class UploadProgressFooter extends StatelessWidget {
         if (tasks.isEmpty) return const SizedBox.shrink();
         final c = context.colors;
 
-        return SafeArea(
-          top: false,
-          child: Material(
-            color: Colors.transparent,
-            child: Container(
-              margin: const EdgeInsets.fromLTRB(10, 0, 10, 8),
-              decoration: BoxDecoration(
-                color: c.cardBg,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: c.cardShadow,
-                border: Border.all(color: c.textLight.withValues(alpha: 0.15)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _Header(tasks: tasks, expanded: m.expanded),
-                  if (m.expanded)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxHeight: MediaQuery.of(context).size.height * 0.3,
-                        ),
-                        child: SingleChildScrollView(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              for (final t in tasks)
-                                _UploadRow(key: ObjectKey(t), task: t),
-                            ],
+        return ParentComponent(
+            featureKey: 'upload_queue',
+            child: SafeArea(
+              top: false,
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  margin: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+                  decoration: BoxDecoration(
+                    color: c.cardBg,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: c.cardShadow,
+                    border: Border.all(color: c.textLight.withValues(alpha: 0.15)),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _Header(tasks: tasks, expanded: m.expanded),
+                      if (m.expanded)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxHeight: MediaQuery.of(context).size.height * 0.3,
+                            ),
+                            child: SingleChildScrollView(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  for (final t in tasks)
+                                    _UploadRow(key: ObjectKey(t), task: t),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                ],
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ),
-        );
+            ));
       },
     );
   }

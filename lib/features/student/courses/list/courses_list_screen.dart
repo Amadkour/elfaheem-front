@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
 import 'package:flutter_education_app/features/student/courses/my_courses/my_courses_provider.dart';
 import 'package:provider/provider.dart';
@@ -59,6 +60,7 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
   Widget build(BuildContext context) {
     MyCoursesProvider provider = context.watch<MyCoursesProvider>();
     return BasePage(
+      key: const ValueKey('courses_list'),
       useWebCard: true,
       enableFooterWidget: false,
       appBar: ScreenAppBar(
@@ -67,10 +69,13 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
       child: SafeArea(
         child: Column(
           children: [
-            MySearchBar(
-              controller: _searchCtrl,
-              hint: 'search_course_by_name_description',
-              onChanged: provider.setQuery,
+            ParentComponent(
+              featureKey: 'courses_list.search',
+              child: MySearchBar(
+                controller: _searchCtrl,
+                hint: 'search_course_by_name_description',
+                onChanged: provider.setQuery,
+              ),
             ),
             Expanded(
               child: NotificationListener<ScrollNotification>(
@@ -82,17 +87,19 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
                 },
                 child: Stack(
                   children: [
-                    HomeCourseList(
-                      hasMore: provider.hasMore,
-                      courses: provider.filteredCourses,
-                      onTap: (CourseModel c) {
-                        Navigator.pushNamed(context, '/course-detail', arguments: c);
-                      },
-                      isTeacher: false,
-                      pageName: widget.forMyCourses
-                          ? 'my-courses-profile'
-                          : 'other-courses-profile',
-                    ),
+                    ParentComponent(
+                        featureKey: 'courses_list.list',
+                        child: HomeCourseList(
+                          hasMore: provider.hasMore,
+                          courses: provider.filteredCourses,
+                          onTap: (CourseModel c) {
+                            Navigator.pushNamed(context, '/course-detail', arguments: c);
+                          },
+                          isTeacher: false,
+                          pageName: widget.forMyCourses
+                              ? 'my-courses-profile'
+                              : 'other-courses-profile',
+                        )),
                     if (provider.isLoadingMore)
                       const Positioned(
                         left: 0,

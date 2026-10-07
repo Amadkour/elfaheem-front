@@ -11,6 +11,7 @@
 // DiscountInfo model instead of manually unpacking price / finalPrice /
 // discountActive at every call site.
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
@@ -72,7 +73,12 @@ class CoursePriceTag extends StatelessWidget {
   );
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'course.price',
+    child: _featureContent(context),
+  );
+
+  Widget _featureContent(BuildContext context) {
     final priceColor = onColoredBackground
         ? Colors.white
         : color ??
@@ -139,7 +145,12 @@ class DiscountRibbon extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'course.discount_ribbon',
+    child: _featureContent(context),
+  );
+
+  Widget _featureContent(BuildContext context) {
     if (percentage <= 0) return const SizedBox.shrink();
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -177,7 +188,12 @@ class DiscountCountdown extends StatelessWidget {
   const DiscountCountdown({super.key, required this.endsAt});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'course.discount_countdown',
+    child: _featureContent(context),
+  );
+
+  Widget _featureContent(BuildContext context) {
     final daysLeft = endsAt.difference(DateTime.now()).inDays;
     final label = daysLeft > 0
         ? '${'discount_ends_in'.tr} ${daysLeft + 1} ${'day'.tr}'
@@ -242,7 +258,12 @@ class _DiscountCountdownBadgeState extends State<DiscountCountdownBadge>
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'course.discount_badge',
+    child: _featureContent(context),
+  );
+
+  Widget _featureContent(BuildContext context) {
     final course = widget.course;
     if (!course.hasDiscount || course.discountEndsAt == null) {
       return const SizedBox.shrink();

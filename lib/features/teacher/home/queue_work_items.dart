@@ -476,7 +476,7 @@ class _CountdownBar extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      'مباشر الآن',
+                      'qw_live_now'.tr,
                       style: TextStyle(
                         fontFamily: 'bahji',
                         fontSize: 10,
@@ -496,7 +496,7 @@ class _CountdownBar extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      'ينتهي بعد  ${_fmtCountdown(untilEnd.isNegative ? Duration.zero : untilEnd)}',
+                      '${'qw_ends_in'.tr}  ${_fmtCountdown(untilEnd.isNegative ? Duration.zero : untilEnd)}',
                       style: TextStyle(
                         fontFamily: 'bahji',
                         fontSize: 10,
@@ -527,7 +527,7 @@ class _CountdownBar extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Text(
-            'يبدأ بعد  ${_fmtCountdown(display)}',
+            '${'qw_starts_in'.tr}  ${_fmtCountdown(display)}',
             style: TextStyle(
               fontFamily: 'bahji',
               fontSize: 11,
@@ -570,9 +570,9 @@ class _InlineStartButton extends StatelessWidget {
   }
 
   String get _label {
-    if (session.isOngoing) return 'مباشر';
-    if (session.isToday) return 'ابدأ';
-    return 'ابدأ الان';
+    if (session.isOngoing) return 'qw_live'.tr;
+    if (session.isToday) return 'qw_start'.tr;
+    return 'qw_start_now'.tr;
   }
 
   LinearGradient get _gradient {
@@ -735,11 +735,11 @@ class _CourseInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dur = session.durationMinutes > 0
-        ? '${session.durationMinutes}د'
+        ? '${session.durationMinutes}${'qw_minute_short'.tr}'
         : '—';
     final students = session.maxStudents != null
-        ? '${session.maxStudents} طالب'
-        : 'غير محدود';
+        ? '${session.maxStudents} ${'qw_student'.tr}'
+        : 'qw_unlimited'.tr;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -812,8 +812,8 @@ class _StatusBadge extends StatelessWidget {
   });
 
   String get _label {
-    if (isOngoing) return 'مباشر الآن';
-    if (session.isToday) return 'اليوم';
+    if (isOngoing) return 'qw_live_now'.tr;
+    if (session.isToday) return 'qw_today'.tr;
     return session.dayLabel;
   }
 
@@ -914,7 +914,7 @@ class _EmptyQueue extends StatelessWidget {
           const SizedBox(width: 14),
           Expanded(
             child: Text(
-              'لا توجد مواعيد خلال الأسبوع القادم',
+              'qw_no_sessions'.tr,
               style: context.colors.caption.copyWith(
                 color: context.colors.textMedium,
               ),

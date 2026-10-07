@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -12,7 +13,6 @@ import '../../../core/api_client.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/primary_menue.dart';
 import '../../../utils/widget/text_field.dart';
-import '../../student/courses/details/growth_tr.dart';
 import '../home/teacher_models.dart';
 import '../../student/models.dart' show CourseStatus;
 import '../schedules/schedules_provider.dart'
@@ -269,7 +269,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
         discountPercentage: discountPercentage,
         discountDays: discountDays,
         clearDiscount:
-            discountPercentage == null &&
+        discountPercentage == null &&
             (_removeDiscount || (widget.course!.discountPercentage ?? 0) > 0),
         logoFile: _logoFile,
       );
@@ -317,8 +317,8 @@ class _CourseFormInnerState extends State<_CourseFormInner>
           _isEdit
               ? 'course_updated_success'.tr
               : (publish
-                    ? 'course_created_success'.tr
-                    : 'course_draft_saved_success'.tr),
+              ? 'course_created_success'.tr
+              : 'course_draft_saved_success'.tr),
           context.colors.success,
         );
       } else {
@@ -368,9 +368,9 @@ class _CourseFormInnerState extends State<_CourseFormInner>
   // ── Edit-mode content status toggle (in_progress / completed) ─────────────
 
   Future<void> _changeProgressStatus(
-    CourseStatus status,
-    TeacherCoursesProvider provider,
-  ) async {
+      CourseStatus status,
+      TeacherCoursesProvider provider,
+      ) async {
     if (_progressStatusLoading ||
         widget.course == null ||
         status == _progressStatus)
@@ -441,6 +441,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     final canSave = (_hasChanges || provider.listsChanged) && _hasBasics;
 
     return BasePage(
+      key: const ValueKey('course_form'),
       useWebCard: true,
       child: FadeTransition(
         opacity: _fadeAnim,
@@ -470,156 +471,136 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Basic info (always visible)
-                      _FormCard(
-                        icon: Icons.info_outline_rounded,
-                        title: gt('المعلومات الأساسية', 'Basic information'),
-                        children: [
-                          _LabeledField(
-                            label: gt(
-                              'عنوان الكورس (عربي)',
-                              'Course title (Arabic)',
-                            ),
-                            child: MyTextField(
-                              controller: _titleArCtrl,
-                              label: gt(
-                                'عنوان الكورس (عربي)',
-                                'Course title (Arabic)',
-                              ),
-                              validator: (_) =>
-                                  (_titleArCtrl.text.trim().isEmpty &&
-                                      _titleEnCtrl.text.trim().isEmpty)
-                                  ? gt(
-                                      'أدخل عنواناً واحداً على الأقل (عربي أو إنجليزي)',
-                                      'Enter at least one title (Arabic or English)',
-                                    )
-                                  : null,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          _LabeledField(
-                            label: gt(
-                              'عنوان الكورس (إنجليزي)',
-                              'Course title (English)',
-                            ),
-                            child: MyTextField(
-                              controller: _titleEnCtrl,
-                              label: gt(
-                                'عنوان الكورس (إنجليزي)',
-                                'Course title (English)',
-                              ),
-                              validator: (_) =>
-                                  (_titleArCtrl.text.trim().isEmpty &&
-                                      _titleEnCtrl.text.trim().isEmpty)
-                                  ? gt(
-                                      'أدخل عنواناً واحداً على الأقل (عربي أو إنجليزي)',
-                                      'Enter at least one title (Arabic or English)',
-                                    )
-                                  : null,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          _LabeledField(
-                            label: gt('الوصف (عربي)', 'Description (Arabic)'),
-                            child: MyTextField(
-                              controller: _descArCtrl,
-                              label: gt('الوصف (عربي)', 'Description (Arabic)'),
-                              maxLine: 4,
-                              // validator: (_) =>
-                              //     (_descArCtrl.text.trim().isEmpty &&
-                              //         _descEnCtrl.text.trim().isEmpty)
-                              //     ? gt(
-                              //         'أدخل وصفاً واحداً على الأقل (عربي أو إنجليزي)',
-                              //         'Enter at least one description (Arabic or English)',
-                              //       )
-                              //     : null,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          _LabeledField(
-                            label: gt(
-                              'الوصف (إنجليزي)',
-                              'Description (English)',
-                            ),
-                            child: MyTextField(
-                              controller: _descEnCtrl,
-                              label: gt(
-                                'الوصف (إنجليزي)',
-                                'Description (English)',
-                              ),
-                              maxLine: 4,
-                              // validator: (_) =>
-                              //     (_descArCtrl.text.trim().isEmpty &&
-                              //         _descEnCtrl.text.trim().isEmpty)
-                              //     ? gt(
-                              //         'أدخل وصفاً واحداً على الأقل (عربي أو إنجليزي)',
-                              //         'Enter at least one description (Arabic or English)',
-                              //       )
-                              //     : null,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          _LabeledField(
-                            label: 'course_type_label'.tr,
-                            child: _CourseTypeSelector(
-                              selected:
-                                  (provider.selectedTeachingType?['text']
-                                      as String?) ??
-                                  'recorded',
-                              onChanged: (s) =>
-                                  provider.onChangeTeachingType(s, _typeCtrl),
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          _LabeledField(
-                            label: 'Specialization'.tr,
-                            child: MyPrimaryMenu(
-                              controller: _categoryCtrl,
-                              initValue: provider.selectedSpecialization,
-                              options: provider.specializations,
-                              haveLogo: false,
-                              onChange: (i) => provider.onChangeSpecialization(
-                                i,
-                                _categoryCtrl,
-                              ),
-                              label: 'choose_specialization'.tr,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          Row(
+                      ParentComponent(
+                          featureKey: 'course_form.basic_info',
+                          child: _FormCard(
+                            icon: Icons.info_outline_rounded,
+                            title: 'cf_basic_info'.tr,
                             children: [
-                              Expanded(
-                                child: _LabeledField(
-                                  label: 'price_label'.tr,
-                                  child: MyTextField(
-                                    controller: _priceCtrl,
-                                    label: 'price_label'.tr,
-                                    keyboard:
+                              _LabeledField(
+                                label: 'cf_title_ar'.tr,
+                                child: MyTextField(
+                                  controller: _titleArCtrl,
+                                  label: 'cf_title_ar'.tr,
+                                  validator: (_) =>
+                                  (_titleArCtrl.text.trim().isEmpty &&
+                                      _titleEnCtrl.text.trim().isEmpty)
+                                      ? 'cf_title_required'.tr
+                                      : null,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              _LabeledField(
+                                label: 'cf_title_en'.tr,
+                                child: MyTextField(
+                                  controller: _titleEnCtrl,
+                                  label: 'cf_title_en'.tr,
+                                  validator: (_) =>
+                                  (_titleArCtrl.text.trim().isEmpty &&
+                                      _titleEnCtrl.text.trim().isEmpty)
+                                      ? 'cf_title_required'.tr
+                                      : null,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              _LabeledField(
+                                label: 'cf_desc_ar'.tr,
+                                child: MyTextField(
+                                  controller: _descArCtrl,
+                                  label: 'cf_desc_ar'.tr,
+                                  maxLine: 4,
+                                  // validator: (_) =>
+                                  //     (_descArCtrl.text.trim().isEmpty &&
+                                  //         _descEnCtrl.text.trim().isEmpty)
+                                  //     ? gt(
+                                  //         'أدخل وصفاً واحداً على الأقل (عربي أو إنجليزي)',
+                                  //         'Enter at least one description (Arabic or English)',
+                                  //       )
+                                  //     : null,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              _LabeledField(
+                                label: 'cf_desc_en'.tr,
+                                child: MyTextField(
+                                  controller: _descEnCtrl,
+                                  label: 'cf_desc_en'.tr,
+                                  maxLine: 4,
+                                  // validator: (_) =>
+                                  //     (_descArCtrl.text.trim().isEmpty &&
+                                  //         _descEnCtrl.text.trim().isEmpty)
+                                  //     ? gt(
+                                  //         'أدخل وصفاً واحداً على الأقل (عربي أو إنجليزي)',
+                                  //         'Enter at least one description (Arabic or English)',
+                                  //       )
+                                  //     : null,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              _LabeledField(
+                                label: 'course_type_label'.tr,
+                                child: _CourseTypeSelector(
+                                  selected:
+                                  (provider.selectedTeachingType?['text']
+                                  as String?) ??
+                                      'recorded',
+                                  onChanged: (s) =>
+                                      provider.onChangeTeachingType(s, _typeCtrl),
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              _LabeledField(
+                                label: 'Specialization'.tr,
+                                child: MyPrimaryMenu(
+                                  controller: _categoryCtrl,
+                                  initValue: provider.selectedSpecialization,
+                                  options: provider.specializations,
+                                  haveLogo: false,
+                                  onChange: (i) => provider.onChangeSpecialization(
+                                    i,
+                                    _categoryCtrl,
+                                  ),
+                                  label: 'choose_specialization'.tr,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _LabeledField(
+                                      label: 'price_label'.tr,
+                                      child: MyTextField(
+                                        controller: _priceCtrl,
+                                        label: 'price_label'.tr,
+                                        keyboard:
                                         const TextInputType.numberWithOptions(
                                           decimal: true,
                                         ),
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                ],
+                              ),
+                              const SizedBox(height: 14),
+                              CurrencySelector(
+                                label: 'currency_label'.tr,
+                                selected: provider.selectedCurrency,
+                                onChanged: provider.onChangeCurrency,
                               ),
                             ],
-                          ),
-                          const SizedBox(height: 14),
-                          CurrencySelector(
-                            label: 'currency_label'.tr,
-                            selected: provider.selectedCurrency,
-                            onChanged: provider.onChangeCurrency,
-                          ),
-                        ],
-                      ),
+                          )),
                       const SizedBox(height: 16),
 
                       // edit mode: publish / progress status stay visible
                       if (_isEdit) ...[
-                        _StatusCard(
-                          isPublished: _isPublished,
-                          isLoading: _statusLoading,
-                          onToggle: () =>
-                              _toggleStatus(listProvider: listProvider),
-                        ),
+                        ParentComponent(
+                            featureKey: 'course_form.publish_status',
+                            child: _StatusCard(
+                              isPublished: _isPublished,
+                              isLoading: _statusLoading,
+                              onToggle: () =>
+                                  _toggleStatus(listProvider: listProvider),
+                            )),
                         const SizedBox(height: 16),
                         CourseProgressStatusCard(
                           status: _progressStatus,
@@ -631,136 +612,28 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                       ],
 
                       // ═══ ADVANCED — collapsed ════════════════════════════════════════
-                      _CollapsibleSection(
-                        icon: Icons.tune_rounded,
-                        title: gt('إعدادات متقدمة', 'Advanced settings'),
-                        subtitle: gt(
-                          'الساعات، الخصم، الخصوصية، المسار، المواعيد',
-                          'Hours, discount, privacy, roadmap, schedule',
-                        ),
-                        expanded: _advancedOpen,
-                        onToggle: () =>
-                            setState(() => _advancedOpen = !_advancedOpen),
-                        children: [
-                          _LabeledField(
-                            label: 'expected_hours_label'.tr,
-                            child: MyTextField(
-                              controller: _hoursCtrl,
-                              label: 'hours_label'.tr,
-                              keyboard: TextInputType.number,
-                            ),
-                          ),
-                          const SizedBox(height: 18),
-                          Text(
-                            'discount_section_title'.tr,
-                            // e.g. "Discount (optional)"
-                            style: TextStyle(
-                              fontFamily: 'bahji',
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black.withValues(alpha: 0.55),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'discount_section_hint'.tr,
-                            // e.g. "Leave empty for no discount"
-                            style: TextStyle(
-                              fontFamily: 'tajawal',
-                              fontSize: 11,
-                              color: context.colors.textLight,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
+                      ParentComponent(
+                          featureKey: 'course_form.advanced',
+                          child: _CollapsibleSection(
+                            icon: Icons.tune_rounded,
+                            title: 'cf_advanced'.tr,
+                            subtitle: 'cf_advanced_sub'.tr,
+                            expanded: _advancedOpen,
+                            onToggle: () =>
+                                setState(() => _advancedOpen = !_advancedOpen),
                             children: [
-                              Expanded(
-                                child: _LabeledField(
-                                  label: 'discount_percentage_label'.tr,
-                                  // "Discount %"
-                                  child: MyTextField(
-                                    controller: _discountPercentCtrl,
-                                    label: 'discount_percentage_label'.tr,
-                                    keyboard:
-                                        const TextInputType.numberWithOptions(
-                                          decimal: true,
-                                        ),
-                                    validator: (v) {
-                                      final n = double.tryParse(v ?? '');
-                                      if (v != null &&
-                                          v.trim().isNotEmpty &&
-                                          (n == null || n <= 0 || n > 100)) {
-                                        return 'discount_percentage_validator'
-                                            .tr; // "0–100"
-                                      }
-                                      return null;
-                                    },
-                                  ),
+                              _LabeledField(
+                                label: 'expected_hours_label'.tr,
+                                child: MyTextField(
+                                  controller: _hoursCtrl,
+                                  label: 'hours_label'.tr,
+                                  keyboard: TextInputType.number,
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _LabeledField(
-                                  label: 'discount_days_label'.tr,
-                                  // "Days (optional)"
-                                  child: MyTextField(
-                                    controller: _discountDaysCtrl,
-                                    label: 'discount_days_label'.tr,
-                                    keyboard: TextInputType.number,
-                                    validator: (v) {
-                                      final n = int.tryParse(v ?? '');
-                                      if (v != null &&
-                                          v.trim().isNotEmpty &&
-                                          (n == null || n <= 0)) {
-                                        return 'discount_days_validator'
-                                            .tr; // "must be a positive number of days"
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (_isEdit &&
-                              (widget.course?.discountActive ?? false) &&
-                              _discountPercentCtrl.text.trim().isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: TextButton(
-                                onPressed: () => setState(() {
-                                  _discountPercentCtrl.clear();
-                                  _discountDaysCtrl.clear();
-                                  _removeDiscount = true;
-                                }),
-                                child: Text(
-                                  'remove_discount_btn'.tr, // "Remove discount"
-                                  style: TextStyle(
-                                    fontFamily: 'bahji',
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: context.colors.danger,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: 12),
-                          CoursePrivacyCard(
-                            isPrivate: _isPrivate,
-                            codeCtrl: _accessCodeCtrl,
-                            courseId: widget.course?.id,
-                            // edit → loads the current code
-                            onChanged: (v) => setState(() => _isPrivate = v),
-                          ),
-                          const SizedBox(height: 16),
-                          _FormCard(
-                            icon: Icons.route_rounded,
-                            title: 'course_relations_title'.tr,
-                            children: [
+                              const SizedBox(height: 18),
                               Text(
-                                'next_course_label'.tr,
+                                'discount_section_title'.tr,
+                                // e.g. "Discount (optional)"
                                 style: TextStyle(
                                   fontFamily: 'bahji',
                                   fontSize: 12,
@@ -770,7 +643,8 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'next_course_hint'.tr,
+                                'discount_section_hint'.tr,
+                                // e.g. "Leave empty for no discount"
                                 style: TextStyle(
                                   fontFamily: 'tajawal',
                                   fontSize: 11,
@@ -778,149 +652,262 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              NextCoursesField(
-                                selected: provider.selectedNextCourses,
-                                availableOptions:
-                                    provider.availableNextCourseOptions,
-                                onAdd: provider.addNextCourse,
-                                onRemoveAt: provider.removeNextCourseAt,
-                                onReorder: provider.moveNextCourse,
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _LabeledField(
+                                      label: 'discount_percentage_label'.tr,
+                                      // "Discount %"
+                                      child: MyTextField(
+                                        controller: _discountPercentCtrl,
+                                        label: 'discount_percentage_label'.tr,
+                                        keyboard:
+                                        const TextInputType.numberWithOptions(
+                                          decimal: true,
+                                        ),
+                                        validator: (v) {
+                                          final n = double.tryParse(v ?? '');
+                                          if (v != null &&
+                                              v.trim().isNotEmpty &&
+                                              (n == null || n <= 0 || n > 100)) {
+                                            return 'discount_percentage_validator'
+                                                .tr; // "0–100"
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _LabeledField(
+                                      label: 'discount_days_label'.tr,
+                                      // "Days (optional)"
+                                      child: MyTextField(
+                                        controller: _discountDaysCtrl,
+                                        label: 'discount_days_label'.tr,
+                                        keyboard: TextInputType.number,
+                                        validator: (v) {
+                                          final n = int.tryParse(v ?? '');
+                                          if (v != null &&
+                                              v.trim().isNotEmpty &&
+                                              (n == null || n <= 0)) {
+                                            return 'discount_days_validator'
+                                                .tr; // "must be a positive number of days"
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 18),
-                              Text(
-                                'recommended_courses_label'.tr,
-                                style: TextStyle(
-                                  fontFamily: 'bahji',
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black.withValues(alpha: 0.55),
+                              if (_isEdit &&
+                                  (widget.course?.discountActive ?? false) &&
+                                  _discountPercentCtrl.text.trim().isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: TextButton(
+                                    onPressed: () => setState(() {
+                                      _discountPercentCtrl.clear();
+                                      _discountDaysCtrl.clear();
+                                      _removeDiscount = true;
+                                    }),
+                                    child: Text(
+                                      'remove_discount_btn'.tr, // "Remove discount"
+                                      style: TextStyle(
+                                        fontFamily: 'bahji',
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: context.colors.danger,
+                                      ),
+                                    ),
+                                  ),
                                 ),
+                              ],
+                              const SizedBox(height: 12),
+                              CoursePrivacyCard(
+                                isPrivate: _isPrivate,
+                                codeCtrl: _accessCodeCtrl,
+                                courseId: widget.course?.id,
+                                // edit → loads the current code
+                                onChanged: (v) => setState(() => _isPrivate = v),
                               ),
-                              const SizedBox(height: 8),
-                              RecommendedCoursesField(
-                                options: provider.otherCourses,
-                                selectedIds:
-                                    provider.selectedRecommendedCourseIds,
-                                onToggle: provider.toggleRecommendedCourse,
+                              const SizedBox(height: 16),
+                              ParentComponent(
+                                  featureKey: 'course_form.relations',
+                                  child: _FormCard(
+                                    icon: Icons.route_rounded,
+                                    title: 'course_relations_title'.tr,
+                                    children: [
+                                      Text(
+                                        'next_course_label'.tr,
+                                        style: TextStyle(
+                                          fontFamily: 'bahji',
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.black.withValues(alpha: 0.55),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'next_course_hint'.tr,
+                                        style: TextStyle(
+                                          fontFamily: 'tajawal',
+                                          fontSize: 11,
+                                          color: context.colors.textLight,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      NextCoursesField(
+                                        selected: provider.selectedNextCourses,
+                                        availableOptions:
+                                        provider.availableNextCourseOptions,
+                                        onAdd: provider.addNextCourse,
+                                        onRemoveAt: provider.removeNextCourseAt,
+                                        onReorder: provider.moveNextCourse,
+                                      ),
+                                      const SizedBox(height: 18),
+                                      Text(
+                                        'recommended_courses_label'.tr,
+                                        style: TextStyle(
+                                          fontFamily: 'bahji',
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.black.withValues(alpha: 0.55),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      RecommendedCoursesField(
+                                        options: provider.otherCourses,
+                                        selectedIds:
+                                        provider.selectedRecommendedCourseIds,
+                                        onToggle: provider.toggleRecommendedCourse,
+                                      ),
+                                    ],
+                                  )),
+                              const SizedBox(height: 16),
+                              // Appointments (both modes). Existing, already-saved
+                              // appointments come from provider.form.schedules (edit
+                              // mode) and are staged for removal on save, same as
+                              // certificates/tools/prerequisites. Newly added ones
+                              // aren't sent to the server until save is pressed.
+                              SectionCard(
+                                featureKey: 'course_details.schedule',
+                                icon: Icons.event_available_rounded,
+                                title: 'weekly_schedule'.tr,
+                                items: [
+                                  ...provider.form.schedules.map(
+                                        (s) =>
+                                    '${slotDayLabel(s.day)} • ${s.startTime} – ${s.endTime}',
+                                  ),
+                                  ...provider.pendingSchedules.map(
+                                        (s) =>
+                                    '${slotDayLabel(s.day)} • ${s.startTime} – ${s.endTime}',
+                                  ),
+                                ],
+                                onAdd: _showAddAppointmentSheet,
+                                onRemove: (i) {
+                                  final existingCount =
+                                      provider.form.schedules.length;
+                                  if (i < existingCount) {
+                                    provider.removeFormSchedule(i);
+                                  } else {
+                                    provider.removePendingSchedule(
+                                      i - existingCount,
+                                    );
+                                  }
+                                },
                               ),
                             ],
-                          ),
-                          const SizedBox(height: 16),
-                          // Appointments (both modes). Existing, already-saved
-                          // appointments come from provider.form.schedules (edit
-                          // mode) and are staged for removal on save, same as
-                          // certificates/tools/prerequisites. Newly added ones
-                          // aren't sent to the server until save is pressed.
-                          SectionCard(
-                            icon: Icons.event_available_rounded,
-                            title: 'weekly_schedule'.tr,
-                            items: [
-                              ...provider.form.schedules.map(
-                                (s) =>
-                                    '${slotDayLabel(s.day)} • ${s.startTime} – ${s.endTime}',
-                              ),
-                              ...provider.pendingSchedules.map(
-                                (s) =>
-                                    '${slotDayLabel(s.day)} • ${s.startTime} – ${s.endTime}',
-                              ),
-                            ],
-                            onAdd: _showAddAppointmentSheet,
-                            onRemove: (i) {
-                              final existingCount =
-                                  provider.form.schedules.length;
-                              if (i < existingCount) {
-                                provider.removeFormSchedule(i);
-                              } else {
-                                provider.removePendingSchedule(
-                                  i - existingCount,
-                                );
-                              }
-                            },
-                          ),
-                        ],
-                      ),
+                          )),
                       const SizedBox(height: 16),
 
                       // ═══ OPTIONAL — collapsed ═════════════════════════════════════════════
-                      _CollapsibleSection(
-                        icon: Icons.add_circle_outline_rounded,
-                        title: gt('إضافات اختيارية', 'Optional extras'),
-                        subtitle: gt(
-                          'عرض أولي، قالب الشهادة، الأدوات، المتطلبات',
-                          'Intro reel, certificate template, tools, prerequisites',
-                        ),
-                        expanded: _optionalOpen,
-                        onToggle: () =>
-                            setState(() => _optionalOpen = !_optionalOpen),
-                        children: [
-                          // Course reel (عرض أولي) — optional intro video shown
-                          // instead of the course image on the course profile.
-                          CourseReelField(
-                            controller: _reelCtrl,
-                            posterUrl: _logoBytes != null
-                                ? null
-                                : widget.course?.imageUrl,
-                          ),
-                          const SizedBox(height: 16),
-                          // Certificate template: the create-mode "optional
-                          // setup" card, or — when editing — a card that lets
-                          // the teacher view/replace the template on their
-                          // existing certificate (or set one up for the first
-                          // time) directly, uploading immediately since the
-                          // course already exists.
-                          if (_isEdit)
-                            _EditCertificateTemplateCard(course: widget.course!)
-                          else
-                            _CertificateTemplateCard(
-                              titleController: _certTitleCtrl,
-                              previewBytes: _certTemplateBytes,
-                              onPick: (file, bytes) => setState(() {
-                                _certTemplateFile = file;
-                                _certTemplateBytes = bytes;
-                              }),
-                              onRemove: () => setState(() {
-                                _certTemplateFile = null;
-                                _certTemplateBytes = null;
-                              }),
-                            ),
-                          const SizedBox(height: 12),
-                          SectionCard(
-                            icon: Icons.workspace_premium_rounded,
-                            title: 'certificates_section'.tr,
-                            items: provider.form.certificates,
-                            onAdd: () => addItemDialog(
-                              'add_certificate'.tr,
-                              provider.addFormCertificate,
-                              context,
-                            ),
-                            onRemove: provider.removeFormCertificate,
-                          ),
-                          const SizedBox(height: 12),
-                          SectionCard(
-                            icon: Icons.build_rounded,
-                            title: 'tools_section'.tr,
-                            items: provider.form.tools,
-                            onAdd: () => addItemDialog(
-                              'add_tool'.tr,
-                              provider.addFormTool,
-                              context,
-                            ),
-                            onRemove: provider.removeFormTool,
-                          ),
-                          const SizedBox(height: 12),
-                          SectionCard(
-                            icon: Icons.checklist_rounded,
-                            title: 'prerequisites_section'.tr,
-                            items: provider.form.prerequisites,
-                            onAdd: () => addItemDialog(
-                              'add_prerequisite'.tr,
-                              provider.addFormPrerequisite,
-                              context,
-                            ),
-                            onRemove: provider.removeFormPrerequisite,
-                          ),
-                        ],
-                      ),
+                      ParentComponent(
+                          featureKey: 'course_form.optional',
+                          child: _CollapsibleSection(
+                            icon: Icons.add_circle_outline_rounded,
+                            title: 'cf_optional'.tr,
+                            subtitle: 'cf_optional_sub'.tr,
+                            expanded: _optionalOpen,
+                            onToggle: () =>
+                                setState(() => _optionalOpen = !_optionalOpen),
+                            children: [
+                              // Course reel (عرض أولي) — optional intro video shown
+                              // instead of the course image on the course profile.
+                              CourseReelField(
+                                controller: _reelCtrl,
+                                posterUrl: _logoBytes != null
+                                    ? null
+                                    : widget.course?.imageUrl,
+                              ),
+                              const SizedBox(height: 16),
+                              // Certificate template: the create-mode "optional
+                              // setup" card, or — when editing — a card that lets
+                              // the teacher view/replace the template on their
+                              // existing certificate (or set one up for the first
+                              // time) directly, uploading immediately since the
+                              // course already exists.
+                              ParentComponent(
+                                featureKey: 'course_form.certificate_template',
+                                child: _isEdit
+                                    ? _EditCertificateTemplateCard(course: widget.course!)
+                                    : _CertificateTemplateCard(
+                                  titleController: _certTitleCtrl,
+                                  previewBytes: _certTemplateBytes,
+                                  onPick: (file, bytes) => setState(() {
+                                    _certTemplateFile = file;
+                                    _certTemplateBytes = bytes;
+                                  }),
+                                  onRemove: () => setState(() {
+                                    _certTemplateFile = null;
+                                    _certTemplateBytes = null;
+                                  }),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              SectionCard(
+                                featureKey: 'course_details.certificates',
+                                icon: Icons.workspace_premium_rounded,
+                                title: 'certificates_section'.tr,
+                                items: provider.form.certificates,
+                                onAdd: () => addItemDialog(
+                                  'add_certificate'.tr,
+                                  provider.addFormCertificate,
+                                  context,
+                                ),
+                                onRemove: provider.removeFormCertificate,
+                              ),
+                              const SizedBox(height: 12),
+                              SectionCard(
+                                featureKey: 'course_details.tools',
+                                icon: Icons.build_rounded,
+                                title: 'tools_section'.tr,
+                                items: provider.form.tools,
+                                onAdd: () => addItemDialog(
+                                  'add_tool'.tr,
+                                  provider.addFormTool,
+                                  context,
+                                ),
+                                onRemove: provider.removeFormTool,
+                              ),
+                              const SizedBox(height: 12),
+                              SectionCard(
+                                featureKey: 'course_details.prerequisites',
+                                icon: Icons.checklist_rounded,
+                                title: 'prerequisites_section'.tr,
+                                items: provider.form.prerequisites,
+                                onAdd: () => addItemDialog(
+                                  'add_prerequisite'.tr,
+                                  provider.addFormPrerequisite,
+                                  context,
+                                ),
+                                onRemove: provider.removeFormPrerequisite,
+                              ),
+                            ],
+                          )),
                       const SizedBox(height: 24),
                     ],
                   ),
@@ -941,10 +928,10 @@ class _CourseFormInnerState extends State<_CourseFormInner>
               onSaveDraft: _isEdit
                   ? null
                   : () => _submit(
-                      publish: false,
-                      listProvider: listProvider,
-                      formProvider: provider,
-                    ),
+                publish: false,
+                listProvider: listProvider,
+                formProvider: provider,
+              ),
               course: widget.course,
             ),
           ],
@@ -1248,52 +1235,52 @@ class _CertificateTemplateCard extends StatelessWidget {
               clipBehavior: Clip.antiAlias,
               child: previewBytes != null
                   ? Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Image.memory(previewBytes!, fit: BoxFit.cover),
-                        Positioned(
-                          top: 6,
-                          right: 6,
-                          child: GestureDetector(
-                            onTap: onRemove,
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: const BoxDecoration(
-                                color: Colors.black54,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.close_rounded,
-                                size: 16,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
+                fit: StackFit.expand,
+                children: [
+                  Image.memory(previewBytes!, fit: BoxFit.cover),
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: GestureDetector(
+                      onTap: onRemove,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: Colors.black54,
+                          shape: BoxShape.circle,
                         ),
-                      ],
-                    )
-                  : Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.add_photo_alternate_rounded,
-                            size: 28,
-                            color: context.colors.textLight,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'upload_template_btn'.tr,
-                            style: TextStyle(
-                              fontFamily: 'tajawal',
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: context.colors.textMedium,
-                            ),
-                          ),
-                        ],
+                        child: const Icon(
+                          Icons.close_rounded,
+                          size: 16,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
+                  ),
+                ],
+              )
+                  : Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.add_photo_alternate_rounded,
+                      size: 28,
+                      color: context.colors.textLight,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'upload_template_btn'.tr,
+                      style: TextStyle(
+                        fontFamily: 'tajawal',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: context.colors.textMedium,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
@@ -1461,56 +1448,56 @@ class _EditCertificateTemplateCardState
                   ? Image.memory(_pickedBytes!, fit: BoxFit.cover)
                   : _templateUrl != null
                   ? Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Image.network(_templateUrl!, fit: BoxFit.cover),
-                        Positioned(
-                          bottom: 8,
-                          right: 8,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black54,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              'change_template_btn'.tr,
-                              style: const TextStyle(
-                                fontFamily: 'tajawal',
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
+                fit: StackFit.expand,
+                children: [
+                  Image.network(_templateUrl!, fit: BoxFit.cover),
+                  Positioned(
+                    bottom: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'change_template_btn'.tr,
+                        style: const TextStyle(
+                          fontFamily: 'tajawal',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
                         ),
-                      ],
-                    )
-                  : Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.add_photo_alternate_rounded,
-                            size: 28,
-                            color: context.colors.textLight,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'upload_template_btn'.tr,
-                            style: TextStyle(
-                              fontFamily: 'tajawal',
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: context.colors.textMedium,
-                            ),
-                          ),
-                        ],
                       ),
                     ),
+                  ),
+                ],
+              )
+                  : Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.add_photo_alternate_rounded,
+                      size: 28,
+                      color: context.colors.textLight,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'upload_template_btn'.tr,
+                      style: TextStyle(
+                        fontFamily: 'tajawal',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: context.colors.textMedium,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
@@ -1559,19 +1546,21 @@ class _CourseTypeSelector extends StatelessWidget {
   const _CourseTypeSelector({required this.selected, required this.onChanged});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'course_form.course_type',
+    child: _buildContent(context),
+  );
+
+  Widget _buildContent(BuildContext context) {
     final items = <(String, IconData, String)>[
-      ('live', Icons.sensors_rounded, gt('مباشر', 'Live')),
-      ('recorded', Icons.play_circle_outline_rounded, gt('مسجّل', 'Recorded')),
-      ('both', Icons.all_inclusive_rounded, gt('الاثنان', 'Both')),
+      ('live', Icons.sensors_rounded, 'cf_type_live'.tr),
+      ('recorded', Icons.play_circle_outline_rounded, 'cf_type_recorded'.tr),
+      ('both', Icons.all_inclusive_rounded, 'cf_type_both'.tr),
     ];
     final hint = switch (selected) {
-      'live' => gt('حصص مباشرة فقط', 'Live sessions only'),
-      'both' => gt(
-        'حصص مباشرة + دروس مسجّلة',
-        'Live sessions + recorded lessons',
-      ),
-      _ => gt('دروس مسجّلة فقط', 'Recorded lessons only'),
+      'live' => 'cf_hint_live'.tr,
+      'both' => 'cf_hint_both'.tr,
+      _ => 'cf_hint_recorded'.tr,
     };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1849,35 +1838,35 @@ class _StickyFooter extends StatelessWidget {
                   gradient: canSave
                       ? context.colors.primaryGradient
                       : const LinearGradient(
-                          colors: [Color(0xFFCDD5E0), Color(0xFFCDD5E0)],
-                        ),
+                    colors: [Color(0xFFCDD5E0), Color(0xFFCDD5E0)],
+                  ),
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: canSave ? context.colors.primaryShadow : null,
                 ),
                 child: Center(
                   child: isLoading
                       ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: AppLoadingIndicator(),
-                        )
+                    width: 20,
+                    height: 20,
+                    child: AppLoadingIndicator(),
+                  )
                       : Text(
-                          canSave
-                              ? (isEdit
-                                    ? 'btn_save_edits'.tr
-                                    : (showDraftBtn
-                                          ? 'publish_course_btn'.tr
-                                          : 'create_course_btn'.tr))
-                              : (isEdit
-                                    ? 'no_changes_to_save'.tr
-                                    : 'enter_course_title_first'.tr),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 14,
-                            fontFamily: 'bahji',
-                          ),
-                        ),
+                    canSave
+                        ? (isEdit
+                        ? 'btn_save_edits'.tr
+                        : (showDraftBtn
+                        ? 'publish_course_btn'.tr
+                        : 'create_course_btn'.tr))
+                        : (isEdit
+                        ? 'no_changes_to_save'.tr
+                        : 'enter_course_title_first'.tr),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      fontFamily: 'bahji',
+                    ),
+                  ),
                 ),
               ),
             ),

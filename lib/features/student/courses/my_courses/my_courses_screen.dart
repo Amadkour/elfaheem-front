@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/app_config.dart' as Helpers;
@@ -38,6 +39,7 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
   @override
   Widget build(BuildContext context) {
     return BasePage(
+      key: const ValueKey('my_courses'),
       appBar: ScreenAppBar(title: 'courses'.tr,showBack: !kIsWeb,),
       useWebCard: true,
       child: SafeArea(
@@ -53,7 +55,7 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const SizedBox(height: 16),
-                      const _StatsRow(),
+                      const ParentComponent(featureKey: 'my_courses.stats', child: _StatsRow()),
                       const SizedBox(height: 14),
                       Expanded(
                           child: _CourseList(
@@ -282,12 +284,15 @@ class _CourseList extends StatelessWidget {
           final courses = provider.filteredCourses;
 
           return Column(children: [
-            MySearchBar(
-              controller: controller,
-              hint: 'search_course_by_name_description',
-              onChanged: provider.setQuery,
+            ParentComponent(
+              featureKey: 'my_courses.search',
+              child: MySearchBar(
+                controller: controller,
+                hint: 'search_course_by_name_description',
+                onChanged: provider.setQuery,
+              ),
             ),
-            _FilterTabs(p:provider),
+            ParentComponent(featureKey: 'my_courses.filters', child: _FilterTabs(p: provider)),
             SizedBox(height: 10,),
             Expanded(
                 child:courses.isEmpty?Column(
@@ -315,15 +320,17 @@ class _CourseList extends StatelessWidget {
                   },
                   child: Stack(
                     children: [
-                      HomeCourseList(
-                        hasMore: provider.hasMore,
-                        courses: courses,
-                        onTap: (CourseModel c) {
-                          Navigator.push(context,
-                              MaterialPageRoute(builder: (_) => CourseDetailScreen(course: c)));
-                        },
-                        isTeacher: false, pageName: 'My-courses-profile-filtered',
-                      ),
+                      ParentComponent(
+                          featureKey: 'my_courses.list',
+                          child: HomeCourseList(
+                            hasMore: provider.hasMore,
+                            courses: courses,
+                            onTap: (CourseModel c) {
+                              Navigator.push(context,
+                                  MaterialPageRoute(builder: (_) => CourseDetailScreen(course: c)));
+                            },
+                            isTeacher: false, pageName: 'My-courses-profile-filtered',
+                          )),
                       if (provider.isLoadingMore)
                         const Positioned(
                           left: 0,

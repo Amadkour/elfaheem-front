@@ -1,6 +1,7 @@
 library;
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -58,13 +59,16 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
     final p = context.watch<TeacherCoursesProvider>();
 
     return BasePage(
+      key: const ValueKey('teacher_courses'),
       useWebCard: true,
       appBar: ScreenAppBar(
         title: '${'my_courses'.tr} '
             '${p.totalCount > 0 ? p.totalCount : p.filteredCourses.length}',
         showBack: !kIsWeb,
       ),
-      floatingActionButton: context.showSidebar ? null : _FloatingAddBtn(),
+      floatingActionButton: context.showSidebar
+          ? null
+          : ParentComponent(featureKey: 'teacher_courses.add', child: _FloatingAddBtn()),
       child: SafeArea(
         bottom: false,
         child: p.isLoading && p.allCourses.isEmpty
@@ -73,12 +77,12 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 4),
-            _CourseSearchBar(controller: _searchCtrl, p: p),
+            ParentComponent(featureKey: 'teacher_courses.search', child: _CourseSearchBar(controller: _searchCtrl, p: p)),
             const SizedBox(height: 10),
-            _FilterTabs(p: p),
+            ParentComponent(featureKey: 'teacher_courses.filters', child: _FilterTabs(p: p)),
             const SizedBox(height: 10),
             Expanded(child: _CourseList(p: p)),
-            _PaginationFooter(p: p),
+            ParentComponent(featureKey: 'teacher_courses.pagination', child: _PaginationFooter(p: p)),
           ],
         ),
       ),
@@ -762,7 +766,7 @@ class _CourseCardState extends State<_CourseCard> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-              (AppConfig.lang=='ar'? c.titleAr:c.titleEn)??'',
+                    (AppConfig.lang=='ar'? c.titleAr:c.titleEn)??'',
                     style: context.colors.h3.copyWith(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
@@ -772,42 +776,44 @@ class _CourseCardState extends State<_CourseCard> {
                   ),
                   const SizedBox(height: 10),
                   // 2×2 stats grid — deterministic height, no Wrap
-                  _StatsGrid(course: c),
+                  ParentComponent(featureKey: 'teacher_courses.card_stats', child: _StatsGrid(course: c)),
                 ],
               ),
             ),
           ),
 
           // ── Expand toggle ────────────────────────────────────────────
-          InkWell(
-            onTap: () {
-              if (mounted) setState(() => _expanded = !_expanded);
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              child: Row(
-                children: [
-                  Text(
-                    _expanded ? 'hide_details'.tr : 'show_details'.tr,
-                    style: context.colors.label.copyWith(
-                      color: context.colors.primary,
-                      fontSize: 12,
-                    ),
+          ParentComponent(
+              featureKey: 'teacher_courses.card_details',
+              child: InkWell(
+                onTap: () {
+                  if (mounted) setState(() => _expanded = !_expanded);
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  child: Row(
+                    children: [
+                      Text(
+                        _expanded ? 'hide_details'.tr : 'show_details'.tr,
+                        style: context.colors.label.copyWith(
+                          color: context.colors.primary,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      AnimatedRotation(
+                        turns: _expanded ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 220),
+                        child: Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          size: 16,
+                          color: context.colors.primary,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 4),
-                  AnimatedRotation(
-                    turns: _expanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 220),
-                    child: Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      size: 16,
-                      color: context.colors.primary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+                ),
+              )),
 
           // ── Expandable extras ────────────────────────────────────────
           AnimatedSize(
@@ -835,37 +841,43 @@ class _CourseCardState extends State<_CourseCard> {
             child: Row(
               children: [
                 Expanded(
-                  child: _ToolbarAction(
-                    icon: Icons.edit_rounded,
-                    label: 'edit'.tr,
-                    color: context.colors.primary,
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => CourseFormScreen(course: c),
-                      ),
-                    ),
-                  ),
+                  child: ParentComponent(
+                      featureKey: 'teacher_courses.edit',
+                      child: _ToolbarAction(
+                        icon: Icons.edit_rounded,
+                        label: 'edit'.tr,
+                        color: context.colors.primary,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => CourseFormScreen(course: c),
+                          ),
+                        ),
+                      )),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   flex: 2,
-                  child: _ToolbarAction(
-                    icon: isDraft
-                        ? Icons.upload_rounded
-                        : Icons.visibility_off_rounded,
-                    label: isDraft ? 'publish_course'.tr : 'unpublish_course'.tr,
-                    color: statusColor,
-                    filled: true,
-                    onTap: _togglePublish,
-                  ),
+                  child: ParentComponent(
+                      featureKey: 'teacher_courses.publish',
+                      child: _ToolbarAction(
+                        icon: isDraft
+                            ? Icons.upload_rounded
+                            : Icons.visibility_off_rounded,
+                        label: isDraft ? 'publish_course'.tr : 'unpublish_course'.tr,
+                        color: statusColor,
+                        filled: true,
+                        onTap: _togglePublish,
+                      )),
                 ),
                 const SizedBox(width: 8),
-                _ToolbarAction(
-                  icon: Icons.delete_rounded,
-                  color: Colors.red,
-                  onTap: _confirmDelete,
-                  iconOnly: true,
-                ),
+                ParentComponent(
+                    featureKey: 'teacher_courses.delete',
+                    child: _ToolbarAction(
+                      icon: Icons.delete_rounded,
+                      color: Colors.red,
+                      onTap: _confirmDelete,
+                      iconOnly: true,
+                    )),
               ],
             ),
           ),

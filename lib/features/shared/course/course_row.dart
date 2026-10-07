@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/course/private_flag.dart';
@@ -27,7 +28,12 @@ class CoursesRow extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'course_row',
+    child: _featureContent(context),
+  );
+
+  Widget _featureContent(BuildContext context) {
     final ScrollController controller = ScrollController();
 
     if (courses.isEmpty) {
@@ -117,7 +123,12 @@ class CourseCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'course_card',
+    child: _featureContent(context),
+  );
+
+  Widget _featureContent(BuildContext context) {
     final hasLectures = course.sessionsCount > 0;
     final hasHours = course.hoursCount > 0;
     final hasCertificate = course.certificates.isNotEmpty;
@@ -126,7 +137,7 @@ class CourseCard extends StatelessWidget {
         (AppConfig.lang == 'ar'
             ? course.descriptionAr
             : course.descriptionEn) ??
-        '';
+            '';
 
     return GestureDetector(
       onTap: () => onTap.call(course),
@@ -168,8 +179,8 @@ class CourseCard extends StatelessWidget {
                         Flexible(
                           child: Text(
                             (AppConfig.lang == 'ar'
-                                    ? course.titleAr
-                                    : course.titleEn) ??
+                                ? course.titleAr
+                                : course.titleEn) ??
                                 '',
                             style: context.colors.h3.copyWith(
                               fontSize: 13,
@@ -191,7 +202,7 @@ class CourseCard extends StatelessWidget {
                     // Teacher
                     Spacer(flex: 1),
                     if (description.isNotEmpty) ...[
-                      Text(
+                      ParentComponent(featureKey: 'course_card.description', child: Text(
                         description,
                         style: context.colors.caption.copyWith(
                           overflow: TextOverflow.ellipsis,
@@ -199,7 +210,7 @@ class CourseCard extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                           fontSize: 9,
                         ),
-                      ),
+                      )),
                       Spacer(flex: 1),
                     ],
                     Row(
@@ -208,18 +219,18 @@ class CourseCard extends StatelessWidget {
                         if (!isTeacher && course.teacher != null)
                           Expanded(
                             flex: 1,
-                            child: InstructorAvatar(
+                            child: ParentComponent(featureKey: 'course_card.instructor', child: InstructorAvatar(
                               teacher: course.teacher!,
                               size: 30,
                               canOpen: true,
                               showTitle: true,
                               showImage: false,
-                            ),
+                            )),
                           ),
                         if (course.category != null)
                           Flexible(
                             flex: 1,
-                            child: Container(
+                            child: ParentComponent(featureKey: 'course_card.category', child: Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 4,
                                 vertical: 2,
@@ -241,12 +252,12 @@ class CourseCard extends StatelessWidget {
                                   fontFamily: 'bahji',
                                 ),
                               ),
-                            ),
+                            )),
                           ),
                         if (isTeacher)
                           Flexible(
                             flex: 1,
-                            child: Container(
+                            child: ParentComponent(featureKey: 'course_card.publish_status', child: Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 9,
                                 vertical: 3,
@@ -268,7 +279,7 @@ class CourseCard extends StatelessWidget {
                                   fontFamily: 'bahji',
                                 ),
                               ),
-                            ),
+                            )),
                           ),
                       ],
                     ),
@@ -323,7 +334,12 @@ class _Thumbnail extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'course_card.thumbnail',
+    child: _featureContent(context),
+  );
+
+  Widget _featureContent(BuildContext context) {
     return Stack(
       children: [
         Positioned.fill(
@@ -354,7 +370,7 @@ class _Thumbnail extends StatelessWidget {
         Positioned(
           top: 10,
           right: 10,
-          child: Container(
+          child: ParentComponent(featureKey: 'course_card.type_badge', child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
             decoration: BoxDecoration(
               color: Colors.black.withValues(alpha: 0.45),
@@ -370,7 +386,7 @@ class _Thumbnail extends StatelessWidget {
                 fontFamily: 'bahji',
               ),
             ),
-          ),
+          )),
         ),
 
         // Favorite heart — top left
@@ -378,7 +394,7 @@ class _Thumbnail extends StatelessWidget {
           Positioned(
             top: 8,
             left: 10,
-            child: Container(
+            child: ParentComponent(featureKey: 'course_card.favorite', child: Container(
               width: 28,
               height: 28,
               decoration: BoxDecoration(
@@ -394,7 +410,7 @@ class _Thumbnail extends StatelessWidget {
                     ? const Color(0xFFE24B4A)
                     : Colors.grey.shade400,
               ),
-            ),
+            )),
           ),
 
         // Discount ribbon — top right, under the type badge
@@ -402,7 +418,7 @@ class _Thumbnail extends StatelessWidget {
           Positioned(
             top: 34,
             right: 10,
-            child: Column(
+            child: ParentComponent(featureKey: 'course_card.discount', child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 DiscountRibbon.forCourse(course: course),
@@ -411,12 +427,12 @@ class _Thumbnail extends StatelessWidget {
                   DiscountCountdownBadge(course: course, compact: true),
                 ],
               ],
-            ),
+            )),
           ),
 
         // Private course flag — bottom left
         if (course.isPrivate)
-          Positioned(bottom: 10, left: 10, child: PrivateFlag()),
+          Positioned(bottom: 10, left: 10, child: ParentComponent(featureKey: 'course_card.private_flag', child: PrivateFlag())),
 
         // Countdown — bottom left, opposite the price badge. This is the
         // "hurry up" nudge: calm amber while there's still time, switching
@@ -426,7 +442,7 @@ class _Thumbnail extends StatelessWidget {
         Positioned(
           bottom: 10,
           right: 10,
-          child: Container(
+          child: ParentComponent(featureKey: 'course_card.price', child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: course.effectivePrice == 0
@@ -436,10 +452,10 @@ class _Thumbnail extends StatelessWidget {
               boxShadow: [
                 BoxShadow(
                   color:
-                      (course.effectivePrice == 0
-                              ? const Color(0xFF0F6E56)
-                              : context.colors.primary)
-                          .withValues(alpha: 0.35),
+                  (course.effectivePrice == 0
+                      ? const Color(0xFF0F6E56)
+                      : context.colors.primary)
+                      .withValues(alpha: 0.35),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -473,7 +489,7 @@ class _Thumbnail extends StatelessWidget {
                 ),
               ],
             ),
-          ),
+          )),
         ),
       ],
     );
@@ -524,7 +540,12 @@ class _StatsRow extends StatelessWidget {
   const _StatsRow({required this.course});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'course_card.rating',
+    child: _featureContent(context),
+  );
+
+  Widget _featureContent(BuildContext context) {
     return Row(
       children: [
         Icon(Icons.star_rounded, color: context.colors.accent, size: 13),
@@ -554,7 +575,12 @@ class _MetaRow extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'course_card.meta',
+    child: _featureContent(context),
+  );
+
+  Widget _featureContent(BuildContext context) {
     return Row(
       children: [
         if (hasLectures) ...[
@@ -600,7 +626,12 @@ class _StudentRow extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'course_card.students',
+    child: _featureContent(context),
+  );
+
+  Widget _featureContent(BuildContext context) {
     return Row(
       children: [
         if (hasCertificate) ...[
@@ -643,7 +674,12 @@ class _ProgressBar extends StatelessWidget {
   const _ProgressBar({required this.progress});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'course_card.progress',
+    child: _featureContent(context),
+  );
+
+  Widget _featureContent(BuildContext context) {
     Color primary = progress > 90
         ? context.colors.success
         : progress > 30

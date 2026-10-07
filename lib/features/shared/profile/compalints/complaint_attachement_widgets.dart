@@ -17,6 +17,7 @@
 library;
 
 import 'dart:io';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -129,7 +130,12 @@ class AttachmentGalleryGrid extends StatelessWidget {
   final bool showLabel;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'complaints.attachments',
+    child: _featureContent(context),
+  );
+
+  Widget _featureContent(BuildContext context) {
     if (attachments.isEmpty) return const SizedBox.shrink();
     final c = context.colors;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

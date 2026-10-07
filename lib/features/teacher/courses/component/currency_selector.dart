@@ -7,6 +7,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../student/models.dart' show AppCurrency, AppCurrencyX;
@@ -26,7 +27,12 @@ class CurrencySelector extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'course_form.currency',
+    child: _buildContent(context),
+  );
+
+  Widget _buildContent(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -52,11 +58,11 @@ class CurrencySelector extends StatelessWidget {
               runSpacing: 10,
               children: AppCurrency.values
                   .map((c) => _CurrencyChip(
-                        currency: c,
-                        isSelected: c == selected,
-                        isWide: isWide,
-                        onTap: () => onChanged(c),
-                      ))
+                currency: c,
+                isSelected: c == selected,
+                isWide: isWide,
+                onTap: () => onChanged(c),
+              ))
                   .toList(),
             );
           },
@@ -103,12 +109,12 @@ class _CurrencyChip extends StatelessWidget {
           boxShadow: isSelected
               ? context.colors.primaryShadow
               : [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.03),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

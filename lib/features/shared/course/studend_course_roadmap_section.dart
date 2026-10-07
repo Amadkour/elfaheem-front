@@ -146,14 +146,14 @@ class CourseRoadmapSection extends StatelessWidget {
               nextCourses: nextCourses,
               onTapCourse: onTapCourse,
             ),
-            if (onEnrollRoadmap != null && nextCourses.isNotEmpty) ...[
+            if (onEnrollRoadmap != null && nextCourses.isNotEmpty) ParentComponent(featureKey: 'course.enroll_roadmap', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               const SizedBox(height: 18),
               _EnrollRoadmapButton(
                 label: 'roadmap_enroll_all'.tr,
                 onTap: onEnrollRoadmap!,
               ),
-            ],
-            if (combined.isNotEmpty) ...[
+            ])),
+            if (combined.isNotEmpty) ParentComponent(featureKey: 'roadmap.explore_more', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               const SizedBox(height: 24),
               Row(
                 children: [
@@ -196,11 +196,11 @@ class CourseRoadmapSection extends StatelessWidget {
                             isDark: true,
                           ),
                         ),
-      
+
                   ),
                 ),
               ),
-            ],
+            ])),
           ],
         ),
       ),
@@ -226,7 +226,12 @@ class _RoadmapPath extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'roadmap.path',
+    child: _featureContent(context),
+  );
+
+  Widget _featureContent(BuildContext context) {
     final completedOldestFirst = completedCourses.reversed.toList();
 
     final children = <Widget>[];

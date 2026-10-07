@@ -5,6 +5,7 @@
 library;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/auth/teacher_document_model.dart';
@@ -119,7 +120,7 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
         final content = isWide
             ? _buildWideLayout(auth, docs)
             : _buildNarrowLayout(auth, docs);
-        return BasePage(child: content);
+        return BasePage(key: const ValueKey('additional_register'), child: content);
       },
     );
   }
@@ -185,64 +186,64 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    IconTextField(
+                    ParentComponent(featureKey: 'additional_register.experience', child: IconTextField(
                       controller: _yearCtrl,
                       label: 'experience'.tr,
                       icon: Icons.schedule_rounded,
                       keyboard: TextInputType.number,
                       // validator: (v) =>
                       // (v == null || v.isEmpty) ? 'field_required'.tr : null,
-                    ),
+                    )),
                     const SizedBox(height: 20),
 
-                    SectionLabel(label: 'specialization'.tr),
-                    const SizedBox(height: 8),
-                    auth.isLoading
-                        ? const Center(
-                      child: AppLoadingIndicator(),
-                    )
-                        : StyledDropdown(
-                      icon: Icons.science_outlined,
-                      label: 'specialization'.tr,
-                      controller: _specCtrl,
-                      initValue: auth.selectedSpecialization,
-                      options: auth.specializations,
-                      onChange: (i) =>
-                          auth.onChangeSpecialization(i, _specCtrl),
-                    ),
-                    const SizedBox(height: 20),
+                    ParentComponent(featureKey: 'additional_register.specialization', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [SectionLabel(label: 'specialization'.tr),
+                      const SizedBox(height: 8),
+                      auth.isLoading
+                          ? const Center(
+                        child: AppLoadingIndicator(),
+                      )
+                          : StyledDropdown(
+                        icon: Icons.science_outlined,
+                        label: 'specialization'.tr,
+                        controller: _specCtrl,
+                        initValue: auth.selectedSpecialization,
+                        options: auth.specializations,
+                        onChange: (i) =>
+                            auth.onChangeSpecialization(i, _specCtrl),
+                      ),
+                      const SizedBox(height: 20)])),
 
-                    SectionLabel(label: 'payment_method'.tr),
-                    const SizedBox(height: 8),
-                    StyledDropdown(
-                      icon: Icons.credit_card_outlined,
-                      label: 'payment_method'.tr,
-                      controller: _payCtrl,
-                      initValue: auth.selectedPaymentType,
-                      options: auth.paymentTypes,
-                      onChange: (i) => auth.onChangePaymentMethod(i, _payCtrl),
-                    ),
-                    const SizedBox(height: 20),
+                    ParentComponent(featureKey: 'additional_register.payment_method', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [SectionLabel(label: 'payment_method'.tr),
+                      const SizedBox(height: 8),
+                      StyledDropdown(
+                        icon: Icons.credit_card_outlined,
+                        label: 'payment_method'.tr,
+                        controller: _payCtrl,
+                        initValue: auth.selectedPaymentType,
+                        options: auth.paymentTypes,
+                        onChange: (i) => auth.onChangePaymentMethod(i, _payCtrl),
+                      ),
+                      const SizedBox(height: 20)])),
 
-                    SectionLabel(label: 'teaching_style'.tr),
-                    const SizedBox(height: 8),
-                    StyledDropdown(
-                      icon: Icons.cast_for_education_outlined,
-                      label: 'teaching_style'.tr,
-                      controller: _teachCtrl,
-                      initValue: auth.selectedTeachingType,
-                      options: auth.teachingTypes,
-                      onChange: (i) => auth.onChangeTeachingType(i, _teachCtrl),
-                    ),
-                    const SizedBox(height: 20),
+                    ParentComponent(featureKey: 'additional_register.teaching_style', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [SectionLabel(label: 'teaching_style'.tr),
+                      const SizedBox(height: 8),
+                      StyledDropdown(
+                        icon: Icons.cast_for_education_outlined,
+                        label: 'teaching_style'.tr,
+                        controller: _teachCtrl,
+                        initValue: auth.selectedTeachingType,
+                        options: auth.teachingTypes,
+                        onChange: (i) => auth.onChangeTeachingType(i, _teachCtrl),
+                      ),
+                      const SizedBox(height: 20)])),
 
-                    SectionLabel(label: 'bio_label'.tr),
-                    const SizedBox(height: 8),
-                    IconTextField(
-                      controller: _bioCtrl,
-                      label: 'bio_optional_hint'.tr,
-                      icon: Icons.info_outline_rounded,
-                    ),
+                    ParentComponent(featureKey: 'additional_register.bio', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [SectionLabel(label: 'bio_label'.tr),
+                      const SizedBox(height: 8),
+                      IconTextField(
+                        controller: _bioCtrl,
+                        label: 'bio_optional_hint'.tr,
+                        icon: Icons.info_outline_rounded,
+                      )])),
                   ],
                 ),
               ),
@@ -254,7 +255,7 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
             // the upload endpoints 400 otherwise ("Complete your teacher
             // profile first").
             if (_profileSubmitted) ...[
-              _DocumentsSection(provider: docs, email: widget.email),
+              ParentComponent(featureKey: 'additional_register.documents', child: _DocumentsSection(provider: docs, email: widget.email)),
               const SizedBox(height: 32),
             ] else ...[
               Container(
@@ -408,7 +409,7 @@ class _DocumentsSection extends StatelessWidget {
 
           // ── Add another document button ────────────────────────────────────
           const SizedBox(height: 12),
-          _AddAnotherButton(provider: provider),
+          ParentComponent(featureKey: 'additional_register.add_document', child: _AddAnotherButton(provider: provider)),
         ],
       ],
     );

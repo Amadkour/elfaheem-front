@@ -20,6 +20,7 @@
 // Needs `file_picker`, `dio` and `http_parser` (all already dependencies).
 // ─────────────────────────────────────────────────────────────────────────────
 import 'dart:typed_data';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
@@ -172,9 +173,12 @@ class CourseReelField extends StatelessWidget {
   const CourseReelField({super.key, required this.controller, this.posterUrl});
 
   @override
-  Widget build(BuildContext context) => ListenableBuilder(
-    listenable: controller,
-    builder: (context, _) => _buildCard(context),
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'course_form.reel',
+    child: ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) => _buildCard(context),
+    ),
   );
 
   Widget _buildCard(BuildContext context) {

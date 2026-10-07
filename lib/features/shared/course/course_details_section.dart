@@ -5,6 +5,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/features/teacher/schedules/schedules_screen.dart';
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
@@ -65,7 +66,12 @@ class CourseDetailsSection extends StatelessWidget {
   // course.tools.isNotEmpty ||
   // course.certificates.isNotEmpty;
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'course_details',
+    child: _featureContent(context),
+  );
+
+  Widget _featureContent(BuildContext context) {
     if (!_hasAny) return const SizedBox.shrink();
 
     return Column(
@@ -93,7 +99,7 @@ class CourseDetailsSection extends StatelessWidget {
 
         // ── Cards ──────────────────────────────────────────────────────
         // if (course.schedules.isNotEmpty)
-        DetailCard(
+        ParentComponent(featureKey: 'course_details.schedule', child: DetailCard(
           expanded: false,
           icon: Icons.calendar_month_rounded,
           title: 'weekly_schedule'.tr,
@@ -101,9 +107,9 @@ class CourseDetailsSection extends StatelessWidget {
           children:course.schedules.isEmpty? <Widget>[_AddButton(onTap: ()  {Navigator.push(context, MaterialPageRoute(builder: (_)=>TeacherSchedulesScreen(course: course,))); })]: course.schedules
               .map((s) => _ScheduleRow(schedule: s))
               .toList(),
-        ),
+        )),
 
-        if (course.prerequisites.isNotEmpty) ...[
+        if (course.prerequisites.isNotEmpty) ParentComponent(featureKey: 'course_details.prerequisites', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
           const SizedBox(height: 10),
           DetailCard(
             expanded: false,
@@ -114,9 +120,9 @@ class CourseDetailsSection extends StatelessWidget {
                 .map((p) => _BulletRow(text: p.title))
                 .toList(),
           ),
-        ],
+        ])),
 
-        if (course.tools.isNotEmpty) ...[
+        if (course.tools.isNotEmpty) ParentComponent(featureKey: 'course_details.tools', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
           const SizedBox(height: 10),
           DetailCard(
             expanded: false,
@@ -127,9 +133,9 @@ class CourseDetailsSection extends StatelessWidget {
                 .map((t) => _BulletRow(text: t.name))
                 .toList(),
           ),
-        ],
+        ])),
 
-        if (course.certificates.isNotEmpty) ...[
+        if (course.certificates.isNotEmpty) ParentComponent(featureKey: 'course_details.certificates', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
           const SizedBox(height: 10),
           DetailCard(
             expanded: false,
@@ -140,7 +146,7 @@ class CourseDetailsSection extends StatelessWidget {
                 .map((c) => _CertificateRow(cert: c, courseId: course.id))
                 .toList(),
           ),
-        ],
+        ])),
 
         const SizedBox(height: 4),
       ],

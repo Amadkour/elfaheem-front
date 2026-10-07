@@ -7,6 +7,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import 'device_security_provider.dart';
 
@@ -30,6 +31,7 @@ class _DeviceBlockedDialog extends StatefulWidget {
 
 class _DeviceBlockedDialogState extends State<_DeviceBlockedDialog> {
   bool _busy = false;
+  bool _sent = false;
   String? _msg;
 
   Future<void> _send() async {
@@ -38,7 +40,8 @@ class _DeviceBlockedDialogState extends State<_DeviceBlockedDialog> {
     if (!mounted) return;
     setState(() {
       _busy = false;
-      _msg = ok ? 'تم إرسال الطلب إلى المدرس. سيتم إشعارك بعد الموافقة.' :(widget.p.switchError?? 'تعذر إرسال الطلب، حاول مرة أخرى.');
+      _sent = ok;
+      _msg = ok ? 'dev_request_sent'.tr : (widget.p.switchError ?? 'dev_send_failed'.tr);
     });
   }
 
@@ -47,16 +50,14 @@ class _DeviceBlockedDialogState extends State<_DeviceBlockedDialog> {
     final c = context.colors;
     final p = widget.p;
     final String body;
-    if (p.hasPending || _msg != null && _msg!.startsWith('تم')) {
-      body = 'لديك طلب تغيير جهاز قيد المراجعة عند المدرس.';
+    if (p.hasPending || _sent) {
+      body = 'dev_pending_body'.tr;
     } else if (p.switchUsedThisMonth) {
-      body = 'هذا الحساب مسجّل على جهاز آخر، وقد استخدمت طلب تغيير الجهاز لهذا الشهر. '
-          'يمكنك إرسال طلب جديد في الشهر القادم.';
+      body = 'dev_used_this_month_body'.tr;
     } else {
-      body = 'هذا الحساب مسجّل على جهاز آخر، ولا يمكن المشاهدة إلا من الجهاز الذي سجّلت ودفعت منه.\n\n'
-          'إذا كان هذا جهازك الجديد يمكنك إرسال طلب للمدرس لنقل الحساب (مرة واحدة كل شهر).';
+      body = 'dev_blocked_body'.tr;
     }
-    final canSend = p.canRequest && !p.hasPending && !(_msg?.startsWith('تم') ?? false);
+    final canSend = p.canRequest && !p.hasPending && !_sent;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -66,20 +67,20 @@ class _DeviceBlockedDialogState extends State<_DeviceBlockedDialog> {
         title: Row(children: [
           Icon(Icons.phonelink_lock_rounded, color: c.danger),
           const SizedBox(width: 8),
-          Expanded(child: Text('جهاز غير مسموح به', style: c.h3)),
+          Expanded(child: Text('dev_blocked_title'.tr, style: c.h3)),
         ]),
         content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.center, children: [
           Align( alignment:Alignment.centerRight ,child: Text(body, style: c.body)),
           if (_msg != null) ...[const SizedBox(height: 10), Text(_msg!, style: c.caption.copyWith(color: Colors.red,fontSize: 14,fontWeight: FontWeight.w600))],
         ]),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('إغلاق')),
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: Text('dev_close'.tr)),
           if (canSend)
             FilledButton(
               onPressed: _busy ? null : _send,
               child: _busy
                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('إرسال طلب للمدرس'),
+                  : Text('dev_send_request'.tr),
             ),
         ],
       ),

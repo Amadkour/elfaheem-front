@@ -35,6 +35,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
 import '../../../config/theme/app_theme.dart';
@@ -160,25 +161,26 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage>
     final c = context.colors;
     final (Color c1, Color c2, IconData icon) = switch (_cbState) {
       _CbState.success => (
-        c.success,
-        const Color(0xFF2ECC71),
-        Icons.check_rounded,
+      c.success,
+      const Color(0xFF2ECC71),
+      Icons.check_rounded,
       ),
       _CbState.pending => (
-        c.accent,
-        const Color(0xFFF39C12),
-        Icons.hourglass_top_rounded,
+      c.accent,
+      const Color(0xFFF39C12),
+      Icons.hourglass_top_rounded,
       ),
       _CbState.failed => (
-        c.danger,
-        const Color(0xFFE74C3C),
-        Icons.error_outline_rounded,
+      c.danger,
+      const Color(0xFFE74C3C),
+      Icons.error_outline_rounded,
       ),
     };
 
     return BasePage(
-        useWebCard: true,
-        child: SafeArea(
+      key: const ValueKey('payment_callback'),
+      useWebCard: true,
+      child: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
@@ -238,20 +240,22 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage>
                 // screen in the stack after a full browser redirect.
                 if (_cbState == _CbState.failed) ...[
                   const SizedBox(height: 14),
-                  OutlinedButton(
-                    onPressed: _goHome,
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      side: BorderSide(color: c.divider),
-                    ),
-                    child: Text(
-                      'try_again_payment'.tr,
-                      style: c.label.copyWith(color: c.textMedium),
-                    ),
-                  ),
+                  ParentComponent(
+                      featureKey: 'payment_callback.try_again',
+                      child: OutlinedButton(
+                        onPressed: _goHome,
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          side: BorderSide(color: c.divider),
+                        ),
+                        child: Text(
+                          'try_again_payment'.tr,
+                          style: c.label.copyWith(color: c.textMedium),
+                        ),
+                      )),
                 ],
               ],
             ),

@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -16,9 +17,9 @@ class TeacherAttendanceScreen extends StatelessWidget {
 
   const TeacherAttendanceScreen(
       {super.key,
-      required this.courseId,
-      required this.courseTitle,
-      this.sessionId});
+        required this.courseId,
+        required this.courseTitle,
+        this.sessionId});
 
   @override
   Widget build(BuildContext context) {
@@ -77,6 +78,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
     final isWide = MediaQuery.of(context).size.width > 720;
 
     return BasePage(
+      key: const ValueKey('teacher_attendance'),
       useWebCard: true,
       maxWith: 1100,
       child: SafeArea(
@@ -210,22 +212,22 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
           prov.errorMessage, () async => prov.loadSessions(null));
     }
     return Column(children: [
-      _buildSessionFlagBar(prov),
+      ParentComponent(featureKey: 'teacher_attendance.session_flag', child: _buildSessionFlagBar(prov)),
       if (prov.selectedSession != null) ...[
         if (prov.isLoadingStudents)
           const Expanded(child: Center(child: AppLoadingIndicator()))
         else if (prov.hasError)
           Expanded(
               child: _buildError(prov.errorMessage,
-                  () => prov.selectSession(prov.selectedSession!)))
+                      () => prov.selectSession(prov.selectedSession!)))
         else ...[
-          _buildStats(prov),
-          _buildSearchBar(prov),
-          Expanded(
-            child: isWide ? _buildWideGrid(prov) : _buildList(prov),
-          ),
-          _buildSaveBar(prov),
-        ],
+            ParentComponent(featureKey: 'teacher_attendance.stats', child: _buildStats(prov)),
+            ParentComponent(featureKey: 'teacher_attendance.search', child: _buildSearchBar(prov)),
+            Expanded(
+              child: isWide ? _buildWideGrid(prov) : _buildList(prov),
+            ),
+            ParentComponent(featureKey: 'teacher_attendance.save_bar', child: _buildSaveBar(prov)),
+          ],
       ] else
         Expanded(child: _buildSelectSessionHint()),
     ]);
@@ -233,101 +235,101 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
 
   // ── Loading skeleton ──────────────────────────────────────────────────────
   Widget _buildLoadingState() => Expanded(
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 52,
-                height: 52,
-                child:AppLoadingIndicator(),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'loading_attendance'.tr,
-                style: const TextStyle(
-                    fontFamily: 'bahji', color: Colors.grey, fontSize: 14),
-              ),
-            ],
+    child: Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 52,
+            height: 52,
+            child:AppLoadingIndicator(),
           ),
-        ),
-      );
+          const SizedBox(height: 16),
+          Text(
+            'loading_attendance'.tr,
+            style: const TextStyle(
+                fontFamily: 'bahji', color: Colors.grey, fontSize: 14),
+          ),
+        ],
+      ),
+    ),
+  );
 
   // ── Select session hint ───────────────────────────────────────────────────
   Widget _buildSelectSessionHint() => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: _primary.withValues(alpha: .08),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.touch_app_rounded,
-                  size: 48, color: _primary.withValues(alpha: .5)),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'select_lecture'.tr,
-              style: TextStyle(
-                  fontFamily: 'bahji',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'select_session_hint_sub'.tr,
-              style: TextStyle(
-                  fontFamily: 'bahji',
-                  fontSize: 13,
-                  color: Colors.grey.shade400),
-            ),
-          ],
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: _primary.withValues(alpha: .08),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(Icons.touch_app_rounded,
+              size: 48, color: _primary.withValues(alpha: .5)),
         ),
-      );
+        const SizedBox(height: 16),
+        Text(
+          'select_lecture'.tr,
+          style: TextStyle(
+              fontFamily: 'bahji',
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade600),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'select_session_hint_sub'.tr,
+          style: TextStyle(
+              fontFamily: 'bahji',
+              fontSize: 13,
+              color: Colors.grey.shade400),
+        ),
+      ],
+    ),
+  );
 
   // ── Error state ───────────────────────────────────────────────────────────
   Widget _buildError(String? msg, VoidCallback retry) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: _danger.withValues(alpha: .08),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.wifi_off_rounded,
-                  size: 44, color: _danger.withValues(alpha: .7)),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              msg ?? 'something-went-wrong'.tr,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  fontFamily: 'bahji', fontSize: 14, color: Colors.grey),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: retry,
-              icon: const Icon(Icons.refresh_rounded, size: 18),
-              label:
-                  Text('retry'.tr, style: const TextStyle(fontFamily: 'bahji')),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _primary,
-                foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-                elevation: 0,
-              ),
-            ),
-          ]),
+    child: Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: _danger.withValues(alpha: .08),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(Icons.wifi_off_rounded,
+              size: 44, color: _danger.withValues(alpha: .7)),
         ),
-      );
+        const SizedBox(height: 16),
+        Text(
+          msg ?? 'something-went-wrong'.tr,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+              fontFamily: 'bahji', fontSize: 14, color: Colors.grey),
+        ),
+        const SizedBox(height: 20),
+        ElevatedButton.icon(
+          onPressed: retry,
+          icon: const Icon(Icons.refresh_rounded, size: 18),
+          label:
+          Text('retry'.tr, style: const TextStyle(fontFamily: 'bahji')),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _primary,
+            foregroundColor: Colors.white,
+            padding:
+            const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14)),
+            elevation: 0,
+          ),
+        ),
+      ]),
+    ),
+  );
 
   // ── Session flag bar ──────────────────────────────────────────────────────
   Widget _buildSessionFlagBar(TeacherAttendanceProvider prov) {
@@ -364,32 +366,32 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
             height: 80,
             child: prov.sessions.isEmpty
                 ? Center(
-                    child: Text(
-                      'no_sessions_available'.tr,
-                      style: const TextStyle(
-                          fontFamily: 'bahji',
-                          color: Colors.grey,
-                          fontSize: 13),
-                    ),
-                  )
+              child: Text(
+                'no_sessions_available'.tr,
+                style: const TextStyle(
+                    fontFamily: 'bahji',
+                    color: Colors.grey,
+                    fontSize: 13),
+              ),
+            )
                 : ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.only(bottom: 4),
-                    itemCount: prov.sessions.length,
-                    separatorBuilder: (_, _) => const SizedBox(width: 10),
-                    itemBuilder: (_, i) {
-                      final s = prov.sessions[i];
-                      final sel = prov.selectedSession?.id == s.id;
-                      return _SessionFlag(
-                        session: s,
-                        index: i,
-                        isSelected: sel,
-                        onTap: () => prov.selectSession(s),
-                        primaryColor: _primary,
-                        primaryLight: _primaryLight,
-                      );
-                    },
-                  ),
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.only(bottom: 4),
+              itemCount: prov.sessions.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 10),
+              itemBuilder: (_, i) {
+                final s = prov.sessions[i];
+                final sel = prov.selectedSession?.id == s.id;
+                return _SessionFlag(
+                  session: s,
+                  index: i,
+                  isSelected: sel,
+                  onTap: () => prov.selectSession(s),
+                  primaryColor: _primary,
+                  primaryLight: _primaryLight,
+                );
+              },
+            ),
           ),
           const SizedBox(height: 4),
           Divider(color: Colors.grey.shade100, thickness: 1.5, height: 1),
@@ -435,53 +437,53 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
 
   // ── Search bar ────────────────────────────────────────────────────────────
   Widget _buildSearchBar(TeacherAttendanceProvider prov) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-        child: Container(
-          decoration: BoxDecoration(
-            color: context.colors.cardBg,
+    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+    child: Container(
+      decoration: BoxDecoration(
+        color: context.colors.cardBg,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: .06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _searchCtrl,
+        textDirection: TextDirection.rtl,
+        style: const TextStyle(fontFamily: 'bahji', fontSize: 14),
+        decoration: InputDecoration(
+          hintText: 'search_student'.tr,
+          hintStyle: TextStyle(
+              fontFamily: 'bahji',
+              color: Colors.grey.shade400,
+              fontSize: 13),
+          prefixIcon: Icon(Icons.search_rounded,
+              color: Colors.grey.shade400, size: 20),
+          suffixIcon: prov.search.isNotEmpty
+              ? IconButton(
+              icon: Icon(Icons.close_rounded,
+                  color: Colors.grey.shade400, size: 18),
+              onPressed: () {
+                _searchCtrl.clear();
+                prov.setSearch('');
+              })
+              : null,
+          filled: true,
+          fillColor: Colors.transparent,
+          border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: .06),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            borderSide: BorderSide.none,
           ),
-          child: TextField(
-            controller: _searchCtrl,
-            textDirection: TextDirection.rtl,
-            style: const TextStyle(fontFamily: 'bahji', fontSize: 14),
-            decoration: InputDecoration(
-              hintText: 'search_student'.tr,
-              hintStyle: TextStyle(
-                  fontFamily: 'bahji',
-                  color: Colors.grey.shade400,
-                  fontSize: 13),
-              prefixIcon: Icon(Icons.search_rounded,
-                  color: Colors.grey.shade400, size: 20),
-              suffixIcon: prov.search.isNotEmpty
-                  ? IconButton(
-                      icon: Icon(Icons.close_rounded,
-                          color: Colors.grey.shade400, size: 18),
-                      onPressed: () {
-                        _searchCtrl.clear();
-                        prov.setSearch('');
-                      })
-                  : null,
-              filled: true,
-              fillColor: Colors.transparent,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            ),
-            onChanged: prov.setSearch,
-          ),
+          contentPadding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
-      );
+        onChanged: prov.setSearch,
+      ),
+    ),
+  );
 
   // ── Lists ─────────────────────────────────────────────────────────────────
   Widget _buildList(TeacherAttendanceProvider prov) {
@@ -559,21 +561,21 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView>
               onPressed: prov.saving || prov.changes.isEmpty
                   ? null
                   : () async {
-                      final ok = await prov.saveAttendance(prov.changes);
-                      prov.clearChanges();
-                      if (!context.mounted) return;
-                      _showSnack(
-                        ok ? 'attendance_saved'.tr : 'save_failed'.tr,
-                        ok ? _success : _danger,
-                      );
-                    },
+                final ok = await prov.saveAttendance(prov.changes);
+                prov.clearChanges();
+                if (!context.mounted) return;
+                _showSnack(
+                  ok ? 'attendance_saved'.tr : 'save_failed'.tr,
+                  ok ? _success : _danger,
+                );
+              },
               icon: prov.saving
                   ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child:AppLoadingIndicator())
+                  width: 16,
+                  height: 16,
+                  child:AppLoadingIndicator())
                   : const Icon(Icons.save_rounded,
-                      color: Colors.white, size: 18),
+                  color: Colors.white, size: 18),
               label:Padding(padding: EdgeInsetsGeometry.symmetric(vertical: 11),child:  Text(
                 prov.saving ? 'saving'.tr : 'save_attendance'.tr,
                 style: const TextStyle(
@@ -644,13 +646,13 @@ class _Circle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: color,
-        ),
-      );
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: color,
+    ),
+  );
 }
 
 /// Glass icon button for app bar
@@ -662,23 +664,23 @@ class _GlassButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: .2),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                    color: Colors.white.withValues(alpha: .3), width: 1),
-              ),
-              child: Icon(icon, color: Colors.white, size: 18),
-            ),
+    onTap: onTap,
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: .2),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+                color: Colors.white.withValues(alpha: .3), width: 1),
           ),
+          child: Icon(icon, color: Colors.white, size: 18),
         ),
-      );
+      ),
+    ),
+  );
 }
 
 /// Flag-style session chip (vertical card with number + name)
@@ -710,10 +712,10 @@ class _SessionFlag extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: isSelected
               ? LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [primaryColor, primaryLight],
-                )
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [primaryColor, primaryLight],
+          )
               : null,
           color: isSelected ? null : Colors.grey.shade50,
           borderRadius: BorderRadius.circular(16),
@@ -723,12 +725,12 @@ class _SessionFlag extends StatelessWidget {
           ),
           boxShadow: isSelected
               ? [
-                  BoxShadow(
-                    color: primaryColor.withValues(alpha: .35),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  )
-                ]
+            BoxShadow(
+              color: primaryColor.withValues(alpha: .35),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            )
+          ]
               : [],
         ),
         child: Column(
@@ -796,53 +798,53 @@ class _PremiumStatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Expanded(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-          decoration: BoxDecoration(
-            gradient: gradient,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: gradient.colors.first.withValues(alpha: .3),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: gradient.colors.first.withValues(alpha: .3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: .2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, color: Colors.white, size: 14),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontFamily: 'bahji',
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
-                ),
-              ),
-              Text(
-                label,
-                style: TextStyle(
-                  fontFamily: 'bahji',
-                  fontSize: 10,
-                  color: Colors.white.withValues(alpha: .85),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: .2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: Colors.white, size: 14),
           ),
-        ),
-      );
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              fontFamily: 'bahji',
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'bahji',
+              fontSize: 10,
+              color: Colors.white.withValues(alpha: .85),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 /// Premium student list tile
@@ -878,7 +880,7 @@ class _PremiumStudentTile extends StatelessWidget {
         color: context.colors.cardBg,
         borderRadius: BorderRadius.circular(16),
         border:
-            Border.all(color: statusColor.withValues(alpha: .2), width: 1.5),
+        Border.all(color: statusColor.withValues(alpha: .2), width: 1.5),
         boxShadow: [
           BoxShadow(
               color: Colors.black.withValues(alpha: .04),
@@ -899,14 +901,14 @@ class _PremiumStudentTile extends StatelessWidget {
                   : null,
               child: student.imageUrl == null
                   ? Text(
-                      student.name[0],
-                      style: TextStyle(
-                        fontFamily: 'bahji',
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                        color: statusColor,
-                      ),
-                    )
+                student.name[0],
+                style: TextStyle(
+                  fontFamily: 'bahji',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: statusColor,
+                ),
+              )
                   : null,
             ),
             Positioned(
@@ -934,31 +936,31 @@ class _PremiumStudentTile extends StatelessWidget {
         ),
         subtitle: student.durationMinutes != null
             ? Text(
-                '$durationLabel: ${student.durationMinutes} $minutesLabel',
-                style: const TextStyle(
-                    fontFamily: 'bahji', fontSize: 12, color: Colors.grey),
-              )
+          '$durationLabel: ${student.durationMinutes} $minutesLabel',
+          style: const TextStyle(
+              fontFamily: 'bahji', fontSize: 12, color: Colors.grey),
+        )
             : Row(
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: .1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      present ? presentLabel : absentLabel,
-                      style: TextStyle(
-                        fontFamily: 'bahji',
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: statusColor,
-                      ),
-                    ),
-                  ),
-                ],
+          children: [
+            Container(
+              padding:
+              const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: .1),
+                borderRadius: BorderRadius.circular(6),
               ),
+              child: Text(
+                present ? presentLabel : absentLabel,
+                style: TextStyle(
+                  fontFamily: 'bahji',
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: statusColor,
+                ),
+              ),
+            ),
+          ],
+        ),
         trailing: Transform.scale(
           scale: 0.9,
           child: Switch.adaptive(
@@ -989,30 +991,30 @@ class _QuickActionBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: .08),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: color.withValues(alpha: .3)),
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: .3)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'bahji',
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: color, size: 16),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: TextStyle(
-                  fontFamily: 'bahji',
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 }

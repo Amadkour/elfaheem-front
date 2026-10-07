@@ -11,6 +11,7 @@
 // Facts shown here (students / lessons / hours / progress / category) are NOT
 // repeated anywhere else on the screen.
 import 'dart:ui';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -69,11 +70,18 @@ class StudentCourseHero extends StatelessWidget {
 
         final pills = <Widget>[
           if (course.category != null)
-            _Pill(
-              text: ar ? course.category!.nameAr : course.category!.nameEn,
-              color: c.primary.withValues(alpha: 0.92),
+            ParentComponent(
+              featureKey: 'course_hero.category',
+              child: _Pill(
+                text: ar ? course.category!.nameAr : course.category!.nameEn,
+                color: c.primary.withValues(alpha: 0.92),
+              ),
             ),
-          if (course.isPrivate) PrivateFlag(label: 'course_hero_private'.tr),
+          if (course.isPrivate)
+            ParentComponent(
+              featureKey: 'course_hero.private',
+              child: PrivateFlag(label: 'course_hero_private'.tr),
+            ),
         ];
 
         return SizedBox(
@@ -110,14 +118,16 @@ class StudentCourseHero extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        CourseDetailsTopBar(
-                          onRefresh: onRefresh,
-                          onLike: onLike,
-                          onBack: () => Navigator.pop(context),
-                          onShare: onShare,
-                          showRefresh: true,
-                          isFavorite: course.isFavorite,
-                        ),
+                        ParentComponent(
+                            featureKey: 'course_hero.topbar',
+                            child: CourseDetailsTopBar(
+                              onRefresh: onRefresh,
+                              onLike: onLike,
+                              onBack: () => Navigator.pop(context),
+                              onShare: onShare,
+                              showRefresh: true,
+                              isFavorite: course.isFavorite,
+                            )),
                         const Spacer(),
                         Directionality(
                           textDirection: Helpers.textDirOf(
@@ -155,27 +165,32 @@ class StudentCourseHero extends StatelessWidget {
                               ),
                               if (description.isNotEmpty) ...[
                                 const SizedBox(height: 6),
-                                Text(
-                                  description,
-                                  style: TextStyle(
-                                    fontFamily: 'tajawal',
-                                    fontSize: 12,
-                                    color: Colors.white.withValues(alpha: 0.80),
-                                    height: 1.45,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                                ParentComponent(
+                                    featureKey: 'course_hero.description',
+                                    child: Text(
+                                      description,
+                                      style: TextStyle(
+                                        fontFamily: 'tajawal',
+                                        fontSize: 12,
+                                        color: Colors.white.withValues(alpha: 0.80),
+                                        height: 1.45,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    )),
                               ],
                               if (course.teacher != null) ...[
                                 const SizedBox(height: 10),
-                                _TeacherChip(
-                                  name: course.teacher!.name,
-                                  imageUrl: course.teacher!.imageUrl,
+                                ParentComponent(
+                                  featureKey: 'course_hero.teacher',
+                                  child: _TeacherChip(
+                                    name: course.teacher!.name,
+                                    imageUrl: course.teacher!.imageUrl,
+                                  ),
                                 ),
                               ],
                               const SizedBox(height: 14),
-                              _statsStrip(),
+                              ParentComponent(featureKey: 'course_hero.stats', child: _statsStrip()),
                             ],
                           ),
                         ),
@@ -195,7 +210,9 @@ class StudentCourseHero extends StatelessWidget {
 
   Widget _background(dynamic c) {
     final reel = reelUrl;
-    if (reel != null && reel.isNotEmpty) {
+    if (reel != null &&
+        reel.isNotEmpty &&
+        !AppConfig.disableList.contains('course_hero.reel')) {
       return CourseReelPlayer(
         key: ValueKey(reel),
         url: reel,
@@ -217,10 +234,10 @@ class StudentCourseHero extends StatelessWidget {
             frameBuilder: (_, child, frame, sync) => sync
                 ? child
                 : AnimatedOpacity(
-                    opacity: frame == null ? 0 : 1,
-                    duration: const Duration(milliseconds: 350),
-                    child: child,
-                  ),
+              opacity: frame == null ? 0 : 1,
+              duration: const Duration(milliseconds: 350),
+              child: child,
+            ),
             errorBuilder: (_, _, _) => const SizedBox.shrink(),
           ),
         ],
@@ -289,7 +306,10 @@ class StudentCourseHero extends StatelessWidget {
                   color: Colors.white.withValues(alpha: 0.2),
                 ),
                 const SizedBox(width: 12),
-                _ProgressRing(percent: course.progress.clamp(0, 100) / 100),
+                ParentComponent(
+                  featureKey: 'course_hero.progress',
+                  child: _ProgressRing(percent: course.progress.clamp(0, 100) / 100),
+                ),
               ],
             ],
           ),
@@ -388,9 +408,9 @@ class _TeacherChip extends StatelessWidget {
             : null,
         child: (imageUrl == null || imageUrl!.isEmpty)
             ? Text(
-                name.isNotEmpty ? name[0] : '?',
-                style: const TextStyle(color: Colors.white, fontSize: 12),
-              )
+          name.isNotEmpty ? name[0] : '?',
+          style: const TextStyle(color: Colors.white, fontSize: 12),
+        )
             : null,
       ),
       const SizedBox(width: 8),

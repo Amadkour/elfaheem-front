@@ -92,6 +92,7 @@ class _HubViewState extends State<_HubView>
     if (_tab.index != prov.tab) _tab.animateTo(prov.tab);
 
     return BasePage(
+      key: const ValueKey('teacher_exams_hub'),
       useWebCard: true,
       floatingActionButton: prov.tab == 0
           ? FloatingActionButton.extended(
@@ -613,7 +614,7 @@ class _ExamCard extends StatelessWidget {
                             icon: Icon(Icons.more_vert_rounded,
                                 size: 22, color: Colors.grey.shade600),
                             onSelected: (v) =>
-                                v == 'rules' ? onEditRules() : onExport(v),
+                            v == 'rules' ? onEditRules() : onExport(v),
                             itemBuilder: (_) => [
                               _menuItem('rules', Icons.tune_rounded,
                                   'menu_exam_settings'.tr),

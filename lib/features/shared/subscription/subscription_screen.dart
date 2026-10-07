@@ -5,6 +5,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart';
@@ -19,9 +20,9 @@ class SubscriptionScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ChangeNotifierProvider(
-        create: (_) => SubscriptionProvider()..load(),
-        child: const _View(),
-      );
+    create: (_) => SubscriptionProvider()..load(),
+    child: const _View(),
+  );
 }
 
 class _View extends StatefulWidget {
@@ -60,16 +61,16 @@ class _ViewState extends State<_View> {
   Future<void> _submit(SubscriptionProvider p) async {
     final plan = _plan(p);
     if (plan == null) {
-      toast(t('اختر خطة', 'Choose a plan'), error: true);
+      toast('sub_choose_plan'.tr, error: true);
       return;
     }
     if (!plan.isFree) {
       if (_sender.text.trim().isEmpty) {
-        toast(t('أدخل اسم المرسل', 'Enter the sender name'), error: true);
+        toast('sub_enter_sender'.tr, error: true);
         return;
       }
       if (_proof == null) {
-        toast(t('أرفق صورة الإيصال', 'Attach the receipt image'), error: true);
+        toast('sub_attach_receipt_error'.tr, error: true);
         return;
       }
     }
@@ -89,10 +90,10 @@ class _ViewState extends State<_View> {
     if (err != null) {
       toast(err, error: true);
     } else if (p.hasAccess) {
-      toast(t('تم تفعيل اشتراكك', 'Your subscription is active'));
+      toast('sub_activated_toast'.tr);
       _goHome();
     } else {
-      toast(t('تم إرسال طلبك للمراجعة', 'Request sent for review'));
+      toast('sub_request_sent'.tr);
     }
   }
 
@@ -112,137 +113,148 @@ class _ViewState extends State<_View> {
       body = _Status(
         icon: Icons.verified_rounded,
         color: c.success,
-        title: t('اشتراكك فعّال', 'Your subscription is active'),
-        subtitle: '${t('ينتهي في', 'Ends on')} ${shortDate('${p.active!['ends_at']}')}',
-        action: PrimaryButton(label: t('متابعة', 'Continue'), onPressed: _goHome),
+        title: 'sub_active_title'.tr,
+        subtitle: '${'sub_ends_on'.tr} ${shortDate('${p.active!['ends_at']}')}',
+        action: PrimaryButton(label: 'sub_continue'.tr, onPressed: _goHome),
       );
     } else if (p.pending != null) {
       body = _Status(
         icon: Icons.hourglass_top_rounded,
         color: c.warning,
-        title: t('طلبك قيد المراجعة', 'Your request is under review'),
-        subtitle: t('سيتم تفعيل الاشتراك بعد موافقة الإدارة.', 'It will be activated once an admin approves it.'),
+        title: 'sub_under_review'.tr,
+        subtitle: 'sub_review_subtitle'.tr,
         action: OutlinedButton.icon(
           onPressed: p.load,
           icon: const Icon(Icons.refresh_rounded),
-          label: Text(t('تحديث الحالة', 'Refresh status')),
+          label: Text('sub_refresh_status'.tr),
         ),
       );
     } else if (!p.required) {
       body = _Status(
         icon: Icons.celebration_rounded,
         color: c.success,
-        title: t('التطبيق مجاني حالياً', 'The app is currently free'),
-        subtitle: t('لا حاجة لاشتراك.', 'No subscription needed.'),
-        action: PrimaryButton(label: t('متابعة', 'Continue'), onPressed: _goHome),
+        title: 'sub_app_free'.tr,
+        subtitle: 'sub_no_subscription_needed'.tr,
+        action: PrimaryButton(label: 'sub_continue'.tr, onPressed: _goHome),
       );
     } else {
       final transferEnabled = p.transfer['bank_transfer_enabled'] == true || p.transfer['instapay_enabled'] == true;
       body = ListView(padding: const EdgeInsets.all(16), children: [
         Icon(Icons.workspace_premium_rounded, size: 56, color: c.primary),
         const SizedBox(height: 8),
-        Text(t('اشترك للمتابعة', 'Subscribe to continue'),
+        Text('sub_subscribe_to_continue'.tr,
             textAlign: TextAlign.center,
             style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w900, fontSize: 22, color: c.textDark)),
         if (p.last != null && '${p.last!['status']}' == 'rejected')
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Text(
-              '${t('تم رفض طلبك السابق', 'Your previous request was rejected')}${p.last!['rejection_reason'] != null ? ': ${p.last!['rejection_reason']}' : ''}',
+              '${'sub_prev_rejected'.tr}${p.last!['rejection_reason'] != null ? ': ${p.last!['rejection_reason']}' : ''}',
               textAlign: TextAlign.center,
               style: TextStyle(fontFamily: 'tajawal', color: c.danger, fontSize: 12.5),
             ),
           ),
         const SizedBox(height: 16),
         for (final x in p.plans)
-          GestureDetector(
-            onTap: () {
-              setState(() => planCode = x.code);
-              p.loadTransferDetails(x.code);
-            },
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: c.cardBg,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: x.code == planCode ? c.primary : c.divider, width: x.code == planCode ? 2 : 1),
-              ),
-              child: Row(children: [
-                Icon(x.code == planCode ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded, color: c.primary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(isAr ? x.nameAr : x.nameEn,
-                        style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 16, color: c.textDark)),
-                    Text('${x.durationDays} ${t('يوم', 'days')}',
-                        style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight)),
-                  ]),
+          ParentComponent(
+            featureKey: 'subscription.plans',
+            child: GestureDetector(
+              onTap: () {
+                setState(() => planCode = x.code);
+                p.loadTransferDetails(x.code);
+              },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: c.cardBg,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: x.code == planCode ? c.primary : c.divider, width: x.code == planCode ? 2 : 1),
                 ),
-                Text(x.isFree ? t('مجاني', 'Free') : money(x.price, x.currency),
-                    style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w900, fontSize: 18, color: c.primary)),
-              ]),
+                child: Row(children: [
+                  Icon(x.code == planCode ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded, color: c.primary),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(isAr ? x.nameAr : x.nameEn,
+                          style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 16, color: c.textDark)),
+                      Text('${x.durationDays} ${'sub_days'.tr}',
+                          style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight)),
+                    ]),
+                  ),
+                  Text(x.isFree ? 'sub_free'.tr : money(x.price, x.currency),
+                      style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w900, fontSize: 18, color: c.primary)),
+                ]),
+              ),
             ),
           ),
         if (plan != null && !plan.isFree) ...[
           const SizedBox(height: 6),
           if (!transferEnabled)
-            Text(t('طرق الدفع غير متاحة حالياً. تواصل مع الإدارة.', 'No payment method is available right now. Contact support.'),
+            Text('sub_no_payment_methods'.tr,
                 style: TextStyle(fontFamily: 'tajawal', color: c.danger))
           else ...[
-            ChoiceRow<String>(
-              label: t('طريقة الدفع', 'Payment method'),
-              options: {
-                if (p.transfer['bank_transfer_enabled'] == true) 'bank_transfer': t('تحويل بنكي', 'Bank transfer'),
-                if (p.transfer['instapay_enabled'] == true) 'instapay': 'InstaPay',
-              },
-              value: method == 'instapay' && p.transfer['instapay_enabled'] != true
-                  ? 'bank_transfer'
-                  : (method == 'bank_transfer' && p.transfer['bank_transfer_enabled'] != true ? 'instapay' : method),
-              onChanged: (v) => setState(() => method = v),
-            ),
-            Section(
-              title: t('حوّل المبلغ إلى', 'Transfer the amount to'),
-              child: Column(children: [
-                if (method == 'bank_transfer') ...[
-                  KeyValue(t('البنك', 'Bank'), '${p.transfer['bank_name'] ?? ''}'),
-                  KeyValue(t('اسم الحساب', 'Account'), '${p.transfer['account_name'] ?? ''}'),
-                  KeyValue('IBAN', '${p.transfer['iban'] ?? ''}'),
-                  if (p.transfer['bank_instructions'] != null) KeyValue(t('تعليمات', 'Notes'), '${p.transfer['bank_instructions']}'),
-                ] else ...[
-                  KeyValue('InstaPay', '${p.transfer['instapay_id'] ?? ''}'),
-                  if (p.transfer['instapay_instructions'] != null) KeyValue(t('تعليمات', 'Notes'), '${p.transfer['instapay_instructions']}'),
-                ],
-                KeyValue(t('المبلغ', 'Amount'), money(plan.price, plan.currency)),
-              ]),
-            ),
-            Field(controller: _sender, label: t('اسم المرسل', 'Sender name')),
-            Field(controller: _phone, label: t('رقم المرسل (اختياري)', 'Sender phone (optional)'), keyboard: TextInputType.phone, ltr: true),
-            Field(controller: _ref, label: t('رقم العملية (اختياري)', 'Transfer reference (optional)'), ltr: true),
-            OutlinedButton.icon(
-              onPressed: () async {
-                final f = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
-                if (f != null) setState(() => _proof = f);
-              },
-              icon: Icon(_proof == null ? Icons.upload_file_rounded : Icons.check_circle_rounded,
-                  color: _proof == null ? null : c.success),
-              label: Text(_proof == null ? t('إرفاق صورة الإيصال', 'Attach receipt image') : _proof!.name),
-            ),
+            ParentComponent(
+                featureKey: 'subscription.payment_method',
+                child: ChoiceRow<String>(
+                  label: 'sub_payment_method'.tr,
+                  options: {
+                    if (p.transfer['bank_transfer_enabled'] == true) 'bank_transfer': 'sub_bank_transfer'.tr,
+                    if (p.transfer['instapay_enabled'] == true) 'instapay': 'InstaPay',
+                  },
+                  value: method == 'instapay' && p.transfer['instapay_enabled'] != true
+                      ? 'bank_transfer'
+                      : (method == 'bank_transfer' && p.transfer['bank_transfer_enabled'] != true ? 'instapay' : method),
+                  onChanged: (v) => setState(() => method = v),
+                )),
+            ParentComponent(
+                featureKey: 'subscription.transfer_details',
+                child: Section(
+                  title: 'sub_transfer_to'.tr,
+                  child: Column(children: [
+                    if (method == 'bank_transfer') ...[
+                      KeyValue('sub_bank'.tr, '${p.transfer['bank_name'] ?? ''}'),
+                      KeyValue('sub_account'.tr, '${p.transfer['account_name'] ?? ''}'),
+                      KeyValue('IBAN', '${p.transfer['iban'] ?? ''}'),
+                      if (p.transfer['bank_instructions'] != null) KeyValue('sub_notes'.tr, '${p.transfer['bank_instructions']}'),
+                    ] else ...[
+                      KeyValue('InstaPay', '${p.transfer['instapay_id'] ?? ''}'),
+                      if (p.transfer['instapay_instructions'] != null) KeyValue('sub_notes'.tr, '${p.transfer['instapay_instructions']}'),
+                    ],
+                    KeyValue('sub_amount'.tr, money(plan.price, plan.currency)),
+                  ]),
+                )),
+            ParentComponent(featureKey: 'subscription.sender_info', child: Field(controller: _sender, label: 'sub_sender_name'.tr)),
+            ParentComponent(featureKey: 'subscription.sender_info', child: Field(controller: _phone, label: 'sub_sender_phone'.tr, keyboard: TextInputType.phone, ltr: true)),
+            ParentComponent(featureKey: 'subscription.sender_info', child: Field(controller: _ref, label: 'sub_reference'.tr, ltr: true)),
+            ParentComponent(
+                featureKey: 'subscription.receipt',
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final f = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
+                    if (f != null) setState(() => _proof = f);
+                  },
+                  icon: Icon(_proof == null ? Icons.upload_file_rounded : Icons.check_circle_rounded,
+                      color: _proof == null ? null : c.success),
+                  label: Text(_proof == null ? 'sub_attach_receipt'.tr : _proof!.name),
+                )),
             const SizedBox(height: 14),
           ],
         ],
         PrimaryButton(
           label: plan == null
-              ? t('اختر خطة', 'Choose a plan')
-              : (plan.isFree ? t('تفعيل مجاناً', 'Activate for free') : t('إرسال الطلب', 'Send request')),
+              ? 'sub_choose_plan'.tr
+              : (plan.isFree ? 'sub_activate_free'.tr : 'sub_send_request'.tr),
           busy: busy,
           onPressed: plan == null ? null : () => _submit(p),
         ),
         const SizedBox(height: 10),
-        TextButton(
-          onPressed: () => context.read<ProfileProvider>().logout(context),
-          child: Text(t('تسجيل الخروج', 'Log out'), style: TextStyle(color: c.textMedium)),
-        ),
+        ParentComponent(
+            featureKey: 'subscription.logout',
+            child: TextButton(
+              onPressed: () => context.read<ProfileProvider>().logout(context),
+              child: Text('sub_logout'.tr, style: TextStyle(color: c.textMedium)),
+            )),
       ]);
     }
 
@@ -250,7 +262,7 @@ class _ViewState extends State<_View> {
       textDirection: dir,
       child: Scaffold(
         backgroundColor: c.background,
-        appBar: AppBar(title: Text(t('الاشتراك', 'Subscription'), style: const TextStyle(fontFamily: 'tajawal'))),
+        appBar: AppBar(title: Text('sub_title'.tr, style: const TextStyle(fontFamily: 'tajawal'))),
         body: body,
       ),
     );

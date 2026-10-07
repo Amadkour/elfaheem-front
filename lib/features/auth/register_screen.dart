@@ -7,6 +7,7 @@
 library;
 
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -91,9 +92,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
     if (mounted &&
-            (context.read<AboutTermsProvider>().terms!.sections.every(
+        (context.read<AboutTermsProvider>().terms!.sections.every(
               (e) => e.accept,
-            )) ||
+        )) ||
         accepted == true) {
       setState(() => _termsAccepted = true);
     }
@@ -152,7 +153,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             role: authProvider.selectedRole!['text'],
           ),
         ),
-        (route) => false,
+            (route) => false,
       );
     } else {
       Helpers.showMessage(
@@ -168,10 +169,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Consumer<AuthProvider>(
       builder: (context, provider, _) {
         return Scaffold(
-          body: BasePage(
-            child: isWide
-                ? _buildWideLayout(provider)
-                : _buildNarrowLayout(provider),
+          body: BasePage(key: const ValueKey('register'), child: isWide
+              ? _buildWideLayout(provider)
+              : _buildNarrowLayout(provider),
           ),
         );
       },
@@ -272,33 +272,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const SizedBox(height: 20),
 
           // Phone
-          IconTextField(
+          ParentComponent(featureKey: 'register.phone', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [IconTextField(
             controller: _phoneController,
             label: 'phone'.tr,
             icon: Icons.phone_outlined,
             keyboard: TextInputType.phone,
           ),
-          const SizedBox(height: 20),
+            const SizedBox(height: 20)])),
 
           // Date of birth
-          SectionLabel(label: 'dob'.tr),
-          const SizedBox(height: 8),
-          MyDatePicker(
-            onChange: (picked) => setState(() {
-              selectedDate = picked;
-              _dobController.text = "${selectedDate.toLocal()}".split(' ')[0];
-            }),
-            selectedDate: selectedDate,
-            controller: _dobController,
-            label: 'dob'.tr,
-          ),
-          const SizedBox(height: 20),
+          ParentComponent(featureKey: 'register.dob', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [SectionLabel(label: 'dob'.tr),
+            const SizedBox(height: 8),
+            MyDatePicker(
+              onChange: (picked) => setState(() {
+                selectedDate = picked;
+                _dobController.text = "${selectedDate.toLocal()}".split(' ')[0];
+              }),
+              selectedDate: selectedDate,
+              controller: _dobController,
+              label: 'dob'.tr,
+            ),
+            const SizedBox(height: 20)])),
 
           // Role
-          SectionLabel(label: 'role'.tr),
-          const SizedBox(height: 10),
-          RolePicker(provider: provider, rolController: _rolController),
-          const SizedBox(height: 20),
+          ParentComponent(featureKey: 'register.role', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [SectionLabel(label: 'role'.tr),
+            const SizedBox(height: 10),
+            RolePicker(provider: provider, rolController: _rolController),
+            const SizedBox(height: 20)])),
 
           // Password
           IconPasswordField(
@@ -311,12 +311,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const SizedBox(height: 20),
           if (_passwordController.text.isNotEmpty) ...[
             const SizedBox(height: 12),
-            StrengthBar(
+            ParentComponent(featureKey: 'register.password_strength', child: StrengthBar(
               strength: _strength,
               strengthColor: _strengthColor(c),
               strengthLabel: _strengthLabel(),
               c: c,
-            ),
+            )),
           ],
 
           // Confirm password
@@ -326,7 +326,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             obscure: _obscureConfirm,
             onToggle: () => setState(() => _obscureConfirm = !_obscureConfirm),
           ),
-          Container(
+          ParentComponent(featureKey: 'register.password_requirements', child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: c.inputBg,
@@ -359,7 +359,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ],
             ),
-          ),
+          )),
           const SizedBox(height: 24),
 
           // ── Terms acceptance row ─────────────────────────────────────
@@ -383,11 +383,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           const SizedBox(height: 20),
 
-          LinkRow(
+          ParentComponent(featureKey: 'register.login_link', child: LinkRow(
             message: 'have_account'.tr,
             linkText: 'login'.tr,
             onTap: () => Navigator.pop(context),
-          ),
+          )),
         ],
       ),
     );
@@ -402,7 +402,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   bool get _reqMatch =>
       _passwordController.text.isNotEmpty &&
-      _passwordController.text == _confirmedPasswordController.text;
+          _passwordController.text == _confirmedPasswordController.text;
 
   bool get _canSubmit => _reqMinLength && _reqMatch && _termsAccepted;
 
@@ -577,7 +577,7 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
     // Consider "read" when within 48 px of the bottom
     if ((pos.pixels >= pos.maxScrollExtent - 48) ||
         context.read<AboutTermsProvider>().terms!.sections.every(
-          (e) => e.accept,
+              (e) => e.accept,
         )) {
       setState(() => _hasReadAll = true);
     }
@@ -967,106 +967,106 @@ class _BottomBar extends StatelessWidget {
         ],
       ),
       child:
-          hasReadAll ||
-              context.read<AboutTermsProvider>().terms!.sections.every(
+      hasReadAll ||
+          context.read<AboutTermsProvider>().terms!.sections.every(
                 (e) => e.accept,
-              )
-          // ── Unlocked: show accept button ─────────────────────────────
+          )
+      // ── Unlocked: show accept button ─────────────────────────────
           ? Column(
-              mainAxisSize: MainAxisSize.min,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Success hint
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 8,
+            ),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: c.successTint,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: c.success.withValues(alpha: 0.35),
+              ),
+            ),
+            child: Row(
               children: [
-                // Success hint
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: c.successTint,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: c.success.withValues(alpha: 0.35),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.check_circle_outline_rounded,
-                        size: 18,
-                        color: c.success,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'لقد قرأت جميع الشروط، يمكنك الموافقة الآن',
-                          style: TextStyle(
-                            fontFamily: 'tajawal',
-                            fontSize: 12,
-                            color: c.success,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                Icon(
+                  Icons.check_circle_outline_rounded,
+                  size: 18,
+                  color: c.success,
                 ),
-                // Accept button
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: onAccept,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: c.success,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    icon: const Icon(
-                      Icons.verified_outlined,
-                      color: Colors.white,
-                    ),
-                    label: const Text(
-                      'أوافق على الشروط والأحكام',
-                      style: TextStyle(
-                        fontFamily: 'tajawal',
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'لقد قرأت جميع الشروط، يمكنك الموافقة الآن',
+                    style: TextStyle(
+                      fontFamily: 'tajawal',
+                      fontSize: 12,
+                      color: c.success,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               ],
-            )
-          // ── Locked: nudge user to scroll ─────────────────────────────
-          : SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: onScrollToEnd,
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 13),
-                  side: BorderSide(color: c.primary, width: 1.5),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
+            ),
+          ),
+          // Accept button
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: onAccept,
+              style: FilledButton.styleFrom(
+                backgroundColor: c.success,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                icon: Icon(
-                  Icons.keyboard_double_arrow_down_rounded,
-                  color: c.primary,
-                ),
-                label: Text(
-                  'انتقل إلى نهاية الشروط',
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: c.primary,
-                  ),
+              ),
+              icon: const Icon(
+                Icons.verified_outlined,
+                color: Colors.white,
+              ),
+              label: const Text(
+                'أوافق على الشروط والأحكام',
+                style: TextStyle(
+                  fontFamily: 'tajawal',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
                 ),
               ),
             ),
+          ),
+        ],
+      )
+      // ── Locked: nudge user to scroll ─────────────────────────────
+          : SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: onScrollToEnd,
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 13),
+            side: BorderSide(color: c.primary, width: 1.5),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+          icon: Icon(
+            Icons.keyboard_double_arrow_down_rounded,
+            color: c.primary,
+          ),
+          label: Text(
+            'انتقل إلى نهاية الشروط',
+            style: TextStyle(
+              fontFamily: 'tajawal',
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: c.primary,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

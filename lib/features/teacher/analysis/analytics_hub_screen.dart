@@ -1,6 +1,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
@@ -40,48 +41,49 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen>
     final filtered = _search.isEmpty
         ? prov.allCourses
         : prov.allCourses
-              .where(
-                (c) =>
-                    (c.titleAr?.toLowerCase().contains(_search.toLowerCase()) ??
-                        false) ||
-                    (c.titleEn?.toLowerCase().contains(_search.toLowerCase()) ??
-                        false) ||
-                    (c.descriptionEn?.toLowerCase().contains(
-                          _search.toLowerCase(),
-                        ) ??
-                        false) ||
-                    (c.descriptionAr?.toLowerCase().contains(
-                          _search.toLowerCase(),
-                        ) ??
-                        false),
-              )
-              .toList();
+        .where(
+          (c) =>
+      (c.titleAr?.toLowerCase().contains(_search.toLowerCase()) ??
+          false) ||
+          (c.titleEn?.toLowerCase().contains(_search.toLowerCase()) ??
+              false) ||
+          (c.descriptionEn?.toLowerCase().contains(
+            _search.toLowerCase(),
+          ) ??
+              false) ||
+          (c.descriptionAr?.toLowerCase().contains(
+            _search.toLowerCase(),
+          ) ??
+              false),
+    )
+        .toList();
 
     return BasePage(
+      key: const ValueKey('analytics_hub'),
       useWebCard: true,
       enableFooterWidget: false,
       child: SafeArea(
         child: prov.isLoading
             ? Center(child: AppLoadingIndicator())
             : Column(
-                children: [
-                  _buildHeader(),
-                  _buildSearchBar(),
-                  Expanded(
-                    child: filtered.isEmpty
-                        ? _buildEmptyState(prov.allCourses.isEmpty)
-                        : ListView.separated(
-                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                            physics: const BouncingScrollPhysics(),
-                            itemCount: filtered.length,
-                            separatorBuilder: (_, _) =>
-                                const SizedBox(height: 14),
-                            itemBuilder: (_, i) =>
-                                _CourseAnalyticsCard(course: filtered[i]),
-                          ),
-                  ),
-                ],
+          children: [
+            ParentComponent(featureKey: 'analytics_hub.header', child: _buildHeader()),
+            ParentComponent(featureKey: 'analytics_hub.search', child: _buildSearchBar()),
+            Expanded(
+              child: filtered.isEmpty
+                  ? _buildEmptyState(prov.allCourses.isEmpty)
+                  : ListView.separated(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                physics: const BouncingScrollPhysics(),
+                itemCount: filtered.length,
+                separatorBuilder: (_, _) =>
+                const SizedBox(height: 14),
+                itemBuilder: (_, i) =>
+                    _CourseAnalyticsCard(course: filtered[i]),
               ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -136,12 +138,12 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen>
         ),
         suffixIcon: _search.isNotEmpty
             ? IconButton(
-                icon: const Icon(Icons.close, color: Colors.grey, size: 18),
-                onPressed: () {
-                  _searchCtrl.clear();
-                  if (mounted) setState(() => _search = '');
-                },
-              )
+          icon: const Icon(Icons.close, color: Colors.grey, size: 18),
+          onPressed: () {
+            _searchCtrl.clear();
+            if (mounted) setState(() => _search = '');
+          },
+        )
             : null,
         filled: true,
         fillColor: context.colors.cardBg,
@@ -241,8 +243,8 @@ class _CourseAnalyticsCard extends StatelessWidget {
                     children: [
                       Text(
                         (AppConfig.lang == 'ar'
-                                ? course.titleAr
-                                : course.titleEn) ??
+                            ? course.titleAr
+                            : course.titleEn) ??
                             '',
                         style: const TextStyle(
                           fontFamily: 'bahji',
@@ -314,40 +316,44 @@ class _CourseAnalyticsCard extends StatelessWidget {
               children: [
                 // Attendance
                 Expanded(
-                  child: _ActionButton(
-                    icon: Icons.fact_check_rounded,
-                    label: 'analytics_btn_attendance'.tr,
-                    sublabel: 'analytics_btn_attendance_sub'.tr,
-                    color: context.colors.success,
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => TeacherAttendanceScreen(
-                          courseId: course.id,
-                          courseTitle:(AppConfig.lang=='ar'? course.titleAr:course.titleEn)??'',
+                  child: ParentComponent(
+                      featureKey: 'analytics_hub.attendance',
+                      child: _ActionButton(
+                        icon: Icons.fact_check_rounded,
+                        label: 'analytics_btn_attendance'.tr,
+                        sublabel: 'analytics_btn_attendance_sub'.tr,
+                        color: context.colors.success,
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => TeacherAttendanceScreen(
+                              courseId: course.id,
+                              courseTitle:(AppConfig.lang=='ar'? course.titleAr:course.titleEn)??'',
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
+                      )),
                 ),
                 const SizedBox(width: 12),
                 // Exams
                 Expanded(
-                  child: _ActionButton(
-                    icon: Icons.quiz_rounded,
-                    label: 'analytics_btn_exams'.tr,
-                    sublabel: 'analytics_btn_exams_sub'.tr,
-                    color: context.colors.primary,
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => TeacherExamHubScreen(
-                          courseId: course.id,
-                          courseTitle:(AppConfig.lang=='ar'? course.titleAr:course.titleEn)??'',
+                  child: ParentComponent(
+                      featureKey: 'analytics_hub.exams',
+                      child: _ActionButton(
+                        icon: Icons.quiz_rounded,
+                        label: 'analytics_btn_exams'.tr,
+                        sublabel: 'analytics_btn_exams_sub'.tr,
+                        color: context.colors.primary,
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => TeacherExamHubScreen(
+                              courseId: course.id,
+                              courseTitle:(AppConfig.lang=='ar'? course.titleAr:course.titleEn)??'',
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
+                      )),
                 ),
               ],
             ),

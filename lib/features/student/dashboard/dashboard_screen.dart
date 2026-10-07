@@ -52,7 +52,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         CupertinoIcons.home,
         CupertinoIcons.house_fill,
         'home',
-        () async => context.read<HomeProvider>().init(context),
+            () async => context.read<HomeProvider>().init(context),
         const HomeScreen(),
       ),
       DashboardItem(
@@ -85,7 +85,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     ]);
     dashboardItems.removeWhere(
-      (e) => Helpers.AppConfig.disableList.contains('student_tab_${e.label}'),
+          (e) => Helpers.AppConfig.disableList.contains('student_tab_${e.label}'),
     );
 
     super.initState();
@@ -217,7 +217,7 @@ class WideShell extends StatelessWidget {
                                   ),
                                 ),
                                 Text(
-                                  'منصة التعلم الذكي',
+                                  'app_tagline'.tr,
                                   style: TextStyle(
                                     fontFamily: 'tajawal',
                                     color: Colors.white.withValues(alpha: 0.4),
@@ -338,38 +338,38 @@ class UserChipButton extends StatelessWidget {
                 ),
                 alignment: Alignment.center,
                 child:
-                    context.read<AuthProvider>().currentUser!.imageUrl != null
+                context.read<AuthProvider>().currentUser!.imageUrl != null
                     ? Container(
-                        width: 35,
-                        height: 35,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: context.colors.primary.withValues(alpha: 0.1),
-                          border: Border.all(
-                            color: context.colors.primary,
-                            width: 2.5,
-                          ),
-                        ),
-                        child: ClipOval(
-                          child: AppNetworkImage(
-                            url: context
-                                .read<AuthProvider>()
-                                .currentUser!
-                                .imageUrl!,
-                            enableFullscreen: false,
-                            heroTag: "user_logo-dashboard",
-                          ),
-                        ),
-                      )
+                  width: 35,
+                  height: 35,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: context.colors.primary.withValues(alpha: 0.1),
+                    border: Border.all(
+                      color: context.colors.primary,
+                      width: 2.5,
+                    ),
+                  ),
+                  child: ClipOval(
+                    child: AppNetworkImage(
+                      url: context
+                          .read<AuthProvider>()
+                          .currentUser!
+                          .imageUrl!,
+                      enableFullscreen: false,
+                      heroTag: "user_logo-dashboard",
+                    ),
+                  ),
+                )
                     : Text(
-                        initial,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          fontFamily: 'bahji',
-                        ),
-                      ),
+                  initial,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    fontFamily: 'bahji',
+                  ),
+                ),
               ),
               if (showLabel) ...[
                 const SizedBox(width: 10),
@@ -799,14 +799,14 @@ class _BottomNav extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10),
                         boxShadow: active
                             ? [
-                                BoxShadow(
-                                  color: context.colors.primary.withValues(
-                                    alpha: 0.3,
-                                  ),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ]
+                          BoxShadow(
+                            color: context.colors.primary.withValues(
+                              alpha: 0.3,
+                            ),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
                             : null,
                       ),
                       child: CountBadge(

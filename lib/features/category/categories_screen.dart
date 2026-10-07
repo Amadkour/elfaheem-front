@@ -1,5 +1,5 @@
 import 'dart:math';
-
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -9,9 +9,9 @@ import '../../config/theme/app_theme.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../../utils/widget/app_network_image.dart';
 import '../../utils/widget/app_bar.dart';
+import '../../utils/widget/base_page.dart';
 import '../shared/course/home_course_list.dart';
 import '../student/courses/details/course_detail_screen.dart';
-import '../shared/course/course_row.dart';
 import '../student/models.dart';
 import 'categories_provider.dart';
 import 'model.dart';
@@ -53,26 +53,24 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: Helpers.pageDirection,
-      child: Scaffold(
-        backgroundColor: context.colors.background,
-        body: SafeArea(
-          child: Column(
-            children: [
-              ScreenAppBar(title: 'categories'.tr),
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isWide = constraints.maxWidth >= _kWideBreakpoint;
-                    return isWide
-                        ? _WideLayout(searchCtrl: _searchCtrl)
-                        : _NarrowLayout(searchCtrl: _searchCtrl);
-                  },
-                ),
+    return BasePage(
+      useWebCard: true,
+      maxWith: 1100,
+      child: SafeArea(
+        child: Column(
+          children: [
+            ScreenAppBar(title: 'categories'.tr),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isWide = constraints.maxWidth >= _kWideBreakpoint;
+                  return isWide
+                      ? _WideLayout(searchCtrl: _searchCtrl)
+                      : _NarrowLayout(searchCtrl: _searchCtrl);
+                },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -145,21 +143,32 @@ class _NarrowLayout extends StatelessWidget {
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
           sliver: SliverToBoxAdapter(
-            child: _SearchField(controller: searchCtrl),
+            child: ParentComponent(
+              featureKey: 'categories.search',
+              child: _SearchField(controller: searchCtrl),
+            ),
           ),
         ),
         SliverPadding(
           padding: const EdgeInsets.only(top: 18),
           sliver: SliverToBoxAdapter(
-            child: SizedBox(
-              height: min(MediaQuery.of(context).size.width / 6, 100) + 34,
-              child: const _CategoryChipsRow(),
+            child: ParentComponent(
+              featureKey: 'categories.chips',
+              child: SizedBox(
+                height: min(MediaQuery.of(context).size.width / 6, 100) + 34,
+                child: const _CategoryChipsRow(),
+              ),
             ),
           ),
         ),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(20, 22, 20, 8),
-          sliver: SliverToBoxAdapter(child: _SectionHeader(provider: provider)),
+          sliver: SliverToBoxAdapter(
+            child: ParentComponent(
+              featureKey: 'categories.section_header',
+              child: _SectionHeader(provider: provider),
+            ),
+          ),
         ),
         _CoursesSliver(crossAxisCount: 2),
         const SliverToBoxAdapter(child: SizedBox(height: 24)),
@@ -182,22 +191,25 @@ class _WideLayout extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 280,
-          margin: const EdgeInsets.fromLTRB(20, 16, 0, 20),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: context.colors.cardBg,
-            borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-            boxShadow: context.colors.cardShadow,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('الأقسام', style: context.colors.h2),
-              const SizedBox(height: 14),
-              Expanded(child: _CategorySideList()),
-            ],
+        ParentComponent(
+          featureKey: 'categories.side_list',
+          child: Container(
+            width: 280,
+            margin: const EdgeInsets.fromLTRB(20, 16, 0, 20),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: context.colors.cardBg,
+              borderRadius: BorderRadius.circular(context.colors.radiusMedium),
+              boxShadow: context.colors.cardShadow,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('الأقسام', style: context.colors.h2),
+                const SizedBox(height: 14),
+                Expanded(child: _CategorySideList()),
+              ],
+            ),
           ),
         ),
         Expanded(
@@ -207,13 +219,19 @@ class _WideLayout extends StatelessWidget {
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                 sliver: SliverToBoxAdapter(
-                  child: _SearchField(controller: searchCtrl),
+                  child: ParentComponent(
+                    featureKey: 'categories.search',
+                    child: _SearchField(controller: searchCtrl),
+                  ),
                 ),
               ),
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
                 sliver: SliverToBoxAdapter(
-                  child: _SectionHeader(provider: provider),
+                  child: ParentComponent(
+                    featureKey: 'categories.section_header',
+                    child: _SectionHeader(provider: provider),
+                  ),
                 ),
               ),
               _CoursesSliver(crossAxisCount: 4),
@@ -251,13 +269,18 @@ class _SectionHeader extends StatelessWidget {
       children: [
         Text(title, style: context.colors.h2),
         if (provider.selectedCategory != null) ...[
-          SizedBox(width: 2,),
+          SizedBox(width: 2),
           Flexible(
             child: Text(
               provider.selectedCategory!.description,
-              style: context.colors.h4.copyWith(overflow: TextOverflow.ellipsis,color: context.colors.secondText,fontSize: 12),
+              style: context.colors.h4.copyWith(
+                overflow: TextOverflow.ellipsis,
+                color: context.colors.secondText,
+                fontSize: 12,
+              ),
             ),
-          ),],
+          ),
+        ],
         if (showClear)
           GestureDetector(
             onTap: () async => await provider.clearSelection(),
@@ -613,18 +636,21 @@ class _CoursesSliver extends StatelessWidget {
     }
 
     return SliverToBoxAdapter(
-      child: HomeCourseList(
-        courses: courses.map((e)=> e.toCourseModel).cast<CourseModel>().toList(),
-        pageName: 'category-my-courses',
-        isTeacher: false,
-        onTap: (CourseModel c) {
-          Navigator.pushNamed(
-            context,
-            '/course-detail',
-            arguments: c,
-          );
-        }, hasMore: true,
-      )
+      child: ParentComponent(
+        featureKey: 'categories.courses',
+        child: HomeCourseList(
+          courses: courses
+              .map((e) => e.toCourseModel)
+              .cast<CourseModel>()
+              .toList(),
+          pageName: 'category-my-courses',
+          isTeacher: false,
+          onTap: (CourseModel c) {
+            Navigator.pushNamed(context, '/course-detail', arguments: c);
+          },
+          hasMore: true,
+        ),
+      ),
     );
   }
 }

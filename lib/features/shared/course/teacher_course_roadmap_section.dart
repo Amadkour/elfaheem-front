@@ -101,7 +101,7 @@ class CourseRecommendationsSection extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 18),
-            if (nextCourses.isNotEmpty) ...[
+            if (nextCourses.isNotEmpty) ParentComponent(featureKey: 'roadmap.next_steps', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               _CategoryLabel(
                 icon: Icons.timeline_rounded,
                 color: context.colors.primary,
@@ -113,8 +113,8 @@ class CourseRecommendationsSection extends StatelessWidget {
               const SizedBox(height: 20),
               _SoftDivider(),
               const SizedBox(height: 16),
-            ],
-            if (recommendedCourses.isNotEmpty) ...[
+            ])),
+            if (recommendedCourses.isNotEmpty) ParentComponent(featureKey: 'roadmap.teacher_picks', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               _CategoryLabel(
                 icon: Icons.star_rounded,
                 color: _kPickGold,
@@ -150,8 +150,8 @@ class CourseRecommendationsSection extends StatelessWidget {
               const SizedBox(height: 20),
               _SoftDivider(),
               const SizedBox(height: 16),
-            ],
-            if (similarCourses.isNotEmpty) ...[
+            ])),
+            if (similarCourses.isNotEmpty) ParentComponent(featureKey: 'roadmap.similar', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               _CategoryLabel(
                 icon: Icons.auto_awesome_rounded,
                 color: context.colors.primary,
@@ -185,7 +185,7 @@ class CourseRecommendationsSection extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-            ],
+            ])),
           ],
         ),
       ),
@@ -365,7 +365,12 @@ class RecommendCourseCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'roadmap.course_card',
+    child: _featureContent(context),
+  );
+
+  Widget _featureContent(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: Container(

@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 
-import 'growth_tr.dart';
 
 class CourseAccessSheet extends StatefulWidget {
   const CourseAccessSheet({super.key, required this.courseId, required this.courseName});
@@ -44,7 +43,7 @@ class _CourseAccessSheetState extends State<CourseAccessSheet> with SingleTicker
   String? _error;
 
   late final AnimationController _shake =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 420));
+  AnimationController(vsync: this, duration: const Duration(milliseconds: 420));
 
   @override
   void dispose() {
@@ -78,9 +77,9 @@ class _CourseAccessSheetState extends State<CourseAccessSheet> with SingleTicker
       final code = (d['code'] ?? e.code)?.toString().toLowerCase();
       String msg;
       if (code == 'too_many_attempts' || e.statusCode == 429) {
-        msg = gt('محاولات كثيرة. حاول بعد ${d['minutes'] ?? 15} دقيقة', 'Too many attempts. Try again in ${d['minutes'] ?? 15} min');
+        msg = 'cas_too_many'.tr.replaceAll('{minutes}', '${d['minutes'] ?? 15}');
       } else if (code == 'wrong_code') {
-        msg = gt('الكود غير صحيح (متبقي ${d['attempts_left'] ?? 0} محاولات)', 'Wrong code (${d['attempts_left'] ?? 0} tries left)');
+        msg = 'cas_wrong_code'.tr.replaceAll('{n}', '${d['attempts_left'] ?? 0}');
       } else {
         msg = e.message;
       }
@@ -88,7 +87,7 @@ class _CourseAccessSheetState extends State<CourseAccessSheet> with SingleTicker
       _shake.forward(from: 0);
       if (mounted) setState(() { _error = msg; _entered = ''; _checking = false; });
     } catch (_) {
-      if (mounted) setState(() { _error = gt('تعذر الاتصال بالخادم', 'Could not reach the server'); _entered = ''; _checking = false; });
+      if (mounted) setState(() { _error = 'cas_server_unreachable'.tr; _entered = ''; _checking = false; });
     }
   }
 
@@ -124,14 +123,13 @@ class _CourseAccessSheetState extends State<CourseAccessSheet> with SingleTicker
               child: const Icon(Icons.lock_outline_rounded, color: Color(0xFF0D0D14), size: 28),
             ),
             const SizedBox(height: 14),
-            Text(gt('كورس خاص', 'Private course'),
+            Text('cas_private_course'.tr,
                 style: const TextStyle(color: _text, fontSize: 21, fontWeight: FontWeight.w700, fontFamily: 'tajawal')),
             const SizedBox(height: 6),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 28),
               child: Text(
-                gt('أدخل الكود الذي أعطاه لك المدرس لفتح "${widget.courseName}"',
-                    'Enter the code your teacher gave you to open "${widget.courseName}"'),
+                'cas_enter_code'.tr.replaceAll('{name}', widget.courseName),
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: _muted, fontSize: 13, height: 1.5, fontFamily: 'tajawal'),
               ),
@@ -168,7 +166,7 @@ class _CourseAccessSheetState extends State<CourseAccessSheet> with SingleTicker
                 child: _checking
                     ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: _gold))
                     : Text(_error ?? '', textAlign: TextAlign.center,
-                        style: const TextStyle(color: _red, fontSize: 12.5, fontFamily: 'tajawal')),
+                    style: const TextStyle(color: _red, fontSize: 12.5, fontFamily: 'tajawal')),
               ),
             ),
             Padding(
@@ -182,11 +180,11 @@ class _CourseAccessSheetState extends State<CourseAccessSheet> with SingleTicker
                           padding: const EdgeInsets.all(5),
                           child: k == 'x'
                               ? _Key(onTap: () => Navigator.of(context).pop(false), bg: Colors.red.shade400,
-                                  child: const Icon(Icons.clear, color: Colors.white, size: 22))
+                              child: const Icon(Icons.clear, color: Colors.white, size: 22))
                               : k == 'del'
-                                  ? _Key(onTap: _del, child: const Icon(Icons.backspace_outlined, color: _muted, size: 22))
-                                  : _Key(onTap: () => _key(k),
-                                      child: Text(k, style: const TextStyle(color: _text, fontSize: 24, fontWeight: FontWeight.w300))),
+                              ? _Key(onTap: _del, child: const Icon(Icons.backspace_outlined, color: _muted, size: 22))
+                              : _Key(onTap: () => _key(k),
+                              child: Text(k, style: const TextStyle(color: _text, fontSize: 24, fontWeight: FontWeight.w300))),
                         ),
                       ),
                   ]),
@@ -207,17 +205,17 @@ class _Key extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          height: 60,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: bg ?? const Color(0xFF1E1E2C),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFF2E2E40)),
-            boxShadow: const [BoxShadow(color: Color(0x40000000), blurRadius: 8, offset: Offset(0, 4))],
-          ),
-          child: child,
-        ),
-      );
+    onTap: onTap,
+    child: Container(
+      height: 60,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: bg ?? const Color(0xFF1E1E2C),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFF2E2E40)),
+        boxShadow: const [BoxShadow(color: Color(0x40000000), blurRadius: 8, offset: Offset(0, 4))],
+      ),
+      child: child,
+    ),
+  );
 }

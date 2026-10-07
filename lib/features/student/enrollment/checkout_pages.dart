@@ -7,6 +7,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:moyasar/moyasar.dart';
 
 import '../../../config/app_config.dart' as helpers;
@@ -82,7 +83,10 @@ class _MobileCheckoutPageState extends State<MobileCheckoutPage> {
       ),
       body: Stack(
         children: [
-          WebViewWidget(controller: _controller),
+          ParentComponent(
+            featureKey: 'payments.card',
+            child: WebViewWidget(controller: _controller),
+          ),
           if (_loading)
             Center(
               child: Column(
@@ -129,7 +133,10 @@ class MoyasarCardPaymentScreen extends StatelessWidget {
           elevation: 0,
           iconTheme: IconThemeData(color: c.textDark),
         ),
-        body: CreditCard(config: config, onPaymentResult: onPaymentResult),
+        body: ParentComponent(
+          featureKey: 'payments.card',
+          child: CreditCard(config: config, onPaymentResult: onPaymentResult),
+        ),
       ),
     );
   }

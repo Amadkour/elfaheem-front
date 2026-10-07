@@ -60,6 +60,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
     final isWide = context.showSidebar;
 
     return BasePage(
+      key: const ValueKey('teacher_home'),
       useWebCard: true,
       enableFooterWidget: false,
       child: SafeArea(
@@ -73,10 +74,14 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
             slivers: [
               // ── Top bar ─────────────────────────────────────────
               if (!isWide) ...[
-                SliverToBoxAdapter(child: _TopBar()),
+                SliverToBoxAdapter(
+                  child: ParentComponent(featureKey: 'teacher_home_topbar', child: _TopBar()),
+                ),
                 const SliverToBoxAdapter(child: SizedBox(height: 20)),
               ] else
-                SliverToBoxAdapter(child: _WebTopBar()),
+                SliverToBoxAdapter(
+                  child: ParentComponent(featureKey: 'teacher_home_topbar', child: _WebTopBar()),
+                ),
 
               // ── Stats ────────────────────────────────────────────
               SliverToBoxAdapter(
@@ -130,30 +135,30 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                           child: loading
                               ? const CoursesShimmer(count: 4)
                               : HomeCourseList(
-                                  courses: provider.homeCourses
-                                      .take(8)
-                                      .map((e) => e.toCourseModel)
-                                      .toList(),
-                                  isTeacher: context
-                                      .read<AuthProvider>()
-                                      .isTeacher,
-                                  onTap: (CourseModel c) {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => ChangeNotifierProvider(
-                                          create: (_) =>
-                                              TeacherCourseScreenProvider(
-                                                initialCourse: c.toTeacherModel,
-                                              ),
-                                          child: TeacherSessionsScreen(),
+                            courses: provider.homeCourses
+                                .take(8)
+                                .map((e) => e.toCourseModel)
+                                .toList(),
+                            isTeacher: context
+                                .read<AuthProvider>()
+                                .isTeacher,
+                            onTap: (CourseModel c) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ChangeNotifierProvider(
+                                    create: (_) =>
+                                        TeacherCourseScreenProvider(
+                                          initialCourse: c.toTeacherModel,
                                         ),
-                                      ),
-                                    );
-                                  },
-                                  pageName: 'teacher-home-my-courses',
-                                  hasMore: false,
+                                    child: TeacherSessionsScreen(),
+                                  ),
                                 ),
+                              );
+                            },
+                            pageName: 'teacher-home-my-courses',
+                            hasMore: false,
+                          ),
                         ),
                       ),
                       SizedBox(height: 26),
@@ -164,8 +169,8 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                           key: ValueKey('teacher_home_schedule'),
 
                           child: SectionHeader(
-                            title: 'الجدول الزمني',
-                            actionLabel: 'المواعيد القادمة',
+                            title: 'hs_schedule_title'.tr,
+                            actionLabel: 'hs_upcoming'.tr,
                             onAction: () => context
                                 .read<TeacherDashboardProvider>()
                                 .onChangeTab(2),
@@ -176,14 +181,14 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                       loading
                           ? const _ScheduleShimmer()
                           : ParentComponent(
-                              child: ContentBox(
-                                key: ValueKey('teacher_home_schedule'),
+                        child: ContentBox(
+                          key: ValueKey('teacher_home_schedule'),
 
-                                child: ScheduleQueueList(
-                                  sessions: provider.schedule,
-                                ),
-                              ),
-                            ),
+                          child: ScheduleQueueList(
+                            sessions: provider.schedule,
+                          ),
+                        ),
+                      ),
                       SizedBox(height: 36),
                     ],
                   ),
@@ -263,7 +268,7 @@ class _TopBar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'صباح الخير 🌟',
+                  'hs_good_morning'.tr,
                   style: context.colors.caption.copyWith(fontSize: 12),
                 ),
                 Text(name, style: context.colors.h2.copyWith(fontSize: 18)),
@@ -340,7 +345,7 @@ class _StatsShimmer extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     children: List.generate(
       3,
-      (i) => Expanded(
+          (i) => Expanded(
         child: Padding(
           padding: EdgeInsets.only(left: i < 2 ? 12 : 0),
           child: const Shimmer(width: double.infinity, height: 90),
@@ -475,7 +480,7 @@ class _TeacherHomeCourseTileState extends State<_TeacherHomeCourseTile> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                       (AppConfig.lang=='ar'? c.titleAr:c.titleEn)??'',
+                        (AppConfig.lang=='ar'? c.titleAr:c.titleEn)??'',
                         style: context.colors.h3.copyWith(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
@@ -548,7 +553,7 @@ class _ScheduleShimmer extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     children: List.generate(
       2,
-      (i) => Padding(
+          (i) => Padding(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
         child: const Shimmer(width: double.infinity, height: 150),
       ),
@@ -723,14 +728,14 @@ class _AddCourseButton extends StatelessWidget {
           ),
         ],
       ),
-      child: const Row(
+      child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.add_circle_outline_rounded, color: Colors.white, size: 22),
-          SizedBox(width: 10),
+          const Icon(Icons.add_circle_outline_rounded, color: Colors.white, size: 22),
+          const SizedBox(width: 10),
           Text(
-            'إضافة دورة جديدة',
-            style: TextStyle(
+            'hs_add_course'.tr,
+            style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.w800,
               fontSize: 16,

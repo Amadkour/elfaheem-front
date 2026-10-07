@@ -8,6 +8,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
@@ -31,7 +32,12 @@ class CourseProgressStatusCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'course_form.progress_status',
+    child: _buildContent(context),
+  );
+
+  Widget _buildContent(BuildContext context) {
     if (!editable) {
       return _StatusPill(status: status);
     }
@@ -97,17 +103,17 @@ class CourseProgressStatusCard extends StatelessWidget {
                   .where((s) => s != CourseStatus.all)
                   .map(
                     (s) => Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: _SegmentButton(
-                          status: s,
-                          isSelected: s == status,
-                          isLoading: isLoading,
-                          onTap: () => onChanged(s),
-                        ),
-                      ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: _SegmentButton(
+                      status: s,
+                      isSelected: s == status,
+                      isLoading: isLoading,
+                      onTap: () => onChanged(s),
                     ),
-                  )
+                  ),
+                ),
+              )
                   .toList(),
             ),
           ),

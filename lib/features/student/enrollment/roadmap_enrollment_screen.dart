@@ -7,6 +7,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart';
@@ -108,17 +109,23 @@ class _RoadmapBody extends StatelessWidget {
         physics: const BouncingScrollPhysics(),
         padding: EdgeInsets.fromLTRB(wide ? 32 : 20, 12, wide ? 32 : 20, 24),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          _Intro(courseName: courseName, quote: quote),
+          ParentComponent(featureKey: 'roadmap_enroll.intro', child: _Intro(courseName: courseName, quote: quote)),
           const SizedBox(height: 20),
           for (var i = 0; i < quote.items.length; i++)
-            _RoadmapItemTile(
-              item: quote.items[i],
-              isLast: i == quote.items.length - 1,
-              currencySymbol: p.currencySymbol,
+            ParentComponent(
+              featureKey: 'roadmap_enroll.items',
+              child: _RoadmapItemTile(
+                item: quote.items[i],
+                isLast: i == quote.items.length - 1,
+                currencySymbol: p.currencySymbol,
+              ),
             ),
           if (quote.fees != null) ...[
             const SizedBox(height: 12),
-            FeeBreakdownCard(quote: quote.fees, currencySymbol: p.currencySymbol),
+            ParentComponent(
+              featureKey: 'roadmap_enroll.fees',
+              child: FeeBreakdownCard(quote: quote.fees, currencySymbol: p.currencySymbol),
+            ),
           ],
         ]),
       );

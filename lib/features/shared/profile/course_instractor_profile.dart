@@ -4,6 +4,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
@@ -66,8 +67,8 @@ class _InstructorProfileScreenState extends State<InstructorProfileScreen>
     _fadeIn = CurvedAnimation(parent: _contentAnim, curve: Curves.easeOut);
     _slideUp = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
         .animate(
-          CurvedAnimation(parent: _contentAnim, curve: Curves.easeOutCubic),
-        );
+      CurvedAnimation(parent: _contentAnim, curve: Curves.easeOutCubic),
+    );
 
     _heroAnim.forward();
     Future.delayed(const Duration(milliseconds: 200), () {
@@ -95,27 +96,25 @@ class _InstructorProfileScreenState extends State<InstructorProfileScreen>
       value: SystemUiOverlayStyle.light.copyWith(
         statusBarColor: Colors.transparent,
       ),
-      child: BasePage(
-        useWebCard: true,
-        appBar: ScreenAppBar(title: widget.teacher.name),
+      child: BasePage( key: const ValueKey('course_instructor'), useWebCard: true, appBar: ScreenAppBar(title: widget.teacher.name),
         child: LayoutBuilder(
           builder: (ctx, constraints) => constraints.maxWidth > 800
               ? _WideLayout(
-                  teacher: widget.teacher,
-                  heroAnim: _heroAnim,
-                  fadeIn: _fadeIn,
-                  slideUp: _slideUp,
-                  studentView: widget.studentView,
-                  stats: widget.stats,
-                )
+            teacher: widget.teacher,
+            heroAnim: _heroAnim,
+            fadeIn: _fadeIn,
+            slideUp: _slideUp,
+            studentView: widget.studentView,
+            stats: widget.stats,
+          )
               : _NarrowLayout(
-                  teacher: widget.teacher,
-                  heroAnim: _heroAnim,
-                  fadeIn: _fadeIn,
-                  slideUp: _slideUp,
-                  studentView: widget.studentView,
-                  stats: widget.stats,
-                ),
+            teacher: widget.teacher,
+            heroAnim: _heroAnim,
+            fadeIn: _fadeIn,
+            slideUp: _slideUp,
+            studentView: widget.studentView,
+            stats: widget.stats,
+          ),
         ),
       ),
     );
@@ -170,7 +169,7 @@ class _NarrowLayout extends StatelessWidget {
                     const SizedBox(height: 24),
                     _RatingSection(teacher: teacher, studentView: studentView),
                     const SizedBox(height: 24),
-                    if (stats != null) StatsRow(stats: stats!, isFull: true),
+                    if (stats != null) ParentComponent(featureKey: 'instructor.teacher_stats', child: StatsRow(stats: stats!, isFull: true)),
                   ],
                 ),
               ),
@@ -256,7 +255,7 @@ class _WideLayout extends StatelessWidget {
                     const SizedBox(height: 28),
                     _RatingSection(teacher: teacher, studentView: studentView),
                     const SizedBox(height: 28),
-                    if (stats != null) StatsRow(stats: stats!, isFull: true),
+                    if (stats != null) ParentComponent(featureKey: 'instructor.teacher_stats', child: StatsRow(stats: stats!, isFull: true)),
                   ],
                 ),
               ),
@@ -397,14 +396,14 @@ class _HeroSliverAppBar extends StatelessWidget {
                           const SizedBox(height: 4),
                           Text(
                             (AppConfig.lang == 'ar'
-                                    ? teacher
-                                          .teacherProfile
-                                          ?.specialization
-                                          ?.nameAr
-                                    : teacher
-                                          .teacherProfile
-                                          ?.specialization
-                                          ?.nameEn) ??
+                                ? teacher
+                                .teacherProfile
+                                ?.specialization
+                                ?.nameAr
+                                : teacher
+                                .teacherProfile
+                                ?.specialization
+                                ?.nameEn) ??
                                 '',
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.75),
@@ -437,7 +436,12 @@ class _ProfileCard extends StatelessWidget {
   const _ProfileCard({required this.teacher});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'instructor.profile_card',
+    child: _featureContent(context),
+  );
+
+  Widget _featureContent(BuildContext context) {
     final c = context.colors;
     return Container(
       padding: const EdgeInsets.all(24),
@@ -528,50 +532,55 @@ class InstructorAvatar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'instructor.avatar',
+    child: _featureContent(context),
+  );
+
+  Widget _featureContent(BuildContext context) {
     Widget w = Container(
       width: size,
       height: size,
       decoration: !canOpen
           ? BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: context.colors.background, width: 3),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            )
+        shape: BoxShape.circle,
+        border: Border.all(color: context.colors.background, width: 3),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      )
           : BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: context.colors.background, width: 1),
-            ),
+        shape: BoxShape.circle,
+        border: Border.all(color: context.colors.background, width: 1),
+      ),
       child: ClipOval(
         child: teacher.imageUrl != null
             ? AppNetworkImage(
-                url: teacher.imageUrl!,
-                width: size,
-                height: size,
-                fit: BoxFit.cover,
-                enableFullscreen: !canOpen,
-                heroTag:
-                    'instructor_avatar_${teacher.id}-${DateTime.timestamp()}',
-              )
+          url: teacher.imageUrl!,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          enableFullscreen: !canOpen,
+          heroTag:
+          'instructor_avatar_${teacher.id}-${DateTime.timestamp()}',
+        )
             : Container(
-                color: AppTheme.primary.withValues(alpha: 0.2),
-                child: Center(
-                  child: Text(
-                    teacher.initials,
-                    style: TextStyle(
-                      color: AppTheme.primary,
-                      fontSize: size * 0.35,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
+          color: AppTheme.primary.withValues(alpha: 0.2),
+          child: Center(
+            child: Text(
+              teacher.initials,
+              style: TextStyle(
+                color: AppTheme.primary,
+                fontSize: size * 0.35,
+                fontWeight: FontWeight.w800,
               ),
+            ),
+          ),
+        ),
       ),
     );
 
@@ -644,7 +653,12 @@ class _StatsRow extends StatelessWidget {
   const _StatsRow({required this.teacher});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'instructor.stats',
+    child: _featureContent(context),
+  );
+
+  Widget _featureContent(BuildContext context) {
     final tp = teacher.teacherProfile;
     return Row(
       children: [
@@ -734,7 +748,12 @@ class _BadgesRow extends StatelessWidget {
   const _BadgesRow({required this.teacher});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'instructor.badges',
+    child: _featureContent(context),
+  );
+
+  Widget _featureContent(BuildContext context) {
     final badges = <_BadgeData>[
       if (teacher.isVerified)
         _BadgeData(
@@ -767,11 +786,11 @@ class _BadgesRow extends StatelessWidget {
           color: const Color(0xFFEF4444),
         )
       else if (teacher.teacherProfile?.teachingType == 'recorded')
-        _BadgeData(
-          icon: Icons.videocam_outlined,
-          label: 'record'.tr,
-          color: const Color(0xFF06B6D4),
-        ),
+          _BadgeData(
+            icon: Icons.videocam_outlined,
+            label: 'record'.tr,
+            color: const Color(0xFF06B6D4),
+          ),
     ];
 
     return Wrap(
@@ -845,7 +864,12 @@ class _AboutCardState extends State<_AboutCard> {
   bool _expanded = false;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'instructor.about',
+    child: _featureContent(context),
+  );
+
+  Widget _featureContent(BuildContext context) {
     final c = context.colors;
     final about = widget.teacher.teacherProfile?.about;
     final hasAbout = about != null && about.isNotEmpty;
@@ -918,7 +942,12 @@ class _DocumentsSection extends StatelessWidget {
   const _DocumentsSection({required this.teacherId});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'instructor.documents',
+    child: _featureContent(context),
+  );
+
+  Widget _featureContent(BuildContext context) {
     final c = context.colors;
     final provider = context.watch<TeacherDocumentProvider>();
     final docs = provider.publicDocs;
@@ -1197,7 +1226,12 @@ class _RatingSection extends StatelessWidget {
   const _RatingSection({required this.teacher, required this.studentView});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'instructor.rating',
+    child: _featureContent(context),
+  );
+
+  Widget _featureContent(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1298,7 +1332,7 @@ class _LoadingSkeletonState extends State<_LoadingSkeleton>
                     Row(
                       children: List.generate(
                         3,
-                        (_) => Expanded(
+                            (_) => Expanded(
                           child: Container(
                             margin: const EdgeInsets.symmetric(horizontal: 4),
                             height: 80,
@@ -1347,7 +1381,12 @@ class _ContactCard extends StatelessWidget {
   const _ContactCard({required this.teacher});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ParentComponent(
+    featureKey: 'instructor.contact',
+    child: _featureContent(context),
+  );
+
+  Widget _featureContent(BuildContext context) {
     final c = context.colors;
     return Container(
       padding: const EdgeInsets.all(16),
