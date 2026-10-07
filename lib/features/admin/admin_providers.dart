@@ -464,6 +464,7 @@ class AdminSettingsProvider extends AdminBase {
   String? error;
 
   int get maxDevices => asInt(values['max_devices'], 1);
+  int get maxVideos => asInt(values['max_monthly_view'], 1);
   int get switchDays => asInt(values['device_switch_days'], 30);
   String? get defaultProvider => asStrOrNull(values['default_payment_provider']);
   double? get platformFee => values['platform_fee_percent'] == null

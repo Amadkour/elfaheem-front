@@ -36,6 +36,7 @@ class _View extends StatefulWidget {
 
 class _ViewState extends State<_View> {
   final _devices = TextEditingController();
+  final _videos = TextEditingController();
   final _days = TextEditingController();
   final _fee = TextEditingController();
   String? provider;
@@ -45,6 +46,7 @@ class _ViewState extends State<_View> {
   @override
   void dispose() {
     _devices.dispose();
+    _videos.dispose();
     _days.dispose();
     _fee.dispose();
     super.dispose();
@@ -54,6 +56,7 @@ class _ViewState extends State<_View> {
     if (_filled || s.values.isEmpty) return;
     _filled = true;
     _devices.text = '${s.maxDevices}';
+    _videos.text = '${s.maxVideos}';
     _days.text = '${s.switchDays}';
     _fee.text = s.platformFee?.toString() ?? '';
     provider = s.defaultProvider;
@@ -61,11 +64,16 @@ class _ViewState extends State<_View> {
 
   Future<void> _save(AdminSettingsProvider s) async {
     final dev = int.tryParse(_devices.text.trim());
+    final videos = int.tryParse(_videos.text.trim());
     final days = int.tryParse(_days.text.trim());
     final feeText = _fee.text.trim();
     final fee = feeText.isEmpty ? null : double.tryParse(feeText);
     if (dev == null || dev < 1 || dev > 10) {
       toast('admin_devices_must_be_1_10'.tr, error: true);
+      return;
+    }
+    if (videos == null || videos < 1 || videos > 1000) {
+      toast('admin_videos_must_be_1_1000'.tr, error: true);
       return;
     }
     if (days == null || days < 1 || days > 365) {
@@ -80,6 +88,7 @@ class _ViewState extends State<_View> {
     await s.save({
       'max_devices': dev,
       'device_switch_days': days,
+      'max_monthly_view': videos,
       'default_payment_provider': provider,
       'platform_fee_percent': fee,
     });
@@ -105,6 +114,7 @@ class _ViewState extends State<_View> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Field(controller: _devices, label: 'admin_devices_allowed_per_student'.tr, keyboard: TextInputType.number),
             Field(controller: _days, label: 'admin_days_between_device_switches_default'.tr, keyboard: TextInputType.number),
+            Field(controller: _videos, label: 'max_monthly_view'.tr, keyboard: TextInputType.number),
             Text(
               'admin_a_student_may_request_one_device'.tr,
               style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight),
