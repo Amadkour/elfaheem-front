@@ -44,31 +44,39 @@ class BasePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Rebuild whenever the disable list changes (silent FCM push / theme fetch).
+    return ValueListenableBuilder<int>(
+      valueListenable: AppConfig.disableListVersion,
+      builder: (context, _, __) => _buildPage(context),
+    );
+  }
+
+  Widget _buildPage(BuildContext context) {
     if (key case ValueKey(
     value: final v,
     ) when AppConfig.disableList.contains(v)) {
       return Scaffold(
         appBar: ScreenAppBar(title:(key as ValueKey).value.toString().tr,),
         body: Center(
-         child: Column(
-           mainAxisAlignment: MainAxisAlignment.center,
-           children: [
-             Text('🚀',style: TextStyle(fontSize: 70),),
-             Text('coming_soon'.tr , style: context.colors.h2.copyWith(color: context.colors.accent2),),
-           ],
-         )
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('🚀',style: TextStyle(fontSize: 70),),
+                Text('coming_soon'.tr , style: context.colors.h2.copyWith(color: context.colors.accent2),),
+              ],
+            )
         ),
       );
     }
     Widget w =  Scaffold(
-        appBar: appBar,
-        backgroundColor:
-        background ??context.colors.background,
-        floatingActionButton: floatingActionButton,
-        bottomNavigationBar:enableFooterWidget? _footerWith(bottomNavigationBar):null,
-        body: Directionality(
-          textDirection: Helpers.pageDirection,
-          child:DecoratedBox(
+      appBar: appBar,
+      backgroundColor:
+      background ??context.colors.background,
+      floatingActionButton: floatingActionButton,
+      bottomNavigationBar:enableFooterWidget? _footerWith(bottomNavigationBar):null,
+      body: Directionality(
+        textDirection: Helpers.pageDirection,
+        child:DecoratedBox(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(context.colors.radiusXL),
           ),
@@ -79,10 +87,10 @@ class BasePage extends StatelessWidget {
 
     if (useWebCard && context.width > 599) {
       return Directionality(
-          textDirection: Helpers.pageDirection,
-          child: Scaffold(
+        textDirection: Helpers.pageDirection,
+        child: Scaffold(
           backgroundColor:
-              background ??(context.colors.background),
+          background ??(context.colors.background),
           // NOTE: no footer here — `w` below already carries it via its own
           // bottomNavigationBar, and `w` is what actually renders in this
           // branch (nested inside the centered card).

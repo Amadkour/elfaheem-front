@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/base_provider.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
@@ -35,9 +36,9 @@ import 'package:flutter_education_app/features/student/courses/details/course_de
 Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
   print(
     '[FCM][background] id=${message.messageId} '
-    'title=${message.notification?.title} '
-    'body=${message.notification?.body} '
-    'data=${message.data}',
+        'title=${message.notification?.title} '
+        'body=${message.notification?.body} '
+        'data=${message.data}',
   );
 }
 
@@ -47,7 +48,7 @@ class NotificationService {
   static final NotificationService instance = NotificationService._();
 
   final FlutterLocalNotificationsPlugin _plugin =
-      FlutterLocalNotificationsPlugin();
+  FlutterLocalNotificationsPlugin();
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
 
   ApiClient? _api;
@@ -123,8 +124,8 @@ class NotificationService {
 
       final androidPlugin = _plugin
           .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >();
+          AndroidFlutterLocalNotificationsPlugin
+      >();
       await androidPlugin?.requestNotificationsPermission();
       await androidPlugin?.createNotificationChannel(_channel);
     }
@@ -160,7 +161,7 @@ class NotificationService {
       if (kIsWeb) {
         token = await _fcm.getToken(
           vapidKey:
-              'BLpXoCZIPMtfWfU9Ftnl8NzJgx4wHo-ZY16GCZ01ZD5fvs12c8KcMpAYPQ30-0kWdTrZku8dVxc3Gxl0smubJJ0',
+          'BLpXoCZIPMtfWfU9Ftnl8NzJgx4wHo-ZY16GCZ01ZD5fvs12c8KcMpAYPQ30-0kWdTrZku8dVxc3Gxl0smubJJ0',
         );
       } else {
         token = await _fcm.getToken();
@@ -215,16 +216,18 @@ class NotificationService {
     // visible too.
     print(
       '[FCM][foreground] id=${message.messageId} '
-      'title=${message.notification?.title} '
-      'body=${message.notification?.body} '
-      'data=${message.data}',
+          'title=${message.notification?.title} '
+          'body=${message.notification?.body} '
+          'data=${message.data}',
     );
 
     final data = message.data;
     print(data);
     // Silent push: the admin changed the disable list → reload it, show nothing.
     if (data['type'] == 'disable_list_updated') {
+      print('[FCM] disable_list_updated received → refreshing');
       _refreshDisableList();
+
       return;
     }
     if (data['type'] == 'session_started' || data['type'] == 'session_ended') {
@@ -361,13 +364,9 @@ class NotificationService {
       final items = ((r is Map ? r['items'] : null) as List? ?? const [])
           .map((e) => '$e')
           .toList();
-       AppConfig.disableList.clear();
-       AppConfig.disableList.addAll(items);
-      // TODO: put the new list wherever your app reads it from, e.g.
-      //   AppConfig.disableList = items;
-      // or call whatever method of ThemeConfigProvider reloads the theme
-      // (GET /theme/{platform} already contains `disable_list`).
-      // Then notifyListeners() so hidden/unhidden widgets rebuild.
+      print('[FCM] disable list from server ($platform): $items');
+      final changed = AppConfig.setDisableList(items);
+      print('[FCM] disable list changed=$changed');
     } catch (e) {
       print('[FCM] refreshDisableList failed: $e');
     }

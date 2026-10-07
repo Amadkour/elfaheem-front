@@ -28,6 +28,44 @@ class AppConfig {
     // "teacher_home_schedule",
     // "teacher_home_add_course"
   ];
+
+  /// Bumped every time the disable list really changes. BasePage listens to it.
+  static final ValueNotifier<int> disableListVersion = ValueNotifier<int>(0);
+
+  /// Single entry point for replacing the list (push refresh, theme fetch…).
+  /// Rebuilds every BasePage only if the content actually changed.
+  /// Returns true if it changed.
+  static bool setDisableList(Iterable<String> items) {
+    final next = items.toList();
+    debugPrint('[AppConfig] setDisableList old=$disableList new=$next');
+    if (disableList.length == next.length &&
+        disableList.toSet().containsAll(next)) {
+      return false;
+    }
+    disableList = next;
+    disableListVersion.value++;
+    _rebuildWholeApp();
+    return true;
+  }
+
+  /// Widgets that read [disableList] inside their own build (buttons, tabs,
+  /// stat cards…) are NOT rebuilt by BasePage's listener, because Flutter
+  /// skips children whose widget instance did not change. So after the list
+  /// changes we mark every mounted element dirty. State and navigation are
+  /// kept — it is the same thing a hot reload does. Rare event, cheap enough.
+  static void _rebuildWholeApp() {
+    final root = WidgetsBinding.instance.rootElement;
+    if (root == null) return;
+    void rebuild(Element el) {
+      el.markNeedsBuild();
+      el.visitChildren(rebuild);
+    }
+    try {
+      rebuild(root);
+    } catch (e) {
+      debugPrint('[AppConfig] rebuild after disableList change failed: $e');
+    }
+  }
 }
 
 Map<String, dynamic> translation = {};
