@@ -180,7 +180,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
         EnrollStep.failed,
         reason: status.rejectionReason?.isNotEmpty == true
             ? status.rejectionReason
-            : 'تم رفض طلب الدفع السابق. يمكنك إرسال طلب جديد.',
+            : 'transfer_previous_rejected_fallback'.tr,
       );
       return true;
     }
@@ -334,7 +334,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
 
   void _handleSdkResult(dynamic result) {
     if (result is! PaymentResponse) {
-      setStep(EnrollStep.failed, reason: 'استجابة غير متوقعة من بوابة الدفع');
+      setStep(EnrollStep.failed, reason: 'payment_unexpected_gateway_response'.tr);
       return;
     }
     switch (result.status.name.toLowerCase()) {
@@ -343,7 +343,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
       case 'failed':
         setStep(EnrollStep.failed,
             reason: (result.source as dynamic)?.message as String? ??
-                'فشلت عملية الدفع. حاول مرة أخرى.');
+                'payment_failed_try_again'.tr);
       default:
         setStep(EnrollStep.pending);
     }
@@ -399,7 +399,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
     final paymentId = _pendingPaymentId;
     final transactionId = _pendingTransactionId;
     if (paymentId == null || transactionId == null) {
-      setStep(EnrollStep.failed, reason: 'لم يتم العثور على بيانات الدفع.');
+      setStep(EnrollStep.failed, reason: 'payment_data_not_found'.tr);
       return;
     }
 
@@ -418,7 +418,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
         return;
       }
       if (status == 'failed') {
-        setStep(EnrollStep.failed, reason: 'فشلت عملية الدفع. جرّب طريقة دفع أخرى.');
+        setStep(EnrollStep.failed, reason: 'payment_failed_try_other_method'.tr);
         return;
       }
     }

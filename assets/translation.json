@@ -7824,5 +7824,29 @@
   "admin_all_loaded": {
     "en": "All loaded",
     "ar": "تم تحميل الكل"
+  },
+  "course": {
+    "en": "Course",
+    "ar": "الكورس"
+  },
+  "transfer_previous_rejected_fallback": {
+    "en": "Your previous payment request was rejected. You can submit a new request.",
+    "ar": "تم رفض طلب الدفع السابق. يمكنك إرسال طلب جديد."
+  },
+  "payment_unexpected_gateway_response": {
+    "en": "Unexpected response from the payment gateway.",
+    "ar": "استجابة غير متوقعة من بوابة الدفع."
+  },
+  "payment_failed_try_again": {
+    "en": "Payment failed. Please try again.",
+    "ar": "فشلت عملية الدفع. حاول مرة أخرى."
+  },
+  "payment_data_not_found": {
+    "en": "Payment details were not found.",
+    "ar": "لم يتم العثور على بيانات الدفع."
+  },
+  "payment_failed_try_other_method": {
+    "en": "Payment failed. Try another payment method.",
+    "ar": "فشلت عملية الدفع. جرّب طريقة دفع أخرى."
   }
 }

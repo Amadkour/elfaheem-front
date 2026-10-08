@@ -141,11 +141,11 @@ class IFrameCheckoutPageState extends State<IFrameCheckoutPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('إتمام الدفع'),
+        title: Text('complete_payment_title'.tr),
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.close),
-          tooltip: 'إلغاء',
+          tooltip: 'cancel'.tr,
           onPressed: () => Navigator.of(context).pop('cancelled'),
         ),
       ),
@@ -154,13 +154,13 @@ class IFrameCheckoutPageState extends State<IFrameCheckoutPage> {
           // The registered iframe fills the entire body
           HtmlElementView(viewType: _viewId),
           if (_loading)
-            const Center(
+            Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  AppLoadingIndicator(),
-                  SizedBox(height: 16),
-                  Text('جارٍ تحميل صفحة الدفع…'),
+                  const AppLoadingIndicator(),
+                  const SizedBox(height: 16),
+                  Text('loading_payment_page'.tr),
                 ],
               ),
             ),
