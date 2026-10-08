@@ -139,6 +139,13 @@ class AdminCourse {
   double get finalPrice => asDouble(j['final_price'], fees);
   bool get discountActive => asBool(j['discount_active']);
   double get discountPercentage => asDouble(j['discount_percentage']);
+
+  // ── price plans: `fees` is the YEARLY price; the other two are optional ──
+  double? get priceMonthly => j['price_monthly'] == null ? null : asDouble(j['price_monthly']);
+  double? get priceSixMonths => j['price_six_months'] == null ? null : asDouble(j['price_six_months']);
+
+  /// [{plan, duration_days, price, final_price, ...}] — only plans with a price.
+  List<Map<String, dynamic>> get priceOptions => asMapList(j['price_options']);
 }
 
 class AdminCategory {
@@ -185,17 +192,71 @@ class ThemePresetModel {
 class FeatureItem {
   FeatureItem(this.j);
   final Map<String, dynamic> j;
+
+  // 1) key
   String get key => asStr(j['key']);
-  String get label => t(asStr(j['label_ar'], key), asStr(j['label_en'], key));
-  List<String> get hiddenOn =>
-      (j['hidden_on'] is List) ? (j['hidden_on'] as List).map((e) => '$e').toList() : <String>[];
+
+  // 2, 3) labels — the server sends title_ar / title_en (label_* kept as fallback)
+  String get labelAr => asStr(j['title_ar'], asStr(j['label_ar'], key));
+  String get labelEn => asStr(j['title_en'], asStr(j['label_en'], key));
+  String get label => t(labelAr, labelEn);
+
+  // 4) may admins see / toggle this feature?
+  bool get allowToAdmin => asBool(j['allow_to_admin']);
+
+  // 5, 6, 7) hidden per platform.
+  // Explicit hidden_ios / hidden_android / hidden_web win; otherwise they are
+  // derived from the `platforms` list the server sends today.
+  bool get hiddenIos => _hiddenOn('ios');
+  bool get hiddenAndroid => _hiddenOn('android');
+  bool get hiddenWeb => _hiddenOn('web');
+
+  bool _hiddenOn(String platform) {
+    final explicit = j['hidden_$platform'];
+    if (explicit != null) return asBool(explicit);
+    return _platforms.contains(platform);
+  }
+
+  List<String> get _platforms => j['platforms'] is List
+      ? (j['platforms'] as List).map((e) => '$e'.toLowerCase()).toList()
+      : <String>[];
+
+  /// Platforms where this feature is hidden (used by the page widget).
+  List<String> get hiddenOn => [
+    if (hiddenAndroid) 'android',
+    if (hiddenIos) 'ios',
+    if (hiddenWeb) 'web',
+  ];
+
+  bool get isHiddenAnywhere => hiddenOn.isNotEmpty;
+
+  /// Is this feature hidden on [platform] ('ios' | 'android' | 'web')?
+  bool isHiddenOn(String platform) {
+    switch (platform.toLowerCase()) {
+      case 'ios':
+        return hiddenIos;
+      case 'android':
+        return hiddenAndroid;
+      case 'web':
+        return hiddenWeb;
+    }
+    return false;
+  }
 }
+
+/// "1200 EGP · 300 SAR" — totals are per currency, never added together.
+String moneyByCurrency(Map<String, double> m) =>
+    m.isEmpty ? '0' : m.entries.map((e) => money(e.value, e.key)).join(' · ');
 
 class Overview {
   Overview(this.j);
   final Map<String, dynamic> j;
   int i(String k) => asInt(j[k]);
   double d(String k) => asDouble(j[k]);
+
+  /// {"EGP": 1200.0, "SAR": 300.0} for keys like `collected_by_currency`.
+  Map<String, double> byCurrency(String k) =>
+      asMap(j[k]).map((c, v) => MapEntry(c, asDouble(v)));
   bool get subscriptionRequired => asBool(j['subscription_required']);
 }
 

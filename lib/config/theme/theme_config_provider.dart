@@ -85,13 +85,18 @@ class ThemeConfigProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
 
-    final fetchedFromServer = await _fetchFromServer();
-    if (!fetchedFromServer) {
-      await _loadFromCache();
+    try {
+      final fetchedFromServer = await _fetchFromServer();
+      if (!fetchedFromServer) {
+        await _loadFromCache();
+      }
+    } catch (e) {
+      debugPrint('[ThemeConfigProvider] load error: $e');
+    } finally {
+      // Always leave the splash, even if everything above failed.
+      _isLoading = false;
+      notifyListeners();
     }
-
-    _isLoading = false;
-    notifyListeners();
   }
 
   /// Alias for [load] — call after an admin colour change to force a
@@ -438,7 +443,9 @@ class ThemeConfigProvider extends ChangeNotifier {
   Future<bool> _fetchFromServer() async {
     try {
       final platform = _currentPlatform;
-      final json = await _api.get('/api/v1/theme/$platform') as Map<String, dynamic>;
+      final json = await _api
+          .get('/api/v1/theme/$platform')
+          .timeout(const Duration(seconds: 8)) as Map<String, dynamic>;
       final colors = json['colors'] as Map<String, dynamic>;
       _model = ThemeConfigModel.fromJson(colors);
 

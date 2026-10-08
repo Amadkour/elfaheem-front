@@ -16,6 +16,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../utils/widget/primary_button.dart';
 import '../teacher/profile/payout/teacher_payouts_screen.dart';
 import 'admin_common.dart';
 import 'admin_list.dart';
@@ -895,7 +896,7 @@ class _TeacherTile extends StatelessWidget {
                       const SizedBox(height: 16),
                       PrimaryButton(
                         label: 'save'.tr,
-                        busy: busy,
+                      isLoading: busy,
                         onPressed: () async {
                           if (restrict && chosen.isEmpty) {
                             toast(
@@ -1101,7 +1102,7 @@ class _SettingsViewState extends State<_SettingsView> {
               ),
               PrimaryButton(
                 label: 'save'.tr,
-                busy: busy,
+              isLoading: busy,
                 onPressed: () async {
                   final txt = _min.text.trim();
                   final v = txt.isEmpty ? null : double.tryParse(txt);

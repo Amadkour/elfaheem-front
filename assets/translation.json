@@ -5849,6 +5849,22 @@
     "en": "Activate this account?",
     "ar": "هل تريد تفعيل هذا الحساب؟"
   },
+  "admin_unverified_account": {
+    "en": "Unverified account",
+    "ar": "حساب غير مُوثَّق"
+  },
+  "admin_verified_account": {
+    "en": "Verified account",
+    "ar": "حساب موثّق"
+  },
+  "admin_unverified_this_account": {
+    "en": "Unverified this account?",
+    "ar": "هل تريد إلغاء توثيق هذا الحساب؟"
+  },
+  "admin_verified_this_account": {
+    "en": "Verified this account?",
+    "ar": "هل تريد توثيق هذا الحساب؟"
+  },
   "admin_permanently_delete_this_user_this": {
     "en": "Permanently delete this user? This cannot be undone.",
     "ar": "هل تريد حذف هذا المستخدم نهائيًا؟ لا يمكن التراجع عن ذلك."
@@ -7048,5 +7064,681 @@
   "course_form": {
     "en": "Course form",
     "ar": "نموذج الكورس"
+  },
+  "lr_starting_camera": {
+    "en": "Starting camera…",
+    "ar": "جارٍ تشغيل الكاميرا…"
+  },
+  "lr_no_camera_screen_recorded": {
+    "en": "No camera — screen share will be recorded",
+    "ar": "لا توجد كاميرا — سيتم تسجيل مشاركة الشاشة"
+  },
+  "lr_camera_off_msg": {
+    "en": "Camera is off",
+    "ar": "الكاميرا متوقفة"
+  },
+  "lr_ready_to_join": {
+    "en": "Ready to join?",
+    "ar": "جاهز للانضمام؟"
+  },
+  "lr_check_devices": {
+    "en": "Check your devices below",
+    "ar": "تحقق من أجهزتك أدناه"
+  },
+  "lr_camera": {
+    "en": "Camera",
+    "ar": "الكاميرا"
+  },
+  "lr_camera_front_1080p": {
+    "en": "Front · 1080p",
+    "ar": "أمامية · 1080p"
+  },
+  "lr_disabled": {
+    "en": "Disabled",
+    "ar": "معطّلة"
+  },
+  "lr_microphone": {
+    "en": "Microphone",
+    "ar": "الميكروفون"
+  },
+  "lr_default_mic": {
+    "en": "Default mic",
+    "ar": "الميكروفون الافتراضي"
+  },
+  "lr_muted": {
+    "en": "Muted",
+    "ar": "مكتوم"
+  },
+  "lr_all_set": {
+    "en": "ALL SET?",
+    "ar": "كل شيء جاهز؟"
+  },
+  "lr_join_session": {
+    "en": "Join Session",
+    "ar": "انضم للحصة"
+  },
+  "lr_speaker": {
+    "en": "Speaker",
+    "ar": "السماعة"
+  },
+  "lr_earpiece": {
+    "en": "Earpiece",
+    "ar": "سماعة الأذن"
+  },
+  "lr_resume": {
+    "en": "Resume",
+    "ar": "استئناف"
+  },
+  "lr_pause": {
+    "en": "Pause",
+    "ar": "إيقاف مؤقت"
+  },
+  "lr_resuming": {
+    "en": "Resuming…",
+    "ar": "جارٍ الاستئناف…"
+  },
+  "lr_pausing": {
+    "en": "Pausing…",
+    "ar": "جارٍ الإيقاف…"
+  },
+  "lr_stop_share": {
+    "en": "Stop Share",
+    "ar": "إيقاف المشاركة"
+  },
+  "lr_share": {
+    "en": "Share",
+    "ar": "مشاركة"
+  },
+  "lr_mute": {
+    "en": "Mute",
+    "ar": "كتم"
+  },
+  "lr_unmute": {
+    "en": "Unmute",
+    "ar": "تشغيل"
+  },
+  "lr_mute_microphone": {
+    "en": "Mute microphone",
+    "ar": "كتم الميكروفون"
+  },
+  "lr_unmute_microphone": {
+    "en": "Unmute microphone",
+    "ar": "تشغيل الميكروفون"
+  },
+  "lr_cam_off": {
+    "en": "Cam Off",
+    "ar": "الكاميرا مغلقة"
+  },
+  "lr_front": {
+    "en": "Front",
+    "ar": "أمامية"
+  },
+  "lr_back": {
+    "en": "Back",
+    "ar": "خلفية"
+  },
+  "lr_output": {
+    "en": "Output",
+    "ar": "المخرج"
+  },
+  "lr_select_audio_output": {
+    "en": "Select audio output",
+    "ar": "اختر مخرج الصوت"
+  },
+  "lr_send_test_data": {
+    "en": "Send test data",
+    "ar": "إرسال بيانات تجريبية"
+  },
+  "lr_subscribe_permission": {
+    "en": "Subscribe permission",
+    "ar": "صلاحية الاشتراك"
+  },
+  "lr_simulate_scenario": {
+    "en": "Simulate scenario",
+    "ar": "محاكاة سيناريو"
+  },
+  "lr_end": {
+    "en": "End",
+    "ar": "إنهاء"
+  },
+  "lr_subscribe_menu": {
+    "en": "Subscribe menu",
+    "ar": "قائمة الاشتراك"
+  },
+  "lr_subscribe": {
+    "en": "Subscribe",
+    "ar": "اشتراك"
+  },
+  "lr_preferred_fps": {
+    "en": "Preferred FPS",
+    "ar": "معدل الإطارات المفضل"
+  },
+  "lr_preferred_quality": {
+    "en": "Preferred Quality",
+    "ar": "الجودة المفضلة"
+  },
+  "lr_quality_high": {
+    "en": "HIGH",
+    "ar": "عالية"
+  },
+  "lr_quality_medium": {
+    "en": "MEDIUM",
+    "ar": "متوسطة"
+  },
+  "lr_quality_low": {
+    "en": "LOW",
+    "ar": "منخفضة"
+  },
+  "lr_teacher_ended_title": {
+    "en": "Session Ended",
+    "ar": "انتهت الحصة"
+  },
+  "lr_teacher_ended_msg": {
+    "en": "The teacher has ended this session.\nThank you for joining!",
+    "ar": "أنهى المعلم هذه الحصة.\nشكراً لانضمامك!"
+  },
+  "lr_waiting_participants": {
+    "en": "Waiting for participants…",
+    "ar": "في انتظار المشاركين…"
+  },
+  "lr_sharing_screen": {
+    "en": "Sharing screen",
+    "ar": "جارٍ مشاركة الشاشة"
+  },
+  "lr_presenter_sharing": {
+    "en": "{name} is sharing their screen",
+    "ar": "{name} يشارك شاشته"
+  },
+  "lr_live_session": {
+    "en": "Live session",
+    "ar": "حصة مباشرة"
+  },
+  "lr_speaking": {
+    "en": "Speaking",
+    "ar": "يتحدث"
+  },
+  "lr_participants_count": {
+    "en": "Participants ({n})",
+    "ar": "المشاركون ({n})"
+  },
+  "lr_students_count": {
+    "en": "Students ({n})",
+    "ar": "الطلاب ({n})"
+  },
+  "lr_n_attended": {
+    "en": "{n} attended",
+    "ar": "{n} حضروا"
+  },
+  "lr_no_students": {
+    "en": "No students enrolled",
+    "ar": "لا يوجد طلاب مسجلون"
+  },
+  "lr_attended": {
+    "en": "Attended",
+    "ar": "حاضر"
+  },
+  "lr_absent": {
+    "en": "Absent",
+    "ar": "غائب"
+  },
+  "lr_online": {
+    "en": "Online",
+    "ar": "متصل"
+  },
+  "lr_joined_ago": {
+    "en": "Joined {t} ago",
+    "ar": "انضم منذ {t}"
+  },
+  "lr_stayed": {
+    "en": "Stayed {t}",
+    "ar": "مدة البقاء {t}"
+  },
+  "lr_duration_m": {
+    "en": "{m}m",
+    "ar": "{m}د"
+  },
+  "lr_duration_hm": {
+    "en": "{h}h {m}m",
+    "ar": "{h}س {m}د"
+  },
+  "lr_live_quiz": {
+    "en": "LIVE QUIZ",
+    "ar": "اختبار مباشر"
+  },
+  "lr_question_of": {
+    "en": "Question {n} of {total}",
+    "ar": "السؤال {n} من {total}"
+  },
+  "lr_quiz_submitted_title": {
+    "en": "Quiz Submitted!",
+    "ar": "تم تسليم الاختبار!"
+  },
+  "lr_you_answered": {
+    "en": "You answered {n} of {total} questions.",
+    "ar": "أجبت على {n} من {total} أسئلة."
+  },
+  "lr_back_to_room": {
+    "en": "Back to Room",
+    "ar": "العودة إلى الغرفة"
+  },
+  "lr_quiz_submitted": {
+    "en": "Quiz submitted!",
+    "ar": "تم تسليم الاختبار!"
+  },
+  "lr_quiz_auto_submitted": {
+    "en": "Quiz auto-submitted (time up).",
+    "ar": "تم تسليم الاختبار تلقائياً (انتهى الوقت)."
+  },
+  "lr_share_hint": {
+    "en": "You can now open any app to share",
+    "ar": "يمكنك الآن فتح أي تطبيق للمشاركة"
+  },
+  "lr_saving_recording": {
+    "en": "Saving recording…",
+    "ar": "جارٍ حفظ التسجيل…"
+  },
+  "lr_chunk_mb": {
+    "en": "Part {n} · {mb} MB",
+    "ar": "الجزء {n} · {mb} م.ب"
+  },
+  "lr_stop_sharing": {
+    "en": "Stop sharing",
+    "ar": "إيقاف المشاركة"
+  },
+  "lr_rec_starting": {
+    "en": "Starting…",
+    "ar": "جارٍ البدء…"
+  },
+  "lr_rec_recording": {
+    "en": "Recording",
+    "ar": "تسجيل"
+  },
+  "lr_rec_paused": {
+    "en": "⏸ Paused",
+    "ar": "⏸ متوقف"
+  },
+  "lr_rec_uploading": {
+    "en": "Uploading…",
+    "ar": "رفع…"
+  },
+  "lr_rec_saved": {
+    "en": "✓ Saved",
+    "ar": "✓ محفوظ"
+  },
+  "lr_rec_error": {
+    "en": "Error",
+    "ar": "خطأ"
+  },
+  "lr_no_recording_saved": {
+    "en": "No recording was saved for this session due to a technical recording problem, even if the screen or camera was shared. Please contact support.",
+    "ar": "لم يتم حفظ أي تسجيل لهذه الجلسة بسبب مشكلة تقنية في التسجيل، حتى لو تمت مشاركة الشاشة أو الكاميرا. يرجى إبلاغ الدعم الفني."
+  },
+  "lr_cam_mic_unavailable": {
+    "en": "Could not access the camera or microphone — only screen share will be recorded once started. Make sure no other app is using them.",
+    "ar": "تعذر الوصول إلى الكاميرا أو الميكروفون — سيتم تسجيل مشاركة الشاشة فقط عند بدئها. تأكد من عدم استخدام الكاميرا/الميكروفون في تطبيق آخر."
+  },
+  "lr_profile_mic": {
+    "en": "Microphone",
+    "ar": "الميكروفون"
+  },
+  "lr_on": {
+    "en": "On",
+    "ar": "يعمل"
+  },
+  "lr_off": {
+    "en": "Off",
+    "ar": "مغلق"
+  },
+  "lr_speaking_now": {
+    "en": "Speaking now",
+    "ar": "يتحدث الآن"
+  },
+  "lr_inactive": {
+    "en": "Inactive",
+    "ar": "غير نشط"
+  },
+  "lr_attendance": {
+    "en": "Attendance",
+    "ar": "الحضور"
+  },
+  "lr_present": {
+    "en": "Present",
+    "ar": "حاضر"
+  },
+  "lr_not_registered": {
+    "en": "Not registered",
+    "ar": "غير مسجل"
+  },
+  "lr_join_time": {
+    "en": "Join time",
+    "ar": "وقت الانضمام"
+  },
+  "lr_leave_time": {
+    "en": "Leave time",
+    "ar": "وقت المغادرة"
+  },
+  "lr_screen_share_failed": {
+    "en": "Screen share failed: {e}",
+    "ar": "فشل مشاركة الشاشة: {e}"
+  },
+  "lr_screen_share_denied": {
+    "en": "Screen sharing permission was denied.",
+    "ar": "تم رفض إذن مشاركة الشاشة."
+  },
+  "lr_rec_paused_title": {
+    "en": "Recording — Paused",
+    "ar": "التسجيل — متوقف مؤقتاً"
+  },
+  "lr_rec_paused_sub": {
+    "en": "Tap Resume to continue recording",
+    "ar": "اضغط استئناف لمتابعة التسجيل"
+  },
+  "lr_rec_va_title": {
+    "en": "Recording — Video + Audio",
+    "ar": "التسجيل — فيديو + صوت"
+  },
+  "lr_rec_va_shared_sub": {
+    "en": "Capturing session with shared screen",
+    "ar": "يتم تسجيل الحصة مع الشاشة المشتركة"
+  },
+  "lr_rec_va_sub": {
+    "en": "Capturing session video and audio",
+    "ar": "يتم تسجيل فيديو وصوت الحصة"
+  },
+  "lr_rec_audio_title": {
+    "en": "Recording — Audio Only",
+    "ar": "التسجيل — صوت فقط"
+  },
+  "lr_rec_audio_sub": {
+    "en": "Starting recorder…",
+    "ar": "جارٍ تشغيل المسجل…"
+  },
+  "day_monday": {
+    "en": "Monday",
+    "ar": "الاثنين"
+  },
+  "day_tuesday": {
+    "en": "Tuesday",
+    "ar": "الثلاثاء"
+  },
+  "day_wednesday": {
+    "en": "Wednesday",
+    "ar": "الأربعاء"
+  },
+  "day_thursday": {
+    "en": "Thursday",
+    "ar": "الخميس"
+  },
+  "day_friday": {
+    "en": "Friday",
+    "ar": "الجمعة"
+  },
+  "day_saturday": {
+    "en": "Saturday",
+    "ar": "السبت"
+  },
+  "day_sunday": {
+    "en": "Sunday",
+    "ar": "الأحد"
+  },
+  "sched_duration_min": {
+    "en": "{n}m",
+    "ar": "{n}د"
+  },
+  "since_minutes": {
+    "en": "{n}m ago",
+    "ar": "منذ {n} د"
+  },
+  "since_hours": {
+    "en": "{n}h ago",
+    "ar": "منذ {n} ساعة"
+  },
+  "since_days": {
+    "en": "{n}d ago",
+    "ar": "منذ {n} يوم"
+  },
+  "appointment_delete_confirm": {
+    "en": "Delete the appointment on {day} at {time}?",
+    "ar": "هل تريد حذف موعد يوم {day} الساعة {time}؟"
+  },
+  "plan_monthly": {
+    "en": "Monthly",
+    "ar": "شهري"
+  },
+  "plan_six_months": {
+    "en": "6 months",
+    "ar": "6 شهور"
+  },
+  "plan_yearly": {
+    "en": "Yearly",
+    "ar": "سنوي"
+  },
+  "plan_access_monthly": {
+    "en": "Access for 1 month",
+    "ar": "وصول لمدة شهر"
+  },
+  "plan_access_six_months": {
+    "en": "Access for 6 months",
+    "ar": "وصول لمدة 6 شهور"
+  },
+  "plan_access_yearly": {
+    "en": "Access for 1 year",
+    "ar": "وصول لمدة سنة"
+  },
+  "plan_save": {
+    "en": "Save",
+    "ar": "وفّر"
+  },
+  "choose_plan_title": {
+    "en": "Choose your plan",
+    "ar": "اختر مدة الاشتراك"
+  },
+  "plan_label": {
+    "en": "Plan",
+    "ar": "الخطة"
+  },
+  "price_yearly_label": {
+    "en": "Yearly price",
+    "ar": "السعر السنوي"
+  },
+  "price_six_months_label": {
+    "en": "6-months price (optional)",
+    "ar": "سعر 6 شهور (اختياري)"
+  },
+  "price_monthly_label": {
+    "en": "Monthly price (optional)",
+    "ar": "السعر الشهري (اختياري)"
+  },
+  "price_plans_hint": {
+    "en": "Leave a plan empty if you don't offer it. The discount applies to every plan.",
+    "ar": "اترك الخطة فارغة إذا لم تقدّمها. الخصم يسري على كل الخطط."
+  },
+  "payment_fees_load_failed": {
+    "en": "Couldn't load the fee details. Please try again.",
+    "ar": "تعذّر تحميل تفاصيل الرسوم. حاول مرة أخرى."
+  },
+  "transfer_course_price": {
+    "en": "Course price",
+    "ar": "سعر الكورس"
+  },
+  "transfer_fees_total": {
+    "en": "Fees (platform + VAT + payment)",
+    "ar": "الرسوم (المنصة + الضريبة + الدفع)"
+  },
+  "admin_fee_rates": {
+    "en": "Payment fees",
+    "ar": "رسوم وسائل الدفع"
+  },
+  "admin_fee_rates_hint": {
+    "en": "Fee of each payment method: a percentage plus a fixed amount per payment. Students see the total before they pay.",
+    "ar": "رسوم كل وسيلة دفع: نسبة مئوية + مبلغ ثابت لكل عملية. يرى الطالب الإجمالي قبل الدفع."
+  },
+  "admin_fee_percent": {
+    "en": "Percentage (%)",
+    "ar": "النسبة (%)"
+  },
+  "admin_fee_fixed": {
+    "en": "Fixed amount per payment",
+    "ar": "مبلغ ثابت لكل عملية"
+  },
+  "admin_fee_custom": {
+    "en": "Custom",
+    "ar": "معدّل"
+  },
+  "admin_fee_manual_note": {
+    "en": "The student pays outside the app; this fee is added to the amount they transfer.",
+    "ar": "يدفع الطالب خارج التطبيق؛ تُضاف هذه الرسوم إلى المبلغ الذي يحوّله."
+  },
+  "admin_fee_reset": {
+    "en": "Reset to default",
+    "ar": "استرجاع الافتراضي"
+  },
+  "admin_fee_percent_invalid": {
+    "en": "The percentage must be between 0 and 100",
+    "ar": "يجب أن تكون النسبة بين 0 و 100"
+  },
+  "admin_fee_fixed_invalid": {
+    "en": "Enter a valid fixed amount",
+    "ar": "أدخل مبلغًا ثابتًا صحيحًا"
+  },
+  "admin_vat_note": {
+    "en": "VAT on the platform fee (read-only)",
+    "ar": "ضريبة القيمة المضافة على رسوم المنصة (للعرض فقط)"
+  },
+  "admin_back_to_admin": {
+    "en": "Back to admin",
+    "ar": "العودة للمدير"
+  },
+  "admin_inc_title": {
+    "en": "Income breakdown",
+    "ar": "تفاصيل الدخل"
+  },
+  "admin_inc_hint": {
+    "en": "Per currency. What students paid = course price after discount + platform fee + VAT + payment fee.",
+    "ar": "لكل عملة. ما دفعه الطلاب = سعر الكورس بعد الخصم + رسوم المنصة + الضريبة + رسوم الدفع."
+  },
+  "admin_inc_empty": {
+    "en": "No completed payments yet",
+    "ar": "لا توجد مدفوعات مكتملة بعد"
+  },
+  "admin_inc_payments": {
+    "en": "Completed payments",
+    "ar": "عدد المدفوعات المكتملة"
+  },
+  "admin_inc_platform_fee": {
+    "en": "Platform fee",
+    "ar": "رسوم المنصة"
+  },
+  "admin_inc_vat": {
+    "en": "VAT on platform fee",
+    "ar": "الضريبة على رسوم المنصة"
+  },
+  "admin_inc_gateway_fee": {
+    "en": "Payment fee",
+    "ar": "رسوم الدفع"
+  },
+  "admin_inc_other_fees": {
+    "en": "Other fees (older payments, no split)",
+    "ar": "رسوم أخرى (مدفوعات قديمة بدون تفصيل)"
+  },
+  "admin_inc_teacher_net": {
+    "en": "Teachers' net earnings",
+    "ar": "صافي أرباح المعلمين"
+  },
+  "admin_inc_by_plan": {
+    "en": "By plan (course price → paid)",
+    "ar": "حسب الخطة (سعر الكورس ← المدفوع)"
+  },
+  "admin_inc_by_method": {
+    "en": "By payment method",
+    "ar": "حسب وسيلة الدفع"
+  },
+  "admin_inc_top_courses": {
+    "en": "Top courses",
+    "ar": "أعلى الكورسات"
+  },
+  "admin_inc_before_plans": {
+    "en": "Before plans existed",
+    "ar": "قبل نظام الخطط"
+  },
+  "admin_group_people": {
+    "en": "People & messages",
+    "ar": "الأشخاص والرسائل"
+  },
+  "admin_group_finance": {
+    "en": "Finance & requests",
+    "ar": "المالية والطلبات"
+  },
+  "admin_group_config": {
+    "en": "App configuration",
+    "ar": "إعدادات التطبيق"
+  },
+  "admin_pending_payouts": {
+    "en": "Pending payouts",
+    "ar": "طلبات السحب المعلقة"
+  },
+  "admin_pending_subscriptions": {
+    "en": "Pending subscriptions",
+    "ar": "اشتراكات قيد الانتظار"
+  },
+  "admin_videos_must_be_1_1000": {
+    "en": "Videos must be between 1 and 1000",
+    "ar": "عدد الفيديوهات يجب أن يكون بين 1 و 1000"
+  },
+  "max_monthly_view": {
+    "en": "Max videos a student can watch per month",
+    "ar": "الحد الأقصى لمشاهدات الفيديو الشهرية للطالب"
+  },
+  "coming_soon": {
+    "en": "Coming soon",
+    "ar": "قريبًا"
+  },
+  "admin_dropped": {
+    "en": "Dropped",
+    "ar": "منسحب"
+  },
+  "admin_failed": {
+    "en": "Failed",
+    "ar": "فشل"
+  },
+  "admin_payment_card": {
+    "en": "Card",
+    "ar": "بطاقة"
+  },
+  "admin_refunded_status": {
+    "en": "Refunded",
+    "ar": "مسترد"
+  },
+  "admin_verify_account": {
+    "en": "Verify account",
+    "ar": "توثيق الحساب"
+  },
+  "admin_unverify_account": {
+    "en": "Remove verification",
+    "ar": "إلغاء توثيق الحساب"
+  },
+  "admin_min_version_gt": {
+    "en": "The minimum supported version cannot be higher than the version itself",
+    "ar": "أقل إصدار مدعوم لا يمكن أن يكون أعلى من الإصدار نفسه"
+  },
+  "admin_activate_forced_version": {
+    "en": "This version FORCES every user on an older version to update before using the app. Activate it?",
+    "ar": "هذا الإصدار يُجبر كل المستخدمين على الإصدارات الأقدم على التحديث قبل استخدام التطبيق. هل تريد تفعيله؟"
+  },
+  "admin_msg_no_recipients": {
+    "en": "Nothing was sent: no students matched this audience",
+    "ar": "لم يتم الإرسال: لا يوجد طلاب مطابقون لهذه الفئة"
+  },
+  "admin_send_failed": {
+    "en": "Could not send the message. Check your connection and try again",
+    "ar": "تعذر إرسال الرسالة. تحقق من الاتصال وحاول مرة أخرى"
+  },
+  "admin_method_details_required": {
+    "en": "Add the account details first, then enable this method",
+    "ar": "أضف بيانات الحساب أولاً ثم فعّل هذه الطريقة"
+  },
+  "admin_view_as_readonly": {
+    "en": "View-only mode: changes are not allowed",
+    "ar": "وضع المشاهدة فقط: لا يمكن إجراء أي تغييرات"
   }
 }

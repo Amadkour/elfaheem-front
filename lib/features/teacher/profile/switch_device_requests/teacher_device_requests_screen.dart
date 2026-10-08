@@ -52,6 +52,7 @@ class _View extends StatelessWidget {
         !p.hasLoaded && !p.isLoading && p.errorMessage != null;
 
     return BasePage(
+      key: const ValueKey('device_requests'),
       useWebCard: true,
       maxWith: 1100,
       appBar: ScreenAppBar(title: 'device_switch_requests'.tr),
@@ -78,7 +79,7 @@ class _View extends StatelessWidget {
           // +1: the hint banner is the first row.
           itemCount: p.items.length + 1,
           itemBuilder: (_, i) {
-            if (i == 0) return SwipeHintBanner(count: p.items.length);
+            if (i == 0) return SwipeHintBanner(key: const ValueKey('device_requests.hint'), count: p.items.length);
             final item = p.items[i - 1];
             return _Card(key: ValueKey(item.id), item: item);
           },
@@ -222,6 +223,7 @@ class _Card extends StatelessWidget {
 
             // ── Monthly-limit note ──
             Container(
+              key: const ValueKey('device_requests.limit_note'),
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
@@ -245,7 +247,7 @@ class _Card extends StatelessWidget {
             ),
             const SizedBox(height: 14),
 
-            RequestActionButtons(ctl: ctl, approveLabel: 'request_approve'.tr),
+            RequestActionButtons(key: const ValueKey('device_requests.actions'), ctl: ctl, approveLabel: 'request_approve'.tr),
           ],
         ),
       ),

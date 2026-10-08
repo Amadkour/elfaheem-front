@@ -6,9 +6,9 @@
 ///   POST /api/v1/payments/transfers/{id}/reject
 library;
 
-import '../../../../core/api_client.dart';
-import '../../../../core/base_provider.dart';
-import '../../../student/enrollment/enrollment_models.dart';
+import '../../../core/api_client.dart';
+import '../../../core/base_provider.dart';
+import '../../student/enrollment/enrollment_models.dart';
 
 class TeacherTransfersProvider extends BaseProvider {
   TeacherTransfersProvider({ApiClient? api}) : api = api ?? ApiClient();
@@ -36,6 +36,7 @@ class TeacherTransfersProvider extends BaseProvider {
   }
 
   /// Clears cached data (call on logout / account switch).
+  @override
   void reset() {
     _items = [];
     _total = 0;
@@ -53,7 +54,7 @@ class TeacherTransfersProvider extends BaseProvider {
       for (final raw in (json['items'] as List? ?? const []))
         PendingTransfer.fromJson(Map<String, dynamic>.from(raw as Map)),
     ];
-    _total = (json['total'] as num?)?.toInt() ?? _items.length;
+    _total = ((json['total'] as num?)?.toInt() ?? _items.length);
     hasLoaded = true;
     notifyListeners();
   }

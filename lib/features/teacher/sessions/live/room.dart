@@ -1,3 +1,4 @@
+import 'package:flutter_education_app/config/app_config.dart';
 import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
@@ -12,6 +13,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:livekit_client/livekit_client.dart';
+import '../../../admin/admin_common.dart';
 import '../components/exts.dart';
 import 'widgets/controls.dart';
 import 'widgets/participant.dart';
@@ -255,13 +257,13 @@ class _RoomPageState extends State<RoomPage>
     if (active) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Row(
+          content: Row(
             children: [
               Icon(Icons.screen_share_rounded, color: Colors.white, size: 16),
               SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'يمكنك الآن فتح أي تطبيق للمشاركة',
+                  'lr_share_hint'.tr,
                   style: TextStyle(
                     fontFamily: 'tajawal',
                     fontSize: 14,
@@ -695,8 +697,7 @@ class _RoomPageState extends State<RoomPage>
       // NOT depend on whether background uploads have finished yet.
       if (kIsWeb && !rec.webHadRealData && mounted) {
         _showSnack(
-          'لم يتم حفظ أي تسجيل لهذه الجلسة بسبب مشكلة تقنية في التسجيل، '
-              'حتى لو تمت مشاركة الشاشة أو الكاميرا. يرجى إبلاغ الدعم الفني.',
+          'lr_no_recording_saved'.tr,
         );
       }
     }
@@ -897,7 +898,7 @@ class _RoomPageState extends State<RoomPage>
     }
     if (!mounted) return;
     _showSnack(
-      autoSubmit ? 'Quiz auto-submitted (time up).' : 'Quiz submitted!',
+      autoSubmit ? 'lr_quiz_auto_submitted'.tr : 'lr_quiz_submitted'.tr,
     );
     await Future.delayed(const Duration(seconds: 2));
     if (mounted) _dismissQuiz();
@@ -1210,8 +1211,7 @@ class _RoomPageState extends State<RoomPage>
     _recorder!.onNoMediaWarning = () {
       if (!mounted) return;
       _showSnack(
-        'تعذر الوصول إلى الكاميرا أو الميكروفون — سيتم تسجيل مشاركة الشاشة '
-            'فقط عند بدئها. تأكد من عدم استخدام الكاميرا/الميكروفون في تطبيق آخر.',
+        'lr_cam_mic_unavailable'.tr,
       );
     };
 
@@ -1230,7 +1230,7 @@ class _RoomPageState extends State<RoomPage>
       final teacherName = local?.name.isNotEmpty == true
           ? local!.name
           : (local?.identity ?? '');
-      final sessionTitle = widget.sessionName ?? 'حصة مباشرة';
+      final sessionTitle = widget.sessionName ?? 'lr_live_session'.tr;
       final participantCount = widget.room.remoteParticipants.length + 1;
       await _recorder!.startWebCompositor(
         teacherName: teacherName,
@@ -1635,8 +1635,8 @@ class _RoomPageState extends State<RoomPage>
                             strokeWidth: 2.5,
                           ),
                           const SizedBox(height: 20),
-                          const Text(
-                            'جارٍ حفظ التسجيل…',
+                          Text(
+                            'lr_saving_recording'.tr,
                             style: TextStyle(
                               fontFamily: 'tajawal',
                               color: Colors.white,
@@ -1653,7 +1653,7 @@ class _RoomPageState extends State<RoomPage>
                               final mb = (r.totalBytes / (1024 * 1024))
                                   .toStringAsFixed(1);
                               return Text(
-                                'الجزء ${r.uploadedChunks} · $mb MB',
+                                trp('lr_chunk_mb', {'n': '${r.uploadedChunks}', 'mb': mb}),
                                 style: TextStyle(
                                   fontFamily: 'tajawal',
                                   color: Colors.white.withValues(alpha: 0.55),
@@ -1977,9 +1977,9 @@ class _RoomPageState extends State<RoomPage>
               const SizedBox(width: 8),
               const Icon(Icons.screen_share_rounded, color: _cyan, size: 16),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'جارٍ مشاركة الشاشة',
+                  'lr_sharing_screen'.tr,
                   style: TextStyle(
                     fontFamily: 'tajawal',
                     color: Colors.white,
@@ -2015,8 +2015,8 @@ class _RoomPageState extends State<RoomPage>
                       color: _rose.withValues(alpha: 0.5),
                     ),
                   ),
-                  child: const Text(
-                    'إيقاف المشاركة',
+                  child: Text(
+                    'lr_stop_sharing'.tr,
                     style: TextStyle(
                       fontFamily: 'tajawal',
                       color: _rose,
@@ -2109,27 +2109,27 @@ class _RoomPageState extends State<RoomPage>
           case RecState.starting:
             dotColor   = _textLow;
             pulsing    = false;
-            stateLabel = 'جارٍ البدء…';
+            stateLabel = 'lr_rec_starting'.tr;
           case RecState.recording:
             dotColor   = _emerald;
             pulsing    = true;
-            stateLabel = 'تسجيل';
+            stateLabel = 'lr_rec_recording'.tr;
           case RecState.paused:
             dotColor   = const Color(0xFFFFB800);
             pulsing    = false;
-            stateLabel = '⏸ متوقف';
+            stateLabel = 'lr_rec_paused'.tr;
           case RecState.uploading:
             dotColor   = const Color(0xFFFFB800);
             pulsing    = false;
-            stateLabel = 'رفع…';
+            stateLabel = 'lr_rec_uploading'.tr;
           case RecState.done:
             dotColor   = _emerald;
             pulsing    = false;
-            stateLabel = '✓ محفوظ';
+            stateLabel = 'lr_rec_saved'.tr;
           case RecState.error:
             dotColor   = _rose;
             pulsing    = false;
-            stateLabel = 'خطأ';
+            stateLabel = 'lr_rec_error'.tr;
           default:
             dotColor   = _textLow;
             pulsing    = false;
@@ -2364,7 +2364,7 @@ class _RoomPageState extends State<RoomPage>
                   child: Row(
                     children: [
                       Text(
-                        'Students (${_enrolledStudents.length})',
+                        trp('lr_students_count', {'n': '${_enrolledStudents.length}'}),
                         style: TextStyle(
                           fontFamily: 'tajawal',
                           color: _textLow,
@@ -2386,7 +2386,7 @@ class _RoomPageState extends State<RoomPage>
                           ),
                         ),
                         child: Text(
-                          '${_enrolledStudents.where((s) => s.isAttended).length} attended',
+                          trp('lr_n_attended', {'n': '${_enrolledStudents.where((s) => s.isAttended).length}'}),
                           style: TextStyle(
                             fontFamily: 'tajawal',
                             color: _emerald,
@@ -2413,7 +2413,7 @@ class _RoomPageState extends State<RoomPage>
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'No students enrolled',
+                          'lr_no_students'.tr,
                           style: TextStyle(
                             fontFamily: 'tajawal',
                             color: _textLow,
@@ -2534,13 +2534,13 @@ class _RoomPageState extends State<RoomPage>
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: _cyan.withValues(alpha: 0.4)),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.quiz_rounded, size: 13, color: _cyan),
                     SizedBox(width: 5),
                     Text(
-                      'LIVE QUIZ',
+                      'lr_live_quiz'.tr,
                       style: TextStyle(
                         fontFamily: 'tajawal',
                         color: _cyan,
@@ -2609,7 +2609,7 @@ class _RoomPageState extends State<RoomPage>
           child: Row(
             children: [
               Text(
-                'Question ${_currentQuestionIndex + 1} of ${quiz.questions.length}',
+                trp('lr_question_of', {'n': '${_currentQuestionIndex + 1}', 'total': '${quiz.questions.length}'}),
                 style: TextStyle(
                   fontFamily: 'tajawal',
                   color: _textLow,
@@ -2821,8 +2821,8 @@ class _RoomPageState extends State<RoomPage>
             child: const Icon(Icons.check_rounded, color: _emerald, size: 36),
           ),
           const SizedBox(height: 18),
-          const Text(
-            'Quiz Submitted!',
+          Text(
+            'lr_quiz_submitted_title'.tr,
             style: TextStyle(
               fontFamily: 'tajawal',
               color: _textHigh,
@@ -2832,7 +2832,7 @@ class _RoomPageState extends State<RoomPage>
           ),
           const SizedBox(height: 8),
           Text(
-            'You answered $answered of ${quiz.questions.length} questions.',
+            trp('lr_you_answered', {'n': '$answered', 'total': '${quiz.questions.length}'}),
             style: TextStyle(
               fontFamily: 'tajawal',
               color: _textMid,
@@ -2855,8 +2855,8 @@ class _RoomPageState extends State<RoomPage>
                   ),
                 ],
               ),
-              child: const Text(
-                'Back to Room',
+              child: Text(
+                'lr_back_to_room'.tr,
                 style: TextStyle(
                   fontFamily: 'tajawal',
                   color: _textHigh,
@@ -2972,8 +2972,8 @@ class _ParticipantRow extends StatelessWidget {
     if (from == null) return '';
     final end = to ?? DateTime.now();
     final mins = end.difference(from).inMinutes;
-    if (mins < 60) return '${mins}m';
-    return '${mins ~/ 60}h ${mins % 60}m';
+    if (mins < 60) return trp('lr_duration_m', {'m': '$mins'});
+    return trp('lr_duration_hm', {'h': '${mins ~/ 60}', 'm': '${mins % 60}'});
   }
 
   @override
@@ -3058,15 +3058,15 @@ class _ParticipantRow extends StatelessWidget {
                 Row(
                   children: [
                     if (isTeacher)
-                      _MiniTag(label: 'Teacher', color: _cyan)
+                      _MiniTag(label: 'teacher'.tr, color: _cyan)
                     else ...[
                       _MiniTag(
-                        label: isAttended ? 'Attended' : 'Absent',
+                        label: isAttended ? 'lr_attended'.tr : 'lr_absent'.tr,
                         color: isAttended ? _emerald : _rose,
                       ),
                       if (isOnline) ...[
                         const SizedBox(width: 4),
-                        _MiniTag(label: 'Online', color: _emerald),
+                        _MiniTag(label: 'lr_online'.tr, color: _emerald),
                       ],
                     ],
                   ],
@@ -3076,9 +3076,9 @@ class _ParticipantRow extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     isOnline
-                        ? 'Joined ${_fmtDuration(joinDate, null)} ago'
+                        ? trp('lr_joined_ago', {'t': _fmtDuration(joinDate, null)})
                         : leaveDate != null
-                        ? 'Stayed ${_fmtDuration(joinDate, leaveDate)}'
+                        ? trp('lr_stayed', {'t': _fmtDuration(joinDate, leaveDate)})
                         : '',
                     style: TextStyle(
                       fontFamily: 'tajawal',
@@ -3571,7 +3571,7 @@ class _ScreenShareBottomBar extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Sharing screen',
+                  'lr_sharing_screen'.tr,
                   style: TextStyle(
                     fontFamily: 'tajawal',
                     color: _cyan.withValues(alpha: 0.8),
@@ -3668,7 +3668,7 @@ class _ScreenShareLoadingPlaceholder extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         Text(
-          '$presenterName is sharing their screen',
+          trp('lr_presenter_sharing', {'name': presenterName}),
           style: const TextStyle(
             color: _textMid,
             fontSize: 13,
@@ -3882,7 +3882,7 @@ class _PremiumWaitingPlaceholder extends StatelessWidget {
                   child: Text(
                     (sessionTitle?.trim().isNotEmpty ?? false)
                         ? sessionTitle!.trim()
-                        : 'حصة مباشرة',
+                        : 'lr_live_session'.tr,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -4063,14 +4063,14 @@ class _TeamsGridTile extends StatelessWidget {
                       color: _emerald.withValues(alpha: 0.85),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.graphic_eq_rounded,
                             size: 11, color: Colors.black87),
                         SizedBox(width: 3),
                         Text(
-                          'يتحدث',
+                          'lr_speaking'.tr,
                           style: TextStyle(
                             fontFamily: 'tajawal',
                             color: Colors.black87,
@@ -4180,7 +4180,7 @@ void _showAllParticipantsDialog(BuildContext context, List<_TeamsTileData> tiles
                 children: [
                   Expanded(
                     child: Text(
-                      'المشاركون (${tiles.length})',
+                      trp('lr_participants_count', {'n': '${tiles.length}'}),
                       style: const TextStyle(
                         fontFamily: 'tajawal',
                         color: _textHigh,
@@ -4232,7 +4232,7 @@ void _showAllParticipantsDialog(BuildContext context, List<_TeamsTileData> tiles
                       ),
                     ),
                     subtitle: Text(
-                      t.isHost ? 'المعلم' : 'طالب',
+                      t.isHost ? 'teacher'.tr : 'student'.tr,
                       style: const TextStyle(
                           fontFamily: 'tajawal', color: _textLow, fontSize: 12),
                     ),
@@ -4359,7 +4359,7 @@ void _showParticipantProfileDialog(BuildContext context, _TeamsTileData data) {
                     color: (data.isHost ? _cyan : _emerald).withValues(alpha: 0.5)),
               ),
               child: Text(
-                data.isHost ? 'المعلم' : 'طالب',
+                data.isHost ? 'teacher'.tr : 'student'.tr,
                 style: TextStyle(
                   fontFamily: 'tajawal',
                   color: data.isHost ? _cyan : _emerald,
@@ -4372,33 +4372,33 @@ void _showParticipantProfileDialog(BuildContext context, _TeamsTileData data) {
             _ProfileInfoRow(
               icon: data.isMicOn ? Icons.mic_rounded : Icons.mic_off_rounded,
               iconColor: data.isMicOn ? _emerald : _rose,
-              label: 'الميكروفون',
-              value: data.isMicOn ? 'يعمل' : 'مغلق',
+              label: 'lr_profile_mic'.tr,
+              value: data.isMicOn ? 'lr_on'.tr : 'lr_off'.tr,
             ),
             _ProfileInfoRow(
               icon: Icons.graphic_eq_rounded,
               iconColor: data.isSpeaking ? _emerald : _textLow,
-              label: 'الحالة',
-              value: data.isSpeaking ? 'يتحدث الآن' : 'غير نشط',
+              label: 'status'.tr,
+              value: data.isSpeaking ? 'lr_speaking_now'.tr : 'lr_inactive'.tr,
             ),
             if (!data.isHost) ...[
               _ProfileInfoRow(
                 icon: Icons.how_to_reg_rounded,
                 iconColor: data.isAttended ? _emerald : _textLow,
-                label: 'الحضور',
-                value: data.isAttended ? 'حاضر' : 'غير مسجل',
+                label: 'lr_attendance'.tr,
+                value: data.isAttended ? 'lr_present'.tr : 'lr_not_registered'.tr,
               ),
               _ProfileInfoRow(
                 icon: Icons.login_rounded,
                 iconColor: _textLow,
-                label: 'وقت الانضمام',
+                label: 'lr_join_time'.tr,
                 value: fmt(data.joinDate),
               ),
               if (data.leaveDate != null)
                 _ProfileInfoRow(
                   icon: Icons.logout_rounded,
                   iconColor: _textLow,
-                  label: 'وقت المغادرة',
+                  label: 'lr_leave_time'.tr,
                   value: fmt(data.leaveDate),
                 ),
             ],
@@ -4419,7 +4419,7 @@ void _showParticipantProfileDialog(BuildContext context, _TeamsTileData data) {
                 _ProfileInfoRow(
                   icon: Icons.email_outlined,
                   iconColor: _textLow,
-                  label: 'البريد الإلكتروني',
+                  label: 'email_label'.tr,
                   value: '${data.extra!['email']}',
                 ),
               for (final entry in data.extra!.entries)
@@ -4442,8 +4442,8 @@ void _showParticipantProfileDialog(BuildContext context, _TeamsTileData data) {
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text(
-                  'إغلاق',
+                child: Text(
+                  'close'.tr,
                   style: TextStyle(
                       fontFamily: 'tajawal',
                       color: _textMid,
@@ -4550,9 +4550,9 @@ class _AVChip extends StatelessWidget {
 
 // ── Old _WaitingPlaceholder kept as fallback ──────────────────────────────────
 class _WaitingPlaceholder extends StatelessWidget {
-  const _WaitingPlaceholder() : message = 'Waiting for participants…';
+  const _WaitingPlaceholder();
 
-  final String message;
+  String get message => 'lr_waiting_participants'.tr;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -4719,8 +4719,8 @@ class _SessionEndedDialog extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'Session Ended',
+          Text(
+            'lr_teacher_ended_title'.tr,
             style: TextStyle(
               fontFamily: 'tajawal',
               color: _textHigh,
@@ -4730,7 +4730,7 @@ class _SessionEndedDialog extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'The teacher has ended this session.\nThank you for joining!',
+            'lr_teacher_ended_msg'.tr,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: 'tajawal',

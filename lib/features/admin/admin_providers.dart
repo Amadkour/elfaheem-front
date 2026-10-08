@@ -11,6 +11,7 @@ library;
 
 import 'dart:typed_data';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show ChangeNotifier;
 
 import 'package:flutter_education_app/config/app_config.dart';
@@ -187,6 +188,7 @@ class AdminUsersProvider extends AdminPagedProvider {
   }
 
   Future<bool> setActive(int id, bool active) => update(id, {'is_active': active});
+  Future<bool> setVerified(int id, bool verified) => update(id, {'is_verified': verified});
 
   Future<bool> remove(int id) async {
     final r = await call(() => api.delete('$_base/users/$id'),
@@ -263,6 +265,10 @@ class AdminCoursesProvider extends AdminPagedProvider {
 
   List<AdminCourse> get courses => rows.map(AdminCourse.new).toList();
   double get totalIncome => asDouble(asMap(extra['totals'])['income']);
+
+  /// Same total split by currency (the single number above adds EGP + SAR + USD together).
+  Map<String, double> get incomeByCurrency =>
+      asMap(asMap(extra['totals'])['income_by_currency']).map((c, v) => MapEntry(c, asDouble(v)));
 
   Future<void> setSearch(String v) {
     search = v;
@@ -576,21 +582,162 @@ class AdminThemesProvider extends AdminBase {
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Features (hide / unhide)
+//  GET  /admin/features?tab=&page=&size=   one page (20) of one class (tab)
+//  PUT  /admin/features/{key}              hide / unhide
+//  PUT  /admin/features/{key}/access       super-admin: grant / revoke for admins
+//  POST /admin/features                    super-admin: add a new feature
+//  No change to admin_models.dart is needed: tab / access info is kept here.
 // ═════════════════════════════════════════════════════════════════════════════
+/// One feature class (tab) as sent by GET /admin/features → `tabs`.
+class FeatureTab {
+  FeatureTab(Map<String, dynamic> j)
+      : id = '${j['id']}',
+        titleAr = asStrOrNull(j['title_ar']) ?? '',
+        titleEn = asStrOrNull(j['title_en']) ?? '',
+        count = asInt(j['count']);
+
+  final String id;
+  final String titleAr;
+  final String titleEn;
+
+  /// Number of features in this class (for the current role).
+  final int count;
+
+  /// Cached items of this tab (empty = not loaded yet).
+  List<FeatureItem> items = [];
+
+  // Pagination state of the cached page
+  int page = 1;
+  int pages = 1;
+  int total = 0;
+
+  String label(BuildContext context) =>
+      Localizations.localeOf(context).languageCode == 'ar' ? titleAr : titleEn;
+}
 
 class AdminFeaturesProvider extends AdminBase {
-  List<FeatureItem> items = [];
+  static const pageSize = 10;
+
+  List<FeatureTab> tabs = [];
   List<String> platforms = ['android', 'ios', 'web'];
+
+  int selectedTabIndex = 0;
+  int page = 1;
+  int pages = 1;
+  int total = 0;
+
+  /// Super-admin: sees everything, can grant features to admins and add new ones.
+  bool isSuperAdmin = false;
+  bool loaded = false;
   String? error;
 
-  Future<void> load() async {
-    final r = await run(() => api.get('$_base/features'));
+  bool get canAddCustom => isSuperAdmin;
+  bool get hasPrev => page > 1;
+  bool get hasNext => page < pages;
+
+  /// Items of the selected tab (safe when tabs are empty).
+  List<FeatureItem> get currentItems =>
+      (selectedTabIndex >= 0 && selectedTabIndex < tabs.length)
+          ? tabs[selectedTabIndex].items
+          : const [];
+
+  /// true = admins can see / toggle this feature.
+  /// Read from the cached items, so it stays correct across tab switches.
+  bool allowedToAdmin(String key) {
+    for (final t in tabs) {
+      for (final f in t.items) {
+        if (f.key == key) return f.allowToAdmin;
+      }
+    }
+    return false;
+  }
+
+  /// Fetches from the server. [tabIndex] null = server picks the default class.
+  Future<void> load({int toPage = 1}) async {
+    final tabId = (selectedTabIndex >= 0 && selectedTabIndex < tabs.length)
+        ? tabs[selectedTabIndex].id
+        : null;
+    final r = await run(() => api.get('$_base/features', queryParams: {
+      if (tabId != null) 'tab': tabId,
+      'page': toPage,
+      'size': pageSize,
+    }));
     _apply(r);
   }
 
-  void _apply(dynamic r) {
+  /// Reload the page that is currently shown.
+  Future<void> refresh() =>
+      load( toPage: page);
+
+  /// Switch tab. Hits the server only if the destination tab is empty.
+  Future<void> selectTab(int index) async {
+    selectedTabIndex = index;
+
+    if (index < 0 || index >= tabs.length) return;
+    final t = tabs[index];
+
+    if (t.items.isNotEmpty || t.count == 0) {
+      page = t.page;
+      pages = t.pages;
+      total = t.total;
+      notifyListeners();
+      return;
+    }
+
+    await load();
+  }
+
+  Future<void> goToPage(int p) => load(
+      toPage: p.clamp(1, pages).toInt());
+
+  /// Applies a GET/POST response.
+  /// Tabs (and their counts) are rebuilt every time; cached items of the other
+  /// tabs are kept. Items are stored in the tab the SERVER says it returned
+  /// (`selected_tab`), never blindly in the tab the UI has selected.
+  void _apply(dynamic r, {bool followServerTab = false}) {
     if (r is Map) {
-      items = asMapList(r['items']).map(FeatureItem.new).toList();
+      final oldById = {for (final t in tabs) t.id: t};
+      final previousId =
+      (selectedTabIndex >= 0 && selectedTabIndex < tabs.length)
+          ? tabs[selectedTabIndex].id
+          : null;
+
+      final newTabs = asMapList(r['tabs']).map(FeatureTab.new).toList();
+      for (final t in newTabs) {
+        final old = oldById[t.id];
+        if (old != null) {
+          t.items = old.items;
+          t.page = old.page;
+          t.pages = old.pages;
+          t.total = old.total;
+        }
+      }
+      tabs = newTabs;
+
+      final serverId =
+      r['selected_tab'] == null ? null : '${r['selected_tab']}';
+      final serverIdx = tabs.indexWhere((e) => e.id == serverId);
+
+      if (followServerTab && serverIdx >= 0) {
+        selectedTabIndex = serverIdx;
+      } else {
+        final keep = tabs.indexWhere((e) => e.id == previousId);
+        selectedTabIndex = keep >= 0 ? keep : (serverIdx >= 0 ? serverIdx : 0);
+      }
+
+      page = asInt(r['page'], 1);
+      pages = asInt(r['pages'], 1);
+      total = asInt(r['total']);
+      isSuperAdmin = asBool(r['is_super_admin']);
+
+      if (serverIdx >= 0) {
+        final t = tabs[serverIdx];
+        t.items = asMapList(r['items']).map(FeatureItem.new).toList();
+        t.page = page;
+        t.pages = pages;
+        t.total = total;
+      }
+
       if (r['platforms'] is List) {
         platforms = (r['platforms'] as List).map((e) => '$e').toList();
       }
@@ -598,26 +745,59 @@ class AdminFeaturesProvider extends AdminBase {
     } else {
       error = errorMessage ?? 'admin_could_not_load_data'.tr;
     }
+    loaded = true;
     notifyListeners();
   }
 
-  Future<void> set(String key, bool hidden,
-      {List<String>? platforms, String? titleAr, String? titleEn}) async {
-    final r = await call(() =>
-        api.put('$_base/features/$key', body: {
-          'hidden': hidden,
-          'platforms': platforms,
+  /// Hide / unhide [key] on [platforms] (all when null).
+  Future<void> set(String key, bool hidden, {List<String>? platforms}) async {
+    final r = await call(() => api.put('$_base/features/$key', body: {
+      'hidden': hidden,
+      'platforms': platforms,
+    }));
+    // The PUT response is not tied to the tab / page being viewed,
+    // so reload the page the user is looking at.
+    if (r != null) await refresh();
+  }
+
+  /// Super-admin: let admins see / toggle [key] (or take it back).
+  Future<void> setAllowToAdmin(String key, bool allow) async {
+    final r = await call(() => api.put('$_base/features/$key/access',
+        body: {'allow_to_admin': allow}));
+    if (r != null) await refresh();
+  }
+
+  /// Super-admin: add a feature. Pass [tabId] for an existing class, or
+  /// [tabAr] + [tabEn] to create a new one.
+  Future<bool> createFeature({
+    required String key,
+    required String titleAr,
+    required String titleEn,
+    String? tabId,
+    String? tabAr,
+    String? tabEn,
+    bool allowToAdmin = false,
+    bool hidden = false,
+  }) async {
+    final r = await call(
+            () => api.post('$_base/features', body: {
+          'key': key,
           'title_ar': titleAr,
           'title_en': titleEn,
-        }));
-    if (r is Map) _apply(r);
+          'tab_id': tabId,
+          'tab_ar': tabAr,
+          'tab_en': tabEn,
+          'allow_to_admin': allowToAdmin,
+          'hidden': hidden,
+        }),
+        ok: 'admin_created'.tr);
+    if (r is Map) {
+      _apply(r, followServerTab: true); // jump to the new feature's tab
+      await load(); // re-fetch page 1 with this screen's page size
+    }
+    return r != null;
   }
 }
-
-// ═════════════════════════════════════════════════════════════════════════════
-//  App versions (existing /app/* endpoints, now admin-only for writes)
-// ═════════════════════════════════════════════════════════════════════════════
-
 class AdminVersionsProvider extends AdminBase {
   List<Map<String, dynamic>> items = [];
   String? error;
@@ -928,7 +1108,7 @@ class AdminPendingPayoutsProvider extends ChangeNotifier {
       final r = await _api.get('$_base/withdrawals',
           queryParams: {'status': 'pending', 'skip': 0, 'limit': 1});
       if (_disposed || r is! Map) return;
-      final n = r['total'] != null ? asInt(r['total']) : asMapList(r['items']).length;
+      final n = (r['total'] != null ? asInt(r['total']) : asMapList(r['items']).length);
       if (n != count) {
         count = n;
         notifyListeners();

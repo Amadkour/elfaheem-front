@@ -7,7 +7,9 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
+import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
+import 'admin_labels.dart';
 import 'admin_list.dart';
 import 'admin_models.dart';
 import 'admin_providers.dart';
@@ -69,7 +71,7 @@ class _CoursesView extends StatelessWidget {
               child: Text('admin_total_course_income_after_discounts'.tr,
                   style: TextStyle(fontFamily: 'tajawal', color: c.textMedium)),
             ),
-            Text(money(p.totalIncome),
+            Text(moneyByCurrency(p.incomeByCurrency),
                 style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w900, color: c.primary, fontSize: 16)),
           ]),
         ),
@@ -132,6 +134,10 @@ class _CourseTile extends StatelessWidget {
         Wrap(spacing: 6, runSpacing: 4, children: [
           if (course.discountActive)
             StatusChip('${'admin_discount'.tr} ${course.discountPercentage.toStringAsFixed(0)}%', c.danger),
+          // every plan the course sells (monthly / 6 months / yearly) with its price after discount
+          if (course.priceOptions.length > 1)
+            for (final o in course.priceOptions)
+              StatusChip('${planLabel(asStr(o['plan']))} ${money(asDouble(o['final_price']), course.currency)}', c.charcoal),
           StatusChip(course.status == 'completed' ? 'completed'.tr : 'admin_in_progress'.tr, c.primary),
           StatusChip(ps.provider ?? 'admin_default_gateway'.tr, c.charcoal),
           if (course.pendingPayments > 0)
@@ -277,6 +283,13 @@ class _CourseDetailState extends State<_CourseDetail> {
               child: Column(children: [
                 KeyValue('admin_teacher'.tr, co.teacherName),
                 KeyValue('admin_list_price'.tr, money(co.listPrice, co.currency)),
+                for (final o in co.priceOptions)
+                  KeyValue(
+                    planLabel(asStr(o['plan'])),
+                    asBool(o['discount_active'])
+                        ? '${money(asDouble(o['final_price']), co.currency)}  (${money(asDouble(o['price']))})'
+                        : money(asDouble(o['final_price']), co.currency),
+                  ),
                 if (co.discountActive)
                   KeyValue('admin_price_after_discount'.tr,
                       '${money(co.finalPrice, co.currency)}  (-${co.discountPercentage.toStringAsFixed(0)}%)'),
@@ -333,7 +346,7 @@ class _CourseDetailState extends State<_CourseDetail> {
                   style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: c.textLight),
                 ),
                 const SizedBox(height: 10),
-                PrimaryButton(label: 'admin_save_payment_settings'.tr, busy: saving, onPressed: _savePayment),
+                PrimaryButton(label: 'admin_save_payment_settings'.tr, isLoading: saving, onPressed: _savePayment),
               ]),
             ),
             if (co.recentPayments.isNotEmpty)
@@ -445,6 +458,9 @@ class _CourseFormState extends State<_CourseForm> {
   late final _desc = TextEditingController(text: widget.existing?.description);
   late final _fees = TextEditingController(text: widget.existing == null ? '0' : widget.existing!.fees.toString());
   late final _max = TextEditingController(text: widget.existing?.maxStudents?.toString() ?? '');
+  // optional shorter plans; `fees` above is the YEARLY price
+  late final _monthly = TextEditingController(text: widget.existing?.priceMonthly?.toString() ?? '');
+  late final _sixMonths = TextEditingController(text: widget.existing?.priceSixMonths?.toString() ?? '');
 
   late String currency = widget.existing?.currency ?? 'EGP';
   late String type = (widget.existing?.type ?? 'recorded').toLowerCase();
@@ -481,7 +497,7 @@ class _CourseFormState extends State<_CourseForm> {
 
   @override
   void dispose() {
-    for (final c in [_name, _desc, _fees, _max]) {
+    for (final c in [_name, _desc, _fees, _max, _monthly, _sixMonths]) {
       c.dispose();
     }
     super.dispose();
@@ -497,7 +513,10 @@ class _CourseFormState extends State<_CourseForm> {
     final body = <String, dynamic>{
       'name': _name.text.trim(),
       'description': _desc.text.trim().isEmpty ? null : _desc.text.trim(),
-      'fees': double.tryParse(_fees.text.trim()) ?? 0,
+      'fees': double.tryParse(_fees.text.trim()) ?? 0, // YEARLY price
+      // empty = the plan is not offered (null clears it on edit)
+      'price_monthly': double.tryParse(_monthly.text.trim()),
+      'price_six_months': double.tryParse(_sixMonths.text.trim()),
       'currency': currency,
       'type': type,
       'teacher_id': teacherId,
@@ -566,7 +585,7 @@ class _CourseFormState extends State<_CourseForm> {
                       Expanded(
                         child: Field(
                           controller: _fees,
-                          label: 'price_label'.tr,
+                          label: 'price_yearly_label'.tr,
                           keyboard: const TextInputType.numberWithOptions(decimal: true),
                           validator: (v) {
                             final n = double.tryParse((v ?? '').trim());
@@ -579,6 +598,40 @@ class _CourseFormState extends State<_CourseForm> {
                         child: Field(controller: _max, label: 'admin_max_students'.tr, keyboard: TextInputType.number),
                       ),
                     ]),
+                    Row(children: [
+                      Expanded(
+                        child: Field(
+                          controller: _sixMonths,
+                          label: 'price_six_months_label'.tr,
+                          keyboard: const TextInputType.numberWithOptions(decimal: true),
+                          validator: (v) {
+                            final s = (v ?? '').trim();
+                            if (s.isEmpty) return null;
+                            final n = double.tryParse(s);
+                            return (n == null || n < 0) ? 'admin_invalid_price'.tr : null;
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Field(
+                          controller: _monthly,
+                          label: 'price_monthly_label'.tr,
+                          keyboard: const TextInputType.numberWithOptions(decimal: true),
+                          validator: (v) {
+                            final s = (v ?? '').trim();
+                            if (s.isEmpty) return null;
+                            final n = double.tryParse(s);
+                            return (n == null || n < 0) ? 'admin_invalid_price'.tr : null;
+                          },
+                        ),
+                      ),
+                    ]),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text('price_plans_hint'.tr,
+                          style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: context.colors.textLight)),
+                    ),
                     ChoiceRow<String>(
                       label: 'currency_label'.tr,
                       options: const {'EGP': 'EGP', 'SAR': 'SAR', 'USD': 'USD'},
@@ -614,7 +667,7 @@ class _CourseFormState extends State<_CourseForm> {
                       onChanged: (v) => setState(() => published = v),
                     ),
                     const SizedBox(height: 8),
-                    PrimaryButton(label: 'save'.tr, busy: busy, onPressed: _submit),
+                    PrimaryButton(label: 'save'.tr, isLoading: busy, onPressed: _submit),
                   ]),
                 ),
               ),

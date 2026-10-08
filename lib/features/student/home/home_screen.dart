@@ -113,6 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Consumer<HomeProvider>(
       builder: (context, provider, child) {
         return BasePage(
+          key: const ValueKey('student_home'),
           useWebCard: true,
           child: SafeArea(
             child: Center(
@@ -124,18 +125,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   physics: const BouncingScrollPhysics(),
                   slivers: [
                     // ── Top bar ──────────────────────────────────────────
-                    SliverToBoxAdapter(child: TopBar()),
+                    SliverToBoxAdapter(child: TopBar(key: const ValueKey('student_home.top_bar'))),
 
                     // ── Search bar ───────────────────────────────────────
                     SliverToBoxAdapter(
                       child: SearchBarIcon(
+                        key: const ValueKey('student_home.search'),
                         courses: provider.otherCourses,
                       ),
                     ),
                     const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
                     // ── Upcoming session banner ──────────────────────────
-                    const SliverToBoxAdapter(child: _UpcomingBanner()),
+                    const SliverToBoxAdapter(child: _UpcomingBanner(key: ValueKey('student_home.upcoming_banner'))),
                     const SliverToBoxAdapter(child: SizedBox(height: 28)),
 
                     // ── Categories ───────────────────────────────────────
@@ -234,7 +236,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                    SliverToBoxAdapter(child: InstructorsRow()),
+                    SliverToBoxAdapter(child: InstructorsRow(key: const ValueKey('student_home.best_teachers'))),
                     const SliverToBoxAdapter(child: SizedBox(height: 40)),
                   ],
                 ),
@@ -252,7 +254,7 @@ class _HomeScreenState extends State<HomeScreen> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _UpcomingBanner extends StatefulWidget {
-  const _UpcomingBanner();
+  const _UpcomingBanner({super.key});
 
   @override
   State<_UpcomingBanner> createState() => _UpcomingBannerState();

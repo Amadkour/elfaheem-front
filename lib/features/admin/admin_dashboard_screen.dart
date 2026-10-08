@@ -16,9 +16,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
-import 'package:flutter_education_app/features/shared/profile/components/setting_title.dart' show SettingsTile;
+import 'package:flutter_education_app/features/shared/profile/components/setting_title.dart'
+    show SettingsTile;
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
-import 'package:flutter_education_app/features/shared/profile/profile_screen.dart' show ProfileHeader;
+import 'package:flutter_education_app/features/shared/profile/profile_screen.dart'
+    show ProfileHeader;
 import 'package:flutter_education_app/features/student/courses/details/components/app_responsive.dart';
 import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart'
     show WideShell, RailShell, MobileShell;
@@ -31,8 +33,10 @@ import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
 import '../../utils/helpers.dart';
+import '../../utils/widget/parent_component.dart';
 import '../shared/profile/change_language_screen.dart';
 import '../shared/profile/components/setting_group.dart';
+import '../teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import 'admin_categories_page.dart';
 import 'admin_common.dart';
 import 'admin_content_page.dart';
@@ -48,6 +52,8 @@ import 'admin_theme_page.dart';
 import 'admin_users_page.dart';
 import 'admin_versions_page.dart';
 import 'admin_view_as_page.dart';
+import 'enrollment_request/teacher_transfers_provider.dart';
+import 'enrollment_request/teacher_transfers_screen.dart';
 
 /// Current tab of the admin shell (the teacher uses TeacherDashboardProvider).
 class AdminDashboardProvider extends ChangeNotifier {
@@ -74,12 +80,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   static const _moreLabel = 'admin_more';
 
-  bool get _isAdmin => ['admin', 'super-admin']
-      .contains(context.read<AuthProvider>().currentUser?.role ?? '');
+  bool get _isAdmin => [
+    'admin',
+    'super-admin',
+  ].contains(context.read<AuthProvider>().currentUser?.role ?? '');
 
   @override
   void initState() {
     super.initState();
+
     _items = [
       DashboardItem(
         Icons.dashboard_outlined,
@@ -112,6 +121,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
       ),
       DashboardItem(
+        Icons.person_pin_rounded,
+        Icons.person_pin_rounded,
+        'teachers',
+        null,
+        const _AdminTab(
+          titleKey: 'teachers',
+          child: AdminUsersPage(role: 'teacher',embedded:true),
+        ),
+      ),
+      DashboardItem(
         Icons.apps_outlined,
         Icons.apps_rounded,
         _moreLabel,
@@ -122,6 +141,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _isAdmin) _payouts.refresh();
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _isAdmin)
+        context.read<TeacherTransfersProvider>().ensureLoaded();
     });
   }
 
@@ -144,21 +167,31 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<AdminDashboardProvider>.value(value: _tabs),
-        ChangeNotifierProvider<AdminPendingPayoutsProvider>.value(value: _payouts),
+        ChangeNotifierProvider<AdminPendingPayoutsProvider>.value(
+          value: _payouts,
+        ),
       ],
       builder: (context, _) {
         final tabs = context.watch<AdminDashboardProvider>();
         return PopScope(
-          canPop: false,
-          onPopInvokedWithResult: (_, _) => tabs.onChangeTab(0),
+          // Back goes to the Overview tab first; from the Overview tab it may leave the app
+          // (it used to be blocked completely).
+          canPop: tabs.currentTab == 0,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) tabs.onChangeTab(0);
+          },
           child: Directionality(
             textDirection: pageDirection,
             child: LayoutBuilder(
               builder: (context, constraints) {
                 // select: rebuild only when the NUMBER changes.
-                final pending = context.select<AdminPendingPayoutsProvider, int>(
-                      (p) => p.count,
-                );
+                final pending =
+                    context.select<AdminPendingPayoutsProvider, int>(
+                          (p) => p.count,
+                    ) +
+                        context.select<TeacherTransfersProvider, int>(
+                              (p) => p.total,
+                        );
                 for (final item in _items) {
                   item.badge = item.label == _moreLabel ? pending : 0;
                 }
@@ -202,14 +235,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 /// tabs which each build their own BasePage.
 class _AdminTab extends StatelessWidget {
   const _AdminTab({required this.titleKey, required this.child});
+
   final String titleKey;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
     return BasePage(
-      useWebCard: true,
-      maxWith: 1100,
       appBar: ScreenAppBar(title: titleKey.tr, showBack: false),
       child: child,
     );
@@ -225,8 +257,9 @@ class _MorePage extends StatefulWidget {
 }
 
 class _MorePageState extends State<_MorePage> {
-  Future<void> _push(Widget screen) async => await Navigator.of(context)
-      .push(MaterialPageRoute(builder: (_) => screen));
+  Future<void> _push(Widget screen) async => await Navigator.of(
+    context,
+  ).push(MaterialPageRoute(builder: (_) => screen));
 
   @override
   void initState() {
@@ -264,7 +297,7 @@ class _MorePageState extends State<_MorePage> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: SettingsGroup(
-                    title: 'more'.tr,
+                    title: 'admin_group_people'.tr,
                     children: [
                       SettingsTile(
                         icon: Icons.campaign_rounded,
@@ -286,7 +319,8 @@ class _MorePageState extends State<_MorePage> {
                         iconBg: c.danger.withAlpha(50),
                         iconColor: c.danger,
                         label: 'teachers'.tr,
-                        onTap: () => _push(const AdminUsersPage(role: 'teacher')),
+                        onTap: () =>
+                            _push(const AdminUsersPage(role: 'teacher')),
                       ),
                       SettingsTile(
                         icon: Icons.category_rounded,
@@ -295,6 +329,17 @@ class _MorePageState extends State<_MorePage> {
                         label: 'categories'.tr,
                         onTap: () => _push(const AdminCategoriesPage()),
                       ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // ── Finance & requests ───────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: SettingsGroup(
+                    title: 'admin_group_finance'.tr,
+                    children: [
                       // Pending payout requests — same overlay as the teacher's
                       // "enrollment requests" tile.
                       TileCountOverlay(
@@ -307,11 +352,27 @@ class _MorePageState extends State<_MorePage> {
                           iconColor: c.danger,
                           label: 'payout'.tr,
                           onTap: () async {
-                            final badge = context.read<AdminPendingPayoutsProvider>();
+                            final badge = context
+                                .read<AdminPendingPayoutsProvider>();
                             await _push(const AdminPayoutsPage());
                             // approve / reject / paid happened in there → recount
                             badge.refresh();
                           },
+                        ),
+                      ),
+                      ParentComponent(
+                        featureKey: 'profile.enrollment_request',
+                        child: TileCountOverlay(
+                          count: context.select<TeacherTransfersProvider, int>(
+                                (p) => p.total,
+                          ),
+                          child: SettingsTile(
+                            icon: Icons.account_balance_wallet_rounded,
+                            iconBg: c.successTint,
+                            iconColor: c.success,
+                            label: 'enrollment_requests'.tr,
+                            onTap: () => _push(const TeacherTransfersScreen()),
+                          ),
                         ),
                       ),
                       SettingsTile(
@@ -328,6 +389,17 @@ class _MorePageState extends State<_MorePage> {
                         label: 'devices_and_payments'.tr,
                         onTap: () => _push(const AdminSystemPage()),
                       ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // ── App configuration ────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: SettingsGroup(
+                    title: 'admin_group_config'.tr,
+                    children: [
                       SettingsTile(
                         icon: Icons.palette_rounded,
                         iconBg: c.purpleTint,
@@ -385,7 +457,9 @@ class _MorePageState extends State<_MorePage> {
                             await p.changeMode(b);
                           },
                           activeThumbColor: c.primary,
-                          thumbColor: const WidgetStatePropertyAll(Colors.white),
+                          thumbColor: const WidgetStatePropertyAll(
+                            Colors.white,
+                          ),
                         ),
                       ),
                     ],
@@ -409,7 +483,9 @@ class _MorePageState extends State<_MorePage> {
                         onTap: () async {
                           final ok = await Helpers.confirmDialog(context);
                           if (ok == true && context.mounted) {
-                            await context.read<ProfileProvider>().logout(context);
+                            await context.read<ProfileProvider>().logout(
+                              context,
+                            );
                           }
                         },
                       ),

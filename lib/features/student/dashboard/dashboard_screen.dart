@@ -6,6 +6,7 @@ import 'package:flutter_education_app/features/student/dashboard/component/stude
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
 import 'package:flutter_education_app/features/teacher/dashboard/teacher_dashboard_screen.dart';
 import 'package:flutter_education_app/features/teacher/schedules/schedules_provider.dart';
+import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../../config/theme/app_theme.dart';
@@ -41,9 +42,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   List<DashboardItem> dashboardItems = [];
 
+  /// A dialog button / push asked for a tab ("profile" | "my_courses").
+  /// Nothing was listening before, so those buttons only popped to this screen and stopped.
+  void _onTabRequested() {
+    final id = AppNavigator.requestedTab.value;
+    if (id == null) return;
+    final label = switch (id) {
+      'profile' => 'my_profile',
+      'my_courses' => 'my_courses',
+      _ => null,
+    };
+    AppNavigator.requestedTab.value = null; // consumed
+    if (label == null || !mounted) return;
+    final i = dashboardItems.indexWhere((e) => e.label == label);
+    if (i >= 0) setState(() => _currentIndex = i); // i < 0 → that tab is switched off by the feature list
+  }
+
+  @override
+  void dispose() {
+    AppNavigator.requestedTab.removeListener(_onTabRequested);
+    super.dispose();
+  }
+
   @override
   void initState() {
+    AppNavigator.requestedTab.addListener(_onTabRequested);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      _onTabRequested(); // a request made BEFORE this screen existed (cold start from a dialog / push)
       await context.read<NotificationsProvider>().fetchNotifications();
     });
     dashboardItems.clear();

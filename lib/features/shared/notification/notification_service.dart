@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
+import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
@@ -52,6 +53,10 @@ class NotificationService {
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
 
   ApiClient? _api;
+
+  /// A tapped push that could not be opened yet (app just started: no Navigator yet, or the user is
+  /// not logged in). `main.dart`'s `_Guard` calls [consumePendingPush] once the first screen is up.
+  Map<String, dynamic>? _pendingPush;
 
   // ── Android channel ───────────────────────────────────────────────────────
   static const _channel = AndroidNotificationChannel(
@@ -222,7 +227,6 @@ class NotificationService {
     );
 
     final data = message.data;
-    print(data);
     // Silent push: the admin changed the disable list → reload it, show nothing.
     if (data['type'] == 'disable_list_updated') {
       print('[FCM] disable_list_updated received → refreshing');
@@ -237,6 +241,7 @@ class NotificationService {
     if (data['type'] == 'admin_message' &&
         (data['display'] == 'dialog' || data['display'] == 'dialog_action')) {
       AdminMessageDialogs.checkPending();
+      return; // the dialog IS the alert — do not also raise a system notification / toast for it
     }
 
     final notification = message.notification;
@@ -251,7 +256,11 @@ class NotificationService {
 
       // Keep the in-app toast too, as a fallback for browsers where the
       // user hasn't granted Notification permission.
-      Helpers.showMessage(notification.body ?? '');
+      final title = notification.title;
+      final body = notification.body ?? '';
+      Helpers.showMessage(
+        title != null && title.isNotEmpty && body.isNotEmpty ? '$title\n$body' : (body.isNotEmpty ? body : (title ?? '')),
+      );
       return;
     }
     await _plugin.show(
@@ -291,15 +300,37 @@ class NotificationService {
         context,
         listen: false,
       ).fetchSessions(activeCourseId);
-    } on Exception catch (e) {
-      context.read<CourseDetailProvider>().fetchSessions(activeCourseId);
+    } catch (e) {
+      // (the old fallback called the very same lookup again and re-threw)
+      debugPrint('[FCM] CourseDetailProvider not reachable from navigatorKey context: $e');
     }
   }
 
   // ── Tap handlers ──────────────────────────────────────────────────────────
   // Push tap (app in background / terminated): open the course / module the push points to.
-  void _onNotificationTap(RemoteMessage message) {
-    AppNavigator.openFromPush(Map<String, dynamic>.from(message.data));
+  void _onNotificationTap(RemoteMessage message) =>
+      _openOrQueue(Map<String, dynamic>.from(message.data));
+
+  /// Opens the push target now if the app can show it, otherwise remembers it for [consumePendingPush].
+  /// (`getInitialMessage()` is read in main() BEFORE runApp — there is no Navigator and no logged-in
+  /// user at that moment, so opening immediately silently lost every "tap while app was closed".)
+  void _openOrQueue(Map<String, dynamic> data) {
+    final ctx = navigatorKey.currentContext;
+    final ready = ctx != null && ctx.mounted && ctx.read<AuthProvider>().isAuthenticated;
+    if (!ready) {
+      _pendingPush = data;
+      return;
+    }
+    AppNavigator.openFromPush(data);
+  }
+
+  void consumePendingPush() {
+    final data = _pendingPush;
+    if (data == null) return;
+    final ctx = navigatorKey.currentContext;
+    if (ctx == null || !ctx.mounted || !ctx.read<AuthProvider>().isAuthenticated) return;
+    _pendingPush = null;
+    AppNavigator.openFromPush(data);
   }
 
   // Tap on the local notification we displayed for a foreground push.
@@ -307,7 +338,7 @@ class NotificationService {
     try {
       final p = response.payload;
       if (p != null && p.isNotEmpty) {
-        AppNavigator.openFromPush(Map<String, dynamic>.from(jsonDecode(p) as Map));
+        _openOrQueue(Map<String, dynamic>.from(jsonDecode(p) as Map));
         return;
       }
     } catch (_) {}

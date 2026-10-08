@@ -27,6 +27,7 @@ class CourseStatsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final stats = <_StatItem>[
       _StatItem(
+        featureKey: 'course_stats.students',
         icon: Icons.people_alt_rounded,
         label: 'student'.tr,
         value: '${course.studentsCount}',
@@ -39,12 +40,14 @@ class CourseStatsRow extends StatelessWidget {
         ),
       ),
       _StatItem(
+        featureKey: 'course_stats.sessions',
         icon: Icons.play_lesson_rounded,
         label: 'sessions'.tr,
         value: '$sessionCount',
         color: context.colors.primary,
       ),
       _StatItem(
+        featureKey: 'course_stats.price',
         icon: Icons.sell_rounded,
         label: 'cost'.tr,
         value: course.currency.format(course.finalPrice??0),
@@ -63,6 +66,7 @@ class CourseStatsRow extends StatelessWidget {
             : null,
       ),
       _StatItem(
+        featureKey: 'course_stats.duration',
         icon: Icons.timer_rounded,
         label: 'duration'.tr,
         value: '${course.totalHours} ${'h'.tr}',
@@ -71,6 +75,7 @@ class CourseStatsRow extends StatelessWidget {
     ];
 
     return Container(
+      key: const ValueKey('course_stats'),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: context.colors.cardBg,
@@ -87,7 +92,7 @@ class CourseStatsRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children:
-        stats.map((s) => Expanded(child: _StatChip(item: s))).toList(),
+        stats.map((s) => Expanded(child: _StatChip(key: ValueKey(s.featureKey), item: s))).toList(),
       ),
     );
   }
@@ -106,7 +111,11 @@ class _StatItem {
   /// struck-through original). Falls back to a plain [Text] of [value].
   final Widget Function(BuildContext context)? valueBuilder;
 
+  /// Hide/unhide key — must match the backend catalog.
+  final String featureKey;
+
   const _StatItem({
+    required this.featureKey,
     required this.icon,
     required this.label,
     required this.value,
@@ -119,7 +128,7 @@ class _StatItem {
 class _StatChip extends StatelessWidget {
   final _StatItem item;
 
-  const _StatChip({required this.item});
+  const _StatChip({super.key, required this.item});
 
   @override
   Widget build(BuildContext context) {

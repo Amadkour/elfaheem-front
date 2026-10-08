@@ -8,6 +8,11 @@
 ///
 /// Fees always come from GET /payments/fees/preview, so the amount shown is the
 /// amount the server will accept.
+///
+/// Price plans: a course can sell several plans (monthly / 6 months / yearly).
+/// They come from GET /payments/price-options; the student picks one and every
+/// payment call below carries that `plan`. The manual-transfer amount is the
+/// quote TOTAL (plan price + platform fee + VAT + that method's gateway fee).
 library;
 
 import 'package:flutter/foundation.dart';
@@ -26,14 +31,17 @@ import 'payment_flow_provider.dart';
 export 'payment_flow_provider.dart' show EnrollStep;
 
 class EnrollmentProvider extends PaymentFlowProvider {
-  EnrollmentProvider(this.course, {super.api}){
-    _selectedManualMethod='instapay';
-  }
+  EnrollmentProvider(this.course, {super.api});
 
   final CourseModel course;
 
   SavedPaymentMethod? _selectedCard; // null = "new card"
-  final Map<String, FeeQuote> _quotes = {};
+  final Map<String, FeeQuote> _quotes = {}; // key: "<plan>|<fee method>"
+
+  // ── Price plans ───────────────────────────────────────────────────────────
+  List<PriceOption> _options = const [];
+  bool _optionsLoaded = false;
+  String _plan = PlanKeys.yearly;
   int? _pendingPaymentId;
   String? _pendingTransactionId;
 
@@ -52,7 +60,20 @@ class EnrollmentProvider extends PaymentFlowProvider {
 
   // ── State ─────────────────────────────────────────────────────────────────
 
-  bool get isFree => course.finalPrice == 0;
+  /// Free = the server offers no plan with a price. Until the plans arrive we
+  /// fall back to the course's own (yearly) price.
+  bool get isFree => _optionsLoaded ? _options.isEmpty : (course.finalPrice ?? 0) == 0;
+
+  bool get optionsLoaded => _optionsLoaded;
+  List<PriceOption> get priceOptions => _options;
+  String get selectedPlan => _plan;
+
+  PriceOption? get selectedOption {
+    for (final o in _options) {
+      if (o.plan == _plan) return o;
+    }
+    return null;
+  }
 
   bool get pendingIsManualReview => _pendingIsManualReview;
   bool get manualTransferRejected => _manualTransferRejected;
@@ -65,14 +86,17 @@ class EnrollmentProvider extends PaymentFlowProvider {
   bool get _usesMoyasarSdk => !kIsWeb && gateway?.provider == 'moyasar';
 
   /// The fee key the backend will use for this flow (must match its rules):
+  /// manual transfer → that method (admin-managed fee, 0 by default) ·
   /// saved card → that card's brand · Moyasar SDK → mada · hosted checkout → creditcard.
   String get _quoteMethod {
+    final manual = _selectedManualMethod;
+    if (manual != null) return manual;
     final card = _selectedCard;
     if (card != null) return card.cardBrand?.apiKey ?? 'mada';
     return _usesMoyasarSdk ? 'mada' : 'creditcard';
   }
 
-  FeeQuote? get quote => _quotes[_quoteMethod];
+  FeeQuote? get quote => _quotes['$_plan|$_quoteMethod'];
 
   // ── Loading ───────────────────────────────────────────────────────────────
 
@@ -83,8 +107,55 @@ class EnrollmentProvider extends PaymentFlowProvider {
     // An existing manual-transfer attempt (pending or rejected) takes
     // priority over everything else: don't even load the method picker.
     if (await _checkManualTransferStatus()) return;
+    await prepareMethodStep();
+  }
+
+  /// Everything the method picker needs: gateway config, the course's plans
+  /// and the fee quote. Safe to call again (e.g. after "send payment again").
+  Future<void> prepareMethodStep() async {
     await loadGatewayConfig();
+    // InstaPay is the default only when the server actually offers it.
+    _selectedManualMethod = (gateway?.instapayEnabled ?? false) ? 'instapay' : null;
+    if (!_optionsLoaded) await loadPriceOptions();
     await ensureQuote();
+  }
+
+  /// GET /api/v1/payments/price-options — the plans this course sells.
+  Future<void> loadPriceOptions() async {
+    final json = asJsonMap(await run(
+          () async => api.get('/api/v1/payments/price-options?course_id=${course.id}'),
+    ));
+    final parsed = [
+      for (final raw in (json?['options'] as List? ?? const []))
+        PriceOption.fromJson(Map<String, dynamic>.from(raw as Map)),
+    ];
+    if (json != null) {
+      _options = parsed;
+      final def = json['default_plan'] as String?;
+      _plan = parsed.any((o) => o.plan == def)
+          ? def!
+          : (parsed.isNotEmpty ? parsed.last.plan : PlanKeys.yearly);
+    } else if ((course.finalPrice ?? 0) > 0) {
+      // Offline fallback: sell the yearly price the course card already shows.
+      _options = [
+        PriceOption(
+          plan: PlanKeys.yearly,
+          durationDays: 365,
+          price: course.price,
+          finalPrice: course.finalPrice ?? course.price,
+        ),
+      ];
+      _plan = PlanKeys.yearly;
+    }
+    _optionsLoaded = true;
+    safeNotify();
+  }
+
+  void selectPlan(String plan) {
+    if (_plan == plan || !_options.any((o) => o.plan == plan)) return;
+    _plan = plan;
+    safeNotify();
+    ensureQuote();
   }
 
   /// GET /api/v1/payments/transfer-status — see TransferStatus in
@@ -133,16 +204,20 @@ class EnrollmentProvider extends PaymentFlowProvider {
     _pendingIsManualReview = false;
     _manualTransferRejected = false;
     super.backToMethod();
+    // Arriving here from a pending/rejected transfer skipped the normal load.
+    if (!_optionsLoaded) prepareMethodStep();
   }
 
   Future<FeeQuote?> ensureQuote() async {
-    if (isFree) return null;
-    final key = _quoteMethod;
+    if (isFree || !_optionsLoaded) return null;
+    final method = _quoteMethod;
+    final plan = _plan;
+    final key = '$plan|$method';
     final cached = _quotes[key];
     if (cached != null) return cached;
 
     final json = asJsonMap(await run(() async => api.get(
-        '/api/v1/payments/fees/preview?course_id=${course.id}&payment_method=$key')));
+        '/api/v1/payments/fees/preview?course_id=${course.id}&payment_method=$method&plan=$plan')));
     if (json == null) return null;
 
     final fetched = FeeQuote.fromJson(json);
@@ -155,12 +230,14 @@ class EnrollmentProvider extends PaymentFlowProvider {
 
   void selectSavedCard(SavedPaymentMethod card) {
     _selectedCard = card;
+    _selectedManualMethod = null;
     safeNotify();
     ensureQuote();
   }
 
   void selectNewCard() {
     _selectedCard = null;
+    _selectedManualMethod = null; // otherwise confirm() would still go to the transfer flow
     safeNotify();
     ensureQuote();
   }
@@ -174,10 +251,11 @@ class EnrollmentProvider extends PaymentFlowProvider {
     _selectedManualMethod = method;
     _selectedCard = null;
     safeNotify();
+    ensureQuote(); // price it under THIS method's own (admin-managed) fee
   }
 
   Future<void> confirm(BuildContext context) async {
-    if (isLoading) return;
+    if (isLoading || !_optionsLoaded) return;
     if (isFree) return _enrollFree();
 
     final manual = _selectedManualMethod;
@@ -190,16 +268,20 @@ class EnrollmentProvider extends PaymentFlowProvider {
   }
 
   Future<void> _startManualTransfer(BuildContext context, String method) async {
-    final fees = await ensureQuote(); // reuse whatever quote key bank/instapay should price under —
-    // simplest: extend _quoteMethod to return `method` itself when
-    // _selectedManualMethod is set, so /fees/preview?payment_method=bank_transfer
-    // can return course price with zero gateway fee.
+    // The request carries the TOTAL (plan price + platform fee + VAT + this
+    // method's fee) — the same number the server computes and the teacher sees.
+    final fees = await ensureQuote();
+    if (fees == null) {
+      setStep(EnrollStep.failed, reason: 'payment_fees_load_failed'.tr);
+      return;
+    }
     if (!context.mounted) return;
     final result = await Navigator.of(context).push<bool>(MaterialPageRoute(
       builder: (_) => TransferPaymentScreen(
         courseId: int.parse(course.id),
         method: method,
-        amount: (fees ?? quote)?.total ?? (course.finalPrice??0),
+        plan: _plan,
+        amount: fees.total,
         currencySymbol: currencySymbol,
       ),
     ));
@@ -214,7 +296,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
   Future<void> _openHostedCheckout(BuildContext context) => openHostedCheckout(
     context,
     '/api/v1/payments/create-web-session',
-    body: {'course_id': course.id},
+    body: {'course_id': course.id, 'plan': _plan},
   );
 
   // ── Moyasar SDK (mobile) ──────────────────────────────────────────────────
@@ -226,7 +308,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
     }
     final fees = await ensureQuote();
     if (fees == null) {
-      setStep(EnrollStep.failed, reason: 'تعذّر تحميل تفاصيل الرسوم. حاول مرة أخرى.');
+      setStep(EnrollStep.failed, reason: 'payment_fees_load_failed'.tr);
       return;
     }
     if (!context.mounted) return;
@@ -235,7 +317,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
       publishableApiKey: publishableKey,
       amount: fees.amountMinor,
       description: '${'course'.tr} : ${ (AppConfig.lang=='ar'? course.titleAr:course.titleEn)??''}',
-      metadata: {'course_id': course.id.toString()},
+      metadata: {'course_id': course.id.toString(), 'plan': _plan},
       creditCard: CreditCardConfig(saveCard: false, manual: false),
     );
 
@@ -273,7 +355,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
     setStep(EnrollStep.verifying);
     final r = asJsonMap(await run(() async => api.post(
       '/api/v1/payments/record-sdk-payment',
-      body: {'course_id': course.id, 'moyasar_payment_id': gatewayPaymentId},
+      body: {'course_id': course.id, 'moyasar_payment_id': gatewayPaymentId, 'plan': _plan},
     )));
     if (r?['status'] == 'completed') {
       setStep(EnrollStep.success);
@@ -290,6 +372,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
       'course_id': course.id,
       'payment_method': card.cardBrand?.apiKey ?? 'mada',
       'saved_method_id': card.id,
+      'plan': _plan,
     })));
     if (r == null) return;
 

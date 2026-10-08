@@ -13,6 +13,7 @@ import 'package:flutter_education_app/features/shared/profile/profile_provider.d
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../../../utils/widget/primary_button.dart';
 import 'subscription_provider.dart';
 
 class SubscriptionScreen extends StatelessWidget {
@@ -115,7 +116,7 @@ class _ViewState extends State<_View> {
         color: c.success,
         title: 'sub_active_title'.tr,
         subtitle: '${'sub_ends_on'.tr} ${shortDate('${p.active!['ends_at']}')}',
-        action: PrimaryButton(label: 'sub_continue'.tr, onPressed: _goHome),
+        action: PrimaryButton(label: 'sub_continue'.tr, onPressed: _goHome, isLoading: false,),
       );
     } else if (p.pending != null) {
       body = _Status(
@@ -135,7 +136,7 @@ class _ViewState extends State<_View> {
         color: c.success,
         title: 'sub_app_free'.tr,
         subtitle: 'sub_no_subscription_needed'.tr,
-        action: PrimaryButton(label: 'sub_continue'.tr, onPressed: _goHome),
+        action: PrimaryButton(label: 'sub_continue'.tr, onPressed: _goHome, isLoading: false,),
       );
     } else {
       final transferEnabled = p.transfer['bank_transfer_enabled'] == true || p.transfer['instapay_enabled'] == true;
@@ -245,7 +246,7 @@ class _ViewState extends State<_View> {
           label: plan == null
               ? 'sub_choose_plan'.tr
               : (plan.isFree ? 'sub_activate_free'.tr : 'sub_send_request'.tr),
-          busy: busy,
+        isLoading: busy,
           onPressed: plan == null ? null : () => _submit(p),
         ),
         const SizedBox(height: 10),

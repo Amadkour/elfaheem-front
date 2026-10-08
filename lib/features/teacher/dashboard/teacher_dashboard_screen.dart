@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
 import 'package:flutter_education_app/features/teacher/courses/teacher_courses_provider.dart';
 import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboard_provider.dart';
-import 'package:flutter_education_app/features/teacher/profile/enrollment_request/teacher_transfers_provider.dart';
+import 'package:flutter_education_app/features/admin/enrollment_request/teacher_transfers_provider.dart';
 import 'package:flutter_education_app/features/teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
@@ -38,8 +38,7 @@ class _State extends State<TeacherDashboardScreen> {
       final transfers = context.read<TeacherTransfersProvider>();
       final devices = context.read<TeacherDeviceRequestsProvider>();
       await Future.wait([
-        context.read<NotificationsProvider>().fetchNotifications(),
-        transfers.ensureLoaded(), // one request, reused by the screen
+        context.read<NotificationsProvider>().fetchNotifications(), // one request, reused by the screen
         devices.ensureLoaded(),
       ]);
     });
@@ -106,7 +105,6 @@ class _State extends State<TeacherDashboardScreen> {
                 // select: rebuild the dashboard only when the NUMBER changes,
                 // not on every loading/processing notification of the providers.
                 final pending =
-                    context.select<TeacherTransfersProvider, int>((p) => p.total) +
                         context.select<TeacherDeviceRequestsProvider, int>(
                               (p) => p.items.length,
                         );

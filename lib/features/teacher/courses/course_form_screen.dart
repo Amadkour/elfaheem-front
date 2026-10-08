@@ -73,7 +73,9 @@ class _CourseFormInnerState extends State<_CourseFormInner>
   bool get _hasBasics =>
       (_titleArCtrl.text.trim().isNotEmpty ||
           _titleEnCtrl.text.trim().isNotEmpty);
-  late final TextEditingController _priceCtrl;
+  late final TextEditingController _priceCtrl; // YEARLY price
+  late final TextEditingController _priceMonthlyCtrl;
+  late final TextEditingController _priceSixMonthsCtrl;
   late final TextEditingController _hoursCtrl;
   final ExpansibleController _categoryCtrl = ExpansibleController();
   final ExpansibleController _typeCtrl = ExpansibleController();
@@ -136,6 +138,12 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     _priceCtrl = TextEditingController(
       text: c != null ? c.price.toString() : '',
     );
+    _priceMonthlyCtrl = TextEditingController(
+      text: c?.priceMonthly != null ? c!.priceMonthly.toString() : '',
+    );
+    _priceSixMonthsCtrl = TextEditingController(
+      text: c?.priceSixMonths != null ? c!.priceSixMonths.toString() : '',
+    );
     _hoursCtrl = TextEditingController(
       text: c != null ? c.expectedHours.toString() : '',
     );
@@ -154,6 +162,8 @@ class _CourseFormInnerState extends State<_CourseFormInner>
       _descArCtrl,
       _descEnCtrl,
       _priceCtrl,
+      _priceMonthlyCtrl,
+      _priceSixMonthsCtrl,
       _hoursCtrl,
       _discountPercentCtrl,
       _discountDaysCtrl,
@@ -198,6 +208,8 @@ class _CourseFormInnerState extends State<_CourseFormInner>
       _descEnCtrl,
       _descArCtrl,
       _priceCtrl,
+      _priceMonthlyCtrl,
+      _priceSixMonthsCtrl,
       _hoursCtrl,
       _discountPercentCtrl,
       _discountDaysCtrl,
@@ -217,6 +229,8 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     if (!_isEdit) return _hasBasics;
     final c = widget.course!;
     final newPrice = double.tryParse(_priceCtrl.text) ?? c.price;
+    final newMonthly = double.tryParse(_priceMonthlyCtrl.text);
+    final newSixMonths = double.tryParse(_priceSixMonthsCtrl.text);
     final newHours = double.tryParse(_hoursCtrl.text) ?? c.expectedHours;
     final newDiscount = double.tryParse(_discountPercentCtrl.text);
     final oldDiscount = c.discountPercentage;
@@ -225,6 +239,8 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     return _titleArCtrl.text.trim() != (c.titleAr ?? '') ||
         _titleEnCtrl.text.trim() != (c.titleEn ?? '') ||
         newPrice != c.price ||
+        newMonthly != c.priceMonthly ||
+        newSixMonths != c.priceSixMonths ||
         newHours != c.expectedHours ||
         newDiscount != oldDiscount ||
         newDays != oldDays ||
@@ -265,6 +281,8 @@ class _CourseFormInnerState extends State<_CourseFormInner>
         isPrivate: _isPrivate,
         accessCode: _accessCodeCtrl.text,
         fees: double.tryParse(_priceCtrl.text),
+        priceMonthly: double.tryParse(_priceMonthlyCtrl.text),
+        priceSixMonths: double.tryParse(_priceSixMonthsCtrl.text),
         totalHours: double.tryParse(_hoursCtrl.text),
         discountPercentage: discountPercentage,
         discountDays: discountDays,
@@ -285,6 +303,8 @@ class _CourseFormInnerState extends State<_CourseFormInner>
         isPrivate: _isPrivate,
         accessCode: _accessCodeCtrl.text,
         fees: double.tryParse(_priceCtrl.text) ?? 0,
+        priceMonthly: double.tryParse(_priceMonthlyCtrl.text),
+        priceSixMonths: double.tryParse(_priceSixMonthsCtrl.text),
         totalHours: double.tryParse(_hoursCtrl.text),
         discountPercentage: discountPercentage,
         discountDays: discountDays,
@@ -564,14 +584,16 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                 ),
                               ),
                               const SizedBox(height: 14),
+                              // Yearly = the existing price field; the other two
+                              // plans are optional (empty = not offered).
                               Row(
                                 children: [
                                   Expanded(
                                     child: _LabeledField(
-                                      label: 'price_label'.tr,
+                                      label: 'price_yearly_label'.tr,
                                       child: MyTextField(
                                         controller: _priceCtrl,
-                                        label: 'price_label'.tr,
+                                        label: 'price_yearly_label'.tr,
                                         keyboard:
                                         const TextInputType.numberWithOptions(
                                           decimal: true,
@@ -580,6 +602,47 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                     ),
                                   ),
                                 ],
+                              ),
+                              const SizedBox(height: 14),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _LabeledField(
+                                      label: 'price_six_months_label'.tr,
+                                      child: MyTextField(
+                                        controller: _priceSixMonthsCtrl,
+                                        label: 'price_six_months_label'.tr,
+                                        keyboard:
+                                        const TextInputType.numberWithOptions(
+                                          decimal: true,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _LabeledField(
+                                      label: 'price_monthly_label'.tr,
+                                      child: MyTextField(
+                                        controller: _priceMonthlyCtrl,
+                                        label: 'price_monthly_label'.tr,
+                                        keyboard:
+                                        const TextInputType.numberWithOptions(
+                                          decimal: true,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'price_plans_hint'.tr,
+                                style: const TextStyle(
+                                  fontFamily: 'tajawal',
+                                  fontSize: 11.5,
+                                  color: Colors.grey,
+                                ),
                               ),
                               const SizedBox(height: 14),
                               CurrencySelector(

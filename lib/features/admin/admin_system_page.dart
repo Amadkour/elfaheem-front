@@ -2,6 +2,7 @@
 //  • devices per student + device-switch period (days; default 30)
 //  • default card gateway (Moyasar / Paymob) + default platform fee %
 //  • the three payment methods (card / bank transfer / InstaPay)
+//  • the gateway fee (percent + fixed) of every payment method
 library;
 
 import 'package:flutter/material.dart';
@@ -11,7 +12,10 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../utils/widget/app_bar.dart';
 import '../../utils/widget/base_page.dart';
+import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
+import 'admin_fee_rates.dart';
+import 'admin_labels.dart';
 import 'admin_providers.dart';
 
 class AdminSystemPage extends StatelessWidget {
@@ -19,12 +23,13 @@ class AdminSystemPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (_) => AdminSettingsProvider()..load()),
-          ChangeNotifierProvider(create: (_) => AdminPaymentMethodsProvider()..load()),
-        ],
-        child: const _View(),
-      );
+    providers: [
+      ChangeNotifierProvider(create: (_) => AdminSettingsProvider()..load()),
+      ChangeNotifierProvider(create: (_) => AdminPaymentMethodsProvider()..load()),
+      ChangeNotifierProvider(create: (_) => AdminFeeRatesProvider()..load()),
+    ],
+    child: const _View(),
+  );
 }
 
 class _View extends StatefulWidget {
@@ -141,7 +146,7 @@ class _ViewState extends State<_View> {
             ),
           ]),
         ),
-        PrimaryButton(label: 'admin_save_settings'.tr, busy: busy, onPressed: () => _save(s)),
+        PrimaryButton(label: 'admin_save_settings'.tr, isLoading: busy, onPressed: () => _save(s)),
         const SizedBox(height: 18),
         Text('admin_payment_methods'.tr,
             style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w900, fontSize: 16, color: c.textDark)),
@@ -152,6 +157,8 @@ class _ViewState extends State<_View> {
           ErrorRetry(message: pm.error ?? 'admin_could_not_load'.tr, onRetry: pm.load)
         else
           for (final m in pm.items) _MethodCard(m),
+        const SizedBox(height: 18),
+        const AdminFeeRatesSection(),
       ]);
     }
 
@@ -182,7 +189,16 @@ class _MethodCard extends StatelessWidget {
       trailing: Switch(
         value: enabled,
         activeTrackColor: c.primary,
-        onChanged: (v) => p.save(method, {'enabled': v}),
+        onChanged: (v) {
+          final missing = (method == 'bank_transfer' && asStr(m['iban']).trim().isEmpty) ||
+              (method == 'instapay' && asStr(m['instapay_id']).trim().isEmpty);
+          if (v && missing) {
+            toast('admin_method_details_required'.tr, error: true);
+            _edit(context, p, m);
+            return;
+          }
+          p.save(method, {'enabled': v});
+        },
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         if (method == 'bank_transfer') ...[
@@ -253,7 +269,7 @@ Future<void> _edit(BuildContext context, AdminPaymentMethodsProvider p, Map<Stri
               ),
               PrimaryButton(
                 label: 'save'.tr,
-                busy: busy,
+                isLoading: busy,
                 onPressed: () async {
                   setS(() => busy = true);
                   final ok = await p.save(method, {
@@ -279,9 +295,5 @@ Future<void> _edit(BuildContext context, AdminPaymentMethodsProvider p, Map<Stri
         ),
       ]);
     });
-  }).whenComplete(() {
-    for (final x in [bank, acc, iban, swift, insta, insAr, insEn]) {
-      x.dispose();
-    }
-  });
+  }).whenComplete(() => disposeAfterRoute([bank, acc, iban, swift, insta, insAr, insEn]));
 }

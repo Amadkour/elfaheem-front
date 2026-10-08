@@ -13,10 +13,12 @@ import '../../../config/app_config.dart';
 import '../../../config/theme/app_theme.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_network_image.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import '../../shared/payment/saved_methods_provider.dart';
 import '../../shared/payment/saved_payment_models.dart';
 import '../../shared/profile/course_instractor_profile.dart';
 import '../../student/models.dart';
+import 'enrollment_models.dart';
 import 'enrollment_provider.dart';
 import 'enrollment_widgets.dart';
 
@@ -78,9 +80,10 @@ class _EnrollView extends StatelessWidget {
                 secondaryLabel: enroll.pendingIsManualReview
                     ? 'resend_transfer_request'.tr
                     : null,
+                // The old proof is withdrawn when the new one is submitted
+                // (TransferPaymentProvider.submit), so just go back to the picker.
                 onSecondary: () async {
-                  await enroll.loadGatewayConfig();
-                  await enroll.ensureQuote();
+                  await enroll.prepareMethodStep();
                   enroll.setStep(EnrollStep.method);
                 }
             ),
@@ -146,12 +149,21 @@ class _MethodStep extends StatelessWidget {
             child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               _CourseSummaryCard(
-                  course: enroll.course, currencySymbol: enroll.currencySymbol),
+                  course: enroll.course,
+                  currencySymbol: enroll.currencySymbol,
+                  price: enroll.selectedOption?.finalPrice),
               const SizedBox(height: 24),
-              if (enroll.isFree)
+              if (!enroll.optionsLoaded)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 40),
+                  child: Center(child: AppLoadingIndicator(showLogo: false)),
+                )
+              else if (enroll.isFree)
                 const _FreeCourseBanner()
               else
                 ...[
+                  const _PricePlanPicker(),
+                  const SizedBox(height: 20),
                   const _PaymentMethodPicker(),
                   const SizedBox(height: 20),
                   FeeBreakdownCard(
@@ -163,7 +175,7 @@ class _MethodStep extends StatelessWidget {
         EnrollConfirmBar(
           label: label,
           loading: enroll.isLoading,
-          onTap: () => enroll.confirm(context),
+          onTap: enroll.optionsLoaded ? () => enroll.confirm(context) : null,
         ),
       ]),
     );
@@ -176,8 +188,11 @@ class _CourseSummaryCard extends StatelessWidget {
   final CourseModel course;
   final String currencySymbol;
 
+  /// Price of the plan the student picked (falls back to the course's own).
+  final double? price;
+
   const _CourseSummaryCard(
-      {required this.course, required this.currencySymbol});
+      {required this.course, required this.currencySymbol, this.price});
 
   @override
   Widget build(BuildContext context) {
@@ -216,7 +231,7 @@ class _CourseSummaryCard extends StatelessWidget {
                 teacher: course.teacher!, size: 50, canOpen: true),
             const SizedBox(height: 10),
             Row(children: [
-              _PriceBadge(price: course.finalPrice ?? 0,
+              _PriceBadge(price: price ?? course.finalPrice ?? 0,
                   currencySymbol: currencySymbol),
               const SizedBox(width: 8),
               _TypeTag(type: course.type),
@@ -316,6 +331,166 @@ class _FreeCourseBanner extends StatelessWidget {
           ]),
         ),
       ]),
+    );
+  }
+}
+
+// ── Price plan picker ─────────────────────────────────────────────────────────
+
+/// Every plan the course sells (monthly / 6 months / yearly) — pick one.
+class _PricePlanPicker extends StatelessWidget {
+  const _PricePlanPicker();
+
+  /// "Save x%" vs. paying the monthly plan for the same number of months.
+  static int? _savePercent(List<PriceOption> all, PriceOption o) {
+    final monthly = all.where((e) => e.plan == PlanKeys.monthly).firstOrNull;
+    if (monthly == null || o.plan == PlanKeys.monthly || monthly.finalPrice <= 0) return null;
+    final full = monthly.finalPrice * PlanKeys.months(o.plan);
+    final pct = ((1 - o.finalPrice / full) * 100).round();
+    return pct > 0 ? pct : null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final enroll = context.watch<EnrollmentProvider>();
+    final c = context.colors;
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+                colors: [c.primary, c.primary.withValues(alpha: .7)]),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Icon(
+              Icons.event_available_rounded, size: 18, color: Colors.white),
+        ),
+        const SizedBox(width: 10),
+        Text('choose_plan_title'.tr, style: c.h3.copyWith(fontSize: 15)),
+      ]),
+      const SizedBox(height: 14),
+      for (final o in enroll.priceOptions)
+        _PlanTile(
+          option: o,
+          selected: enroll.selectedPlan == o.plan,
+          currencySymbol: enroll.currencySymbol,
+          savePercent: _savePercent(enroll.priceOptions, o),
+          onTap: () => enroll.selectPlan(o.plan),
+        ),
+    ]);
+  }
+}
+
+class _PlanTile extends StatelessWidget {
+  final PriceOption option;
+  final bool selected;
+  final String currencySymbol;
+  final int? savePercent;
+  final VoidCallback onTap;
+
+  const _PlanTile({
+    required this.option,
+    required this.selected,
+    required this.currencySymbol,
+    required this.savePercent,
+    required this.onTap,
+  });
+
+  String _money(double v) =>
+      '${v.toStringAsFixed(v.truncateToDouble() == v ? 0 : 2)} $currencySymbol';
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: selected ? c.primary.withValues(alpha: .05) : c.cardBg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+              color: selected ? c.primary : c.divider, width: selected ? 2 : 1),
+          boxShadow: selected
+              ? [
+            BoxShadow(color: c.primary.withValues(alpha: .14),
+                blurRadius: 12,
+                offset: const Offset(0, 4))
+          ]
+              : c.cardShadow,
+        ),
+        child: Row(children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: selected ? c.primary : Colors.transparent,
+              border: Border.all(
+                  color: selected ? c.primary : c.divider, width: 2),
+            ),
+            child: selected ? const Icon(
+                Icons.check_rounded, size: 13, color: Colors.white) : null,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Flexible(
+                  child: Text(PlanKeys.titleKey(option.plan).tr,
+                      style: c.label.copyWith(
+                          color: selected ? c.primary : c.textDark,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14)),
+                ),
+                if (savePercent != null) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                        color: c.success.withValues(alpha: .12),
+                        borderRadius: BorderRadius.circular(6)),
+                    child: Text('${'plan_save'.tr} $savePercent%',
+                        style: c.caption.copyWith(
+                            color: c.success,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700)),
+                  ),
+                ],
+              ]),
+              const SizedBox(height: 3),
+              Text(PlanKeys.accessKey(option.plan).tr,
+                  style: c.caption.copyWith(fontSize: 11)),
+            ]),
+          ),
+          const SizedBox(width: 8),
+          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            if (option.hasDiscount)
+              Text(_money(option.price),
+                  style: c.caption.copyWith(
+                      fontSize: 11,
+                      decoration: TextDecoration.lineThrough,
+                      decorationColor: Colors.redAccent)),
+            Text(_money(option.finalPrice),
+                style: c.label.copyWith(
+                    color: selected ? c.primary : c.textDark,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15)),
+          ]),
+        ]),
+      ),
     );
   }
 }

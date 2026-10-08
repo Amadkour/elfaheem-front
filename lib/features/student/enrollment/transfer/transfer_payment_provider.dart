@@ -22,11 +22,13 @@ class TransferPaymentProvider extends BaseProvider {
   TransferPaymentProvider({
     required this.courseId,
     required this.method,
+    required this.plan,
     ApiClient? api,
   }) : api = api ?? ApiClient();
 
   final int courseId;
   final String method; // "bank_transfer" | "instapay"
+  final String plan; // "monthly" | "six_months" | "yearly" — the server prices the request from it
   final ApiClient api;
 
   TransferMethodDetails? _details;
@@ -54,7 +56,7 @@ class TransferPaymentProvider extends BaseProvider {
   Future<void> loadDetails() async {
     final json = asJsonMap(
       await run(
-        () async =>
+            () async =>
             api.get('/api/v1/payments/transfer-methods?course_id=$courseId'),
       ),
     );
@@ -64,7 +66,7 @@ class TransferPaymentProvider extends BaseProvider {
 
   Future<void> cancelAndRetryManualTransfer() async {
     final r = await run(
-      () => api.post(
+          () => api.post(
         '/api/v1/payments/transfers/cancel-mine',
         queryParams: {'course_id': courseId},
       ),
@@ -92,6 +94,7 @@ class TransferPaymentProvider extends BaseProvider {
         fields: {
           'course_id': courseId.toString(),
           'method': method,
+          'plan': plan,
           'sender_name': senderName,
           if (senderPhone != null && senderPhone.isNotEmpty)
             'sender_phone': senderPhone,

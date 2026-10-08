@@ -1,18 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
-import 'package:flutter_education_app/features/teacher/sessions/sessions_screen.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:provider/provider.dart';
-
 import '../../../config/app_config.dart';
-import '../../../config/routes.dart';
-import '../../../config/theme/app_theme.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/app_navigator.dart';
 import '../../../utils/widget/base_page.dart';
-import '../../teacher/sessions/sessions_provider.dart';
 import 'notifications_provider.dart';
 
 class NotificationsScreen extends StatefulWidget {

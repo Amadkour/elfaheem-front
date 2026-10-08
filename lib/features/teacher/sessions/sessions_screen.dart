@@ -182,6 +182,7 @@ class _TeacherSessionsView extends StatelessWidget {
     // when the provider notifies.
     final provider = context.read<TeacherCourseScreenProvider>();
     return BasePage(
+      key: const ValueKey('teacher_sessions'),
       useWebCard: true,
       child: SafeArea(
         top: false,
@@ -234,7 +235,7 @@ class _TeacherSessionsView extends StatelessWidget {
                         // rebuilds instead of being destroyed and
                         // recreated every time (previously a fresh
                         // Random() key every build).
-                        key: ValueKey({Random().nextDouble()}),
+                        key: const ValueKey('sessions_course_details_card'),
                         expanded: expanded,
                         icon: CupertinoIcons.list_bullet_below_rectangle,
                         title: 'course_details'.tr,

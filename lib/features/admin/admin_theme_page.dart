@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 
 import '../../utils/widget/app_bar.dart';
 import '../../utils/widget/base_page.dart';
+import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
 import 'admin_models.dart';
 import 'admin_providers.dart';
@@ -354,7 +355,7 @@ class _EditorState extends State<_Editor> {
               style: const TextStyle(fontFamily: 'tajawal', fontSize: 12),
             ),
             const SizedBox(height: 14),
-            PrimaryButton(label: 'save'.tr, busy: busy, onPressed: _save),
+            PrimaryButton(label: 'save'.tr, isLoading: busy, onPressed: _save),
           ]),
         ),
       ),

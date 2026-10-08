@@ -13,6 +13,7 @@ import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/primary_button.dart';
+import '../../admin/admin_common.dart' hide PrimaryButton;
 import 'schedules_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 // ══════════════════════════════════════════════════════════════════════════════
@@ -214,9 +215,9 @@ class _Header extends StatelessWidget {
     if (lastFetched == null) return 'not-refreshed'.tr;
     final diff = DateTime.now().difference(lastFetched!);
     if (diff.inSeconds < 60)  return 'moments-ago'.tr;
-    if (diff.inMinutes < 60)  return 'since ${diff.inMinutes}m'.tr;
-    if (diff.inHours   < 24)  return 'since ${diff.inHours}hours'.tr;
-    return 'since ${diff.inDays} day'.tr;
+    if (diff.inMinutes < 60)  return trp('since_minutes', {'n': '${diff.inMinutes}'});
+    if (diff.inHours   < 24)  return trp('since_hours', {'n': '${diff.inHours}'});
+    return trp('since_days', {'n': '${diff.inDays}'});
   }
 
   @override
@@ -353,7 +354,7 @@ class _NextBanner extends StatelessWidget {
                         decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(8)),
-                        child: Text('${slot.calcDuration}د',
+                        child: Text(trp('sched_duration_min', {'n': '${slot.calcDuration}'}),
                             style: const TextStyle(
                                 color: Colors.white70,
                                 fontSize: 11,
@@ -740,11 +741,12 @@ class _TeacherSchedulesScreenState extends State<TeacherSchedulesScreen> {
 
     final provider = context.watch<TeacherSchedulesProvider>();
     return BasePage(
+      key: const ValueKey('teacher_schedules'),
       useWebCard: true,
       child:
       SafeArea(child: Column(children: [
         ScreenAppBar(
-          title: '${'appointment'.tr}$widget.course.title.tr',
+          title: '${'appointment'.tr} ${Helpers.AppConfig.lang=='ar'?widget.course.titleAr:widget.course.titleEn}',
           actions: [_AddBtn(onTap:()=> TeacherSchedulesScreen.openAddScheduleScreenSheet(context))],
         ),
 
@@ -896,7 +898,7 @@ class _ManageCard extends StatelessWidget {
                     fontFamily: 'bahji',
                     fontWeight: FontWeight.w700)),
             content: Text(
-                '${'appointment-delete'.tr}$slotDayLabel(s.day)$s.startTime؟',
+                trp('appointment_delete_confirm', {'day': slotDayLabel(s.day), 'time': s.startTime}),
 
                 style: const TextStyle(fontFamily: 'bahji')),
             actions: [
@@ -985,13 +987,13 @@ class AddScheduleSheet extends StatefulWidget {
 
 class _AddScheduleSheetState extends State<AddScheduleSheet> {
   static const _days = [
-    ('monday',    'الاثنين'),
-    ('tuesday',   'الثلاثاء'),
-    ('wednesday', 'الأربعاء'),
-    ('thursday',  'الخميس'),
-    ('friday',    'الجمعة'),
-    ('saturday',  'السبت'),
-    ('sunday',    'الأحد'),
+    ('monday',    'day_monday'),
+    ('tuesday',   'day_tuesday'),
+    ('wednesday', 'day_wednesday'),
+    ('thursday',  'day_thursday'),
+    ('friday',    'day_friday'),
+    ('saturday',  'day_saturday'),
+    ('sunday',    'day_sunday'),
   ];
   String    _day   = 'monday';
   TimeOfDay _start = const TimeOfDay(hour: 10, minute: 0);
@@ -1119,7 +1121,8 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
                 itemCount: _days.length,
                 separatorBuilder: (_, _) => const SizedBox(width: 8),
                 itemBuilder: (_, i) {
-                  final (v, l) = _days[i];
+                  final (v, lKey) = _days[i];
+                  final l = lKey.tr;
                   final sel = _day == v;
                   return GestureDetector(
                     onTap: () { if(mounted) setState(() => _day = v);},

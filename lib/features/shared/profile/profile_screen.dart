@@ -9,7 +9,6 @@ import 'package:flutter/cupertino.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/profile/components/setting_group.dart';
-import 'package:flutter_education_app/features/teacher/dashboard/requests_badge_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/student_favorite_screen.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -21,8 +20,6 @@ import '../../../utils/widget/count_badge.dart';
 import '../../auth/auth_provider.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import '../../../utils/widget/parent_component.dart';
-import '../../teacher/profile/enrollment_request/teacher_transfers_provider.dart';
-import '../../teacher/profile/enrollment_request/teacher_transfers_screen.dart';
 import '../../teacher/profile/payout/teacher_payouts_screen.dart';
 import '../../teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import '../../teacher/profile/switch_device_requests/teacher_device_requests_screen.dart';
@@ -163,19 +160,6 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                                 iconColor: c.danger,
                                 label: 'payout'.tr,
                                 onTap: () => _push(const TeacherPayoutsScreen()),
-                              ),
-                            ),
-                            ParentComponent(
-                              featureKey: 'profile.enrollment_request',
-                              child: TileCountOverlay(
-                                count: context.select<TeacherTransfersProvider, int>((p) => p.total),
-                                child: SettingsTile(
-                                  icon: Icons.account_balance_wallet_rounded,
-                                  iconBg: c.successTint,
-                                  iconColor: c.success,
-                                  label: 'enrollment_requests'.tr,
-                                  onTap: () => _push(const TeacherTransfersScreen()),
-                                ),
                               ),
                             ),
                             ParentComponent(

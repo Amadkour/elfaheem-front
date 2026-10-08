@@ -9,6 +9,7 @@ import '../../config/storage_service.dart';
 import '../../core/api_client.dart';
 import '../../core/base_provider.dart';
 import '../../utils/helpers.dart';
+import '../../utils/widget/view_as_state.dart';
 import '../category/categories_provider.dart';
 import '../shared/notification/notification_service.dart';
 
@@ -80,8 +81,8 @@ class AuthProvider extends BaseProvider {
   final StorageService _storage;
 
   AuthProvider({ApiClient? api, required StorageService storage})
-    : _api = api ?? ApiClient(),
-      _storage = storage {
+      : _api = api ?? ApiClient(),
+        _storage = storage {
     // Restore the user from disk immediately so role/isTeacher are ready
     // before the first frame is drawn — no async gap, no null user.
     loadCachedUser();
@@ -168,17 +169,17 @@ class AuthProvider extends BaseProvider {
     isLoadingRegistration = true;
     notifyListeners();
     final result = await run(
-      () => _api.post(
+          () => _api.post(
         '/api/v1/auth/register',
         body: {
-          'name': name,
-          'gmail': gmail,
-          'password': password,
-          'role': selectedRole!['text'],
-          'phone': ?phone,
-          'country': ?country,
-          'dob': ?dob,
-        },
+      'name': name,
+      'gmail': gmail,
+      'password': password,
+      'role': selectedRole!['text'],
+      'phone': ?phone,
+      'country': ?country,
+      'dob': ?dob,
+      },
         auth: false,
       ),
     );
@@ -195,7 +196,7 @@ class AuthProvider extends BaseProvider {
   /// We save the user here so teachers know they need step 3.
   Future<bool> verifyOtp({required String gmail, required String code}) async {
     final result = await run(
-      () => _api.post(
+          () => _api.post(
         '/api/v1/auth/verify-otp',
         body: {'gmail': gmail, 'code': code},
         auth: false,
@@ -221,7 +222,7 @@ class AuthProvider extends BaseProvider {
 
   Future<bool> resendOtp(String gmail, {bool reset = false}) async {
     final result = await run(
-      () => _api.post(
+          () => _api.post(
         reset ? '/api/v1/auth/forgot-password' : '/api/v1/auth/resend-otp',
         body: {'gmail': gmail},
         auth: false,
@@ -241,7 +242,7 @@ class AuthProvider extends BaseProvider {
     notifyListeners();
 
     final result = await run(
-      () => _api.post(
+          () => _api.post(
         '/api/v1/auth/teacher-profile',
         body: {
           'experience_years': experienceYears,
@@ -276,7 +277,7 @@ class AuthProvider extends BaseProvider {
     notifyListeners();
 
     final result = await run(
-      () => _api.get('/api/v1/auth/teacher-profile-extras'),
+          () => _api.get('/api/v1/auth/teacher-profile-extras'),
     );
     if (result != null && result is Map) {
       teacherExperienceYears = result['experience_years'] as int?;
@@ -287,7 +288,7 @@ class AuthProvider extends BaseProvider {
       if (teacherSpecializationId != null) {
         try {
           selectedSpecialization = specializations.firstWhere(
-            (e) => e['id'] == teacherSpecializationId,
+                (e) => e['id'] == teacherSpecializationId,
           );
         } catch (_) {
           // specializations not loaded yet, or id no longer exists — leave unset
@@ -295,13 +296,13 @@ class AuthProvider extends BaseProvider {
       }
       if (teacherTeachingType != null) {
         selectedTeachingType = teachingTypes.firstWhere(
-          (e) => e['text'] == teacherTeachingType,
+              (e) => e['text'] == teacherTeachingType,
           orElse: () => teachingTypes.first,
         );
       }
       if (teacherPaymentType != null) {
         selectedPaymentType = paymentTypes.firstWhere(
-          (e) => e['text'] == teacherPaymentType,
+              (e) => e['text'] == teacherPaymentType,
           orElse: () => paymentTypes.first,
         );
       }
@@ -318,14 +319,14 @@ class AuthProvider extends BaseProvider {
     String? paymentType,
   }) async {
     final result = await run(
-      () => _api.put(
+          () => _api.put(
         '/api/v1/auth/teacher-profile-extras',
         body: {
-          'experience_years': ?experienceYears,
-          'specialization_id': ?specializationId,
-          'teaching_type': ?teachingType,
-          'payment_type': ?paymentType,
-        },
+      'experience_years': ?experienceYears,
+      'specialization_id': ?specializationId,
+      'teaching_type': ?teachingType,
+      'payment_type': ?paymentType,
+      },
       ),
     );
     return result != null;
@@ -337,6 +338,7 @@ class AuthProvider extends BaseProvider {
   Future<bool> login({required String gmail, required String password}) async {
     isLoadingLogin = true;
     notifyListeners();
+    final previousUser = _currentUser;
     _currentUser = UserModel(
       id: 0,
       name: '',
@@ -377,6 +379,7 @@ class AuthProvider extends BaseProvider {
       return true;
     }
 
+    _currentUser = previousUser; // failed login: drop the id-0 placeholder (it made currentUser look logged-in as a student)
     isLoadingLogin = false;
     notifyListeners();
     return false;
@@ -385,7 +388,7 @@ class AuthProvider extends BaseProvider {
 
   Future<bool> refreshToken(String refreshToken) async {
     final result = await run(
-      () => _api.post(
+          () => _api.post(
         '/api/v1/auth/refresh',
         queryParams: {'refresh_token': refreshToken},
         auth: false,
@@ -412,7 +415,15 @@ class AuthProvider extends BaseProvider {
 
   Future<void> saveUserLocally(UserModel user) async {
     _currentUser = user;
-    await _storage.saveUser(user.toJson());
+    // In view-as, /auth/me returns the VIEWED user. Keep it in memory only: writing it to disk replaced
+    // the admin's cached profile, so after exiting (or restarting) the admin became a "student".
+    if (!ViewAsState.active) await _storage.saveUser(user.toJson());
+    notifyListeners();
+  }
+
+  /// Called when view-as ends: forget the viewed user and bring back the admin's own cached profile.
+  void restoreOwnUser() {
+    loadCachedUser();
     notifyListeners();
   }
 
@@ -424,7 +435,7 @@ class AuthProvider extends BaseProvider {
     required String code,
   }) async {
     final result = await run(
-      () => _api.put(
+          () => _api.put(
         '/api/v1/auth/reset-password',
         body: {'gmail': email, 'new_password': password, 'code': code},
         auth: false,
@@ -441,7 +452,7 @@ class AuthProvider extends BaseProvider {
     required String code,
   }) async {
     final result = await run(
-      () => _api.post(
+          () => _api.post(
         '/api/v1/auth/verify-reset-otp',
         body: {'gmail': gmail, 'code': code},
         auth: false,
@@ -457,7 +468,7 @@ class AuthProvider extends BaseProvider {
     isLoadingForget = true;
     notifyListeners();
     final result = await run(
-      () => _api.post(
+          () => _api.post(
         '/api/v1/auth/forgot-password',
         body: {'gmail': gmail},
         auth: false,
@@ -476,7 +487,7 @@ class AuthProvider extends BaseProvider {
     required String newPassword,
   }) async {
     final result = await run(
-      () => _api.post(
+          () => _api.post(
         '/api/v1/auth/reset-password',
         body: {'gmail': gmail, 'code': code, 'new_password': newPassword},
         auth: false,
@@ -488,9 +499,14 @@ class AuthProvider extends BaseProvider {
   // ── Logout ────────────────────────────────────────────────────────────────────
 
   Future<void> logout() async {
+    ViewAsState.instance.stop(); // never carry view-as into the next session
+    // Unregister the push token BEFORE the tokens are wiped — afterwards the DELETE had no auth header,
+    // failed with 401, and this device kept receiving the previous user's pushes.
+    try {
+      await NotificationService.instance.unregisterFromBackend(_api);
+    } catch (_) {}
     await _storage.clearAll(); // wipes tokens + user JSON
     _currentUser = null;
-    await NotificationService.instance.unregisterFromBackend(_api);
     notifyListeners();
   }
 

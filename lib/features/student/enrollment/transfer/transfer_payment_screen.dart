@@ -4,6 +4,7 @@
 ///   final ok = await Navigator.of(context).push<bool>(MaterialPageRoute(
 ///     builder: (_) => TransferPaymentScreen(
 ///       courseId: course.id, method: 'bank_transfer',
+///       plan: enroll.selectedPlan,
 ///       amount: quote.total, currencySymbol: enroll.currencySymbol)));
 ///   if (ok == true) enroll.setStep(EnrollStep.pending);
 ///
@@ -29,13 +30,15 @@ import 'transfer_payment_provider.dart';
 class TransferPaymentScreen extends StatelessWidget {
   final int courseId;
   final String method; // "bank_transfer" | "instapay"
-  final double amount;
+  final String plan; // "monthly" | "six_months" | "yearly" — sent with the proof
+  final double amount; // the quote TOTAL (plan price + fees) the student must transfer
   final String currencySymbol;
 
   const TransferPaymentScreen({
     super.key,
     required this.courseId,
     required this.method,
+    required this.plan,
     required this.amount,
     required this.currencySymbol,
   });
@@ -44,7 +47,7 @@ class TransferPaymentScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) =>
-      TransferPaymentProvider(courseId: courseId, method: method)
+      TransferPaymentProvider(courseId: courseId, method: method, plan: plan)
         ..loadDetails(),
       child: _TransferView(amount: amount, currencySymbol: currencySymbol),
     );

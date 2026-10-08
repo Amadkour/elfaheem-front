@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../utils/widget/app_bar.dart';
 import '../../utils/widget/base_page.dart';
+import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
 import 'admin_list.dart';
 import 'admin_models.dart';
@@ -18,9 +19,9 @@ class AdminCategoriesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ChangeNotifierProvider(
-        create: (_) => AdminCategoriesProvider()..load(),
-        child: const _View(),
-      );
+    create: (_) => AdminCategoriesProvider()..load(),
+    child: const _View(),
+  );
 }
 
 class _View extends StatelessWidget {
@@ -76,24 +77,51 @@ class _View extends StatelessWidget {
       maxWith: 1100,
       appBar: ScreenAppBar(title: 'categories'.tr),
       floatingActionButton: FloatingActionButton.extended(
-          backgroundColor: c.primary,
-          onPressed: () => _form(context, p),
-          icon: const Icon(Icons.add_rounded, color: Colors.white),
-          label: Text('admin_add_category'.tr, style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
-        ),
+        backgroundColor: c.primary,
+        onPressed: () => _form(context, p),
+        icon: const Icon(Icons.add_rounded, color: Colors.white),
+        label: Text('admin_add_category'.tr, style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
+      ),
       child: body,
     );
   }
 }
 
-Future<void> _form(BuildContext context, AdminCategoriesProvider p, {AdminCategory? existing}) {
-  final ar = TextEditingController(text: existing?.nameAr);
-  final en = TextEditingController(text: existing?.nameEn);
-  final desc = TextEditingController(text: existing?.description);
+Future<void> _form(BuildContext context, AdminCategoriesProvider p, {AdminCategory? existing}) =>
+    showAdminSheet(context, (ctx) => _CategoryForm(provider: p, existing: existing));
+
+/// The sheet content owns its controllers, so they are disposed only when the
+/// sheet is really removed from the tree (after the close animation) — not
+/// while the TextFields are still on screen.
+class _CategoryForm extends StatefulWidget {
+  const _CategoryForm({required this.provider, this.existing});
+
+  final AdminCategoriesProvider provider;
+  final AdminCategory? existing;
+
+  @override
+  State<_CategoryForm> createState() => _CategoryFormState();
+}
+
+class _CategoryFormState extends State<_CategoryForm> {
+  late final ar = TextEditingController(text: widget.existing?.nameAr);
+  late final en = TextEditingController(text: widget.existing?.nameEn);
+  late final desc = TextEditingController(text: widget.existing?.description);
   bool busy = false;
 
-  return showAdminSheet(context, (ctx) {
-    return StatefulBuilder(builder: (ctx, setS) {
+  @override
+  void dispose() {
+    ar.dispose();
+    en.dispose();
+    desc.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext ctx) {
+    final p = widget.provider;
+    final existing = widget.existing;
+    {
       return Column(mainAxisSize: MainAxisSize.min, children: [
         SheetHeader(existing == null ? 'admin_add_category'.tr : 'admin_edit_category'.tr),
         Flexible(
@@ -105,20 +133,20 @@ Future<void> _form(BuildContext context, AdminCategoriesProvider p, {AdminCatego
               Field(controller: desc, label: 'description'.tr, maxLines: 3),
               PrimaryButton(
                 label: 'save'.tr,
-                busy: busy,
+                isLoading: busy,
                 onPressed: () async {
                   if (ar.text.trim().isEmpty && en.text.trim().isEmpty) {
                     toast('admin_enter_a_category_name'.tr, error: true);
                     return;
                   }
-                  setS(() => busy = true);
+                  setState(() => busy = true);
                   final ok = await p.save(id: existing?.id, body: {
                     'name_ar': ar.text.trim().isEmpty ? null : ar.text.trim(),
                     'name_en': en.text.trim().isEmpty ? null : en.text.trim(),
                     'description': desc.text.trim().isEmpty ? null : desc.text.trim(),
                   });
-                  if (ctx.mounted) {
-                    setS(() => busy = false);
+                  if (mounted) {
+                    setState(() => busy = false);
                     if (ok) Navigator.pop(ctx);
                   }
                 },
@@ -127,10 +155,6 @@ Future<void> _form(BuildContext context, AdminCategoriesProvider p, {AdminCatego
           ),
         ),
       ]);
-    });
-  }).whenComplete(() {
-    ar.dispose();
-    en.dispose();
-    desc.dispose();
-  });
+    }
+  }
 }

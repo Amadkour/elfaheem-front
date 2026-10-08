@@ -212,7 +212,7 @@ class _PreJoinPageState extends State<PreJoinPage>
         _selectedVideoDevice == null) {
       final opts = _videoOptions;
       _selectedVideoDevice = opts.firstWhere(
-        (d) => d['is_front'] == true,
+            (d) => d['is_front'] == true,
         orElse: () => opts.first,
       );
       await _changeLocalVideoTrack();
@@ -235,7 +235,7 @@ class _PreJoinPageState extends State<PreJoinPage>
       if (_selectedVideoDevice == null && _videoOptions.isNotEmpty) {
         final opts = _videoOptions;
         _selectedVideoDevice = opts.firstWhere(
-          (d) => d['is_front'] == true,
+              (d) => d['is_front'] == true,
           orElse: () => opts.first,
         );
       }
@@ -419,22 +419,22 @@ class _PreJoinPageState extends State<PreJoinPage>
   List<Map<String, dynamic>> get _videoOptions => _videoInputs
       .map<Map<String, dynamic>>(
         (d) => <String, dynamic>{
-          'text': d.label.isNotEmpty ? d.label : 'Camera',
-          'value': d.toString(),
-          'is_front': d.label.toLowerCase().contains('front'),
-          'device_id': d.deviceId,
-        },
-      )
+      'text': d.label.isNotEmpty ? d.label : 'lr_camera'.tr,
+      'value': d.toString(),
+      'is_front': d.label.toLowerCase().contains('front'),
+      'device_id': d.deviceId,
+    },
+  )
       .toList();
 
   List<Map<String, dynamic>> get _audioOptions => _audioInputs
       .map<Map<String, dynamic>>(
         (d) => <String, dynamic>{
-          'text': d.label.isNotEmpty ? d.label : 'Microphone',
-          'value': d.toString(),
-          'device_id': d.deviceId,
-        },
-      )
+      'text': d.label.isNotEmpty ? d.label : 'lr_microphone'.tr,
+      'value': d.toString(),
+      'device_id': d.deviceId,
+    },
+  )
       .toList();
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -443,6 +443,7 @@ class _PreJoinPageState extends State<PreJoinPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: const ValueKey('prejoin'),
       backgroundColor: _DS.bg,
       body: Stack(
         fit: StackFit.expand,
@@ -612,10 +613,10 @@ class _PreJoinPageState extends State<PreJoinPage>
               const SizedBox(height: 18),
               Text(
                 _enableVideo
-                    ? 'Starting camera…'
+                    ? 'lr_starting_camera'.tr
                     : (_videoInputs.isEmpty
-                          ? 'No camera — screen share will be recorded'
-                          : 'Camera is off'),
+                    ? 'lr_no_camera_screen_recorded'.tr
+                    : 'lr_camera_off_msg'.tr),
                 style: TextStyle(
                   fontFamily: 'tajawal',
                   color: _DS.textLow,
@@ -653,8 +654,8 @@ class _PreJoinPageState extends State<PreJoinPage>
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Ready to join?',
+              Text(
+                'lr_ready_to_join'.tr,
                 style: TextStyle(
                   fontFamily: 'tajawal',
                   color: _DS.textHigh,
@@ -666,7 +667,7 @@ class _PreJoinPageState extends State<PreJoinPage>
               ),
               const SizedBox(height: 2),
               Text(
-                'Check your devices below',
+                'lr_check_devices'.tr,
                 style: TextStyle(
                   fontFamily: 'tajawal',
                   color: _DS.textLow,
@@ -746,8 +747,8 @@ class _PreJoinPageState extends State<PreJoinPage>
                   icon: _enableVideo
                       ? Icons.videocam_rounded
                       : Icons.videocam_off_rounded,
-                  label: 'Camera',
-                  sublabel: _enableVideo ? 'Front · 1080p' : 'Disabled',
+                  label: 'lr_camera'.tr,
+                  sublabel: _enableVideo ? 'lr_camera_front_1080p'.tr : 'lr_disabled'.tr,
                   isActive: _enableVideo,
                   gradColors: _enableVideo ? _DS.camOnGrad : _DS.camOffGrad,
                   onTap: _toggleCamera,
@@ -759,13 +760,13 @@ class _PreJoinPageState extends State<PreJoinPage>
                   icon: _enableAudio
                       ? Icons.mic_rounded
                       : Icons.mic_off_rounded,
-                  label: 'Microphone',
+                  label: 'lr_microphone'.tr,
                   sublabel: _enableAudio
                       ? (_audioInputs.isNotEmpty &&
-                                _audioInputs.first.label.isNotEmpty
-                            ? _audioInputs.first.label
-                            : 'Default mic')
-                      : 'Muted',
+                      _audioInputs.first.label.isNotEmpty
+                      ? _audioInputs.first.label
+                      : 'lr_default_mic'.tr)
+                      : 'lr_muted'.tr,
                   isActive: _enableAudio,
                   gradColors: _enableAudio ? _DS.micOnGrad : _DS.micOffGrad,
                   onTap: _toggleAudio,
@@ -783,7 +784,7 @@ class _PreJoinPageState extends State<PreJoinPage>
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Text(
-                  'ALL SET?',
+                  'lr_all_set'.tr,
                   style: TextStyle(
                     fontFamily: 'tajawal',
                     color: _DS.textLow,
@@ -831,12 +832,12 @@ class _PreJoinPageState extends State<PreJoinPage>
           ),
           boxShadow: isActive
               ? [
-                  BoxShadow(
-                    color: gradColors.first.withValues(alpha: 0.14),
-                    blurRadius: 22,
-                    spreadRadius: 0,
-                  ),
-                ]
+            BoxShadow(
+              color: gradColors.first.withValues(alpha: 0.14),
+              blurRadius: 22,
+              spreadRadius: 0,
+            ),
+          ]
               : [],
         ),
         child: Column(
@@ -853,19 +854,19 @@ class _PreJoinPageState extends State<PreJoinPage>
                     borderRadius: BorderRadius.circular(8),
                     gradient: isActive
                         ? LinearGradient(
-                            colors: gradColors,
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          )
+                      colors: gradColors,
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
                         : null,
                     color: isActive ? null : _DS.glass15,
                     boxShadow: isActive
                         ? [
-                            BoxShadow(
-                              color: gradColors.first.withValues(alpha: 0.4),
-                              blurRadius: 10,
-                            ),
-                          ]
+                      BoxShadow(
+                        color: gradColors.first.withValues(alpha: 0.4),
+                        blurRadius: 10,
+                      ),
+                    ]
                         : [],
                   ),
                   child: Icon(
@@ -951,31 +952,31 @@ class _PreJoinPageState extends State<PreJoinPage>
               gradient: _busy
                   ? null
                   : const LinearGradient(
-                      colors: _DS.joinGrad,
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    ),
+                colors: _DS.joinGrad,
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
               color: _busy ? _DS.surfaceHi : null,
               border: _busy ? Border.all(color: _DS.glassBdr, width: 1) : null,
               boxShadow: _busy
                   ? []
                   : [
-                      BoxShadow(
-                        color: _DS.cyan.withValues(
-                          alpha: 0.28 + _pulse.value * 0.14,
-                        ),
-                        blurRadius: 26 + _pulse.value * 12,
-                        offset: const Offset(0, 8),
-                      ),
-                      BoxShadow(
-                        color: _DS.indigo.withValues(
-                          alpha: 0.18 + _pulse.value * 0.08,
-                        ),
-                        blurRadius: 40,
-                        spreadRadius: -4,
-                        offset: const Offset(0, 14),
-                      ),
-                    ],
+                BoxShadow(
+                  color: _DS.cyan.withValues(
+                    alpha: 0.28 + _pulse.value * 0.14,
+                  ),
+                  blurRadius: 26 + _pulse.value * 12,
+                  offset: const Offset(0, 8),
+                ),
+                BoxShadow(
+                  color: _DS.indigo.withValues(
+                    alpha: 0.18 + _pulse.value * 0.08,
+                  ),
+                  blurRadius: 40,
+                  spreadRadius: -4,
+                  offset: const Offset(0, 14),
+                ),
+              ],
             ),
             child: Stack(
               alignment: Alignment.center,
@@ -1006,30 +1007,30 @@ class _PreJoinPageState extends State<PreJoinPage>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: _busy
                       ? [
-                          const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: AppLoadingIndicator(),
-                          ),
-                        ]
+                    const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: AppLoadingIndicator(),
+                    ),
+                  ]
                       : [
-                          const Icon(
-                            Icons.play_circle_filled_rounded,
-                            color: Colors.white,
-                            size: 26,
-                          ),
-                          const SizedBox(width: 10),
-                          const Text(
-                            'Join Session',
-                            style: TextStyle(
-                              fontFamily: 'tajawal',
-                              color: Colors.white,
-                              fontSize: 17,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.3,
-                            ),
-                          ),
-                        ],
+                    const Icon(
+                      Icons.play_circle_filled_rounded,
+                      color: Colors.white,
+                      size: 26,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'lr_join_session'.tr,
+                      style: TextStyle(
+                        fontFamily: 'tajawal',
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

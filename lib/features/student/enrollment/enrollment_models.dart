@@ -45,12 +45,71 @@ class GatewayConfig {
       paymentMethods.any((m) => m.type == 'instapay' && m.enabled);
 }
 
+/// A plan a course is sold in. Keys match the backend: monthly | six_months | yearly.
+class PlanKeys {
+  static const monthly = 'monthly';
+  static const sixMonths = 'six_months';
+  static const yearly = 'yearly';
+
+  /// Translation key of the plan's name.
+  static String titleKey(String plan) => switch (plan) {
+    monthly => 'plan_monthly',
+    sixMonths => 'plan_six_months',
+    _ => 'plan_yearly',
+  };
+
+  /// Translation key of "access for …".
+  static String accessKey(String plan) => switch (plan) {
+    monthly => 'plan_access_monthly',
+    sixMonths => 'plan_access_six_months',
+    _ => 'plan_access_yearly',
+  };
+
+  /// How many months the plan covers (used to compare plans per month).
+  static int months(String plan) => switch (plan) {
+    monthly => 1,
+    sixMonths => 6,
+    _ => 12,
+  };
+}
+
+/// One purchasable plan — GET /api/v1/payments/price-options
+class PriceOption {
+  final String plan;
+  final int durationDays;
+  final double price; // list price
+  final double finalPrice; // after the active discount
+  final bool discountActive;
+  final double discountPercentage;
+
+  const PriceOption({
+    required this.plan,
+    required this.durationDays,
+    required this.price,
+    required this.finalPrice,
+    this.discountActive = false,
+    this.discountPercentage = 0,
+  });
+
+  bool get hasDiscount => discountActive && finalPrice < price;
+
+  factory PriceOption.fromJson(Map<String, dynamic> j) => PriceOption(
+    plan: j['plan'] as String? ?? PlanKeys.yearly,
+    durationDays: (j['duration_days'] as num?)?.toInt() ?? 365,
+    price: (j['price'] as num?)?.toDouble() ?? 0,
+    finalPrice: (j['final_price'] as num?)?.toDouble() ?? 0,
+    discountActive: j['discount_active'] == true,
+    discountPercentage: (j['discount_percentage'] as num?)?.toDouble() ?? 0,
+  );
+}
+
 /// Fee breakdown — one course, or the whole roadmap bundle.
 /// GET /api/v1/payments/fees/preview  and  roadmap quote `fees`.
 class FeeQuote {
   final double coursePrice, platformFee, vatOnPlatform, gatewayFee, total;
   final String gatewayLabel;
   final int amountMinor;
+  final String? plan;
 
   const FeeQuote({
     required this.coursePrice,
@@ -60,6 +119,7 @@ class FeeQuote {
     required this.total,
     required this.gatewayLabel,
     required this.amountMinor,
+    this.plan,
   });
 
   factory FeeQuote.fromJson(Map<String, dynamic> j) {
@@ -72,6 +132,7 @@ class FeeQuote {
       total: d('total'),
       gatewayLabel: j['gateway_label'] as String? ?? '',
       amountMinor: (j['amount_minor'] as num?)?.toInt() ?? 0,
+      plan: j['plan'] as String?,
     );
   }
 
@@ -287,6 +348,9 @@ class PendingTransfer {
   final DateTime submittedAt;
   final String status; // "pending" | "approved" | "rejected"
   final String? rejectionReason;
+  final String? plan; // monthly | six_months | yearly
+  final double? coursePrice; // plan price after discount, before fees (amount = coursePrice + fees)
+  final FeeQuote? fees;
 
   const PendingTransfer({
     required this.paymentId,
@@ -305,6 +369,9 @@ class PendingTransfer {
     required this.submittedAt,
     required this.status,
     this.rejectionReason,
+    this.plan,
+    this.coursePrice,
+    this.fees,
   });
 
   bool get isBankTransfer => method == 'bank_transfer';
@@ -326,5 +393,8 @@ class PendingTransfer {
     submittedAt: DateTime.tryParse(j['submitted_at'] as String? ?? '') ?? DateTime.now(),
     status: j['status'] as String? ?? 'pending',
     rejectionReason: j['rejection_reason'] as String?,
+    plan: j['plan'] as String?,
+    coursePrice: (j['course_price'] as num?)?.toDouble(),
+    fees: asJsonMap(j['fees']) == null ? null : FeeQuote.fromJson(asJsonMap(j['fees'])!),
   );
 }

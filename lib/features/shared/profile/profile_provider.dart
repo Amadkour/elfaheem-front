@@ -12,7 +12,7 @@ import '../../../config/storage_service.dart';
 import '../../auth/auth_provider.dart';
 import '../../auth/login_screen.dart';
 import '../../student/models.dart';
-import '../../teacher/profile/enrollment_request/teacher_transfers_provider.dart';
+import '../../admin/enrollment_request/teacher_transfers_provider.dart';
 import '../../teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import 'package:path/path.dart' as p;
 

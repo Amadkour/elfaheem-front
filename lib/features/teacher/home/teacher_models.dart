@@ -39,7 +39,7 @@ class CourseSchedule {
         'saturday': 'السبت',
         'sunday': 'الأحد',
       }[day] ??
-      day;
+          day;
 
   /// Lightweight constructor for pending (not-yet-saved) entries.
   factory CourseSchedule.pending({
@@ -332,7 +332,12 @@ class TeacherCourse with DiscountInfo {
   final double? discountPercentage;
   final int? discountDays;
 
+  /// Optional shorter plans. [price] is the YEARLY price; null = plan not offered.
+  final double? priceMonthly, priceSixMonths;
+
   const TeacherCourse({
+    this.priceMonthly,
+    this.priceSixMonths,
     this.finalPrice,
     this.discountEndsAt,
     this.discountActive,
@@ -391,10 +396,12 @@ class TeacherCourse with DiscountInfo {
     totalHours: (j['total_hours'] as num?)?.toDouble() ?? 0,
     discountDays: j['discount_days'] as int?,
     price:
-        (j['price'] as num?)?.toDouble() ??
+    (j['price'] as num?)?.toDouble() ??
         (j['fees'] as num?)?.toDouble() ??
         0,
     finalPrice: (j['final_price'] as num?)?.toDouble(),
+    priceMonthly: (j['price_monthly'] as num?)?.toDouble(),
+    priceSixMonths: (j['price_six_months'] as num?)?.toDouble(),
     discountActive: j['discount_active'] as bool?,
     discountPercentage: (j['discount_percentage'] as num?)?.toDouble(),
     discountEndsAt: j['discount_ends_at'] != null
@@ -492,6 +499,8 @@ class TeacherCourse with DiscountInfo {
     double? discountPercentage,
     double? price,
     double? finalPrice,
+    double? priceMonthly,
+    double? priceSixMonths,
   }) => TeacherCourse(
     currency: currency ?? this.currency,
     status: status ?? this.status,
@@ -509,6 +518,8 @@ class TeacherCourse with DiscountInfo {
     studentsCount: studentsCount,
     sessionsCount: sessionsCount,
     price: price ?? this.price,
+    priceMonthly: priceMonthly ?? this.priceMonthly,
+    priceSixMonths: priceSixMonths ?? this.priceSixMonths,
     category: category,
     isPublished: isPublished ?? this.isPublished,
     schedules: schedules ?? this.schedules,
@@ -547,9 +558,9 @@ class TeacherDashboardData {
           .map((e) => TeacherCourse.fromJson(e as Map<String, dynamic>))
           .toList(),
       schedule:
-          (j['schedule'] as List? ?? j['upcoming_sessions'] as List? ?? [])
-              .map((e) => ScheduleSession.fromJson(e as Map<String, dynamic>))
-              .toList(),
+      (j['schedule'] as List? ?? j['upcoming_sessions'] as List? ?? [])
+          .map((e) => ScheduleSession.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 }

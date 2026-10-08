@@ -356,10 +356,11 @@ class _ControlsWidgetState extends State<ControlsWidget>
         // ── Speakerphone (mobile) ─────────────────────────────────────────
         if (!kIsWeb && lkPlatformIsMobile())
           _CtrlButton(
+            key: const ValueKey('live_room.speaker'),
             icon: _speakerphoneOn
                 ? Icons.speaker_phone_rounded
                 : Icons.phone_android_rounded,
-            label: _speakerphoneOn ? 'Speaker' : 'Earpiece',
+            label: _speakerphoneOn ? 'lr_speaker'.tr : 'lr_earpiece'.tr,
             color: _speakerphoneOn ? _cyan : _textLow,
             onTap: _setSpeakerphoneOn,
           ),
@@ -376,7 +377,7 @@ class _ControlsWidgetState extends State<ControlsWidget>
                 : isSharing
                 ? Icons.desktop_access_disabled_outlined
                 : Icons.monitor_outlined,
-            label: isSharing ? 'Stop Share' : 'Share',
+            label: isSharing ? 'lr_stop_share'.tr : 'lr_share'.tr,
             color: isSharing ? _rose : _textLow,
             loading: _screenShareBusy,
             onTap: _screenShareBusy ? null : _onScreenShareToggle,
@@ -413,20 +414,20 @@ class _ControlsWidgetState extends State<ControlsWidget>
 
     if (_recActionBusy) {
       icon  = Icons.hourglass_top_rounded;
-      label = isPaused ? 'Resuming…' : 'Pausing…';
+      label = isPaused ? 'lr_resuming'.tr : 'lr_pausing'.tr;
       color = _textLow;
     } else if (isPaused) {
       icon  = Icons.play_circle_outline_rounded;
-      label = 'Resume';
+      label = 'lr_resume'.tr;
       color = _emerald;
     } else if (state == RecState.recording) {
       icon  = Icons.pause_circle_outline_rounded;
-      label = 'Pause';
+      label = 'lr_pause'.tr;
       color = _amber;
     } else {
       // idle / starting / uploading / done / error / null — show disabled
       icon  = Icons.pause_circle_outline_rounded;
-      label = 'Pause';
+      label = 'lr_pause'.tr;
       color = _textLow;
     }
 
@@ -436,6 +437,7 @@ class _ControlsWidgetState extends State<ControlsWidget>
         : null;
 
     return _CtrlButton(
+      key: const ValueKey('live_room.pause_recording'),
       icon:    _recActionBusy ? null : icon,
       label:   label,
       color:   color,
@@ -448,20 +450,22 @@ class _ControlsWidgetState extends State<ControlsWidget>
   Widget _buildMicButton(bool isMicOn) {
     if (lkPlatformIs(PlatformType.android)) {
       return _CtrlButton(
+        key: const ValueKey('live_room.mic'),
         icon: isMicOn ? Icons.mic_rounded : Icons.mic_off_rounded,
-        label: isMicOn ? 'Mute' : 'Unmute',
+        label: isMicOn ? 'lr_mute'.tr : 'lr_unmute'.tr,
         color: isMicOn ? _cyan : _rose,
         onTap: isMicOn ? _disableAudio : _enableAudio,
       );
     }
     return _PopupCtrlButton(
+      key: const ValueKey('live_room.mic'),
       icon: isMicOn ? Icons.mic_rounded : Icons.mic_off_rounded,
-      label: isMicOn ? 'Mute' : 'Unmute',
+      label: isMicOn ? 'lr_mute'.tr : 'lr_unmute'.tr,
       color: isMicOn ? _cyan : _rose,
       items: [
         _PopupItem(
           icon: isMicOn ? Icons.mic_off_rounded : Icons.mic_rounded,
-          label: isMicOn ? 'Mute microphone' : 'Unmute microphone',
+          label: isMicOn ? 'lr_mute_microphone'.tr : 'lr_unmute_microphone'.tr,
           onTap: isMicOn ? _disableAudio : _enableAudio,
         ),
         if (_audioInputs != null)
@@ -472,7 +476,7 @@ class _ControlsWidgetState extends State<ControlsWidget>
             iconColor: d.deviceId == widget.room.selectedAudioInputDeviceId
                 ? _cyan
                 : _textLow,
-            label: d.label.isNotEmpty ? d.label : 'Microphone',
+            label: d.label.isNotEmpty ? d.label : 'lr_microphone'.tr,
             onTap: () => _selectAudioInput(d),
           )),
       ],
@@ -487,12 +491,13 @@ class _ControlsWidgetState extends State<ControlsWidget>
   Widget _buildCamButton(bool isCamOn) {
     final busy = _camActionBusy;
     return _CtrlButton(
+      key: const ValueKey('live_room.camera'),
       icon: busy
           ? null
           : isCamOn
           ? Icons.videocam_rounded
           : Icons.videocam_off_rounded,
-      label: isCamOn ? 'Camera' : 'Cam Off',
+      label: isCamOn ? 'lr_camera'.tr : 'lr_cam_off'.tr,
       color: !_hasAnyCamera
           ? _textLow
           : isCamOn
@@ -510,12 +515,13 @@ class _ControlsWidgetState extends State<ControlsWidget>
     final busy = _camActionBusy;
     final isBack = position == CameraPosition.back;
     return _CtrlButton(
+      key: const ValueKey('live_room.flip_camera'),
       icon: busy
           ? null
           : isBack
           ? Icons.camera_front_rounded
           : Icons.camera_rear_rounded,
-      label: isBack ? 'Front' : 'Back',
+      label: isBack ? 'lr_front'.tr : 'lr_back'.tr,
       color: _textLow,
       loading: busy,
       onTap: busy ? null : _toggleFrontBack,
@@ -525,11 +531,12 @@ class _ControlsWidgetState extends State<ControlsWidget>
   // ── Audio output popup ────────────────────────────────────────────────────
   Widget _buildAudioOutputButton() {
     return _PopupCtrlButton(
+      key: const ValueKey('live_room.audio_output'),
       icon: Icons.volume_up_rounded,
-      label: 'Output',
+      label: 'lr_output'.tr,
       color: _textLow,
       items: [
-        const _PopupItem(icon: Icons.speaker_rounded, label: 'Select audio output'),
+        _PopupItem(icon: Icons.speaker_rounded, label: 'lr_select_audio_output'.tr),
         if (_audioOutputs != null)
           ..._audioOutputs!.map((d) => _PopupItem(
             icon: d.deviceId == widget.room.selectedAudioOutputDeviceId
@@ -538,7 +545,7 @@ class _ControlsWidgetState extends State<ControlsWidget>
             iconColor: d.deviceId == widget.room.selectedAudioOutputDeviceId
                 ? _cyan
                 : _textLow,
-            label: d.label.isNotEmpty ? d.label : 'Output',
+            label: d.label.isNotEmpty ? d.label : 'lr_output'.tr,
             onTap: () => _selectAudioOutput(d),
           )),
       ],
@@ -549,12 +556,12 @@ class _ControlsWidgetState extends State<ControlsWidget>
   Widget _buildMoreMenu() {
     return _PopupCtrlButton(
       icon: Icons.more_horiz_rounded,
-      label: 'More',
+      label: 'more'.tr,
       color: _textLow,
       items: [
-        _PopupItem(icon: Icons.message_rounded,    label: 'Send test data',       onTap: _onTapSendData),
-        _PopupItem(icon: Icons.settings_rounded,   label: 'Subscribe permission', onTap: _onTapUpdateSubscribePermission),
-        _PopupItem(icon: Icons.bug_report_rounded, label: 'Simulate scenario',    onTap: _onTapSimulateScenario),
+        _PopupItem(icon: Icons.message_rounded,    label: 'lr_send_test_data'.tr,       onTap: _onTapSendData),
+        _PopupItem(icon: Icons.settings_rounded,   label: 'lr_subscribe_permission'.tr, onTap: _onTapUpdateSubscribePermission),
+        _PopupItem(icon: Icons.bug_report_rounded, label: 'lr_simulate_scenario'.tr,    onTap: _onTapSimulateScenario),
       ],
     );
   }
@@ -581,7 +588,7 @@ class _ControlsWidgetState extends State<ControlsWidget>
             child: const Icon(Icons.call_end_rounded, color: _rose, size: 24),
           ),
           const SizedBox(height: 5),
-          Text('End',
+          Text('lr_end'.tr,
               style: TextStyle(
                   fontSize: 10, color: _rose, fontWeight: FontWeight.w700)),
         ]),
@@ -595,6 +602,7 @@ class _ControlsWidgetState extends State<ControlsWidget>
 // ─────────────────────────────────────────────────────────────────────────────
 class _CtrlButton extends StatelessWidget {
   const _CtrlButton({
+    super.key,
     required this.icon,
     required this.label,
     required this.color,
@@ -673,6 +681,7 @@ class _PopupItem {
 
 class _PopupCtrlButton extends StatelessWidget {
   const _PopupCtrlButton({
+    super.key,
     required this.icon,
     required this.label,
     required this.color,

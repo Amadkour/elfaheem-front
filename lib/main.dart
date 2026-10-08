@@ -18,6 +18,7 @@ import 'package:flutter_education_app/utils/top_route_observer.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/utils/widget/deep_link_service.dart';
+import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:provider/provider.dart';
 import 'package:responsive_framework/responsive_framework.dart';
@@ -75,10 +76,27 @@ Future<void> _initCore() async {
   timeago.setLocaleMessages('ar', timeago.ArShortMessages());
   timeago.setLocaleMessages('en', timeago.EnShortMessages());
 
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await _safe('firebase', () =>
+      Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform));
+  await _safe('remoteConfig', () => RemoteConfigService.instance.init());
 
-  await RemoteConfigService.instance.init();
-  await NotificationService.instance.init();
+  // Safari (non-PWA) has no push support, so on web don't block startup on it.
+  if (kIsWeb) {
+    _safe('notifications', () => NotificationService.instance.init());
+  } else {
+    await _safe('notifications', () => NotificationService.instance.init());
+  }
+}
+
+/// Runs an init step with a timeout; failures are logged, never fatal.
+Future<T?> _safe<T>(String name, Future<T> Function() fn,
+    {int seconds = 6}) async {
+  try {
+    return await fn().timeout(Duration(seconds: seconds));
+  } catch (e) {
+    debugPrint('[init:$name] $e');
+    return null;
+  }
 }
 
 // ── Crashlytics (mobile only) ────────────────────────────────────────────────
@@ -125,10 +143,16 @@ class ElFaheemApp extends StatefulWidget {
 class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
   @override
   void initState() {
+    super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    ViewAsBanner.onExit = () => navigatorKey.currentState
-        ?.pushNamedAndRemoveUntil('/admin_dashboard', (r) => false);
+    ViewAsBanner.onExit = () {
+      // /auth/me returned the VIEWED user while view-as was on → put the admin's own profile back first,
+      // otherwise the admin dashboard answers "admins only".
+      context.read<AuthProvider>().restoreOwnUser();
+      navigatorKey.currentState
+          ?.pushNamedAndRemoveUntil('/admin_dashboard', (r) => false);
+    };
 
     // NOTE: load() must NOT be called synchronously here. ThemeConfigProvider
     // .load() calls notifyListeners() before its first await, and calling
@@ -142,7 +166,6 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
       // ── Version check – blocks launch if a force-update is required ──────────
       await VersionCheckService.instance.checkOnStartup();
     });
-    super.initState();
   }
 
   @override
@@ -154,7 +177,8 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
   @override
   void didChangeAppLifecycleState(AppLifecycleState s) {
     if (s == AppLifecycleState.resumed &&
-        context.read<AuthProvider>().isAuthenticated) {
+        context.read<AuthProvider>().isAuthenticated &&
+        !ViewAsState.active) {   // never pop the VIEWED user's admin dialogs while an admin is looking around
       AdminMessageDialogs.checkPending();
     }
   }
@@ -166,7 +190,10 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
     // Block on the theme response before rendering the real app so every
     // screen paints with the correct palette from the very first frame.
     if (tc.isLoading) {
-      return const _PremiumLoadingScreen();
+      return ThemeConfigScope(
+        provider: tc,
+        child: const _PremiumLoadingScreen(),
+      );
     }
 
     final auth = context.read<AuthProvider>();
@@ -208,15 +235,19 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          builder: (_, child) => ResponsiveBreakpoints.builder(
-            breakpoints: [
-              const Breakpoint(start: 0, end: 450, name: MOBILE),
-              const Breakpoint(start: 451, end: 800, name: TABLET),
-              const Breakpoint(start: 801, end: 1920, name: DESKTOP),
-              const Breakpoint(start: 1921, end: double.infinity, name: '4K'),
-            ],
-            useShortestSide: true,
-            child: child!,
+          // ViewAsBanner shows the "View only: <name> · Back to admin" bar above EVERY screen while a
+          // super-admin is in view-as mode (it renders nothing otherwise).
+          builder: (_, child) => ViewAsBanner(
+            child: ResponsiveBreakpoints.builder(
+              breakpoints: [
+                const Breakpoint(start: 0, end: 450, name: MOBILE),
+                const Breakpoint(start: 451, end: 800, name: TABLET),
+                const Breakpoint(start: 801, end: 1920, name: DESKTOP),
+                const Breakpoint(start: 1921, end: double.infinity, name: '4K'),
+              ],
+              useShortestSide: true,
+              child: child!,
+            ),
           ),
           supportedLocales: context
               .read<LangProvider>()
@@ -243,7 +274,10 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
       case '/register':
         return _fade(const RegisterScreen(), settings);
       case '/otp':
-        final args = settings.arguments as List;
+        final args = settings.arguments;
+        if (args is! List || args.length < 2) {
+          return _fade(const LoginScreen(), const RouteSettings(name: '/login'));
+        }
         return _fade(
           OtpVerificationScreen(
             email: args[0] as String,
@@ -264,7 +298,11 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
       case '/subscription':
         return _fade(const _Guard(child: SubscriptionScreen()), settings);
       case '/course-detail':
-        final course = settings.arguments as CourseModel;
+        final course = settings.arguments;
+        if (course is! CourseModel) {
+          // opened by URL / page refresh → there is no CourseModel to show
+          return _fade(const _Guard(child: _RedirectHome()), settings);
+        }
         return _fade(
           _Guard(child: CourseDetailScreen(course: course)),
           settings,
@@ -300,14 +338,22 @@ class _PremiumLoadingScreen extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(brightness: Brightness.light, fontFamily: 'tajawal'),
-      home: Scaffold(
-        backgroundColor: context.colors.background,
-        // AppLoadingIndicator already shows the branded logo (with its own
-        // built-in fallback if the asset fails to load), so it replaces the
-        // separate Image.asset + CircularProgressIndicator that used to sit
-        // here — one branded widget doing both jobs.
-        body: const Center(child: AppLoadingIndicator(size: 140)),
-      ),
+      home: const _SplashBody(),
+    );
+  }
+}
+
+/// Built below the MaterialApp (and the ThemeConfigScope above it), so
+/// context.colors can resolve here.
+class _SplashBody extends StatelessWidget {
+  const _SplashBody();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: context.colors.background,
+      // AppLoadingIndicator shows the branded logo with its own fallback.
+      body: const Center(child: AppLoadingIndicator(size: 140)),
     );
   }
 }
@@ -331,11 +377,37 @@ class _GuardState extends State<_Guard> {
         return;
       }
       DeepLinkService.instance.consumePending();     // link opened while logged out
-      AdminMessageDialogs.checkPending();            // dialogs sent by admins
+      if (!ViewAsState.active) {
+        AdminMessageDialogs.checkPending();          // dialogs sent by admins
+      }
+      // a push tapped while the app was closed / logged out → open its target now
+      NotificationService.instance.consumePendingPush();
     });
   }
   @override Widget build(BuildContext context) =>
       context.read<AuthProvider>().isAuthenticated ? widget.child : const SizedBox.shrink();
+}
+
+/// Sends the user to their own home screen (used when a route has no usable arguments).
+class _RedirectHome extends StatefulWidget {
+  const _RedirectHome();
+  @override
+  State<_RedirectHome> createState() => _RedirectHomeState();
+}
+
+class _RedirectHomeState extends State<_RedirectHome> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.of(context)
+          .pushReplacementNamed(context.read<AuthProvider>().homeRoute);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -71,9 +71,9 @@ class CourseFormState {
 
   bool get isEmpty =>
       schedules.isEmpty &&
-      certificates.isEmpty &&
-      tools.isEmpty &&
-      prerequisites.isEmpty;
+          certificates.isEmpty &&
+          tools.isEmpty &&
+          prerequisites.isEmpty;
 }
 
 class CourseFormProvider extends BaseProvider {
@@ -158,10 +158,10 @@ class CourseFormProvider extends BaseProvider {
           .where((c) => c['id'] != excludeCourseId)
           .map(
             (c) => {
-              'id': c['id'],
-              'text': (c['name'] ?? c['title'] ?? '').toString(),
-            },
-          )
+          'id': c['id'],
+          'text': (c['name'] ?? c['title'] ?? '').toString(),
+        },
+      )
           .toList();
     } else {
       otherCourses = [];
@@ -225,7 +225,7 @@ class CourseFormProvider extends BaseProvider {
     );
     selectedSpecialization = null;
     selectedTeachingType = teachingTypes.firstWhere(
-      (t) => t['text'] == course.type.toString().split('.').last.toLowerCase(),
+          (t) => t['text'] == course.type.toString().split('.').last.toLowerCase(),
       orElse: () => teachingTypes[1],
     );
     selectedCurrency = course.currency;
@@ -253,12 +253,12 @@ class CourseFormProvider extends BaseProvider {
   void _restoreSpecialization(TeacherCourse course) {
     try {
       selectedSpecialization = specializations.firstWhere(
-        (s) =>
-            s['text'] ==
+            (s) =>
+        s['text'] ==
             (
-              AppConfig.lang == 'ar'
-                  ? course.category!.nameAr
-                  : course.category!.nameEn,
+            AppConfig.lang == 'ar'
+                ? course.category!.nameAr
+                : course.category!.nameEn,
             ),
       );
     } catch (_) {
@@ -281,7 +281,7 @@ class CourseFormProvider extends BaseProvider {
   void onChangeTeachingType(String type, ExpansibleController ctrl) {
     ctrl.collapse();
     selectedTeachingType = teachingTypes.firstWhere(
-      (item) => item['text'] == type,
+          (item) => item['text'] == type,
     );
     _listsChanged = true;
     notifyListeners();
@@ -361,7 +361,9 @@ class CourseFormProvider extends BaseProvider {
     required String descriptionAr,
     required String descriptionEn,
     required String type, // live | recorded | both
-    double fees = 0,
+    double fees = 0, // YEARLY price
+    double? priceMonthly, // optional plans (null = not offered)
+    double? priceSixMonths,
     double? totalHours,
     XFile? logoFile,
     double? discountPercentage,
@@ -373,30 +375,32 @@ class CourseFormProvider extends BaseProvider {
     bool publish = false,
   }) async {
     final result = await run(
-      () => _api.post(
+          () => _api.post(
         '/api/v1/courses',
         body: {
-          if (titleAr.trim().isNotEmpty) 'name_ar': titleAr.trim(),
-          if (titleEn.trim().isNotEmpty) 'name_en': titleEn.trim(),
-          if (descriptionAr.trim().isNotEmpty)
-            'description_ar': descriptionAr.trim(),
-          if (descriptionEn.trim().isNotEmpty)
-            'description_en': descriptionEn.trim(),
-          'type': type,
-          'is_private': isPrivate,
-          if (isPrivate && (accessCode ?? '').trim().isNotEmpty)
-            'access_code': accessCode!.trim(),
-          'fees': fees,
-          'currency': selectedCurrency.code,
-          if (selectedSpecialization?['id'] != null)
-            'category_id': selectedSpecialization!['id'],
-          'hours': ?totalHours,
-          'next_course_ids': selectedNextCourses.map((c) => c['id']).toList(),
-          'recommended_course_ids': selectedRecommendedCourseIds.toList(),
-          if (discountPercentage != null)
-            'discount_percentage': discountPercentage,
-          if (discountDays != null) 'discount_days': discountDays,
-        },
+      if (titleAr.trim().isNotEmpty) 'name_ar': titleAr.trim(),
+      if (titleEn.trim().isNotEmpty) 'name_en': titleEn.trim(),
+      if (descriptionAr.trim().isNotEmpty)
+      'description_ar': descriptionAr.trim(),
+      if (descriptionEn.trim().isNotEmpty)
+      'description_en': descriptionEn.trim(),
+      'type': type,
+      'is_private': isPrivate,
+      if (isPrivate && (accessCode ?? '').trim().isNotEmpty)
+      'access_code': accessCode!.trim(),
+      'fees': fees,
+      if (priceMonthly != null) 'price_monthly': priceMonthly,
+      if (priceSixMonths != null) 'price_six_months': priceSixMonths,
+      'currency': selectedCurrency.code,
+      if (selectedSpecialization?['id'] != null)
+      'category_id': selectedSpecialization!['id'],
+      'hours': ?totalHours,
+      'next_course_ids': selectedNextCourses.map((c) => c['id']).toList(),
+      'recommended_course_ids': selectedRecommendedCourseIds.toList(),
+      if (discountPercentage != null)
+      'discount_percentage': discountPercentage,
+      if (discountDays != null) 'discount_days': discountDays,
+      },
       ),
     );
 
@@ -412,7 +416,7 @@ class CourseFormProvider extends BaseProvider {
     // Step 3: publish immediately if requested (otherwise stays a draft)
     if (publish) {
       final pubResult = await run(
-        () => _api.post('/api/v1/courses/${created.id}/publish'),
+            () => _api.post('/api/v1/courses/${created.id}/publish'),
       );
       if (pubResult != null) created = created.copyWith(isPublished: true);
     }
@@ -453,47 +457,51 @@ class CourseFormProvider extends BaseProvider {
   // ─────────────────────────────────────────────────────────────────────────
 
   Future<TeacherCourse?> submitUpdate(
-    TeacherCourse original, {
-    required String titleAr,
-    required String titleEn,
-    required String descriptionAr,
-    required String descriptionEn,
-    required String type,
-    bool isPrivate = false,
-    String? accessCode,
-    double? fees,
-    double? totalHours,
-    XFile? logoFile,
-    double? discountPercentage,
-    bool clearDiscount = false,
-    int? discountDays,
-  }) async {
+      TeacherCourse original, {
+        required String titleAr,
+        required String titleEn,
+        required String descriptionAr,
+        required String descriptionEn,
+        required String type,
+        bool isPrivate = false,
+        String? accessCode,
+        double? fees, // YEARLY price
+        double? priceMonthly, // always sent: null = stop offering the plan
+        double? priceSixMonths,
+        double? totalHours,
+        XFile? logoFile,
+        double? discountPercentage,
+        bool clearDiscount = false,
+        int? discountDays,
+      }) async {
     final patchResult = await run(
-      () => _api.put(
+          () => _api.put(
         '/api/v1/courses/${original.id}',
         body: {
-          // always sent, so emptying one language really clears it
-          'name_ar': titleAr.trim(),
-          'name_en': titleEn.trim(),
-          'description_ar': descriptionAr.trim(),
-          'description_en': descriptionEn.trim(),
-          'type': type,
-          'is_private': isPrivate,
-          if (isPrivate && (accessCode ?? '').trim().isNotEmpty)
-            'access_code': accessCode!.trim(),
-          'fees': ?fees,
-          'currency': selectedCurrency.code,
-          if (selectedSpecialization?['id'] != null)
-            'category_id': selectedSpecialization!['id'],
-          'total_hours': ?totalHours,
-          'next_course_ids': selectedNextCourses.map((c) => c['id']).toList(),
-          'recommended_course_ids': selectedRecommendedCourseIds.toList(),
-          if (clearDiscount)
-            'discount_percentage': null
-          else if (discountPercentage != null)
-            'discount_percentage': discountPercentage,
-          if (discountDays != null) 'discount_days': discountDays,
-        },
+      // always sent, so emptying one language really clears it
+      'name_ar': titleAr.trim(),
+      'name_en': titleEn.trim(),
+      'description_ar': descriptionAr.trim(),
+      'description_en': descriptionEn.trim(),
+      'type': type,
+      'is_private': isPrivate,
+      if (isPrivate && (accessCode ?? '').trim().isNotEmpty)
+      'access_code': accessCode!.trim(),
+      'fees': ?fees,
+      'price_monthly': priceMonthly,
+      'price_six_months': priceSixMonths,
+      'currency': selectedCurrency.code,
+      if (selectedSpecialization?['id'] != null)
+      'category_id': selectedSpecialization!['id'],
+      'total_hours': ?totalHours,
+      'next_course_ids': selectedNextCourses.map((c) => c['id']).toList(),
+      'recommended_course_ids': selectedRecommendedCourseIds.toList(),
+      if (clearDiscount)
+      'discount_percentage': null
+      else if (discountPercentage != null)
+      'discount_percentage': discountPercentage,
+      if (discountDays != null) 'discount_days': discountDays,
+      },
       ),
     );
 
@@ -550,7 +558,7 @@ class CourseFormProvider extends BaseProvider {
 
     final refreshed =
         await _fetchCourseDetail(original.id) ??
-        TeacherCourse.fromJson(patchResult);
+            TeacherCourse.fromJson(patchResult);
     _pendingSchedules = [];
     return refreshed;
   }
@@ -562,7 +570,7 @@ class CourseFormProvider extends BaseProvider {
 
   Future<TeacherCourse?> updateStatus(int courseId, CourseStatus status) async {
     final result = await run(
-      () => _api.put(
+          () => _api.put(
         '/api/v1/courses/$courseId/status',
         body: {'status': status.apiValue},
       ),
@@ -582,9 +590,9 @@ class CourseFormProvider extends BaseProvider {
   }
 
   Future<TeacherCourse?> _uploadImage(
-    XFile logoFile, {
-    required int courseId,
-  }) async {
+      XFile logoFile, {
+        required int courseId,
+      }) async {
     try {
       final ext = p
           .extension(logoFile.path)
@@ -629,12 +637,12 @@ class CourseFormProvider extends BaseProvider {
   /// never block course creation from succeeding (the teacher can always
   /// add/fix the certificate afterward from the certificate manager).
   Future<void> _createCertificateWithTemplate(
-    int courseId,
-    String title,
-    XFile file,
-  ) async {
+      int courseId,
+      String title,
+      XFile file,
+      ) async {
     final certResult = await run(
-      () => _api.post(
+          () => _api.post(
         '/api/v1/courses/$courseId/certificates',
         body: {'title': title},
       ),
@@ -659,7 +667,7 @@ class CourseFormProvider extends BaseProvider {
     int? certId = existingCertificateId;
     if (certId == null) {
       final certResult = await run(
-        () => _api.post(
+            () => _api.post(
           '/api/v1/courses/$courseId/certificates',
           body: {'title': title},
         ),
@@ -672,9 +680,9 @@ class CourseFormProvider extends BaseProvider {
   }
 
   Future<String?> _uploadCertificateTemplateBytes(
-    int certId,
-    XFile file,
-  ) async {
+      int certId,
+      XFile file,
+      ) async {
     try {
       final ext = p.extension(file.path).replaceFirst('.', '').toLowerCase();
       final mimeType = switch (ext) {
@@ -714,12 +722,12 @@ class CourseFormProvider extends BaseProvider {
   }
 
   Future<void> _addSchedule(
-    int courseId, {
-    required String day,
-    required String startTime,
-    required String endTime,
-  }) => run(
-    () => _api.post(
+      int courseId, {
+        required String day,
+        required String startTime,
+        required String endTime,
+      }) => run(
+        () => _api.post(
       '/api/v1/courses/$courseId/schedules',
       body: {'day': day, 'start_time': startTime, 'end_time': endTime},
     ),
@@ -729,7 +737,7 @@ class CourseFormProvider extends BaseProvider {
       run(() => _api.delete('/api/v1/schedules/$scheduleId'));
 
   Future<void> _addCertificate(int courseId, {required String title}) => run(
-    () => _api.post(
+        () => _api.post(
       '/api/v1/courses/$courseId/certificates',
       body: {'title': title},
     ),
@@ -739,14 +747,14 @@ class CourseFormProvider extends BaseProvider {
       run(() => _api.delete('/api/v1/certificates/$certId'));
 
   Future<void> _addTool(int courseId, {required String name}) => run(
-    () => _api.post('/api/v1/courses/$courseId/tools', body: {'title': name}),
+        () => _api.post('/api/v1/courses/$courseId/tools', body: {'title': name}),
   );
 
   Future<void> _removeTool(int toolId) =>
       run(() => _api.delete('/api/v1/tools/$toolId'));
 
   Future<void> _addPrerequisite(int courseId, {required String title}) => run(
-    () => _api.post(
+        () => _api.post(
       '/api/v1/courses/$courseId/prerequisites',
       body: {'title': title},
     ),

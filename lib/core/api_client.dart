@@ -229,6 +229,8 @@ class ApiException implements Exception {
     // A plain 403 (no machine code) always gets the friendly message.
     final message = type == ApiErrorType.server
         ? ApiMessages.server
+        : (type == ApiErrorType.forbidden && ViewAsState.active)
+        ? translate('admin_view_as_readonly') // every write is refused by the server in view-as: say so clearly
         : (type == ApiErrorType.forbidden && code == null)
         ? ApiMessages.forbidden
         : (serverMsg ?? _defaultMessage(type));
@@ -1039,6 +1041,7 @@ class ApiClient {
     _redirecting = true;
 
     try {
+      ViewAsState.instance.stop(); // session is dead → leave view-as too
       await _storage.clear();
 
       if (AppConfig.testMode) log('redirect to login', name: 'API');

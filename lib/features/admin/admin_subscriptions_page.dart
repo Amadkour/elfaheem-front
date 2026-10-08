@@ -11,7 +11,9 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../utils/widget/app_bar.dart';
 import '../../utils/widget/base_page.dart';
+import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
+import 'admin_labels.dart';
 import 'admin_list.dart';
 import 'admin_models.dart';
 import 'admin_providers.dart';
@@ -21,9 +23,9 @@ class AdminSubscriptionsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ChangeNotifierProvider(
-        create: (_) => AdminSubscriptionsProvider()..loadAll(),
-        child: const _View(),
-      );
+    create: (_) => AdminSubscriptionsProvider()..loadAll(),
+    child: const _View(),
+  );
 }
 
 class _View extends StatelessWidget {
@@ -45,34 +47,34 @@ class _View extends StatelessWidget {
             side: BorderSide(color: p.required ? c.primary : c.divider, width: p.required ? 1.5 : 1),
           ),
           child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(children: [
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text('admin_subscription_required'.tr,
-                  style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
-              subtitle: Text(
-                p.required
-                    ? 'admin_students_without_an_active'.tr
-                    : 'admin_default_the_app_is_free_for_every'.tr,
-                style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight),
+            padding: const EdgeInsets.all(14),
+            child: Column(children: [
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text('admin_subscription_required'.tr,
+                    style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
+                subtitle: Text(
+                  p.required
+                      ? 'admin_students_without_an_active'.tr
+                      : 'admin_default_the_app_is_free_for_every'.tr,
+                  style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight),
+                ),
+                value: p.required,
+                activeTrackColor: c.primary,
+                onChanged: !p.settingsLoaded
+                    ? null
+                    : (v) async {
+                  final ok = await confirm(context,
+                      message: v
+                          ? 'admin_require_subscriptions_unsubscribed'.tr
+                          : 'admin_make_the_app_free_for_everyone'.tr,
+                      danger: v);
+                  if (ok) await p.setRequired(v);
+                },
               ),
-              value: p.required,
-              activeTrackColor: c.primary,
-              onChanged: !p.settingsLoaded
-                  ? null
-                  : (v) async {
-                      final ok = await confirm(context,
-                          message: v
-                              ? 'admin_require_subscriptions_unsubscribed'.tr
-                              : 'admin_make_the_app_free_for_everyone'.tr,
-                          danger: v);
-                      if (ok) await p.setRequired(v);
-                    },
-            ),
-            const Divider(),
-            for (final plan in p.plans) _PlanRow(plan: plan),
-          ]),
+              const Divider(),
+              for (final plan in p.plans) _PlanRow(plan: plan),
+            ]),
           ),
         ),
       ),
@@ -99,10 +101,10 @@ class _View extends StatelessWidget {
       appBar: ScreenAppBar(title: 'subscriptions'.tr),
       child:
       PagedList<AdminSubscriptionsProvider>(
-          header: header,
-          emptyText: 'admin_no_subscription_requests'.tr,
-          itemBuilder: (ctx, row) => _SubTile(SubInfo(row)),
-        ),
+        header: header,
+        emptyText: 'admin_no_subscription_requests'.tr,
+        itemBuilder: (ctx, row) => _SubTile(SubInfo(row)),
+      ),
     );
   }
 }
@@ -165,7 +167,7 @@ Future<void> _editPlan(BuildContext context, AdminSubscriptionsProvider p, Plan 
               Field(controller: days, label: 'admin_duration_days'.tr, keyboard: TextInputType.number),
               PrimaryButton(
                 label: 'save'.tr,
-                busy: busy,
+                isLoading: busy,
                 onPressed: () async {
                   final pr = price.text.trim().isEmpty ? 0.0 : double.tryParse(price.text.trim());
                   final d = int.tryParse(days.text.trim());
@@ -190,10 +192,7 @@ Future<void> _editPlan(BuildContext context, AdminSubscriptionsProvider p, Plan 
         ),
       ]);
     });
-  }).whenComplete(() {
-    price.dispose();
-    days.dispose();
-  });
+  }).whenComplete(() => disposeAfterRoute([price, days]));
 }
 
 class _SubTile extends StatelessWidget {
@@ -226,14 +225,14 @@ class _SubTile extends StatelessWidget {
             child: Text(s.studentName,
                 style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
           ),
-          StatusChip(s.status, _color(context)),
+          StatusChip(subscriptionStatusLabel(s.status), _color(context)),
         ]),
         Text(s.studentGmail,
             textDirection: TextDirection.ltr,
             style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight)),
         const SizedBox(height: 8),
-        KeyValue('admin_plan'.tr, '${s.planCode} • ${money(s.amount, s.currency)}'),
-        KeyValue('admin_method'.tr, s.grantedByAdmin ? 'admin_admin_grant'.tr : (s.paymentMethod ?? '—')),
+        KeyValue('admin_plan'.tr, '${planLabel(s.planCode)} • ${money(s.amount, s.currency)}'),
+        KeyValue('admin_method'.tr, s.grantedByAdmin ? 'admin_admin_grant'.tr : paymentMethodLabel(s.paymentMethod)),
         if (s.senderName != null) KeyValue('admin_sender'.tr, '${s.senderName} ${s.senderPhone ?? ''}'),
         if (s.transferReference != null) KeyValue('admin_reference_2'.tr, s.transferReference!),
         if (s.endsAt != null) KeyValue('admin_ends'.tr, shortDate(s.endsAt)),

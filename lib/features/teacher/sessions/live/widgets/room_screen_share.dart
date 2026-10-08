@@ -27,11 +27,13 @@
 //   Unpublish the ElFaheem track directly. Local recording was never
 //   paused, so nothing needs re-confirming — it just keeps running.
 
+import 'package:flutter_education_app/config/app_config.dart';
 import 'dart:async';
 import 'dart:developer';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../../admin/admin_common.dart';
 import 'recorder_web_stub.dart'
 if (dart.library.html) 'recorder_web_impl.dart' as web_rec;
 import 'package:livekit_client/livekit_client.dart';
@@ -191,7 +193,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
           ).invokeMethod<bool>('startScreenCaptureService');
           if (granted != true) {
             log('[SS] Android: MediaProjection grant denied — aborting share');
-            showSnack('Screen sharing permission was denied.');
+            showSnack('lr_screen_share_denied'.tr);
             return;
           }
           // upgradeToScreenRecording() here no longer sends any native
@@ -245,7 +247,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
         }
       } catch (e) {
         log('[SS] Android start error: $e');
-        showSnack('Screen sharing failed: $e');
+        showSnack(trp('lr_screen_share_failed', {'e': '$e'}));
       }
     } else {
       // ── STOP screen share ─────────────────────────────────────────────────
@@ -376,7 +378,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
         log('[SS] Web: screen share active (single capture)');
       } catch (e) {
         log('[SS] Web start error: $e');
-        showSnack('Screen share failed: $e');
+        showSnack(trp('lr_screen_share_failed', {'e': '$e'}));
       }
     } else {
       try {
@@ -562,7 +564,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
           recorder?.onBroadcastEvent = null;
         }
         _isBroadcastActive = false;
-        showSnack('فشل بدء المشاركة: $e');
+        showSnack(trp('lr_screen_share_failed', {'e': '$e'}));
       }
 
     } else {
@@ -654,7 +656,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
       }
     } catch (e) {
       log('[SS] Desktop error: $e');
-      showSnack('Screen share failed: $e');
+      showSnack(trp('lr_screen_share_failed', {'e': '$e'}));
     }
   }
 
@@ -733,26 +735,26 @@ class _RecordingStatusBannerState extends State<RecordingStatusBanner>
       shadowColor = const Color(0xFFFFB800).withValues(alpha: 0.12);
       iconColor   = const Color(0xFFFFB800);
       icon        = Icons.pause_circle_outline;
-      title       = 'Recording — Paused';
-      subtitle    = 'Tap Resume to continue recording';
+      title       = 'lr_rec_paused_title'.tr;
+      subtitle    = 'lr_rec_paused_sub'.tr;
     } else if (widget.isScreenRecording) {
       dotColor    = const Color(0xFF22C55E);
       borderColor = const Color(0xFF22C55E).withValues(alpha: 0.45);
       shadowColor = const Color(0xFF22C55E).withValues(alpha: 0.12);
       iconColor   = const Color(0xFF22C55E);
       icon        = Icons.videocam;
-      title       = 'Recording — Video + Audio';
+      title       = 'lr_rec_va_title'.tr;
       subtitle    = widget.isSharing
-          ? 'Capturing session with shared screen'
-          : 'Capturing session video and audio';
+          ? 'lr_rec_va_shared_sub'.tr
+          : 'lr_rec_va_sub'.tr;
     } else {
       dotColor    = const Color(0xFFF59E0B);
       borderColor = const Color(0xFFF59E0B).withValues(alpha: 0.45);
       shadowColor = const Color(0xFFF59E0B).withValues(alpha: 0.12);
       iconColor   = const Color(0xFFF59E0B);
       icon        = Icons.mic;
-      title       = 'Recording — Audio Only';
-      subtitle    = 'Starting recorder…';
+      title       = 'lr_rec_audio_title'.tr;
+      subtitle    = 'lr_rec_audio_sub'.tr;
     }
 
     return Container(

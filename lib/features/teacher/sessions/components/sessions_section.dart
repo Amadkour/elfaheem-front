@@ -22,11 +22,11 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 /// [SliverList] + header that lives inside the parent [CustomScrollView].
 /// Returns a list of slivers so the parent can simply spread them.
 List<Widget> buildSessionsSlivers(
-  BuildContext context, {
-  required TeacherCourse course,
-  required VoidCallback onAdd,
-  required TeacherCourseScreenProvider provider,
-}) {
+    BuildContext context, {
+      required TeacherCourse course,
+      required VoidCallback onAdd,
+      required TeacherCourseScreenProvider provider,
+    }) {
   if (provider.loadingAllPage) {
     return [
       SliverToBoxAdapter(
@@ -40,18 +40,18 @@ List<Widget> buildSessionsSlivers(
 
   return [
     SliverToBoxAdapter(
-      child: _SectionHeader(onAdd: onAdd, sessionCount: provider.sessionCount),
+      child: _SectionHeader(key: const ValueKey('teacher_sessions.header'), onAdd: onAdd, sessionCount: provider.sessionCount),
     ),
     if (provider.sessions.isEmpty)
       SliverToBoxAdapter(
         child: provider.isLoading
             ? const _LoadingState()
-            : _EmptyState(onAdd: onAdd),
+            : _EmptyState(key: const ValueKey('teacher_sessions.empty'), onAdd: onAdd),
       ),
     if (provider.sessions.isNotEmpty)
       SliverPadding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
-        key: ValueKey("session_reorder_list"),
+        key: const ValueKey('teacher_sessions.list'),
         sliver: SliverToBoxAdapter(
           child: ReorderableListView.builder(
             shrinkWrap: true,
@@ -61,7 +61,7 @@ List<Widget> buildSessionsSlivers(
             onReorderItem: (oldIndex, newIndex) =>
                 provider.reorderSessions(oldIndex, newIndex),
             itemBuilder: (ctx, i) => KeyedSubtree(
-  key: ValueKey('session_${provider.sessions[i].id}'),
+              key: ValueKey('session_${provider.sessions[i].id}'),
               child: SessionMaterialCard(
                 session: provider.sessions[i],
                 sessionNumber: i + 1,
@@ -83,7 +83,7 @@ class _SectionHeader extends StatelessWidget {
   final VoidCallback onAdd;
   final int sessionCount;
 
-  const _SectionHeader({required this.onAdd, required this.sessionCount});
+  const _SectionHeader({super.key, required this.onAdd, required this.sessionCount});
 
   @override
   Widget build(BuildContext context) {
@@ -200,7 +200,7 @@ class _LoadingState extends StatelessWidget {
 class _EmptyState extends StatelessWidget {
   final VoidCallback onAdd;
 
-  const _EmptyState({required this.onAdd});
+  const _EmptyState({super.key, required this.onAdd});
 
   @override
   Widget build(BuildContext context) {

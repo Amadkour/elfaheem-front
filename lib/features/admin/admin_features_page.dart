@@ -1,5 +1,10 @@
 // lib/features/admin/admin_features_page.dart — hide / unhide app features per platform.
+// Features are grouped into classes (tabs) and shown 10 per page.
+// Super-admin: sees everything, can let admins manage a feature and can add new features.
+// Admin: the backend only sends the features that were granted to admins.
 library;
+
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -17,67 +22,371 @@ class AdminFeaturesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ChangeNotifierProvider(
-        create: (_) => AdminFeaturesProvider()..load(),
-        child: const _View(),
-      );
+    create: (_) => AdminFeaturesProvider()..load(),
+    child: const _View(),
+  );
 }
 
-class _View extends StatelessWidget {
+class _View extends StatefulWidget {
   const _View();
+
+  @override
+  State<_View> createState() => _ViewState();
+}
+
+class _ViewState extends State<_View> {
+  final _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  /// Runs a tab / page change, then scrolls back to the top of the list.
+  Future<void> _go(Future<void> Function() action) async {
+    await action();
+    if (_scroll.hasClients) _scroll.jumpTo(0);
+  }
 
   @override
   Widget build(BuildContext context) {
     final p = context.watch<AdminFeaturesProvider>();
     final c = context.colors;
+    final isAr = AppConfig.lang == 'ar';
 
+    final items = p.currentItems;
     Widget body;
-    if (p.items.isEmpty && p.isLoading) {
+    if (p.tabs.isEmpty && (p.isLoading || !p.loaded)) {
       body = const Center(child: CircularProgressIndicator());
-    } else if (p.items.isEmpty) {
-      body = ErrorRetry(message: p.error ?? 'admin_could_not_load_data'.tr, onRetry: p.load);
+    } else if (p.tabs.isEmpty) {
+      body = ErrorRetry(
+        message: p.error ?? 'admin_could_not_load_data'.tr,
+        onRetry: p.refresh,
+      );
     } else {
       body = RefreshIndicator(
-        onRefresh: p.load,
-        child: ListView(padding: const EdgeInsets.fromLTRB(14, 12, 14, 90), children: [
-          Text(
-            'admin_hide_a_feature_on_a_platform_the_app'.tr,
-            style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: c.textMedium),
-          ),
-          const SizedBox(height: 10),
-          for (final f in p.items) _FeatureRow(f, platforms: p.platforms),
-        ]),
+        onRefresh: p.refresh,
+        child: ListView(
+          controller: _scroll,
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 90),
+          children: [
+            if (p.isLoading)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: LinearProgressIndicator(minHeight: 2),
+              ),
+            if (p.tabs.isNotEmpty)
+              _TabsBar(
+                p: p,
+                onSelect: (i) {
+                  if (i != p.selectedTabIndex) _go(() => p.selectTab(i));
+                },
+              ),
+            if (p.tabs.isNotEmpty) const SizedBox(height: 12),
+            Text(
+              'admin_hide_a_feature_on_a_platform_the_app'.tr,
+              style: TextStyle(
+                fontFamily: 'tajawal',
+                fontSize: 12.5,
+                color: c.textMedium,
+              ),
+            ),
+            const SizedBox(height: 10),
+            if (items.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 40),
+                child: Center(
+                  child: Text(
+                    isAr ? 'لا توجد ميزات' : 'No features',
+                    style: TextStyle(
+                      fontFamily: 'tajawal',
+                      color: c.textMedium,
+                    ),
+                  ),
+                ),
+              ),
+            for (final f in items) _FeatureRow(f, platforms: p.platforms),
+            _Pager(p: p, onGo: (n) => _go(() => p.goToPage(n))),
+          ],
+        ),
       );
     }
 
     return BasePage(
-
       useWebCard: true,
       maxWith: 1100,
-      appBar: ScreenAppBar(title: 'app_feature'.tr),floatingActionButton: FloatingActionButton.extended(
-          backgroundColor: c.primary,
-          onPressed: () async {
-            final key = await askText(context,
-                title: 'admin_new_feature_key'.tr, hint: 'profile.delete_account');
-            if (key != null && key.isNotEmpty) await p.set(key, true);
-          },
-          icon: const Icon(Icons.add_rounded, color: Colors.white),
-          label: Text('admin_hide_custom_key'.tr, style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
+      appBar: ScreenAppBar(title: 'app_feature'.tr),
+      // adding features is a super-admin-only tool
+      floatingActionButton: p.canAddCustom
+          ? FloatingActionButton.extended(
+        backgroundColor: c.primary,
+        onPressed: () => showDialog<void>(
+          context: context,
+          builder: (_) => _AddFeatureDialog(provider: p),
         ),
-        child: body,
+        icon: const Icon(Icons.add_rounded, color: Colors.white),
+        label: Text(
+          isAr ? 'ميزة جديدة' : 'New feature',
+          style: const TextStyle(
+            fontFamily: 'tajawal',
+            color: Colors.white,
+          ),
+        ),
+      )
+          : null,
+      child: body,
     );
   }
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+//  Pager  (10 features per page)
+// ═════════════════════════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════════════════════
+//  Tabs bar: scrollable on web (arrows + scrollbar + mouse drag)
+// ═════════════════════════════════════════════════════════════════════════════
+
+class _TabsBar extends StatefulWidget {
+  const _TabsBar({required this.p, required this.onSelect});
+
+  final AdminFeaturesProvider p;
+  final void Function(int index) onSelect;
+
+  @override
+  State<_TabsBar> createState() => _TabsBarState();
+}
+
+class _TabsBarState extends State<_TabsBar> {
+  final _ctrl = ScrollController();
+  bool _canBack = false; // can scroll toward the start
+  bool _canForward = false; // can scroll toward the end
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl.addListener(_update);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _update());
+  }
+
+  @override
+  void didUpdateWidget(covariant _TabsBar old) {
+    super.didUpdateWidget(old);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _update());
+  }
+
+  @override
+  void dispose() {
+    _ctrl.removeListener(_update);
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _update() {
+    if (!mounted || !_ctrl.hasClients) return;
+    final pos = _ctrl.position;
+    final back = pos.pixels > 2;
+    final fwd = pos.pixels < pos.maxScrollExtent - 2;
+    if (back != _canBack || fwd != _canForward) {
+      setState(() {
+        _canBack = back;
+        _canForward = fwd;
+      });
+    }
+  }
+
+  void _scrollBy(double delta) {
+    if (!_ctrl.hasClients) return;
+    final target = (_ctrl.offset + delta).clamp(
+      0.0,
+      _ctrl.position.maxScrollExtent,
+    );
+    _ctrl.animateTo(
+      target,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
+  }
+
+  Widget _arrow(IconData icon, bool enabled, VoidCallback onTap) {
+    final c = context.colors;
+    return SizedBox(
+      width: 34,
+      child: enabled
+          ? IconButton(
+        padding: EdgeInsets.zero,
+        visualDensity: VisualDensity.compact,
+        style: IconButton.styleFrom(
+          backgroundColor: c.cardBg,
+          side: BorderSide(color: c.divider),
+        ),
+        icon: Icon(icon, size: 22, color: c.textMedium),
+        onPressed: onTap,
+      )
+          : null,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = widget.p;
+    final c = context.colors;
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+
+    final chips = Row(
+      children: [
+        for (int i = 0; i < p.tabs.length; i++)
+          Padding(
+            padding: const EdgeInsetsDirectional.only(end: 8),
+            child: ChoiceChip(
+              label: Text(
+                '${p.tabs[i].label(context)} (${p.tabs[i].count})',
+                style: TextStyle(
+                  fontFamily: 'tajawal',
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: i == p.selectedTabIndex ? Colors.white : c.textMedium,
+                ),
+              ),
+              selected: i == p.selectedTabIndex,
+              selectedColor: c.primary,
+              showCheckmark: false,
+              onSelected: (_) => widget.onSelect(i),
+            ),
+          ),
+      ],
+    );
+
+    return Row(
+      children: [
+        _arrow(
+          rtl ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+          _canBack,
+              () => _scrollBy(-220),
+        ),
+        Expanded(
+          child: NotificationListener<ScrollMetricsNotification>(
+            onNotification: (_) {
+              WidgetsBinding.instance.addPostFrameCallback((_) => _update());
+              return false;
+            },
+            child: ScrollConfiguration(
+              // allow dragging with the mouse / trackpad on web + desktop
+              behavior: ScrollConfiguration.of(context).copyWith(
+                scrollbars: false,
+                dragDevices: {
+                  PointerDeviceKind.touch,
+                  PointerDeviceKind.mouse,
+                  PointerDeviceKind.trackpad,
+                  PointerDeviceKind.stylus,
+                },
+              ),
+              child: Scrollbar(
+                controller: _ctrl,
+                thumbVisibility: true, // only drawn when content overflows
+                child: SingleChildScrollView(
+                  controller: _ctrl,
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: chips,
+                ),
+              ),
+            ),
+          ),
+        ),
+        _arrow(
+          rtl ? Icons.chevron_right_rounded : Icons.chevron_left_rounded,
+          _canForward,
+              () => _scrollBy(220),
+        ),
+      ],
+    );
+  }
+}
+
+class _Pager extends StatelessWidget {
+  const _Pager({required this.p, required this.onGo});
+
+  final AdminFeaturesProvider p;
+  final void Function(int page) onGo;
+
+  @override
+  Widget build(BuildContext context) {
+    if (p.pages <= 1) return const SizedBox.shrink();
+    final c = context.colors;
+    final isAr = AppConfig.lang == 'ar';
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    final idle = !p.isLoading;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          IconButton(
+            tooltip: isAr ? 'السابق' : 'Previous',
+            onPressed: p.hasPrev && idle ? () => onGo(p.page - 1) : null,
+            icon: Icon(
+              rtl ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+            ),
+          ),
+          Text(
+            isAr
+                ? 'صفحة ${p.page} من ${p.pages}  ·  ${p.total}'
+                : 'Page ${p.page} of ${p.pages}  ·  ${p.total}',
+            style: TextStyle(
+              fontFamily: 'tajawal',
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: c.textMedium,
+            ),
+          ),
+          IconButton(
+            tooltip: isAr ? 'التالي' : 'Next',
+            onPressed: p.hasNext && idle ? () => onGo(p.page + 1) : null,
+            icon: Icon(
+              rtl ? Icons.chevron_right_rounded : Icons.chevron_left_rounded,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  One feature
+// ═════════════════════════════════════════════════════════════════════════════
+
 class _FeatureRow extends StatelessWidget {
   const _FeatureRow(this.f, {required this.platforms});
+
   final FeatureItem f;
   final List<String> platforms;
+
+  static String _platformName(String p) {
+    switch (p.toLowerCase()) {
+      case 'ios':
+        return 'iOS';
+      case 'android':
+        return 'Android';
+      case 'web':
+        return 'Web';
+    }
+    return p;
+  }
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final p = context.read<AdminFeaturesProvider>();
-    final hidden = f.hiddenOn;
+    final busy = context.select<AdminFeaturesProvider, bool>((x) => x.isLoading);
+    final isAr = AppConfig.lang == 'ar';
+    final hiddenAnywhere = f.isHiddenAnywhere;
+    final allowed = f.allowToAdmin;
+    // second-language name, shown small under the main label
+    final other = isAr ? f.labelEn : f.labelAr;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -85,34 +394,390 @@ class _FeatureRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.cardBg,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: hidden.isEmpty ? c.divider : c.warning),
+        border: Border.all(color: hiddenAnywhere ? c.warning : c.divider),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(f.label, style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
-              Text(f.key, textDirection: TextDirection.ltr, style: TextStyle(fontSize: 11.5, color: c.textLight)),
-            ]),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      f.label,
+                      style: TextStyle(
+                        fontFamily: 'tajawal',
+                        fontWeight: FontWeight.w800,
+                        color: c.textDark,
+                      ),
+                    ),
+                    if (other.isNotEmpty && other != f.label && other != f.key)
+                      Text(
+                        other,
+                        style: TextStyle(
+                          fontFamily: 'tajawal',
+                          fontSize: 12,
+                          color: c.textMedium,
+                        ),
+                      ),
+                    Text(
+                      f.key,
+                      textDirection: TextDirection.ltr,
+                      style: TextStyle(fontSize: 11.5, color: c.textLight),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                // ON = visible everywhere, OFF = hidden on at least one platform
+                value: !hiddenAnywhere,
+                activeTrackColor: c.success,
+                onChanged: busy ? null : (visible) => p.set(f.key, !visible),
+              ),
+            ],
           ),
-          Switch(
-            // ON = visible everywhere, OFF = hidden on at least one platform
-            value: hidden.isEmpty,
-            activeTrackColor: c.success,
-            onChanged: (visible) => p.set(f.key, !visible),
+          Wrap(
+            spacing: 8,
+            children: [
+              for (final pl in platforms)
+                FilterChip(
+                  label: Text(
+                    _platformName(pl),
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  selected: f.isHiddenOn(pl),
+                  selectedColor: c.warning.withValues(alpha: 0.3),
+                  avatar: Icon(
+                    f.isHiddenOn(pl)
+                        ? Icons.visibility_off_rounded
+                        : Icons.visibility_rounded,
+                    size: 16,
+                  ),
+                  onSelected: busy
+                      ? null
+                      : (hide) => p.set(f.key, hide, platforms: [pl]),
+                ),
+            ],
           ),
-        ]),
-        Wrap(spacing: 8, children: [
-          for (final pl in platforms)
-            FilterChip(
-              label: Text(pl, style: const TextStyle(fontSize: 12)),
-              selected: hidden.contains(pl),
-              selectedColor: c.warning.withValues(alpha: 0.3),
-              avatar: Icon(hidden.contains(pl) ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 16),
-              onSelected: (s) => p.set(f.key, s, platforms: [pl]),
+          // Super-admin only: grant this feature to admins.
+          if (p.isSuperAdmin) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(
+                  Icons.admin_panel_settings_rounded,
+                  size: 16,
+                  color: allowed ? c.success : c.textLight,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    isAr ? 'يمكن للمدير التحكم بها' : 'Admins can manage this',
+                    style: TextStyle(
+                      fontFamily: 'tajawal',
+                      fontSize: 12,
+                      color: allowed ? c.success : c.textMedium,
+                    ),
+                  ),
+                ),
+                Switch(
+                  value: allowed,
+                  activeTrackColor: c.success,
+                  onChanged: busy ? null : (v) => p.setAllowToAdmin(f.key, v),
+                ),
+              ],
             ),
-        ]),
-      ]),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  Add a feature (super-admin)
+//  Needs: class (existing or new) · key · Arabic name · English name
+// ═════════════════════════════════════════════════════════════════════════════
+
+class _AddFeatureDialog extends StatefulWidget {
+  const _AddFeatureDialog({required this.provider});
+
+  final AdminFeaturesProvider provider;
+
+  @override
+  State<_AddFeatureDialog> createState() => _AddFeatureDialogState();
+}
+
+class _AddFeatureDialogState extends State<_AddFeatureDialog> {
+  static final _keyRe = RegExp(r'^[A-Za-z0-9_][A-Za-z0-9_.\-]*$');
+
+  final _key = TextEditingController();
+  final _titleAr = TextEditingController();
+  final _titleEn = TextEditingController();
+  final _tabAr = TextEditingController();
+  final _tabEn = TextEditingController();
+
+  String? _tabId; // chosen existing class
+  late bool _newTab; // true = create a new class
+  bool _allow = false;
+  bool _hideNow = false;
+  bool _saving = false;
+  String? _err;
+
+  @override
+  void initState() {
+    super.initState();
+    final tabs = widget.provider.tabs;
+    _newTab = tabs.isEmpty;
+    final i = widget.provider.selectedTabIndex;
+    if (tabs.isNotEmpty && i >= 0 && i < tabs.length) _tabId = tabs[i].id;
+  }
+
+  @override
+  void dispose() {
+    for (final x in [_key, _titleAr, _titleEn, _tabAr, _tabEn]) {
+      x.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final isAr = AppConfig.lang == 'ar';
+    final required = isAr ? 'كل الحقول مطلوبة' : 'All fields are required';
+    final key = _key.text.trim();
+    final ar = _titleAr.text.trim();
+    final en = _titleEn.text.trim();
+    final tAr = _tabAr.text.trim();
+    final tEn = _tabEn.text.trim();
+
+    String? err;
+    if (key.isEmpty || ar.isEmpty || en.isEmpty) {
+      err = required;
+    } else if (!_keyRe.hasMatch(key)) {
+      err = isAr
+          ? 'المفتاح: حروف إنجليزية وأرقام و _ . - فقط'
+          : 'Key: letters, digits and _ . - only';
+    } else if (_newTab && (tAr.isEmpty || tEn.isEmpty)) {
+      err = isAr
+          ? 'اكتب اسم التصنيف بالعربية والإنجليزية'
+          : 'Enter the class name in Arabic and English';
+    } else if (!_newTab && _tabId == null) {
+      err = isAr ? 'اختر تصنيفًا' : 'Choose a class';
+    }
+    if (err != null) {
+      setState(() => _err = err);
+      return;
+    }
+
+    setState(() {
+      _saving = true;
+      _err = null;
+    });
+    final ok = await widget.provider.createFeature(
+      key: key,
+      titleAr: ar,
+      titleEn: en,
+      tabId: _newTab ? null : _tabId,
+      tabAr: _newTab ? tAr : null,
+      tabEn: _newTab ? tEn : null,
+      allowToAdmin: _allow,
+      hidden: _hideNow,
+    );
+    if (!mounted) return;
+    if (ok) {
+      Navigator.of(context).pop();
+    } else {
+      setState(
+            () => _saving = false,
+      ); // the server's message was already toasted
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tabs = widget.provider.tabs;
+    final isAr = AppConfig.lang == 'ar';
+    TextStyle label([Color? color]) => TextStyle(
+      fontFamily: 'tajawal',
+      fontSize: 12.5,
+      fontWeight: FontWeight.w700,
+      color: color ?? c.textMedium,
+    );
+
+    return AlertDialog(
+      title: Text(
+        AppConfig.lang == 'ar' ? 'إضافة ميزة جديدة' : 'Add a new feature',
+        style: const TextStyle(
+          fontFamily: 'tajawal',
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      content: SizedBox(
+        width: 420,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(isAr ? 'التصنيف' : 'Class (tab)', style: label()),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  for (final t in tabs)
+                    ChoiceChip(
+                      label: Text(
+                        t.label(context),
+                        style: const TextStyle(
+                          fontFamily: 'tajawal',
+                          fontSize: 12,
+                        ),
+                      ),
+                      selected: !_newTab && _tabId == t.id,
+                      onSelected: _saving
+                          ? null
+                          : (_) => setState(() {
+                        _newTab = false;
+                        _tabId = t.id;
+                      }),
+                    ),
+                  ChoiceChip(
+                    avatar: const Icon(Icons.add_rounded, size: 16),
+                    label: Text(
+                      isAr ? 'تصنيف جديد' : 'New class',
+                      style: const TextStyle(
+                        fontFamily: 'tajawal',
+                        fontSize: 12,
+                      ),
+                    ),
+                    selected: _newTab,
+                    onSelected: _saving
+                        ? null
+                        : (_) => setState(() => _newTab = true),
+                  ),
+                ],
+              ),
+              if (_newTab) ...[
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _tabAr,
+                  enabled: !_saving,
+                  decoration: InputDecoration(
+                    labelText: isAr
+                        ? 'اسم التصنيف بالعربية'
+                        : 'Class name (Arabic)',
+                  ),
+                ),
+                TextField(
+                  controller: _tabEn,
+                  enabled: !_saving,
+                  textDirection: TextDirection.ltr,
+                  decoration: InputDecoration(
+                    labelText: isAr
+                        ? 'اسم التصنيف بالإنجليزية'
+                        : 'Class name (English)',
+                  ),
+                ),
+              ],
+              const SizedBox(height: 14),
+              TextField(
+                controller: _key,
+                enabled: !_saving,
+                textDirection: TextDirection.ltr,
+                decoration: InputDecoration(
+                  labelText: isAr ? 'مفتاح الميزة (Key)' : 'Feature key',
+                  hintText: 'profile.delete_account',
+                ),
+              ),
+              TextField(
+                controller: _titleAr,
+                enabled: !_saving,
+                decoration: InputDecoration(
+                  labelText: isAr ? 'الاسم بالعربية' : 'Name (Arabic)',
+                ),
+              ),
+              TextField(
+                controller: _titleEn,
+                enabled: !_saving,
+                textDirection: TextDirection.ltr,
+                decoration: InputDecoration(
+                  labelText: isAr ? 'الاسم بالإنجليزية' : 'Name (English)',
+                ),
+              ),
+              const SizedBox(height: 6),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                value: _allow,
+                activeTrackColor: c.success,
+                onChanged: _saving ? null : (v) => setState(() => _allow = v),
+                title: Text(
+                  isAr ? 'السماح للمدير بالتحكم بها' : 'Let admins manage it',
+                  style: label(c.textDark),
+                ),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                value: _hideNow,
+                activeTrackColor: c.warning,
+                onChanged: _saving ? null : (v) => setState(() => _hideNow = v),
+                title: Text(
+                  isAr
+                      ? 'إخفاؤها الآن على كل المنصات'
+                      : 'Hide it now on all platforms',
+                  style: label(c.textDark),
+                ),
+              ),
+              if (_err != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    _err!,
+                    style: TextStyle(
+                      fontFamily: 'tajawal',
+                      fontSize: 12,
+                      color: c.warning,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.of(context).pop(),
+          child: Text(
+            isAr ? 'إلغاء' : 'Cancel',
+            style: const TextStyle(fontFamily: 'tajawal'),
+          ),
+        ),
+        FilledButton(
+          onPressed: _saving ? null : _save,
+          style: FilledButton.styleFrom(backgroundColor: c.primary),
+          child: _saving
+              ? const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Colors.white,
+            ),
+          )
+              : Text(
+            isAr ? 'إضافة' : 'Add',
+            style: const TextStyle(
+              fontFamily: 'tajawal',
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

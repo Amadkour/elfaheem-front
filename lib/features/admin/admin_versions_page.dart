@@ -8,10 +8,24 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../utils/widget/app_bar.dart';
 import '../../utils/widget/base_page.dart';
+import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
+import 'admin_labels.dart';
 import 'admin_providers.dart';
 
 final _semver = RegExp(r'^\d+(\.\d+){0,2}([+-][0-9A-Za-z.\-]+)?$');
+
+/// Compares the numeric part of two versions ("1.2.3+4" → [1,2,3]); <0 if a<b, 0 equal, >0 if a>b.
+int _cmpVersion(String a, String b) {
+  List<int> parts(String v) =>
+      v.split(RegExp(r'[+-]')).first.split('.').map((x) => int.tryParse(x) ?? 0).toList();
+  final x = parts(a), y = parts(b);
+  for (var i = 0; i < 3; i++) {
+    final d = (i < x.length ? x[i] : 0) - (i < y.length ? y[i] : 0);
+    if (d != 0) return d;
+  }
+  return 0;
+}
 
 class AdminVersionsPage extends StatelessWidget {
   const AdminVersionsPage({super.key});
@@ -51,11 +65,12 @@ class _View extends StatelessWidget {
     }
 
     return BasePage(
-
+      key: const ValueKey('admin_versions'),
       useWebCard: true,
       maxWith: 1100,
       appBar: ScreenAppBar(title: 'app_version'.tr),
       floatingActionButton: FloatingActionButton.extended(
+        key: const ValueKey('admin_versions.publish'),
         backgroundColor: c.primary,
         onPressed: () => _form(context, p),
         icon: const Icon(Icons.rocket_launch_rounded, color: Colors.white),
@@ -109,7 +124,17 @@ class _VersionCard extends StatelessWidget {
               Switch(
                 value: active,
                 activeTrackColor: c.success,
-                onChanged: (_) => p.toggle(id),
+                onChanged: (_) async {
+                  if (!active && asBool(v['force_update'])) {
+                    final ok = await confirm(
+                      context,
+                      message: 'admin_activate_forced_version'.tr,
+                      danger: true,
+                    );
+                    if (!ok) return;
+                  }
+                  await p.toggle(id);
+                },
               ),
             ],
           ),
@@ -170,10 +195,10 @@ class _VersionCard extends StatelessWidget {
 }
 
 Future<void> _form(
-  BuildContext context,
-  AdminVersionsProvider p, {
-  Map<String, dynamic>? existing,
-}) {
+    BuildContext context,
+    AdminVersionsProvider p, {
+      Map<String, dynamic>? existing,
+    }) {
   final editing = existing != null;
   final version = TextEditingController(text: asStr(existing?['version']));
   final minSup = TextEditingController(text: asStr(existing?['min_supported']));
@@ -276,7 +301,7 @@ Future<void> _form(
                     const SizedBox(height: 8),
                     PrimaryButton(
                       label: 'save'.tr,
-                      busy: busy,
+                      isLoading: busy,
                       onPressed: () async {
                         if (!editing &&
                             !_semver.hasMatch(version.text.trim())) {
@@ -293,6 +318,21 @@ Future<void> _form(
                             error: true,
                           );
                           return;
+                        }
+                        final effectiveVersion =
+                        editing ? asStr(existing['version']) : version.text.trim();
+                        if (minSup.text.trim().isNotEmpty &&
+                            _cmpVersion(minSup.text.trim(), effectiveVersion) > 0) {
+                          toast('admin_min_version_gt'.tr, error: true);
+                          return;
+                        }
+                        if (force && active) {
+                          final ok = await confirm(
+                            ctx,
+                            message: 'admin_activate_forced_version'.tr,
+                            danger: true,
+                          );
+                          if (!ok || !ctx.mounted) return;
                         }
                         setS(() => busy = true);
                         final common = <String, dynamic>{
@@ -312,10 +352,10 @@ Future<void> _form(
                         final ok = editing
                             ? await p.update(asInt(existing['id']), common)
                             : await p.create({
-                                'version': version.text.trim(),
-                                'platform': platform,
-                                ...common,
-                              });
+                          'version': version.text.trim(),
+                          'platform': platform,
+                          ...common,
+                        });
                         if (ctx.mounted) {
                           setS(() => busy = false);
                           if (ok) Navigator.pop(ctx);
@@ -330,9 +370,5 @@ Future<void> _form(
         );
       },
     );
-  }).whenComplete(() {
-    for (final x in [version, minSup, notesAr, notesEn]) {
-      x.dispose();
-    }
-  });
+  }).whenComplete(() => disposeAfterRoute([version, minSup, notesAr, notesEn]));
 }

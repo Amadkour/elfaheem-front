@@ -40,6 +40,7 @@ class TeacherDeviceRequestsProvider extends BaseProvider {
   }
 
   /// Clears cached data (call on logout / account switch).
+  @override
   void reset() {
     items = [];
     _processing.clear();

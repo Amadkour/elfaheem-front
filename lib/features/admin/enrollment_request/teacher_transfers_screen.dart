@@ -12,11 +12,11 @@ import 'package:flutter_education_app/utils/widget/swipe_request_card.dart';
 import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/utils/helpers.dart';
-import '../../../../config/app_config.dart';
-import '../../../../config/theme/theme_config_provider.dart';
-import '../../../../utils/widget/app_bar.dart';
+import '../../../config/app_config.dart';
+import '../../../config/theme/theme_config_provider.dart';
+import '../../../utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
-import '../../../student/enrollment/enrollment_models.dart';
+import '../../student/enrollment/enrollment_models.dart';
 import 'teacher_transfers_provider.dart';
 
 class TeacherTransfersScreen extends StatefulWidget {
@@ -55,43 +55,44 @@ class _TransfersView extends StatelessWidget {
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: BasePage(
+        key: const ValueKey('transfer_requests'),
         useWebCard: true,
         maxWith: 1100,
         appBar: ScreenAppBar(title: 'transfer_requests_title'.tr),
         child: !p.hasLoaded && !failedFirstLoad
             ? const Center(child: AppLoadingIndicator(showLogo: false))
             : RefreshIndicator(
-                onRefresh: p.load,
-                child: failedFirstLoad
-                    ? RequestStateView(
-                        icon: Icons.error_outline_rounded,
-                        color: c.danger,
-                        message: p.errorMessage ?? 'failed_to_load'.tr,
-                        actionLabel: 'retry'.tr,
-                        onAction: p.load,
-                      )
-                    : p.items.isEmpty
-                    ? RequestStateView(
-                        icon: Icons.task_alt_rounded,
-                        message: 'no_pending_requests'.tr,
-                      )
-                    : ListView.builder(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                        // +1: the hint banner is the first row.
-                        itemCount: p.items.length + 1,
-                        itemBuilder: (_, i) {
-                          if (i == 0) {
-                            return SwipeHintBanner(count: p.items.length);
-                          }
-                          final t = p.items[i - 1];
-                          return _TransferCard(
-                            key: ValueKey(t.paymentId),
-                            transfer: t,
-                          );
-                        },
-                      ),
-              ),
+          onRefresh: p.load,
+          child: failedFirstLoad
+              ? RequestStateView(
+            icon: Icons.error_outline_rounded,
+            color: c.danger,
+            message: p.errorMessage ?? 'failed_to_load'.tr,
+            actionLabel: 'retry'.tr,
+            onAction: p.load,
+          )
+              : p.items.isEmpty
+              ? RequestStateView(
+            icon: Icons.task_alt_rounded,
+            message: 'no_pending_requests'.tr,
+          )
+              : ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            // +1: the hint banner is the first row.
+            itemCount: p.items.length + 1,
+            itemBuilder: (_, i) {
+              if (i == 0) {
+                return SwipeHintBanner(key: const ValueKey('transfer_requests.hint'), count: p.items.length);
+              }
+              final t = p.items[i - 1];
+              return _TransferCard(
+                key: ValueKey(t.paymentId),
+                transfer: t,
+              );
+            },
+          ),
+        ),
       ),
     );
   }
@@ -267,6 +268,32 @@ class _TransferCard extends StatelessWidget {
                         ? 'transfer_bank_title'.tr
                         : 'transfer_instapay_title'.tr,
                   ),
+                  if (transfer.plan != null) ...[
+                    const SizedBox(height: 10),
+                    RequestInfoRow(
+                      icon: Icons.event_available_rounded,
+                      label: 'plan_label'.tr,
+                      value: PlanKeys.titleKey(transfer.plan!).tr,
+                    ),
+                  ],
+                  if (transfer.coursePrice != null) ...[
+                    const SizedBox(height: 10),
+                    RequestInfoRow(
+                      icon: Icons.sell_outlined,
+                      label: 'transfer_course_price'.tr,
+                      value:
+                      '${transfer.coursePrice!.toStringAsFixed(2)} ${transfer.currency}',
+                    ),
+                  ],
+                  if (transfer.fees != null) ...[
+                    const SizedBox(height: 10),
+                    RequestInfoRow(
+                      icon: Icons.receipt_long_outlined,
+                      label: 'transfer_fees_total'.tr,
+                      value:
+                      '${(transfer.fees!.platformFee + transfer.fees!.vatOnPlatform + transfer.fees!.gatewayFee).toStringAsFixed(2)} ${transfer.currency}',
+                    ),
+                  ],
                   const SizedBox(height: 10),
                   RequestInfoRow(
                     icon: Icons.person_outline_rounded,
@@ -298,12 +325,13 @@ class _TransferCard extends StatelessWidget {
 
             // ── Proof image ──
             _ProofImage(
+              key: const ValueKey('transfer_requests.proof_image'),
               url: transfer.proofImageUrl,
               onTap: () => _openImage(context),
             ),
             const SizedBox(height: 14),
 
-            RequestActionButtons(ctl: ctl),
+            RequestActionButtons(key: const ValueKey('transfer_requests.actions'), ctl: ctl),
           ],
         ),
       ),
@@ -345,7 +373,7 @@ class _AmountPill extends StatelessWidget {
 }
 
 class _ProofImage extends StatelessWidget {
-  const _ProofImage({required this.url, required this.onTap});
+  const _ProofImage({super.key, required this.url, required this.onTap});
 
   final String url;
   final VoidCallback onTap;
@@ -370,15 +398,15 @@ class _ProofImage extends StatelessWidget {
               loadingBuilder: (_, child, progress) => progress == null
                   ? child
                   : Container(
-                      height: _height,
-                      alignment: Alignment.center,
-                      color: c.divider.withValues(alpha: 0.4),
-                      child: const SizedBox(
-                        width: 26,
-                        height: 26,
-                        child: AppLoadingIndicator(showLogo: false),
-                      ),
-                    ),
+                height: _height,
+                alignment: Alignment.center,
+                color: c.divider.withValues(alpha: 0.4),
+                child: const SizedBox(
+                  width: 26,
+                  height: 26,
+                  child: AppLoadingIndicator(showLogo: false),
+                ),
+              ),
               errorBuilder: (_, __, ___) => Container(
                 height: _height,
                 alignment: Alignment.center,
