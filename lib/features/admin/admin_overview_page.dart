@@ -181,11 +181,11 @@ class _View extends StatelessWidget {
             ),
           ),
           Container(
-            constraints: BoxConstraints(maxWidth: 1200),
+            constraints: BoxConstraints(maxWidth: 1000),
             child: GridView.count(
-              crossAxisCount: MediaQuery.of(context).size.width > 1000
+              crossAxisCount: MediaQuery.of(context).size.width > 800
                   ? 4
-                  : MediaQuery.of(context).size.width > 700
+                  : MediaQuery.of(context).size.width > 600
                   ? 3
                   : 2,
               shrinkWrap: true,
