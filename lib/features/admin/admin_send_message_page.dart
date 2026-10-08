@@ -25,7 +25,7 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
   final _body = TextEditingController();
   final _label = TextEditingController();
 
-  String _audience = 'all_students'; // all_students | course | student
+  String _audience = 'all_students'; // all_students | course | student | all_teachers | teacher
   String _display =
       'notification'; //  email | notification | dialog | dialog_action
   String _module =
@@ -33,6 +33,7 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
   Map<String, dynamic>?
   _course; //      audience = course, or the course a button opens
   Map<String, dynamic>? _student;
+  Map<String, dynamic>? _teacher;
   bool _sending = false;
 
   @override
@@ -43,10 +44,15 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
     super.dispose();
   }
 
-  bool get _needsCourseForButton =>
-      _display == 'dialog_action' && _module == 'course';
+  bool get _toTeachers => _audience == 'all_teachers' || _audience == 'teacher';
 
-  Future<void> _pick({required bool course}) async {
+  /// Teachers have no "course page / my courses / subscription" button targets (student concepts).
+  static const _teacherModules = ['profile', 'notifications'];
+
+  bool get _needsCourseForButton =>
+      !_toTeachers && _display == 'dialog_action' && _module == 'course';
+
+  Future<void> _pick({required bool course, bool teacher = false}) async {
     final picked = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
@@ -54,14 +60,26 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
         api: _api,
         title: course
             ? 'admin_choose_a_course'.tr
+            : teacher
+            ? 'admin_choose_a_teacher'.tr
             : 'admin_choose_a_student'.tr,
         path: course ? '/api/v1/admin/courses' : '/api/v1/admin/users',
-        extra: course ? const {} : const {'role': 'student'},
+        extra: course
+            ? const {}
+            : {'role': teacher ? 'teacher' : 'student'},
         subtitleKey: course ? null : 'gmail',
       ),
     );
     if (picked != null) {
-      setState(() => course ? _course = picked : _student = picked);
+      setState(() {
+        if (course) {
+          _course = picked;
+        } else if (teacher) {
+          _teacher = picked;
+        } else {
+          _student = picked;
+        }
+      });
     }
   }
 
@@ -74,6 +92,9 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
     }
     if (_audience == 'student' && _student == null) {
       return _snack('admin_choose_a_student'.tr);
+    }
+    if (_audience == 'teacher' && _teacher == null) {
+      return _snack('admin_choose_a_teacher'.tr);
     }
     if (_needsCourseForButton && _course == null) {
       return _snack('admin_choose_the_course_the_button_opens'.tr);
@@ -93,6 +114,7 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
           'audience': _audience,
           if (_audience == 'course') 'course_id': _course!['id'],
           if (_audience == 'student') 'student_id': _student!['id'],
+          if (_audience == 'teacher') 'teacher_id': _teacher!['id'],
           'title': _title.text.trim(),
           'body': _body.text.trim(),
           'display_type': _display,
@@ -177,12 +199,20 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
     ('all_students', 'admin_all_students'.tr),
     ('course', 'admin_a_course'.tr),
     ('student', 'admin_one_student'.tr),
+    ('all_teachers', 'admin_all_teachers'.tr),
+    ('teacher', 'admin_one_teacher'.tr),
     ],
     _audience,
     (v) => setState(() {
     _audience = v;
+    if (_toTeachers) {
+    // teachers cannot open a course / my-courses / subscription → fall back to a valid target
+    _course = null;
+    if (!_teacherModules.contains(_module)) _module = 'profile';
+    } else if (v == 'student') {
     // the course picked for a "student" / "all" message must not silently become the audience
-    if (v == 'student') _course = _display == 'dialog_action' && _module == 'course' ? _course : null;
+    if (!(_display == 'dialog_action' && _module == 'course')) _course = null;
+    }
     }),
     ),
     if (_audience == 'course') ...[
@@ -201,6 +231,14 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
     () => _pick(course: false),
     ),
     ],
+    if (_audience == 'teacher') ...[
+    const SizedBox(height: 8),
+    pickerBtn(
+    _teacher?['name']?.toString() ?? 'admin_choose_a_teacher'.tr,
+    Icons.person_pin_rounded,
+    () => _pick(course: false, teacher: true),
+    ),
+    ],
     label('admin_how_it_appears'.tr),
     chips<String>(
     [
@@ -215,12 +253,14 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
     if (_display == 'dialog_action') ...[
     const SizedBox(height: 12),
     DropdownButtonFormField<String>(
+    key: ValueKey('module_$_toTeachers'),
     initialValue: _module,
     decoration: InputDecoration(
     labelText: 'admin_button_opens'.tr,
     border: const OutlineInputBorder(),
     ),
     items: [
+    if (!_toTeachers)
     DropdownMenuItem(
     value: 'course',
     child: Text('admin_course_profile'.tr),
@@ -229,6 +269,7 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
     value: 'profile',
     child: Text('admin_profile'.tr),
     ),
+    if (!_toTeachers)
     DropdownMenuItem(
     value: 'my_courses',
     child: Text('admin_my_courses'.tr),
@@ -237,6 +278,7 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
     value: 'notifications',
     child: Text('admin_notifications'.tr),
     ),
+    if (!_toTeachers)
     DropdownMenuItem(
     value: 'subscription',
     child: Text('admin_subscription'.tr),

@@ -1,3 +1,4 @@
+import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 import '../../../../core/api_client.dart';
 import '../../../../core/base_provider.dart';
 import '../../models.dart';
@@ -63,6 +64,7 @@ class CoursesProvider extends BaseProvider {
   }
 
   Future<void> toggleFavorite(String courseId) async {
+    if (ViewAsState.active) return;
     final idx = _courses.indexWhere((c) => c.id == courseId);
     if (idx == -1) return;
     final cur = _courses[idx];

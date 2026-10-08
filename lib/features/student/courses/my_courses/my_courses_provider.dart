@@ -19,6 +19,10 @@ class MyCoursesProvider extends BaseProvider {
   bool _hasMore = true;
   static const _pageSize = 20;
 
+  /// Bumped on every refresh / re-init. A page request that started before that must be dropped when it
+  /// answers late, otherwise an old page is appended to the NEW list (duplicated / out-of-order courses).
+  int _gen = 0;
+
   bool get hasMore => _hasMore;
 
   /// True only while fetching another page onto an already-populated list —
@@ -51,8 +55,8 @@ class MyCoursesProvider extends BaseProvider {
     final q = _query.toLowerCase();
     return list
         .where((s) =>
-    (s.titleAr?.toLowerCase().contains(q)??false) ||
-    (s.titleAr?.toLowerCase().contains(q)??false) ||
+    (s.titleAr?.toLowerCase().contains(q) ?? false) ||
+        (s.titleEn?.toLowerCase().contains(q) ?? false) || // was titleAr twice → English titles were never searchable
         (s.descriptionAr?.toLowerCase().contains(q) ?? false) ||
         (s.descriptionEn?.toLowerCase().contains(q) ?? false) ||
         (s.teacher?.name.toLowerCase().contains(q) ?? false))
@@ -68,9 +72,11 @@ class MyCoursesProvider extends BaseProvider {
 
   /// Fetches the first page fresh (used on pull-to-refresh / first open).
   Future<void> fetchMyEnrollments() async {
+    _gen++;
     _skip = 0;
     _hasMore = true;
     _all = [];
+    notifyListeners();
     await _loadPage();
   }
 
@@ -82,8 +88,10 @@ class MyCoursesProvider extends BaseProvider {
   }
 
   Future<void> _loadPage() async {
+    final gen = _gen;
     final r = await run(() => _api.get('/api/v1/my-enrolled-courses',
         queryParams: {'skip': _skip, 'limit': _pageSize}));
+    if (gen != _gen) return; // a refresh started while this page was loading
     if (r is Map && r['items'] is List) {
       final page = (r['items'] as List)
           .map((e) => CourseModel.fromJson(e))
@@ -107,7 +115,8 @@ class MyCoursesProvider extends BaseProvider {
     if (homeCourses.isEmpty) {
       await fetchMyEnrollments();
     } else {
-      _all = homeCourses;
+      _gen++;
+      _all = List.of(homeCourses); // own copy: the home list is replaced / mutated independently
       _skip = homeCourses.length;
       _hasMore = true;
       notifyListeners();

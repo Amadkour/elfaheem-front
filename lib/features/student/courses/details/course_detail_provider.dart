@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/cupertino.dart';
 
+import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 import '../../../../core/api_client.dart';
 import '../../../../core/base_provider.dart';
 import '../../../../utils/helpers.dart';
@@ -332,6 +333,7 @@ class CourseDetailProvider extends BaseProvider {
   }
 
   Future<void> toggleFavorite() async {
+    if (ViewAsState.active) return; // read-only: the server would refuse it and the heart would flicker back
     final was = course.isFavorite;
     course = course.copyWith(isFavorite: !was);
     notifyListeners();
@@ -345,7 +347,7 @@ class CourseDetailProvider extends BaseProvider {
   }
 
   Future<void> enroll(CourseModel c) async {
-    if (c.isEnrolled) return;
+    if (ViewAsState.active || c.isEnrolled) return; // an admin viewing a student must never enrol them
     notifyListeners();
     final r = await run(() => _api.post('/api/v1/courses/${course.id}/enroll'));
     c.isEnrolled = false;
@@ -361,6 +363,7 @@ class CourseDetailProvider extends BaseProvider {
   ///
   /// Endpoint: POST /api/v1/sessions/{sessionId}/materials/{materialId}/complete
   Future<void> markMaterialComplete(int sessionId, int materialId) async {
+    if (ViewAsState.active) return; // view-as is read-only: no progress is recorded (and no optimistic tick)
     if (sessionId <= 0 || materialId <= 0) return; // placeholder material
     // Optimistic local update so the ✓ badge appears instantly
     if (completedMaterialIds.contains(materialId)) return; // already done
@@ -388,6 +391,7 @@ class CourseDetailProvider extends BaseProvider {
   /// Called automatically when a student leaves the LiveKit room.
   /// Endpoint: POST /api/v1/sessions/{sessionId}/complete
   Future<void> markSessionComplete(int sessionId) async {
+    if (ViewAsState.active) return;
     if (completedSessionIds.contains(sessionId)) return;
     // No optimistic add: completeness is computed by the server (materials +
     // exam), and an optimistic flag would unlock the next session too early.

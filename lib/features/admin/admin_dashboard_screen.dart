@@ -83,6 +83,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   bool get _isAdmin => [
     'admin',
     'super-admin',
+    'developer',
   ].contains(context.read<AuthProvider>().currentUser?.role ?? '');
 
   @override

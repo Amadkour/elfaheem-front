@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_education_app/features/student/home/home_provider.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -23,18 +24,33 @@ class MyCoursesScreen extends StatefulWidget {
 
 class _MyCoursesScreenState extends State<MyCoursesScreen> {
   final _search = TextEditingController();
+  late final HomeProvider _home;
+  List<CourseModel>? _synced;
+
+  /// [widget.courses] is only a snapshot taken when the dashboard was built (usually still empty, and
+  /// stale after any later refresh / enrolment). Follow the HomeProvider's CURRENT list instead and
+  /// re-seed the provider whenever the home dashboard loads a new one.
+  void _syncFromHome() {
+    if (!mounted) return;
+    final list = _home.myCourses;
+    if (identical(list, _synced)) return; // same list as last time → nothing new
+    _synced = list;
+    context.read<MyCoursesProvider>().init(list);
+  }
 
   @override
   void dispose() {
+    _home.removeListener(_syncFromHome);
     _search.dispose();
     super.dispose();
   }
+
   @override
   void initState() {
-    WidgetsBinding.instance.addPostFrameCallback((_){
-      context.read<MyCoursesProvider>().init(widget.courses);
-    });
     super.initState();
+    _home = context.read<HomeProvider>();
+    _home.addListener(_syncFromHome);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncFromHome());
   }
   @override
   Widget build(BuildContext context) {

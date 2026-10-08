@@ -105,12 +105,13 @@ class HomeProvider extends BaseProvider {
   Future<void> fetchStudentDashboard() async {
     makeLoading();
     final result = await run(
-      () => api.get(
+          () => api.get(
         '/api/v1/teacher/student-dashboard',
         auth: true,
       ),
     );
-    makeLoading();
+    // Request failed → run() already holds the error. This used to throw "operator [] on null" here.
+    if (result is! Map) return;
 
     if (result['categories'] is List) {
       categories = (result['categories'] as List)

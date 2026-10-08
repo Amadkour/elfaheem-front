@@ -19,6 +19,7 @@ import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:provider/provider.dart';
 
+import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 import '../../../../core/api_client.dart';
 import '../../../../core/base_provider.dart';
 import '../../auth/auth_provider.dart';
@@ -728,6 +729,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
   }
 
   Future<void> markMaterialComplete(int sessionId, int materialId) async {
+    if (ViewAsState.active) return; // view-as is read-only
     // Fire-and-forget background signal (called when a student opens a
     // material) — must not flip the shared isLoading, or an unrelated
     // spinner elsewhere on screen could appear because of it.
@@ -740,6 +742,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
   }
 
   Future<void> markSessionComplete(int sessionId) async {
+    if (ViewAsState.active) return;
     await run(
           () => _api.post('/api/v1/sessions/$sessionId/complete'),
       makLoading: false,
