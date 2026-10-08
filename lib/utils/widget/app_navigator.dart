@@ -51,6 +51,7 @@ class AppNavigator {
         await nav.pushNamed('/subscription');
         return;
       case 'profile':
+        await nav.pushNamed('/profile');
       case 'my_courses':
       // These are tabs inside the dashboards: pop to the root and ask the AppShell to switch.
         nav.popUntil((r) => r.isFirst);
@@ -60,7 +61,7 @@ class AppNavigator {
       default:
       // A module this app version does not know (server added a new one) → the notifications list
       // is the safest place to land instead of silently ignoring the tap.
-        await nav.pushNamed('/notifications');
+        await nav.pushNamed('/${module??''}');
     }
   }
 

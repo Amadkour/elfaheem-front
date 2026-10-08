@@ -282,7 +282,6 @@ class WideShell extends StatelessWidget {
                       if (provider.currentUser != null)
                         UserChipButton(
                           user: provider.currentUser!,
-                          isTeacher: provider.isTeacher,
                           showLabel: true,
                         ),
                     ],
@@ -320,14 +319,12 @@ class WideShell extends StatelessWidget {
 
 class UserChipButton extends StatelessWidget {
   final UserModel user;
-  final bool isTeacher;
   final bool showLabel;
 
   const UserChipButton({
     super.key,
     required this.user,
     required this.showLabel,
-    required this.isTeacher,
   });
 
   @override
@@ -413,7 +410,7 @@ class UserChipButton extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        isTeacher ? 'teacher'.tr : 'student'.tr,
+                        user.role.tr,
                         style: TextStyle(
                           color: context.colors.accent2,
                           fontSize: 10,
@@ -706,7 +703,6 @@ class RailShell extends StatelessWidget {
                 if (context.watch<AuthProvider>().currentUser != null)
                   UserChipButton(
                     user: provider.currentUser!,
-                    isTeacher: provider.isTeacher,
                     showLabel: false,
                   ),
               ],

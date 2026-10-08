@@ -25,10 +25,10 @@ class TopBar extends StatelessWidget {
           if(provider.currentUser!=null)
           UserChipButton(
             user: provider.currentUser!,
-            isTeacher: provider.isTeacher,
             showLabel: false,
           ),
           // Greeting + name
+          SizedBox(width:5),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

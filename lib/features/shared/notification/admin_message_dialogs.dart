@@ -7,7 +7,8 @@
 // Never runs while a super-admin is in "view as" mode (it would show — and could not dismiss — someone else's dialogs).
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/config/app_config.dart' show pageDirection;
+import 'package:flutter_education_app/config/app_config.dart'
+    show pageDirection;
 import 'package:flutter_education_app/core/api_client.dart';
 import '../../../main.dart' show navigatorKey;
 import '../../../utils/widget/app_navigator.dart';
@@ -18,7 +19,8 @@ class AdminMessageDialogs {
   AdminMessageDialogs._();
 
   static bool _busy = false;
-  static bool _again = false; // a push arrived while a dialog was open → check once more afterwards
+  static bool _again =
+      false; // a push arrived while a dialog was open → check once more afterwards
 
   static Future<void> checkPending() async {
     if (ViewAsState.active) return;
@@ -39,7 +41,9 @@ class AdminMessageDialogs {
           final goTo = await _show(ctx, m);
           // mark seen BEFORE navigating so a crash in the target screen can't re-show it forever
           try {
-            await ApiClient().post('/api/v1/messages/dialogs/${m['recipient_id']}/seen');
+            await ApiClient().post(
+              '/api/v1/messages/dialogs/${m['recipient_id']}/seen',
+            );
           } catch (_) {}
           if (goTo) {
             await AppNavigator.openModule(
@@ -63,7 +67,10 @@ class AdminMessageDialogs {
   }
 
   /// true → the user pressed the action button.
-  static Future<bool> _show(BuildContext context, Map<String, dynamic> m) async {
+  static Future<bool> _show(
+    BuildContext context,
+    Map<String, dynamic> m,
+  ) async {
     final c = context.colors;
     final hasAction = m['has_action'] == true;
     final label = (m['label'] as String?)?.trim();
@@ -71,24 +78,46 @@ class AdminMessageDialogs {
       context: context,
       barrierDismissible: !hasAction,
       builder: (ctx) => Directionality(
-          textDirection: pageDirection, // the app's MaterialApp is LTR; Arabic dialogs must be RTL
-          child: AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            icon: Icon(Icons.campaign_rounded, color: c.primary, size: 34),
-            title: Text('${m['title']}', textAlign: TextAlign.center, style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
-            content: SingleChildScrollView(
-              child: Text('${m['body']}', textAlign: TextAlign.center, style: const TextStyle(fontFamily: 'tajawal', height: 1.6)),
+        textDirection: pageDirection,
+        // the app's MaterialApp is LTR; Arabic dialogs must be RTL
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          icon: Icon(Icons.campaign_rounded, color: c.primary, size: 34),
+          title: Text(
+            '${m['title']}',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontFamily: 'tajawal',
+              fontWeight: FontWeight.w800,
             ),
-            actionsAlignment: MainAxisAlignment.center,
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(gt('إغلاق', 'Close'))),
-              if (hasAction)
-                FilledButton(
-                  onPressed: () => Navigator.pop(ctx, true),
-                  child: Text((label != null && label.isNotEmpty) ? label : gt('فتح', 'Open')),
+          ),
+          content: SingleChildScrollView(
+            child: Text(
+              '${m['body']}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontFamily: 'tajawal', height: 1.6),
+            ),
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(gt('إغلاق', 'Close')),
+            ),
+            if (hasAction)
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(
+                  (label != null && label.isNotEmpty)
+                      ? label
+                      : gt('فتح', 'Open'),
                 ),
-            ],
-          )),
+              ),
+          ],
+        ),
+      ),
     );
     return res == true;
   }

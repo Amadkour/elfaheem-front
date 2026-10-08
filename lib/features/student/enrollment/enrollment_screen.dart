@@ -493,21 +493,31 @@ class _PricePlanPicker extends StatelessWidget {
           title: 'choose_plan_title'.tr,
         ),
         const SizedBox(height: 14),
-        Row(
-          children: [
-            for (final o in options)
-              Expanded(
-                child: _PlanTile(
-                  option: o,
-                  selected: enroll.selectedPlan == o.plan,
-                  currencySymbol: enroll.currencySymbol,
-                  savePercent: _savePercent(options, o),
-                  isBestValue: o.plan == bestPlan,
-                  onTap: () => enroll.selectPlan(o.plan),
+        if (options.length == 1)
+          _PlanTile(
+            option: options[0],
+            selected: enroll.selectedPlan == options[0].plan,
+            currencySymbol: enroll.currencySymbol,
+            savePercent: _savePercent(options, options[0]),
+            isBestValue: options[0].plan == bestPlan,
+            onTap: () => enroll.selectPlan(options[0].plan),
+          )
+        else
+          Row(
+            children: [
+              for (final o in options)
+                Expanded(
+                  child: _PlanTile(
+                    option: o,
+                    selected: enroll.selectedPlan == o.plan,
+                    currencySymbol: enroll.currencySymbol,
+                    savePercent: _savePercent(options, o),
+                    isBestValue: o.plan == bestPlan,
+                    onTap: () => enroll.selectPlan(o.plan),
+                  ),
                 ),
-              ),
-          ],
-        ),
+            ],
+          ),
       ],
     );
   }
@@ -544,7 +554,7 @@ class _PlanTile extends StatelessWidget {
         onTap();
       },
       child: AnimatedContainer(
-        constraints: BoxConstraints(minHeight: 200),
+        constraints: BoxConstraints(minHeight: 200, maxWidth: 200),
         duration: const Duration(milliseconds: 240),
         curve: Curves.easeOutCubic,
         margin: const EdgeInsets.all(2),

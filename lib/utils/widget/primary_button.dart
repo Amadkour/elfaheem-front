@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
 import 'app_loading_indicator.dart';
 
@@ -50,30 +51,31 @@ class PrimaryButton extends StatelessWidget {
               child: isLoading
                   ? AppLoadingIndicator(showLogo: false, size: 50)
                   : Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                textDirection:
-                iconBefore ? TextDirection.ltr : TextDirection.rtl,
-                children: [
-                  Flexible(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontFamily: 'tajawal',
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      textDirection: iconBefore || AppConfig.lang=='ar'
+                          ? TextDirection.rtl
+                          : TextDirection.ltr,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontFamily: 'tajawal',
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        if (icon != null) ...[
+                          const SizedBox(width: 6),
+                          Icon(icon, color: Colors.white, size: 18),
+                        ],
+                      ],
                     ),
-                  ),
-                  if (icon != null) ...[
-                    const SizedBox(width: 6),
-                    Icon(icon, color: Colors.white, size: 18),
-                  ],
-                ],
-              ),
             ),
           ),
         ),

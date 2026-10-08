@@ -7529,18 +7529,6 @@
     "en": "Save",
     "ar": "وفّر"
   },
-  "plan_per_month": {
-    "en": "/ month",
-    "ar": "/ شهرياً"
-  },
-  "plan_total": {
-    "en": "Total",
-    "ar": "الإجمالي"
-  },
-  "plan_best_value": {
-    "en": "Best value",
-    "ar": "الأفضل قيمة"
-  },
   "choose_plan_title": {
     "en": "Choose your plan",
     "ar": "اختر مدة الاشتراك"
@@ -7738,8 +7726,8 @@
     "ar": "هذا الإصدار يُجبر كل المستخدمين على الإصدارات الأقدم على التحديث قبل استخدام التطبيق. هل تريد تفعيله؟"
   },
   "admin_msg_no_recipients": {
-    "en": "Nothing was sent: no students matched this audience",
-    "ar": "لم يتم الإرسال: لا يوجد طلاب مطابقون لهذه الفئة"
+    "en": "Nothing was sent: no one matched this audience",
+    "ar": "لم يتم الإرسال: لا يوجد مستلمون مطابقون لهذه الفئة"
   },
   "admin_send_failed": {
     "en": "Could not send the message. Check your connection and try again",
@@ -7752,5 +7740,89 @@
   "admin_view_as_readonly": {
     "en": "View-only mode: changes are not allowed",
     "ar": "وضع المشاهدة فقط: لا يمكن إجراء أي تغييرات"
+  },
+  "admin_all_teachers": {
+    "en": "All teachers",
+    "ar": "كل المعلمين"
+  },
+  "admin_one_teacher": {
+    "en": "One teacher",
+    "ar": "معلم واحد"
+  },
+  "plan_per_month": {
+    "en": "/ month",
+    "ar": "/ شهرياً"
+  },
+  "plan_total": {
+    "en": "Total",
+    "ar": "الإجمالي"
+  },
+  "plan_best_value": {
+    "en": "Best value",
+    "ar": "الأفضل قيمة"
+  },
+  "admin_admins": {
+    "en": "Admins",
+    "ar": "المشرفون"
+  },
+  "admin_add_admin": {
+    "en": "Add admin",
+    "ar": "إضافة مشرف"
+  },
+  "admin_edit_admin": {
+    "en": "Edit admin",
+    "ar": "تعديل المشرف"
+  },
+  "admin_no_admins_found": {
+    "en": "No admins found",
+    "ar": "لا يوجد مشرفون"
+  },
+  "admin_delete_admin_confirm": {
+    "en": "Delete the admin \"{name}\"? This cannot be undone.",
+    "ar": "هل تريد حذف المشرف \"{name}\"؟ لا يمكن التراجع عن ذلك."
+  },
+  "admin_admin_saved": {
+    "en": "Admin saved successfully",
+    "ar": "تم حفظ المشرف بنجاح"
+  },
+  "admin_admin_deleted": {
+    "en": "Admin deleted successfully",
+    "ar": "تم حذف المشرف بنجاح"
+  },
+  "admin_role_admin": {
+    "en": "Admin",
+    "ar": "مشرف"
+  },
+  "admin_role_super_admin": {
+    "en": "Super admin",
+    "ar": "مشرف عام"
+  },
+  "admin_my_account": {
+    "en": "My account",
+    "ar": "حسابي الشخصي"
+  },
+  "admin_profile_saved": {
+    "en": "Profile updated successfully",
+    "ar": "تم تحديث الملف الشخصي بنجاح"
+  },
+  "admin_nothing_to_update": {
+    "en": "No changes to save",
+    "ar": "لا توجد تغييرات للحفظ"
+  },
+  "admin_email_super_only_hint": {
+    "en": "Only the super admin can change the e-mail",
+    "ar": "المشرف العام فقط يمكنه تغيير البريد الإلكتروني"
+  },
+  "admin_showing_count": {
+    "en": "Showing {loaded} of {total}",
+    "ar": "عرض {loaded} من {total}"
+  },
+  "admin_loading_more": {
+    "en": "Loading more…",
+    "ar": "جارٍ تحميل المزيد…"
+  },
+  "admin_all_loaded": {
+    "en": "All loaded",
+    "ar": "تم تحميل الكل"
   }
 }

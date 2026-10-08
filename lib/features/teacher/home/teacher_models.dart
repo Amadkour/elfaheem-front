@@ -335,7 +335,16 @@ class TeacherCourse with DiscountInfo {
   /// Optional shorter plans. [price] is the YEARLY price; null = plan not offered.
   final double? priceMonthly, priceSixMonths;
 
+  /// The raw YEARLY price (what the edit form edits). [price] / [finalPrice] follow
+  /// the teacher's default plan, so they must not be used to prefill the yearly field.
+  final double? priceYearly;
+
+  /// Plan students see first: 0 yearly · 1 six months · 2 monthly.
+  final int defaultPricePlanIndex;
+
   const TeacherCourse({
+    this.priceYearly,
+    this.defaultPricePlanIndex = 0,
     this.priceMonthly,
     this.priceSixMonths,
     this.finalPrice,
@@ -401,6 +410,8 @@ class TeacherCourse with DiscountInfo {
         0,
     finalPrice: (j['final_price'] as num?)?.toDouble(),
     priceMonthly: (j['price_monthly'] as num?)?.toDouble(),
+    priceYearly: (j['price_yearly'] as num?)?.toDouble(),
+    defaultPricePlanIndex: (j['default_price_plan_index'] as num?)?.toInt() ?? 0,
     priceSixMonths: (j['price_six_months'] as num?)?.toDouble(),
     discountActive: j['discount_active'] as bool?,
     discountPercentage: (j['discount_percentage'] as num?)?.toDouble(),
@@ -501,6 +512,8 @@ class TeacherCourse with DiscountInfo {
     double? finalPrice,
     double? priceMonthly,
     double? priceSixMonths,
+    double? priceYearly,
+    int? defaultPricePlanIndex,
   }) => TeacherCourse(
     currency: currency ?? this.currency,
     status: status ?? this.status,
@@ -519,6 +532,8 @@ class TeacherCourse with DiscountInfo {
     sessionsCount: sessionsCount,
     price: price ?? this.price,
     priceMonthly: priceMonthly ?? this.priceMonthly,
+    priceYearly: priceYearly ?? this.priceYearly,
+    defaultPricePlanIndex: defaultPricePlanIndex ?? this.defaultPricePlanIndex,
     priceSixMonths: priceSixMonths ?? this.priceSixMonths,
     category: category,
     isPublished: isPublished ?? this.isPublished,

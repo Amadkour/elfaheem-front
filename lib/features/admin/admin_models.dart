@@ -116,7 +116,11 @@ class AdminCourse {
   int get id => asInt(j['id']);
   String get name => asStr(j['name']);
   String get description => asStr(j['description']);
+  /// YEARLY price (the edit form's source). [listPrice]/[finalPrice] follow the default plan.
   double get fees => asDouble(j['fees']);
+
+  /// Plan students see first: 0 yearly · 1 six months · 2 monthly.
+  int get defaultPricePlanIndex => asInt(j['default_price_plan_index']);
   String get currency => asStr(j['currency'], 'EGP');
   String get type => asStr(j['type']);
   String get status => asStr(j['status']); // in_progress|completed

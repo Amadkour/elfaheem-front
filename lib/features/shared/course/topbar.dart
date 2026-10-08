@@ -59,21 +59,22 @@ class CourseDetailsTopBar extends StatelessWidget {
         ),
     ];
     return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
       children: [
+        ...[
+          if(onBack!=null)
+            _GlassBtn(
+              icon: Icons.arrow_back_ios_rounded,
+              tooltip: 'course_hero_share'.tr,
+              onTap: onBack!,
+            ),
+          Spacer(),
+
+        ],
         for (var i = 0; i < buttons.length; i++) ...[
           if (i > 0) const SizedBox(width: 8),
           buttons[i],
         ],
-        ...[
-          Spacer(),
-          if(onBack!=null)
-          _GlassBtn(
-            icon: Icons.arrow_forward_ios_rounded,
-            tooltip: 'course_hero_share'.tr,
-            onTap: onBack!,
-          ),
-        ],
+
       ],
     );
   }
@@ -93,23 +94,26 @@ class _GlassBtn extends StatelessWidget {
   final String? tooltip;
 
   @override
-  Widget build(BuildContext context) => Tooltip(
-    message: tooltip ?? '',
-    child: ClipOval(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Material(
-          color: context.colors.primary.withValues(alpha: 0.32),
-          child: InkWell(
-            onTap: onTap,
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white24, width: 1.7),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.all(5.0),
+    child: Tooltip(
+      message: tooltip ?? '',
+      child: ClipOval(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Material(
+            color: context.colors.primary.withValues(alpha: 0.32),
+            child: InkWell(
+              onTap: onTap,
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white24, width: 1.7),
+                ),
+                child: Icon(icon, size: 24, color: iconColor),
               ),
-              child: Icon(icon, size: 24, color: iconColor),
             ),
           ),
         ),

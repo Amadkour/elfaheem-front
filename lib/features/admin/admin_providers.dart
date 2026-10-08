@@ -616,7 +616,7 @@ class FeatureTab {
 }
 
 class AdminFeaturesProvider extends AdminBase {
-  static const pageSize = 10;
+  static const pageSize = 20;
 
   List<FeatureTab> tabs = [];
   List<String> platforms = ['android', 'ios', 'web'];
@@ -634,6 +634,13 @@ class AdminFeaturesProvider extends AdminBase {
   bool get canAddCustom => isSuperAdmin;
   bool get hasPrev => page > 1;
   bool get hasNext => page < pages;
+
+  // ── infinite scroll: the next page is APPENDED to the class that is on screen ──
+  bool loadingMore = false;
+
+  /// The last append failed: stop auto-filling the viewport (otherwise it would retry in a tight loop).
+  bool loadMoreFailed = false;
+  bool get hasMore => page < pages;
 
   /// Items of the selected tab (safe when tabs are empty).
   List<FeatureItem> get currentItems =>
@@ -665,13 +672,76 @@ class AdminFeaturesProvider extends AdminBase {
     _apply(r);
   }
 
-  /// Reload the page that is currently shown.
-  Future<void> refresh() =>
-      load( toPage: page);
+  /// Pull-to-refresh / retry: back to page 1 of the selected class.
+  Future<void> refresh() {
+    loadMoreFailed = false;
+    return load();
+  }
+
+  /// After a toggle: re-read every page that is already on screen, so the scroll position
+  /// and the pages the user loaded are kept (a plain refresh would collapse back to page 1).
+  Future<void> reloadLoaded() async {
+    final upTo = page < 1 ? 1 : page;
+    await load();
+    while (page < upTo && hasMore) {
+      if (!await _appendNext(silent: true)) break;
+    }
+  }
+
+  /// Scroll reached the bottom → fetch the next page and append it.
+  Future<void> loadMore() async {
+    if (loadingMore || isLoading || !hasMore || tabs.isEmpty) return;
+    await _appendNext();
+  }
+
+  Future<bool> _appendNext({bool silent = false}) async {
+    if (selectedTabIndex < 0 || selectedTabIndex >= tabs.length) return false;
+    final tab = tabs[selectedTabIndex];
+    loadingMore = true;
+    notifyListeners();
+    var ok = false;
+    try {
+      final r = await api.get('$_base/features', queryParams: {
+        'tab': tab.id,
+        'page': tab.page + 1,
+        'size': pageSize,
+      });
+      if (r is Map) {
+        final known = tab.items.map((e) => e.key).toSet();
+        final fresh = asMapList(r['items'])
+            .map(FeatureItem.new)
+            .where((e) => !known.contains(e.key))
+            .toList();
+        tab.items = [...tab.items, ...fresh];
+        tab.page = asInt(r['page'], tab.page + 1);
+        tab.pages = asInt(r['pages'], tab.pages);
+        tab.total = asInt(r['total'], tab.total);
+        final stillSelected =
+            selectedTabIndex < tabs.length && identical(tabs[selectedTabIndex], tab);
+        if (stillSelected) {
+          page = tab.page;
+          pages = tab.pages;
+          total = tab.total;
+        }
+        loadMoreFailed = false;
+        ok = true;
+      }
+    } on ApiException catch (e) {
+      loadMoreFailed = true;
+      if (!silent) toast(e.message, error: true);
+    } catch (e) {
+      loadMoreFailed = true;
+      if (!silent) toast('$e', error: true);
+    }
+    loadingMore = false;
+    notifyListeners();
+    return ok;
+  }
 
   /// Switch tab. Hits the server only if the destination tab is empty.
   Future<void> selectTab(int index) async {
     selectedTabIndex = index;
+    loadMoreFailed = false;
 
     if (index < 0 || index >= tabs.length) return;
     final t = tabs[index];
@@ -757,14 +827,14 @@ class AdminFeaturesProvider extends AdminBase {
     }));
     // The PUT response is not tied to the tab / page being viewed,
     // so reload the page the user is looking at.
-    if (r != null) await refresh();
+    if (r != null) await reloadLoaded();
   }
 
   /// Super-admin: let admins see / toggle [key] (or take it back).
   Future<void> setAllowToAdmin(String key, bool allow) async {
     final r = await call(() => api.put('$_base/features/$key/access',
         body: {'allow_to_admin': allow}));
-    if (r != null) await refresh();
+    if (r != null) await reloadLoaded();
   }
 
   /// Super-admin: add a feature. Pass [tabId] for an existing class, or
@@ -1006,6 +1076,12 @@ class AdminPayoutRequestsProvider extends AdminBase {
     busy.remove(id);
     notifyListeners();
     return r != null;
+  }
+
+  /// Fresh signed link to the receipt (PDFs sit in a private bucket, so the stored URL is not openable).
+  Future<Map<String, dynamic>?> receiptLink(int id) async {
+    final r = await call(() => api.get('$_base/payouts/withdrawals/$id/receipt-url'));
+    return r is Map ? Map<String, dynamic>.from(r) : null;
   }
 
   Future<bool> reject(int id, String reason) => _act(

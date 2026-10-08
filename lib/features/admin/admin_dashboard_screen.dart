@@ -37,6 +37,7 @@ import '../../utils/widget/parent_component.dart';
 import '../shared/profile/change_language_screen.dart';
 import '../shared/profile/components/setting_group.dart';
 import '../teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
+import 'admin_admins_page.dart';
 import 'admin_categories_page.dart';
 import 'admin_common.dart';
 import 'admin_content_page.dart';
@@ -44,6 +45,7 @@ import 'admin_courses_page.dart';
 import 'admin_features_page.dart';
 import 'admin_overview_page.dart';
 import 'admin_payouts_page.dart';
+import 'admin_profile_page.dart';
 import 'admin_providers.dart' show AdminPendingPayoutsProvider;
 import 'admin_send_message_page.dart';
 import 'admin_subscriptions_page.dart';
@@ -202,7 +204,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   if (mounted) tabs.onChangeTab(i);
                 }
 
-                if (w >= 900) {
+                if (w >= 1000) {
                   return WideShell(
                     currentIndex: tabs.currentTab,
                     onTap: onTap,
@@ -307,7 +309,7 @@ class _MorePageState extends State<_MorePage> {
                         label: 'send_message'.tr,
                         onTap: () => _push(const AdminSendMessagePage()),
                       ),
-                      if (context.read<AuthProvider>().isSuper)
+                      if (isSuperNow(context))
                         SettingsTile(
                           icon: Icons.visibility_rounded,
                           iconBg: c.warning.withAlpha(50),
@@ -323,6 +325,15 @@ class _MorePageState extends State<_MorePage> {
                         onTap: () =>
                             _push(const AdminUsersPage(role: 'teacher')),
                       ),
+                      // Super-admin only: manage the admin accounts.
+                      if (isSuperNow(context))
+                        SettingsTile(
+                          icon: Icons.admin_panel_settings_rounded,
+                          iconBg: c.success.withAlpha(50),
+                          iconColor: c.success,
+                          label: 'admin_admins'.tr,
+                          onTap: () => _push(const AdminAdminsPage()),
+                        ),
                       SettingsTile(
                         icon: Icons.category_rounded,
                         iconBg: c.primary.withAlpha(50),
@@ -440,6 +451,13 @@ class _MorePageState extends State<_MorePage> {
                   child: SettingsGroup(
                     title: 'settings'.tr,
                     children: [
+                      SettingsTile(
+                        icon: Icons.manage_accounts_rounded,
+                        iconBg: c.primary.withAlpha(50),
+                        iconColor: c.primary,
+                        label: 'admin_my_account'.tr,
+                        onTap: () => _push(const AdminProfilePage()),
+                      ),
                       SettingsTile(
                         icon: Icons.language_rounded,
                         iconBg: c.purpleTint,

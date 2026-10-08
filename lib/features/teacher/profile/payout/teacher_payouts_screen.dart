@@ -6,8 +6,8 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart';
 import 'package:flutter_education_app/features/admin/admin_models.dart';
+import 'package:flutter_education_app/features/admin/receipt_viewer.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../utils/widget/base_page.dart';
 import '../../../../utils/widget/primary_button.dart';
@@ -434,10 +434,12 @@ class _WithdrawalTile extends StatelessWidget {
                   'admin_view_receipt'.tr,
                   style: const TextStyle(fontFamily: 'tajawal', fontSize: 12.5),
                 ),
-                onPressed: () => launchUrl(
-                  Uri.parse(w.receiptUrl!),
-                  mode: LaunchMode.externalApplication,
-                ),
+                onPressed: () async {
+                  final p = context.read<TeacherPayoutProvider>();
+                  final link = await p.receiptLink(w.id);
+                  if (!context.mounted) return;
+                  await openReceipt(context, link);
+                },
               ),
             ),
           if (w.rejectedReason != null)

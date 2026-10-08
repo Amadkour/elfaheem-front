@@ -36,6 +36,9 @@ import 'features/shared/notification/admin_message_dialogs.dart';
 import 'features/shared/notification/notification_service.dart';
 import 'features/shared/notification/notifications_screen.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'features/shared/profile/change_password_widget.dart';
+import 'features/shared/profile/profile_screen.dart';
+import 'features/shared/profile/update_account_widget.dart';
 import 'features/shared/subscription/subscription_screen.dart';
 import 'features/student/courses/details/course_detail_screen.dart';
 import 'features/student/courses/details/course_link_loader.dart';
@@ -297,6 +300,10 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
         return _fade(const _Guard(child: AdminDashboardScreen()), settings);
       case '/subscription':
         return _fade(const _Guard(child: SubscriptionScreen()), settings);
+      case '/profile':
+        return _fade(const _Guard(child: EditAccountScreen()), settings);
+      case '/change-password':
+        return _fade(const _Guard(child: ChangePasswordScreen()), settings);
       case '/course-detail':
         final course = settings.arguments;
         if (course is! CourseModel) {

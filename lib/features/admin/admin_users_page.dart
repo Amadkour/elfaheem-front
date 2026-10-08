@@ -213,7 +213,7 @@ class _UserTile extends StatelessWidget {
             ),
           ),
           // Super-admin: jump straight into this user's app (read-only). "Back to admin" is in the banner.
-          if (context.read<AuthProvider>().isSuper &&
+          if (isSuperNow(context) &&
               (u.role == 'student' || u.role == 'teacher'))
             IconButton(
               tooltip: 'view_as_user'.tr,
@@ -362,7 +362,7 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                 title: 'admin_controls'.tr,
                 child: Column(
                   children: [
-                    if (context.read<AuthProvider>().isSuper &&
+                    if (isSuperNow(context) &&
                         (u.role == 'student' || u.role == 'teacher')) ...[
                       PrimaryButton(
                         label: 'view_as_user'.tr,

@@ -1,6 +1,7 @@
 // lib/features/admin/admin_overview_page.dart
 library;
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -52,12 +53,12 @@ class _View extends StatelessWidget {
 
     // EVERY card is tappable: the arrow in the corner shows it opens something.
     Widget card(
-        IconData icon,
-        String label,
-        String value,
-        Color color, {
-          required VoidCallback onTap,
-        }) => InkWell(
+      IconData icon,
+      String label,
+      String value,
+      Color color, {
+      required VoidCallback onTap,
+    }) => InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
@@ -81,7 +82,13 @@ class _View extends StatelessWidget {
                   child: Icon(icon, color: color, size: 20),
                 ),
                 const Spacer(),
-                Icon(Icons.arrow_outward_rounded, size: 16, color: c.textLight),
+                Icon(
+                  AppConfig.lang == 'ar'
+                      ? CupertinoIcons.arrow_up_left
+                      : CupertinoIcons.arrow_up_right,
+                  size: 16,
+                  color: c.textLight,
+                ),
               ],
             ),
             const Spacer(),
@@ -101,7 +108,8 @@ class _View extends StatelessWidget {
             Text(
               label,
               maxLines: 2,
-              overflow: TextOverflow.ellipsis, // long labels used to overflow the fixed-ratio card
+              overflow: TextOverflow.ellipsis,
+              // long labels used to overflow the fixed-ratio card
               style: TextStyle(
                 fontFamily: 'tajawal',
                 fontSize: 12,
@@ -153,7 +161,7 @@ class _View extends StatelessWidget {
                         ),
                         Text(
                           '${o.i('active_subscriptions')} ${'admin_active_subscribers'.tr}'
-                              '${o.i('pending_subscriptions') > 0 ? ' • ${o.i('pending_subscriptions')} ${'admin_pending_2'.tr}' : ''}',
+                          '${o.i('pending_subscriptions') > 0 ? ' • ${o.i('pending_subscriptions')} ${'admin_pending_2'.tr}' : ''}',
                           style: const TextStyle(
                             fontFamily: 'tajawal',
                             color: Colors.white70,
@@ -192,7 +200,9 @@ class _View extends StatelessWidget {
                 'admin_teachers'.tr,
                 '${o.i('teachers')}',
                 c.purple,
-                onTap: () => onOpenTab(3), // Teachers is a tab of the shell now (was pushing a duplicate page)
+                onTap: () => onOpenTab(
+                  3,
+                ), // Teachers is a tab of the shell now (was pushing a duplicate page)
               ),
               card(
                 Icons.menu_book_rounded,

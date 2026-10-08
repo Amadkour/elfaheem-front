@@ -14,6 +14,9 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
 
+import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:flutter_education_app/utils/widget/view_as_state.dart';
+
 import '../shared/profile/profile_provider.dart';
 
 /// Arabic / English inline text (the admin screens ship with both).
@@ -27,6 +30,13 @@ String trp(String key, Map<String, Object?> params) {
 }
 
 TextDirection get dir => Helpers.pageDirection;
+
+/// True for a super-admin who is NOT currently "viewing as" a plain admin.
+/// While viewing as an admin the server treats the session as that admin, so
+/// the super-only UI (Admins, view-as buttons) must disappear too.
+bool isSuperNow(BuildContext context) =>
+    context.read<AuthProvider>().isSuper &&
+        !(ViewAsState.active && ViewAsState.instance.role == 'admin');
 
 void toast(String message, {bool error = false}) =>
     Helpers.showMessage(message, isError: error);
@@ -71,11 +81,11 @@ List<Map<String, dynamic>> asMapList(dynamic v) => v is List
 // ── dialogs ──────────────────────────────────────────────────────────────────
 
 Future<bool> confirm(
-  BuildContext context, {
-  required String message,
-  String? confirmLabel,
-  bool danger = false,
-}) async {
+    BuildContext context, {
+      required String message,
+      String? confirmLabel,
+      bool danger = false,
+    }) async {
   final c = context.colors;
   final r = await showDialog<bool>(
     context: context,
@@ -107,11 +117,11 @@ Future<bool> confirm(
 }
 
 Future<String?> askText(
-  BuildContext context, {
-  required String title,
-  String? hint,
-  bool multiline = false,
-}) async {
+    BuildContext context, {
+      required String title,
+      String? hint,
+      bool multiline = false,
+    }) async {
   final ctrl = TextEditingController();
   final r = await showDialog<String>(
     context: context,
@@ -157,7 +167,7 @@ Future<T?> showAdminSheet<T>(BuildContext context, WidgetBuilder builder) {
           decoration: BoxDecoration(
             color: ctx.colors.cardBg,
             borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(24)),
+            const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: builder(ctx),
         ),
@@ -203,18 +213,18 @@ class StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.14),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(label,
-            style: TextStyle(
-                fontFamily: 'tajawal',
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
-                color: color)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.14),
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Text(label,
+        style: TextStyle(
+            fontFamily: 'tajawal',
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            color: color)),
+  );
 }
 
 class Section extends StatelessWidget {

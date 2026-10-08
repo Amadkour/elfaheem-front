@@ -136,7 +136,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
       text:( c?.descriptionEn??c?.descriptionAr)??'',
     );
     _priceCtrl = TextEditingController(
-      text: c != null ? c.price.toString() : '',
+      text: c != null ? (c.priceYearly ?? c.price).toString() : '',
     );
     _priceMonthlyCtrl = TextEditingController(
       text: c?.priceMonthly != null ? c!.priceMonthly.toString() : '',
@@ -228,7 +228,8 @@ class _CourseFormInnerState extends State<_CourseFormInner>
   bool get _hasChanges {
     if (!_isEdit) return _hasBasics;
     final c = widget.course!;
-    final newPrice = double.tryParse(_priceCtrl.text) ?? c.price;
+    final oldYearly = c.priceYearly ?? c.price;
+    final newPrice = double.tryParse(_priceCtrl.text) ?? oldYearly;
     final newMonthly = double.tryParse(_priceMonthlyCtrl.text);
     final newSixMonths = double.tryParse(_priceSixMonthsCtrl.text);
     final newHours = double.tryParse(_hoursCtrl.text) ?? c.expectedHours;
@@ -238,12 +239,14 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     final oldDays = c.discountDays;
     return _titleArCtrl.text.trim() != (c.titleAr ?? '') ||
         _titleEnCtrl.text.trim() != (c.titleEn ?? '') ||
-        newPrice != c.price ||
+        newPrice != oldYearly ||
         newMonthly != c.priceMonthly ||
         newSixMonths != c.priceSixMonths ||
         newHours != c.expectedHours ||
         newDiscount != oldDiscount ||
         newDays != oldDays ||
+        context.read<CourseFormProvider>().defaultPlanIndex !=
+            c.defaultPricePlanIndex ||
         _removeDiscount ||
         _logoFile != null ||
         _reelCtrl.hasChanges;
@@ -642,6 +645,30 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                   fontFamily: 'tajawal',
                                   fontSize: 11.5,
                                   color: Colors.grey,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              // Plan students see first (course profile + home).
+                              _LabeledField(
+                                label: 'default_plan_label'.tr,
+                                child: Wrap(
+                                  spacing: 8,
+                                  children: [
+                                    for (final e in {
+                                      0: 'price_yearly_label'.tr,
+                                      1: 'price_six_months_label'.tr,
+                                      2: 'price_monthly_label'.tr,
+                                    }.entries)
+                                      ChoiceChip(
+                                        label: Text(
+                                          e.value,
+                                          style: const TextStyle(fontFamily: 'tajawal'),
+                                        ),
+                                        selected: provider.defaultPlanIndex == e.key,
+                                        onSelected: (_) =>
+                                            provider.onChangeDefaultPlan(e.key),
+                                      ),
+                                  ],
                                 ),
                               ),
                               const SizedBox(height: 14),

@@ -93,6 +93,14 @@ class CourseFormProvider extends BaseProvider {
   ];
   Map<String, dynamic>? selectedTeachingType;
 
+  // ── Default plan students see first: 0 yearly · 1 six months · 2 monthly ──
+  int defaultPlanIndex = 0;
+
+  void onChangeDefaultPlan(int index) {
+    defaultPlanIndex = index;
+    notifyListeners();
+  }
+
   // ── Currency state ───────────────────────────────────────────────────────
   // Defaults to EGP; restored from the course's own currency in UPDATE mode.
   AppCurrency selectedCurrency = AppCurrency.egp;
@@ -207,6 +215,7 @@ class CourseFormProvider extends BaseProvider {
     selectedSpecialization = null;
     selectedTeachingType = teachingTypes[1]; // recorded
     selectedCurrency = AppCurrency.egp;
+    defaultPlanIndex = 0;
     selectedNextCourses = [];
     selectedRecommendedCourseIds = {};
     _listsChanged = false;
@@ -229,6 +238,7 @@ class CourseFormProvider extends BaseProvider {
       orElse: () => teachingTypes[1],
     );
     selectedCurrency = course.currency;
+    defaultPlanIndex = course.defaultPricePlanIndex;
     selectedRecommendedCourseIds = course.recommendedCourseIds.toSet();
     _listsChanged = false;
     _pendingSchedules = [];
@@ -391,6 +401,7 @@ class CourseFormProvider extends BaseProvider {
       'fees': fees,
       if (priceMonthly != null) 'price_monthly': priceMonthly,
       if (priceSixMonths != null) 'price_six_months': priceSixMonths,
+      'default_price_plan_index': defaultPlanIndex,
       'currency': selectedCurrency.code,
       if (selectedSpecialization?['id'] != null)
       'category_id': selectedSpecialization!['id'],
@@ -490,6 +501,7 @@ class CourseFormProvider extends BaseProvider {
       'fees': ?fees,
       'price_monthly': priceMonthly,
       'price_six_months': priceSixMonths,
+      'default_price_plan_index': defaultPlanIndex,
       'currency': selectedCurrency.code,
       if (selectedSpecialization?['id'] != null)
       'category_id': selectedSpecialization!['id'],

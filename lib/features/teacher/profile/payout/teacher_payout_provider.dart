@@ -107,6 +107,12 @@ class TeacherPayoutProvider extends AdminBase {
     return r != null;
   }
 
+  /// Fresh signed link to the receipt the admin attached (the stored URL is private / expires).
+  Future<Map<String, dynamic>?> receiptLink(int id) async {
+    final r = await call(() => api.get('/api/v1/teacher/payout/withdrawals/$id/receipt-url'));
+    return r is Map ? Map<String, dynamic>.from(r) : null;
+  }
+
   Future<bool> cancelWithdrawal(int id) async {
     final r = await call(() => api.delete('/api/v1/teacher/withdrawals/$id'),
         ok: t('تم إلغاء الطلب', 'Request cancelled'));

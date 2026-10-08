@@ -11,7 +11,9 @@ import '../../../../config/app_config.dart' as Helpers;
 import '../../../../config/theme/app_theme.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/widget/app_bar.dart';
+import '../../../../utils/widget/app_loading_indicator.dart';
 import '../../../../utils/widget/base_page.dart';
+import '../../../../utils/widget/paged_progress.dart';
 import '../../../../utils/widget/search_text_field.dart';
 import '../../models.dart';
 import '../details/course_detail_screen.dart';
@@ -77,37 +79,44 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
                 onChanged: provider.setQuery,
               ),
             ),
+            if (provider.allCount > 0 &&
+                (provider.total > 0 || !provider.hasMore) &&  (provider.total > provider.allCount
+                ? provider.total
+                : provider.allCount)>20)
+              PagedCountCard(
+                loaded: provider.allCount,
+                total: provider.total > provider.allCount
+                    ? provider.total
+                    : provider.allCount,
+                loadingMore: provider.isLoadingMore,
+                done: !provider.hasMore,
+                icon: Icons.library_books_rounded,
+                margin: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+              ),
             Expanded(
-              child: NotificationListener<ScrollNotification>(
-                onNotification: (n) {
-                  if (n.metrics.pixels >= n.metrics.maxScrollExtent - 300) {
-                    context.read<MyCoursesProvider>().loadMore();
-                  }
-                  return false;
-                },
-                child: Stack(
-                  children: [
-                    ParentComponent(
-                        featureKey: 'courses_list.list',
-                        child: HomeCourseList(
-                          hasMore: provider.hasMore,
-                          courses: provider.filteredCourses,
-                          onTap: (CourseModel c) {
-                            Navigator.pushNamed(context, '/course-detail', arguments: c);
-                          },
-                          isTeacher: false,
-                          pageName: widget.forMyCourses
-                              ? 'my-courses-profile'
-                              : 'other-courses-profile',
-                        )),
-                    if (provider.isLoadingMore)
-                      const Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 12,
-                        child: Center(child: _LoadMorePill()),
-                      ),
-                  ],
+              child: (provider.isLoading && provider.allCourses.isEmpty)
+                  ? Center(child: AppLoadingIndicator())
+                  : (provider.filteredCourses.isEmpty && !provider.hasMore)
+                  ? _EmptyState(
+                icon: Icons.menu_book_rounded,
+                message: 'no_courses_in_section'.tr,
+              )
+                  : ParentComponent(
+                featureKey: 'courses_list.list',
+                child: HomeCourseList(
+                  hasMore: provider.hasMore,
+                  courses: provider.filteredCourses,
+                  loadingMore: provider.isLoadingMore,
+                  onLoadMore: provider.loadMore,
+                  onRefresh: provider.refresh,
+                  onTap: (CourseModel c) {
+                    Navigator.pushNamed(context, '/course-detail',
+                        arguments: c);
+                  },
+                  isTeacher: false,
+                  pageName: widget.forMyCourses
+                      ? 'my-courses-profile'
+                      : 'other-courses-profile',
                 ),
               ),
             ),
@@ -142,56 +151,6 @@ class _EmptyState extends StatelessWidget {
         Text(
           message,
           style: context.colors.body.copyWith(fontWeight: FontWeight.w600),
-        ),
-      ],
-    ),
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Small floating pill shown while the next page of a list is loading.
-// Overlaid at the bottom of the scrollable rather than appended after it, so
-// it works regardless of the internal layout of whatever list widget it sits
-// on top of (HomeCourseList here).
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _LoadMorePill extends StatelessWidget {
-  const _LoadMorePill();
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-    decoration: BoxDecoration(
-      color: context.colors.cardBg,
-      borderRadius: BorderRadius.circular(20),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.12),
-          blurRadius: 12,
-          offset: const Offset(0, 4),
-        ),
-      ],
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          width: 14,
-          height: 14,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation(context.colors.primary),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          'loading_more'.tr,
-          style: TextStyle(
-            fontFamily: 'tajawal',
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: context.colors.textMedium,
-          ),
         ),
       ],
     ),
